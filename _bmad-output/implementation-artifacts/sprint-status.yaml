@@ -77,6 +77,7 @@ project: frontcomposer
 # 2-4 moved backlog → ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of expand-in-row detail — always-present role=region panel + filter-hidden banner/suppressed-announcement + e2e a11y; gap = end-to-end generated-grid expand-click + filter-hides-expanded-row runtime pins; component/reducer/emitter/banner already pinned; AC3 Playwright CI-only)
 # 2-4 moved ready-for-dev → in-progress on 2026-06-04 (dev-story)
 # 2-4 moved in-progress → review on 2026-06-04 (dev-story; generated-grid expand/filter-hidden pins, zero src change, build 0/0, story pins green, default-lane baseline remains environmental)
+# 2-4 moved review → done on 2026-06-04 (story-automator review; re-ran build 0/0 + 5/5 generated-grid pins + 20/20 confirm pins, reproduced 8-failure Shell baseline none expand-in-row, AC1/AC2/AC3 verified in src; 0 critical/high, auto-fixed 1 MEDIUM scoped-runtime-REPLACE-claim + 2 LOW file-list/wall-clock)
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/implementation-artifacts"
@@ -98,7 +99,7 @@ development_status:
   2-1-render-a-projection-from-a-projection-type: done
   2-2-registry-driven-navigation-and-home-directory: done
   2-3-datagrid-filtering-status-and-empty-loading-states: done
-  2-4-accessible-expand-in-row-detail: review
+  2-4-accessible-expand-in-row-detail: done
   2-5-column-prioritization-for-wide-projections: backlog
   2-6-live-projection-updates-with-reconnect-reconciliation: backlog
   2-7-command-palette-discovery-and-global-search: backlog

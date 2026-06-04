@@ -4,7 +4,7 @@ baseline_commit: 81eebf9192c65beb662c39427d3945cda98458b4
 
 # Story 2.4: Accessible expand-in-row detail
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -416,7 +416,30 @@ Codex GPT-5
 ### File List
 
 - `tests/Hexalith.FrontComposer.Shell.Tests/Generated/ExpandInRowGeneratedGridTests.cs`
+- `_bmad-output/implementation-artifacts/tests/test-summary-2-4.md` (QA test-automation summary)
+
+### Senior Developer Review (AI)
+
+**Reviewer:** Jérôme Piquot — 2026-06-04 (story-automator adversarial review, auto-fix mode)
+**Outcome:** Approve (status → done). 0 CRITICAL, 0 HIGH; 1 MEDIUM + 2 LOW found and auto-fixed.
+
+**Independently re-run evidence (this review, not inherited):**
+- `dotnet build …Shell.Tests… -c Release -m:1 /nr:false` → **0 warnings / 0 errors** (TWAE).
+- `ExpandInRowGeneratedGridTests` → **5/5 passed** (xUnit v3 in-process runner — VSTest socket is sandbox-blocked, same constraint the dev recorded).
+- Confirm pins `FcExpandInRowDetailTests` + `FcExpandedRowHiddenBannerTests` + `ExpandedRowReducerTests` + `AxeCoreA11yTests` → **20/20 passed**.
+- Full Shell.Tests default lane → **1738 total, 8 failed**; the 8–9 failures are the documented pre-existing/environmental clusters (Verify snapshot drift, missing `deferred-work.md` file IO, navigation-hydration, telemetry timing, query-fallback). **None** are expand-in-row tests — baseline reproduced, no misattribution.
+- AC1/AC2/AC3 contracts verified present in `src/` exactly as claimed (`FcExpandInRowDetail.razor` always-present `role="region"` + visually-hidden suppression live region; `FcExpandedRowHiddenBanner.razor` `role="status"`/`aria-live="polite"`/clear affordance). **Zero `src/` change** confirmed against the git tree.
+- AC3: the new `…HasNoBlockingAxeContractViolations` pin correctly mirrors the established `AxeCoreA11yTests` ARIA-contract-proxy pattern (real `axe.run()` is the CI-only Playwright lane; bUnit cannot drive the FluentUI v5 shadow DOM) — Task 3 satisfied.
+
+**Findings & fixes applied:**
+- **[MEDIUM][AC1] Overstated "REPLACE proven at runtime."** `CounterProjectionView_ExpandingSecondRow_ReplacesFirstExpansion` bypasses the reducer via manual `RestoreExpandedRowState`, so the REPLACE itself is the test helper's single-key dictionary, not the production reducer. What the test genuinely pins at runtime is the **shared ViewKey precondition** (both triggers emit the same ephemeral key); the reducer REPLACE is pinned separately in `ExpandedRowReducerTests`. Tightened the test comment + `test-summary-2-4.md` wording to scope the claim accurately (this was the story's own flagged "false-confidence" risk).
+- **[LOW] File List omission.** Added the QA artifact `_bmad-output/implementation-artifacts/tests/test-summary-2-4.md` to the File List (retro AI-1).
+- **[LOW] Wall-clock in test.** `RestoreExpandedRowState` stamped `DateTimeOffset.UtcNow`; replaced with the file's fixed `s_lastUpdated` for determinism (guardrail consistency — the timestamp is never asserted, so behaviour is unchanged).
+
+Re-ran build + the 5 generated-grid pins after the fixes: **0/0 build, 5/5 green.**
 
 ### Change Log
 
+- 2026-06-04 (story-automator review): Adversarial review re-ran build + all expand-in-row pins independently and reproduced the pre-existing 8-failure Shell baseline (none expand-in-row). Auto-fixed 1 MEDIUM (scoped the overstated runtime-REPLACE claim in `ExpandInRowGeneratedGridTests` + `test-summary-2-4.md` to the shared-ViewKey precondition) and 2 LOW (added QA summary to File List; replaced wall-clock `DateTimeOffset.UtcNow` with fixed `s_lastUpdated` in `RestoreExpandedRowState`). No `src/`, generated-output, or `.verified.txt` change. Status review → done.
 - 2026-06-04: Confirmed generated-grid bUnit pins for AC1 expand-click/detail-region behavior and AC2 filter-hidden banner/suppressed-announcement behavior, and hardened their localized assertions with explicit `en` culture scoping; no production code or snapshots changed.
+- 2026-06-04 (QA `qa-generate-e2e-tests`): Closed three rendered-grid coverage gaps by extending `ExpandInRowGeneratedGridTests` (2 → 5 pins, no new file): `CounterProjectionView_CollapseTrigger_EmptiesRegionAndResetsAria` (AC1 collapse path — toggle→`CollapseRowAction`, region empties, `aria-expanded`→`false`), `CounterProjectionView_ExpandingSecondRow_ReplacesFirstExpansion` (AC1/UX-DR17 single-expand REPLACE proven at runtime, not just reducer), and `CounterProjectionView_ExpandedRow_HasNoBlockingAxeContractViolations` (AC3 in-process axe proxy over the **expanded** generated grid — Task-3 gap, since `AxeCoreA11yTests` covered only command renderers). Release build 0/0 under TWAE; `ExpandInRowGeneratedGridTests` 5/5; related confirm pins 20/20 green; no `src/`, generated-output, or `.verified.txt` change. Summary: `_bmad-output/implementation-artifacts/tests/test-summary-2-4.md`.
