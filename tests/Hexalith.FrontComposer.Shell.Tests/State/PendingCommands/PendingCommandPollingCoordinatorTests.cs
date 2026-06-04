@@ -46,7 +46,8 @@ public sealed class PendingCommandPollingCoordinatorTests {
             new PendingCommandOutcomeResolver(state),
             query,
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 1 }),
-            NullLogger<PendingCommandPollingCoordinator>.Instance);
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
 
         int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
 
@@ -70,7 +71,8 @@ public sealed class PendingCommandPollingCoordinatorTests {
             new PendingCommandOutcomeResolver(state),
             query,
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 0 }),
-            NullLogger<PendingCommandPollingCoordinator>.Instance);
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            new FakeTimeProvider());
 
         int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
 
@@ -100,7 +102,8 @@ public sealed class PendingCommandPollingCoordinatorTests {
             new PendingCommandOutcomeResolver(state),
             query,
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 5 }),
-            NullLogger<PendingCommandPollingCoordinator>.Instance);
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
 
         int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
 
@@ -139,7 +142,8 @@ public sealed class PendingCommandPollingCoordinatorTests {
             new PendingCommandOutcomeResolver(state),
             query,
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 5 }),
-            NullLogger<PendingCommandPollingCoordinator>.Instance);
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
 
         // Failure on the first entry must not abort the loop; the second entry still resolves.
         int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
@@ -190,7 +194,8 @@ public sealed class PendingCommandPollingCoordinatorTests {
             new PendingCommandOutcomeResolver(state),
             query,
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 5 }),
-            NullLogger<PendingCommandPollingCoordinator>.Instance);
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
 
         int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
 
@@ -198,6 +203,69 @@ public sealed class PendingCommandPollingCoordinatorTests {
         state.GetByMessageId("01ARZ3NDEKTSV4RRFFQ69G5FAV")!.Status.ShouldBe(PendingCommandStatus.Confirmed);
         handler.Requests.Single().RequestUri!.PathAndQuery.ShouldBe("/api/v1/commands/status/01ARZ3NDEKTSV4RRFFQ69G5FAV");
         lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Confirmed, "01ARZ3NDEKTSV4RRFFQ69G5FAV", false);
+    }
+
+    [Fact]
+    public async Task PollOnce_ExpiredPendingCommand_ResolvesNeedsReviewWithoutQueryingProvider() {
+        FakeTimeProvider time = new(new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero));
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        PendingCommandStateService state = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            lifecycle,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
+        time.Advance(TimeSpan.FromMilliseconds(120_000));
+
+        IPendingCommandStatusQuery query = Substitute.For<IPendingCommandStatusQuery>();
+        PendingCommandPollingCoordinator sut = new(
+            state,
+            new PendingCommandOutcomeResolver(state),
+            query,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                MaxPendingCommandPollingDurationMs = 120_000,
+            }),
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
+
+        int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
+
+        processed.ShouldBe(1);
+        PendingCommandEntry expired = state.GetByMessageId("01ARZ3NDEKTSV4RRFFQ69G5FAV")!;
+        expired.Status.ShouldBe(PendingCommandStatus.NeedsReview);
+        expired.RejectionTitle.ShouldBe("Command needs review");
+        await query.DidNotReceiveWithAnyArgs().QueryAsync(default!, TestContext.Current.CancellationToken);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, "01ARZ3NDEKTSV4RRFFQ69G5FAV", false);
+    }
+
+    [Fact]
+    public async Task PollOnce_ExpiredNeedsReview_FirstWinsOverLateConfirmedObservation() {
+        FakeTimeProvider time = new(new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero));
+        PendingCommandStateService state = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            Substitute.For<ILifecycleStateService>(),
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
+        time.Advance(TimeSpan.FromMilliseconds(120_000));
+
+        PendingCommandPollingCoordinator sut = new(
+            state,
+            new PendingCommandOutcomeResolver(state),
+            Substitute.For<IPendingCommandStatusQuery>(),
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                MaxPendingCommandPollingDurationMs = 120_000,
+            }),
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
+
+        _ = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
+        PendingCommandResolutionResult late = state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed("01ARZ3NDEKTSV4RRFFQ69G5FAV"));
+
+        late.Status.ShouldBe(PendingCommandResolutionStatus.DuplicateIgnored);
+        PendingCommandEntry entry = state.GetByMessageId("01ARZ3NDEKTSV4RRFFQ69G5FAV")!;
+        entry.Status.ShouldBe(PendingCommandStatus.NeedsReview);
+        entry.DuplicateTerminalObservations.ShouldBe(1);
     }
 
     private static PendingCommandRegistration Registration(string correlationId, string messageId, DateTimeOffset submittedAt) =>

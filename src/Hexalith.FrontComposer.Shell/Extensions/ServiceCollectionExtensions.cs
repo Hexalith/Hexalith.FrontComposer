@@ -365,6 +365,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<INewItemIndicatorStateService, NewItemIndicatorStateService>();
         services.TryAddScoped<IPendingCommandStatusQuery, NullPendingCommandStatusQuery>();
         services.TryAddScoped<IPendingCommandPollingCoordinator, PendingCommandPollingCoordinator>();
+        services.TryAddScoped<PendingCommandPollingDriver>();
 
         // Story 5-2 D8 — fail-fast default IAuthRedirector. Scoped because adopter
         // implementations typically capture per-circuit NavigationManager. The default throws

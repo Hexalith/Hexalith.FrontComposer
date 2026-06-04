@@ -34,18 +34,21 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
     private readonly IPendingCommandStatusQuery _statusQuery;
     private readonly IOptions<FcShellOptions> _options;
     private readonly ILogger<PendingCommandPollingCoordinator> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public PendingCommandPollingCoordinator(
         IPendingCommandStateService pendingCommands,
         IPendingCommandOutcomeResolver resolver,
         IPendingCommandStatusQuery statusQuery,
         IOptions<FcShellOptions> options,
-        ILogger<PendingCommandPollingCoordinator>? logger = null) {
+        ILogger<PendingCommandPollingCoordinator>? logger = null,
+        TimeProvider? timeProvider = null) {
         _pendingCommands = pendingCommands ?? throw new ArgumentNullException(nameof(pendingCommands));
         _resolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         _statusQuery = statusQuery ?? throw new ArgumentNullException(nameof(statusQuery));
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _logger = logger ?? NullLogger<PendingCommandPollingCoordinator>.Instance;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <inheritdoc />
@@ -68,6 +71,20 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
             // snapshot and query; re-check the current state to avoid wasted HTTP load.
             PendingCommandEntry? current = _pendingCommands.GetByMessageId(entry.MessageId);
             if (current is null || current.Status != PendingCommandStatus.Pending) {
+                continue;
+            }
+
+            if (IsExpired(current, _options.Value)) {
+                PendingCommandOutcomeResolutionResult expiryResult = _resolver.Resolve(new PendingCommandOutcomeObservation(
+                    PendingCommandOutcomeSource.FallbackPolling,
+                    PendingCommandTerminalOutcome.NeedsReview,
+                    MessageId: current.MessageId,
+                    RejectionTitle: "Command needs review",
+                    RejectionDetail: "Command status polling reached the configured maximum duration before a terminal EventStore status arrived."));
+                if (expiryResult.Status == PendingCommandOutcomeResolutionStatus.Resolved) {
+                    processed++;
+                }
+
                 continue;
             }
 
@@ -111,5 +128,10 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
         }
 
         return processed;
+    }
+
+    private bool IsExpired(PendingCommandEntry entry, FcShellOptions options) {
+        TimeSpan elapsed = _timeProvider.GetUtcNow() - entry.SubmittedAt;
+        return elapsed.TotalMilliseconds >= options.MaxPendingCommandPollingDurationMs;
     }
 }

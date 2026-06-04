@@ -71,6 +71,15 @@ public sealed class FcShellOptionsThresholdValidator : IValidateOptions<FcShellO
             (failures ??= []).Add($"FcShellOptions.MaxPendingCommandPollingPerTick ({options.MaxPendingCommandPollingPerTick}) must not exceed MaxPendingCommandEntries ({options.MaxPendingCommandEntries}).");
         }
 
+        if (options.PendingCommandPollingIntervalMs > 0
+            && options.PendingCommandPollingIntervalMs > options.MaxPendingCommandPollingDurationMs) {
+            (failures ??= []).Add($"FcShellOptions.PendingCommandPollingIntervalMs ({options.PendingCommandPollingIntervalMs}) must not exceed MaxPendingCommandPollingDurationMs ({options.MaxPendingCommandPollingDurationMs}) when command-status polling is enabled.");
+        }
+
+        if (options.MaxPendingCommandPollingDurationMs <= options.TimeoutActionThresholdMs) {
+            (failures ??= []).Add($"FcShellOptions.MaxPendingCommandPollingDurationMs ({options.MaxPendingCommandPollingDurationMs}) must be greater than TimeoutActionThresholdMs ({options.TimeoutActionThresholdMs}) so degraded UI can surface before polling expiry resolves the command to NeedsReview.");
+        }
+
         return failures is null ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 }

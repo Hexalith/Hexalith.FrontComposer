@@ -21,6 +21,10 @@ public sealed class FcShellOptionsValidationTests {
 
         options.SyncPulseThresholdMs.ShouldBeLessThan(options.StillSyncingThresholdMs);
         options.StillSyncingThresholdMs.ShouldBeLessThan(options.TimeoutActionThresholdMs);
+        options.PendingCommandPollingIntervalMs.ShouldBe(1_000);
+        options.MaxPendingCommandPollingDurationMs.ShouldBe(120_000);
+        options.MaxPendingCommandPollingPerTick.ShouldBe(25);
+        options.MaxPendingCommandEntries.ShouldBe(100);
 
         ValidateDataAnnotations(options).ShouldBeEmpty();
         new FcShellOptionsThresholdValidator().Validate(null, options).Succeeded.ShouldBeTrue();
@@ -70,6 +74,44 @@ public sealed class FcShellOptionsValidationTests {
         result.FailureMessage.ShouldContain("StillSyncingThresholdMs", Case.Insensitive);
     }
 
+    [Fact]
+    public void PendingCommandPollingInterval_Zero_IsExplicitDisabledState() {
+        FcShellOptions options = new() {
+            PendingCommandPollingIntervalMs = 0,
+        };
+
+        ValidateDataAnnotations(options).ShouldNotContain(r => r.MemberNames.Contains(nameof(FcShellOptions.PendingCommandPollingIntervalMs)));
+        new FcShellOptionsThresholdValidator().Validate(null, options).Succeeded.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void PendingCommandPollingInterval_MustNotExceedMaxDuration_WhenEnabled() {
+        FcShellOptions options = new() {
+            PendingCommandPollingIntervalMs = 60_000,
+            MaxPendingCommandPollingDurationMs = 30_000,
+        };
+
+        ValidateOptionsResult result = new FcShellOptionsThresholdValidator().Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("PendingCommandPollingIntervalMs", Case.Insensitive);
+        result.FailureMessage.ShouldContain("MaxPendingCommandPollingDurationMs", Case.Insensitive);
+    }
+
+    [Fact]
+    public void PendingCommandPollingDuration_MustExceedDegradedThreshold() {
+        FcShellOptions options = new() {
+            TimeoutActionThresholdMs = 10_000,
+            MaxPendingCommandPollingDurationMs = 10_000,
+        };
+
+        ValidateOptionsResult result = new FcShellOptionsThresholdValidator().Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("MaxPendingCommandPollingDurationMs", Case.Insensitive);
+        result.FailureMessage.ShouldContain("TimeoutActionThresholdMs", Case.Insensitive);
+    }
+
     [Theory]
     [InlineData(nameof(FcShellOptions.SyncPulseThresholdMs), 49)]
     [InlineData(nameof(FcShellOptions.SyncPulseThresholdMs), 2_001)]
@@ -83,6 +125,10 @@ public sealed class FcShellOptionsValidationTests {
     [InlineData(nameof(FcShellOptions.FormAbandonmentThresholdSeconds), 601)]
     [InlineData(nameof(FcShellOptions.IdempotentInfoToastDurationMs), 999)]
     [InlineData(nameof(FcShellOptions.IdempotentInfoToastDurationMs), 30_001)]
+    [InlineData(nameof(FcShellOptions.PendingCommandPollingIntervalMs), -1)]
+    [InlineData(nameof(FcShellOptions.PendingCommandPollingIntervalMs), 300_001)]
+    [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 999)]
+    [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 3_600_001)]
     public void Range_annotations_enforce_min_max_bounds_on_each_threshold_property(string propertyName, int outOfRangeValue) {
         FcShellOptions options = new();
         typeof(FcShellOptions).GetProperty(propertyName)!.SetValue(options, outOfRangeValue);

@@ -24,6 +24,8 @@ public sealed class FcShellOptionsVirtualizationTests {
         options.SlowQueryThresholdMs.ShouldBe(2_000);
         options.VirtualizationServerSideThreshold.ShouldBe(500);
         options.MaxCachedPages.ShouldBe(200);
+        options.PendingCommandPollingIntervalMs.ShouldBe(1_000);
+        options.MaxPendingCommandPollingDurationMs.ShouldBe(120_000);
     }
 
     [Theory]
@@ -35,6 +37,10 @@ public sealed class FcShellOptionsVirtualizationTests {
     [InlineData(nameof(FcShellOptions.VirtualizationServerSideThreshold), 10_001)]
     [InlineData(nameof(FcShellOptions.MaxCachedPages), 9)]
     [InlineData(nameof(FcShellOptions.MaxCachedPages), 10_001)]
+    [InlineData(nameof(FcShellOptions.PendingCommandPollingIntervalMs), -1)]
+    [InlineData(nameof(FcShellOptions.PendingCommandPollingIntervalMs), 300_001)]
+    [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 999)]
+    [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 3_600_001)]
     public void Range_Annotations_RejectOutOfBoundValues(string propertyName, int outOfRangeValue) {
         FcShellOptions options = new();
         typeof(FcShellOptions).GetProperty(propertyName)!.SetValue(options, outOfRangeValue);
@@ -55,6 +61,10 @@ public sealed class FcShellOptionsVirtualizationTests {
     [InlineData(nameof(FcShellOptions.VirtualizationServerSideThreshold), 9_999)]
     [InlineData(nameof(FcShellOptions.MaxCachedPages), 10)]
     [InlineData(nameof(FcShellOptions.MaxCachedPages), 10_000)]
+    [InlineData(nameof(FcShellOptions.PendingCommandPollingIntervalMs), 0)]
+    [InlineData(nameof(FcShellOptions.PendingCommandPollingIntervalMs), 300_000)]
+    [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 1_000)]
+    [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 3_600_000)]
     public void Range_Annotations_AcceptBoundaryValues(string propertyName, int inRangeValue) {
         FcShellOptions options = new();
         typeof(FcShellOptions).GetProperty(propertyName)!.SetValue(options, inRangeValue);

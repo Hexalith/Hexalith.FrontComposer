@@ -77,6 +77,7 @@ public static class EventStoreServiceExtensions {
         services.TryAddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
         services.TryAddScoped<IProjectionFallbackRefreshScheduler, ProjectionFallbackRefreshScheduler>();
         services.TryAddScoped<ProjectionFallbackPollingDriver>();
+        services.TryAddScoped<PendingCommandPollingDriver>();
         services.TryAddScoped<ProjectionSubscriptionService>();
         services.TryAddScoped<IProjectionHubConnectionFactory, SignalRProjectionHubConnectionFactory>();
         services.TryAddScoped<ProjectionChangeNotifier>();

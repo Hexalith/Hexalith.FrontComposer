@@ -122,6 +122,20 @@ public sealed class PendingCommandStateServiceTests {
     }
 
     [Fact]
+    public void ResolveTerminal_NeedsReview_TransitionsLifecycleToRejectedReviewSurface() {
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        PendingCommandStateService sut = Create(lifecycle: lifecycle);
+        sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+
+        PendingCommandResolutionResult result = sut.ResolveTerminal(PendingCommandTerminalObservation.NeedsReview(MessageId));
+
+        result.Status.ShouldBe(PendingCommandResolutionStatus.Resolved);
+        result.Entry!.Status.ShouldBe(PendingCommandStatus.NeedsReview);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId, false);
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, Arg.Any<bool>());
+    }
+
+    [Fact]
     public void ResolveTerminal_UnknownMessageId_IsIgnoredWithoutLifecycleMutation() {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
         PendingCommandStateService sut = Create(lifecycle: lifecycle);

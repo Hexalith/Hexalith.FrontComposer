@@ -106,4 +106,38 @@ public sealed class FcLifecycleWrapperThresholdTests : LifecycleWrapperTestBase 
             cut.Markup.ShouldNotContain("Action needed", Case.Insensitive);
         });
     }
+
+    [Fact]
+    public void Rejected_while_in_ActionPrompt_phase_replaces_degraded_warning_with_rejection() {
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, FakeTimeProvider time) = RenderWrapperWithFakeTime();
+        DateTimeOffset syncAt = time.GetUtcNow();
+        push(TransitionAt(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing, syncAt));
+        time.Advance(TimeSpan.FromMilliseconds(10_500));
+        cut.WaitForState(() => cut.Markup.Contains("Action needed", StringComparison.OrdinalIgnoreCase));
+
+        push(TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected, time.GetUtcNow()));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Submission rejected", Case.Insensitive);
+            cut.Markup.ShouldNotContain("Action needed", Case.Insensitive);
+            cut.Markup.ShouldNotContain("Still syncing", Case.Insensitive);
+        });
+    }
+
+    [Fact]
+    public void IdempotentConfirmed_while_in_ActionPrompt_phase_replaces_degraded_warning_with_info_bar() {
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, FakeTimeProvider time) = RenderWrapperWithFakeTime();
+        DateTimeOffset syncAt = time.GetUtcNow();
+        push(TransitionAt(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing, syncAt));
+        time.Advance(TimeSpan.FromMilliseconds(10_500));
+        cut.WaitForState(() => cut.Markup.Contains("Action needed", StringComparison.OrdinalIgnoreCase));
+
+        push(TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed, time.GetUtcNow(), idempotencyResolved: true));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Already confirmed", Case.Insensitive);
+            cut.FindAll("[data-testid='fc-action-prompt']").ShouldBeEmpty();
+            cut.Markup.ShouldNotContain("Still syncing", Case.Insensitive);
+        });
+    }
 }

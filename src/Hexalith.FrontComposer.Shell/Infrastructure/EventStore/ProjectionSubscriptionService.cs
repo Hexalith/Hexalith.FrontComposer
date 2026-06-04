@@ -31,6 +31,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     private readonly IDisposable _connectionStateRegistration;
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ProjectionFallbackPollingDriver? _fallbackDriver;
+    private readonly PendingCommandPollingDriver? _commandPollingDriver;
     private readonly IReconnectionReconciliationCoordinator? _reconciliationCoordinator;
     private readonly IPendingCommandPollingCoordinator? _pendingCommandPolling;
     /// <summary>P2-P19 — debounces concurrent live-nudge invocations so a burst of N nudges produces at most one in-flight `PollOnceAsync`.</summary>
@@ -48,7 +49,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         IReconnectionReconciliationCoordinator? reconciliationCoordinator = null,
         IPendingCommandPollingCoordinator? pendingCommandPolling = null,
         IUserContextAccessor? userContextAccessor = null,
-        IOptions<FcShellOptions>? shellOptions = null) {
+        IOptions<FcShellOptions>? shellOptions = null,
+        PendingCommandPollingDriver? commandPollingDriver = null) {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(connectionFactory);
         ArgumentNullException.ThrowIfNull(connectionState);
@@ -60,6 +62,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         _notifier = notifier;
         _logger = logger;
         _fallbackDriver = fallbackDriver;
+        _commandPollingDriver = commandPollingDriver;
         _reconciliationCoordinator = reconciliationCoordinator;
         _pendingCommandPolling = pendingCommandPolling;
         _userContextAccessor = userContextAccessor;
@@ -80,6 +83,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         // state and only runs while disconnected; injection is optional so test harnesses without
         // a driver still construct cleanly.
         _fallbackDriver?.Start();
+        _commandPollingDriver?.Start();
     }
 
     private readonly IUserContextAccessor? _userContextAccessor;
@@ -170,6 +174,9 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
             _connectionStateRegistration.Dispose();
             if (_fallbackDriver is not null) {
                 await _fallbackDriver.DisposeAsync().ConfigureAwait(false);
+            }
+            if (_commandPollingDriver is not null) {
+                await _commandPollingDriver.DisposeAsync().ConfigureAwait(false);
             }
 
             await _connection.StopAsync(CancellationToken.None).ConfigureAwait(false);

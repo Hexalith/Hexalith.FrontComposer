@@ -2,6 +2,7 @@ import { defineConfig, devices } from '@playwright/test';
 
 const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:5070';
 const IS_CI = !!process.env.CI;
+const STORY_3_6_CONFIRM_DELAY_MS = process.env.FC_E2E_STORY_3_6_CONFIRM_DELAY_MS ?? '6500';
 
 export default defineConfig({
   testDir: './specs',
@@ -53,6 +54,8 @@ export default defineConfig({
         env: {
           ASPNETCORE_ENVIRONMENT: 'Test',
           Hexalith__FrontComposer__Specimens__Enabled: 'true',
+          Hexalith__Shell__TimeoutActionThresholdMs: '5000',
+          Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs: STORY_3_6_CONFIRM_DELAY_MS,
         },
       },
 });

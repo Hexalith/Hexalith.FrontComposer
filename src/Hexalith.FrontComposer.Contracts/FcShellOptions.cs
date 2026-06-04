@@ -233,6 +233,20 @@ public sealed class FcShellOptions {
     public int ProjectionFallbackPollingIntervalSeconds { get; set; } = 15;
 
     /// <summary>
+    /// Bounded command-status polling cadence in milliseconds. A value of <c>0</c> disables
+    /// command-status polling while leaving projection fallback polling intact. Default: 1 000 ms.
+    /// </summary>
+    [Range(0, 300_000, ErrorMessage = "PendingCommandPollingIntervalMs must be between 0 and 300000.")]
+    public int PendingCommandPollingIntervalMs { get; set; } = 1_000;
+
+    /// <summary>
+    /// Maximum duration in milliseconds that an unresolved pending command remains eligible for
+    /// command-status polling before the shell resolves it to <c>NeedsReview</c>. Default: 120 000 ms.
+    /// </summary>
+    [Range(1_000, 3_600_000, ErrorMessage = "MaxPendingCommandPollingDurationMs must be between 1000 and 3600000.")]
+    public int MaxPendingCommandPollingDurationMs { get; set; } = 120_000;
+
+    /// <summary>
     /// Maximum number of visible projection lanes the fallback poller may refresh per tick.
     /// Story 5-3 D8 / L14 bounded runtime state.
     /// </summary>

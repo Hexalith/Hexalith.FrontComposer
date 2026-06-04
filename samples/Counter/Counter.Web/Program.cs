@@ -114,6 +114,8 @@ builder.Services.Configure<StubCommandServiceOptions>(o =>
     o.SyncingDelayMs = 150;
     o.ConfirmDelayMs = 200;
 });
+builder.Services.Configure<StubCommandServiceOptions>(
+    builder.Configuration.GetSection("Hexalith:FrontComposer:StubCommandService"));
 
 WebApplication app = builder.Build();
 

@@ -201,7 +201,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             terminal.MessageId,
             terminal.CorrelationId);
         try {
-            CommandLifecycleState lifecycleState = terminal.Status == PendingCommandStatus.Rejected
+            CommandLifecycleState lifecycleState = terminal.Status is PendingCommandStatus.Rejected or PendingCommandStatus.NeedsReview
                 ? CommandLifecycleState.Rejected
                 : CommandLifecycleState.Confirmed;
             // P8 — flag IdempotentConfirmed terminals as already-applied so the lifecycle
