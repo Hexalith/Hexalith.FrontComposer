@@ -64,7 +64,7 @@ DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.SourceTools.Te
 
 **Test stack:** xUnit **v3** (`xunit.v3` 3.2.2), Shouldly 4.3.0 (assertions — never raw `Assert.*`), NSubstitute 5.3.0 (mocks), bUnit 2.7.2 (Blazor components), Verify 31.19.0 (snapshots; `Verify.XunitV3`, not `Verify.Xunit`), FsCheck.Xunit.v3 3.3.3 (property tests), PactNet 5.0.1 (consumer contracts), BenchmarkDotNet 0.15.8 (in a **separate** `Shell.Tests.Bench` exe), coverlet 10.0.1.
 
-**Test conventions:** three-part names `Subject_Scenario_Expectation`; `.verified.txt` snapshots are committed and updated intentionally; generator tests go through `CompilationHelper.CreateCompilation()`; Blazor component tests use `GeneratedComponentTestBase`/`AddFrontComposerTestHost` with `JSInterop.Mode = Loose`; the **public API baseline** (`PublicAPI.Shipped.txt` in the Testing library) is enforced by `PackageBoundaryTests`; the **NFR17 tripwire** must be updated alongside any new `IStorageService.SetAsync` call site; CI fails on a **stale pact diff**.
+**Test conventions:** three-part names `Subject_Scenario_Expectation`; `.verified.txt` snapshots are committed and updated intentionally; generator tests go through `CompilationHelper.CreateCompilation()`; Blazor component tests use `GeneratedComponentTestBase`/`AddFrontComposerTestHost` with `JSInterop.Mode = Loose`; public API baselines are enforced intentionally (`PublicAPI.Shipped.txt` in the Testing library via `PackageBoundaryTests`, and the focused Shell FC-TBL surface in `PublicAPI.FcTbl.Shipped.txt` via `FcTblPackageBoundaryTests`); the **NFR17 tripwire** must be updated alongside any new `IStorageService.SetAsync` call site; CI fails on a **stale pact diff**.
 
 ### End-to-end (accessibility / visual)
 

@@ -25,7 +25,7 @@ Story: 2.8 - Confirm the FC-TBL table API contract
 
 | Item | Disposition | Owner | Reason | Risk | Follow-up |
 |---|---|---|---|---|---|
-| Row-identity producer for `FcNewItemIndicator` | open | FrontComposer Product/UX + command lifecycle owner | The component API and lane primitive are stable, but the live projection nudge only carries projection type and tenant id. It does not carry per-row identity, message id, or correlation id needed to mark specific rows as fresh. | Adopters can render the component and can rely on its parameters, but automatic row-level fresh-item marking is not complete until the command/lifecycle producer exists. | Story 5-5 / Epic 3-5 command lifecycle and schema-fingerprint negotiation follow-up already accepted during Story 2.6 review. |
+| Row-identity producer for `FcNewItemIndicator` | open | FrontComposer Product/UX + command lifecycle owner | The component API and lane primitive are stable, but the live projection nudge only carries projection type and tenant id. It does not carry per-row identity, message id, or correlation id needed to mark specific rows as fresh. | Adopters can render the component and can rely on its parameters, but automatic row-level fresh-item marking is not complete until the command-lifecycle producer exists. | Current planning places the command-lifecycle follow-up in Epic 3, especially Story 3.3 (FC-CMD identity/correlation) and Story 3.5 (EventStore status endpoint binding). Older source/story notes refer to this pending-command producer as Story 5-5; sprint-status now uses 5-5 for MCP schema-fingerprint negotiation, so new planning should use the Epic 3 story keys. |
 
 ## Confirmed Public FC-TBL CLR Types
 

@@ -101,15 +101,14 @@ contract, and a second page (`Navigation`) is authored to demonstrate repeatabil
 |---|---|---|---|---|
 | Layout & frame | `FrontComposerShell` (+ `FcPageLayout`, `FcHamburgerToggle`, `FcCollapsedNavRail`) | `docs/reference/components/front-composer-shell.md` | **authored (this story)** — Gate-2d-validated | FrontComposer |
 | Navigation | `FrontComposerNavigation` | `docs/reference/components/navigation.md` | **authored (this story)** — Gate-2d-validated | FrontComposer + Tenants author |
-| DataGrid surface | `FcColumnFilterCell`, `FcExpandInRowDetail`, `FcColumnPrioritizer`, filter family | `docs/reference/components/datagrid.md` *(not yet authored)* | **tracked gap** — defer to Epic 2 / FC-TBL (Story 2.8) when the table API is confirmed-stable | FrontComposer (FC-TBL, Story 2.8) |
+| DataGrid surface | `FcColumnFilterCell`, `FcExpandInRowDetail`, `FcColumnPrioritizer`, filter family | `docs/reference/components/datagrid.md` | **authored (Story 2.8 follow-through)** — FC-TBL confirmed-stable and public baseline frozen | FrontComposer (FC-TBL, Story 2.8) |
 | Settings | `FcSettingsDialog` (+ `FcThemeToggle`, `FcDensityPreviewPanel`) | `docs/reference/components/settings.md` *(not yet authored)* | **tracked gap** — defer to Story 1.6, which finalizes the settings / theme / density UX | FrontComposer (Story 1.6) |
 
-**Rationale for the two gaps.** Authoring reference pages for components whose surface is about to be
-finalized would publish documentation that contradicts the very next stories. DataGrid surface is
-explicitly confirmed-stable under **FC-TBL (Story 2.8)**; settings UX is finalized by **Story 1.6**.
-Per AC2, each is recorded here as a *tracked gap with a named owner* — the page is owed when its
-governing story lands, not before. The anchor (`FrontComposerShell`) and `Navigation` are stable
-read-only-MVP-central components, so they are authored now.
+**Rationale for remaining gap.** Authoring reference pages for components whose surface is about to be
+finalized would publish documentation that contradicts the governing story. The DataGrid surface is
+now confirmed-stable under **FC-TBL (Story 2.8)** and `docs/reference/components/datagrid.md` has
+been authored as retrospective follow-through. Settings UX is still recorded as a *tracked gap with a
+named owner* until its governing surface lands.
 
 ### Cross-link convention (the genuinely open item — surfaced, not silently resolved)
 
@@ -135,6 +134,7 @@ FC-L10N each left open.
 |---|---|---|
 | `docs/reference/components/front-composer-shell.md` | FC-LYT full-width vs constrained measure; FC-A11Y skip links / focus / `aria-live` / keyboard (links `HFC1050`–`HFC1055`); FC-L10N shell-vs-host string ownership + `services.Replace` swap seam | `fc-lyt-page-layout-2026-06-03.md`, `fc-a11y-accessibility-primitives-2026-06-03.md`, `fc-l10n-shell-string-ownership-2026-06-03.md` |
 | `docs/reference/components/navigation.md` | FC-A11Y nav-rail accessible name + keyboard reachability (links `HFC1050`/`HFC1051`); FC-L10N nav strings shell-owned | `fc-a11y-accessibility-primitives-2026-06-03.md`, `fc-l10n-shell-string-ownership-2026-06-03.md` |
+| `docs/reference/components/datagrid.md` | FC-TBL generated grid surface, public DataGrid components, reserved filter keys, expand-in-row a11y, wide-column prioritizer, and the remaining new-item producer open item | `fc-tbl-table-api-contract-2026-06-04.md` |
 
 ## Confirmation
 
@@ -147,10 +147,10 @@ rules, and the inline-summarize cross-link convention are **agreed and proven** 
 1. **Cross-link convention — confirm "summarize inline + link published siblings; record the
    `_bmad-output` mapping in the FC-DOC ledger"?** Recommended and shipped (a published page cannot
    xref `_bmad-output/contracts/*`). Confirm or override.
-2. **Author-now-vs-defer scope for the DataGrid surface and settings pages.** Recommended and applied:
-   **defer** both as tracked gaps — DataGrid surface to **FC-TBL / Story 2.8** (confirm-stable table
-   API), settings to **Story 1.6** (finalizes settings UX). Confirm the deferral or request the pages
-   be authored now.
+2. **Author-now-vs-defer scope for the settings page.** Recommended and applied:
+   **defer** settings to **Story 1.6** (finalizes settings UX). DataGrid is no longer deferred:
+   FC-TBL was confirmed in Story 2.8 and `docs/reference/components/datagrid.md` has been authored.
+   Confirm the settings deferral or request the page be authored now.
 
 Owner column per the readiness request (`frontcomposer-readiness-request-2026-06-03.md:23`, 🔴 FC-DOC
 row): **FrontComposer + Tenants author** ("component docs … every story's ready-gate"). Resolution

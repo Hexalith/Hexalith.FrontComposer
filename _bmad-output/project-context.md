@@ -72,7 +72,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
   1591, 1734) are `NoWarn`'d repo-wide** in `src/Directory.Build.props` — missing docs do **not**
   break the build today. They ARE expected on public-API surfaces (`Contracts/{Attributes,
   Rendering,Mcp,Conformance}`, where `.editorconfig` re-raises CS1591 to `warning`) because that's
-  the v1.0 API-freeze target; `PublicAPI.Shipped.txt` owns the final strict surface
+  the v1.0 API-freeze target; owned `PublicAPI*.Shipped.txt` baselines pin strict public surfaces
 - **Multi-TFM guard:** net10/FluentUI-only code in a multi-targeted project (Contracts) must sit
   behind `#if NET10_0_OR_GREATER` (e.g. `Typography.cs`) so the netstandard2.0 analyzer build stays clean
 - **Formatting:** 4-space indent, **CRLF**, UTF-8, final newline, trim trailing whitespace
@@ -161,8 +161,10 @@ _This file contains critical rules and patterns that AI agents must follow when 
   use `GeneratedComponentTestBase` / `AddFrontComposerTestHost` with `JSInterop.Mode = Loose`
 - **Verify snapshots:** use `Verify.XunitV3` (NOT `Verify.Xunit`); `.verified.txt` files are committed
   and updated **intentionally**
-- **Public-API baseline:** `PublicAPI.Shipped.txt` (Testing library) is enforced by
-  `PackageBoundaryTests` — update it intentionally when the public surface changes
+- **Public-API baselines:** `PublicAPI.Shipped.txt` (Testing library) is enforced by
+  `PackageBoundaryTests`; `PublicAPI.FcTbl.Shipped.txt` (focused Shell FC-TBL DataGrid surface)
+  is enforced by `FcTblPackageBoundaryTests` — update baselines intentionally when owned public
+  surfaces change
 - **Pacts:** CI **fails on a stale pact diff** (`tests/.../Shell.Tests/Pact`) — regenerate and commit
   intentional contract changes
 - **Benchmarks** live ONLY in the separate `Shell.Tests.Bench` exe under
@@ -246,7 +248,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Always `ConfigureAwait(false)`** on awaits (CA2007 → build error via TWAE)
 - **Always run tests with `DiffEngine_Disabled=true`** (else Verify hangs)
 - **Always guard net10/FluentUI code with `#if NET10_0_OR_GREATER`** in multi-targeted projects
-- **Always update `.verified.txt` snapshots, `PublicAPI.Shipped.txt`, and pacts intentionally** —
+- **Always update `.verified.txt` snapshots, owned `PublicAPI*.Shipped.txt` baselines, and pacts intentionally** —
   CI fails on stale ones
 - **Always build Release clean** (`TreatWarningsAsErrors=true`) and run `/bmad-code-review` before a
   story is Done
