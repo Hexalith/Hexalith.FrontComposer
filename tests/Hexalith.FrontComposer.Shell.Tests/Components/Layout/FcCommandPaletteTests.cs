@@ -260,5 +260,29 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase
         cut.WaitForAssertion(() => state.Value.IsOpen.ShouldBeFalse());
     }
 
+    [Fact]
+    public async Task Enter_ActivatesSelectedProjection_NavigatingToItsRoute()
+    {
+        // Story 2.7 Task 1 (AC1) — DEFAULT-LANE proof that Enter in the RENDERED palette activates the
+        // selected projection through the REAL effect (PaletteResultActivatedAction → NavigationManager
+        // .NavigateTo(RouteUrl)). AC1 names Enter activation explicitly; the rendered keydown→dispatch→
+        // navigate path was previously proven ONLY in the EXCLUDED e2e-palette lane (Arrow/Escape got
+        // default-lane pins, Enter did not). Mirrors the Escape pin's rendered-keydown approach.
+        EnsureStoreInitialized();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        dispatcher.Dispatch(new PaletteOpenedAction("open-1"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction(
+            string.Empty,
+            [new PaletteResult(
+                PaletteResultCategory.Projection, "Counter", "Counter", "/counter/counter-view", null, 100, false, typeof(CounterProjectionStub))]));
+
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+        await cut.InvokeAsync(() =>
+            cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "Enter" }));
+
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/counter/counter-view"));
+    }
+
     private sealed class CounterProjectionStub { }
 }

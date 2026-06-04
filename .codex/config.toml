@@ -4,3 +4,6 @@ args = [
     "mcp",
 ]
 command = "aspire"
+
+[features]
+hooks = true

@@ -447,3 +447,4 @@ docs/reference/api/.manifest
 artifacts/docs/
 
 .claude/.story-automator-active
+.agents/.story-automator-active
