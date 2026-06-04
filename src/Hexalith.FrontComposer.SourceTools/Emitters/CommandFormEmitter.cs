@@ -160,7 +160,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        await RefreshPresentationAuthorizationAsync().ConfigureAwait(false);");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
-            _ = sb.AppendLine("    private void OnAuthenticationStateChanged(Task<AuthenticationState> _)");
+            _ = sb.AppendLine("    private void OnAuthenticationStateChanged(Task<AuthenticationState> authStateTask)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (_disposed) return;");
             _ = sb.AppendLine("        // Pass 3 — wrap the InvokeAsync call itself (not just the lambda body) so a synchronous");

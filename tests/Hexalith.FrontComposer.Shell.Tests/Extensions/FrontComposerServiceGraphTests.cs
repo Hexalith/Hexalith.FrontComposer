@@ -7,8 +7,11 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -57,8 +60,13 @@ public sealed class FrontComposerServiceGraphTests
         IServiceProvider sp = scope.ServiceProvider;
         _ = sp.GetRequiredService<IStorageService>().ShouldNotBeNull();
         _ = sp.GetRequiredService<StubCommandService>().ShouldNotBeNull();
-        _ = sp.GetRequiredService<ICommandService>().ShouldNotBeNull();
-        _ = sp.GetRequiredService<ICommandServiceWithLifecycle>().ShouldNotBeNull();
+        sp.GetRequiredService<ICommandService>().ShouldNotBeOfType<StubCommandService>(
+            "Stub dispatch must resolve through AuthorizingCommandServiceDecorator before side effects");
+        sp.GetRequiredService<ICommandServiceWithLifecycle>().ShouldNotBeOfType<StubCommandService>(
+            "lifecycle dispatch must use the same decorated Stub path");
+        _ = sp.GetRequiredService<IAuthorizationService>().ShouldNotBeNull();
+        _ = sp.GetRequiredService<ICommandAuthorizationEvaluator>().ShouldNotBeNull();
+        _ = sp.GetRequiredService<ICommandDispatchAuthorizationGate>().ShouldNotBeNull();
         _ = sp.GetRequiredService<IBadgeCountService>().ShouldNotBeNull();
         _ = sp.GetRequiredService<ILifecycleStateService>().ShouldNotBeNull();
         _ = sp.GetRequiredService<ILifecycleBridgeRegistry>().ShouldNotBeNull();
@@ -92,8 +100,13 @@ public sealed class FrontComposerServiceGraphTests
         using IServiceScope scope = provider.CreateScope();
         IServiceProvider sp = scope.ServiceProvider;
         _ = sp.GetRequiredService<IStorageService>().ShouldNotBeNull();
-        _ = sp.GetRequiredService<ICommandService>().ShouldNotBeNull();
-        _ = sp.GetRequiredService<ICommandServiceWithLifecycle>().ShouldNotBeNull();
+        sp.GetRequiredService<ICommandService>().ShouldNotBeOfType<EventStoreCommandClient>(
+            "EventStore dispatch must resolve through AuthorizingCommandServiceDecorator before HTTP side effects");
+        sp.GetRequiredService<ICommandServiceWithLifecycle>().ShouldNotBeOfType<EventStoreCommandClient>(
+            "lifecycle dispatch must use the same decorated EventStore path");
+        _ = sp.GetRequiredService<IAuthorizationService>().ShouldNotBeNull();
+        _ = sp.GetRequiredService<ICommandAuthorizationEvaluator>().ShouldNotBeNull();
+        _ = sp.GetRequiredService<ICommandDispatchAuthorizationGate>().ShouldNotBeNull();
         // AC1 names the "command/query stub path" — pin the query half too (EventStore swaps in the
         // real IQueryService client; only the command half was previously asserted).
         _ = sp.GetRequiredService<IQueryService>().ShouldNotBeNull();

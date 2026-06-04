@@ -45,6 +45,16 @@ builder.Services.AddFrontComposerDevMode(builder.Environment);
 builder.Services.AddHexalithDomain<CounterDomain>();
 if (specimensEnabled) {
     builder.Services.AddHexalithDomain<CounterSpecimensDomain>();
+    builder.Services.AddAuthorizationCore(o =>
+    {
+        o.AddPolicy("Specimens.PolicyAllowed", policy => policy.RequireAssertion(_ => true));
+        o.AddPolicy("Specimens.PolicyDenied", policy => policy.RequireAssertion(_ => false));
+    });
+    builder.Services.Configure<Hexalith.FrontComposer.Shell.Options.FrontComposerAuthorizationOptions>(o =>
+    {
+        o.KnownPolicies.Add("Specimens.PolicyAllowed");
+        o.KnownPolicies.Add("Specimens.PolicyDenied");
+    });
 }
 
 if (specimensEnabled) {

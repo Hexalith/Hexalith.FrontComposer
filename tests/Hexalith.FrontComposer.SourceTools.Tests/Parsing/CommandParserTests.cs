@@ -158,6 +158,15 @@ public class CommandParserTests {
     }
 
     [Fact]
+    public void Parse_RequiresPolicyAttribute_TrimsValidPolicyNameAndAllowsContractCharacters() {
+        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.TrimmedPolicyProtectedCommand, "TestDomain.TrimmedPolicyCommand");
+
+        _ = result.Model.ShouldNotBeNull();
+        result.Model.AuthorizationPolicyName.ShouldBe("Orders.Manage:Approver_1-Read");
+        result.Diagnostics.Select(d => d.Id).ShouldNotContain("HFC1056");
+    }
+
+    [Fact]
     public void Parse_RequiresPolicyAttribute_EmptyValue_EmitsHFC1056() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.EmptyPolicyCommand, "TestDomain.EmptyPolicyCommand");
 
@@ -284,6 +293,15 @@ public class CommandParserTests {
     }
 
     [Fact]
+    public void CommandModel_IEquatable_DifferentAuthorizationPolicyName_NotEqual() {
+        CommandModel left = BuildModel("A", authorizationPolicyName: "Orders.Approve");
+        CommandModel right = BuildModel("A", authorizationPolicyName: "Orders.Review");
+
+        left.Equals(right).ShouldBeFalse();
+        (left.GetHashCode() == right.GetHashCode()).ShouldBeFalse();
+    }
+
+    [Fact]
     public void CommandModel_IEquatable_IsSymmetric() {
         CommandModel left = BuildModel("A");
         CommandModel right = BuildModel("A");
@@ -291,7 +309,7 @@ public class CommandParserTests {
         left.Equals(right).ShouldBe(right.Equals(left));
     }
 
-    private static CommandModel BuildModel(string typeName) {
+    private static CommandModel BuildModel(string typeName, string? authorizationPolicyName = null) {
         EquatableArray<BadgeMappingEntry> noBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
         PropertyModel property = new("MessageId", "String", false, false, null, noBadges);
         EquatableArray<PropertyModel> all = new(ImmutableArray.Create(property));
@@ -306,6 +324,7 @@ public class CommandParserTests {
             null,
             all,
             derivable,
-            nonDerivable);
+            nonDerivable,
+            authorizationPolicyName: authorizationPolicyName);
     }
 }

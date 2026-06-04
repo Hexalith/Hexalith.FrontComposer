@@ -206,6 +206,18 @@ public class ApproveOrderCommand
     public string OrderId { get; set; } = string.Empty;
 }";
 
+    internal const string TrimmedPolicyProtectedCommand = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+[RequiresPolicy(""  Orders.Manage:Approver_1-Read  "")]
+public class TrimmedPolicyCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+}";
+
     internal const string EmptyPolicyCommand = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
 

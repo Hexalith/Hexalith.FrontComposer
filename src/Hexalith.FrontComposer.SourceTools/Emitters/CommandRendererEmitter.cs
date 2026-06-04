@@ -706,7 +706,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                if (AuthorizationTriggerDisabled())");
             _ = sb.AppendLine("                {");
             _ = sb.AppendLine("                    builder.OpenComponent<FluentMessageBar>(seq++);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageIntent.Warning);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageBarIntent.Warning);");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Title\", _authorizationPresentationTitle);");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"AllowDismiss\", false);");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__message => __message.AddContent(0, _authorizationPresentationMessage)));");
@@ -752,7 +752,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                    builder.OpenElement(seq++, \"div\");");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"style\", $\"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;\");");
             _ = sb.AppendLine("                    builder.OpenComponent<FluentMessageBar>(seq++);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageIntent.Warning);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageBarIntent.Warning);");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Title\", _authorizationPresentationTitle);");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"AllowDismiss\", false);");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__message => __message.AddContent(0, _authorizationPresentationMessage)));");

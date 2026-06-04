@@ -1,8 +1,9 @@
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 
-using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using NSubstitute;
@@ -17,6 +18,38 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidatorTests {
         FrontComposerAuthorizationPolicyCatalogValidator sut = Create(new FrontComposerAuthorizationOptions());
 
         await sut.StartAsync(TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task StartAsync_EmptyCatalogWithProtectedCommands_WarnsWithoutCommandMetadata() {
+        TestLogger<FrontComposerAuthorizationPolicyCatalogValidator> logger = new();
+        FrontComposerAuthorizationPolicyCatalogValidator sut = Create(new FrontComposerAuthorizationOptions(), logger);
+
+        await sut.StartAsync(TestContext.Current.CancellationToken);
+
+        string warning = logger.Messages.Single(m => m.Level == LogLevel.Warning).Message;
+        warning.ShouldContain("catalog is empty");
+        warning.ShouldNotContain("Orders.ApproveOrderCommand");
+        warning.ShouldNotContain("tenant-a");
+        warning.ShouldNotContain("user-a");
+        warning.ShouldNotContain("server-token");
+    }
+
+    [Fact]
+    public async Task StartAsync_NonStrictMissingPolicy_WarnsWithPolicyNamesOnly() {
+        TestLogger<FrontComposerAuthorizationPolicyCatalogValidator> logger = new();
+        FrontComposerAuthorizationOptions options = new();
+        options.KnownPolicies.Add("OtherPolicy");
+        FrontComposerAuthorizationPolicyCatalogValidator sut = Create(options, logger);
+
+        await sut.StartAsync(TestContext.Current.CancellationToken);
+
+        string warning = logger.Messages.Single(m => m.Level == LogLevel.Warning).Message;
+        warning.ShouldContain("OrderApprover");
+        warning.ShouldNotContain("Orders.ApproveOrderCommand");
+        warning.ShouldNotContain("tenant-a");
+        warning.ShouldNotContain("user-a");
+        warning.ShouldNotContain("server-token");
     }
 
     [Fact]
@@ -69,7 +102,42 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidatorTests {
         await sut.StartAsync(TestContext.Current.CancellationToken);
     }
 
-    private static FrontComposerAuthorizationPolicyCatalogValidator Create(FrontComposerAuthorizationOptions options) {
+    [Fact]
+    public void CommandAuthorizationRequest_ToString_RedactsCommandPayload() {
+        var request = new CommandAuthorizationRequest(
+            typeof(SensitiveCommand),
+            "OrderApprover",
+            new SensitiveCommand { Secret = "payload-secret-server-token" },
+            "Orders",
+            "Approve order",
+            CommandAuthorizationSurface.GeneratedForm);
+
+        string text = request.ToString();
+
+        text.ShouldContain("Command = <redacted>");
+        text.ShouldNotContain("payload-secret-server-token");
+    }
+
+    [Fact]
+    public void CommandAuthorizationResource_ToString_RedactsTenantContext() {
+        var resource = new CommandAuthorizationResource(
+            typeof(SensitiveCommand),
+            "OrderApprover",
+            "Orders",
+            "Approve order",
+            CommandAuthorizationSurface.DirectDispatch,
+            new TenantContextSnapshot("tenant-secret-claim", "user-secret-claim", true, "corr-tenant"));
+
+        string text = resource.ToString();
+
+        text.ShouldContain("TenantContext = <redacted>");
+        text.ShouldNotContain("tenant-secret-claim");
+        text.ShouldNotContain("user-secret-claim");
+    }
+
+    private static FrontComposerAuthorizationPolicyCatalogValidator Create(
+        FrontComposerAuthorizationOptions options,
+        ILogger<FrontComposerAuthorizationPolicyCatalogValidator>? logger = null) {
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
         registry.GetManifests().Returns([
             new DomainManifest(
@@ -85,6 +153,33 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidatorTests {
         return new FrontComposerAuthorizationPolicyCatalogValidator(
             registry,
             Microsoft.Extensions.Options.Options.Create(options),
-            NullLogger<FrontComposerAuthorizationPolicyCatalogValidator>.Instance);
+            logger ?? new TestLogger<FrontComposerAuthorizationPolicyCatalogValidator>());
+    }
+
+    private sealed class SensitiveCommand {
+        public string Secret { get; set; } = string.Empty;
+    }
+
+    private sealed class TestLogger<T> : ILogger<T> {
+        public List<(LogLevel Level, string Message)> Messages { get; } = [];
+
+        IDisposable? ILogger.BeginScope<TState>(TState state) => NullScope.Instance;
+
+        bool ILogger.IsEnabled(LogLevel logLevel) => true;
+
+        void ILogger.Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Messages.Add((logLevel, formatter(state, exception)));
+
+        private sealed class NullScope : IDisposable {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose() {
+            }
+        }
     }
 }

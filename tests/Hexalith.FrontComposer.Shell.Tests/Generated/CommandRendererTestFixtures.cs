@@ -20,7 +20,27 @@ public class OneFieldInlineCommand {
 
 [Command]
 [BoundedContext("TestCommands")]
+[RequiresPolicy("TestCommands.ApproveInline")]
+public class ProtectedOneFieldInlineCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public int Amount { get; set; }
+}
+
+[Command]
+[BoundedContext("TestCommands")]
 public class TwoFieldCompactCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+
+    public int Amount { get; set; }
+}
+
+[Command]
+[BoundedContext("TestCommands")]
+[RequiresPolicy("TestCommands.ApproveCompact")]
+public class ProtectedTwoFieldCompactCommand {
     public string MessageId { get; set; } = string.Empty;
 
     public string Name { get; set; } = string.Empty;
@@ -57,6 +77,23 @@ public class CompactCommandWithDerivableField {
 [Command]
 [BoundedContext("TestCommands")]
 public class FiveFieldFullPageCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+
+    public string Description { get; set; } = string.Empty;
+
+    public int InitialValue { get; set; }
+
+    public int MaxValue { get; set; }
+
+    public string Category { get; set; } = string.Empty;
+}
+
+[Command]
+[BoundedContext("TestCommands")]
+[RequiresPolicy("TestCommands.ApproveFullPage")]
+public class ProtectedFiveFieldFullPageCommand {
     public string MessageId { get; set; } = string.Empty;
 
     public string Name { get; set; } = string.Empty;

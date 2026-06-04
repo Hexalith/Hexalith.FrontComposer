@@ -35,7 +35,11 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-03
-last_updated: 2026-06-04
+last_updated: 2026-06-05
+# 4-4 moved review -> done on 2026-06-05 (story-automator-review; adversarial review reproduced build 0/0 and focused/regression lanes green independently (CommandParser 38, FcAuthorizedCommandRegion 10, WrapperIntegration 12, ServiceGraph 2, CatalogValidator 9, plus 4.1/4.2/4.3 + dispatch-gate/decorator/evaluator guardrails). Both emitter fixes verified correct. Auto-fixed 1 MEDIUM: File List was missing the 6 specimen/sample/e2e files (PolicyAllowed/Denied specimen commands, type-specimen razor, Program.cs policy wiring, e2e spec + package.json). 0 CRITICAL/HIGH. .verified.txt unchanged.)
+# 4-4 moved in-progress -> review on 2026-06-04 (dev-story; FC-AUTH v1 contract recorded; SourceTools policy trim/equality pins added; direct FcAuthorizedCommandRegion decision/fail-closed/stale-refresh pins added; protected generated form/renderer runtime pins added for allowed/denied/fail-closed/pending presentation and pre-side-effect blocking; Stub/EventStore DI decoration and catalog/redaction pins strengthened. Fixed protected generated form auth-state parameter collision and protected renderer MessageBarIntent emission. Build 0/0; focused in-process SourceTools 89/89, Shell auth/generated/DI/catalog 71/71, Story 4.1/4.2/4.3 guardrails 31/31 green. Solution VSTest locally socket-blocked; broad in-process fallback reproduced unrelated local baselines only; .verified.txt unchanged.)
+# 4-4 moved ready-for-dev -> in-progress on 2026-06-04 (dev-story; starting policy-gated command authorization confirm-and-pin work. Existing baseline_commit preserved. Scope: FC-AUTH contract, parser/manifest pins, direct FcAuthorizedCommandRegion pins, generated form/renderer authorization composition pins, Stub/EventStore dispatch decoration, policy catalog validation, and opaque denial redaction.)
+# 4-4 moved backlog -> ready-for-dev on 2026-06-04 (create-story; policy-gated command authorization confirm-and-pin. Brownfield reality: [RequiresPolicy], HFC1056/HFC1057, CommandAuthorizationDecisionKind, FcAuthorizedCommandRegion, CommandAuthorizationEvaluator, generated renderer/form auth checks, AuthorizingCommandServiceDecorator, and policy catalog validation already exist. Dev must record FC-AUTH v1 contract, add direct region decision-kind/fail-closed pins, pin generated protected-form/renderer runtime composition and Stub/EventStore DI decoration, preserve opaque deny payloads, and leave FC-CNC, destructive confirmation, abandonment, retry/degraded, MCP tool admission, and FC-CMD identity unchanged.)
 # 4-3 moved in-progress -> review on 2026-06-04 (dev-story; FC-CNC contract recorded, scoped one-at-a-time admission gate added, generated forms block rapid/pending second submits before lifecycle/dispatch/pending side effects, localized warning feedback preserves form input. Build 0/0; focused in-process SourceTools 29/29 and Shell FC-CNC/pending/runtime/resources 107/107 green; destructive pins 3/3 and full-page pins 12/12 green excluding known Story 4.2 query-fallback baseline. Solution VSTest remains locally socket-blocked; CI authoritative.)
 # 4-3 moved ready-for-dev -> in-progress on 2026-06-04 (dev-story; implementing FC-CNC one-at-a-time command admission with scoped pre-dispatch gate, pending-state blocking, generated-form warning feedback, contract artifact, and focused Shell/SourceTools tests.)
 # 4-3 moved backlog -> ready-for-dev on 2026-06-04 (create-story; FC-CNC v1 one-at-a-time execution policy. Contract-producing story: create fc-cnc one-at-a-time contract, choose block-not-queue fallback, add scoped pre-dispatch admission gate plus pending-state blocking, wire generated forms before SubmittedAction/Dispatch/Pending registration, preserve FC-CMD ULIDs, EventStore polling budgets, destructive confirmation, abandonment guard, authz, and retry/degraded scope.)
@@ -162,7 +166,7 @@ development_status:
   4-1-destructive-command-confirmation: done
   4-2-unsaved-form-abandonment-guard: done
   4-3-one-at-a-time-execution-policy-fc-cnc: done
-  4-4-policy-gated-command-authorization: backlog
+  4-4-policy-gated-command-authorization: done
   4-5-retry-and-degraded-state-handling: backlog
   epic-4-retrospective: optional
 

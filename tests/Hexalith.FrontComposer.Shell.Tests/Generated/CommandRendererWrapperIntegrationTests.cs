@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 using Bunit;
 
 using Fluxor;
@@ -7,9 +9,11 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -203,6 +207,99 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         });
     }
 
+    [Fact]
+    public async Task ProtectedGeneratedForm_AllowedAuthorization_DispatchesAfterSubmitChecks() {
+        var evaluator = new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Allowed("corr-allowed"));
+        RecordingCommandService service = new();
+        RegisterAuthorization(evaluator);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand {
+                Name = "approved name",
+                Amount = 7,
+            }));
+
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(1);
+            pending.Snapshot().Single().MessageId.ShouldBe(RecordingCommandService.MessageId);
+        });
+        service.LastCommand.ShouldNotBeNull();
+        service.LastCommand!.Name.ShouldBe("approved name");
+        evaluator.Requests.ShouldContain(r => r.SourceSurface == CommandAuthorizationSurface.GeneratedForm);
+    }
+
+    [Theory]
+    [MemberData(nameof(BlockingAuthorizationDecisions))]
+    public async Task ProtectedGeneratedForm_BlockedAuthorization_PreservesInputAndBlocksSideEffects(
+        CommandAuthorizationDecision decision,
+        CommandWarningKind expectedWarningKind) {
+        var evaluator = new FixedAuthorizationEvaluator(decision);
+        RecordingCommandService service = new();
+        RegisterAuthorization(evaluator);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        List<CommandFeedbackWarning> warnings = [];
+        using IDisposable subscription = Services.GetRequiredService<ICommandFeedbackPublisher>().Subscribe(warnings.Add);
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IState<ProtectedTwoFieldCompactCommandLifecycleState> state = Services.GetRequiredService<IState<ProtectedTwoFieldCompactCommandLifecycleState>>();
+
+        IRenderedComponent<ProtectedTwoFieldCompactCommandForm> cut = Render<ProtectedTwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new ProtectedTwoFieldCompactCommand {
+                Name = "blocked name",
+                Amount = 9,
+            }));
+
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(0);
+            pending.Snapshot().ShouldBeEmpty();
+            state.Value.State.ShouldBe(CommandLifecycleState.Idle);
+            cut.Markup.ShouldContain("blocked name");
+            cut.Markup.ShouldContain("value=\"9\"", Case.Insensitive);
+            warnings.ShouldNotBeEmpty();
+            warnings.ShouldContain(w => w.Kind == expectedWarningKind);
+        });
+    }
+
+    [Fact]
+    public async Task ProtectedGeneratedRenderers_AllModes_SurfaceAuthorizationGating() {
+        var evaluator = new FixedAuthorizationEvaluator(CommandAuthorizationDecision.Pending("corr-pending"));
+        RegisterAuthorization(evaluator);
+        PageContext.ReturnPath = "/counter";
+        await InitializeStoreAsync();
+
+        IRenderedComponent<ProtectedOneFieldInlineCommandRenderer> inline = Render<ProtectedOneFieldInlineCommandRenderer>();
+        IRenderedComponent<ProtectedTwoFieldCompactCommandRenderer> compact = Render<ProtectedTwoFieldCompactCommandRenderer>();
+        IRenderedComponent<ProtectedFiveFieldFullPageCommandRenderer> fullPage = Render<ProtectedFiveFieldFullPageCommandRenderer>();
+
+        inline.WaitForAssertion(() => inline.Markup.ShouldContain("Checking permission", Case.Insensitive));
+        compact.WaitForAssertion(() => compact.Markup.ShouldContain("Checking permission", Case.Insensitive));
+        fullPage.WaitForAssertion(() => fullPage.Markup.ShouldContain("Checking permission", Case.Insensitive));
+        evaluator.Requests.Select(r => r.SourceSurface).ShouldContain(CommandAuthorizationSurface.InlineAction);
+        evaluator.Requests.Select(r => r.SourceSurface).ShouldContain(CommandAuthorizationSurface.CompactInlineAction);
+        evaluator.Requests.Select(r => r.SourceSurface).ShouldContain(CommandAuthorizationSurface.FullPage);
+    }
+
+    public static TheoryData<CommandAuthorizationDecision, CommandWarningKind> BlockingAuthorizationDecisions()
+        => new() {
+            { CommandAuthorizationDecision.Denied("corr-denied"), CommandWarningKind.Forbidden },
+            { CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, "corr-failed"), CommandWarningKind.Forbidden },
+            { CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, "corr-canceled"), CommandWarningKind.Forbidden },
+        };
+
+    private void RegisterAuthorization(FixedAuthorizationEvaluator evaluator) {
+        Services.Replace(ServiceDescriptor.Singleton<AuthenticationStateProvider>(new TestAuthenticationStateProvider()));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => evaluator));
+    }
+
     private sealed class ControlledCommandService : ICommandServiceWithLifecycle {
         public TaskCompletionSource DispatchStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -238,6 +335,31 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
                 "Order locked",
                 "Please retry.",
                 new CommandRejectionDetails("ORDER_LOCKED", "Concurrency", "Reload before retrying", "FC-CMD-409"));
+    }
+
+    private sealed class RecordingCommandService : ICommandServiceWithLifecycle {
+        public const string MessageId = "01CRZ3NDEKTSV4RRFFQ69G5FAV";
+
+        public int DispatchCount { get; private set; }
+
+        public ProtectedTwoFieldCompactCommand? LastCommand { get; private set; }
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class {
+            DispatchCount++;
+            if (command is ProtectedTwoFieldCompactCommand typed) {
+                LastCommand = typed;
+            }
+
+            return Task.FromResult(new CommandResult(MessageId, "Accepted"));
+        }
     }
 
     private sealed class BlockingCommandService : ICommandServiceWithLifecycle {
@@ -282,5 +404,24 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
             string messageId = DispatchCount == 1 ? FirstMessageId : SecondMessageId;
             return Task.FromResult(new CommandResult(messageId, "Accepted"));
         }
+    }
+
+    private sealed class FixedAuthorizationEvaluator(CommandAuthorizationDecision decision) : ICommandAuthorizationEvaluator {
+        public List<CommandAuthorizationRequest> Requests { get; } = [];
+
+        public Task<CommandAuthorizationDecision> EvaluateAsync(
+            CommandAuthorizationRequest request,
+            CancellationToken cancellationToken = default) {
+            Requests.Add(request);
+            return Task.FromResult(decision);
+        }
+    }
+
+    private sealed class TestAuthenticationStateProvider : AuthenticationStateProvider {
+        private static readonly AuthenticationState State = new(new ClaimsPrincipal(
+            new ClaimsIdentity([new Claim(ClaimTypes.Name, "test-user")], "Test")));
+
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => Task.FromResult(State);
     }
 }
