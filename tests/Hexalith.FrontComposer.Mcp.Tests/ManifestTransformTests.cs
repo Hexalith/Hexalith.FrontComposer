@@ -37,6 +37,45 @@ public sealed class ManifestTransformTests {
     }
 
     [Fact]
+    public void CommandDescriptor_CarriesStableCommandToolMetadata_AndServerControlledDerivables() {
+        const string Source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            using System.ComponentModel.DataAnnotations;
+            namespace Orders.Write;
+            [Command]
+            [BoundedContext("Sales")]
+            [Display(Name = "Approve Order")]
+            [RequiresPolicy("OrderApprover")]
+            public partial class ApproveOrderCommand {
+                public string TenantId { get; set; } = "";
+                public string UserId { get; set; } = "";
+                public string MessageId { get; set; } = "";
+                public string CommandId { get; set; } = "";
+                public string CorrelationId { get; set; } = "";
+                [Display(Name = "Order number")]
+                public string OrderNumber { get; set; } = "";
+                public object Metadata { get; set; } = new();
+            }
+            """;
+
+        var parsed = SourceToolCompilationHelper.ParseCommand(Source, "Orders.Write.ApproveOrderCommand").Model!;
+        var descriptor = McpManifestTransform.TransformCommand(parsed);
+
+        descriptor.ProtocolName.ShouldBe("Sales.ApproveOrderCommand.Execute");
+        descriptor.CommandTypeName.ShouldBe("Orders.Write.ApproveOrderCommand");
+        descriptor.BoundedContext.ShouldBe("Sales");
+        descriptor.Title.ShouldBe("Approve Order");
+        descriptor.AuthorizationPolicyName.ShouldBe("OrderApprover");
+        descriptor.Parameters.Select(p => p.Name).ShouldBe(["OrderNumber", "Metadata"]);
+        descriptor.Parameters.Single(p => p.Name == "Metadata").IsUnsupported.ShouldBeTrue();
+        descriptor.DerivablePropertyNames.ShouldContain("TenantId");
+        descriptor.DerivablePropertyNames.ShouldContain("UserId");
+        descriptor.DerivablePropertyNames.ShouldContain("MessageId");
+        descriptor.DerivablePropertyNames.ShouldContain("CommandId");
+        descriptor.DerivablePropertyNames.ShouldContain("CorrelationId");
+    }
+
+    [Fact]
     public void ProjectionDescriptor_UsesStableUri_AndDisplayName() {
         const string Source = """
             using Hexalith.FrontComposer.Contracts.Attributes;

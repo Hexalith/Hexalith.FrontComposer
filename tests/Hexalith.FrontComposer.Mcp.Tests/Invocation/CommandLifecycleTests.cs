@@ -858,8 +858,10 @@ public sealed class CommandLifecycleTests {
             return value switch {
                 1 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0C",
                 2 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0D",
+                3 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0E",
+                4 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0F",
                 _ => throw new InvalidOperationException(
-                    "CounterUlidFactory only supports value <= 2; extend the table for additional handles."),
+                    "CounterUlidFactory only supports value <= 4; extend the table for additional handles."),
             };
         }
     }

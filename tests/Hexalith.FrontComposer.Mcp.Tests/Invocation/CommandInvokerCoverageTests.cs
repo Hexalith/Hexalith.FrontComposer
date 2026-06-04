@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Invocation;
 
@@ -161,6 +162,7 @@ public sealed class CommandInvokerCoverageTests {
         RecordingCommandService service = new();
         ServiceCollection sc = new();
         sc.AddSingleton<ICommandService>(service);
+        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
@@ -188,6 +190,7 @@ public sealed class CommandInvokerCoverageTests {
         RecordingCommandService service = new();
         ServiceCollection sc = new();
         sc.AddSingleton<ICommandService>(service);
+        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
@@ -214,6 +217,7 @@ public sealed class CommandInvokerCoverageTests {
         RecordingCommandService service = new();
         ServiceCollection sc = new();
         sc.AddSingleton<ICommandService>(service);
+        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
@@ -240,6 +244,7 @@ public sealed class CommandInvokerCoverageTests {
         RecordingCommandService service = new();
         ServiceCollection sc = new();
         sc.AddSingleton<ICommandService>(service);
+        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(LabelManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
@@ -269,6 +274,7 @@ public sealed class CommandInvokerCoverageTests {
         RecordingCommandService service = new();
         ServiceCollection sc = new();
         sc.AddSingleton<ICommandService>(service);
+        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(NoArgManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
@@ -295,6 +301,7 @@ public sealed class CommandInvokerCoverageTests {
         RecordingCommandService service = new();
         ServiceCollection sc = new();
         sc.AddSingleton<ICommandService>(service);
+        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(RecordManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
@@ -341,6 +348,7 @@ public sealed class CommandInvokerCoverageTests {
         service = new RecordingCommandService();
         ServiceCollection sc = new();
         sc.AddSingleton<ICommandService>(service);
+        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
         sc.Configure<FrontComposerMcpOptions>(o => {
             o.Manifests.Add(PayInvoiceManifest());
             configure?.Invoke(o);
@@ -471,6 +479,19 @@ public sealed class CommandInvokerCoverageTests {
     private sealed class StaticAccessor : IFrontComposerMcpAgentContextAccessor {
         public FrontComposerMcpAgentContext GetContext()
             => new("tenant-a", "agent-a", new ClaimsPrincipal(new ClaimsIdentity("test")));
+    }
+
+    private sealed class FixedUlidFactory : IUlidFactory {
+        private int _next;
+
+        public string NewUlid() {
+            int value = Interlocked.Increment(ref _next);
+            return value switch {
+                1 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0C",
+                2 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0D",
+                _ => "01JZ0R5K9N8W4Y7V3Q2P6C1A0E",
+            };
+        }
     }
 
     private sealed class DenyingGate : IFrontComposerMcpCommandPolicyGate {

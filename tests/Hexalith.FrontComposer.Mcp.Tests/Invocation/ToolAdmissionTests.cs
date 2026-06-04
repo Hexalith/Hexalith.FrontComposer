@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Invocation;
 
@@ -197,6 +198,35 @@ public sealed class ToolAdmissionTests {
     }
 
     [Fact]
+    public async Task BuildVisibleCatalogAsync_ListsGeneratedCommandTools_WithPerDescriptorSchemaInputs() {
+        FrontComposerMcpToolAdmissionService admission = BuildAdmission(
+            services => services.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new AllowingPolicyGate()));
+
+        McpVisibleToolCatalog catalog = await admission.BuildVisibleCatalogAsync(TestContext.Current.CancellationToken);
+
+        catalog.Tools.Select(t => t.Name).ShouldBe([
+            "Billing.PayInvoiceCommand.Execute",
+            "Billing.RestrictedCommand.Execute",
+            "Catalog.LabelProductCommand.Execute",
+        ]);
+        McpVisibleToolCatalogEntry entry = catalog.Tools.Single(t => t.Name == "Billing.PayInvoiceCommand.Execute");
+        ModelContextProtocol.Protocol.Tool protocol = FrontComposerMcpProtocolMapper.ToProtocolTool(entry);
+        protocol.InputSchema.GetProperty("additionalProperties").GetBoolean().ShouldBeFalse();
+        JsonElement properties = protocol.InputSchema.GetProperty("properties");
+        properties.TryGetProperty("Amount", out JsonElement amount).ShouldBeTrue();
+        amount.GetProperty("type").GetString().ShouldBe("number");
+        properties.TryGetProperty("TenantId", out _).ShouldBeFalse();
+        properties.TryGetProperty("UserId", out _).ShouldBeFalse();
+        properties.TryGetProperty("MessageId", out _).ShouldBeFalse();
+        properties.TryGetProperty("CommandId", out _).ShouldBeFalse();
+        properties.TryGetProperty("CorrelationId", out _).ShouldBeFalse();
+        properties.TryGetProperty("UnsupportedPayload", out _).ShouldBeFalse();
+
+        ModelContextProtocol.Protocol.Tool lifecycle = FrontComposerMcpProtocolMapper.ToLifecycleTool(new FrontComposerMcpOptions());
+        lifecycle.Name.ShouldBe("frontcomposer.lifecycle.subscribe");
+    }
+
+    [Fact]
     public async Task UnknownToolRejection_P95_IsBelowOneHundredMilliseconds() {
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             out _,
@@ -225,6 +255,7 @@ public sealed class ToolAdmissionTests {
         service = new RecordingCommandService();
         ServiceCollection sc = new();
         sc.AddSingleton<ICommandService>(service);
+        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
         sc.Configure<FrontComposerMcpOptions>(o => {
             o.Manifests.Add(Manifest());
             configureOptions?.Invoke(o);
@@ -240,6 +271,20 @@ public sealed class ToolAdmissionTests {
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
     }
 
+    private static FrontComposerMcpToolAdmissionService BuildAdmission(Action<IServiceCollection>? configureServices = null) {
+        ServiceCollection sc = new();
+        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        sc.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>));
+        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        configureServices?.Invoke(sc);
+        ServiceProvider provider = sc.BuildServiceProvider();
+        return provider.GetRequiredService<FrontComposerMcpToolAdmissionService>();
+    }
+
     private static Dictionary<string, JsonElement> Args(string json)
         => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
 
@@ -252,8 +297,11 @@ public sealed class ToolAdmissionTests {
                 "Pay invoice",
                 "Pay invoice.",
                 null,
-                [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
-                ["TenantId", "UserId", "MessageId"]),
+                [
+                    new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false),
+                    new McpParameterDescriptor("UnsupportedPayload", "Object", "object", false, true, "Unsupported payload", null, [], true),
+                ],
+                ["TenantId", "UserId", "MessageId", "CommandId", "CorrelationId"]),
             new McpCommandDescriptor(
                 "Billing.RestrictedCommand.Execute",
                 typeof(RestrictedCommand).FullName!,
@@ -321,6 +369,19 @@ public sealed class ToolAdmissionTests {
     private sealed class StaticAccessor : IFrontComposerMcpAgentContextAccessor {
         public FrontComposerMcpAgentContext GetContext()
             => new("tenant-a", "agent-a", new ClaimsPrincipal(new ClaimsIdentity("test")));
+    }
+
+    private sealed class FixedUlidFactory : IUlidFactory {
+        private int _next;
+
+        public string NewUlid() {
+            int value = Interlocked.Increment(ref _next);
+            return value switch {
+                1 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0C",
+                2 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0D",
+                _ => "01JZ0R5K9N8W4Y7V3Q2P6C1A0E",
+            };
+        }
     }
 
     private sealed class AllowingPolicyGate : IFrontComposerMcpCommandPolicyGate {

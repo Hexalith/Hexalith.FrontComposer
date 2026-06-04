@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using System.ComponentModel.DataAnnotations;
-using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -421,17 +420,54 @@ public sealed class FrontComposerMcpCommandInvoker(
         SetIfWritable(command, commandType, "TenantId", context.TenantId);
         SetIfWritable(command, commandType, "UserId", context.UserId);
 
-        // AC17 / D11: when an IUlidFactory is registered the message identity is allocated up front
-        // via that factory so the lifecycle tracker can key off the same canonical ULID before
-        // dispatch. When no factory is configured (legacy hosts without the MCP lifecycle tracker)
-        // we fall back to a Guid to preserve the historical contract.
-        IUlidFactory? ulidFactory = services.GetService<IUlidFactory>();
-        string messageId = ulidFactory?.NewUlid() ?? Guid.NewGuid().ToString("N");
-        string correlationId = Activity.Current?.TraceId.ToString() ?? messageId;
+        IUlidFactory ulidFactory = services.GetService<IUlidFactory>()
+            ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        string messageId = NewCanonicalUlid(ulidFactory);
+        string correlationId = NewCanonicalUlid(ulidFactory);
         SetIfWritable(command, commandType, "MessageId", messageId);
         SetIfWritable(command, commandType, "CommandId", messageId);
         SetIfWritable(command, commandType, "CorrelationId", correlationId);
         return (messageId, correlationId);
+    }
+
+    private static string NewCanonicalUlid(IUlidFactory ulidFactory) {
+        string value;
+        try {
+            value = ulidFactory.NewUlid();
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) when (ex is not FrontComposerMcpException) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        }
+
+        if (!IsCanonicalUlid(value)) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        }
+
+        return value;
+    }
+
+    private static bool IsCanonicalUlid(string? value) {
+        if (value is null || value.Length != 26) {
+            return false;
+        }
+
+        for (int i = 0; i < value.Length; i++) {
+            char ch = value[i];
+            bool valid = (ch >= '0' && ch <= '9')
+                || (ch >= 'A' && ch <= 'H')
+                || (ch >= 'J' && ch <= 'K')
+                || (ch >= 'M' && ch <= 'N')
+                || (ch >= 'P' && ch <= 'T')
+                || (ch >= 'V' && ch <= 'Z');
+            if (!valid) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static void SetIfWritable(object target, Type type, string propertyName, string value) {

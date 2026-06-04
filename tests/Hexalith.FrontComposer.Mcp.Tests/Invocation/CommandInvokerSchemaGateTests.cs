@@ -3,6 +3,7 @@ using System.Security.Claims;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Mcp.Invocation;
@@ -103,6 +104,7 @@ public sealed class CommandInvokerSchemaGateTests {
         SchemaFingerprint? clientFingerprintHint = null) {
         ServiceCollection services = [];
         services.AddSingleton(dispatcher);
+        services.AddSingleton<IUlidFactory, FixedUlidFactory>();
         services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddSingleton<FrontComposerMcpToolAdmissionService>();
@@ -149,6 +151,19 @@ public sealed class CommandInvokerSchemaGateTests {
             where TCommand : class {
             Dispatched = command;
             return Task.FromResult(new CommandResult("message-a", "Accepted", "corr-a"));
+        }
+    }
+
+    private sealed class FixedUlidFactory : IUlidFactory {
+        private int _next;
+
+        public string NewUlid() {
+            int value = Interlocked.Increment(ref _next);
+            return value switch {
+                1 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0C",
+                2 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0D",
+                _ => "01JZ0R5K9N8W4Y7V3Q2P6C1A0E",
+            };
         }
     }
 
