@@ -30,4 +30,7 @@
   <ItemGroup>
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="PublicAPI.FcTbl.Shipped.txt" Pack="true" PackagePath="build\Hexalith.FrontComposer.Shell.FcTbl.PublicAPI.Shipped.txt" />
+  </ItemGroup>
 </Project>

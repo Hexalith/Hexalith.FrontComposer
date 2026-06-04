@@ -3,31 +3,19 @@
 ## Generated Tests
 
 ### API Tests
-- N/A - Story 2.7 has no deployed HTTP/API endpoint surface. Coverage is in the shell/component/effect test lanes.
+- [x] Not applicable - Story 2.8 freezes the browser-rendered FC-TBL table contract and does not introduce HTTP API endpoints.
 
 ### E2E Tests
-- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcCommandPaletteTests.cs` - ARIA combobox role and rendered keyboard navigation pins.
-- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPaletteResultListTests.cs` - listbox/option roles and selected-row `aria-activedescendant` pins.
-- [x] `tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsTests.cs` - live registry filtering through the real scorer/effect path.
-- [x] `tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd/CommandPaletteE2ETests.cs` - existing `e2e-palette` full-flow lane remains green.
+- [x] `tests/e2e/specs/fc-tbl-contract.spec.ts` - Generated DataGrid envelope, field-key, status-chip, and detail-region contract checks for the Counter specimen host.
 
 ## Coverage
-
-- API endpoints: N/A.
-- UI features: 2/2 Story 2.7 ACs covered.
-- AC1: `Ctrl+K` / `Meta+K` palette open path, ARIA combobox/listbox/option roles, `aria-activedescendant`, and Arrow/Escape keyboard flow.
-- AC2: live registry projection search via palette `PaletteResultCategory.Projection`; `FcProjectionGlobalSearch` is recorded as a separate in-grid row-search concern.
+- API endpoints: 0/0 applicable.
+- UI contract slices covered by new E2E tests: generated grid envelope, column field keys, status filter chips, generated formatted values, always-present expand-in-row detail region.
+- UI contract slices already covered outside this E2E addition: Shell public API baseline, package boundary test, component-level filters/notices/prioritizer behavior.
 
 ## Validation
-
-- `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 /nr:false` -> passed, 0 warnings, 0 errors.
-- Solution-level VSTest default lane remains sandbox-blocked by `SocketException (13): Permission denied` during test-platform socket setup.
-- xUnit v3 in-process story-focused Shell classes -> 60 total, 0 failed.
-- xUnit v3 in-process Shell default lane -> 1760 total, 9 known failures outside palette/search.
-- xUnit v3 in-process `Category=e2e-palette` lane -> 4 total, 0 failed.
-- xUnit v3 in-process SourceTools default lane -> 958 total, 3 known failures, unchanged.
-- `.verified.txt` snapshot diff -> no changes.
+- `npm --prefix tests/e2e run typecheck`
+- `npm --prefix tests/e2e run test:fc-tbl` attempted; blocked locally because Kestrel cannot bind a loopback socket in this sandbox (`System.Net.Sockets.SocketException (13): Permission denied`).
 
 ## Next Steps
-
-- Run the solution-level VSTest gate in CI or an environment that permits the VSTest socket transport.
+- Run `npm --prefix tests/e2e run test:fc-tbl` in CI or a local environment that permits loopback sockets.

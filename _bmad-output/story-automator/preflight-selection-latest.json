@@ -931,7 +931,7 @@
   "agentsPath": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/story-automator/agents/agents-orchestration-1-20260604-140358.md",
   "markerPath": "/home/administrator/projects/hexalith/frontcomposer/.agents/.story-automator-active",
   "firstUnfinished": "2.7",
-  "remainingUnfinished": 27,
+  "remainingUnfinished": 26,
   "doneStories": [
     "1.0",
     "1.1",
@@ -948,7 +948,6 @@
     "2.6"
   ],
   "unfinishedStories": [
-    "2.7",
     "2.8",
     "3.1",
     "3.2",
@@ -975,5 +974,9 @@
     "7.3",
     "7.4",
     "7.5"
-  ]
+  ],
+  "completedThisRun": [
+    "2.7"
+  ],
+  "currentStory": "2.8"
 }

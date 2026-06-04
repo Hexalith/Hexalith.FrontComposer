@@ -14,6 +14,7 @@
     "test:webkit": "playwright test --project=webkit",
     "test:smoke": "playwright test specs/smoke.spec.ts",
     "test:lifecycle": "playwright test specs/lifecycle.spec.ts",
+    "test:fc-tbl": "playwright test specs/fc-tbl-contract.spec.ts --project=chromium",
     "test:a11y": "playwright test specs/specimen-accessibility.spec.ts --project=chromium",
     "test:visual": "playwright test specs/specimen-accessibility.spec.ts --project=chromium --grep \"visual baseline\"",
     "test:visual:update": "playwright test specs/specimen-accessibility.spec.ts --project=chromium --grep \"visual baseline\" --update-snapshots",
