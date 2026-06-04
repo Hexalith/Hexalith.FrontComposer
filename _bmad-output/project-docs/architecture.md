@@ -69,6 +69,17 @@ These three calls are **order- and presence-validated at startup** (Story 1.1): 
 
 State is managed in Fluxor slices under `src/Hexalith.FrontComposer.Shell/State/` (Theme, Density, Navigation, CommandPalette, ETagCache, PendingCommands, ProjectionConnection, ReconnectionReconciliation, …) following a **single-writer discipline** (ADR-007): each action type has one dispatch source; effects own persistence and JS interop. EventStore-enabled hosts run command-status polling through a scoped `PendingCommandPollingDriver`; pending-state mutation remains centralized in `PendingCommandPollingCoordinator` and `PendingCommandOutcomeResolver`.
 
+Command submission has an explicit safety boundary. Generated forms validate local input, evaluate
+`[RequiresPolicy]` authorization before `BeforeSubmit`, run destructive confirmation or other
+`BeforeSubmit` hooks, re-authorize protected commands, then acquire the scoped
+`CommandExecutionAdmissionGate` before dispatching lifecycle actions, calling the command service,
+or registering pending state. `AuthorizingCommandServiceDecorator` remains the direct-dispatch
+backstop for generated and custom callers. FC-CNC v1 blocks later local submits rather than queueing
+or batching them. EventStore dispatch retry sits inside `EventStoreCommandClient` after
+authorization/tenant resolution and is limited to pre-`202 Accepted` transient failures; it reuses
+the same `MessageId` and surfaces retry exhaustion as warning feedback, not as a terminal lifecycle
+state.
+
 ## 5. AI-agent surface (MCP)
 
 `Hexalith.FrontComposer.Mcp` is an ASP.NET Core adapter (HTTP streamable MCP) that turns the generated `McpManifest` into a live tool/resource surface:

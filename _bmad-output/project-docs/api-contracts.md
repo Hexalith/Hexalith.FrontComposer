@@ -39,7 +39,30 @@ Standard attributes also honored: `[Display]`, `[Description]`, `[DefaultValue]`
 
 **Command density rule (spec-locked):** non-derivable property count ≤1 → `Inline`; 2–4 → `CompactInline`; ≥5 → `FullPage`. Derivable (form-excluded) fields: `MessageId`, `CommandId`, `CorrelationId`, `TenantId`, `UserId`, `Timestamp`, `CreatedAt`, `ModifiedAt`, or any `[DerivedFrom]`. Supported field types auto-render; unsupported → `FcFieldPlaceholder`.
 
-### 1.3 MSBuild / analyzer-config options (drift detection)
+### 1.3 Runtime command safety contract
+
+Generated command forms enforce a fixed submit order:
+
+1. Local validation and parse guards.
+2. `[RequiresPolicy]` authorization for protected commands.
+3. `BeforeSubmit` hooks such as destructive confirmation.
+4. A second authorization check for protected commands after `BeforeSubmit`.
+5. FC-CNC admission through the scoped `CommandExecutionAdmissionGate`.
+6. Lifecycle `Submitted`, command dispatch, pending registration, and acknowledgement.
+
+FC-CNC v1 is block-not-queue: a later local submit is rejected with warning feedback before
+`SubmittedAction`, `ICommandService.DispatchAsync`, `IPendingCommandStateService.Register`, or
+EventStore HTTP dispatch. Protected commands are also enforced at the service boundary by
+`AuthorizingCommandServiceDecorator`, so direct callers do not bypass `[RequiresPolicy]`.
+
+EventStore command retry is deliberately narrow. `EventStoreCommandClient` retries only pre-accept
+transport failures and HTTP `408`, `502`, `503`, or `504`; it does not retry validation, auth,
+domain rejection, FC-CNC denial, authorization denial, cancellation, malformed accepted responses, or
+anything after `202 Accepted`. Retry attempts reuse the same `MessageId`; exhaustion raises
+`CommandWarningKind.RetryableDispatchFailed`, resets the generated form to `Idle`, preserves input,
+and does not register pending state.
+
+### 1.4 MSBuild / analyzer-config options (drift detection)
 
 | Property | Meaning |
 |---|---|
@@ -50,7 +73,7 @@ Standard attributes also honored: `[Display]`, `[Description]`, `[DefaultValue]`
 | `HfcDriftSeverity` | Warning \| Error \| Info (default Warning). |
 | `PublishTrimmed` / `PublishAot` | Auto-enable the HFC1070 trim/AOT advisory. |
 
-### 1.4 Diagnostic catalog (HFC1001–HFC1070)
+### 1.5 Diagnostic catalog (HFC1001–HFC1070)
 
 > Build-time diagnostics use the `HFC1xxx` band; runtime diagnostics use `HFC2xxx`. Symbolic IDs live in `FcDiagnosticIds` (Contracts) and descriptors in `Diagnostics/DiagnosticDescriptors.cs` (SourceTools). `(reserved)` = declared but not yet active.
 

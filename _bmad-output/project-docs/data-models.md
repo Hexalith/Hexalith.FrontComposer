@@ -27,8 +27,11 @@ DomainManifest
 | `QueryRequest` / `QueryResult` | Projection query request/response DTOs. |
 | `ProblemDetailsPayload` | RFC 7807 error payload with optional bounded `CommandRejectionDetails`. |
 | `CommandRejectionDetails` | Typed rejection metadata (`errorCode`, `reasonCategory`, `suggestedAction`, `docsCode`) shown by command lifecycle UI. |
+| `CommandWarningKind` / `CommandWarningException` | Warning-class command outcomes (`Forbidden`, `NotFound`, `RateLimited`, `Pending`, `RetryableDispatchFailed`) rendered outside terminal lifecycle state. |
 | `CommandLifecycleState` (enum) | `Idle → Submitting → Acknowledged → Syncing → Confirmed / Rejected`. |
 | `CommandLifecycleTransition` | A single state-machine edge (for trackers/UI). |
+| `PendingCommandRegistration` / `PendingCommandEntry` | Circuit-local metadata for accepted commands; stores framework identity and bounded status data, never command payloads, tenant/user claims, or form values. |
+| `PendingCommandStatus` | `Pending`, `Confirmed`, `Rejected`, `IdempotentConfirmed`, `NeedsReview`. |
 | `McpLifecycleStateNames` | Canonical MCP wire names for the lifecycle states. |
 | Exceptions | `CommandRejectedException`, `CommandWarningException`, `CommandValidationException`, `AuthRedirectRequiredException`. |
 
@@ -106,8 +109,9 @@ This is the backbone of FrontComposer's "drift detection" — how producer (gene
 
 | Type | Role |
 |---|---|
-| `FcShellOptions` | Runtime shell configuration (validated via DataAnnotations / `OptionsBuilder.ValidateDataAnnotations` plus cross-property validators). Includes lifecycle thresholds, command-status polling cadence, pending-command polling duration, per-tick cap, and retained pending-entry cap. |
+| `FcShellOptions` | Runtime shell configuration (validated via DataAnnotations / `OptionsBuilder.ValidateDataAnnotations` plus cross-property validators). Includes lifecycle thresholds, command-status polling cadence and duration, retained pending-entry cap, per-tick cap, and EventStore pre-accept command dispatch retry attempts/delay. |
 | `FrontComposerAuthenticationOptions` | OIDC/auth options (Shell). |
+| `FrontComposerAuthorizationOptions` | Host-owned policy catalog for `[RequiresPolicy]` commands, including strict startup validation. |
 | `FrontComposerMcpOptions` | MCP endpoint, API-key map, arg/render/lifecycle bounds, claim types. |
 | `LifecycleOptions` | Lifecycle tracker timing/retention. |
 | `GeneratedOutputPathContract` | Public template `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{Type}.g.razor.cs`; use `BuildProjectRelativePath(...)`, never hardcode. |

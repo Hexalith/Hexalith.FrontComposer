@@ -40,7 +40,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 | `FcHomeDirectory` / `FcHomeCard` / `FcHomeRouteView` | Home landing page (`@page "/"`, `/home`): four progressive states; urgency-sorted bounded-context cards. |
 | `FcStatusBadge` / `FcDesaturatedBadge` | Semantic slot → `FluentBadge` (Color/Appearance) with mandatory `aria-label`; desaturated variant for non-urgent counts. |
 | `FcProjectionConnectionStatus` | `FluentMessageBar` for SignalR reconnect/reconciliation. |
-| `FcPendingCommandSummary` | `aria-live` list of pending, rejected, and NeedsReview commands. |
+| `FcPendingCommandSummary` | Bounded `aria-live` summary of active pending commands plus rejected, confirmed, idempotent-confirmed, and NeedsReview entries. |
 | `FcProjectionLoadingSkeleton` | `FluentSkeleton` in Card/Timeline/Grid layout. |
 
 ### DataGrid surface
@@ -78,9 +78,9 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 
 **Fluxor state slices** (`State/`): Theme, Density, Navigation, CommandPalette, CapabilityDiscovery, DataGridNavigation, ETagCache, ExpandedRow, PendingCommands, ProjectionConnection, ReconnectionReconciliation. *(Single-writer discipline per slice; effects own persistence + JS interop.)*
 
-**Services** (`Services/`, `Badges/`, `Infrastructure/`): `BadgeCountService` (Rx `Subject<T>`), auth + `AuthorizingCommandServiceDecorator`, authorization evaluator/gate, projection slot/template/view-override registries, derived-value provider chain, lifecycle state service, pending-command state/resolver/polling coordinator, `LocalStorageService`, tenant context accessor, `EventStoreCommandClient`/`EventStoreQueryClient`/`EventStorePendingCommandStatusQuery`/`ProjectionSubscriptionService`, `SignalRProjectionHubConnectionFactory`.
+**Services** (`Services/`, `Badges/`, `Infrastructure/`, `State/PendingCommands/`): `BadgeCountService` (Rx `Subject<T>`), auth + `AuthorizingCommandServiceDecorator`, authorization evaluator/gate, FC-CNC `CommandExecutionAdmissionGate`, projection slot/template/view-override registries, derived-value provider chain, lifecycle state service, pending-command state/resolver/polling coordinator/driver, `LocalStorageService`, tenant context accessor, `EventStoreCommandClient`/`EventStoreQueryClient`/`EventStorePendingCommandStatusQuery`/`ProjectionSubscriptionService`, `SignalRProjectionHubConnectionFactory`.
 
-**Options** (`Options/`): `FcShellOptions`, `FrontComposerAuthenticationOptions` + validators (DataAnnotations and cross-property checks for lifecycle thresholds, command-status polling interval, and pending-command expiry).
+**Options** (`Options/`): `FcShellOptions`, `FrontComposerAuthenticationOptions`, `FrontComposerAuthorizationOptions` + validators (DataAnnotations and cross-property checks for lifecycle thresholds, command-status polling interval/duration, command dispatch retry delay, pending-command expiry, cache caps, and known policy catalog strictness).
 
 ---
 
@@ -88,7 +88,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 
 The vocabulary shared by generator + runtime + MCP. (Attributes are catalogued in [api-contracts.md](./api-contracts.md); data records in [data-models.md](./data-models.md).)
 
-**Communication:** `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, `IProjectionChangeNotifier`, `IProjectionSubscription`, `IProjectionSearchProvider`; records `CommandResult`, `QueryResult`, `QueryRequest`, `ProblemDetailsPayload`, `CommandRejectionDetails`; exceptions `CommandRejectedException`, `CommandWarningException`, `CommandValidationException`, `AuthRedirectRequiredException`.
+**Communication:** `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, `IProjectionChangeNotifier`, `IProjectionSubscription`, `IProjectionSearchProvider`; records `CommandResult`, `QueryResult`, `QueryRequest`, `ProblemDetailsPayload`, `CommandRejectionDetails`; warning kind `CommandWarningKind` including `RetryableDispatchFailed`; exceptions `CommandRejectedException`, `CommandWarningException`, `CommandValidationException`, `AuthRedirectRequiredException`.
 
 **Lifecycle:** `CommandLifecycleState` (Idle→Submitting→Acknowledged→Syncing→Confirmed/Rejected), `CommandLifecycleTransition`, `ICommandLifecycleTracker`, `ILifecycleStateService`, `IUlidFactory`, `LifecycleOptions`, `McpLifecycleStateNames`.
 

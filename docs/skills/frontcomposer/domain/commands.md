@@ -26,6 +26,8 @@ Generated command forms render only non-derivable properties. `MessageId`, `Comm
 
 Command lifecycle is framework-owned after submission: `Submitting -> Acknowledged -> Syncing -> Confirmed / Rejected`, with idempotent-confirmed and NeedsReview outcomes surfaced by the shell. EventStore-backed hosts query command status by the accepted pending `MessageId`; do not add a second resolver path in agent-authored examples.
 
+Use `[Destructive]` for irreversible commands and `[RequiresPolicy("Policy.Name")]` for protected commands. Do not hand-roll confirmation, authorization, retry, or queueing in command DTOs. Generated forms own destructive confirmation, policy checks, FC-CNC one-at-a-time local admission, lifecycle dispatch, and pending registration. EventStore retry is limited to pre-accept transient dispatch faults and reuses the same `MessageId`; it is not a command modeling feature and it is not an MCP tool retry policy.
+
 ```csharp
 using Hexalith.FrontComposer.Contracts.Attributes;
 
