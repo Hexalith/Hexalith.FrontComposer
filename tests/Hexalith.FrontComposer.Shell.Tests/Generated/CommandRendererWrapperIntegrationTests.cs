@@ -7,6 +7,8 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Feedback;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -123,6 +125,84 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         });
     }
 
+    [Fact]
+    public async Task GeneratedForms_RapidSecondSubmit_BlocksBeforeDispatchLifecycleAndPendingMutation() {
+        BlockingCommandService service = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        List<CommandFeedbackWarning> warnings = [];
+        using IDisposable subscription = Services.GetRequiredService<ICommandFeedbackPublisher>().Subscribe(warnings.Add);
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IState<FourFieldCompactCommandLifecycleState> secondState = Services.GetRequiredService<IState<FourFieldCompactCommandLifecycleState>>();
+        IRenderedComponent<TwoFieldCompactCommandForm> first = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand {
+                Name = "first",
+                Amount = 1,
+            }));
+        IRenderedComponent<FourFieldCompactCommandForm> second = Render<FourFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new FourFieldCompactCommand {
+                Name = "blocked name",
+                Description = "blocked description",
+                Amount = 2,
+                Priority = 3,
+            }));
+
+        first.Find("form").Submit();
+        await service.DispatchStarted.Task.WaitAsync(TimeSpan.FromSeconds(2), Xunit.TestContext.Current.CancellationToken);
+        second.Find("form").Submit();
+
+        second.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(1);
+            pending.Snapshot().ShouldBeEmpty();
+            secondState.Value.State.ShouldBe(CommandLifecycleState.Idle);
+            second.Markup.ShouldContain("Command already in progress", Case.Insensitive);
+            second.Markup.ShouldContain("blocked name");
+            warnings.Count.ShouldBe(1);
+            warnings[0].Detail.ShouldNotBeNull().ShouldNotContain("queued", Case.Insensitive);
+        });
+
+        service.AllowDispatch.SetResult();
+        first.WaitForAssertion(() => pending.Snapshot().Count.ShouldBe(1));
+    }
+
+    [Fact]
+    public async Task GeneratedForms_PendingCommandBlocksUntilTerminalResolution() {
+        SequencedCommandService service = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IRenderedComponent<TwoFieldCompactCommandForm> first = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand {
+                Name = "first",
+                Amount = 1,
+            }));
+        IRenderedComponent<FourFieldCompactCommandForm> second = Render<FourFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new FourFieldCompactCommand {
+                Name = "second",
+                Description = "second description",
+                Amount = 2,
+                Priority = 3,
+            }));
+
+        first.Find("form").Submit();
+        first.WaitForAssertion(() => pending.Snapshot().Single().Status.ShouldBe(PendingCommandStatus.Pending));
+
+        second.Find("form").Submit();
+        second.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(1);
+            second.Markup.ShouldContain("Command already in progress", Case.Insensitive);
+        });
+
+        pending.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(SequencedCommandService.FirstMessageId))
+            .Status.ShouldBe(PendingCommandResolutionStatus.Resolved);
+        second.Find("form").Submit();
+
+        second.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(2);
+            pending.GetByMessageId(SequencedCommandService.SecondMessageId).ShouldNotBeNull();
+        });
+    }
+
     private sealed class ControlledCommandService : ICommandServiceWithLifecycle {
         public TaskCompletionSource DispatchStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
@@ -158,5 +238,49 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
                 "Order locked",
                 "Please retry.",
                 new CommandRejectionDetails("ORDER_LOCKED", "Concurrency", "Reload before retrying", "FC-CMD-409"));
+    }
+
+    private sealed class BlockingCommandService : ICommandServiceWithLifecycle {
+        public TaskCompletionSource DispatchStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public TaskCompletionSource AllowDispatch { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public int DispatchCount { get; private set; }
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public async Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class {
+            DispatchCount++;
+            DispatchStarted.TrySetResult();
+            await AllowDispatch.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
+            return new CommandResult("01ARZ3NDEKTSV4RRFFQ69G5FAV", "Accepted");
+        }
+    }
+
+    private sealed class SequencedCommandService : ICommandServiceWithLifecycle {
+        public const string FirstMessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        public const string SecondMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+
+        public int DispatchCount { get; private set; }
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class {
+            DispatchCount++;
+            string messageId = DispatchCount == 1 ? FirstMessageId : SecondMessageId;
+            return Task.FromResult(new CommandResult(messageId, "Accepted"));
+        }
     }
 }

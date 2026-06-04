@@ -15,6 +15,7 @@ using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
@@ -91,6 +92,8 @@ public abstract class FrontComposerTestBase : BunitContext {
         // and IAuthRedirector (401 redirect seam). Tests render those forms via bUnit.
         _ = Services.AddScoped<ICommandFeedbackPublisher, CommandFeedbackPublisher>();
         _ = Services.AddScoped<IAuthRedirector, NoOpAuthRedirector>();
+        _ = Services.AddScoped<IPendingCommandStateService, PendingCommandStateService>();
+        _ = Services.AddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
 
         InitializeStoreAsync().GetAwaiter().GetResult();
     }

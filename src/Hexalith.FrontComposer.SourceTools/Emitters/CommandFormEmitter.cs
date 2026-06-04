@@ -96,7 +96,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    [Inject] private ICommandService CommandService { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService PendingCommandState { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate CommandExecutionAdmissionGate { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IStringLocalizer<" + commandFqn + "> Localizer { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> ShellLocalizer { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILogger<" + componentName + ">? Logger { get; set; }");
         // Story 5-2 T5 — server-driven warning publication + auth-redirect seam (validation is applied via a stateless static helper).
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Feedback.ICommandFeedbackPublisher CommandFeedbackPublisher { get; set; } = default!;");
@@ -290,6 +292,33 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
         }
+        _ = sb.AppendLine("    private void SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason reason)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        string title = ResolveShellLocalized(\"CommandAlreadyInProgressTitle\", \"Command already in progress\");");
+        _ = sb.AppendLine("        string detail = reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists");
+        _ = sb.AppendLine("            ? ResolveShellLocalized(\"CommandAlreadyInProgressPendingMessage\", \"A command is still waiting for confirmation. Wait for it to finish before submitting another command.\")");
+        _ = sb.AppendLine("            : ResolveShellLocalized(\"CommandAlreadyInProgressAdmissionMessage\", \"A command is already being submitted. Wait for it to finish before submitting another command.\");");
+        _ = sb.AppendLine("        _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
+        _ = sb.AppendLine("            global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Pending,");
+        _ = sb.AppendLine("            title,");
+        _ = sb.AppendLine("            detail,");
+        _ = sb.AppendLine("            null,");
+        _ = sb.AppendLine("            null);");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private string ResolveShellLocalized(string key, string fallback)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        try");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            var localized = ShellLocalizer[key];");
+        _ = sb.AppendLine("            return localized.ResourceNotFound || string.IsNullOrEmpty(localized.Value) ? fallback : localized.Value;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        catch (Exception ex) when (ex is not OperationCanceledException)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return fallback;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("    private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) {");
         _ = sb.AppendLine("        IsDirty = true;");
         _ = sb.AppendLine("        // Story 5-2 D5 — clear stale server-side validation for the edited field.");
@@ -360,7 +389,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
 
         EmitClientParseErrorHelper(sb, form);
-        EmitSubmitMethod(sb, form, fluxor);
+        EmitSubmitMethod(sb, form, fluxor, escapedButtonLabel);
         EmitDispose(sb, hasAuthorizationPolicy);
         EmitBuildRenderTree(sb, form, fluxor, escapedButtonLabel);
         EmitRejectionCopyHelpers(sb, escapedButtonLabel);
@@ -418,7 +447,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
     }
 
-    private static void EmitSubmitMethod(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor) {
+    private static void EmitSubmitMethod(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor, string escapedButtonLabel) {
         string commandFqn = form.CommandFullyQualifiedName;
         bool hasAuthorizationPolicy = !string.IsNullOrWhiteSpace(form.AuthorizationPolicyName);
 
@@ -514,6 +543,21 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine();
         }
 
+        _ = sb.AppendLine("        var admission = CommandExecutionAdmissionGate.TryAcquire(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionRequest(");
+        _ = sb.AppendLine("            typeof(" + commandFqn + ").FullName ?? nameof(" + commandFqn + "),");
+        _ = sb.AppendLine("            \"" + escapedButtonLabel + "\"));");
+        _ = sb.AppendLine("        if (!admission.IsAdmitted)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            SetCommandInProgressWarning(admission.DenialReason);");
+        _ = sb.AppendLine("            if (_serverWarning is not null)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
+        _ = sb.AppendLine("            Logger?.LogWarning(\"Command submit blocked by FC-CNC. Reason={Reason} BlockingMessageId={BlockingMessageId}\", admission.DenialReason, admission.BlockingMessageId);");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("        var correlationId = UlidFactory.NewUlid();");
         _ = sb.AppendLine("        _submittedCorrelationId = correlationId;");
         _ = sb.AppendLine("        var cts = _cts;");
@@ -645,6 +689,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                // Patch 2026-04-16 P-11: carry the submit correlation so sibling forms ignore this reset.");
         _ = sb.AppendLine("                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
         _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        finally");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            admission.Dispose();");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();

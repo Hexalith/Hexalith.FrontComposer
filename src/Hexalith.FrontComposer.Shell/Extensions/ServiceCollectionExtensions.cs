@@ -361,6 +361,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IReconnectionReconciliationState, ReconnectionReconciliationStateService>();
         services.TryAddScoped<IReconnectionReconciliationCoordinator, ReconnectionReconciliationCoordinator>();
         services.TryAddScoped<IPendingCommandStateService, PendingCommandStateService>();
+        services.TryAddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
         services.TryAddScoped<IPendingCommandOutcomeResolver, PendingCommandOutcomeResolver>();
         services.TryAddScoped<INewItemIndicatorStateService, NewItemIndicatorStateService>();
         services.TryAddScoped<IPendingCommandStatusQuery, NullPendingCommandStatusQuery>();

@@ -541,4 +541,13 @@
   <data name="AuthorizationCheckingPermissionMessage" xml:space="preserve">
     <value>Vérification de votre autorisation à {0}. Cela ne prend qu'un instant.</value>
   </data>
+  <data name="CommandAlreadyInProgressTitle" xml:space="preserve">
+    <value>Commande déjà en cours</value>
+  </data>
+  <data name="CommandAlreadyInProgressAdmissionMessage" xml:space="preserve">
+    <value>Une commande est déjà en cours d'envoi. Attendez qu'elle se termine avant d'envoyer une autre commande.</value>
+  </data>
+  <data name="CommandAlreadyInProgressPendingMessage" xml:space="preserve">
+    <value>Une commande attend encore sa confirmation. Attendez qu'elle se termine avant d'envoyer une autre commande.</value>
+  </data>
 </root>

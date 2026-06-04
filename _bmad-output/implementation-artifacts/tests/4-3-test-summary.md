@@ -32,6 +32,22 @@
 - [ ] `npx playwright test specs/one-at-a-time-execution-policy.spec.ts --project=chromium` - attempted; this sandbox blocks Kestrel loopback socket binding before Playwright can execute the browser test (`System.Net.Sockets.SocketException (13): Permission denied`).
 - [ ] Focused `dotnet test` VSTest lanes - attempted; this sandbox blocks VSTest socket startup before test execution (`System.Net.Sockets.SocketException (13): Permission denied`). In-process xUnit v3 fallback above is green.
 
+## Checklist
+
+- [x] API tests generated if applicable - N/A, no direct API endpoint.
+- [x] E2E tests generated if UI exists.
+- [x] Tests use standard framework APIs.
+- [x] Tests cover happy path.
+- [x] Tests cover critical error/safe-path cases.
+- [ ] All generated tests run successfully - browser execution is blocked by sandbox socket restrictions; contract-only path passes.
+- [x] Tests use semantic/accessible locators (`role`, labels, and existing lifecycle `data-testid` contracts).
+- [x] Tests have clear descriptions.
+- [x] No hardcoded waits or sleeps.
+- [x] Tests are independent.
+- [x] Test summary created.
+- [x] Tests saved to appropriate directories.
+- [x] Summary includes coverage metrics.
+
 ## Next Steps
 
 - Run `npm --prefix tests/e2e run test:fc-cnc` in CI or a local environment that permits Kestrel loopback sockets and browser launch.

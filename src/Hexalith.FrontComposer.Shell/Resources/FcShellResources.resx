@@ -660,4 +660,16 @@
     <value>Verifying you can {0}. This usually takes a moment.</value>
     <comment>Story 7-3 Pass 3 — body when authorization is pending; {0} is the command action label.</comment>
   </data>
+  <data name="CommandAlreadyInProgressTitle" xml:space="preserve">
+    <value>Command already in progress</value>
+    <comment>Story 4.3 FC-CNC — warning title when one-at-a-time command admission blocks a local submit.</comment>
+  </data>
+  <data name="CommandAlreadyInProgressAdmissionMessage" xml:space="preserve">
+    <value>A command is already being submitted. Wait for it to finish before submitting another command.</value>
+    <comment>Story 4.3 FC-CNC — warning body when the pre-dispatch admission lock is already held. Do not mention queuing or retry.</comment>
+  </data>
+  <data name="CommandAlreadyInProgressPendingMessage" xml:space="preserve">
+    <value>A command is still waiting for confirmation. Wait for it to finish before submitting another command.</value>
+    <comment>Story 4.3 FC-CNC — warning body when an accepted pending command blocks a later local submit. Do not mention queuing or retry.</comment>
+  </data>
 </root>

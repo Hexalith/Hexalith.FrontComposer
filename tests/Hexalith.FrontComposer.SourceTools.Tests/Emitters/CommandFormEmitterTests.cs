@@ -250,6 +250,56 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void Emit_InjectsCommandExecutionAdmissionGate() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("[Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate CommandExecutionAdmissionGate { get; set; } = default!;");
+        source.ShouldContain("CommandExecutionAdmissionGate.TryAcquire(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionRequest(");
+        source.ShouldContain("SetCommandInProgressWarning(admission.DenialReason);");
+        source.ShouldContain("CommandFeedbackPublisher.PublishWarning(_serverWarning);");
+    }
+
+    [Fact]
+    public void Emit_CommandExecutionAdmissionRunsAfterBeforeSubmitBeforeSideEffects() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        int beforeSubmitIndex = source.IndexOf("await BeforeSubmit().ConfigureAwait(false);", StringComparison.Ordinal);
+        int admissionIndex = source.IndexOf("CommandExecutionAdmissionGate.TryAcquire", StringComparison.Ordinal);
+        int correlationIndex = source.IndexOf("var correlationId = UlidFactory.NewUlid();", StringComparison.Ordinal);
+        int submittedIndex = source.IndexOf("IncrementCommandActions.SubmittedAction(correlationId, _model)", StringComparison.Ordinal);
+        int dispatchIndex = source.IndexOf("CommandService.DispatchAsync", StringComparison.Ordinal);
+        int registerIndex = source.IndexOf("PendingCommandState.Register", StringComparison.Ordinal);
+
+        admissionIndex.ShouldBeGreaterThan(beforeSubmitIndex);
+        correlationIndex.ShouldBeGreaterThan(admissionIndex);
+        submittedIndex.ShouldBeGreaterThan(admissionIndex);
+        dispatchIndex.ShouldBeGreaterThan(admissionIndex);
+        registerIndex.ShouldBeGreaterThan(dispatchIndex);
+    }
+
+    [Fact]
+    public void Emit_CommandExecutionAdmissionReleasesInFinally() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        int tryIndex = source.IndexOf("try", source.IndexOf("Command submitted.", StringComparison.Ordinal), StringComparison.Ordinal);
+        int finallyIndex = source.IndexOf("finally", tryIndex, StringComparison.Ordinal);
+        int disposeIndex = source.IndexOf("admission.Dispose();", finallyIndex, StringComparison.Ordinal);
+
+        tryIndex.ShouldBeGreaterThan(0);
+        finallyIndex.ShouldBeGreaterThan(tryIndex);
+        disposeIndex.ShouldBeGreaterThan(finallyIndex);
+    }
+
+    [Fact]
     public void Emit_SubmitEnsuresLastUsedSubscriberBeforeSubmittedDispatch() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),

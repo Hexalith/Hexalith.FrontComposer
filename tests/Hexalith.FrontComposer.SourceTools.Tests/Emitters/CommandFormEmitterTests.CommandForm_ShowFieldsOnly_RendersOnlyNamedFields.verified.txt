@@ -56,7 +56,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     [Inject] private ICommandService CommandService { get; set; } = default!;
     [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService PendingCommandState { get; set; } = default!;
+    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate CommandExecutionAdmissionGate { get; set; } = default!;
     [Inject] private IStringLocalizer<Counter.Domain.IncrementCommand> Localizer { get; set; } = default!;
+    [Inject] private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> ShellLocalizer { get; set; } = default!;
     [Inject] private ILogger<IncrementCommandForm>? Logger { get; set; }
     [Inject] private global::Hexalith.FrontComposer.Shell.Services.Feedback.ICommandFeedbackPublisher CommandFeedbackPublisher { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector AuthRedirector { get; set; } = default!;
@@ -87,6 +89,33 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         LifecycleState.StateChanged += OnStateChanged;
         // Story 2-5 Task 5.3 — surface the EditContext to the renderer so it can wire D24 validation + abandonment guard.
         if (OnEditContextReady.HasDelegate) { _ = OnEditContextReady.InvokeAsync(_editContext); }
+    }
+
+    private void SetCommandInProgressWarning(global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason reason)
+    {
+        string title = ResolveShellLocalized("CommandAlreadyInProgressTitle", "Command already in progress");
+        string detail = reason == global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists
+            ? ResolveShellLocalized("CommandAlreadyInProgressPendingMessage", "A command is still waiting for confirmation. Wait for it to finish before submitting another command.")
+            : ResolveShellLocalized("CommandAlreadyInProgressAdmissionMessage", "A command is already being submitted. Wait for it to finish before submitting another command.");
+        _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(
+            global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Pending,
+            title,
+            detail,
+            null,
+            null);
+    }
+
+    private string ResolveShellLocalized(string key, string fallback)
+    {
+        try
+        {
+            var localized = ShellLocalizer[key];
+            return localized.ResourceNotFound || string.IsNullOrEmpty(localized.Value) ? fallback : localized.Value;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return fallback;
+        }
     }
 
     private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) {
@@ -204,6 +233,21 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         {
             await BeforeSubmit().ConfigureAwait(false);
             if (_disposed || _cts.IsCancellationRequested) return;
+        }
+
+        var admission = CommandExecutionAdmissionGate.TryAcquire(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionRequest(
+            typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand),
+            "Send IncrementCommand"));
+        if (!admission.IsAdmitted)
+        {
+            SetCommandInProgressWarning(admission.DenialReason);
+            if (_serverWarning is not null)
+            {
+                CommandFeedbackPublisher.PublishWarning(_serverWarning);
+            }
+            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+            Logger?.LogWarning("Command submit blocked by FC-CNC. Reason={Reason} BlockingMessageId={BlockingMessageId}", admission.DenialReason, admission.BlockingMessageId);
+            return;
         }
 
         var correlationId = UlidFactory.NewUlid();
@@ -337,6 +381,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 // Patch 2026-04-16 P-11: carry the submit correlation so sibling forms ignore this reset.
                 Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
             }
+        }
+        finally
+        {
+            admission.Dispose();
         }
     }
 
