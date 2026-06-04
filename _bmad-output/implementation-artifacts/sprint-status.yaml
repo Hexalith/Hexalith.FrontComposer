@@ -36,6 +36,9 @@
 
 generated: 2026-06-03
 last_updated: 2026-06-04
+# 4-2 moved in-progress -> review on 2026-06-04 (dev-story; confirm-and-pin, zero production source change. Added component navigation callback pins, SourceTools full-page guard wiring pins, and generated full-page dirty/clean/runtime BeforeSubmit pins. Build 0/0; focused in-process SourceTools 18/18, Shell guard 14/14, Shell generated full-page new pins 3/3 green. Solution VSTest remains locally socket-blocked; CI authoritative.)
+# 4-2 moved ready-for-dev -> in-progress on 2026-06-04 (dev-story; starting confirm-and-pin implementation for FcFormAbandonmentGuard + generated full-page renderer abandonment coverage. Existing baseline_commit preserved.)
+# 4-2 moved backlog -> ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of existing FcFormAbandonmentGuard + generated full-page renderer wiring. Brownfield reality: NavigationLock/FluentMessageBar guard, FormAbandonmentThresholdSeconds, EditContext OnEditContextReady, and full-page renderer wrapping already exist. Dev must add missing dirty/clean generated-runtime pins, verify stay/leave/Escape/submitting suppression, keep Inline/CompactInline abandonment UX out of scope, and avoid FC-CNC, authorization, retry/degraded, destructive confirmation, EventStore status, and FC-CMD identity changes.)
 # epic-4 moved backlog -> in-progress on 2026-06-04 (create-story; first story of Safe & Concurrent Command Execution. Story 4.1 is destructive-command confirmation and should reuse/pin existing [Destructive] parser, HFC1020/HFC1021 diagnostics, FcDestructiveConfirmationDialog, and generated renderer BeforeSubmit gating rather than rebuilding lifecycle, retry, abandonment, or FC-CNC policy.)
 # 4-1 moved backlog -> ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of destructive command confirmation. Brownfield reality: DestructiveAttribute, CommandParser destructive metadata/HFC1020/HFC1021, FcDestructiveConfirmationDialog, and CommandRendererEmitter DestructiveBeforeSubmitAsync already exist. Dev must add missing generated renderer/form dispatch-gating pins, verify cancel/confirm/double-click/auth composition, and keep Epic 4.2 abandonment, 4.3 FC-CNC, 4.5 retry/degraded, EventStore polling, and FC-CMD identity out of scope.)
 # epic-3 moved backlog -> in-progress on 2026-06-04 (create-story; first story of Command Authoring & Lifecycle. Story 3.1 is confirm-and-pin of existing [Command] form generation, with explicit artifact-count reconciliation and generated correlationId ULID guardrail.)
@@ -154,7 +157,7 @@ development_status:
   # Epic 4: Safe & Concurrent Command Execution
   epic-4: in-progress
   4-1-destructive-command-confirmation: done
-  4-2-unsaved-form-abandonment-guard: backlog
+  4-2-unsaved-form-abandonment-guard: done
   4-3-one-at-a-time-execution-policy-fc-cnc: backlog
   4-4-policy-gated-command-authorization: backlog
   4-5-retry-and-degraded-state-handling: backlog

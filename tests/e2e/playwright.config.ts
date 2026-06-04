@@ -54,6 +54,7 @@ export default defineConfig({
         env: {
           ASPNETCORE_ENVIRONMENT: 'Test',
           Hexalith__FrontComposer__Specimens__Enabled: 'true',
+          Hexalith__Shell__FormAbandonmentThresholdSeconds: '5',
           Hexalith__Shell__TimeoutActionThresholdMs: '5000',
           Hexalith__FrontComposer__StubCommandService__ConfirmDelayMs: STORY_3_6_CONFIRM_DELAY_MS,
         },

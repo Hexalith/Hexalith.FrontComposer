@@ -219,6 +219,43 @@ public class CommandRendererEmitterTests {
         source.ShouldNotContain("CorrelationId =");
     }
 
+    [Fact]
+    public void Renderer_FullPage_EmitsAbandonmentGuardWithCorrelationAndEditContextWiring() {
+        string source = CommandRendererEmitter.Emit(BuildModel(5));
+
+        source.ShouldContain("private EditContext? _formEditContext;");
+        source.ShouldContain("private void OnFormEditContextReady(EditContext context)");
+        source.ShouldContain("_formEditContext = context;");
+        source.ShouldContain("builder.OpenComponent<FcFormAbandonmentGuard>(seq++);");
+        source.ShouldContain("builder.AddAttribute(seq++, \"CorrelationId\", _lifecycleState.Value.CorrelationId ?? string.Empty);");
+        source.ShouldContain("builder.AddAttribute(seq++, \"EditContext\", _formEditContext);");
+        source.ShouldContain("__guard.AddAttribute(gseq++, \"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);");
+        source.ShouldContain("__guard.AddAttribute(gseq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");
+
+        int guardIndex = source.IndexOf("builder.OpenComponent<FcFormAbandonmentGuard>(seq++);", StringComparison.Ordinal);
+        int formIndex = source.IndexOf("__guard.OpenComponent<Demo.Domain.DemoCommandForm>(gseq++);", StringComparison.Ordinal);
+        int beforeSubmitIndex = source.IndexOf("__guard.AddAttribute(gseq++, \"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);", StringComparison.Ordinal);
+        int editContextReadyIndex = source.IndexOf("__guard.AddAttribute(gseq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));", StringComparison.Ordinal);
+
+        guardIndex.ShouldBeGreaterThanOrEqualTo(0);
+        formIndex.ShouldBeGreaterThan(guardIndex);
+        beforeSubmitIndex.ShouldBeGreaterThan(formIndex);
+        editContextReadyIndex.ShouldBeGreaterThan(beforeSubmitIndex);
+    }
+
+    [Fact]
+    public void Renderer_InlineAndCompactInline_DoNotWrapFormsInAbandonmentGuard() {
+        string source = CommandRendererEmitter.Emit(BuildModel(5));
+
+        string inlineCase = Slice(source, "case CommandRenderMode.Inline:", "case CommandRenderMode.CompactInline:");
+        string compactCase = Slice(source, "case CommandRenderMode.CompactInline:", "case CommandRenderMode.FullPage:");
+
+        inlineCase.ShouldNotContain("OpenComponent<FcFormAbandonmentGuard>");
+        compactCase.ShouldNotContain("OpenComponent<FcFormAbandonmentGuard>");
+        inlineCase.ShouldContain("\"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady)");
+        compactCase.ShouldContain("\"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady)");
+    }
+
     // === Task 11.3 — determinism ===
 
     [Fact]
@@ -232,5 +269,13 @@ public class CommandRendererEmitterTests {
         string firstPage = CommandPageEmitter.Emit(pageModel);
         string secondPage = CommandPageEmitter.Emit(pageModel);
         firstPage.ShouldBe(secondPage);
+    }
+
+    private static string Slice(string source, string start, string end) {
+        int startIndex = source.IndexOf(start, StringComparison.Ordinal);
+        startIndex.ShouldBeGreaterThanOrEqualTo(0);
+        int endIndex = source.IndexOf(end, startIndex, StringComparison.Ordinal);
+        endIndex.ShouldBeGreaterThan(startIndex);
+        return source[startIndex..endIndex];
     }
 }

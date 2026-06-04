@@ -3,11 +3,17 @@ using Bunit;
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Components.Forms;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 
 using Shouldly;
 
@@ -30,6 +36,66 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
         IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
 
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("fc-lifecycle-wrapper", Case.Insensitive));
+    }
+
+    [Fact]
+    public async Task Renderer_FullPage_DirtyGeneratedForm_ShowsAbandonmentGuardAndPreventsNavigation() {
+        FakeTimeProvider time = new(new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero));
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        PageContext.ReturnPath = "/counter";
+        await InitializeStoreAsync();
+
+        IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
+        IRenderedComponent<FcFormAbandonmentGuard> guardCut = cut.FindComponent<FcFormAbandonmentGuard>();
+        EditContext editContext = WaitForGuardEditContext(guardCut);
+
+        await cut.InvokeAsync(() => editContext.NotifyFieldChanged(editContext.Field(nameof(FiveFieldFullPageCommand.Name))));
+        time.Advance(TimeSpan.FromSeconds(31));
+
+        LocationChangingContext context = BuildLocationChangingContext("/other");
+        await InvokeNavigationChangingAsync(guardCut, context);
+
+        DidPreventNavigation(context).ShouldBeTrue();
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-form-abandonment-warning']"));
+    }
+
+    [Fact]
+    public async Task Renderer_FullPage_CleanGeneratedForm_DoesNotShowAbandonmentGuardOrPreventNavigation() {
+        FakeTimeProvider time = new(new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero));
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(time));
+        PageContext.ReturnPath = "/counter";
+        await InitializeStoreAsync();
+
+        IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
+        IRenderedComponent<FcFormAbandonmentGuard> guardCut = cut.FindComponent<FcFormAbandonmentGuard>();
+        _ = WaitForGuardEditContext(guardCut);
+        time.Advance(TimeSpan.FromSeconds(31));
+
+        LocationChangingContext context = BuildLocationChangingContext("/other");
+        await InvokeNavigationChangingAsync(guardCut, context);
+
+        DidPreventNavigation(context).ShouldBeFalse();
+        cut.FindAll("[data-testid='fc-form-abandonment-warning']").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Renderer_FullPage_Submit_RefreshesDerivableValuesBeforeDispatch() {
+        RecordingDerivedValueProvider derivedValues = new();
+        RecordingCommandService commandService = new();
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
+        Services.RemoveAll<IDerivedValueProvider>();
+        _ = Services.AddSingleton<IDerivedValueProvider>(derivedValues);
+        PageContext.ReturnPath = "/counter";
+        await InitializeStoreAsync();
+
+        IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
+
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => commandService.LastCommand.ShouldNotBeNull());
+        derivedValues.Properties.ShouldContain(nameof(FiveFieldFullPageCommand.MessageId));
+        commandService.LastCommand!.MessageId.ShouldBe(RecordingDerivedValueProvider.MessageId);
     }
 
     [Fact]
@@ -152,6 +218,96 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
         dispatchedActions
             .OfType<RestoreGridStateAction>()
             .ShouldNotBeEmpty("the page must dispatch RestoreGridStateAction on mount when query carries the projection FQN");
+    }
+
+    private static EditContext WaitForGuardEditContext(IRenderedComponent<FcFormAbandonmentGuard> guardCut) {
+        guardCut.WaitForAssertion(() => guardCut.Instance.EditContext.ShouldNotBeNull());
+        return guardCut.Instance.EditContext!;
+    }
+
+    private static Task InvokeNavigationChangingAsync(
+        IRenderedComponent<FcFormAbandonmentGuard> guardCut,
+        LocationChangingContext context)
+        => guardCut.InvokeAsync(() => {
+            Task handle = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
+                "HandleNavigationChangingAsync",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(guardCut.Instance, [context])!;
+            return handle;
+        });
+
+    private static LocationChangingContext BuildLocationChangingContext(string target) {
+        Type type = typeof(LocationChangingContext);
+        System.Reflection.ConstructorInfo ctor = type.GetConstructors(
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Public)[0];
+        System.Reflection.ParameterInfo[] pars = ctor.GetParameters();
+        object[] args = new object[pars.Length];
+        for (int i = 0; i < pars.Length; i++) {
+            if (pars[i].ParameterType == typeof(string)) {
+                args[i] = target;
+            }
+            else if (pars[i].ParameterType == typeof(bool)) {
+                args[i] = false;
+            }
+            else if (pars[i].ParameterType == typeof(CancellationToken)) {
+                args[i] = CancellationToken.None;
+            }
+            else {
+                args[i] = pars[i].HasDefaultValue ? pars[i].DefaultValue! : null!;
+            }
+        }
+
+        return (LocationChangingContext)ctor.Invoke(args);
+    }
+
+    private static bool DidPreventNavigation(LocationChangingContext context) {
+        System.Reflection.FieldInfo? field = typeof(LocationChangingContext)
+            .GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .SingleOrDefault(f => f.FieldType == typeof(bool) && f.Name.Contains("prevent", StringComparison.OrdinalIgnoreCase));
+        field.ShouldNotBeNull("LocationChangingContext keeps PreventNavigation state non-public in .NET 10.");
+        return (bool)field.GetValue(context)!;
+    }
+
+    private sealed class RecordingDerivedValueProvider : IDerivedValueProvider {
+        public const string MessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+
+        public List<string> Properties { get; } = [];
+
+        public Task<DerivedValueResult> ResolveAsync(
+            Type commandType,
+            string propertyName,
+            ProjectionContext? context,
+            CancellationToken cancellationToken = default) {
+            Properties.Add(propertyName);
+            return Task.FromResult(propertyName == nameof(FiveFieldFullPageCommand.MessageId)
+                ? new DerivedValueResult(true, MessageId)
+                : new DerivedValueResult(false, null));
+        }
+    }
+
+    private sealed class RecordingCommandService : ICommandServiceWithLifecycle {
+        public FiveFieldFullPageCommand? LastCommand { get; private set; }
+
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class {
+            if (command is FiveFieldFullPageCommand typed) {
+                LastCommand = typed;
+            }
+
+            return Task.FromResult(new CommandResult(RecordingDerivedValueProvider.MessageId, "Accepted"));
+        }
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class {
+            if (command is FiveFieldFullPageCommand typed) {
+                LastCommand = typed;
+            }
+
+            return Task.FromResult(new CommandResult(RecordingDerivedValueProvider.MessageId, "Accepted"));
+        }
     }
 
     private sealed class TestLogger<T> : ILogger<T> {

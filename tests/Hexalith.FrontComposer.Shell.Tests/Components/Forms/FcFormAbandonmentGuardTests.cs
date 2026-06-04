@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Shell.Options;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -38,6 +39,62 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         Services.TryAddSingleton<IValidateOptions<FcShellOptions>, FcShellOptionsThresholdValidator>();
         _ = Services.AddSingleton<TimeProvider>(_time);
         _ = Services.AddSingleton<NavigationManager>(_ => new TestNavigationManager());
+    }
+
+    [Fact]
+    public async Task Dirty_threshold_crossed_navigation_prevents_and_shows_warning() {
+        TestModel model = new() { Name = "" };
+        EditContext editContext = new(model);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+
+        editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
+        _time.Advance(TimeSpan.FromSeconds(31));
+
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context = BuildLocationChangingContext("/leave");
+        await InvokeNavigationChangingAsync(cut, guard, context);
+
+        DidPreventNavigation(context).ShouldBeTrue();
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-form-abandonment-warning']"));
+    }
+
+    [Fact]
+    public async Task Clean_navigation_does_not_prevent_or_show_warning() {
+        TestModel model = new() { Name = "" };
+        EditContext editContext = new(model);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context = BuildLocationChangingContext("/leave");
+        await InvokeNavigationChangingAsync(cut, guard, context);
+
+        DidPreventNavigation(context).ShouldBeFalse();
+        cut.FindAll("[data-testid='fc-form-abandonment-warning']").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Null_EditContext_navigation_does_not_prevent_or_show_warning() {
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext: null);
+
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context = BuildLocationChangingContext("/leave");
+        await InvokeNavigationChangingAsync(cut, guard, context);
+
+        DidPreventNavigation(context).ShouldBeFalse();
+        cut.FindAll("[data-testid='fc-form-abandonment-warning']").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Dirty_below_threshold_navigation_does_not_prevent_or_show_warning() {
+        TestModel model = new() { Name = "" };
+        EditContext editContext = new(model);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+
+        editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
+        _time.Advance(TimeSpan.FromSeconds(29));
+
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context = BuildLocationChangingContext("/leave");
+        await InvokeNavigationChangingAsync(cut, guard, context);
+
+        DidPreventNavigation(context).ShouldBeFalse();
+        cut.FindAll("[data-testid='fc-form-abandonment-warning']").ShouldBeEmpty();
     }
 
     [Fact]
@@ -101,6 +158,29 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
     }
 
     [Fact]
+    public async Task Escape_clears_warning_without_navigating() {
+        TestModel model = new() { Name = "" };
+        EditContext editContext = new(model);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+
+        SetField(guard, "_showingWarning", true);
+        SetField(guard, "_pendingTarget", "/somewhere-else");
+
+        await cut.InvokeAsync(() => {
+            Task escapeTask = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
+                "HandleBarKeyDownAsync",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(guard, [new KeyboardEventArgs { Key = "Escape" }])!;
+            return escapeTask;
+        });
+
+        GetField<bool>(guard, "_showingWarning").ShouldBeFalse();
+        GetField<string?>(guard, "_pendingTarget").ShouldBeNull();
+        TestNavigationManager nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
+        nav.LastNavigateCall.ShouldBeNull("Escape must behave like Stay and preserve the form.");
+    }
+
+    [Fact]
     public async Task Leave_click_navigates_and_flag_survives_until_nav_event_is_observed() {
         // Review 2026-04-17 P4 — `_isLeaving` is now consumed on the next HandleNavigationChangingAsync
         // entry (not cleared in a finally that races with Blazor Server's async nav pipeline). The flag
@@ -126,15 +206,16 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         GetIsLeavingFlag(guard).ShouldBeTrue("Flag stays TRUE until the resulting nav event consumes it.");
 
         // Simulate the LocationChanging callback that Blazor's NavigationLock would fire next.
-        await cut.InvokeAsync(() => {
-            Task handle = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
-                "HandleNavigationChangingAsync",
-                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
-                .Invoke(guard, [BuildLocationChangingContext("/target")])!;
-            return handle;
-        });
+        await InvokeNavigationChangingAsync(cut, guard, BuildLocationChangingContext("/target"));
 
         GetIsLeavingFlag(guard).ShouldBeFalse("After the nav event consumes the flag, it is cleared so later unrelated navs are not bypassed.");
+
+        editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
+        _time.Advance(TimeSpan.FromSeconds(31));
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext laterContext = BuildLocationChangingContext("/later");
+        await InvokeNavigationChangingAsync(cut, guard, laterContext);
+
+        DidPreventNavigation(laterContext).ShouldBeTrue("The leave bypass is one-shot and must not leak to unrelated later navigation.");
     }
 
     // Exception-path clearing of `_isLeaving` (D24 / Red Team Attack-3) is verified at the code level:
@@ -142,6 +223,46 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
     // A bUnit integration test for this invariant is non-trivial because `MethodBase.Invoke` + bUnit's
     // InvokeAsync + xUnit async exception surfacing interact in ways that obscure the assertion; the
     // invariant is small and inspectable in the source. Deferred to Playwright E2E (Task 8.11).
+
+    [Fact]
+    public async Task Submitting_lifecycle_suppresses_guard_but_syncing_still_protects_dirty_forms() {
+        TestModel model = new() { Name = "" };
+        EditContext editContext = new(model);
+        ILifecycleStateService svc = Substitute.For<ILifecycleStateService>();
+        _ = svc.GetState(DefaultCorrelationId).Returns(CommandLifecycleState.Submitting, CommandLifecycleState.Syncing);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext, svc);
+
+        editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
+        _time.Advance(TimeSpan.FromSeconds(31));
+
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext submittingContext = BuildLocationChangingContext("/submitting");
+        await InvokeNavigationChangingAsync(cut, guard, submittingContext);
+
+        DidPreventNavigation(submittingContext).ShouldBeFalse("Submitting is the only lifecycle state suppressed by the guard.");
+
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext syncingContext = BuildLocationChangingContext("/syncing");
+        await InvokeNavigationChangingAsync(cut, guard, syncingContext);
+
+        DidPreventNavigation(syncingContext).ShouldBeTrue("Syncing must still protect dirty forms.");
+        cut.WaitForAssertion(() => cut.Find("[data-testid='fc-form-abandonment-warning']"));
+    }
+
+    [Fact]
+    public async Task Wrapper_initiated_navigation_yields_without_prompting() {
+        TestModel model = new() { Name = "" };
+        EditContext editContext = new(model);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+
+        editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
+        _time.Advance(TimeSpan.FromSeconds(31));
+        guard.WrapperInitiatedNavigation = true;
+
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context = BuildLocationChangingContext("/wrapper");
+        await InvokeNavigationChangingAsync(cut, guard, context);
+
+        DidPreventNavigation(context).ShouldBeFalse();
+        cut.FindAll("[data-testid='fc-form-abandonment-warning']").ShouldBeEmpty();
+    }
 
     [Fact]
     public void Guard_without_EditContext_is_inert_no_anchor_captured() {
@@ -166,9 +287,13 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
     private FcFormAbandonmentGuard RenderGuard(EditContext? editContext)
         => RenderGuardWithCut(editContext).Guard;
 
-    private (FcFormAbandonmentGuard Guard, IRenderedComponent<FcFormAbandonmentGuard> Cut) RenderGuardWithCut(EditContext? editContext) {
-        ILifecycleStateService svc = Substitute.For<ILifecycleStateService>();
-        _ = svc.GetState(Arg.Any<string>()).Returns(CommandLifecycleState.Idle);
+    private (FcFormAbandonmentGuard Guard, IRenderedComponent<FcFormAbandonmentGuard> Cut) RenderGuardWithCut(
+        EditContext? editContext,
+        ILifecycleStateService? lifecycleService = null) {
+        ILifecycleStateService svc = lifecycleService ?? Substitute.For<ILifecycleStateService>();
+        if (lifecycleService is null) {
+            _ = svc.GetState(Arg.Any<string>()).Returns(CommandLifecycleState.Idle);
+        }
         Services.RemoveAll<ILifecycleStateService>();
         _ = Services.AddSingleton(svc);
 
@@ -196,6 +321,18 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
             .SetValue(target, value);
 
+    private static Task InvokeNavigationChangingAsync(
+        IRenderedComponent<FcFormAbandonmentGuard> cut,
+        FcFormAbandonmentGuard guard,
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext context)
+        => cut.InvokeAsync(() => {
+            Task handle = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
+                "HandleNavigationChangingAsync",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
+                .Invoke(guard, [context])!;
+            return handle;
+        });
+
     private static Microsoft.AspNetCore.Components.Routing.LocationChangingContext BuildLocationChangingContext(string target) {
         // Construct via reflection — LocationChangingContext has an internal constructor in .NET 10.
         Type type = typeof(Microsoft.AspNetCore.Components.Routing.LocationChangingContext);
@@ -221,6 +358,16 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
             }
         }
         return (Microsoft.AspNetCore.Components.Routing.LocationChangingContext)ctor.Invoke(args);
+    }
+
+    private static bool DidPreventNavigation(Microsoft.AspNetCore.Components.Routing.LocationChangingContext context) {
+        // .NET 10 exposes PreventNavigation() but keeps the prevented flag non-public; keep this
+        // reflection seam local to tests so production code stays on the public NavigationLock API.
+        System.Reflection.FieldInfo? field = typeof(Microsoft.AspNetCore.Components.Routing.LocationChangingContext)
+            .GetFields(System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .SingleOrDefault(f => f.FieldType == typeof(bool) && f.Name.Contains("prevent", StringComparison.OrdinalIgnoreCase));
+        field.ShouldNotBeNull("LocationChangingContext should track whether PreventNavigation was called.");
+        return (bool)field.GetValue(context)!;
     }
 
     private sealed class TestNavigationManager : NavigationManager {
