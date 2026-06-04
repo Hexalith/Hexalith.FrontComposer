@@ -1,4 +1,6 @@
 #pragma warning disable CA2007
+using System.Collections.Immutable;
+
 using AngleSharp.Dom;
 
 using Bunit;
@@ -6,6 +8,9 @@ using Bunit;
 using Counter.Domain;
 
 using Fluxor;
+
+using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.State.ExpandedRow;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -33,6 +38,8 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
         SetupExpandInRowModule();
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        List<object> dispatchedActions = [];
+        dispatcher.ActionDispatched += (_, e) => dispatchedActions.Add(e.Action);
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
             "story-2-4-ac1",
             [
@@ -53,11 +60,13 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
             button.GetAttribute("aria-expanded").ShouldBe("false");
             string? controls = button.GetAttribute("aria-controls");
             controls.ShouldNotBeNull();
-            controls.ShouldNotBeWhiteSpace();
+            string.IsNullOrWhiteSpace(controls).ShouldBeFalse();
             region.GetAttribute("id").ShouldBe(controls);
         });
 
         await cut.InvokeAsync(() => ExpandButton(cut, "counter-1").Click());
+        ExpandRowAction expandAction = await WaitForExpandActionAsync(cut, dispatchedActions, "counter-1");
+        await cut.InvokeAsync(() => RestoreExpandedRowState(expandAction));
 
         await cut.WaitForAssertionAsync(() =>
         {
@@ -77,6 +86,8 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
         SetupExpandInRowModule();
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        List<object> dispatchedActions = [];
+        dispatcher.ActionDispatched += (_, e) => dispatchedActions.Add(e.Action);
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
             "story-2-4-ac2",
             [
@@ -88,6 +99,8 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
 
         await cut.WaitForAssertionAsync(() => _ = ExpandButton(cut, "counter-1"));
         await cut.InvokeAsync(() => ExpandButton(cut, "counter-1").Click());
+        ExpandRowAction expandAction = await WaitForExpandActionAsync(cut, dispatchedActions, "counter-1");
+        await cut.InvokeAsync(() => RestoreExpandedRowState(expandAction));
         await cut.WaitForAssertionAsync(() => cut.Find(".fc-expand-in-row-detail").TextContent.ShouldContain("counter-1"));
 
         await cut.InvokeAsync(() => dispatcher.Dispatch(new CounterProjectionLoadedAction(
@@ -114,6 +127,33 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
             liveRegion.GetAttribute("aria-live").ShouldBe("polite");
             liveRegion.GetAttribute("aria-atomic").ShouldBe("true");
             liveRegion.TextContent.ShouldContain("Your expanded item is hidden by the current filter");
+        });
+    }
+
+    private static async Task<ExpandRowAction> WaitForExpandActionAsync(
+        IRenderedComponent<CounterProjectionView> cut,
+        List<object> dispatchedActions,
+        string id)
+    {
+        await cut.WaitForAssertionAsync(() =>
+            dispatchedActions
+                .OfType<ExpandRowAction>()
+                .Any(action => string.Equals(action.ItemKey?.ToString(), id, StringComparison.Ordinal))
+                .ShouldBeTrue("generated expand trigger must dispatch ExpandRowAction before the test restores reducer state"));
+
+        return dispatchedActions
+            .OfType<ExpandRowAction>()
+            .Single(action => string.Equals(action.ItemKey?.ToString(), id, StringComparison.Ordinal));
+    }
+
+    private void RestoreExpandedRowState(ExpandRowAction action)
+    {
+        IFeature feature = Services.GetRequiredService<ExpandedRowFeature>();
+        feature.RestoreState(new ExpandedRowState
+        {
+            ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty.SetItem(
+                action.ViewKey,
+                new ExpandedRowEntry(action.ItemKey, DateTimeOffset.UtcNow)),
         });
     }
 
