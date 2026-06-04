@@ -207,6 +207,27 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void Emit_PolicyProtectedCommand_RechecksAuthorizationAfterBeforeSubmitBeforeDispatch() {
+        CommandFormModel form = BuildForm(
+            [new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)],
+            authorizationPolicyName: "OrderApprover");
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        int firstAuthorizationIndex = source.IndexOf("var authorization = await CommandAuthorizationEvaluator.EvaluateAsync", StringComparison.Ordinal);
+        int beforeSubmitIndex = source.IndexOf("await BeforeSubmit().ConfigureAwait(false);", StringComparison.Ordinal);
+        int secondAuthorizationIndex = source.IndexOf("var authorizationPostBeforeSubmit = await CommandAuthorizationEvaluator.EvaluateAsync", StringComparison.Ordinal);
+        int correlationIndex = source.IndexOf("var correlationId = UlidFactory.NewUlid();", StringComparison.Ordinal);
+        int dispatchIndex = source.IndexOf("CommandService.DispatchAsync", StringComparison.Ordinal);
+
+        firstAuthorizationIndex.ShouldBeGreaterThan(0);
+        beforeSubmitIndex.ShouldBeGreaterThan(firstAuthorizationIndex);
+        secondAuthorizationIndex.ShouldBeGreaterThan(beforeSubmitIndex);
+        correlationIndex.ShouldBeGreaterThan(secondAuthorizationIndex);
+        dispatchIndex.ShouldBeGreaterThan(correlationIndex);
+    }
+
+    [Fact]
     public void Emit_RegistersPendingCommandOnlyAfterAcceptedDispatchResult() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),

@@ -36,6 +36,8 @@
 
 generated: 2026-06-03
 last_updated: 2026-06-04
+# epic-4 moved backlog -> in-progress on 2026-06-04 (create-story; first story of Safe & Concurrent Command Execution. Story 4.1 is destructive-command confirmation and should reuse/pin existing [Destructive] parser, HFC1020/HFC1021 diagnostics, FcDestructiveConfirmationDialog, and generated renderer BeforeSubmit gating rather than rebuilding lifecycle, retry, abandonment, or FC-CNC policy.)
+# 4-1 moved backlog -> ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of destructive command confirmation. Brownfield reality: DestructiveAttribute, CommandParser destructive metadata/HFC1020/HFC1021, FcDestructiveConfirmationDialog, and CommandRendererEmitter DestructiveBeforeSubmitAsync already exist. Dev must add missing generated renderer/form dispatch-gating pins, verify cancel/confirm/double-click/auth composition, and keep Epic 4.2 abandonment, 4.3 FC-CNC, 4.5 retry/degraded, EventStore polling, and FC-CMD identity out of scope.)
 # epic-3 moved backlog -> in-progress on 2026-06-04 (create-story; first story of Command Authoring & Lifecycle. Story 3.1 is confirm-and-pin of existing [Command] form generation, with explicit artifact-count reconciliation and generated correlationId ULID guardrail.)
 # 3-1 moved backlog -> ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of generated command form + registration. Brownfield reality: generator already emits seven non-page command artifacts plus optional FullPage CommandPage; dev must pin inventory, diagnostics HFC1006/HFC1009/HFC1002, placeholder rendering, registry discovery, lifecycle/pending behavior, and replace direct generated Guid.NewGuid correlation allocation with IUlidFactory.NewUlid without deciding broader Story 3.3 FC-CMD identity contract.)
 # 3-2 moved backlog -> ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of command density rule. Live pipeline already has CommandModel.ComputeDensity, non-derivable-only form transform, renderer density mapping, and conditional FullPage CommandPage. Dev must pin exact 0/1/2/4/5 thresholds, derivable-field exclusion including [DerivedFrom], HFC1007/HFC1011 count diagnostics, and preserve Story 3.1 command artifact/lifecycle/ULID behavior without reopening FC-CMD identity, FC-TBL, or new-item producer work.)
@@ -150,8 +152,8 @@ development_status:
   epic-3-retrospective: done
 
   # Epic 4: Safe & Concurrent Command Execution
-  epic-4: backlog
-  4-1-destructive-command-confirmation: backlog
+  epic-4: in-progress
+  4-1-destructive-command-confirmation: done
   4-2-unsaved-form-abandonment-guard: backlog
   4-3-one-at-a-time-execution-policy-fc-cnc: backlog
   4-4-policy-gated-command-authorization: backlog

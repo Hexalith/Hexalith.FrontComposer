@@ -443,13 +443,12 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("        try");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            await RefreshDerivedValuesBeforeSubmitAsync();");
-            _ = sb.AppendLine("            var dialogRef = await DialogService.ShowDialogAsync<FcDestructiveConfirmationDialog>(options =>");
+            _ = sb.AppendLine("            var result = await DialogService.ShowDialogAsync<FcDestructiveConfirmationDialog>(options =>");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.Title), \"" + title + "\");");
             _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.Body), \"" + body + "\");");
             _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.DestructiveLabel), \"" + EscapeString(model.DisplayLabel) + "\");");
             _ = sb.AppendLine("            });");
-            _ = sb.AppendLine("            var result = await dialogRef.Result;");
             _ = sb.AppendLine("            if (result.Cancelled)");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                throw new OperationCanceledException(\"User cancelled destructive confirmation.\");");

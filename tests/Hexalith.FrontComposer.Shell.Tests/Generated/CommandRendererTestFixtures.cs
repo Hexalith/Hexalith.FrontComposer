@@ -78,3 +78,12 @@ public class IconFallbackInlineCommand {
 
     public int Amount { get; set; }
 }
+
+[Command]
+[BoundedContext("TestCommands")]
+[Destructive(ConfirmationTitle = "Delete this widget?", ConfirmationBody = "The widget cannot be restored.")]
+public class DeleteWidgetCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public string WidgetId { get; set; } = string.Empty;
+}

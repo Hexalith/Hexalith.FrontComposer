@@ -23,7 +23,10 @@ public class CommandRendererEmitterTests {
         string typeName = "DemoCommand",
         string @namespace = "Demo.Domain",
         string boundedContext = "Demo",
-        string? authorizationPolicyName = null) {
+        string? authorizationPolicyName = null,
+        bool isDestructive = false,
+        string? destructiveConfirmTitle = null,
+        string? destructiveConfirmBody = null) {
         ImmutableArray<string> nonDerivable = Enumerable
             .Range(0, nonDerivableCount)
             .Select(i => "Field" + i)
@@ -51,6 +54,9 @@ public class CommandRendererEmitterTests {
             actionsWrapperName: typeName + "Actions",
             stateName: typeName + "LifecycleState",
             subscriberTypeName: typeName + "LastUsedSubscriber",
+            isDestructive: isDestructive,
+            destructiveConfirmTitle: destructiveConfirmTitle,
+            destructiveConfirmBody: destructiveConfirmBody,
             authorizationPolicyName: authorizationPolicyName);
     }
 
@@ -150,6 +156,67 @@ public class CommandRendererEmitterTests {
         // The CompactInline + FullPage placeholder branches both check the gate via if-statement.
         int placeholderBranches = System.Text.RegularExpressions.Regex.Matches(source, @"if \(AuthorizationTriggerDisabled\(\)\)").Count;
         placeholderBranches.ShouldBe(2, "CompactInline + FullPage placeholder branches");
+    }
+
+    [Fact]
+    public void Renderer_DestructiveCommand_EmitsDialogGateAndBeforeSubmitWiring() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string source = CommandRendererEmitter.Emit(BuildModel(
+            1,
+            typeName: "DeleteWidgetCommand",
+            isDestructive: true,
+            destructiveConfirmTitle: "Delete this widget?",
+            destructiveConfirmBody: "The widget will be permanently removed."));
+
+        Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
+        tree.GetDiagnostics(ct).ShouldBeEmpty("destructive renderer should parse cleanly");
+
+        source.ShouldContain("[Inject] private IDialogService DialogService { get; set; } = default!;");
+        source.ShouldContain("private bool _dialogOpen;");
+        source.ShouldContain("private async Task DestructiveBeforeSubmitAsync()");
+        source.ShouldContain("if (_dialogOpen) throw new OperationCanceledException(\"Destructive dialog already open.\");");
+        source.ShouldContain("var result = await DialogService.ShowDialogAsync<FcDestructiveConfirmationDialog>");
+        source.ShouldNotContain("dialogRef.Result");
+        source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Title), \"Delete this widget?\"");
+        source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Body), \"The widget will be permanently removed.\"");
+        source.ShouldContain("nameof(FcDestructiveConfirmationDialog.DestructiveLabel), \"Demo\"");
+        source.ShouldContain("\"BeforeSubmit\", (Func<Task>)DestructiveBeforeSubmitAsync");
+    }
+
+    [Fact]
+    public void Renderer_DestructiveCommand_UsesFallbackConfirmationCopyWhenUnset() {
+        string source = CommandRendererEmitter.Emit(BuildModel(
+            2,
+            typeName: "DeleteWidgetCommand",
+            isDestructive: true));
+
+        source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Title), \"Demo?\"");
+        source.ShouldContain("nameof(FcDestructiveConfirmationDialog.Body), \"This action cannot be undone.\"");
+        source.ShouldContain("nameof(FcDestructiveConfirmationDialog.DestructiveLabel), \"Demo\"");
+    }
+
+    [Fact]
+    public void Renderer_NonDestructiveCommand_DoesNotInjectDialogServiceOrDialogGate() {
+        string source = CommandRendererEmitter.Emit(BuildModel(1));
+
+        source.ShouldNotContain("IDialogService DialogService");
+        source.ShouldNotContain("FcDestructiveConfirmationDialog");
+        source.ShouldNotContain("_dialogOpen");
+        source.ShouldContain("\"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync");
+    }
+
+    [Fact]
+    public void Renderer_DestructiveCommand_DoesNotDispatchOrAllocateCommandIdentity() {
+        string source = CommandRendererEmitter.Emit(BuildModel(
+            1,
+            typeName: "DeleteWidgetCommand",
+            isDestructive: true));
+
+        source.ShouldNotContain("CommandService.DispatchAsync");
+        source.ShouldNotContain(".SubmittedAction");
+        source.ShouldNotContain("Guid.NewGuid");
+        source.ShouldNotContain("MessageId =");
+        source.ShouldNotContain("CorrelationId =");
     }
 
     // === Task 11.3 — determinism ===

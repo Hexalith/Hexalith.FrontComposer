@@ -144,4 +144,33 @@ public class WipeCacheCommand
         _ = result.Model.ShouldNotBeNull();
         result.Diagnostics.ShouldContain(d => d.Id == "HFC1020");
     }
+
+    [Theory]
+    [InlineData("Delete")]
+    [InlineData("Remove")]
+    [InlineData("Purge")]
+    [InlineData("Wipe")]
+    [InlineData("Erase")]
+    [InlineData("Drop")]
+    [InlineData("Truncate")]
+    public void Parse_CurrentDestructiveVerbPattern_EmitsHFC1020Info(string verb) {
+        string source = $$"""
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+public class {{verb}}WidgetCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+    public string WidgetId { get; set; } = string.Empty;
+}
+""";
+
+        CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain." + verb + "WidgetCommand");
+
+        _ = result.Model.ShouldNotBeNull();
+        DiagnosticInfo diagnostic = result.Diagnostics.Single(d => d.Id == "HFC1020");
+        diagnostic.Severity.ShouldBe("Info");
+    }
 }
