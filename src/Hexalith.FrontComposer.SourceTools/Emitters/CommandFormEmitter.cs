@@ -786,12 +786,12 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                __b.OpenComponent<FluentMessageBar>(cseq++);");
         _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"Intent\", MessageBarIntent.Warning);");
-        _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"Title\", _serverWarning.Title ?? _serverWarning.Kind.ToString());");
+        _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"Title\", _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer[\"RetryableDispatchFailedTitle\"].Value : (_serverWarning.Title ?? _serverWarning.Kind.ToString()));");
         _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"AllowDismiss\", true);");
         _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__msg =>");
         _ = sb.AppendLine("                {");
         _ = sb.AppendLine("                    int mseq = 0;");
-        _ = sb.AppendLine("                    string body = _serverWarning.Detail ?? _serverWarning.EntityLabel ?? \"Please review the warning and try again.\";");
+        _ = sb.AppendLine("                    string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer[\"RetryableDispatchFailedFallback\"].Value : (_serverWarning.Detail ?? _serverWarning.EntityLabel ?? \"Please review the warning and try again.\");");
         _ = sb.AppendLine("                    __msg.AddContent(mseq++, body);");
         _ = sb.AppendLine("                    if (_serverWarning.RetryAfter is not null)");
         _ = sb.AppendLine("                    {");

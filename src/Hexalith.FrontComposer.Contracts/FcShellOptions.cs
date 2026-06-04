@@ -247,6 +247,20 @@ public sealed class FcShellOptions {
     public int MaxPendingCommandPollingDurationMs { get; set; } = 120_000;
 
     /// <summary>
+    /// Number of retry attempts after the initial EventStore command dispatch attempt for retryable
+    /// pre-accept transport faults. Default: 1 retry.
+    /// </summary>
+    [Range(0, 3, ErrorMessage = "CommandDispatchRetryAttempts must be between 0 and 3.")]
+    public int CommandDispatchRetryAttempts { get; set; } = 1;
+
+    /// <summary>
+    /// Deterministic delay in milliseconds between retryable pre-accept EventStore command dispatch
+    /// attempts. Default: 250 ms.
+    /// </summary>
+    [Range(1, 60_000, ErrorMessage = "CommandDispatchRetryDelayMs must be between 1 and 60000.")]
+    public int CommandDispatchRetryDelayMs { get; set; } = 250;
+
+    /// <summary>
     /// Maximum number of visible projection lanes the fallback poller may refresh per tick.
     /// Story 5-3 D8 / L14 bounded runtime state.
     /// </summary>

@@ -26,6 +26,8 @@ public sealed class FcShellOptionsVirtualizationTests {
         options.MaxCachedPages.ShouldBe(200);
         options.PendingCommandPollingIntervalMs.ShouldBe(1_000);
         options.MaxPendingCommandPollingDurationMs.ShouldBe(120_000);
+        options.CommandDispatchRetryAttempts.ShouldBe(1);
+        options.CommandDispatchRetryDelayMs.ShouldBe(250);
     }
 
     [Theory]
@@ -41,6 +43,10 @@ public sealed class FcShellOptionsVirtualizationTests {
     [InlineData(nameof(FcShellOptions.PendingCommandPollingIntervalMs), 300_001)]
     [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 999)]
     [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 3_600_001)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryAttempts), -1)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryAttempts), 4)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryDelayMs), 0)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryDelayMs), 60_001)]
     public void Range_Annotations_RejectOutOfBoundValues(string propertyName, int outOfRangeValue) {
         FcShellOptions options = new();
         typeof(FcShellOptions).GetProperty(propertyName)!.SetValue(options, outOfRangeValue);
@@ -65,6 +71,10 @@ public sealed class FcShellOptionsVirtualizationTests {
     [InlineData(nameof(FcShellOptions.PendingCommandPollingIntervalMs), 300_000)]
     [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 1_000)]
     [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 3_600_000)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryAttempts), 0)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryAttempts), 3)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryDelayMs), 1)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryDelayMs), 60_000)]
     public void Range_Annotations_AcceptBoundaryValues(string propertyName, int inRangeValue) {
         FcShellOptions options = new();
         typeof(FcShellOptions).GetProperty(propertyName)!.SetValue(options, inRangeValue);

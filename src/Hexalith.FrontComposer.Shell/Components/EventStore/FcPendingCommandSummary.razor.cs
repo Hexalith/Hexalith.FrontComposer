@@ -31,26 +31,28 @@ public partial class FcPendingCommandSummary : ComponentBase {
     /// <summary>P19 — guard against zero/negative <see cref="MaxDetails"/> from adopter callers.</summary>
     protected int EffectiveMaxDetails => MaxDetails <= 0 ? 5 : MaxDetails;
 
-    /// <summary>P2-P1 — most-recent terminal first; reconnect summaries focus on what just resolved.</summary>
-    protected IReadOnlyList<PendingCommandEntry> TerminalEntries =>
+    /// <summary>P2-P1 / Story 4.5 — active pending first, then most-recent terminal updates.</summary>
+    protected IReadOnlyList<PendingCommandEntry> SummaryEntries =>
         [.. EffectiveEntries
-            .Where(static entry => entry.Status != PendingCommandStatus.Pending)
-            .OrderByDescending(static entry => entry.TerminalAt ?? entry.SubmittedAt)];
+            .OrderBy(static entry => SummaryPriority(entry.Status))
+            .ThenByDescending(static entry => entry.TerminalAt ?? entry.SubmittedAt)];
 
     protected IReadOnlyList<PendingCommandEntry> VisibleEntries =>
-        [.. TerminalEntries.Take(EffectiveMaxDetails)];
+        [.. SummaryEntries.Take(EffectiveMaxDetails)];
 
-    protected int OverflowCount => Math.Max(0, TerminalEntries.Count - VisibleEntries.Count);
+    protected int OverflowCount => Math.Max(0, SummaryEntries.Count - VisibleEntries.Count);
 
     protected string SummaryText {
         get {
-            int confirmed = TerminalEntries.Count(static entry =>
+            int pending = SummaryEntries.Count(static entry => entry.Status == PendingCommandStatus.Pending);
+            int confirmed = SummaryEntries.Count(static entry =>
                 entry.Status is PendingCommandStatus.Confirmed or PendingCommandStatus.IdempotentConfirmed);
-            int rejected = TerminalEntries.Count(static entry => entry.Status == PendingCommandStatus.Rejected);
-            int unresolved = TerminalEntries.Count(static entry => entry.Status == PendingCommandStatus.NeedsReview);
+            int rejected = SummaryEntries.Count(static entry => entry.Status == PendingCommandStatus.Rejected);
+            int unresolved = SummaryEntries.Count(static entry => entry.Status == PendingCommandStatus.NeedsReview);
             return string.Format(
                 CultureInfo.CurrentUICulture,
                 Localizer["PendingCommandSummaryCountsTemplate"].Value,
+                pending,
                 confirmed,
                 rejected,
                 unresolved);
@@ -66,6 +68,7 @@ public partial class FcPendingCommandSummary : ComponentBase {
         ArgumentNullException.ThrowIfNull(entry);
 
         string template = entry.Status switch {
+            PendingCommandStatus.Pending => Localizer["PendingCommandSummaryPendingTemplate"].Value,
             PendingCommandStatus.Confirmed => Localizer["PendingCommandSummaryConfirmedTemplate"].Value,
             PendingCommandStatus.IdempotentConfirmed => Localizer["PendingCommandSummaryAlreadyAppliedTemplate"].Value,
             PendingCommandStatus.NeedsReview => Localizer["PendingCommandSummaryNeedsReviewTemplate"].Value,
@@ -74,6 +77,16 @@ public partial class FcPendingCommandSummary : ComponentBase {
 
         return string.Format(CultureInfo.CurrentUICulture, template, DisplayName(entry));
     }
+
+    private static int SummaryPriority(PendingCommandStatus status) =>
+        status switch {
+            PendingCommandStatus.Pending => 0,
+            PendingCommandStatus.Rejected => 1,
+            PendingCommandStatus.NeedsReview => 2,
+            PendingCommandStatus.Confirmed => 3,
+            PendingCommandStatus.IdempotentConfirmed => 4,
+            _ => 5,
+        };
 
     /// <summary>
     /// DN6 — three-clause rejection format <c>[What failed]: [Why]. [What happened to the data].</c>

@@ -250,6 +250,25 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void Emit_RetryableDispatchWarningResetsIdleWithoutPendingRegistrationOrAcknowledgementInCatch() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        int warningCatchIndex = source.IndexOf("catch (CommandWarningException ex)", StringComparison.Ordinal);
+        int resetIndex = source.IndexOf("ResetToIdleAction(correlationId)", warningCatchIndex, StringComparison.Ordinal);
+        int registerIndex = source.IndexOf("PendingCommandState.Register", warningCatchIndex, StringComparison.Ordinal);
+        int acknowledgedIndex = source.IndexOf("AcknowledgedAction", warningCatchIndex, StringComparison.Ordinal);
+
+        source.ShouldContain("CommandWarningKind.RetryableDispatchFailed");
+        warningCatchIndex.ShouldBeGreaterThan(0);
+        resetIndex.ShouldBeGreaterThan(warningCatchIndex);
+        registerIndex.ShouldBe(-1);
+        acknowledgedIndex.ShouldBe(-1);
+    }
+
+    [Fact]
     public void Emit_InjectsCommandExecutionAdmissionGate() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),

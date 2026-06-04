@@ -545,8 +545,12 @@
     <comment>Story 5-5 P12 — distinct accessible label for the role=status indicator.</comment>
   </data>
   <data name="PendingCommandSummaryCountsTemplate" xml:space="preserve">
-    <value>{0} confirmed, {1} rejected, {2} unresolved</value>
-    <comment>Story 5-5 AC8 — bounded count summary header. Numeric placeholders only.</comment>
+    <value>{0} pending, {1} confirmed, {2} rejected, {3} needs review</value>
+    <comment>Story 4.5 AC5 — bounded count summary header. Numeric placeholders only.</comment>
+  </data>
+  <data name="PendingCommandSummaryPendingTemplate" xml:space="preserve">
+    <value>{0} is still pending. EventStore accepted it and FrontComposer is checking status.</value>
+    <comment>Story 4.5 AC5 — active pending entry; {0} = command type display name.</comment>
   </data>
   <data name="PendingCommandSummaryConfirmedTemplate" xml:space="preserve">
     <value>{0}: confirmed.</value>
@@ -573,8 +577,16 @@
     <comment>Story 5-5 DN6 — default localizable third clause when the server omits a data-impact statement.</comment>
   </data>
   <data name="PendingCommandSummaryOverflowTemplate" xml:space="preserve">
-    <value>{0} additional resolved commands</value>
-    <comment>Story 5-5 — overflow line when bounded MaxDetails truncates the visible list.</comment>
+    <value>{0} additional command updates</value>
+    <comment>Story 4.5 — overflow line when bounded MaxDetails truncates the visible list.</comment>
+  </data>
+  <data name="RetryableDispatchFailedTitle" xml:space="preserve">
+    <value>Command was not accepted</value>
+    <comment>Story 4.5 AC3 — generated command form warning title when pre-accept retry budget is exhausted.</comment>
+  </data>
+  <data name="RetryableDispatchFailedFallback" xml:space="preserve">
+    <value>EventStore did not accept the command after retrying a transient dispatch failure. Review the current data and submit again when ready.</value>
+    <comment>Story 4.5 AC3 — generated command form fallback when pre-accept retry budget is exhausted.</comment>
   </data>
   <data name="DevModeOverlayShortcutDescription" xml:space="preserve">
     <value>Toggle developer overlay</value>

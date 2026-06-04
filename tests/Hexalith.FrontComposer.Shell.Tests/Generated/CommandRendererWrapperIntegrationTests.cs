@@ -130,6 +130,35 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
     }
 
     [Fact]
+    public async Task GeneratedForm_RetryExhaustion_RendersWarningPreservesInputAndDoesNotRegisterPending() {
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new RetryExhaustedCommandService()));
+        await InitializeStoreAsync();
+        List<CommandFeedbackWarning> warnings = [];
+        using IDisposable subscription = Services.GetRequiredService<ICommandFeedbackPublisher>().Subscribe(warnings.Add);
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        IState<TwoFieldCompactCommandLifecycleState> state = Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>(parameters => parameters
+            .Add(p => p.InitialValue, new TwoFieldCompactCommand {
+                Name = "preserved name",
+                Amount = 7,
+            }));
+
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => {
+            state.Value.State.ShouldBe(CommandLifecycleState.Idle);
+            pending.Snapshot().ShouldBeEmpty();
+            warnings.ShouldContain(w => w.Kind == CommandWarningKind.RetryableDispatchFailed);
+            cut.Markup.ShouldContain("Command was not accepted");
+            cut.Markup.ShouldContain("EventStore did not accept the command", Case.Insensitive);
+            cut.Markup.ShouldContain("Retry after 1 seconds.");
+            cut.Markup.ShouldContain("preserved name");
+            cut.Markup.ShouldContain("value=\"7\"", Case.Insensitive);
+        });
+    }
+
+    [Fact]
     public async Task GeneratedForms_RapidSecondSubmit_BlocksBeforeDispatchLifecycleAndPendingMutation() {
         BlockingCommandService service = new();
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
@@ -335,6 +364,28 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
                 "Order locked",
                 "Please retry.",
                 new CommandRejectionDetails("ORDER_LOCKED", "Concurrency", "Reload before retrying", "FC-CMD-409"));
+    }
+
+    private sealed class RetryExhaustedCommandService : ICommandServiceWithLifecycle {
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class
+            => throw new CommandWarningException(
+                CommandWarningKind.RetryableDispatchFailed,
+                new ProblemDetailsPayload(
+                    "Command was not accepted",
+                    "EventStore did not accept the command after retrying a transient dispatch failure. Review the current data and submit again when ready.",
+                    null,
+                    null,
+                    new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
+                    Array.Empty<string>()),
+                TimeSpan.FromSeconds(1));
     }
 
     private sealed class RecordingCommandService : ICommandServiceWithLifecycle {

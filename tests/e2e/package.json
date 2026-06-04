@@ -16,6 +16,7 @@
     "test:lifecycle": "playwright test specs/lifecycle.spec.ts",
     "test:fc-auth": "playwright test specs/policy-gated-command-authorization.spec.ts --project=chromium",
     "test:fc-cnc": "playwright test specs/one-at-a-time-execution-policy.spec.ts --project=chromium",
+    "test:fc-retry": "playwright test specs/retry-and-degraded-state-handling.spec.ts --project=chromium",
     "test:fc-tbl": "playwright test specs/fc-tbl-contract.spec.ts --project=chromium",
     "test:abandonment": "playwright test specs/form-abandonment-guard.spec.ts --project=chromium",
     "test:a11y": "playwright test specs/specimen-accessibility.spec.ts --project=chromium",

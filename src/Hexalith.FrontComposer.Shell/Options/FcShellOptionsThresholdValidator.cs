@@ -80,6 +80,11 @@ public sealed class FcShellOptionsThresholdValidator : IValidateOptions<FcShellO
             (failures ??= []).Add($"FcShellOptions.MaxPendingCommandPollingDurationMs ({options.MaxPendingCommandPollingDurationMs}) must be greater than TimeoutActionThresholdMs ({options.TimeoutActionThresholdMs}) so degraded UI can surface before polling expiry resolves the command to NeedsReview.");
         }
 
+        if (options.CommandDispatchRetryAttempts > 0
+            && options.CommandDispatchRetryDelayMs > options.MaxPendingCommandPollingDurationMs) {
+            (failures ??= []).Add($"FcShellOptions.CommandDispatchRetryDelayMs ({options.CommandDispatchRetryDelayMs}) must not exceed MaxPendingCommandPollingDurationMs ({options.MaxPendingCommandPollingDurationMs}) when command dispatch retry is enabled.");
+        }
+
         return failures is null ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 }

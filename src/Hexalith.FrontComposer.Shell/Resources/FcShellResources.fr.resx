@@ -455,7 +455,10 @@
     <value>Nouvel élément ajouté hors des filtres actuels</value>
   </data>
   <data name="PendingCommandSummaryCountsTemplate" xml:space="preserve">
-    <value>{0} confirmées, {1} rejetées, {2} non résolues</value>
+    <value>{0} en attente, {1} confirmées, {2} rejetées, {3} à vérifier</value>
+  </data>
+  <data name="PendingCommandSummaryPendingTemplate" xml:space="preserve">
+    <value>{0} est toujours en attente. EventStore l'a acceptée et FrontComposer vérifie son statut.</value>
   </data>
   <data name="PendingCommandSummaryConfirmedTemplate" xml:space="preserve">
     <value>{0}&#160;: confirmée.</value>
@@ -476,7 +479,13 @@
     <value>Aucune donnée modifiée.</value>
   </data>
   <data name="PendingCommandSummaryOverflowTemplate" xml:space="preserve">
-    <value>{0} commande(s) résolue(s) supplémentaire(s)</value>
+    <value>{0} mise(s) à jour de commande supplémentaire(s)</value>
+  </data>
+  <data name="RetryableDispatchFailedTitle" xml:space="preserve">
+    <value>La commande n'a pas été acceptée</value>
+  </data>
+  <data name="RetryableDispatchFailedFallback" xml:space="preserve">
+    <value>EventStore n'a pas accepté la commande après une nouvelle tentative liée à une erreur transitoire. Vérifiez les données actuelles, puis renvoyez la commande quand vous êtes prêt.</value>
   </data>
   <data name="DevModeOverlayShortcutDescription" xml:space="preserve">
     <value>Afficher ou masquer le calque développeur</value>

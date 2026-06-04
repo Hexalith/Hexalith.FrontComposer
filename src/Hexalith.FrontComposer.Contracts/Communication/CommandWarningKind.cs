@@ -25,6 +25,13 @@ public enum CommandWarningKind {
     RateLimited,
 
     /// <summary>
+    /// Retryable pre-accept EventStore command dispatch faults exhausted the configured retry
+    /// budget before the server returned <c>202 Accepted</c>. Render as a retryable degraded warning,
+    /// not as a terminal command lifecycle outcome.
+    /// </summary>
+    RetryableDispatchFailed,
+
+    /// <summary>
     /// Story 7-3 Pass 3 — transient pending state surfaced when the framework is in flight
     /// resolving an authorization decision (e.g., during prerender / SSR-to-interactive
     /// transition). Render as a low-emphasis informational hint (not a denial) so users

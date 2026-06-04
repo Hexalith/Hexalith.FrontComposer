@@ -1,5 +1,6 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Net;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts;
@@ -47,11 +48,12 @@ public sealed class EventStoreCommandClient(
         ArgumentNullException.ThrowIfNull(command);
 
         EventStoreOptions current = options.Value;
+        FcShellOptions currentShellOptions = shellOptions?.Value ?? new FcShellOptions();
         string messageId = ulidFactory.NewUlid();
         TenantContextSnapshot tenantContext = FrontComposerTenantContextAccessor
             .Resolve(
                 userContextAccessor,
-                shellOptions?.Value ?? new FcShellOptions(),
+                currentShellOptions,
                 logger,
                 ReadStringProperty(command, "TenantId"),
                 "command-dispatch")
@@ -67,62 +69,93 @@ public sealed class EventStoreCommandClient(
             FrontComposerTelemetry.TenantMarker(tenant));
 
         try {
-            using HttpRequestMessage request = new(HttpMethod.Post, current.CommandEndpointPath);
-            await EventStoreHttp.ApplyAuthorizationAsync(request, current, cancellationToken).ConfigureAwait(false);
-
             JsonElement payload = SerializeCommandPayload(command);
-            request.Content = EventStoreRequestContent.Create(
-                new SubmitCommandRequest(
-                    messageId,
-                    tenant,
-                    domain,
-                    aggregateId,
-                    commandTypeName,
-                    payload),
-                current.MaxRequestBytes);
-
             HttpClient client = httpClientFactory.CreateClient(HttpClientName);
-            using HttpResponseMessage response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            FrontComposerTelemetry.SetHttpStatus(activity, (int)response.StatusCode);
-            EventStoreCommandClassification classification = await classifier
-                .ClassifyCommandAsync(response, cancellationToken)
-                .ConfigureAwait(false);
+            int maxAttempts = Math.Max(1, currentShellOptions.CommandDispatchRetryAttempts + 1);
+            EventStoreCommandClassification classification;
+            HttpResponseMessage response;
+            for (int attempt = 1; ; attempt++) {
+                cancellationToken.ThrowIfCancellationRequested();
+                using HttpRequestMessage request = new(HttpMethod.Post, current.CommandEndpointPath);
+                await EventStoreHttp.ApplyAuthorizationAsync(request, current, cancellationToken).ConfigureAwait(false);
 
-            if (!classification.IsAccepted) {
-                string failureCategory = classification.Failure?.GetType().Name ?? "UnexpectedStatus";
-                FrontComposerTelemetry.SetOutcome(activity, "rejected");
-                FrontComposerTelemetry.SetFailure(activity, failureCategory);
-                // F13 — emit only LocationPresent boolean; the Location header path can carry
-                // raw aggregate IDs / route values derived from tenant/user input which AC5
-                // forbids. Operators have CommandType + MessageId + FailureCategory to find
-                // the command end-to-end.
-                // F09 — sanitize messageId at the log boundary so trace tags and log fields
-                // share the same bounded format.
-                FrontComposerLog.CommandUnexpectedStatus(
-                    logger,
-                    (int)response.StatusCode,
-                    commandTypeName,
-                    FrontComposerTelemetry.SafeIdentifierOrAbsent(messageId),
-                    failureCategory,
-                    response.Headers.Location is not null,
-                    Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
-                throw classification.Failure!;
+                request.Content = EventStoreRequestContent.Create(
+                    new SubmitCommandRequest(
+                        messageId,
+                        tenant,
+                        domain,
+                        aggregateId,
+                        commandTypeName,
+                        payload),
+                    current.MaxRequestBytes);
+
+                try {
+                    response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+                    FrontComposerTelemetry.SetHttpStatus(activity, (int)response.StatusCode);
+                    classification = await classifier
+                        .ClassifyCommandAsync(response, cancellationToken)
+                        .ConfigureAwait(false);
+
+                    if (classification.IsAccepted || !IsRetryablePreAcceptFailure(classification.Failure) || attempt >= maxAttempts) {
+                        break;
+                    }
+                }
+                catch (HttpRequestException ex) when (IsRetryablePreAcceptFailure(ex) && attempt < maxAttempts) {
+                    await DelayBeforeRetryAsync(currentShellOptions, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
+                response.Dispose();
+                await DelayBeforeRetryAsync(currentShellOptions, cancellationToken).ConfigureAwait(false);
             }
 
-            string? responseCorrelationId = classification.CorrelationId
-                ?? await ReadCorrelationIdAsync(response, logger, commandTypeName, messageId, cancellationToken).ConfigureAwait(false);
-            FrontComposerTelemetry.SetCorrelation(activity, responseCorrelationId);
+            using (response) {
 
-            CommandResult result = new(
-                messageId,
-                "Accepted",
-                responseCorrelationId,
-                classification.Location,
-                classification.RetryAfter);
+                if (!classification.IsAccepted) {
+                    string failureCategory = classification.Failure?.GetType().Name ?? "UnexpectedStatus";
+                    FrontComposerTelemetry.SetOutcome(activity, "rejected");
+                    FrontComposerTelemetry.SetFailure(activity, failureCategory);
+                    // F13 — emit only LocationPresent boolean; the Location header path can carry
+                    // raw aggregate IDs / route values derived from tenant/user input which AC5
+                    // forbids. Operators have CommandType + MessageId + FailureCategory to find
+                    // the command end-to-end.
+                    // F09 — sanitize messageId at the log boundary so trace tags and log fields
+                    // share the same bounded format.
+                    FrontComposerLog.CommandUnexpectedStatus(
+                        logger,
+                        (int)response.StatusCode,
+                        commandTypeName,
+                        FrontComposerTelemetry.SafeIdentifierOrAbsent(messageId),
+                        failureCategory,
+                        response.Headers.Location is not null,
+                        Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
+                    if (IsRetryablePreAcceptFailure(classification.Failure)) {
+                        throw CreateRetryExhaustedWarning(currentShellOptions);
+                    }
 
-            onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, result.CorrelationId ?? result.MessageId);
-            FrontComposerTelemetry.SetOutcome(activity, "accepted");
-            return result;
+                    throw classification.Failure!;
+                }
+
+                string? responseCorrelationId = classification.CorrelationId
+                    ?? await ReadCorrelationIdAsync(response, logger, commandTypeName, messageId, cancellationToken).ConfigureAwait(false);
+                FrontComposerTelemetry.SetCorrelation(activity, responseCorrelationId);
+
+                CommandResult result = new(
+                    messageId,
+                    "Accepted",
+                    responseCorrelationId,
+                    classification.Location,
+                    classification.RetryAfter);
+
+                onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, result.CorrelationId ?? result.MessageId);
+                FrontComposerTelemetry.SetOutcome(activity, "accepted");
+                return result;
+            }
+        }
+        catch (HttpRequestException ex) when (IsRetryablePreAcceptFailure(ex)) {
+            FrontComposerTelemetry.SetOutcome(activity, "rejected");
+            FrontComposerTelemetry.SetFailure(activity, nameof(CommandWarningException));
+            throw CreateRetryExhaustedWarning(currentShellOptions);
         }
         catch (OperationCanceledException oce) when (cancellationToken.IsCancellationRequested
             || oce.CancellationToken.IsCancellationRequested) {
@@ -169,6 +202,35 @@ public sealed class EventStoreCommandClient(
         Justification = "EventStore adapter serializes adopter command DTOs at runtime; AOT-specific contexts are deferred to Story 9-4.")]
     private static JsonElement SerializeCommandPayload<TCommand>(TCommand command)
         => JsonSerializer.SerializeToElement(command, EventStoreRequestContent.JsonOptions);
+
+    private static async Task DelayBeforeRetryAsync(FcShellOptions options, CancellationToken cancellationToken) {
+        TimeSpan delay = TimeSpan.FromMilliseconds(options.CommandDispatchRetryDelayMs);
+        await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
+    }
+
+    private static bool IsRetryablePreAcceptFailure(Exception? exception) {
+        if (exception is not HttpRequestException httpException) {
+            return false;
+        }
+
+        return httpException.StatusCode is null
+            or HttpStatusCode.RequestTimeout
+            or HttpStatusCode.BadGateway
+            or HttpStatusCode.ServiceUnavailable
+            or HttpStatusCode.GatewayTimeout;
+    }
+
+    private static CommandWarningException CreateRetryExhaustedWarning(FcShellOptions options)
+        => new(
+            CommandWarningKind.RetryableDispatchFailed,
+            new ProblemDetailsPayload(
+                "Command was not accepted",
+                "EventStore did not accept the command after retrying a transient dispatch failure. Review the current data and submit again when ready.",
+                null,
+                null,
+                new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
+                Array.Empty<string>()),
+            TimeSpan.FromMilliseconds(options.CommandDispatchRetryDelayMs));
 
     private static async Task<string?> ReadCorrelationIdAsync(
         HttpResponseMessage response,

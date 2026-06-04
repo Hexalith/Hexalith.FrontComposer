@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
@@ -319,6 +320,124 @@ public sealed class EventStoreClientTests {
         result.RetryAfter!.Value.TotalSeconds.ShouldBeInRange(20, 35);
     }
 
+    [Theory]
+    [InlineData(HttpStatusCode.RequestTimeout)]
+    [InlineData(HttpStatusCode.BadGateway)]
+    [InlineData(HttpStatusCode.ServiceUnavailable)]
+    [InlineData(HttpStatusCode.GatewayTimeout)]
+    public async Task CommandClient_RetryablePreAcceptStatus_RetriesOnceWithSameMessageId(HttpStatusCode status) {
+        int attempt = 0;
+        RecordingHandler handler = new(_ => ++attempt == 1
+            ? new HttpResponseMessage(status)
+            : new HttpResponseMessage(HttpStatusCode.Accepted) {
+                Content = new StringContent("""{"correlationId":"corr-1"}""", Encoding.UTF8, "application/json"),
+            });
+        // Distinct-per-call factory so a regression that regenerates the MessageId per attempt
+        // would produce divergent request bodies — a FixedUlidFactory would mask that bug (AC #2 / Task 3).
+        CountingUlidFactory ulidFactory = new();
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            ulidFactory,
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                CommandDispatchRetryAttempts = 1,
+                CommandDispatchRetryDelayMs = 1,
+            }));
+
+        CommandResult result = await sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe("Accepted");
+        handler.Bodies.Count.ShouldBe(2);
+        List<string?> messageIds = [.. handler.Bodies
+            .Select(body => JsonDocument.Parse(body).RootElement.GetProperty("messageId").GetString())];
+        ulidFactory.Count.ShouldBe(1);
+        messageIds.Distinct().Count().ShouldBe(1);
+        messageIds[0].ShouldBe("01HVTESTULID00000000000001");
+    }
+
+    [Fact]
+    public async Task CommandClient_RetryablePreAcceptStatus_WhenBudgetExhaustedThrowsRetryableWarning() {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.ServiceUnavailable));
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                CommandDispatchRetryAttempts = 1,
+                CommandDispatchRetryDelayMs = 1,
+            }));
+
+        CommandWarningException ex = await Should.ThrowAsync<CommandWarningException>(
+            async () => await sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .ConfigureAwait(true);
+
+        ex.Kind.ShouldBe(CommandWarningKind.RetryableDispatchFailed);
+        ex.RetryAfter.ShouldBe(TimeSpan.FromMilliseconds(1));
+        handler.Bodies.Count.ShouldBe(2);
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.BadRequest)]
+    [InlineData(HttpStatusCode.Unauthorized)]
+    [InlineData(HttpStatusCode.Forbidden)]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.Conflict)]
+    [InlineData((HttpStatusCode)429)]
+    public async Task CommandClient_NonRetryableStatuses_DoNotRetry(HttpStatusCode status) {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(status) {
+            Content = new StringContent("""{"title":"non retry"}""", Encoding.UTF8, "application/problem+json"),
+        });
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                CommandDispatchRetryAttempts = 1,
+                CommandDispatchRetryDelayMs = 1,
+            }));
+
+        _ = await Should.ThrowAsync<Exception>(
+            async () => await sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .ConfigureAwait(true);
+
+        handler.Requests.Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task CommandClient_CancellationDuringSend_DoesNotRetry() {
+        using CancellationTokenSource cts = new();
+        RecordingHandler handler = new(_ => {
+            cts.Cancel();
+            return new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+        });
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                CommandDispatchRetryAttempts = 1,
+                CommandDispatchRetryDelayMs = 1,
+            }));
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            async () => await sut.DispatchAsync(new ShipOrderCommand(), cts.Token).ConfigureAwait(true))
+            .ConfigureAwait(true);
+
+        handler.Requests.Count.ShouldBe(1);
+    }
+
     [Fact]
     public async Task QueryClient_RejectsEtagsContainingControlCharacters_BeforeSend() {
         // P4: TryAddWithoutValidation skips CRLF detection — must guard explicitly.
@@ -370,6 +489,14 @@ public sealed class EventStoreClientTests {
 
     private sealed class FixedUlidFactory : IUlidFactory {
         public string NewUlid() => "01HVTESTULID";
+    }
+
+    private sealed class CountingUlidFactory : IUlidFactory {
+        private int _count;
+
+        public int Count => _count;
+
+        public string NewUlid() => $"01HVTESTULID{++_count:D14}";
     }
 
     private sealed class TestUserContextAccessor(string? tenantId, string? userId) : IUserContextAccessor {

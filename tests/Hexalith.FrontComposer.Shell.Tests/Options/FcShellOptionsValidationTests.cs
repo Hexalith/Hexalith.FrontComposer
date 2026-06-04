@@ -25,6 +25,8 @@ public sealed class FcShellOptionsValidationTests {
         options.MaxPendingCommandPollingDurationMs.ShouldBe(120_000);
         options.MaxPendingCommandPollingPerTick.ShouldBe(25);
         options.MaxPendingCommandEntries.ShouldBe(100);
+        options.CommandDispatchRetryAttempts.ShouldBe(1);
+        options.CommandDispatchRetryDelayMs.ShouldBe(250);
 
         ValidateDataAnnotations(options).ShouldBeEmpty();
         new FcShellOptionsThresholdValidator().Validate(null, options).Succeeded.ShouldBeTrue();
@@ -112,6 +114,21 @@ public sealed class FcShellOptionsValidationTests {
         result.FailureMessage.ShouldContain("TimeoutActionThresholdMs", Case.Insensitive);
     }
 
+    [Fact]
+    public void CommandDispatchRetryDelay_MustNotExceedPollingDuration() {
+        FcShellOptions options = new() {
+            CommandDispatchRetryAttempts = 1,
+            CommandDispatchRetryDelayMs = 121_000,
+            MaxPendingCommandPollingDurationMs = 120_000,
+        };
+
+        ValidateOptionsResult result = new FcShellOptionsThresholdValidator().Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("CommandDispatchRetryDelayMs", Case.Insensitive);
+        result.FailureMessage.ShouldContain("MaxPendingCommandPollingDurationMs", Case.Insensitive);
+    }
+
     [Theory]
     [InlineData(nameof(FcShellOptions.SyncPulseThresholdMs), 49)]
     [InlineData(nameof(FcShellOptions.SyncPulseThresholdMs), 2_001)]
@@ -129,6 +146,10 @@ public sealed class FcShellOptionsValidationTests {
     [InlineData(nameof(FcShellOptions.PendingCommandPollingIntervalMs), 300_001)]
     [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 999)]
     [InlineData(nameof(FcShellOptions.MaxPendingCommandPollingDurationMs), 3_600_001)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryAttempts), -1)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryAttempts), 4)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryDelayMs), 0)]
+    [InlineData(nameof(FcShellOptions.CommandDispatchRetryDelayMs), 60_001)]
     public void Range_annotations_enforce_min_max_bounds_on_each_threshold_property(string propertyName, int outOfRangeValue) {
         FcShellOptions options = new();
         typeof(FcShellOptions).GetProperty(propertyName)!.SetValue(options, outOfRangeValue);

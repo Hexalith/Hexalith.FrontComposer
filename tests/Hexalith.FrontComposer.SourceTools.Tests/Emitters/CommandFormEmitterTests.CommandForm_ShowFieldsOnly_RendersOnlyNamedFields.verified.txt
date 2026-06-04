@@ -458,12 +458,12 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             {
                 __b.OpenComponent<FluentMessageBar>(cseq++);
                 __b.AddAttribute(cseq++, "Intent", MessageBarIntent.Warning);
-                __b.AddAttribute(cseq++, "Title", _serverWarning.Title ?? _serverWarning.Kind.ToString());
+                __b.AddAttribute(cseq++, "Title", _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedTitle"].Value : (_serverWarning.Title ?? _serverWarning.Kind.ToString()));
                 __b.AddAttribute(cseq++, "AllowDismiss", true);
                 __b.AddAttribute(cseq++, "ChildContent", (RenderFragment)(__msg =>
                 {
                     int mseq = 0;
-                    string body = _serverWarning.Detail ?? _serverWarning.EntityLabel ?? "Please review the warning and try again.";
+                    string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedFallback"].Value : (_serverWarning.Detail ?? _serverWarning.EntityLabel ?? "Please review the warning and try again.");
                     __msg.AddContent(mseq++, body);
                     if (_serverWarning.RetryAfter is not null)
                     {
