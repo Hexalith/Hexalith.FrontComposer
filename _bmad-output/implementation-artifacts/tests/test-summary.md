@@ -3,22 +3,22 @@
 ## Generated Tests
 
 ### API Tests
-- [x] Not applicable - Story 3.1 covers generated Blazor command forms and does not introduce HTTP API endpoints.
+- [x] Not applicable - Story 3.2 covers generated Blazor command-form density surfaces and does not introduce HTTP API endpoints.
 
 ### E2E Tests
-- [x] `tests/e2e/specs/command-form-generation.spec.ts` - Story 3.1 generated command-form coverage for inline, compact inline, and full-page command modes in the Counter sample.
+- [x] `tests/e2e/specs/command-form-generation.spec.ts` - Added Story 3.2 density-rule coverage for inline, compact inline, and full-page command surfaces in the Counter sample.
 
 ## Coverage
 - API endpoints: 0/0 applicable.
-- UI command modes covered by new E2E tests: 3/3 sample command densities - inline `IncrementCommand`, compact inline `BatchIncrementCommand`, full-page `ConfigureCounterCommand`.
-- Happy paths covered: compact generated form submission to confirmed lifecycle feedback; full-page generated form submission and return-path navigation after correction.
-- Critical error cases covered: client-side invalid number parsing prevents full-page command submission and keeps the operator on the generated command route.
-- Contract checks covered: generated fields render through accessible labels; derivable `MessageId` and `TenantId` fields stay hidden from generated forms.
+- UI density surfaces covered by generated E2E tests: 3/3 sample command densities - inline `IncrementCommand`, compact inline `BatchIncrementCommand`, full-page `ConfigureCounterCommand`.
+- Happy path covered: Story 3.2 workflow opens the inline popover, verifies the compact inline card, navigates to the full-page command route, and returns through the breadcrumb.
+- Critical error cases covered: the same spec already keeps Story 3.1 invalid-number coverage for the generated full-page form.
+- Contract checks covered: accessible labels are used for editable fields; derivable `MessageId` and `TenantId` fields stay hidden; inline and compact surfaces do not emit full-page breadcrumbs; full-page output does not emit the expand-in-row card.
 
 ## Validation
-- `dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Release -m:1 /nr:false` - passed with 0 warnings / 0 errors.
-- `npm --prefix tests/e2e run typecheck`
-- `npx playwright test specs/command-form-generation.spec.ts --project=chromium` attempted from `tests/e2e`; blocked locally because Kestrel cannot bind a loopback socket in this sandbox (`System.Net.Sockets.SocketException (13): Permission denied`).
+- `npm --prefix tests/e2e run typecheck` - passed.
+- `npm --prefix tests/e2e test -- specs/command-form-generation.spec.ts --project=chromium --list` - passed; 4 Chromium tests discovered, including the new Story 3.2 density-rule test.
+- `npm --prefix tests/e2e test -- specs/command-form-generation.spec.ts --project=chromium` - attempted; blocked locally because Kestrel cannot bind a loopback socket in this sandbox (`System.Net.Sockets.SocketException (13): Permission denied`).
 
 ## Next Steps
-- Run `npx playwright test specs/command-form-generation.spec.ts --project=chromium` in CI or a local environment that permits loopback sockets.
+- Run `npm --prefix tests/e2e test -- specs/command-form-generation.spec.ts --project=chromium` in CI or a local environment that permits loopback sockets.

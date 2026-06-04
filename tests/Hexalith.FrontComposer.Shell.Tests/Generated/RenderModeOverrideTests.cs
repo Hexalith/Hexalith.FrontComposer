@@ -36,6 +36,20 @@ public sealed class RenderModeOverrideTests : CommandRendererTestBase {
     }
 
     [Fact]
+    public async Task Renderer_DefaultMode_MatchesDensityForFourFieldCompactCommand() {
+        BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js");
+        module.SetupVoid("initializeExpandInRow", _ => true);
+        await InitializeStoreAsync();
+
+        IRenderedComponent<FourFieldCompactCommandRenderer> cut = Render<FourFieldCompactCommandRenderer>();
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("fc-expand-in-row", Case.Insensitive);
+            cut.Markup.ShouldNotContain("aria-label=\"breadcrumb\"", Case.Insensitive);
+        });
+    }
+
+    [Fact]
     public async Task Renderer_DefaultMode_MatchesDensityForFullPageCommand() {
         await InitializeStoreAsync();
 

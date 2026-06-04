@@ -85,6 +85,65 @@ test.describe('Story 3.1: generated command forms', () => {
   });
 });
 
+test.describe('Story 3.2: command form density rule', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+  });
+
+  test('non-derivable field count selects inline, compact inline, and full-page surfaces', async ({ page, tenant }) => {
+    expect(tenant.tenantId).toBeTruthy();
+
+    await gotoCounter(page);
+
+    await expect(page.locator('.inline-section .fc-expand-in-row')).toHaveCount(0);
+    await expect(page.locator('.inline-section [aria-label="breadcrumb"]')).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Increment' }).click();
+    const inlinePopover = page.locator('.inline-section .fc-popover');
+    await expect(inlinePopover).toBeVisible();
+    await expect(inlinePopover.locator(COMMAND_FORM)).toHaveAttribute('aria-label', 'Increment command form');
+    await expect(inlinePopover.getByLabel('Amount')).toBeVisible();
+    await expect(inlinePopover.getByLabel('MessageId')).toHaveCount(0);
+    await expect(inlinePopover.getByLabel('TenantId')).toHaveCount(0);
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(inlinePopover).not.toBeVisible();
+
+    const compactSection = page.locator('.command-section');
+    const compactCard = compactSection.locator('.fc-expand-in-row');
+    await expect(compactCard).toBeVisible();
+    await expect(compactCard.locator(COMMAND_FORM)).toHaveAttribute('aria-label', 'Batch Increment command form');
+    await expect(compactCard.getByLabel('Amount')).toBeVisible();
+    await expect(compactCard.getByLabel('Note')).toBeVisible();
+    await expect(compactCard.getByLabel('Effective Date')).toBeVisible();
+    await expect(compactCard.getByLabel('MessageId')).toHaveCount(0);
+    await expect(compactCard.getByLabel('TenantId')).toHaveCount(0);
+    await expect(compactSection.locator('[aria-label="breadcrumb"]')).toHaveCount(0);
+
+    await page.getByRole('link', { name: 'Configure Counter' }).click();
+    await expect(page).toHaveURL(/\/commands\/Counter\/ConfigureCounterCommand/);
+    const breadcrumb = page.getByRole('navigation', { name: 'breadcrumb' });
+    await expect(breadcrumb).toBeVisible();
+    const counterReturnLink = breadcrumb.getByRole('link', { name: /counter/i });
+    await expect(counterReturnLink).toHaveAttribute('href', /\/counter/);
+    await expect(page.locator('.fc-expand-in-row')).toHaveCount(0);
+
+    const fullPageForm = commandForm(page, 'Configure Counter command form');
+    await expect(fullPageForm).toBeVisible();
+    for (const label of ['Name', 'Description', 'Initial Value', 'Max Value', 'Category']) {
+      await expect(fullPageForm.getByLabel(label), `${label} field is missing`).toBeVisible();
+    }
+    await expect(fullPageForm.getByLabel('MessageId')).toHaveCount(0);
+    await expect(fullPageForm.getByLabel('TenantId')).toHaveCount(0);
+
+    await counterReturnLink.click();
+    await expect(page).toHaveURL(/\/counter$/);
+    await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+  });
+});
+
 const gotoCounter = async (page: Page): Promise<void> => {
   await page.goto('/counter');
   await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();

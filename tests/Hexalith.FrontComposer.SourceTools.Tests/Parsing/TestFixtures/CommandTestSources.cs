@@ -116,6 +116,28 @@ public class KitchenSinkCommand
     public string Payload { get; set; } = string.Empty;
 }";
 
+    internal const string WellKnownAndAttributedDerivableCommand = @"
+using System;
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+public class KitchenSinkWithDerivedFromCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+    public string CommandId { get; set; } = string.Empty;
+    public string CorrelationId { get; set; } = string.Empty;
+    public string TenantId { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public DateTime Timestamp { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime ModifiedAt { get; set; }
+    [DerivedFrom(DerivedFromSource.Context)]
+    public string RequestIp { get; set; } = string.Empty;
+    public string Payload { get; set; } = string.Empty;
+}";
+
     internal const string BaseRecordWithMessageId = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
 

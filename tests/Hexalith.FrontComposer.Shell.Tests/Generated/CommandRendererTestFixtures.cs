@@ -30,6 +30,20 @@ public class TwoFieldCompactCommand {
 
 [Command]
 [BoundedContext("TestCommands")]
+public class FourFieldCompactCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+
+    public string Description { get; set; } = string.Empty;
+
+    public int Amount { get; set; }
+
+    public int Priority { get; set; }
+}
+
+[Command]
+[BoundedContext("TestCommands")]
 public class CompactCommandWithDerivableField {
     public string MessageId { get; set; } = string.Empty;
 

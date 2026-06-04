@@ -429,6 +429,37 @@ public partial class AllUnsupportedProjection
             shouldEmitPage: false);
     }
 
+    [Theory]
+    [InlineData(1, "Inline", false)]
+    [InlineData(2, "CompactInline", false)]
+    [InlineData(4, "CompactInline", false)]
+    [InlineData(5, "FullPage", true)]
+    public void RunGenerators_CommandDensityThresholds_EmitExpectedDefaultModeAndOptionalPage(
+        int nonDerivableCount,
+        string expectedMode,
+        bool shouldEmitPage) {
+        string typeName = "Density" + nonDerivableCount + "Command";
+        string source = BuildCommandSource(typeName, nonDerivableCount);
+
+        GeneratorDriverRunResult result = RunGenerator(source);
+
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        string[] fileNames = result.GeneratedTrees.Select(t => Path.GetFileName(t.FilePath)).ToArray();
+        fileNames.ShouldContain($"TestDomain.{typeName}.CommandRenderer.g.razor.cs");
+        if (shouldEmitPage) {
+            fileNames.ShouldContain($"TestDomain.{typeName}.CommandPage.g.razor.cs");
+        }
+        else {
+            fileNames.ShouldNotContain($"TestDomain.{typeName}.CommandPage.g.razor.cs");
+        }
+
+        SyntaxTree rendererTree = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == $"TestDomain.{typeName}.CommandRenderer.g.razor.cs");
+        string rendererSource = rendererTree.GetText(TestContext.Current.CancellationToken).ToString();
+        rendererSource.ShouldContain("RenderMode ?? CommandRenderMode." + expectedMode);
+        rendererSource.ShouldContain("density=" + expectedMode);
+    }
+
     [Fact]
     public void RunGenerators_FiveFieldCommand_EmitsFullPageRendererAndPage() {
         VerifyCommandArtifacts(
@@ -436,6 +467,80 @@ public partial class AllUnsupportedProjection
             "TestDomain.PlaceOrderCommand",
             expectedTreeCount: 10,
             shouldEmitPage: true);
+    }
+
+    [Fact]
+    public void RunGenerators_DerivableFields_DoNotInflateCompactDensityOrEmitEditableInputs() {
+        GeneratorDriverRunResult result = RunGenerator(BuildCommandSource(
+            "CompactWithDerivableFieldsCommand",
+            nonDerivableCount: 4,
+            derivedFromCount: 6,
+            includeWellKnownDerivableFields: true));
+
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        string[] fileNames = result.GeneratedTrees.Select(t => Path.GetFileName(t.FilePath)).ToArray();
+        fileNames.ShouldContain("TestDomain.CompactWithDerivableFieldsCommand.CommandRenderer.g.razor.cs");
+        fileNames.ShouldNotContain("TestDomain.CompactWithDerivableFieldsCommand.CommandPage.g.razor.cs");
+
+        string rendererSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.CompactWithDerivableFieldsCommand.CommandRenderer.g.razor.cs")
+            .GetText(TestContext.Current.CancellationToken)
+            .ToString();
+        rendererSource.ShouldContain("RenderMode ?? CommandRenderMode.CompactInline");
+        rendererSource.ShouldContain("TryPrefillPropertyAsync(\"TenantId\")");
+        rendererSource.ShouldContain("TryPrefillPropertyAsync(\"Derived0\")");
+
+        string formSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.CompactWithDerivableFieldsCommand.CommandForm.g.razor.cs")
+            .GetText(TestContext.Current.CancellationToken)
+            .ToString();
+        formSource.ShouldContain("// Field: Field0");
+        formSource.ShouldContain("// Field: Field3");
+        formSource.ShouldNotContain("// Field: TenantId");
+        formSource.ShouldNotContain("// Field: Derived0");
+        formSource.ShouldNotContain("ResolveLabel(\"TenantId\"");
+        formSource.ShouldNotContain("ResolveLabel(\"Derived0\"");
+    }
+
+    [Fact]
+    public void RunGenerators_DerivableFields_PreserveFullPageDensityWhenFiveEditableFieldsRemain() {
+        GeneratorDriverRunResult result = RunGenerator(BuildCommandSource(
+            "FullPageWithDerivableFieldsCommand",
+            nonDerivableCount: 5,
+            derivedFromCount: 6,
+            includeWellKnownDerivableFields: true));
+
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        string[] fileNames = result.GeneratedTrees.Select(t => Path.GetFileName(t.FilePath)).ToArray();
+        fileNames.ShouldContain("TestDomain.FullPageWithDerivableFieldsCommand.CommandPage.g.razor.cs");
+
+        string rendererSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.FullPageWithDerivableFieldsCommand.CommandRenderer.g.razor.cs")
+            .GetText(TestContext.Current.CancellationToken)
+            .ToString();
+        rendererSource.ShouldContain("RenderMode ?? CommandRenderMode.FullPage");
+        rendererSource.ShouldContain("density=FullPage");
+    }
+
+    [Fact]
+    public void RunGenerators_Hfc1011_UsesTotalPropertyLimitWithoutChangingDensityCount() {
+        GeneratorDriverRunResult result = RunGenerator(BuildCommandSource(
+            "HugeMostlyDerivableCommand",
+            nonDerivableCount: 4,
+            derivedFromCount: 201));
+
+        Diagnostic hfc1011 = result.Diagnostics.Single(d => d.Id == "HFC1011");
+        hfc1011.Severity.ShouldBe(DiagnosticSeverity.Error);
+        result.Diagnostics.ShouldNotContain(d => d.Id == "HFC1007");
+        string[] fileNames = result.GeneratedTrees.Select(t => Path.GetFileName(t.FilePath)).ToArray();
+        fileNames.ShouldNotContain("TestDomain.HugeMostlyDerivableCommand.CommandPage.g.razor.cs");
+
+        string rendererSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.HugeMostlyDerivableCommand.CommandRenderer.g.razor.cs")
+            .GetText(TestContext.Current.CancellationToken)
+            .ToString();
+        rendererSource.ShouldContain("RenderMode ?? CommandRenderMode.CompactInline");
+        rendererSource.ShouldContain("density=CompactInline");
     }
 
     [Fact]
@@ -631,6 +736,51 @@ public partial class AllUnsupportedProjection
         commandArtifacts.ShouldBe(expectedCommandArtifacts.OrderBy(name => name, StringComparer.Ordinal).ToArray());
         commandArtifacts.ShouldAllBe(name => name.Contains("." + typeName + ".Command", StringComparison.Ordinal));
         commandArtifacts.ShouldNotContain("TestDomain." + typeName + "Registration.g.cs");
+    }
+
+    private static GeneratorDriverRunResult RunGenerator(string source) {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        return driver.GetRunResult();
+    }
+
+    private static string BuildCommandSource(
+        string typeName,
+        int nonDerivableCount,
+        int derivedFromCount = 0,
+        bool includeWellKnownDerivableFields = false) {
+        var sb = new System.Text.StringBuilder();
+        _ = sb.AppendLine("using System;");
+        _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
+        _ = sb.AppendLine("namespace TestDomain;");
+        _ = sb.AppendLine("[Command]");
+        _ = sb.Append("public class ").Append(typeName).AppendLine(" {");
+        _ = sb.AppendLine("    public string MessageId { get; set; } = string.Empty;");
+        if (includeWellKnownDerivableFields) {
+            _ = sb.AppendLine("    public string CommandId { get; set; } = string.Empty;");
+            _ = sb.AppendLine("    public string CorrelationId { get; set; } = string.Empty;");
+            _ = sb.AppendLine("    public string TenantId { get; set; } = string.Empty;");
+            _ = sb.AppendLine("    public string UserId { get; set; } = string.Empty;");
+            _ = sb.AppendLine("    public DateTime Timestamp { get; set; }");
+            _ = sb.AppendLine("    public DateTime CreatedAt { get; set; }");
+            _ = sb.AppendLine("    public DateTime ModifiedAt { get; set; }");
+        }
+
+        for (int i = 0; i < nonDerivableCount; i++) {
+            _ = sb.Append("    public string Field").Append(i).AppendLine(" { get; set; } = string.Empty;");
+        }
+
+        for (int i = 0; i < derivedFromCount; i++) {
+            _ = sb.AppendLine("    [DerivedFrom(DerivedFromSource.Context)]");
+            _ = sb.Append("    public string Derived").Append(i).AppendLine(" { get; set; } = string.Empty;");
+        }
+
+        _ = sb.AppendLine("}");
+        return sb.ToString();
     }
 
     private const string TwoFieldCommandSource = @"

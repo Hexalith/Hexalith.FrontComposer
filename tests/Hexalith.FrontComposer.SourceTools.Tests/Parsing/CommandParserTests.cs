@@ -100,6 +100,18 @@ public class CommandParserTests {
     }
 
     [Fact]
+    public void Parse_WellKnownAndDerivedFromProperties_AreExcludedFromNonDerivableProperties() {
+        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.WellKnownAndAttributedDerivableCommand, "TestDomain.KitchenSinkWithDerivedFromCommand");
+
+        _ = result.Model.ShouldNotBeNull();
+        result.Model.DerivableProperties.Select(p => p.Name).ShouldBe(
+            new[] { "MessageId", "CommandId", "CorrelationId", "TenantId", "UserId", "Timestamp", "CreatedAt", "ModifiedAt", "RequestIp" },
+            ignoreOrder: true);
+        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldBe(new[] { "Payload" });
+        result.Model.Density.ShouldBe(CommandDensity.Inline);
+    }
+
+    [Fact]
     public void Parse_BaseRecordWithMessageId_InheritsFromBase() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.BaseRecordWithMessageId, "TestDomain.ChildCommand");
 

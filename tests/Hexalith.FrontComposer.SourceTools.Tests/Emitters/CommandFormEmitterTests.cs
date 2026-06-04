@@ -356,4 +356,22 @@ public class CommandFormEmitterTests {
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
         return Verify(source);
     }
+
+    [Fact]
+    public void Emit_FromParsedCommandWithDerivableFields_EmitsOnlyNonDerivableEditableInputs() {
+        CommandParseResult parse = CompilationHelper.ParseCommand(CommandTestSources.WellKnownAndAttributedDerivableCommand, "TestDomain.KitchenSinkWithDerivedFromCommand");
+
+        _ = parse.Model.ShouldNotBeNull();
+        CommandFluxorModel fluxor = CommandFluxorTransform.Transform(parse.Model);
+        CommandFormModel form = CommandFormTransform.Transform(parse.Model);
+        string source = CommandFormEmitter.Emit(form, fluxor);
+
+        form.Fields.Select(f => f.PropertyName).ShouldBe(new[] { "Payload" });
+        source.ShouldContain("// Field: Payload");
+        source.ShouldContain("ResolveLabel(\"Payload\"");
+        source.ShouldNotContain("// Field: RequestIp");
+        source.ShouldNotContain("ResolveLabel(\"RequestIp\"");
+        source.ShouldNotContain("// Field: TenantId");
+        source.ShouldNotContain("ResolveLabel(\"TenantId\"");
+    }
 }

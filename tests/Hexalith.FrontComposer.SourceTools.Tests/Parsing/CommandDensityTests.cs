@@ -33,6 +33,16 @@ public class CommandDensityTests {
     }
 
     // 2. Boundary snapshot — 0/1/2/4/5 fields produce Inline/Inline/CompactInline/CompactInline/FullPage.
+    [Theory]
+    [InlineData(0, CommandDensity.Inline)]
+    [InlineData(1, CommandDensity.Inline)]
+    [InlineData(2, CommandDensity.CompactInline)]
+    [InlineData(4, CommandDensity.CompactInline)]
+    [InlineData(5, CommandDensity.FullPage)]
+    public void ComputeDensity_Boundaries_MatchSpecification(int nonDerivableCount, CommandDensity expected) {
+        CommandModel.ComputeDensity(nonDerivableCount).ShouldBe(expected);
+    }
+
     [Fact]
     public void Density_BoundarySnapshot_AtZeroOneTwoFourFive() {
         (int fieldCount, CommandDensity expected)[] boundaries = [
@@ -96,6 +106,18 @@ public class CommandDensityTests {
         result.Diagnostics.Any(d => d.Id == "HFC1011" && d.Severity == "Error").ShouldBeTrue();
     }
 
+    [Fact]
+    public void HFC1011_TotalPropertyLimit_DoesNotUseNonDerivableDensityCount() {
+        string source = BuildCommandSource("HugeMostlyDerivable", 4, derivedFromCount: 201);
+        CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.HugeMostlyDerivable");
+
+        _ = result.Model.ShouldNotBeNull();
+        result.Model.NonDerivableProperties.Count.ShouldBe(4);
+        result.Model.Density.ShouldBe(CommandDensity.CompactInline);
+        result.Diagnostics.Any(d => d.Id == "HFC1011" && d.Severity == "Error").ShouldBeTrue();
+        result.Diagnostics.ShouldNotContain(d => d.Id == "HFC1007");
+    }
+
     // 6. HFC1012 — [DefaultValue("hello")] int Amount is rejected.
     [Fact]
     public void HFC1012_RejectsDefaultValueTypeMismatch() {
@@ -154,7 +176,7 @@ public class CommandDensityTests {
         result.Diagnostics.Any(d => d.Id == "HFC1014" && d.Severity == "Error").ShouldBeTrue();
     }
 
-    private static string BuildCommandSource(string typeName, int nonDerivableCount) {
+    private static string BuildCommandSource(string typeName, int nonDerivableCount, int derivedFromCount = 0) {
         StringBuilder sb = new();
         sb.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
         sb.AppendLine("namespace TestDomain;");
@@ -163,6 +185,11 @@ public class CommandDensityTests {
         sb.AppendLine("    public string MessageId { get; set; } = string.Empty;");
         for (int i = 0; i < nonDerivableCount; i++) {
             sb.Append("    public string Field").Append(i).AppendLine(" { get; set; } = string.Empty;");
+        }
+
+        for (int i = 0; i < derivedFromCount; i++) {
+            sb.AppendLine("    [DerivedFrom(DerivedFromSource.Context)]");
+            sb.Append("    public string Derived").Append(i).AppendLine(" { get; set; } = string.Empty;");
         }
 
         sb.AppendLine("}");
