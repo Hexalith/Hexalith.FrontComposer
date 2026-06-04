@@ -1,5 +1,5 @@
 # generated: 2026-06-03
-# last_updated: 2026-06-03
+# last_updated: 2026-06-04
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -78,6 +78,10 @@ project: frontcomposer
 # 2-4 moved ready-for-dev → in-progress on 2026-06-04 (dev-story)
 # 2-4 moved in-progress → review on 2026-06-04 (dev-story; generated-grid expand/filter-hidden pins, zero src change, build 0/0, story pins green, default-lane baseline remains environmental)
 # 2-4 moved review → done on 2026-06-04 (story-automator review; re-ran build 0/0 + 5/5 generated-grid pins + 20/20 confirm pins, reproduced 8-failure Shell baseline none expand-in-row, AC1/AC2/AC3 verified in src; 0 critical/high, auto-fixed 1 MEDIUM scoped-runtime-REPLACE-claim + 2 LOW file-list/wall-clock)
+# 2-5 moved backlog → ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of column prioritization for wide projections — [ColumnPriority] sort + HFC1028 collision + HFC1029 >15-col activation + FcColumnPrioritizer wrap; gap = AC2 column-ORDER unpinned: transform stable-sort (Priority ?? int.MaxValue, declOrder) has no order test, emitter pin checks key-presence-not-order; attribute/HFC1028/HFC1029/emitter-wrap/component already pinned)
+# 2-5 moved ready-for-dev → in-progress on 2026-06-04 (dev-story; closing AC2 column-ORDER gap with transform-level stable-sort order pins)
+# 2-5 moved in-progress → review on 2026-06-04 (dev-story; AC2 column-ORDER gap closed via RazorModelColumnPriorityOrderTests (5 transform pins), zero src change, build 0/0 TWAE, SourceTools.Tests 953→958 +5 pass 0 new failures, 3 pre-existing/environmental failures reproduced, AC1 emitter/component + AC2 attribute/collision layers re-confirmed green, all-unannotated approval baseline byte-for-byte unchanged)
+# 2-5 moved review → done on 2026-06-04 (story-automator review; independently re-verified build 0/0 TWAE, AC1/AC2 in src, SourceTools.Tests 958/3 + Shell.Tests 1740/8 (8 pre-existing, 0 new); 0 critical, auto-fixed 2 HIGH + 1 MED + 1 LOW record-keeping defects — render pin WidePriorityProjectionRenderTests + specimen were actually added & green but documented as "NOT added" and missing from File List; corrected File List/Completion Notes/test-count table/sentinel note)
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/implementation-artifacts"
@@ -100,7 +104,7 @@ development_status:
   2-2-registry-driven-navigation-and-home-directory: done
   2-3-datagrid-filtering-status-and-empty-loading-states: done
   2-4-accessible-expand-in-row-detail: done
-  2-5-column-prioritization-for-wide-projections: backlog
+  2-5-column-prioritization-for-wide-projections: done
   2-6-live-projection-updates-with-reconnect-reconciliation: backlog
   2-7-command-palette-discovery-and-global-search: backlog
   2-8-confirm-the-fc-tbl-table-api-contract: backlog

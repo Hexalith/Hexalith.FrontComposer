@@ -1,83 +1,93 @@
-# Test Automation Summary — Story 1.0 (Shell-integration spike)
+# Test Automation Summary — Story 2.5 (Column prioritization for wide projections)
 
-**Workflow:** `bmad-qa-generate-e2e-tests`
-**Date:** 2026-06-03
-**Story:** `1-0-shell-integration-spike-verify-the-bootstrap-table-apis.md`
-**Spike note:** `_bmad-output/spike-notes/1-0-shell-integration-spike-2026-06-03.md`
+**Workflow:** `bmad-qa-generate-e2e-tests` · **Role:** QA automation engineer (test generation only)
+**Date:** 2026-06-04 · **Baseline commit:** `d417501` · **Branch:** `test/story-2-5-column-prioritization`
+**Framework:** xUnit v3 + Shouldly + bUnit (auto-detected; matched existing project patterns)
 
-## Context
+## Feature under test
 
-Story 1.0 is a **time-boxed spike** — it produced no `src/` artifact (AC#5). What it *did* produce
-is four empirically-confirmed answers about **already-shipped** Shell features (bootstrap registration,
-manifest discovery, projection-route reachability, and the `FC-TBL` DataGrid surface). Those answers
-are the facts Story 1.1 (bootstrap) builds on.
+Story 2.5 — wide projections (**>15 columns**, strict per D6) activate `FcColumnPrioritizer` (AC1) and
+columns order by `[ColumnPriority(n)]` → `(Priority ?? int.MaxValue, declarationOrder)` stable sort
+with HFC1028 collision diagnostic (AC2).
 
-This QA run locks the four confirmed answers in as **regression tests against the live `src/` code**, so
-they cannot silently drift before 1.1 consumes them. The throwaway host stayed discarded; no `src/`
-files were touched (`git status --porcelain src/` is empty).
+## Gap analysis
 
-## Framework
+The isolated layers were already pinned at baseline:
 
-Project's existing stack — **xUnit v3 + Shouldly** (per `project-context.md` testing rules). No new
-framework introduced. Tests live in the existing `Hexalith.FrontComposer.Shell.Tests` project and run
-through the solution-level lane.
+| Layer | Existing pin | Asserts |
+|---|---|---|
+| Transform sort (AC2 order) | `RazorModelColumnPriorityOrderTests` (added by dev-story) | `ColumnModel` order, transform level |
+| Emitter wrap (AC1) | `RazorEmitterColumnPrioritizerTests` | emitted source — **presence, not order** |
+| Component (AC1) | `FcColumnPrioritizerTests` | gear/popover/ARIA on **hand-built** columns |
+| Diagnostics | `Hfc1028DiagnosticTests` / `Hfc1029DiagnosticTests` | build-time Info diagnostics |
+
+**Discovered gap (auto-applied):** no test renders an **actual generated wide grid** and proves AC1
+(prioritizer wraps it) + AC2 (priority ORDER) *together at render time* — the gap the dev-story
+explicitly assessed and deferred. The Story 2.3 (`BadgeProjectionRenderTests`) and Story 2.4
+(`ExpandInRowGeneratedGridTests`) precedent is to render the generated view through bUnit. This
+workflow closes it.
 
 ## Generated Tests
 
-### Integration / contract tests
-- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Spike/Story10ShellIntegrationSpikeTests.cs` — 8 tests, all passing.
+### E2E / generated-grid render tests
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Generated/WidePriorityProjectionRenderTests.cs` — 2 tests
+  - `WideGrid_WrapsGeneratedGridInColumnPrioritizer_WithDefaultHiddenCount` (**AC1**) — the generated
+    `WidePriorityProjectionView` is wrapped by `div.fc-column-prioritizer`; the gear renders with
+    `aria-haspopup="dialog"`, `aria-expanded="false"`, and `aria-label` reflecting **8** default-hidden
+    columns (18 − `MaxVisibleColumns` 10).
+  - `WideGrid_OrdersColumnsByPriorityThenDeclaration_AtRenderTime` (**AC2**) — opening the prioritizer
+    popover renders one checkbox per column (`data-testid="fc-column-prioritizer-checkbox-{key}"`) in the
+    generator-emitted `_allColumnsDescriptor` order; asserts the full 18-key sequence is
+    priority-then-declaration (`Gamma,Delta,Alpha,Theta,Zeta, Id,Beta,Epsilon,Eta,Iota,Kappa,Lambda,Mu,Nu,Xi,Omicron,Pi,Rho`)
+    — deterministically **different** from declaration order. Asserted on the plain-markup checkbox list,
+    not the FluentUI-v5 data-grid shadow DOM, per the story's brittleness caveat.
 
-| Spike question (🔴 AR5) | Test(s) | What it pins |
-|---|---|---|
-| **Q1** — registration path boots empty shell (AC#1/#2) | `Bootstrap_QuickstartThenDomainThenStubEventStore_BuildsWithScopeValidation`, `Bootstrap_EventStoreRegisteredAfterQuickstart_PreservesAuthoritativeRegistry` | Canonical 3-call ordering (Quickstart → `AddHexalithDomain<CounterDomain>` → stub `AddHexalithEventStore`) builds with `ValidateScopes=true` (ADR-030 guard); EventStore's `TryAdd` does not drop the Quickstart registry. |
-| **Q2** — manifest discovery → `GetManifests()` (AC#2) | `ManifestDiscovery_ThroughQuickstart_SurfacesGeneratedCounterRegistration` | Generated `*Registration` flows into the registry through the full Quickstart entry point; Counter manifest carries `CounterProjection` + `IncrementCommand` FQNs. |
-| **Q3** — projection-route reachability + companion opt-in (Task 3) | `DefaultRegistry_ImplementsRouteReachabilityCompanions`, `DefaultRegistry_HasFullPageRoute_TrueForRegisteredCommand_FalseForUnknown` | Default registry already implements `IFrontComposerFullPageRouteRegistry` + `IFrontComposerCommandWriteAccessRegistry` (no extra wiring needed); `HasFullPageRoute` is permissive for registered commands, false for unknown. |
-| **Q4** — `FC-TBL` column/filter/expand surface (Task 4 → Story 2.8) | `FcTbl_DocumentedSurface_IsPublicComponentBase`, `FcColumnPrioritizer_MaxVisibleColumns_DefaultIsTen`, `FcExpandInRowDetail_ExposesDocumentedParameters` | The 12 adopter-facing DataGrid components stay `public ComponentBase` (compile-time freeze for finding F3); `FcColumnPrioritizer.MaxVisibleColumns` defaults to 10; `FcExpandInRowDetail` exposes `PanelId` + `SuppressedAnnouncement` `[Parameter]`s (WCAG 4.1.2). |
-
-### E2E tests
-- None added. UI/a11y E2E is owned by the existing Playwright workspace in `tests/e2e` (specimen host),
-  and the spike's UI surface (`FC-TBL`) is pinned here at the contract level. A full DataGrid filter/expand
-  E2E belongs to Story 2.8 when the surface is formally frozen.
+### Specimen
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Generated/WidePriorityProjectionSpecimen.cs` — first
+  wide (>15-col) `[Projection]` test specimen: `WidePriorityProjection` with 18 properties, 5 carrying
+  scrambled `[ColumnPriority]` values + a `WidePriorityDomain` bounded context. Follows the
+  `BadgeProjectionSpecimen` / `StatusProjection` precedent.
 
 ### API tests
-- N/A — FrontComposer ships no deployed HTTP service; the "API" exercised by the spike is the
-  in-process registration/registry/registry-companion surface, covered above.
-
-## Discovered gaps — auto-applied
-
-The spike's four confirmed answers were checked against existing coverage. Three were genuine gaps and
-are now filled (the fourth was partially covered and extended):
-
-1. **Full Quickstart→Domain→EventStore boot ordering** — existing tests covered `AddHexalithFrontComposer`
-   (granular) and Quickstart sugar in isolation, but not the end-to-end 3-call ordering invariant the spike
-   booted. **Added.**
-2. **Route-reachability companion opt-in** — no test asserted the *default* registry implements
-   `IFrontComposerFullPageRouteRegistry` / `IFrontComposerCommandWriteAccessRegistry` or the `HasFullPageRoute`
-   true/false contract. **Added** (the headline Q3 finding).
-3. **`FC-TBL` public surface freeze** — no test pinned the 12-component adopter surface (finding F3: not in
-   any `PublicAPI.Shipped.txt`). **Added** as a compile-time + reflection contract for Story 2.8.
-4. **Manifest discovery via Quickstart** — `FrontComposerRegistryTests` covered the granular path; **extended**
-   to the Quickstart entry point the spike actually used.
+- N/A — FrontComposer ships no deployed HTTP service; the surface exercised here is the in-process
+  generated-grid render path, covered above.
 
 ## Coverage
 
-- Spike 🔴 API questions pinned: **4 / 4**
-- Spike findings referenced (record-only, not "fixed" here): F1 (duplicate `Domain` manifest), F2 (route-convention),
-  F3 (`FC-TBL` not frozen — now pinned by Q4 tests), F4 (`HFC1001`), F5 (dual additional-assembly registration).
-  F1/F2/F4/F5 are bootstrap/generator concerns escalated to their owners; not converted to assertions (would pin
-  behaviour the spike explicitly chose to escalate, not lock).
+- AC1 (>15-col → HFC1029 + prioritizer wrap): emitter + component (pre-existing) **+ end-to-end render (new)** ✅
+- AC2 (`[ColumnPriority]` ordering + HFC1028): transform order + diagnostic (pre-existing) **+ end-to-end render order (new)** ✅
+- Generated wide-grid render path: **0 → 1 specimen covered**
 
-## Validation
+## Test execution (xUnit v3 in-process runner, `DiffEngine_Disabled=true`)
 
-- Command: `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/... --filter "FullyQualifiedName~Story10ShellIntegrationSpikeTests"`
-- Result: **Passed — 8/8, 0 failed, 0 skipped.**
-- `git status --porcelain src/` — empty (spike AC#5 preserved).
+> Solution-level VSTest opens a local socket → `SocketException (13): Permission denied` in this
+> sandbox (inherited Stories 2.3/2.4 constraint); per-assembly in-process runner used for local
+> evidence — the solution-level VSTest run is the CI gate.
 
-## Next steps
+- **New tests:** `WidePriorityProjectionRenderTests` — **2 total / 2 passed / 0 failed**.
+- **Release build:** `dotnet build … -c Release -m:1 /nr:false` → **0 Warning(s) / 0 Error(s)** (TWAE clean).
+- **Shell.Tests default lane** (`Category!=Performance&!=e2e-palette&!=NightlyProperty&!=Quarantined`):
+  **1740 total / 8 failed** — the +2 new tests pass; failure count unchanged from the recorded baseline.
 
-- Run inside the full solution lane in CI:
-  `dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` with `DiffEngine_Disabled=true`.
-- **Story 2.8** consumes the Q4 surface tests: when it freezes `FC-TBL`, mirror the 12-component set into a Shell
-  `PublicAPI.Shipped.txt` (resolving finding F3) — the Q4 tests then become the executable counterpart of that baseline.
-- **Story 1.1** consumes Q1–Q3 as confirmed assumptions; the escalated findings (F1, F2, F4, F5) remain owner-tracked
-  in the spike note.
+### Standing failure baseline (re-proved pre-existing — none new, none misattributed)
+
+The same **8** failures recorded for Story 2.4 remain, all environmental/pre-existing and unrelated to
+column prioritization (none touch the new specimen):
+
+- `CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting`, `…StatusProjectionView_NullAndBooleanValues_RenderSnapshot` — Verify snapshot-drift cluster
+- `PendingStatusReopenGovernanceTests.*` (4) — `deferred-work.md` file-IO governance cluster
+- `CommandRendererFullPageTests.Renderer_FullPage_UsesQueryFallbacksWhenPageContextIsEmpty` — query-fallback cluster
+- `NavigationEffectsLastActiveRouteTests.HandleAppInitialized_StoredRoute_DispatchesHydratedActions` — navigation-hydration cluster
+
+## Notes
+
+- **Zero `src/` change**, **zero `.verified.txt`** edits — the new specimen carries no Verify snapshot;
+  the AC1/AC2 assertions are assertion-based. The all-unannotated `CounterProjectionApprovalTests`
+  byte-for-byte baseline is unaffected (no shared generated output).
+- Sentinel scan (retro AI-2): new files clean — no stray tool/authoring tags.
+
+## Next Steps
+
+- Run the solution-level VSTest lane in CI (the blocking gate) to confirm the in-process evidence.
+- Optional future coverage: a render-level HFC1028 collision specimen (currently pinned at the parse
+  stage only) if an end-to-end collision assertion is later wanted.
