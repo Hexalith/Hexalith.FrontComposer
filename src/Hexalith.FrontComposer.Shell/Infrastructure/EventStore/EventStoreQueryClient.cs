@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
-using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 
@@ -123,7 +122,7 @@ public sealed class EventStoreQueryClient(
 
         try {
             using HttpRequestMessage httpRequest = new(HttpMethod.Post, current.QueryEndpointPath);
-            await ApplyAuthorizationAsync(httpRequest, current, cancellationToken).ConfigureAwait(false);
+            await EventStoreHttp.ApplyAuthorizationAsync(httpRequest, current, cancellationToken).ConfigureAwait(false);
 
             List<string> ifNoneMatch = new(requestEtags.Count + 1);
             for (int i = 0; i < requestEtags.Count; i++) {
@@ -240,7 +239,7 @@ public sealed class EventStoreQueryClient(
 
                 case QueryClassificationOutcome.Ok: {
                     FrontComposerTelemetry.SetOutcome(activity, "ok");
-                    string body = await ReadBoundedResponseBodyAsync(response.Content, current.MaxResponseBytes, logger, cancellationToken).ConfigureAwait(false);
+                    string body = await EventStoreHttp.ReadBoundedResponseBodyAsync(response.Content, current.MaxResponseBytes, logger, cancellationToken).ConfigureAwait(false);
                     IReadOnlyList<T> items;
                     int totalCount;
                     try {
@@ -468,59 +467,6 @@ public sealed class EventStoreQueryClient(
         return false;
     }
 
-    private static async Task<string> ReadBoundedResponseBodyAsync(
-        HttpContent content,
-        int maxResponseBytes,
-        ILogger logger,
-        CancellationToken cancellationToken) {
-        if (maxResponseBytes <= 0) {
-            throw new InvalidOperationException("EventStore MaxResponseBytes must be positive.");
-        }
-
-        if (content.Headers.ContentLength is { } contentLength && contentLength > maxResponseBytes) {
-            throw new InvalidOperationException("EventStore query response exceeded MaxResponseBytes.");
-        }
-
-        using Stream stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using MemoryStream bounded = new();
-        byte[] buffer = new byte[8192];
-        while (true) {
-            // P-1 (F1) — cap each read at "remaining budget + 1" so a single ReadAsync cannot
-            // pull MaxResponseBytes + 8 KB - 1 bytes off the wire before the cap fires.
-            int remaining = maxResponseBytes - (int)bounded.Length + 1;
-            int requestSize = Math.Min(buffer.Length, remaining);
-            int read = await stream.ReadAsync(buffer.AsMemory(0, requestSize), cancellationToken).ConfigureAwait(false);
-            if (read == 0) {
-                break;
-            }
-
-            if (bounded.Length + read > maxResponseBytes) {
-                throw new InvalidOperationException("EventStore query response exceeded MaxResponseBytes.");
-            }
-
-            bounded.Write(buffer, 0, read);
-        }
-
-        Encoding encoding = Encoding.UTF8;
-        string? charset = content.Headers.ContentType?.CharSet;
-        if (!string.IsNullOrWhiteSpace(charset)) {
-            try {
-                encoding = Encoding.GetEncoding(charset);
-            }
-            catch (Exception ex) when (ex is ArgumentException or NotSupportedException) {
-                // P-4 (F2/E7) — explicit signal that an unrecognized charset was rewritten to
-                // UTF-8 so operators can correlate downstream mojibake or schema-mismatch
-                // failures with a server lying about its Content-Type.
-                FrontComposerLog.QueryResponseCharsetFallback(logger, ex.GetType().Name);
-                encoding = Encoding.UTF8;
-            }
-        }
-
-        // P-8 (F9) — avoid bounded.ToArray() which doubles peak memory. GetBuffer() returns
-        // the publicly-visible underlying array (MemoryStream default ctor enables this).
-        return encoding.GetString(bounded.GetBuffer(), 0, (int)bounded.Length);
-    }
-
     [SuppressMessage(
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
@@ -567,30 +513,6 @@ public sealed class EventStoreQueryClient(
                 request.SortDescending),
             EventStoreRequestContent.JsonOptions);
 #pragma warning restore CS0618, HFC4001, HFC0001
-    }
-
-    private static async Task ApplyAuthorizationAsync(
-        HttpRequestMessage request,
-        EventStoreOptions options,
-        CancellationToken cancellationToken) {
-        if (options.AccessTokenProvider is null) {
-            if (options.RequireAccessToken) {
-                throw new InvalidOperationException("EventStore access token provider is required.");
-            }
-
-            return;
-        }
-
-        string? token = await options.AccessTokenProvider(cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(token)) {
-            if (options.RequireAccessToken) {
-                throw new InvalidOperationException("EventStore access token provider returned an empty token.");
-            }
-
-            return;
-        }
-
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 
     private sealed record SubmitQueryRequest(

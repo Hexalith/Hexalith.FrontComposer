@@ -3,6 +3,7 @@ using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,6 +16,30 @@ using Xunit;
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 public sealed class EventStoreRegistrationTests {
+    [Fact]
+    public async Task AddHexalithFrontComposer_Alone_UsesNullPendingCommandStatusQuery() {
+        ServiceCollection services = new();
+        _ = services.AddHexalithFrontComposer();
+
+        await using ServiceProvider provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IPendingCommandStatusQuery>().ShouldBeOfType<NullPendingCommandStatusQuery>();
+    }
+
+    [Fact]
+    public async Task AddHexalithEventStore_ReplacesNullPendingCommandStatusQuery() {
+        ServiceCollection services = new();
+        _ = services.AddHexalithFrontComposer();
+        _ = services.AddHexalithEventStore(options => {
+            options.BaseAddress = new Uri("https://eventstore.test");
+            options.RequireAccessToken = false;
+        });
+
+        await using ServiceProvider provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IPendingCommandStatusQuery>().ShouldBeOfType<EventStorePendingCommandStatusQuery>();
+    }
+
     [Fact]
     public async Task AddHexalithEventStore_ReplacesFrontComposerStubDefaults() {
         ServiceCollection services = new();

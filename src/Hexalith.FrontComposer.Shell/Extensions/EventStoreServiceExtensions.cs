@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.AspNetCore.Authorization;
@@ -86,6 +87,7 @@ public static class EventStoreServiceExtensions {
         // backed reader so badge counts share the same response classifier + ETag cache seam
         // as projection page queries (AC7).
         ReplaceActionQueueCountReader(services);
+        ReplacePendingCommandStatusQuery(services);
 
         RemoveStubCommandService(services);
         // Story 7-3 Pass 4 DN-7-3-4-2: AuthorizingCommandServiceDecorator wraps the EventStore
@@ -115,6 +117,19 @@ public static class EventStoreServiceExtensions {
         }
 
         services.TryAddScoped<Hexalith.FrontComposer.Contracts.Badges.IActionQueueCountReader, Hexalith.FrontComposer.Shell.Badges.EventStoreActionQueueCountReader>();
+    }
+
+    private static void ReplacePendingCommandStatusQuery(IServiceCollection services) {
+        for (int i = services.Count - 1; i >= 0; i--) {
+            ServiceDescriptor descriptor = services[i];
+            if (descriptor.ServiceType == typeof(IPendingCommandStatusQuery)
+                && !descriptor.IsKeyedService
+                && descriptor.ImplementationType == typeof(NullPendingCommandStatusQuery)) {
+                services.RemoveAt(i);
+            }
+        }
+
+        services.TryAddScoped<IPendingCommandStatusQuery, EventStorePendingCommandStatusQuery>();
     }
 
     private static void ConfigureHttpClient(IServiceProvider serviceProvider, HttpClient client) {

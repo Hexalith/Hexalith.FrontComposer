@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
-using System.Net.Http.Headers;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts;
@@ -69,7 +68,7 @@ public sealed class EventStoreCommandClient(
 
         try {
             using HttpRequestMessage request = new(HttpMethod.Post, current.CommandEndpointPath);
-            await ApplyAuthorizationAsync(request, current, cancellationToken).ConfigureAwait(false);
+            await EventStoreHttp.ApplyAuthorizationAsync(request, current, cancellationToken).ConfigureAwait(false);
 
             JsonElement payload = SerializeCommandPayload(command);
             request.Content = EventStoreRequestContent.Create(
@@ -170,30 +169,6 @@ public sealed class EventStoreCommandClient(
         Justification = "EventStore adapter serializes adopter command DTOs at runtime; AOT-specific contexts are deferred to Story 9-4.")]
     private static JsonElement SerializeCommandPayload<TCommand>(TCommand command)
         => JsonSerializer.SerializeToElement(command, EventStoreRequestContent.JsonOptions);
-
-    private static async Task ApplyAuthorizationAsync(
-        HttpRequestMessage request,
-        EventStoreOptions options,
-        CancellationToken cancellationToken) {
-        if (options.AccessTokenProvider is null) {
-            if (options.RequireAccessToken) {
-                throw new InvalidOperationException("EventStore access token provider is required.");
-            }
-
-            return;
-        }
-
-        string? token = await options.AccessTokenProvider(cancellationToken).ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(token)) {
-            if (options.RequireAccessToken) {
-                throw new InvalidOperationException("EventStore access token provider returned an empty token.");
-            }
-
-            return;
-        }
-
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-    }
 
     private static async Task<string?> ReadCorrelationIdAsync(
         HttpResponseMessage response,
