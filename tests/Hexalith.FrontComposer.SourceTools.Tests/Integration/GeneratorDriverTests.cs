@@ -439,6 +439,103 @@ public partial class AllUnsupportedProjection
     }
 
     [Fact]
+    public void RunGenerators_CommandArtifactInventory_UsesCommandHintSegmentAndOptionalPage() {
+        AssertCommandArtifactInventory(
+            CommandTestSources.SingleStringFieldCommand,
+            "SetNameCommand",
+            expectedCommandArtifacts:
+            [
+                "TestDomain.SetNameCommand.CommandForm.g.razor.cs",
+                "TestDomain.SetNameCommand.CommandActions.g.cs",
+                "TestDomain.SetNameCommand.CommandLifecycleFeature.g.cs",
+                "TestDomain.SetNameCommand.CommandRegistration.g.cs",
+                "TestDomain.SetNameCommand.CommandRenderer.g.razor.cs",
+                "TestDomain.SetNameCommand.CommandLastUsedSubscriber.g.cs",
+                "TestDomain.SetNameCommand.CommandLifecycleBridge.g.cs",
+            ]);
+
+        AssertCommandArtifactInventory(
+            CommandTestSources.MultiFieldCommand,
+            "PlaceOrderCommand",
+            expectedCommandArtifacts:
+            [
+                "TestDomain.PlaceOrderCommand.CommandForm.g.razor.cs",
+                "TestDomain.PlaceOrderCommand.CommandActions.g.cs",
+                "TestDomain.PlaceOrderCommand.CommandLifecycleFeature.g.cs",
+                "TestDomain.PlaceOrderCommand.CommandRegistration.g.cs",
+                "TestDomain.PlaceOrderCommand.CommandRenderer.g.razor.cs",
+                "TestDomain.PlaceOrderCommand.CommandLastUsedSubscriber.g.cs",
+                "TestDomain.PlaceOrderCommand.CommandLifecycleBridge.g.cs",
+                "TestDomain.PlaceOrderCommand.CommandPage.g.razor.cs",
+            ]);
+    }
+
+    [Fact]
+    public void RunGenerators_CommandRegistration_ExposesCommandToDomainRegistry() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(CommandTestSources.SingleStringFieldCommand);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        SyntaxTree registrationTree = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.SetNameCommand.CommandRegistration.g.cs");
+        string registrationSource = registrationTree.GetText(ct).ToString();
+
+        registrationSource.ShouldContain("Commands: new List<string> { typeof(SetNameCommand).FullName! });");
+        registrationSource.ShouldContain("public static void RegisterDomain(IFrontComposerRegistry registry)");
+        registrationSource.ShouldContain("registry.RegisterDomain(Manifest);");
+    }
+
+    [Fact]
+    public void RunGenerators_CommandShapeDiagnostics_AreReportedAtGeneratorLevel() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation([
+            CommandTestSources.RecordPositionalCommand_NoDefaults,
+            CommandTestSources.MissingMessageIdCommand,
+        ]);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        Diagnostic hfc1009 = result.Diagnostics.Single(d => d.Id == "HFC1009");
+        hfc1009.Severity.ShouldBe(DiagnosticSeverity.Error);
+        result.Diagnostics.Single(d => d.Id == "HFC1006")
+            .GetMessage()
+            .ShouldContain("correlated end-to-end");
+
+        string[] fileNames = result.GeneratedTrees.Select(t => Path.GetFileName(t.FilePath)).ToArray();
+        fileNames.ShouldNotContain("TestDomain.IncrementCounterCommandNoDefaults.CommandForm.g.razor.cs");
+    }
+
+    [Fact]
+    public void RunGenerators_UnsupportedCommandField_ReportsHfc1002AndEmitsPlaceholderForm() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(CommandTestSources.UnsupportedFieldCommand);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        Diagnostic diagnostic = result.Diagnostics.First(d => d.Id == "HFC1002");
+        diagnostic.GetMessage().ShouldContain("command customization path");
+        diagnostic.GetMessage().ShouldNotContain("override rendering with [ProjectionFieldSlot]");
+
+        SyntaxTree formTree = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.UnsupportedCommand.CommandForm.g.razor.cs");
+        string formSource = formTree.GetText(ct).ToString();
+        formSource.ShouldContain("FcFieldPlaceholder");
+        formSource.ShouldContain("\"Raw\"");
+        formSource.ShouldContain("\"Object\"");
+        formSource.ShouldContain("FluentButton");
+    }
+
+    [Fact]
     public void RunGenerators_FiveFieldCommand_PageInfersRestoreViewKeyFromQuery() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(CommandTestSources.MultiFieldCommand);
@@ -510,6 +607,30 @@ public partial class AllUnsupportedProjection
         outputCompilation.GetDiagnostics(ct)
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ShouldBeEmpty($"Generated command artifacts for {metadataName} should compile without errors.");
+    }
+
+    private static void AssertCommandArtifactInventory(
+        string source,
+        string typeName,
+        string[] expectedCommandArtifacts) {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        string[] commandArtifacts = result.GeneratedTrees
+            .Select(t => Path.GetFileName(t.FilePath))
+            .Where(name => name.StartsWith("TestDomain." + typeName + ".Command", StringComparison.Ordinal))
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToArray();
+
+        commandArtifacts.ShouldBe(expectedCommandArtifacts.OrderBy(name => name, StringComparer.Ordinal).ToArray());
+        commandArtifacts.ShouldAllBe(name => name.Contains("." + typeName + ".Command", StringComparison.Ordinal));
+        commandArtifacts.ShouldNotContain("TestDomain." + typeName + "Registration.g.cs");
     }
 
     private const string TwoFieldCommandSource = @"

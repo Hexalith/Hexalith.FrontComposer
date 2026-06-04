@@ -3,19 +3,22 @@
 ## Generated Tests
 
 ### API Tests
-- [x] Not applicable - Story 2.8 freezes the browser-rendered FC-TBL table contract and does not introduce HTTP API endpoints.
+- [x] Not applicable - Story 3.1 covers generated Blazor command forms and does not introduce HTTP API endpoints.
 
 ### E2E Tests
-- [x] `tests/e2e/specs/fc-tbl-contract.spec.ts` - Generated DataGrid envelope, field-key, status-chip, and detail-region contract checks for the Counter specimen host.
+- [x] `tests/e2e/specs/command-form-generation.spec.ts` - Story 3.1 generated command-form coverage for inline, compact inline, and full-page command modes in the Counter sample.
 
 ## Coverage
 - API endpoints: 0/0 applicable.
-- UI contract slices covered by new E2E tests: generated grid envelope, column field keys, status filter chips, generated formatted values, always-present expand-in-row detail region.
-- UI contract slices already covered outside this E2E addition: Shell public API baseline, package boundary test, component-level filters/notices/prioritizer behavior.
+- UI command modes covered by new E2E tests: 3/3 sample command densities - inline `IncrementCommand`, compact inline `BatchIncrementCommand`, full-page `ConfigureCounterCommand`.
+- Happy paths covered: compact generated form submission to confirmed lifecycle feedback; full-page generated form submission and return-path navigation after correction.
+- Critical error cases covered: client-side invalid number parsing prevents full-page command submission and keeps the operator on the generated command route.
+- Contract checks covered: generated fields render through accessible labels; derivable `MessageId` and `TenantId` fields stay hidden from generated forms.
 
 ## Validation
+- `dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Release -m:1 /nr:false` - passed with 0 warnings / 0 errors.
 - `npm --prefix tests/e2e run typecheck`
-- `npm --prefix tests/e2e run test:fc-tbl` attempted; blocked locally because Kestrel cannot bind a loopback socket in this sandbox (`System.Net.Sockets.SocketException (13): Permission denied`).
+- `npx playwright test specs/command-form-generation.spec.ts --project=chromium` attempted from `tests/e2e`; blocked locally because Kestrel cannot bind a loopback socket in this sandbox (`System.Net.Sockets.SocketException (13): Permission denied`).
 
 ## Next Steps
-- Run `npm --prefix tests/e2e run test:fc-tbl` in CI or a local environment that permits loopback sockets.
+- Run `npx playwright test specs/command-form-generation.spec.ts --project=chromium` in CI or a local environment that permits loopback sockets.

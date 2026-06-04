@@ -118,6 +118,53 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void Emit_SubmitAllocatesCorrelationIdWithUlidFactory() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("[Inject] private IUlidFactory UlidFactory { get; set; } = default!;");
+        source.ShouldContain("var correlationId = UlidFactory.NewUlid();");
+        source.ShouldNotContain("var correlationId = Guid.NewGuid().ToString();");
+    }
+
+    [Fact]
+    public void Emit_SubmitEnsuresLifecycleBridgeAndLastUsedBeforeSubmittedDispatch() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        int bridgeEnsureIndex = source.IndexOf(
+            "LifecycleBridgeRegistry.Ensure<IncrementCommandLifecycleBridge>();",
+            StringComparison.Ordinal);
+        int subscriberEnsureIndex = source.IndexOf(
+            "LastUsedSubscriberRegistry.Ensure<IncrementCommandLastUsedSubscriber>();",
+            StringComparison.Ordinal);
+        int dispatchIndex = source.IndexOf(
+            "Dispatcher.Dispatch(new IncrementCommandActions.SubmittedAction(correlationId, _model));",
+            StringComparison.Ordinal);
+
+        bridgeEnsureIndex.ShouldBeGreaterThanOrEqualTo(0);
+        subscriberEnsureIndex.ShouldBeGreaterThan(bridgeEnsureIndex);
+        dispatchIndex.ShouldBeGreaterThan(subscriberEnsureIndex);
+    }
+
+    [Fact]
+    public void Emit_PlaceholderFieldRendersFieldNameAndType() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Raw", "System.Object", FormFieldTypeCategory.Placeholder, "Raw", true, false, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldPlaceholder>");
+        source.ShouldContain("__b.AddAttribute(cseq++, \"FieldName\", \"Raw\");");
+        source.ShouldContain("__b.AddAttribute(cseq++, \"TypeName\", \"System.Object\");");
+        source.ShouldContain("FluentButton");
+    }
+
+    [Fact]
     public void Emit_PolicyProtectedCommand_ChecksAuthorizationBeforeBeforeSubmitAndDispatch() {
         CommandFormModel form = BuildForm(
             [new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)],
@@ -209,8 +256,10 @@ public class CommandFormEmitterTests {
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        // Decision D15: never log _model
-        source.ShouldNotContain("_model,\n");
+        // Decision D15: never log _model. Passing the command to CommandService is allowed.
+        source.Split('\n')
+            .Where(line => line.Contains("Logger?", StringComparison.Ordinal))
+            .ShouldAllBe(line => !line.Contains("_model", StringComparison.Ordinal));
         source.ShouldNotContain("LogInformation(\"Submitted command {Model}\"");
     }
 

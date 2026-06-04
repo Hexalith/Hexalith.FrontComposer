@@ -54,6 +54,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleBridgeRegistry LifecycleBridgeRegistry { get; set; } = default!;
     [Inject] private ICommandService CommandService { get; set; } = default!;
+    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService PendingCommandState { get; set; } = default!;
     [Inject] private IStringLocalizer<Counter.Domain.IncrementCommand> Localizer { get; set; } = default!;
     [Inject] private ILogger<IncrementCommandForm>? Logger { get; set; }
@@ -205,7 +206,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             if (_disposed || _cts.IsCancellationRequested) return;
         }
 
-        var correlationId = Guid.NewGuid().ToString();
+        var correlationId = UlidFactory.NewUlid();
         _submittedCorrelationId = correlationId;
         var cts = _cts;
 

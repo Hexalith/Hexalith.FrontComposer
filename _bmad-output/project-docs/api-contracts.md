@@ -33,7 +33,7 @@ Standard attributes also honored: `[Display]`, `[Description]`, `[DefaultValue]`
 
 **Per `[Projection]` → 5 files:** `{T}.g.razor.cs` (view; Loading/Empty/Data dispatched by `ProjectionRole`), `{T}Feature.g.cs`, `{T}Actions.g.cs`, `{T}Reducers.g.cs`, `{T}Registration.g.cs`.
 
-**Per `[Command]` → 6–7 files** (`.Command` hint segment): `CommandForm.g.razor.cs`, `CommandActions.g.cs`, `CommandLifecycleFeature.g.cs`, `CommandRegistration.g.cs`, `CommandRenderer.g.razor.cs`, `CommandLastUsedSubscriber.g.cs`, `CommandLifecycleBridge.g.cs`, plus `CommandPage.g.razor.cs` when density = `FullPage`.
+**Per `[Command]` → 7 non-page files, plus an optional 8th page file** (`.Command` hint segment): `CommandForm.g.razor.cs`, `CommandActions.g.cs`, `CommandLifecycleFeature.g.cs`, `CommandRegistration.g.cs`, `CommandRenderer.g.razor.cs`, `CommandLastUsedSubscriber.g.cs`, `CommandLifecycleBridge.g.cs`, plus `CommandPage.g.razor.cs` only when density = `FullPage`. This reconciles the older epic shorthand "6-7 generated files" with the live generator contract: the lifecycle bridge is part of the canonical non-page set, and full-page density adds the route host.
 
 **Compilation-level:** `FrontComposerMcpManifest.g.cs` (MCP tool/resource manifest with schema fingerprints) and `FrontComposerProjectionTemplateManifest.g.cs`.
 
@@ -57,7 +57,7 @@ Standard attributes also honored: `[Display]`, `[Description]`, `[DefaultValue]`
 | ID | Severity | Meaning |
 |---|---|---|
 | HFC1001 | Warn | No `[Command]`/`[Projection]` types found |
-| HFC1002 | Warn | Unsupported projection field type |
+| HFC1002 | Warn | Unsupported generated projection or command field type |
 | HFC1003 | Warn | `[Projection]` not `partial` |
 | HFC1004 | Warn | Attribute on unsupported type kind (struct/abstract/generic) |
 | HFC1005 | Warn | Invalid attribute argument |

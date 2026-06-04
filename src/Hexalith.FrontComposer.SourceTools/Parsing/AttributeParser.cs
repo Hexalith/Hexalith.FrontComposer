@@ -505,7 +505,7 @@ public static class AttributeParser {
             diagnostics.Add(new DiagnosticInfo(
                 "HFC1002",
                 string.Format(
-                    "What: Property '{0}' on type '{1}' is not supported for auto-generation.{3}Expected: One of: string, int, long, decimal, double, float, bool, DateTime, DateTimeOffset, DateOnly, TimeOnly, enum (backed by int), Guid, or nullable/collection variants.{3}Got: {2}{3}Fix: Use a supported type, or override rendering with [ProjectionFieldSlot] (Story 6.3).{3}DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1002",
+                    "What: Property '{0}' on type '{1}' is not supported for auto-generation.{3}Expected: One of: string, int, long, decimal, double, float, bool, DateTime, DateTimeOffset, DateOnly, TimeOnly, enum (backed by int), Guid, or nullable/collection variants.{3}Got: {2}{3}Fix: Use a supported type, or provide a custom renderer through the projection slot or command customization path.{3}DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1002",
                     propertySymbol.Name,
                     containingTypeName,
                     unsupportedType,

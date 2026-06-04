@@ -37,7 +37,7 @@ public static class DiagnosticDescriptors {
         isEnabledByDefault: true);
 
     /// <summary>
-    /// HFC1002: Unsupported field type in [Projection].
+    /// HFC1002: Unsupported field type in generated projection or command UI.
     /// </summary>
     public static readonly DiagnosticDescriptor UnsupportedFieldType = Create(
         id: "HFC1002",

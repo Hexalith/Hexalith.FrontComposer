@@ -94,6 +94,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleBridgeRegistry LifecycleBridgeRegistry { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ICommandService CommandService { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService PendingCommandState { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IStringLocalizer<" + commandFqn + "> Localizer { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILogger<" + componentName + ">? Logger { get; set; }");
@@ -513,7 +514,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine();
         }
 
-        _ = sb.AppendLine("        var correlationId = Guid.NewGuid().ToString();");
+        _ = sb.AppendLine("        var correlationId = UlidFactory.NewUlid();");
         _ = sb.AppendLine("        _submittedCorrelationId = correlationId;");
         _ = sb.AppendLine("        var cts = _cts;");
         _ = sb.AppendLine();
