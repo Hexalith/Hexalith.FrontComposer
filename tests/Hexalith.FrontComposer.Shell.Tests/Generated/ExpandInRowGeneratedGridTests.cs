@@ -1,5 +1,6 @@
 #pragma warning disable CA2007
 using System.Collections.Immutable;
+using System.Globalization;
 
 using AngleSharp.Dom;
 
@@ -36,6 +37,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
     public async Task CounterProjectionView_ExpandTrigger_PopulatesAlwaysPresentRegion()
     {
         SetupExpandInRowModule();
+        using CultureScope cultureScope = new("en");
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         List<object> dispatchedActions = [];
@@ -84,6 +86,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
     public async Task CounterProjectionView_FilterHidesExpandedRow_RendersBannerAndSuppressedAnnouncement()
     {
         SetupExpandInRowModule();
+        using CultureScope cultureScope = new("en");
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         List<object> dispatchedActions = [];
@@ -180,4 +183,25 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
     private static IElement Button(IRenderedComponent<CounterProjectionView> cut, string ariaLabel)
         => cut.Nodes.QuerySelectorAll("fluent-button.fc-expand-button")
             .Single(button => string.Equals(button.GetAttribute("aria-label"), ariaLabel, StringComparison.Ordinal));
+
+    private sealed class CultureScope : IDisposable
+    {
+        private readonly CultureInfo _originalCulture;
+        private readonly CultureInfo _originalUICulture;
+
+        public CultureScope(string cultureName)
+        {
+            CultureInfo culture = new(cultureName);
+            _originalCulture = CultureInfo.CurrentCulture;
+            _originalUICulture = CultureInfo.CurrentUICulture;
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+        }
+
+        public void Dispose()
+        {
+            CultureInfo.CurrentCulture = _originalCulture;
+            CultureInfo.CurrentUICulture = _originalUICulture;
+        }
+    }
 }

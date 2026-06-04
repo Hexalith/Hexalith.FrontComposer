@@ -76,6 +76,7 @@ project: frontcomposer
 # 2-3 moved review → done on 2026-06-04 (story-automator-review; AC1/AC2/AC3 re-proved true, badge TemplateColumn fix independently verified as genuine runtime bug, build 0/0, 13-failure baseline unchanged, File List reconciled — 0 critical/high)
 # 2-4 moved backlog → ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of expand-in-row detail — always-present role=region panel + filter-hidden banner/suppressed-announcement + e2e a11y; gap = end-to-end generated-grid expand-click + filter-hides-expanded-row runtime pins; component/reducer/emitter/banner already pinned; AC3 Playwright CI-only)
 # 2-4 moved ready-for-dev → in-progress on 2026-06-04 (dev-story)
+# 2-4 moved in-progress → review on 2026-06-04 (dev-story; generated-grid expand/filter-hidden pins, zero src change, build 0/0, story pins green, default-lane baseline remains environmental)
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/implementation-artifacts"
@@ -97,7 +98,7 @@ development_status:
   2-1-render-a-projection-from-a-projection-type: done
   2-2-registry-driven-navigation-and-home-directory: done
   2-3-datagrid-filtering-status-and-empty-loading-states: done
-  2-4-accessible-expand-in-row-detail: in-progress
+  2-4-accessible-expand-in-row-detail: review
   2-5-column-prioritization-for-wide-projections: backlog
   2-6-live-projection-updates-with-reconnect-reconciliation: backlog
   2-7-command-palette-discovery-and-global-search: backlog
