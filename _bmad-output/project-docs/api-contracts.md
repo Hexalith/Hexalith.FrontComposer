@@ -113,17 +113,21 @@ and does not register pending state.
 | HFC1035 | Warn | `[ProjectionTemplate]` contract major-version mismatch |
 | HFC1036 | Warn | `[ProjectionTemplate]` contract minor-version drift |
 | HFC1037 | Error | Duplicate `[ProjectionTemplate]` for same projection+role |
-| HFC1038 | Error | Invalid Level-3 slot selector |
-| HFC1039 | Warn | Invalid Level-3 slot component |
-| HFC1040 | Warn | Duplicate Level-3 slot override |
-| HFC1041 | Warn | Level-3 slot contract version mismatch |
-| HFC1042–HFC1049 | — | Level-4 view override + dev-mode (reserved) |
-| HFC1050 | Warn | Custom override interactive element missing accessible name |
-| HFC1051 | Warn | Custom override keyboard reachability issue |
-| HFC1052 | Warn | Custom override suppresses focus visibility |
-| HFC1053 | Warn | Custom override missing `aria-live` parity |
-| HFC1054 | Warn | Custom override motion without reduced-motion fallback |
-| HFC1055 | Warn | Custom override color without forced-colors fallback |
+| HFC1038 | Error | Invalid Level-3 slot selector; current slot path reports at adopter call-site/startup, not as a proven SourceTools build diagnostic |
+| HFC1039 | Warn | Invalid Level-3 slot component; current slot path logs at startup/render and falls back to generated rendering |
+| HFC1040 | Warn | Duplicate Level-3 slot override; current slot registry logs duplicate ambiguity and falls back to generated rendering |
+| HFC1041 | Warn | Level-3 slot contract version mismatch; current slot registry ignores major mismatch, accepts minor drift at Information |
+| HFC1042 | Error | Invalid Level-4 view override projection type; descriptor reserved/cataloged, no proven Level-4 build-time marker path today |
+| HFC1043 | Warn | Invalid Level-4 view override component; current view-override registry logs at startup and ignores the descriptor |
+| HFC1044 | Error | Duplicate Level-4 view override; current view-override registry hard-fails duplicate different components at startup |
+| HFC1045 | Warn | Level-4 view override contract version mismatch; current view-override registry ignores major mismatch, accepts minor drift at Information |
+| HFC1046 | Warn | Level-4 accessibility warning; reserved/adjacent today, with active override accessibility checks emitted as HFC1050-HFC1055 |
+| HFC1050 | Warn | Build-time override accessibility analyzer: custom interactive element missing accessible name |
+| HFC1051 | Warn | Build-time override accessibility analyzer: keyboard reachability issue |
+| HFC1052 | Warn | Build-time override accessibility analyzer: suppressed focus visibility |
+| HFC1053 | Warn | Build-time override accessibility analyzer: missing `aria-live` parity |
+| HFC1054 | Warn | Build-time override accessibility analyzer: motion without reduced-motion fallback |
+| HFC1055 | Warn | Build-time override accessibility analyzer: color without forced-colors fallback |
 | HFC1056 | Error | `[RequiresPolicy]` value invalid |
 | HFC1057 | Error | Duplicate `[RequiresPolicy]` |
 | HFC1058 | Warn | Drift enabled but baseline file missing |

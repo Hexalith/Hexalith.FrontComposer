@@ -93,6 +93,14 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Emitted artifacts:** per `[Projection]` → 5 files (`{T}.g.razor.cs` + `Feature`/`Actions`/
   `Reducers`/`Registration`); per `[Command]` → 6–7 files (`.Command` segment; `+CommandPage` when
   density is `FullPage`); compilation-level `FrontComposerMcpManifest.g.cs` + projection-template manifest
+- **Customization precedence:** generated projection body resolution is Level 4 full-view override →
+  Level 2 `[ProjectionTemplate]` → generated default body. Level 3 field slots compose only when the
+  selected body delegates to the generated field/row/section/default renderers. Do not change this
+  order outside an FC-CUST contract story.
+- **Customization diagnostics phase:** HFC1038-HFC1041 and HFC1043-HFC1045 are currently
+  call-site/startup/runtime registry diagnostics for Level 3/4 registrations, not proven SourceTools
+  build diagnostics. HFC1050-HFC1055 are build-time SourceTools analyzer warnings over Level 2
+  templates and Level 3/4 registration-discovered components.
 - **Density rule is spec-locked:** non-derivable property count ≤1 → `Inline`, 2–4 → `CompactInline`,
   ≥5 → `FullPage`. Derivable fields (`MessageId`, `CorrelationId`, `TenantId`, `UserId`, timestamps,
   `[DerivedFrom]`) are excluded from forms. Change only via a story/ADR
@@ -118,6 +126,10 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Icons:** use the custom inline-SVG `FcFluentIcons` factory, **not** a FluentUI icons NuGet
 - **NFR17 tripwire:** a new `IStorageService.SetAsync` call site in `Shell/State/` requires updating
   the tripwire whitelist + the story compliance matrix
+- **Dev-only customization panel:** contract mismatch diagnostics may render through
+  `FcCustomizationDiagnosticPanel` only when both gates hold: DEBUG build and
+  `IHostEnvironment.IsDevelopment()`. Production/Staging and Release builds must not register or
+  render the mismatch provider.
 
 ### MCP Server Rules (Consumer — `Hexalith.FrontComposer.Mcp`)
 
