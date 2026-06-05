@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
@@ -112,12 +113,59 @@ public sealed class ProjectionViewOverrideServiceCollectionExtensionsTests {
         registry.Resolve(typeof(ViewProjection), null).ShouldBeNull();
     }
 
+    [Fact]
+    public void DescriptorSource_DefensiveCopiesInputList() {
+        ProjectionViewOverrideDescriptor original = Descriptor(typeof(ValidReplacement));
+        ProjectionViewOverrideDescriptor replacement = Descriptor(typeof(AnyRoleReplacement), ProjectionRole.DetailRecord);
+        List<ProjectionViewOverrideDescriptor> descriptors = [original];
+
+        ProjectionViewOverrideDescriptorSource source = new(descriptors);
+        descriptors[0] = replacement;
+
+        source.Descriptors.ShouldHaveSingleItem().ShouldBe(original);
+        ProjectionViewOverrideRegistry registry = new(
+            NullLogger<ProjectionViewOverrideRegistry>.Instance,
+            [source]);
+
+        registry.Descriptors.ShouldHaveSingleItem().ComponentType.ShouldBe(typeof(ValidReplacement));
+        registry.Resolve(typeof(ViewProjection), null)!.ComponentType.ShouldBe(typeof(ValidReplacement));
+        registry.Resolve(typeof(ViewProjection), ProjectionRole.DetailRecord)!.ComponentType.ShouldBe(typeof(ValidReplacement));
+    }
+
+    [Fact]
+    public void Registry_MinorContractVersionDrift_LogsHfc1045Information_AndDescriptorIsAccepted() {
+        ListLogger<ProjectionViewOverrideRegistry> logger = new();
+        ProjectionViewOverrideDescriptor descriptor = Descriptor(
+            typeof(ValidReplacement),
+            contractVersion: ProjectionViewOverrideContractVersion.Current + 1_000);
+
+        ProjectionViewOverrideRegistry registry = new(
+            logger,
+            [new ProjectionViewOverrideDescriptorSource([descriptor])]);
+
+        registry.Resolve(typeof(ViewProjection), null)!.ComponentType.ShouldBe(typeof(ValidReplacement));
+        logger.Entries.ShouldContain(e => e.Level == LogLevel.Information
+            && e.Message.Contains("HFC1045", StringComparison.Ordinal)
+            && e.Message.Contains("Override accepted", StringComparison.Ordinal));
+    }
+
     private static ServiceCollection NewServices() {
         ServiceCollection services = [];
         _ = services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>(NullLoggerFactory.Instance);
         _ = services.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>));
         return services;
     }
+
+    private static ProjectionViewOverrideDescriptor Descriptor(
+        Type componentType,
+        ProjectionRole? role = null,
+        int contractVersion = ProjectionViewOverrideContractVersion.Current)
+        => new(
+            ProjectionType: typeof(ViewProjection),
+            Role: role,
+            ComponentType: componentType,
+            ContractVersion: contractVersion,
+            RegistrationSource: "test");
 
     public sealed record ViewProjection(int Id);
 
@@ -142,5 +190,28 @@ public sealed class ProjectionViewOverrideServiceCollectionExtensionsTests {
     }
 
     public sealed class MissingContextReplacement : ComponentBase {
+    }
+
+    private sealed class ListLogger<T> : ILogger<T> {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, formatter(state, exception)));
+
+        private sealed class NullScope : IDisposable {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose() {
+            }
+        }
     }
 }

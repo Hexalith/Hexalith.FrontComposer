@@ -356,6 +356,50 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
+    public async Task CounterProjectionView_Level4Replacement_WinsWhenLevel2TemplateAlsoRegistered()
+    {
+        UseFakeTime(s_fixedNow);
+
+        Services.AddSingleton(new ProjectionTemplateAssemblySource(
+        [
+            new ProjectionTemplateDescriptor(
+                ProjectionType: typeof(CounterProjection),
+                Role: null,
+                TemplateType: typeof(SelectedCounterTemplate),
+                ContractVersion: ProjectionTemplateContractVersion.Current),
+        ]));
+        Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
+
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        using CultureScope _ = new(CultureInfo.InvariantCulture);
+
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            Guid.NewGuid().ToString(),
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 1234,
+                    LastUpdated = s_lastUpdated,
+                },
+            ]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            string markup = cut.Markup;
+
+            markup.ShouldContain("data-fc-datagrid");
+            markup.ShouldContain("counter-full-view-heading");
+            markup.ShouldNotContain("fc-selected-template");
+            markup.ShouldNotContain("fluent-data-grid");
+        });
+    }
+
+    [Fact]
     public async Task CounterProjectionView_Level4Replacement_RendersInsideFrameworkEnvelope_AndUsesSafeFieldDelegates()
     {
         UseFakeTime(s_fixedNow);
