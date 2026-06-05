@@ -134,6 +134,35 @@ public sealed class DriftAnalyzerConfigOptionsTests {
     }
 
     [Fact()]
+    public void FrontComposerDriftDetectionEnabledAlias_EnablesDriftComparison_WhenPrimaryOptionIsAbsent() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection {
+                public string Id { get; set; } = string.Empty;
+                public string Added { get; set; } = string.Empty;
+            }
+            """;
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = RunWithEnabledOverrideAndBaseline(
+            source,
+            baseline,
+            "true",
+            "build_property.FrontComposerDriftDetectionEnabled");
+
+        diagnostics.Any(d => d.Id == "HFC1065" && d.GetMessage().Contains("Added", StringComparison.Ordinal))
+            .ShouldBeTrue("AC1 — FrontComposerDriftDetectionEnabled=true must enable drift comparison when the primary HfcDriftDetectionEnabled option is absent.");
+    }
+
+    [Fact()]
     public void InvalidOption_FallsBackToDocumentedSafeDefault_NotSilentDisable() {
         // Story §"Validate analyzer-configured size/count/severity options before comparison;
         // invalid option values emit deterministic configuration diagnostics and fall back only
@@ -223,7 +252,11 @@ public sealed class DriftAnalyzerConfigOptionsTests {
         return driver.GetRunResult().Diagnostics;
     }
 
-    private static IReadOnlyList<Diagnostic> RunWithEnabledOverrideAndBaseline(string source, string baselineJson, string enabledRaw) {
+    private static IReadOnlyList<Diagnostic> RunWithEnabledOverrideAndBaseline(
+        string source,
+        string baselineJson,
+        string enabledRaw,
+        string optionKey = "build_property.HfcDriftDetectionEnabled") {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
@@ -231,7 +264,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
         // Bypass DriftEnabledOptions's auto-set so we can probe the exact raw value.
         AnalyzerConfigOptionsProvider options = new InMemoryRawOptionsProvider(
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
-                ["build_property.HfcDriftDetectionEnabled"] = enabledRaw,
+                [optionKey] = enabledRaw,
             });
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(

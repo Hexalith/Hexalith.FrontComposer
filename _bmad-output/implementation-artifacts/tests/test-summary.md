@@ -151,3 +151,50 @@
 - [x] Test summary updated.
 - [x] Tests saved to appropriate directories.
 - [x] Summary includes coverage metrics.
+
+## Story 7.4 - opt-in drift detection vs. a baseline
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Baseline/DriftAnalyzerConfigOptionsTests.cs` - added a focused alias opt-in pin proving `FrontComposerDriftDetectionEnabled=true` enables drift comparison when `HfcDriftDetectionEnabled` is absent.
+- [x] Existing drift tests under `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/**` cover opt-in gating, candidate baseline naming, trust failures, structural drift, metadata drift, diagnostic payloads, ordering/truncation, byte stability, incremental caching, redaction, and HFC1070 trim/AOT isolation.
+- [x] Existing diagnostic governance tests cover HFC1058-HFC1070 descriptor, registry, docs-stub, `FcDiagnosticIds`, and `AnalyzerReleases.Unshipped.md` parity.
+
+### API Tests
+- [x] Not applicable - Story 7.4 has no HTTP API endpoint surface.
+
+### E2E Tests
+- [x] Browser E2E tests are not applicable - Story 7.4 is a build-time SourceTools diagnostic feature.
+- [x] Generator-driver style SourceTools tests cover the adopter build-time flow with analyzer-config options and `AdditionalText` baselines.
+
+### Coverage
+- Opt-in behavior: `HfcDriftDetectionEnabled` and `FrontComposerDriftDetectionEnabled` enable comparison; disabled drift ignores candidate baselines and leaves generated output stable.
+- Baseline trust: HFC1058-HFC1064 and HFC1069 fail closed for missing, configured-path mismatch, empty/malformed/unsupported/oversized/duplicated/invariant-violating, and redaction-unsafe baselines.
+- Drift classification: HFC1065 covers structural declaration/property/type/nullability/bounded-context drift; HFC1066 covers renderer and metadata-impacting changes.
+- Diagnostic contract: payload property bag, help links, message shape, path normalization, redaction, deterministic ordering, and truncation are covered.
+- Incremental/output stability: `LoadDriftBaselines` tracked step name, no `CompilationProvider` dependency for HFC1058-HFC1069 comparison, and diagnostics-only byte stability are covered.
+- HFC1070: trim/AOT advisory remains separately registered and compilation-backed only for action-queue catalog evidence.
+
+### Validation
+- [x] `dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Release --no-restore -m:1 /nr:false` passed with 0 warnings / 0 errors after the QA alias pin.
+- [x] `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests -noLogo -noColor -parallel none -method Hexalith.FrontComposer.SourceTools.Tests.Drift.Baseline.DriftAnalyzerConfigOptionsTests.FrontComposerDriftDetectionEnabledAlias_EnablesDriftComparison_WhenPrimaryOptionIsAbsent` passed 1/1.
+- [x] `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
+- [x] `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests -noLogo -noColor -parallel none -class "*Drift*" -class- "*Benchmarks*"` passed 170/170 after the QA alias pin.
+- [x] Focused diagnostic parity lane passed 25/25 via direct xUnit v3 in-process runner: `DriftDiagnosticCatalogTests`, `SourceToolsHfc1001ThroughHfc1070_SeverityChannelsStayAligned`, descriptor/release-row parity methods.
+- [x] Broad SourceTools in-process lane with default exclusions ran 1023 tests: 1020 passed, 3 failed. Failures are outside Story 7.4: `DiagnosticRegistryTests.Story112_LedgerRowsMapToOneOfThreeFinalStates` (`deferred-work.md` missing), `FcDocComponentDocumentationContractTests.EveryComponentPageContainsAllRequiredSections(datagrid.md)`, and `IdeParityConformanceUtilityTests.EvidencePathNormalization_HonorsCaseSensitiveFlagOnLinux`.
+- [ ] `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Release --filter "FullyQualifiedName~Drift&Category!=Performance&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false` built, then VSTest aborted before execution with `System.Net.Sockets.SocketException (13): Permission denied`.
+- [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false` aborted locally because VSTest cannot create its TCP listener (`System.Net.Sockets.SocketException (13): Permission denied`).
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no HTTP API endpoint surface.
+- [x] E2E tests generated if UI exists: N/A for browser UI; generator-driver SourceTools tests cover the build-time flow.
+- [x] Tests use standard test framework APIs.
+- [x] Tests cover the happy path.
+- [x] Tests cover critical error cases.
+- [x] Story-owned focused lanes run successfully through the direct xUnit v3 in-process runner.
+- [x] Tests use proper locators: N/A for build-time SourceTools diagnostics; assertions target Roslyn diagnostics, generated outputs, and catalog metadata.
+- [x] Tests have clear descriptions.
+- [x] No hardcoded waits or sleeps.
+- [x] Tests are independent.
+- [x] Test summary updated.
+- [x] Tests saved to appropriate directories.
+- [x] Summary includes coverage metrics.
