@@ -185,6 +185,32 @@ public sealed class CommandLifecycleTests {
     }
 
     [Fact]
+    public async Task ReadAsync_AfterTenantVisibilityLoss_ReturnsHiddenUnknownShape() {
+        MutableTenantToolGate tenantGate = new() { Visible = true };
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider, tenantGate: tenantGate);
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        tenantGate.Visible = false;
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        FrontComposerMcpResult result = await tracker.ReadAsync(
+            Args($$"""{"messageId":"{{MessageId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+        result.Text.ShouldBe("Request failed.");
+        result.StructuredContent.ShouldNotBeNull();
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
+        result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
+        result.StructuredContent!.ToJsonString().ShouldNotContain(MessageId);
+        result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
+        service.DispatchCount.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task ReadAsync_IdempotencyResolvedTerminal_MapsToIdempotentConfirmedSuccess() {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
         await invoker.InvokeAsync(
@@ -461,6 +487,39 @@ public sealed class CommandLifecycleTests {
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
     }
 
+    [Theory]
+    [InlineData("""{}""")]
+    [InlineData("""{"correlationId":null}""")]
+    [InlineData("""{"correlationId":123}""")]
+    [InlineData("""{"correlationId":true}""")]
+    [InlineData("""{"correlationId":{}}""")]
+    [InlineData("""{"correlationId":[]}""")]
+    [InlineData("""{"messageId":null}""")]
+    [InlineData("""{"messageId":123}""")]
+    [InlineData("""{"messageId":false}""")]
+    [InlineData("""{"messageId":{}}""")]
+    [InlineData("""{"messageId":[]}""")]
+    public async Task ReadAsync_LifecycleHandleMustBeExactlyOneStringArgument(string json) {
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        FrontComposerMcpResult result = await tracker.ReadAsync(
+            Args(json),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+        result.StructuredContent.ShouldNotBeNull();
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
+        result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
+        result.StructuredContent!.ToJsonString().ShouldNotContain(MessageId);
+        service.DispatchCount.ShouldBe(1);
+    }
+
     [Fact]
     public async Task ReadAsync_ParallelReadsAfterTerminal_AllReturnSameTerminalSnapshot() {
         // AC18 / P4: simultaneous lifecycle reads against a terminal entry must converge to the
@@ -672,6 +731,7 @@ public sealed class CommandLifecycleTests {
         out LifecycleAwareCommandService commandService,
         out ServiceProvider provider,
         IFrontComposerMcpCommandPolicyGate? policyGate = null,
+        IFrontComposerMcpTenantToolGate? tenantGate = null,
         IUlidFactory? ulidFactory = null,
         Action<FrontComposerMcpOptions>? configureOptions = null,
         TimeProvider? timeProvider = null) {
@@ -693,7 +753,7 @@ public sealed class CommandLifecycleTests {
         services.AddSingleton<FrontComposerMcpToolAdmissionService>();
         services.AddSingleton<FrontComposerMcpLifecycleTracker>();
         services.AddSingleton<FrontComposerMcpProjectionReader>();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton(tenantGate ?? new AllowAllMcpTenantToolGate());
         services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         if (policyGate is not null) {
             services.AddSingleton(policyGate);
@@ -885,6 +945,16 @@ public sealed class CommandLifecycleTests {
 
         public ValueTask<bool> EvaluateAsync(string policyName, FrontComposerMcpAgentContext context, CancellationToken cancellationToken)
             => ValueTask.FromResult(Allow);
+    }
+
+    private sealed class MutableTenantToolGate : IFrontComposerMcpTenantToolGate {
+        public bool Visible { get; set; }
+
+        public ValueTask<bool> IsVisibleAsync(
+            McpCommandDescriptor descriptor,
+            FrontComposerMcpAgentContext context,
+            CancellationToken cancellationToken)
+            => ValueTask.FromResult(Visible);
     }
 
     private sealed class DisposableAction(Action action) : IDisposable {

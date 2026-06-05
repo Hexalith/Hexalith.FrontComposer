@@ -6,6 +6,9 @@ using Hexalith.FrontComposer.Contracts.Mcp;
 namespace Hexalith.FrontComposer.Mcp;
 
 internal static class McpJsonSchemaBuilder {
+    private const int LifecycleHandleMaxLength = 64;
+    private const string LifecycleHandlePattern = "^[0-9A-HJKMNP-TV-Z]{26}$";
+
     public static JsonElement BuildInputSchema(IReadOnlyList<McpParameterDescriptor> parameters) {
         JsonObject properties = [];
         JsonArray required = [];
@@ -56,10 +59,14 @@ internal static class McpJsonSchemaBuilder {
             ["correlationId"] = new JsonObject {
                 ["type"] = "string",
                 ["title"] = "Correlation ID",
+                ["maxLength"] = LifecycleHandleMaxLength,
+                ["pattern"] = LifecycleHandlePattern,
             },
             ["messageId"] = new JsonObject {
                 ["type"] = "string",
                 ["title"] = "Message ID",
+                ["maxLength"] = LifecycleHandleMaxLength,
+                ["pattern"] = LifecycleHandlePattern,
             },
         };
         JsonArray oneOf = [

@@ -36,6 +36,10 @@
 
 generated: 2026-06-03
 last_updated: 2026-06-05
+# 5-2 moved review -> done on 2026-06-05 (story-automator-review; adversarial review, 0 Critical / 0 High. All 4 ACs traced to live source and passing pins; nested retry wire-shape, opaque hidden/unknown redaction, terminal idempotency/bounded history, and retry/timeout/capacity option clamping all confirmed. Independently reproduced Release build 0/0 and MCP 323/323 (322 pre-fix + 1 new redaction test); exact-solution VSTest socket-blocked locally as recorded. Auto-fixed 1 Medium (File List omitted tests/test-summary.md -> added) + 2 Low (using-order in McpCommandToolAdapterTests.cs; added P42 catch-all redaction test proving a non-FrontComposerMcpException from GetContext collapses to sanitized AuthFailed without leaking the exception message). No production code change.)
+# 5-2 moved in-progress -> review on 2026-06-05 (dev-story; FC-MCP-LIFECYCLE v1 contract recorded; lifecycle schema now advertises canonical ULID pattern and maxLength; MCP handler-level pins added for tools/list lifecycle catalog ordering, non-lifecycle command routing, auth-context gate before handle lookup, and nested retry snapshot shape. Runtime handle validation expanded for exact-one string input. Build 0/0; exact solution test socket-blocked locally; Release MCP in-process fallback 321/321 green.)
+# 5-2 moved ready-for-dev -> in-progress on 2026-06-05 (dev-story; starting lifecycle subscription contract, schema metadata hardening, MCP call-handler route coverage, runtime handle validation pins, and retry/terminal/capacity verification. Existing baseline_commit preserved.)
+# 5-2 moved backlog -> ready-for-dev on 2026-06-05 (create-story; lifecycle subscription tool. Brownfield reality: FrontComposerMcpLifecycleTracker, McpLifecycleSnapshot, fixed lifecycle tool, auth-context gate, hidden/unknown redaction, timeout/retention, and many CommandLifecycleTests already exist. Dev must record FC-MCP-LIFECYCLE v1 contract, add lifecycle schema pattern/maxLength pins, cover the actual MCP call-handler route, resolve retry field wire-shape ambiguity, and preserve Story 5.1 ULID identity, opaque failures, no MCP retry loop, and FC-CMD/FC-RETRY boundaries.)
 # 5-1 moved review -> done on 2026-06-05 (story-automator-review; adversarial review, 0 critical / 0 high. Re-verified Release build 0/0, MCP 306/306 (supersedes the earlier 299/299 note), SourceTools emitter/transform 2/2. AC1/AC2/AC3 traced to passing pins; GUID + Activity.TraceId identity fallbacks confirmed removed, identity fails closed without IUlidFactory. Auto-fixed File List drift: added McpCommandToolAdapterTests.cs and 5-1-test-summary.md; no production code change.)
 # 5-1 moved in-progress -> review on 2026-06-05 (dev-story; FC-MCP-TOOLS v1 contract recorded; generated command descriptor/list/call behavior pinned; MCP command identity now requires IUlidFactory and emits separate canonical ULID MessageId/CorrelationId with no GUID or Activity.TraceId fallback; server-controlled input rejected before allocation/dispatch. Build 0/0; exact solution VSTest socket-blocked locally; fallback MCP 299/299 green, focused SourceTools emitter 2/2 green, broad SourceTools reproduced 3 known unrelated baselines.)
 # 5-1 moved ready-for-dev -> in-progress on 2026-06-05 (dev-story; starting FC-MCP-TOOLS v1 contract, descriptor/list pins, tools/call ordering hardening, and MCP command identity injection fix. Baseline f696f2146db6f409d8c9b148d4430ed27789ad5e.)
@@ -183,7 +187,7 @@ development_status:
   # Epic 5: AI-Agent (MCP) Surface
   epic-5: in-progress
   5-1-expose-generated-commands-as-mcp-tools: done
-  5-2-lifecycle-subscription-tool: backlog
+  5-2-lifecycle-subscription-tool: done
   5-3-projection-and-skill-corpus-resources: backlog
   5-4-fail-closed-security-gates: backlog
   5-5-schema-fingerprint-negotiation: backlog
