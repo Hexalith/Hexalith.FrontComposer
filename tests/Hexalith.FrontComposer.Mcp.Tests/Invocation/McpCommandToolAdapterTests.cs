@@ -133,6 +133,71 @@ public sealed class McpCommandToolAdapterTests {
     }
 
     [Fact]
+    public async Task ListToolsHandler_MissingRequestServices_ReturnsEmptyToolList() {
+        ListToolsResult result = await InvokeListToolsHandlerAsync(
+            ListRequest(null),
+            TestContext.Current.CancellationToken);
+
+        result.Tools.ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("auth")]
+    [InlineData("tenant")]
+    [InlineData("unexpected")]
+    public async Task ListToolsHandler_InvalidContext_ReturnsEmptyToolListWithoutProtocolError(string failure) {
+        MutableAgentContextAccessor accessor = new();
+        await using ServiceProvider provider = BuildMcpHandlerServices(new LifecycleAwareCommandService(), accessor);
+        using IServiceScope scope = provider.CreateScope();
+
+        accessor.ThrowAuthFailed = string.Equals(failure, "auth", StringComparison.Ordinal);
+        accessor.ThrowTenantMissing = string.Equals(failure, "tenant", StringComparison.Ordinal);
+        accessor.ThrowUnexpected = string.Equals(failure, "unexpected", StringComparison.Ordinal);
+        ListToolsResult result = await InvokeListToolsHandlerAsync(
+            ListRequest(scope.ServiceProvider),
+            TestContext.Current.CancellationToken);
+
+        result.Tools.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task ListToolsHandler_TenantDeniedCatalog_ReturnsOnlyLifecycleToolForValidContext() {
+        await using ServiceProvider provider = BuildMcpHandlerServices(
+            new LifecycleAwareCommandService(),
+            configureServices: services => services.AddSingleton<IFrontComposerMcpTenantToolGate>(new DenyingTenantToolGate()));
+        using IServiceScope scope = provider.CreateScope();
+
+        ListToolsResult result = await InvokeListToolsHandlerAsync(
+            ListRequest(scope.ServiceProvider),
+            TestContext.Current.CancellationToken);
+
+        result.Tools.Select(t => t.Name).ShouldBe(["frontcomposer.lifecycle.subscribe"]);
+    }
+
+    [Fact]
+    public async Task ListToolsHandler_TenantGateException_IsSanitizedAndTreatedAsHidden() {
+        CapturingLogger<FrontComposerMcpToolAdmissionService> logger = new();
+        await using ServiceProvider provider = BuildMcpHandlerServices(
+            new LifecycleAwareCommandService(),
+            configureServices: services => {
+                services.AddSingleton<IFrontComposerMcpTenantToolGate>(new ThrowingTenantToolGate());
+                services.AddSingleton<ILogger<FrontComposerMcpToolAdmissionService>>(logger);
+            });
+        using IServiceScope scope = provider.CreateScope();
+
+        ListToolsResult result = await InvokeListToolsHandlerAsync(
+            ListRequest(scope.ServiceProvider),
+            TestContext.Current.CancellationToken);
+
+        result.Tools.Select(t => t.Name).ShouldBe(["frontcomposer.lifecycle.subscribe"]);
+        logger.Entries.Single().Message.ShouldContain("bounded context Billing");
+        logger.Entries.Single().Message.ShouldNotContain("tenant-a");
+        logger.Entries.Single().Message.ShouldNotContain("agent-a");
+        logger.Entries.Single().Message.ShouldNotContain("super-secret");
+        logger.Entries.Single().Exception.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task CallToolHandler_NonLifecycleToolRoutesToCommandInvoker() {
         LifecycleAwareCommandService dispatcher = new();
         await using ServiceProvider provider = BuildMcpHandlerServices(dispatcher);
@@ -184,6 +249,19 @@ public sealed class McpCommandToolAdapterTests {
         knownHandle.Content.Single().ShouldBeOfType<TextContentBlock>().Text.ShouldBe("Request failed.");
         unknownHandle.Content.Single().ShouldBeOfType<TextContentBlock>().Text.ShouldBe("Request failed.");
         dispatcher.DispatchCount.ShouldBe(1);
+
+        accessor.ThrowAuthFailed = false;
+        accessor.ThrowTenantMissing = true;
+        CallToolResult tenantMissing = await InvokeCallToolHandlerAsync(
+            CallRequest(
+                scope.ServiceProvider,
+                "frontcomposer.lifecycle.subscribe",
+                Args("""{"correlationId":"01JZ0R5K9N8W4Y7V3Q2P6C1A0D"}""")),
+            TestContext.Current.CancellationToken);
+
+        tenantMissing.IsError.GetValueOrDefault().ShouldBeTrue();
+        tenantMissing.StructuredContent.ShouldBeNull();
+        tenantMissing.Content.Single().ShouldBeOfType<TextContentBlock>().Text.ShouldBe("Request failed.");
     }
 
     [Fact]
@@ -265,7 +343,8 @@ public sealed class McpCommandToolAdapterTests {
 
     private static ServiceProvider BuildMcpHandlerServices(
         LifecycleAwareCommandService dispatcher,
-        MutableAgentContextAccessor? accessor = null) {
+        MutableAgentContextAccessor? accessor = null,
+        Action<IServiceCollection>? configureServices = null) {
         ServiceCollection services = [];
         services.AddSingleton<ICommandService>(dispatcher);
         services.AddSingleton<IQueryService, NoopQueryService>();
@@ -281,6 +360,7 @@ public sealed class McpCommandToolAdapterTests {
         services.AddScoped<IFrontComposerMcpVisibleToolCatalogProvider>(sp => sp.GetRequiredService<FrontComposerMcpToolAdmissionService>());
         services.AddScoped<FrontComposerMcpCommandInvoker>();
         services.AddScoped<FrontComposerMcpLifecycleTracker>();
+        configureServices?.Invoke(services);
         return services.BuildServiceProvider();
     }
 
@@ -323,7 +403,7 @@ public sealed class McpCommandToolAdapterTests {
         return context;
     }
 
-    private static RequestContext<ListToolsRequestParams> ListRequest(IServiceProvider services) {
+    private static RequestContext<ListToolsRequestParams> ListRequest(IServiceProvider? services) {
         var request = new JsonRpcRequest {
             Id = new RequestId("test-list"),
             Method = RequestMethods.ToolsList,
@@ -500,9 +580,15 @@ public sealed class McpCommandToolAdapterTests {
 
         public bool ThrowUnexpected { get; set; }
 
+        public bool ThrowTenantMissing { get; set; }
+
         public FrontComposerMcpAgentContext GetContext() {
             if (ThrowAuthFailed) {
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
+            }
+
+            if (ThrowTenantMissing) {
+                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.TenantMissing);
             }
 
             if (ThrowUnexpected) {
@@ -542,6 +628,50 @@ public sealed class McpCommandToolAdapterTests {
                 3 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0E",
                 _ => throw new InvalidOperationException("Unexpected ULID allocation."),
             };
+        }
+    }
+
+    private sealed class DenyingTenantToolGate : IFrontComposerMcpTenantToolGate {
+        public ValueTask<bool> IsVisibleAsync(
+            McpCommandDescriptor descriptor,
+            FrontComposerMcpAgentContext context,
+            CancellationToken cancellationToken)
+            => ValueTask.FromResult(false);
+    }
+
+    private sealed class ThrowingTenantToolGate : IFrontComposerMcpTenantToolGate {
+        public ValueTask<bool> IsVisibleAsync(
+            McpCommandDescriptor descriptor,
+            FrontComposerMcpAgentContext context,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("super-secret tenant-a agent-a policy failure");
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T> {
+        public List<LogEntry> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) {
+            Entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
+        }
+    }
+
+    private sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);
+
+    private sealed class NullScope : IDisposable {
+        public static readonly NullScope Instance = new();
+
+        public void Dispose() {
         }
     }
 }

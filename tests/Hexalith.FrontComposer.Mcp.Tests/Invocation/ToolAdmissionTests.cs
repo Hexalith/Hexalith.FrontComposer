@@ -28,7 +28,9 @@ public sealed class ToolAdmissionTests {
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
         result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
-        result.StructuredContent!["requestedToolName"]!.GetValue<string>().ShouldBe("billing-payinvoicecommand-execute");
+        // Fail-closed parity (AC3): the unknown-tool envelope must not echo the requested name,
+        // otherwise an absent tool would be distinguishable from a tenant/policy-hidden one.
+        result.StructuredContent!["requestedToolName"].ShouldBeNull();
         result.StructuredContent!["suggestion"]!.GetValue<string>().ShouldBe("Billing.PayInvoiceCommand.Execute");
         result.StructuredContent!["visibleTools"]!.AsArray().Select(v => v!["name"]!.GetValue<string>())
             .ShouldBe(["Billing.PayInvoiceCommand.Execute", "Catalog.LabelProductCommand.Execute"]);
@@ -94,6 +96,87 @@ public sealed class ToolAdmissionTests {
     }
 
     [Fact]
+    public async Task CanonicalTenantHiddenTool_ReturnsUnknownToolEnvelopeWithoutSensitiveContent() {
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
+            out RecordingCommandService service,
+            services => services.AddSingleton<IFrontComposerMcpTenantToolGate>(
+                new TenantBoundedContextGate(new Dictionary<string, string>(StringComparer.Ordinal) {
+                    ["Billing"] = "tenant-a",
+                    ["Catalog"] = "tenant-b",
+                })));
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Catalog.LabelProductCommand.Execute",
+            Args("""{"Label":"secret-api-key-value"}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+        result.Text.ShouldBe("Request failed.");
+        string json = result.StructuredContent!.ToJsonString();
+        json.ShouldContain("unknown_tool");
+        json.ShouldNotContain("Catalog.LabelProductCommand.Execute");
+        json.ShouldNotContain("secret-api-key-value");
+        json.ShouldNotContain("tenant-a");
+        json.ShouldNotContain("agent-a");
+        service.Dispatched.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task HiddenTool_AndAbsentTool_ProduceStructurallyIdenticalUnknownEnvelope() {
+        // AC3 / FC-MCP-SECURITY: a tenant-hidden real command and a never-existed command must yield
+        // the same public unknown-tool envelope. A property that appears for one but not the other
+        // (notably requestedToolName) is a tool-existence oracle, so the property-name sets must
+        // match exactly and requestedToolName must be absent from both.
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
+            out _,
+            services => services.AddSingleton<IFrontComposerMcpTenantToolGate>(
+                new TenantBoundedContextGate(new Dictionary<string, string>(StringComparer.Ordinal) {
+                    ["Billing"] = "tenant-a",
+                    ["Catalog"] = "tenant-b",
+                })));
+
+        FrontComposerMcpResult hidden = await invoker.InvokeAsync(
+            "Catalog.LabelProductCommand.Execute",
+            Args("""{"Label":"Widget"}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpResult absent = await invoker.InvokeAsync(
+            "Catalog.GhostCommand.Execute",
+            Args("""{"Label":"Widget"}"""),
+            TestContext.Current.CancellationToken);
+
+        hidden.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+        absent.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+
+        string[] hiddenKeys = [.. hidden.StructuredContent!.Select(kvp => kvp.Key).Order(StringComparer.Ordinal)];
+        string[] absentKeys = [.. absent.StructuredContent!.Select(kvp => kvp.Key).Order(StringComparer.Ordinal)];
+        hiddenKeys.ShouldBe(absentKeys);
+        hiddenKeys.ShouldNotContain("requestedToolName");
+    }
+
+    [Fact]
+    public async Task CanonicalPolicyHiddenTool_ReturnsUnknownToolEnvelopeWithoutPolicyOrArguments() {
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
+            out RecordingCommandService service,
+            services => services.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new DenyingPolicyGate()));
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Billing.RestrictedCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+        string json = result.StructuredContent!.ToJsonString();
+        json.ShouldNotContain("Billing.RestrictedCommand.Execute");
+        json.ShouldNotContain("RestrictedPolicy");
+        json.ShouldNotContain("42");
+        json.ShouldNotContain("tenant-a");
+        json.ShouldNotContain("agent-a");
+        service.Dispatched.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task AllowedPolicy_ExecutesAfterAdmissionAndValidation() {
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             out RecordingCommandService service,
@@ -135,8 +218,10 @@ public sealed class ToolAdmissionTests {
 
         result.IsError.ShouldBeTrue();
         string json = result.StructuredContent!.ToJsonString();
-        // Control character is dropped by SanitizeDisplayText, leaving the readable remainder.
-        json.ShouldContain("BadName");
+        // Fail-closed parity (AC3): the requested name is never echoed into the envelope, so neither
+        // the readable remainder nor the control character (raw or escaped) may appear. The requested
+        // name is still sanitized internally on the resolution — covered by Story11_5ResolutionTests.
+        json.ShouldNotContain("BadName");
         json.ShouldNotContain("");
         json.ShouldNotContain("\\u0001");
         json.ShouldContain("visible-list-truncated");

@@ -76,6 +76,28 @@ public sealed class ProjectionResourceAdapterTests {
     }
 
     [Fact]
+    public async Task ReadAsync_HiddenProjection_ReturnsSanitizedUnknownResourceAtAdapterEdge() {
+        RecordingQueryService query = new();
+        await using ServiceProvider provider = BuildServices(
+            query,
+            services => services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(new DenyingResourceVisibilityGate()));
+        McpResourceDescriptor descriptor = Descriptor();
+        FrontComposerMcpResource resource = new(descriptor);
+
+        ReadResourceResult result = await resource.ReadAsync(
+            Request(provider, descriptor.ProtocolUri),
+            TestContext.Current.CancellationToken);
+
+        TextResourceContents text = result.Contents.Single().ShouldBeOfType<TextResourceContents>();
+        text.Uri.ShouldBe(descriptor.ProtocolUri);
+        text.MimeType.ShouldBe("text/plain");
+        text.Text.ShouldBe("Projection resource is not available.");
+        text.Text.ShouldNotContain("tenant-a");
+        text.Text.ShouldNotContain("InvoiceProjection");
+        query.CallCount.ShouldBe(0);
+    }
+
+    [Fact]
     public void ProtocolResource_AdvertisesExactCanonicalDescriptorAndRejectsTemplates() {
         McpResourceDescriptor descriptor = Descriptor();
         FrontComposerMcpResource resource = new(descriptor);
@@ -89,7 +111,9 @@ public sealed class ProjectionResourceAdapterTests {
             .Message.ShouldContain("resource templates");
     }
 
-    private static ServiceProvider BuildServices(IQueryService queryService) {
+    private static ServiceProvider BuildServices(
+        IQueryService queryService,
+        Action<IServiceCollection>? configureServices = null) {
         ServiceCollection services = [];
         services.AddSingleton(queryService);
         services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
@@ -97,6 +121,7 @@ public sealed class ProjectionResourceAdapterTests {
         services.AddScoped<IFrontComposerMcpAgentContextAccessor, StaticAgentContextAccessor>();
         services.AddScoped<FrontComposerMcpProjectionReader>();
         services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        configureServices?.Invoke(services);
         return services.BuildServiceProvider();
     }
 
@@ -152,5 +177,13 @@ public sealed class ProjectionResourceAdapterTests {
     private sealed class StaticAgentContextAccessor : IFrontComposerMcpAgentContextAccessor {
         public FrontComposerMcpAgentContext GetContext()
             => new("tenant-a", "agent-a", new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test")));
+    }
+
+    private sealed class DenyingResourceVisibilityGate : IFrontComposerMcpResourceVisibilityGate {
+        public ValueTask<bool> IsVisibleAsync(
+            McpResourceDescriptor descriptor,
+            FrontComposerMcpAgentContext context,
+            CancellationToken cancellationToken)
+            => ValueTask.FromResult(false);
     }
 }

@@ -137,6 +137,12 @@ public static class FrontComposerMcpServiceCollectionExtensions {
             // the unified hidden/unknown public surface returns an empty list.
             return new ListToolsResult { Tools = [] };
         }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            // A host context accessor can fail outside the FrontComposerMcpException taxonomy.
+            // tools/list must still fail closed as an empty catalog instead of leaking exception
+            // text or creating a protocol-visible error.
+            return new ListToolsResult { Tools = [] };
+        }
     }
 
     private static async ValueTask<CallToolResult> CallToolAsync(

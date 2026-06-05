@@ -1,4 +1,8 @@
+using Hexalith.FrontComposer.Contracts.Mcp;
+using Hexalith.FrontComposer.Mcp;
 using Hexalith.FrontComposer.Mcp.Skills;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
@@ -73,6 +77,24 @@ public sealed class SkillResourceTests {
         text.MimeType.ShouldBe("text/markdown");
         text.Text.ShouldBe(snapshot.Resources.Single(r => r.ResourceUri == "frontcomposer://skills/index").Markdown);
         text.Text.ShouldNotContain("frontcomposer:section narrative");
+    }
+
+    [Fact]
+    public async Task ProtocolAdapter_SkillReadBypassesProjectionVisibilityGate() {
+        SkillCorpusSnapshot snapshot = SkillCorpusLoader.LoadEmbedded();
+        var provider = new FrontComposerSkillResourceProvider(snapshot);
+        FrontComposerSkillMcpResource resource = provider.CreateMcpResources().Single(r => r.Descriptor.ResourceUri == "frontcomposer://skills/index");
+        ServiceCollection services = [];
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, ThrowingVisibilityGate>();
+        await using ServiceProvider serviceProvider = services.BuildServiceProvider();
+
+        ReadResourceResult result = await resource.ReadAsync(
+            Request("frontcomposer://skills/index", serviceProvider),
+            TestContext.Current.CancellationToken);
+
+        TextResourceContents text = result.Contents.Single().ShouldBeOfType<TextResourceContents>();
+        text.MimeType.ShouldBe("text/markdown");
+        text.Text.ShouldBe(snapshot.Resources.Single(r => r.ResourceUri == "frontcomposer://skills/index").Markdown);
     }
 
     [Fact]
@@ -207,7 +229,9 @@ public sealed class SkillResourceTests {
         embeddedNames.ShouldContain("Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json");
     }
 
-    private static RequestContext<ReadResourceRequestParams> Request(string? uri) {
+    private static RequestContext<ReadResourceRequestParams> Request(
+        string? uri,
+        IServiceProvider? services = null) {
         var request = new JsonRpcRequest {
             Id = new RequestId("test-skill-read"),
             Method = RequestMethods.ResourcesRead,
@@ -217,6 +241,16 @@ public sealed class SkillResourceTests {
             request,
             new ReadResourceRequestParams {
                 Uri = uri!,
-            });
+            }) {
+            Services = services,
+        };
+    }
+
+    private sealed class ThrowingVisibilityGate : IFrontComposerMcpResourceVisibilityGate {
+        public ValueTask<bool> IsVisibleAsync(
+            McpResourceDescriptor descriptor,
+            FrontComposerMcpAgentContext context,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("skill resource must not call projection visibility gate");
     }
 }

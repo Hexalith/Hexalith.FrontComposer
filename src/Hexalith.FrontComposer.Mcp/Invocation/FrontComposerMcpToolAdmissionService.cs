@@ -119,8 +119,11 @@ public sealed class FrontComposerMcpToolAdmissionService(
             });
         }
 
+        // Fail-closed parity (AC3 / FC-MCP-SECURITY): the unknown-tool envelope must NOT echo the
+        // requested name. Emitting it only for absent tools (and omitting it for real-but-hidden
+        // tools) would make the field's presence a tool-existence oracle, so a tenant-hidden,
+        // policy-hidden, and never-existed tool all return the identical envelope.
         JsonObject result = BuildHiddenUnknownStructuredContent();
-        result["requestedToolName"] = resolution.RequestedName;
         result["suggestion"] = resolution.Suggestion?.Name;
         result["visibleTools"] = visibleTools;
 
@@ -190,11 +193,10 @@ public sealed class FrontComposerMcpToolAdmissionService(
         catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex) {
+        catch {
             // Sanitized log: descriptor kind + bounded context only; no exception text, no tenant/user IDs,
             // no descriptor name (which could carry generated metadata).
             logger.LogWarning(
-                ex,
                 "MCP tenant gate threw while evaluating descriptor in bounded context {BoundedContext}; treating as not visible.",
                 descriptor.BoundedContext);
             return false;
@@ -220,9 +222,8 @@ public sealed class FrontComposerMcpToolAdmissionService(
         catch (OperationCanceledException) {
             throw;
         }
-        catch (Exception ex) {
+        catch {
             logger.LogWarning(
-                ex,
                 "MCP policy gate threw while evaluating descriptor in bounded context {BoundedContext}; treating as not visible.",
                 descriptor.BoundedContext);
             return false;

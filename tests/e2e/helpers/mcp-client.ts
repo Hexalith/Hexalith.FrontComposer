@@ -25,13 +25,24 @@ export interface McpTextResourceContents {
   text: string;
 }
 
+export interface McpTextContentBlock {
+  type?: 'text';
+  text: string;
+}
+
+export interface McpCallToolResult {
+  isError?: boolean;
+  content: McpTextContentBlock[];
+  structuredContent?: Record<string, unknown>;
+}
+
 export class McpClient {
   private nextId = 1;
   private sessionId: string | undefined;
 
   public constructor(
     private readonly request: APIRequestContext,
-    private readonly apiKey = process.env.FC_E2E_MCP_API_KEY ?? 'counter-e2e-mcp-key',
+    private readonly apiKey: string | null = process.env.FC_E2E_MCP_API_KEY ?? 'counter-e2e-mcp-key',
     private readonly extraHeaders: Record<string, string> = {},
   ) {}
 
@@ -85,9 +96,12 @@ export class McpClient {
     const headers: Record<string, string> = {
       Accept: 'application/json, text/event-stream',
       'Content-Type': 'application/json',
-      'X-FrontComposer-Mcp-Key': this.apiKey,
       ...this.extraHeaders,
     };
+    if (this.apiKey !== null) {
+      headers['X-FrontComposer-Mcp-Key'] = this.apiKey;
+    }
+
     if (this.sessionId) {
       headers['Mcp-Session-Id'] = this.sessionId;
     }

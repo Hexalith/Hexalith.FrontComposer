@@ -82,8 +82,42 @@ public sealed class HostingTests {
         // to honor the project's fail-closed memory rule.
         var services = new ServiceCollection();
 
-        Should.Throw<InvalidOperationException>(() => services.AddFrontComposerMcp(options =>
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(() => services.AddFrontComposerMcp(options =>
             options.Manifests.Add(CreateManifest("billing.invoice.create"))));
+
+        ex.Message.ShouldContain(nameof(IFrontComposerMcpTenantToolGate));
+        ex.Message.ShouldContain("Register a host-supplied gate before AddFrontComposerMcp");
+        ex.Message.ShouldContain(nameof(AllowAllMcpTenantToolGate));
+        services.Any(d => d.ServiceType == typeof(IFrontComposerMcpTenantToolGate)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void AddFrontComposerMcp_FailsClosed_WhenResourceVisibilityGateNotRegistered() {
+        var services = new ServiceCollection();
+        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(() => services.AddFrontComposerMcp(options =>
+            options.Manifests.Add(CreateManifest("billing.invoice.create"))));
+
+        ex.Message.ShouldContain(nameof(IFrontComposerMcpResourceVisibilityGate));
+        ex.Message.ShouldContain("Register a host-supplied gate before AddFrontComposerMcp");
+        ex.Message.ShouldContain(nameof(AllowAllResourceVisibilityGate));
+        ex.Message.ShouldContain("Skill corpus resources are framework-global");
+        services.Any(d => d.ServiceType == typeof(IFrontComposerMcpResourceVisibilityGate)).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void AddFrontComposerMcp_PreservesExplicitSampleDevAllowAllGateRegistrations() {
+        var services = new ServiceCollection();
+        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+
+        services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest("billing.invoice.create")));
+
+        ServiceDescriptor tenantGate = services.Single(d => d.ServiceType == typeof(IFrontComposerMcpTenantToolGate));
+        tenantGate.ImplementationType.ShouldBe(typeof(AllowAllMcpTenantToolGate));
+        ServiceDescriptor resourceGate = services.Single(d => d.ServiceType == typeof(IFrontComposerMcpResourceVisibilityGate));
+        resourceGate.ImplementationType.ShouldBe(typeof(AllowAllResourceVisibilityGate));
     }
 
     [Fact]
