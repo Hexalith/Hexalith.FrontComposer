@@ -70,7 +70,7 @@ and does not register pending state.
 | `HfcDriftBaselinePath` | Path to a `frontcomposer.generated-ui-baseline*.json` / `frontcomposer.drift-baseline*.json` `AdditionalText`. |
 | `HfcDriftMaxDiagnostics` | 1–500, default 50. |
 | `HfcDriftMaxBaselineBytes` | 1–10 MiB, default 256 KiB. |
-| `HfcDriftSeverity` | Warning \| Error \| Info (default Warning). |
+| `HfcDriftSeverity` | Warning \| Error \| Info \| Information (default Warning). |
 | `PublishTrimmed` / `PublishAot` | Auto-enable the HFC1070 trim/AOT advisory. |
 
 ### 1.5 Diagnostic catalog (HFC1001–HFC1070)
@@ -193,7 +193,12 @@ Reads generated files from `obj/{Configuration}/{TargetFramework}/generated/Hexa
 
 Options: `--project <path>`, `--solution <path>`, `--configuration <name>` (default Debug), `--framework <tfm>`, `--build` (runs `dotnet build` with `EmitCompilerGeneratedFiles=true` first), `--type <metadata-name>` (fuzzy match + Levenshtein suggestions), `--severity hidden|info|warning|error`, `--fail-on-warning`, `--fail-on-error`, `--format text|json` (default text), `--absolute-paths`.
 
-JSON: `schemaVersion = frontcomposer.cli.inspect.v1`; summary fields `generatedFiles`, `forms`, `grids`, `registrations`, `mcpManifestEntries`, `warnings`, `errors`.
+Severity filtering uses threshold semantics before `--type` and fail flags: `hidden` includes every
+diagnostic including non-canonical sidecar severities, `info` includes Info/Warning/Error,
+`warning` includes Warning/Error, and `error` includes Error only. `--fail-on-warning` and
+`--fail-on-error` evaluate after filtering.
+
+JSON: `schemaVersion = frontcomposer.cli.inspect.v1`; summary fields `generatedFiles`, `forms`, `grids`, `registrations`, `mcpManifestEntries`, `warnings`, `errors`. In v1, `mcpManifestEntries` counts generated files classified as `FrontComposerMcpManifest.g.cs`; it does not parse command/resource descriptor counts inside the generated manifest source.
 
 ### 3.2 `frontcomposer migrate`
 

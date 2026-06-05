@@ -74,7 +74,7 @@
       "Contracts": "Leaf shared kernel (net10.0 + netstandard2.0): generator-discovered attributes, command/query/lifecycle interfaces, rendering model, DomainManifest, MCP descriptors, schema fingerprint/baseline/delta types, FcDiagnosticIds.",
       "Schema": "Thin lib on Contracts: SchemaContractFamilyNames + SchemaMigrationDeltaAnalyzer.",
       "Shell": "Blazor front-shell UI library: FrontComposerShell layout, Fc* component catalog, Fluxor state, EventStore SignalR/HTTP clients, theming/density/accessibility. FluentUI v5 + Fluxor + SignalR + OIDC + NUlid.",
-      "SourceTools": "Single Roslyn incremental generator (netstandard2.0). [Projection]->5 files, [Command]->6-7 files, MCP manifest; HFC1001-HFC1070 diagnostics; opt-in drift detection; pure equatable IR.",
+      "SourceTools": "Single Roslyn incremental generator (netstandard2.0). [Projection]->5 files, [Command]->7 non-page files plus optional CommandPage, MCP manifest; HFC1001-HFC1070 diagnostics; opt-in drift detection; pure equatable IR.",
       "Mcp": "ASP.NET Core MCP server (HTTP streamable): dynamic command tools + lifecycle tool; projection + skill-corpus resources; fail-closed gates; schema fingerprint negotiation.",
       "Cli": "frontcomposer dotnet tool: inspect + migrate; bespoke parser; OutputSanitizer; atomic writes; exit codes 0-4.",
       "Testing": "Publishable bUnit test-host library: FrontComposerTestBase, AddFrontComposerTestHost, deterministic fakes, evidence + redaction, generated-component assertions."

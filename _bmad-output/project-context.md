@@ -91,8 +91,10 @@ _This file contains critical rules and patterns that AI agents must follow when 
   `obj/{Config}/{TFM}/generated/HexalithFrontComposer/`; this path is a **public contract**
   (`GeneratedOutputPathContract.Template`), validated in **Debug *and* Release**
 - **Emitted artifacts:** per `[Projection]` → 5 files (`{T}.g.razor.cs` + `Feature`/`Actions`/
-  `Reducers`/`Registration`); per `[Command]` → 6–7 files (`.Command` segment; `+CommandPage` when
-  density is `FullPage`); compilation-level `FrontComposerMcpManifest.g.cs` + projection-template manifest
+  `Reducers`/`Registration`); per `[Command]` → 7 non-page files (`.Command` segment:
+  `CommandForm`, `CommandActions`, `CommandLifecycleFeature`, `CommandRegistration`,
+  `CommandRenderer`, `CommandLastUsedSubscriber`, `CommandLifecycleBridge`) plus `CommandPage` when
+  density is `FullPage`; compilation-level `FrontComposerMcpManifest.g.cs` + projection-template manifest
 - **Customization precedence:** generated projection body resolution is Level 4 full-view override →
   Level 2 `[ProjectionTemplate]` → generated default body. Level 3 field slots compose only when the
   selected body delegates to the generated field/row/section/default renderers. Do not change this

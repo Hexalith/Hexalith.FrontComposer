@@ -66,7 +66,7 @@ Control characters and long hunks are escaped or truncated before text and JSON 
 
 The migration planner reads explicit `<Compile Include="...">` project items and the SDK-style
 default `**/*.cs` shape used by FrontComposer fixtures. More complex MSBuild glob semantics and item
-transforms are intentionally conservative in Story 9-2. Project files that contain top-level
+transforms are intentionally conservative for the current migration contract. Project files that contain top-level
 `<Import>` elements produce a warning because imported `Compile` items are not evaluated by the CLI;
 files that are not resolved as explicit project documents are not migrated.
 
@@ -87,13 +87,12 @@ place and the temporary file is cleaned up on a best-effort basis.
 ## Manual-Only Migration Diagnostics (HFCM9002)
 
 Manual-only migration diagnostics (HFCM9002) are detected by reading
-`*.diagnostics.json` sidecar files written by the SourceTools generator under
-`obj/{Configuration}/{TargetFramework}/generated/HexalithFrontComposer/`. **In Story 9-2 the
-sidecar reader is wired to the synthetic test fixture only — there is no
-production SourceTools emitter that writes these sidecars yet. AC11 ("a migration
-diagnostic has no safe automated fix") fires today only against hand-crafted
-fixtures.** Story 9-4 owns the final HFC ID assignment and will add the real
-generator emitter so AC11 fires for adopter code.
+`*.diagnostics.json` sidecar files under
+`obj/{Configuration}/{TargetFramework}/generated/HexalithFrontComposer/`. The current sidecar
+reader is wired to synthetic test fixtures only; adopter builds do not yet produce production
+SourceTools HFCM9002 sidecars. Until a production emitter is implemented and pinned, HFCM9002 is a
+manual-only migration contract for hand-crafted sidecar evidence, not a promise that normal builds
+will generate migration sidecars.
 
 Sidecar files that fail to parse or read are surfaced as a single sentinel
 manual-only entry per file rather than being silently dropped, so corrupted

@@ -5,7 +5,7 @@ genre: how-to
 audience: adopter
 ownerStory: 10-1-adopter-test-host-and-component-testing-utilities
 status: published
-reviewed: 2026-05-10
+reviewed: 2026-06-05
 uid: frontcomposer.how-to.test-generated-components
 slug: how-to/test-generated-components/
 ---
@@ -92,4 +92,4 @@ public sealed class CommandDispatchTests
 }
 ```
 
-The fake providers keep evidence per test context. They do not open EventStore, SignalR, DAPR, browser storage, or a running app host. Use `TestProjectionPageLoader.SucceedWith(...)` for server-side virtualization paths, `TestQueryService.SucceedWith<T>(...)` for query seams, and `TestFaultInjectionProvider` for deterministic drop, delay, partial delivery, reorder, and reconnect-nudge scenarios.
+The fake providers keep evidence per test context. They do not open EventStore, SignalR, DAPR, browser storage, or a running app host. Use `TestProjectionPageLoader.SucceedWith(...)` or `TestProjectionPageLoader.NotModified(...)` for server-side virtualization paths, `TestQueryService.SucceedWith<T>(...)` or `TestQueryService.NotModifiedWith<T>(...)` for query seams, and `TestFaultInjectionProvider` for deterministic drop, delay, partial delivery, reorder, and reconnect-nudge scenarios. Evidence formatting redacts configured tenant/user values and token, secret, or password keyed values before assertion output.
