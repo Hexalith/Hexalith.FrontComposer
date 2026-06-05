@@ -18,6 +18,7 @@
     "test:fc-cnc": "playwright test specs/one-at-a-time-execution-policy.spec.ts --project=chromium",
     "test:fc-retry": "playwright test specs/retry-and-degraded-state-handling.spec.ts --project=chromium",
     "test:fc-tbl": "playwright test specs/fc-tbl-contract.spec.ts --project=chromium",
+    "test:fc-level3": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/level-3-field-slot-overrides.spec.ts --project=chromium",
     "test:abandonment": "playwright test specs/form-abandonment-guard.spec.ts --project=chromium",
     "test:mcp-resources": "playwright test specs/mcp-resources.spec.ts --project=chromium",
     "test:mcp-security": "playwright test specs/mcp-fail-closed-security.spec.ts --project=chromium",

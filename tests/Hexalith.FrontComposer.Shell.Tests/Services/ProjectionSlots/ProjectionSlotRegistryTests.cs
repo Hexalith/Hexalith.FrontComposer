@@ -138,6 +138,27 @@ public sealed class ProjectionSlotRegistryTests {
     }
 
     [Fact]
+    public void Register_MinorContractVersionDrift_LogsHfc1041Information_And_DescriptorIsAccepted() {
+        ListLogger<ProjectionSlotRegistry> logger = new();
+        ProjectionSlotDescriptor minorDrift = new(
+            ProjectionType: typeof(SlotProjection),
+            FieldName: "Priority",
+            FieldType: typeof(int),
+            Role: null,
+            ComponentType: typeof(AnyPrioritySlot),
+            ContractVersion: ProjectionSlotContractVersion.Current + 1_000);
+
+        ProjectionSlotRegistry registry = new(logger, [new ProjectionSlotDescriptorSource([minorDrift])]);
+
+        ProjectionSlotDescriptor? resolved = registry.Resolve(typeof(SlotProjection), null, "Priority");
+        resolved.ShouldNotBeNull();
+        resolved!.ComponentType.ShouldBe(typeof(AnyPrioritySlot));
+        logger.Entries.ShouldContain(e => e.Level == LogLevel.Information
+            && e.Message.Contains("HFC1041")
+            && e.Message.Contains("Override accepted"));
+    }
+
+    [Fact]
     public void Register_IncompatibleComponent_LogsHfc1039_WithExpectedAndGotShape() {
         ListLogger<ProjectionSlotRegistry> logger = new();
         ProjectionSlotRegistry registry = new(
@@ -196,6 +217,21 @@ public sealed class ProjectionSlotRegistryTests {
         registry.Resolve(typeof(SlotProjection), null, "Priority").ShouldBeNull();
     }
 
+    [Fact]
+    public void DescriptorSource_DefensiveCopiesInputList() {
+        ProjectionSlotDescriptor original = Descriptor("Priority", typeof(int), null, typeof(AnyPrioritySlot));
+        ProjectionSlotDescriptor replacement = Descriptor("Name", typeof(string), null, typeof(NameSlot));
+        List<ProjectionSlotDescriptor> descriptors = [original];
+
+        ProjectionSlotDescriptorSource source = new(descriptors);
+        descriptors[0] = replacement;
+
+        source.Descriptors.ShouldHaveSingleItem().ShouldBe(original);
+        ProjectionSlotRegistry registry = new(NullLogger<ProjectionSlotRegistry>.Instance, [source]);
+        registry.Resolve(typeof(SlotProjection), null, "Priority").ShouldNotBeNull();
+        registry.Resolve(typeof(SlotProjection), null, "Name").ShouldBeNull();
+    }
+
     private static ProjectionSlotRegistry NewRegistry(params ProjectionSlotDescriptor[] descriptors)
         => new(
             NullLogger<ProjectionSlotRegistry>.Instance,
@@ -229,6 +265,11 @@ public sealed class ProjectionSlotRegistryTests {
     public sealed class SecondPrioritySlot : ComponentBase {
         [Parameter]
         public FieldSlotContext<SlotProjection, int> Context { get; set; } = default!;
+    }
+
+    public sealed class NameSlot : ComponentBase {
+        [Parameter]
+        public FieldSlotContext<SlotProjection, string> Context { get; set; } = default!;
     }
 
     public sealed class WrongContextSlot : ComponentBase {
