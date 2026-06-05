@@ -53,7 +53,7 @@ public static class CliApplication
         output.WriteLine("Hexalith FrontComposer CLI");
         output.WriteLine();
         output.WriteLine("Usage:");
-        output.WriteLine("  frontcomposer inspect [--summary] [--type <metadata-name>] [--project <path>] [--solution <path>] [--configuration <name>] [--framework <tfm>] [--build] [--format text|json] [--severity hidden|info|warning|error] [--fail-on-warning] [--fail-on-error] [--absolute-paths]");
+        output.WriteLine("  frontcomposer inspect [--type <metadata-name>] [--project <path>] [--solution <path>] [--configuration <name>] [--framework <tfm>] [--build] [--format text|json] [--severity hidden|info|warning|error] [--fail-on-warning] [--fail-on-error] [--absolute-paths]");
         output.WriteLine("  frontcomposer migrate --from <version> --to <version> [--dry-run|--apply] [--project <path>] [--solution <path>] [--format text|json] [--fail-on-findings]");
         output.WriteLine();
         output.WriteLine("Exit codes: 0 success, 1 explicit fail-on-findings, 2 invalid/ambiguous input, 3 generated output unavailable, 4 apply/write failure.");

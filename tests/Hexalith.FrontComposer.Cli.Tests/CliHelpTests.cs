@@ -15,6 +15,7 @@ public sealed class CliHelpTests
 
         exitCode.ShouldBe(0);
         output.ToString().ShouldContain("frontcomposer inspect");
+        output.ToString().ShouldNotContain("--summary");
         output.ToString().ShouldContain("frontcomposer migrate");
         error.ToString().ShouldBeEmpty();
     }

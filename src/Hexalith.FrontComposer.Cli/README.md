@@ -9,6 +9,24 @@ FrontComposer migration fixes.
 
 Dry-run is the default migration mode. Source-writing migrations require `--apply`.
 
+## Inspect Output Notes
+
+`inspect --format json` emits `schemaVersion: frontcomposer.cli.inspect.v1` with a `summary`
+containing `generatedFiles`, `forms`, `grids`, `registrations`, `mcpManifestEntries`, `warnings`,
+and `errors`.
+
+Generated files are reported in deterministic order by related type, generated-file family, then
+project-relative path. The v1 `mcpManifestEntries` field counts generated files classified as
+`FrontComposerMcpManifest.g.cs`; it does not parse command or resource descriptors inside the
+manifest source file. `__FrontComposerProjectionTemplatesRegistration.g.cs` is reported separately
+as `TemplateManifest`.
+
+`inspect` reads top-level `*.diagnostics.json` sidecars from the generated-output directory. Only
+diagnostics whose IDs start with `HFC` are reported. Missing optional fields emit empty strings,
+malformed or unreadable sidecars emit the deterministic warning sentinel `HFCM0002`, and unsafe
+sidecar paths are redacted rather than trusted. `--severity` and `--type` filtering are applied
+before `--fail-on-warning` or `--fail-on-error` determines the final exit code.
+
 ## Exit Codes and Fail Flags
 
 | Code | Meaning |

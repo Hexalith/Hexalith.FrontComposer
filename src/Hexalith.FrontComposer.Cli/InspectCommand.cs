@@ -93,7 +93,7 @@ internal static class InspectCommand
         output.WriteLine($"Configuration: {OutputSanitizer.Sanitize(report.Configuration)}");
         output.WriteLine($"Framework: {OutputSanitizer.Sanitize(report.Framework)}");
         output.WriteLine($"Generated files: {report.Files.Count}");
-        output.WriteLine($"Forms: {report.Summary.Forms}; Grids: {report.Summary.Grids}; Registrations: {report.Summary.Registrations}; MCP manifests: {report.Summary.McpManifestEntries}");
+        output.WriteLine($"Forms: {report.Summary.Forms}; Grids: {report.Summary.Grids}; Registrations: {report.Summary.Registrations}; MCP manifests: {report.Summary.McpManifestEntries}; Warnings: {report.Summary.Warnings}; Errors: {report.Summary.Errors}");
         foreach (GeneratedFileInfo file in report.Files) {
             output.WriteLine($"- {file.Family}: {OutputSanitizer.Sanitize(file.RelativePath)}");
         }
@@ -261,22 +261,12 @@ internal static class GeneratedOutputLoader
         TextWriter error,
         CancellationToken cancellationToken)
     {
-        List<string> args = ["build", projectPath, "--configuration", configuration];
-        if (!string.IsNullOrWhiteSpace(framework)) {
-            args.Add("--framework");
-            args.Add(framework);
-        }
-
-        string configuredOutput = Path.Combine("obj", configuration, framework ?? "$(TargetFramework)", GeneratedRoot, FrontComposerGeneratedRoot);
-        args.Add("-p:EmitCompilerGeneratedFiles=true");
-        args.Add("-p:CompilerGeneratedFilesOutputPath=" + configuredOutput);
-
         ProcessStartInfo start = new("dotnet") {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
             UseShellExecute = false,
         };
-        foreach (string arg in args) {
+        foreach (string arg in CreateBuildArguments(projectPath, configuration, framework)) {
             start.ArgumentList.Add(arg);
         }
 
@@ -309,6 +299,28 @@ internal static class GeneratedOutputLoader
             return ExitCodes.GeneratedOutputUnavailable;
         }
     }
+
+    internal static IReadOnlyList<string> CreateBuildArguments(string projectPath, string configuration, string? framework)
+    {
+        List<string> args = ["build", projectPath, "--configuration", configuration];
+        if (!string.IsNullOrWhiteSpace(framework)) {
+            args.Add("--framework");
+            args.Add(framework);
+        }
+
+        args.Add("-p:EmitCompilerGeneratedFiles=true");
+        args.Add("-p:CompilerGeneratedFilesOutputPath=" + BuildCompilerGeneratedFilesOutputPath(configuration, framework));
+        return args;
+    }
+
+    private static string BuildCompilerGeneratedFilesOutputPath(string configuration, string? framework)
+        => string.Join(
+            "/",
+            "obj",
+            configuration,
+            string.IsNullOrWhiteSpace(framework) ? "$(TargetFramework)" : framework,
+            GeneratedRoot,
+            FrontComposerGeneratedRoot);
 
     private static FrameworkSelection SelectFramework(string projectDirectory, string configuration, string? framework)
     {
@@ -587,6 +599,9 @@ internal static class DiagnosticFileReader
             catch (IOException) {
                 result.Add(SidecarUnreadable(path, projectDirectory, "Diagnostic sidecar could not be read."));
             }
+            catch (UnauthorizedAccessException) {
+                result.Add(SidecarUnreadable(path, projectDirectory, "Diagnostic sidecar could not be read."));
+            }
         }
 
         return result;
@@ -610,7 +625,32 @@ internal static class DiagnosticFileReader
             : string.Empty;
 
     private static string NormalizePath(string path, string projectDirectory)
-        => string.IsNullOrWhiteSpace(path) ? string.Empty : PathUtilities.ToProjectRelative(projectDirectory, path);
+    {
+        if (string.IsNullOrWhiteSpace(path)) {
+            return string.Empty;
+        }
+
+        string trimmed = path.Trim();
+        if (trimmed.Length >= 2 && char.IsAsciiLetter(trimmed[0]) && trimmed[1] == ':') {
+            return PathUtilities.RedactedPathSentinel;
+        }
+
+        if (trimmed.Contains("://", StringComparison.Ordinal)) {
+            return PathUtilities.RedactedPathSentinel;
+        }
+
+        string fullPath;
+        try {
+            fullPath = Path.IsPathRooted(trimmed)
+                ? trimmed
+                : Path.GetFullPath(trimmed, projectDirectory);
+        }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) {
+            return PathUtilities.RedactedPathSentinel;
+        }
+
+        return PathUtilities.ToProjectRelative(projectDirectory, fullPath);
+    }
 }
 
 internal static class InspectJson
