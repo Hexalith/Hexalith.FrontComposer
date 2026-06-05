@@ -198,3 +198,46 @@
 - [x] Test summary updated.
 - [x] Tests saved to appropriate directories.
 - [x] Summary includes coverage metrics.
+
+## Story 7.5 - Testing library bUnit host and deterministic fakes
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Testing.Tests/FrontComposerTestHostTests.cs` - added host wiring pins for JSInterop override, service replacement, TimeProvider registration, domain assembly de-duplication, direct-composition `DuringHostSetup` store initialization, command cancellation/context/lifecycle evidence, query not-modified/empty evidence, projection page not-modified evidence, query/page cancellation, all five deterministic fault modes, redaction/truncation, and generated Counter command dispatch through public Testing APIs.
+- [x] `tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs` - added package README inclusion pin, hardened Release pack commands with `-m:1 /nr:false`, and made the clean temporary consumer restore/build locally from packed packages without repo-relative project references.
+
+### API Tests
+- [x] Public Testing package API baseline remains enforced by `PackageBoundaryTests.PublicApi_ExportedTypes_MatchIntentionalBaseline`.
+- [x] Intentional public API addition: `TestQueryService.NotModifiedWith<T>(IReadOnlyList<T>, string?)`, recorded in `src/Hexalith.FrontComposer.Testing/PublicAPI.Shipped.txt`.
+
+### E2E Tests
+- [x] Browser E2E tests are not applicable - Story 7.5 is a bUnit Testing package story.
+- [x] Generated Counter projection and command flows are exercised through bUnit using adopter-facing Testing APIs only.
+- [x] Clean temporary consumer package restore/build validates package consumption without repo-relative project references.
+
+### Coverage
+- Host wiring: localization, FluentUI components, Shell defaults, in-memory storage, user context, command/query/page-loader fakes, TimeProvider, fault provider, Loose JSInterop default, JSInterop override, culture restoration, direct-composition replacement-before-initialization, and option-driven store initialization covered.
+- Fakes: command lifecycle order and deterministic IDs, command context/evidence/redaction, query success/not-modified/empty paths, projection page success/not-modified/empty paths, cancellation before evidence capture, bounded evidence, and parallel context isolation covered.
+- Faults: Drop, Delay, PartialDelivery, Reorder, and ReconnectNudge covered with deterministic timestamp/tenant/user/correlation evidence and bounded retention.
+- Package/public API: public API baseline, README/package baseline file inclusion, dependency exclusions, Release pack, and clean temporary consumer restore/build covered.
+
+### Validation
+- [x] `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors in 33.96s after the QA projection not-modified evidence pin.
+- [x] `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Testing.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Testing.Tests` passed 23/23 via direct xUnit v3 in-process runner (22/22 before the Senior Developer Review redaction regression pin).
+- [x] Senior Developer Review (auto-fix) added `RedactedEvidenceFormatter_Format_RedactsSecretValuesContainingCommas`, which failed before the JSON-string-aware redaction fix in `Evidence.cs` and passes after it; re-verified Release solution build at 0 warnings / 0 errors.
+- [ ] `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Release -m:1 /nr:false` compiled, then VSTest aborted before execution with `System.Net.Sockets.SocketException (13): Permission denied`.
+- [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false --no-build -c Release` aborted locally because VSTest cannot create its TCP listener (`System.Net.Sockets.SocketException (13): Permission denied`) across test assemblies before executing tests.
+
+### Checklist
+- [x] API tests generated if applicable: public API baseline and package boundary pins updated.
+- [x] E2E tests generated if UI exists: N/A for browser UI; bUnit generated Counter paths and clean consumer package flow cover adopter-facing flows.
+- [x] Tests use standard test framework APIs.
+- [x] Tests cover the happy path.
+- [x] Tests cover critical error cases.
+- [x] Story-owned focused lane runs successfully through the direct xUnit v3 in-process runner.
+- [x] Tests use proper locators: bUnit assertions target semantic component markup and service evidence, not brittle external services.
+- [x] Tests have clear descriptions.
+- [x] No hardcoded waits or sleeps.
+- [x] Tests are independent.
+- [x] Test summary updated.
+- [x] Tests saved to appropriate directories.
+- [x] Summary includes coverage metrics.

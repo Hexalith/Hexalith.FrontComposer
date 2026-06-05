@@ -35,7 +35,8 @@ public sealed class FrontComposerTestHostBuilder
         TestQueryService queryService,
         TestProjectionPageLoader pageLoader,
         TestFaultInjectionProvider faultProvider,
-        IDisposable cultureScope)
+        IDisposable cultureScope,
+        bool storeInitialized)
     {
         Context = context;
         Options = options;
@@ -44,6 +45,7 @@ public sealed class FrontComposerTestHostBuilder
         QueryService = queryService;
         PageLoader = pageLoader;
         FaultProvider = faultProvider;
+        StoreInitialized = storeInitialized;
         _cultureScope = cultureScope;
     }
 
@@ -67,6 +69,8 @@ public sealed class FrontComposerTestHostBuilder
 
     /// <summary>Gets the deterministic fault provider used by reconnection tests.</summary>
     public TestFaultInjectionProvider FaultProvider { get; }
+
+    internal bool StoreInitialized { get; }
 
     /// <summary>
     /// Adds a generated domain assembly to the Fluxor scan list before the service provider is locked.
@@ -216,6 +220,13 @@ public static class FrontComposerTestHostServiceCollectionExtensions
         services.Replace(ServiceDescriptor.Singleton(options.TimeProvider));
         services.AddSingleton(faultProvider);
 
+        bool storeInitialized = false;
+        if (options.StoreInitialization == StoreInitializationMode.DuringHostSetup)
+        {
+            context.Services.GetRequiredService<IStore>().InitializeAsync().GetAwaiter().GetResult();
+            storeInitialized = true;
+        }
+
         return new FrontComposerTestHostBuilder(
             context,
             options,
@@ -224,7 +235,8 @@ public static class FrontComposerTestHostServiceCollectionExtensions
             queryService,
             pageLoader,
             faultProvider,
-            cultureScope);
+            cultureScope,
+            storeInitialized);
     }
 
     private sealed class TestCommandPageContext(string commandName, string boundedContext, string? returnPath)

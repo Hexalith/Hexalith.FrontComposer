@@ -123,6 +123,7 @@ Hexalith.FrontComposer.Testing.TestProjectionPageLoader.Reset():void
 Hexalith.FrontComposer.Testing.TestProjectionPageLoader.SucceedWith(System.String,System.Collections.Generic.IReadOnlyList<System.Object>,System.Nullable<System.Int32>,System.String):void
 Hexalith.FrontComposer.Testing.TestQueryService
 Hexalith.FrontComposer.Testing.TestQueryService.Evidence:System.Collections.Generic.IReadOnlyList<Hexalith.FrontComposer.Testing.ProjectionPageEvidence>:get/-
+Hexalith.FrontComposer.Testing.TestQueryService.NotModifiedWith<T>(IReadOnlyList<T>,System.String):void
 Hexalith.FrontComposer.Testing.TestQueryService.QueryAsync<T>(Hexalith.FrontComposer.Contracts.Communication.QueryRequest,System.Threading.CancellationToken):Task<QueryResult<T>>
 Hexalith.FrontComposer.Testing.TestQueryService.Reset():void
 Hexalith.FrontComposer.Testing.TestQueryService.SucceedWith<T>(IReadOnlyList<T>,System.String):void

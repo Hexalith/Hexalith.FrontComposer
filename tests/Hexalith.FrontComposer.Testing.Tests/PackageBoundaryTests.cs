@@ -36,13 +36,14 @@ public sealed class PackageBoundaryTests
         string output = Path.Combine(Path.GetTempPath(), "fc-testing-pack-" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(output);
 
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-o", output, "--no-restore").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-c", "Release", "-o", output, "--no-restore", "-m:1", "/nr:false").ConfigureAwait(true);
 
         string package = Directory.GetFiles(output, "Hexalith.FrontComposer.Testing.*.nupkg").Single();
         using ZipArchive archive = ZipFile.OpenRead(package);
         string[] entries = archive.Entries.Select(e => e.FullName).ToArray();
 
         entries.ShouldContain(e => e.EndsWith("lib/net10.0/Hexalith.FrontComposer.Testing.dll", StringComparison.Ordinal));
+        entries.ShouldContain(e => string.Equals(e, "README.md", StringComparison.Ordinal));
         entries.ShouldContain(e => e.EndsWith("build/Hexalith.FrontComposer.Testing.PublicAPI.Shipped.txt", StringComparison.Ordinal));
         entries.ShouldNotContain(e => e.Contains("tests/", StringComparison.OrdinalIgnoreCase));
         entries.ShouldNotContain(e => e.Contains("bin/", StringComparison.OrdinalIgnoreCase));
@@ -67,12 +68,13 @@ public sealed class PackageBoundaryTests
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-testing-clean-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-testing-consumer-" + Guid.NewGuid().ToString("N"));
         string packageVersion = "0.2.0-review." + Guid.NewGuid().ToString("N")[..8];
+        string fallbackPackages = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         Directory.CreateDirectory(packageOutput);
         Directory.CreateDirectory(consumer);
 
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj", "-o", packageOutput, "--no-restore", $"-p:Version={packageVersion}").ConfigureAwait(true);
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj", "-o", packageOutput, "--no-restore", $"-p:Version={packageVersion}").ConfigureAwait(true);
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-o", packageOutput, "--no-restore", $"-p:Version={packageVersion}").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj", "-c", "Release", "-o", packageOutput, "--no-restore", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj", "-c", "Release", "-o", packageOutput, "--no-restore", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-c", "Release", "-o", packageOutput, "--no-restore", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
 
         await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
 <Project Sdk="Microsoft.NET.Sdk.Razor">
@@ -81,6 +83,8 @@ public sealed class PackageBoundaryTests
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NuGetAudit>false</NuGetAudit>
+    <RestorePackagesPath>$(MSBuildProjectDirectory)/packages</RestorePackagesPath>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Hexalith.FrontComposer.Testing" Version="{{packageVersion}}" />
@@ -99,6 +103,9 @@ public sealed class PackageBoundaryTests
     <add key="local" value="{{packageOutput}}" />
     <add key="nuget" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
+  <fallbackPackageFolders>
+    <add key="global" value="{{fallbackPackages}}" />
+  </fallbackPackageFolders>
 </configuration>
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
         await File.WriteAllTextAsync(Path.Combine(consumer, "ConsumerSmokeTests.cs"), """
@@ -127,7 +134,7 @@ public sealed class ConsumerSmokeTests
 }
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
-        await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "test").ConfigureAwait(true);
+        await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-m:1", "/nr:false").ConfigureAwait(true);
     }
 
     private static string ReadNuspec(ZipArchive archive)

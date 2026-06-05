@@ -28,7 +28,8 @@ public abstract class FrontComposerTestBase : BunitContext
     protected FrontComposerTestBase(Action<FrontComposerTestOptions> configure)
     {
         Host = Services.AddFrontComposerTestHost(this, configure);
-        if (Host.Options.StoreInitialization == StoreInitializationMode.DuringHostSetup)
+        _storeInitialized = Host.StoreInitialized;
+        if (Host.Options.StoreInitialization == StoreInitializationMode.DuringHostSetup && !_storeInitialized)
         {
             InitializeStoreAsync().GetAwaiter().GetResult();
         }

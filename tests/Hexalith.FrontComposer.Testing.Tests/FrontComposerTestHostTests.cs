@@ -39,6 +39,54 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
+    public void AddFrontComposerTestHost_DefaultSetup_RegistersShellServicesAndHonorsJsInteropMode()
+    {
+        using BunitContext context = new();
+        FixedTimeProvider timeProvider = new(DateTimeOffset.Parse("2026-06-05T10:15:00Z", CultureInfo.InvariantCulture));
+        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
+            context,
+            options =>
+            {
+                options.JSInteropMode = JSRuntimeMode.Strict;
+                options.TimeProvider = timeProvider;
+            });
+
+        context.JSInterop.Mode.ShouldBe(JSRuntimeMode.Strict);
+        context.Services.GetRequiredService<IStorageService>().ShouldBeOfType<InMemoryStorageService>();
+        context.Services.GetRequiredService<ICommandService>().ShouldBeSameAs(host.CommandService);
+        context.Services.GetRequiredService<ICommandServiceWithLifecycle>().ShouldBeSameAs(host.CommandService);
+        context.Services.GetRequiredService<IQueryService>().ShouldBeSameAs(host.QueryService);
+        context.Services.GetRequiredService<Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader>()
+            .ShouldBeSameAs(host.PageLoader);
+        context.Services.GetRequiredService<TestFaultInjectionProvider>().ShouldBeSameAs(host.FaultProvider);
+        context.Services.GetRequiredService<TimeProvider>().ShouldBeSameAs(timeProvider);
+    }
+
+    [Fact]
+    public void AddDomainAssembly_SameMarkerTwice_RegistersOneAssembly()
+    {
+        using BunitContext context = new();
+        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
+
+        _ = host.AddDomainAssembly<CounterDomain>().AddDomainAssembly<CounterDomain>();
+
+        host.Options.DomainAssemblies.ShouldBe([typeof(CounterDomain).Assembly]);
+    }
+
+    [Fact]
+    public void AddFrontComposerTestHost_DuringHostSetup_CompositionInitializesStore()
+    {
+        using BunitContext context = new();
+        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
+            context,
+            options => options.StoreInitialization = StoreInitializationMode.DuringHostSetup);
+
+        IDispatcher dispatcher = context.Services.GetRequiredService<IDispatcher>();
+
+        Should.NotThrow(() => dispatcher.Dispatch(new CounterProjectionLoadRequestedAction("corr-during-setup")));
+    }
+
+    [Fact]
     public async Task AddFrontComposerTestHost_CustomReplacementBeforeStoreInitialization_IsHonored()
     {
         await using BunitContext context = new();
@@ -88,6 +136,43 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
+    public async Task TestCommandService_Dispatch_HonorsCancellationBeforeCapturingEvidence()
+    {
+        using TestHost host = new();
+        using CancellationTokenSource cts = new();
+        await cts.CancelAsync().ConfigureAwait(true);
+        ICommandService commandService = host.Services.GetRequiredService<ICommandService>();
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            commandService.DispatchAsync(new SensitiveCommand(), cts.Token)).ConfigureAwait(true);
+
+        host.ExposedCommandService.Evidence.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TestCommandService_Dispatch_CapturesDeterministicCommandContext()
+    {
+        using TestHost host = new();
+        ICommandServiceWithLifecycle commandService = host.Services.GetRequiredService<ICommandServiceWithLifecycle>();
+
+        CommandResult result = await commandService
+            .DispatchAsync(new SensitiveCommand { Amount = 7 }, (_, _) => { }, Xunit.TestContext.Current.CancellationToken)
+            .ConfigureAwait(true);
+
+        CommandDispatchEvidence evidence = host.ExposedCommandService.Evidence.Single();
+        result.MessageId.ShouldBe("test-message-0001");
+        result.CorrelationId.ShouldBe("test-correlation-0001");
+        evidence.BoundedContext.ShouldBe("Test");
+        evidence.CommandName.ShouldBe("Test Command");
+        evidence.Status.ShouldBe("Accepted");
+        evidence.LifecycleStates.ShouldBe([
+            Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged,
+            Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing,
+            Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed,
+        ]);
+    }
+
+    [Fact]
     public async Task TestProjectionPageLoader_ConfiguredPage_ReturnsEvidenceWithoutNetwork()
     {
         using TestHost host = new();
@@ -107,6 +192,37 @@ public sealed class FrontComposerTestHostTests
 
         result.TotalCount.ShouldBe(1);
         loader.Evidence.Single().ProjectionTypeFqn.ShouldBe(typeof(CounterProjection).FullName);
+        loader.Evidence.Single().Skip.ShouldBe(0);
+        loader.Evidence.Single().Take.ShouldBe(20);
+        loader.Evidence.Single().Mode.ShouldBe("configured");
+    }
+
+    [Fact]
+    public async Task TestProjectionPageLoader_NotModifiedPage_CapturesModeAndReusesCachedItems()
+    {
+        using TestHost host = new();
+        TestProjectionPageLoader loader = host.Services.GetRequiredService<TestProjectionPageLoader>();
+        CounterProjection cached = new() { Id = "counter-cache", Count = 9 };
+        loader.NotModified(typeof(CounterProjection).FullName!, [cached], etag: "\"etag-page\"");
+
+        Hexalith.FrontComposer.Shell.State.DataGridNavigation.ProjectionPageResult result =
+            await loader.LoadPageAsync(
+                typeof(CounterProjection).FullName!,
+                5,
+                10,
+                System.Collections.Immutable.ImmutableDictionary<string, string>.Empty,
+                null,
+                false,
+                null,
+                Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        result.IsNotModified.ShouldBeTrue();
+        result.Items.Single().ShouldBeSameAs(cached);
+        result.ETag.ShouldBe("\"etag-page\"");
+        loader.Evidence.Single().ProjectionTypeFqn.ShouldBe(typeof(CounterProjection).FullName);
+        loader.Evidence.Single().Skip.ShouldBe(5);
+        loader.Evidence.Single().Take.ShouldBe(10);
+        loader.Evidence.Single().Mode.ShouldBe("not-modified");
     }
 
     [Fact]
@@ -136,6 +252,140 @@ public sealed class FrontComposerTestHostTests
         host.QueryService.Evidence.Count.ShouldBe(2);
         host.PageLoader.Evidence.Count.ShouldBe(2);
         host.PageLoader.Evidence.Select(e => e.Skip).ShouldBe([3, 4]);
+    }
+
+    [Fact]
+    public async Task TestQueryService_NotModifiedAndEmptyPaths_CaptureRequestEvidence()
+    {
+        using TestHost host = new();
+        TestQueryService query = host.Services.GetRequiredService<TestQueryService>();
+        query.NotModifiedWith([new CounterProjection { Id = "counter-cache", Count = 4 }], "\"etag-cache\"");
+
+        QueryResult<CounterProjection> notModified = await query.QueryAsync<CounterProjection>(
+            new QueryRequest(
+                typeof(CounterProjection).FullName!,
+                "tenant-query",
+                Skip: 10,
+                Take: 5),
+            Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
+        QueryResult<string> empty = await query.QueryAsync<string>(
+            new QueryRequest("StringProjection", null, Skip: 2, Take: 3),
+            Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        notModified.IsNotModified.ShouldBeTrue();
+        notModified.Items.Single().Id.ShouldBe("counter-cache");
+        empty.Items.ShouldBeEmpty();
+        query.Evidence[0].ProjectionTypeFqn.ShouldBe(typeof(CounterProjection).FullName);
+        query.Evidence[0].TenantId.ShouldBe("tenant-query");
+        query.Evidence[0].Skip.ShouldBe(10);
+        query.Evidence[0].Take.ShouldBe(5);
+        query.Evidence[0].Mode.ShouldBe("not-modified");
+        query.Evidence[1].ProjectionTypeFqn.ShouldBe("StringProjection");
+        query.Evidence[1].Mode.ShouldBe("empty");
+    }
+
+    [Fact]
+    public async Task QueryAndPageLoader_HonorCancellationBeforeCapturingEvidence()
+    {
+        using TestHost host = new();
+        using CancellationTokenSource cts = new();
+        await cts.CancelAsync().ConfigureAwait(true);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            host.ExposedQueryService.QueryAsync<string>(new QueryRequest("StringProjection", null), cts.Token)).ConfigureAwait(true);
+        _ = await Should.ThrowAsync<OperationCanceledException>(() =>
+            host.ExposedPageLoader.LoadPageAsync(
+                "Projection",
+                0,
+                10,
+                System.Collections.Immutable.ImmutableDictionary<string, string>.Empty,
+                null,
+                false,
+                null,
+                cts.Token)).ConfigureAwait(true);
+
+        host.ExposedQueryService.Evidence.ShouldBeEmpty();
+        host.ExposedPageLoader.Evidence.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void TestFaultInjectionProvider_AllModes_AreDeterministicTimestampedAndBounded()
+    {
+        using BunitContext context = new();
+        FixedTimeProvider timeProvider = new(DateTimeOffset.Parse("2026-06-05T12:00:00Z", CultureInfo.InvariantCulture));
+        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
+            context,
+            options =>
+            {
+                options.TestTenantId = "tenant-fault";
+                options.TestUserId = "user-fault";
+                options.TimeProvider = timeProvider;
+                options.MaxEvidenceRecords = 3;
+            });
+
+        _ = host.FaultProvider.Drop("corr-1");
+        _ = host.FaultProvider.Delay("corr-2");
+        _ = host.FaultProvider.PartialDelivery("corr-3");
+        _ = host.FaultProvider.Reorder("corr-4");
+        FaultInjectionEvidence nudge = host.FaultProvider.ReconnectNudge("corr-5");
+
+        nudge.Mode.ShouldBe("reconnect-nudge");
+        host.FaultProvider.Evidence.Select(e => e.Mode).ShouldBe(["partial-delivery", "reorder", "reconnect-nudge"]);
+        host.FaultProvider.Evidence.ShouldAllBe(e => e.TenantId == "tenant-fault" && e.UserId == "user-fault");
+        host.FaultProvider.Evidence.ShouldAllBe(e => e.CapturedAtUtc == timeProvider.Timestamp);
+    }
+
+    [Fact]
+    public void RedactedEvidenceFormatter_Format_RedactsSensitiveValuesAndTruncatesPayload()
+    {
+        FrontComposerTestOptions options = new()
+        {
+            TestTenantId = "tenant-secret",
+            TestUserId = "user-secret",
+            MaxDiagnosticPayloadCharacters = 80,
+        };
+
+        string payload = RedactedEvidenceFormatter.Format(
+            new
+            {
+                TenantId = "tenant-secret",
+                UserId = "user-secret",
+                ApiTOKEN = "visible-token",
+                NestedSecret = "visible-secret",
+                AdminPassword = "visible-password",
+                Extra = new string('x', 200),
+            },
+            options);
+
+        payload.ShouldNotContain("tenant-secret");
+        payload.ShouldNotContain("user-secret");
+        payload.ShouldNotContain("visible-token");
+        payload.ShouldNotContain("visible-secret");
+        payload.ShouldNotContain("visible-password");
+        payload.ShouldContain("...<truncated>");
+    }
+
+    [Fact]
+    public void RedactedEvidenceFormatter_Format_RedactsSecretValuesContainingCommas()
+    {
+        FrontComposerTestOptions options = new() { MaxDiagnosticPayloadCharacters = 256 };
+
+        string payload = RedactedEvidenceFormatter.Format(
+            new
+            {
+                Password = "alpha,bravo,charlie",
+                Token = "one,two,three",
+                Amount = 7,
+            },
+            options);
+
+        payload.ShouldNotContain("alpha");
+        payload.ShouldNotContain("bravo");
+        payload.ShouldNotContain("charlie");
+        payload.ShouldNotContain("one");
+        payload.ShouldNotContain("two");
+        payload.ShouldNotContain("three");
+        payload.ShouldContain("7");
     }
 
     [Fact]
@@ -209,6 +459,30 @@ public sealed class FrontComposerTestHostTests
         });
     }
 
+    [Fact]
+    public async Task CounterIncrementCommandRenderer_WithCompositionHost_DispatchesThroughFakeService()
+    {
+        await using BunitContext context = new();
+        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
+        _ = host.AddDomainAssembly<CounterDomain>();
+        IStore store = context.Services.GetRequiredService<IStore>();
+        await store.InitializeAsync().ConfigureAwait(true);
+
+        IRenderedComponent<IncrementCommandRenderer> cut = context.Render<IncrementCommandRenderer>();
+        cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
+        cut.Find("fluent-button").Click();
+        cut.WaitForAssertion(() => _ = cut.Find("form"));
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() =>
+        {
+            CommandDispatchEvidence evidence = host.CommandService.Evidence.Single();
+            evidence.CommandType.ShouldBe(typeof(IncrementCommand).FullName);
+            evidence.Status.ShouldBe("Accepted");
+        });
+    }
+
     private sealed class TestHost : FrontComposerTestBase
     {
         public TestHost()
@@ -227,7 +501,18 @@ public sealed class FrontComposerTestHostTests
 
         public TestCommandService ExposedCommandService => CommandService;
 
+        public TestQueryService ExposedQueryService => QueryService;
+
+        public TestProjectionPageLoader ExposedPageLoader => PageLoader;
+
         public Task InitializeAsync() => InitializeStoreAsync();
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset timestamp) : TimeProvider
+    {
+        public DateTimeOffset Timestamp { get; } = timestamp;
+
+        public override DateTimeOffset GetUtcNow() => Timestamp;
     }
 
     private sealed class SensitiveCommand

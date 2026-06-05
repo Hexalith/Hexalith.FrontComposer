@@ -47,19 +47,17 @@ public sealed class TestProjectionPageLoader : IProjectionPageLoader
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        bool hasPage = _pages.TryGetValue(projectionTypeFqn, out ProjectionPageResult? result);
         EnqueueBounded(new ProjectionPageEvidence(
             projectionTypeFqn,
             skip,
             take,
             _options.TestTenantId,
             _options.TestUserId,
-            _pages.ContainsKey(projectionTypeFqn) ? "configured" : "empty",
+            hasPage ? (result!.IsNotModified ? "not-modified" : "configured") : "empty",
             _options.TimeProvider.GetUtcNow()));
 
-        return Task.FromResult(
-            _pages.TryGetValue(projectionTypeFqn, out ProjectionPageResult? result)
-                ? result
-                : new ProjectionPageResult([], 0, null));
+        return Task.FromResult(hasPage ? result! : new ProjectionPageResult([], 0, null));
     }
 
     /// <summary>Clears configured pages and captured evidence.</summary>

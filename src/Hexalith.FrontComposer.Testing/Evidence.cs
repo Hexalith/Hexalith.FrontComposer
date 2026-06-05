@@ -76,6 +76,7 @@ public static class RedactedEvidenceFormatter
 
     private static string RedactKey(string value, string key)
     {
+        const string replacement = "\"<redacted>\"";
         int index = value.IndexOf(key, StringComparison.OrdinalIgnoreCase);
         while (index >= 0)
         {
@@ -85,21 +86,53 @@ public static class RedactedEvidenceFormatter
                 return value;
             }
 
-            int end = value.IndexOf(',', colon);
+            int valueStart = colon + 1;
+            int end = ValueEnd(value, valueStart);
             if (end < 0)
             {
-                end = value.IndexOf('}', colon);
+                return value[..valueStart] + replacement;
             }
 
-            if (end < 0)
-            {
-                return value[..(colon + 1)] + "\"<redacted>\"";
-            }
-
-            value = value[..(colon + 1)] + "\"<redacted>\"" + value[end..];
-            index = value.IndexOf(key, colon + 1, StringComparison.OrdinalIgnoreCase);
+            value = value[..valueStart] + replacement + value[end..];
+            index = value.IndexOf(key, valueStart + replacement.Length, StringComparison.OrdinalIgnoreCase);
         }
 
         return value;
+    }
+
+    // Finds the exclusive end of the JSON value that starts at valueStart so the whole
+    // value is redacted. String values are bounded by their closing quote (commas inside
+    // the value must not terminate redaction); other scalars stop at the next ',' or '}'.
+    private static int ValueEnd(string value, int valueStart)
+    {
+        if (valueStart < value.Length && value[valueStart] == '"')
+        {
+            int cursor = valueStart + 1;
+            while (cursor < value.Length)
+            {
+                if (value[cursor] == '\\')
+                {
+                    cursor += 2;
+                    continue;
+                }
+
+                if (value[cursor] == '"')
+                {
+                    return cursor + 1;
+                }
+
+                cursor++;
+            }
+
+            return value.Length;
+        }
+
+        int end = value.IndexOf(',', valueStart);
+        if (end < 0)
+        {
+            end = value.IndexOf('}', valueStart);
+        }
+
+        return end;
     }
 }

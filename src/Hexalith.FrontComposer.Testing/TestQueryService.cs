@@ -25,20 +25,31 @@ public sealed class TestQueryService : IQueryService
         _results[typeof(T)] = new QueryResult<T>(items, items.Count, etag);
     }
 
+    /// <summary>Configures a not-modified typed query result backed by cached items.</summary>
+    public void NotModifiedWith<T>(IReadOnlyList<T> cachedItems, string? etag = null)
+    {
+        ArgumentNullException.ThrowIfNull(cachedItems);
+        _results[typeof(T)] = QueryResult<T>.NotModifiedFromCache(cachedItems, cachedItems.Count, etag);
+    }
+
     /// <inheritdoc />
     public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(request);
         cancellationToken.ThrowIfCancellationRequested();
+        QueryResult<T>? result = _results.TryGetValue(typeof(T), out object? value)
+            ? value as QueryResult<T>
+            : null;
         EnqueueBounded(new ProjectionPageEvidence(
-            typeof(T).FullName ?? typeof(T).Name,
-            0,
-            0,
-            _options.TestTenantId,
+            request.ProjectionType,
+            request.Skip ?? 0,
+            request.Take ?? 0,
+            request.TenantId ?? _options.TestTenantId,
             _options.TestUserId,
-            "query",
+            result is null ? "empty" : (result.IsNotModified ? "not-modified" : "configured"),
             _options.TimeProvider.GetUtcNow()));
 
-        if (_results.TryGetValue(typeof(T), out object? value) && value is QueryResult<T> result)
+        if (result is not null)
         {
             return Task.FromResult(result);
         }
