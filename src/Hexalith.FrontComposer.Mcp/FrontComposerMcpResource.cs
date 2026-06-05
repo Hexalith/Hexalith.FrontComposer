@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Hexalith.FrontComposer.Mcp;
 
-internal sealed class FrontComposerMcpResource(McpResourceDescriptor descriptor) : McpServerResource {
+internal sealed class FrontComposerMcpResource(McpResourceDescriptor descriptor) : McpServerResource, IMcpServerPrimitive {
     private readonly Resource _resource = new() {
         Uri = descriptor.ProtocolUri,
         Name = descriptor.Name,
@@ -18,6 +18,8 @@ internal sealed class FrontComposerMcpResource(McpResourceDescriptor descriptor)
     };
 
     public override Resource ProtocolResource => _resource;
+
+    string IMcpServerPrimitive.Id => descriptor.ProtocolUri;
 
     // Story 8-1 ships only plain Resources; resource templates with URI parameters
     // are owned by Story 8-6 (schema versioning / multi-surface abstraction).

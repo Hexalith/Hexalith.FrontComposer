@@ -6,6 +6,7 @@
     <NoWarn>$(NoWarn);ASP0006</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Hexalith.FrontComposer.Mcp\Hexalith.FrontComposer.Mcp.csproj" />
     <ProjectReference Include="..\..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
     <ProjectReference Include="..\Counter.Domain\Counter.Domain.csproj" />
     <ProjectReference Include="..\Counter.Specimens\Counter.Specimens.csproj" />

@@ -6,7 +6,10 @@ using Counter.Web.Components.Replacements;
 using Counter.Web.Components.Slots;
 
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Mcp;
+using Hexalith.FrontComposer.Mcp.Extensions;
 using Hexalith.FrontComposer.Shell.Components.Specimens;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
@@ -17,6 +20,8 @@ using Microsoft.FluentUI.AspNetCore.Components;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 bool specimensEnabled = FrontComposerSpecimenRoutes.IsEnabled(builder.Configuration, builder.Environment);
+bool mcpEnabled = builder.Environment.IsDevelopment()
+    || builder.Environment.IsEnvironment("Test");
 
 // Story 3-1 ADR-030 — ValidateScopes = true so Singleton-captures of IStorageService (now Scoped)
 // fail at boot instead of leaking writes across tenants. Has to sit on the host builder BEFORE
@@ -127,6 +132,23 @@ builder.Services.Configure<StubCommandServiceOptions>(o =>
 builder.Services.Configure<StubCommandServiceOptions>(
     builder.Configuration.GetSection("Hexalith:FrontComposer:StubCommandService"));
 
+if (mcpEnabled) {
+    builder.Services.TryAddScoped<IQueryService, CounterMcpSampleQueryService>();
+    builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+    builder.Services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+    builder.Services.AddFrontComposerMcp(o =>
+    {
+        o.ManifestAssemblies.Add(typeof(CounterDomain).Assembly);
+        if (specimensEnabled) {
+            o.ManifestAssemblies.Add(typeof(CounterSpecimensDomain).Assembly);
+        }
+
+        o.ApiKeys["counter-e2e-mcp-key"] = new FrontComposerMcpApiKeyIdentity(
+            "demo-tenant",
+            "demo-user");
+    });
+}
+
 WebApplication app = builder.Build();
 
 app.MapStaticAssets();
@@ -144,5 +166,9 @@ else {
 
 razorComponents
     .AddInteractiveServerRenderMode();
+
+if (mcpEnabled) {
+    app.MapFrontComposerMcp();
+}
 
 app.Run();

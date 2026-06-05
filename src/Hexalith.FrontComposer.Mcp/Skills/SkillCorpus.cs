@@ -1017,7 +1017,9 @@ public sealed class FrontComposerSkillResourceProvider {
             return SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.UnknownResource);
         }
 
-        cancellationToken.ThrowIfCancellationRequested();
+        if (cancellationToken.IsCancellationRequested) {
+            return SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.Canceled);
+        }
 
         return resource.Markdown.Length > _readOptions.MaxCharacters
             ? SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.SkillResourceTooLarge)
@@ -1095,7 +1097,7 @@ public sealed class InvalidSkillCorpusException : Exception {
 
 public sealed class FrontComposerSkillMcpResource(
     SkillResourceDescriptor descriptor,
-    FrontComposerSkillResourceProvider provider) : McpServerResource {
+    FrontComposerSkillResourceProvider provider) : McpServerResource, IMcpServerPrimitive {
     private readonly Resource _resource = new() {
         Uri = descriptor.ResourceUri,
         Name = descriptor.Id,
@@ -1107,6 +1109,8 @@ public sealed class FrontComposerSkillMcpResource(
     public SkillResourceDescriptor Descriptor => descriptor;
 
     public override Resource ProtocolResource => _resource;
+
+    string IMcpServerPrimitive.Id => descriptor.ResourceUri;
 
     public override ResourceTemplate ProtocolResourceTemplate
         => throw new NotSupportedException("FrontComposer skill resources do not expose URI templates in v1.");

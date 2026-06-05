@@ -1,8 +1,11 @@
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Extensions;
+using Hexalith.FrontComposer.Mcp.Skills;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 
 using Shouldly;
 
@@ -25,6 +28,24 @@ public sealed class HostingTests {
     }
 
     [Fact]
+    public void AddFrontComposerMcp_RegistersProjectionAndSkillResourcesWithSdkCollection() {
+        McpManifest manifest = CreateManifest("billing.invoice.create", DescriptorUri: "frontcomposer://Billing/projections/InvoiceProjection");
+        var services = new ServiceCollection();
+        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+
+        services.AddFrontComposerMcp(options => options.Manifests.Add(manifest));
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        McpServerOptions options = provider.GetRequiredService<IOptions<McpServerOptions>>().Value;
+        McpServerResource[] resources = [.. options.ResourceCollection.ShouldNotBeNull()];
+
+        resources.Any(IsProjectionResource).ShouldBeTrue();
+        resources.Any(IsSkillManifestResource).ShouldBeTrue();
+        resources.Any(IsSkillIndexResource).ShouldBeTrue();
+    }
+
+    [Fact]
     public void AddFrontComposerMcp_RejectsDuplicateCommandNames() {
         var services = new ServiceCollection();
         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
@@ -34,6 +55,24 @@ public sealed class HostingTests {
             options.Manifests.Add(CreateManifest("billing.invoice.create"));
             options.Manifests.Add(CreateManifest("BILLING.INVOICE.CREATE"));
         })).Category.ShouldBe(FrontComposerMcpFailureCategory.DuplicateDescriptor);
+    }
+
+    [Theory]
+    [InlineData("frontcomposer://skills/manifest")]
+    [InlineData("frontcomposer://skills/index")]
+    [InlineData("frontcomposer://skills/not-yet-a-corpus-resource")]
+    public void AddFrontComposerMcp_RejectsProjectionResourcesUnderReservedSkillUriPrefix(string descriptorUri) {
+        var services = new ServiceCollection();
+        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(() =>
+            services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest(
+                "billing.invoice.create",
+                DescriptorUri: descriptorUri))));
+
+        ex.Message.ShouldContain("URI collision");
+        ex.Message.ShouldContain("frontcomposer://skills/");
     }
 
     [Fact]
@@ -70,7 +109,7 @@ public sealed class HostingTests {
         registry.Commands.Select(c => c.ProtocolName).ShouldBe(["billing.invoice.create"]);
     }
 
-    private static McpManifest CreateManifest(string protocolName)
+    private static McpManifest CreateManifest(string protocolName, string? DescriptorUri = null)
         => new(
             "frontcomposer.mcp.v1",
             [
@@ -84,7 +123,48 @@ public sealed class HostingTests {
                     [],
                     []),
             ],
-            []);
+            DescriptorUri is null ? [] : [
+                new McpResourceDescriptor(
+                    DescriptorUri,
+                    "InvoiceProjection",
+                    typeof(SampleProjection).FullName!,
+                    "Billing",
+                    "Invoices",
+                    "Invoices",
+                    [
+                        new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
+                    ]),
+            ]);
+
+    private static bool IsProjectionResource(McpServerResource resource) {
+        Resource? protocol = resource.ProtocolResource;
+        return resource is FrontComposerMcpResource
+            && protocol is not null
+            && protocol.Uri == "frontcomposer://Billing/projections/InvoiceProjection"
+            && protocol.MimeType == "text/markdown"
+            && resource.Metadata.Single() is McpResourceDescriptor;
+    }
+
+    private static bool IsSkillManifestResource(McpServerResource resource) {
+        Resource? protocol = resource.ProtocolResource;
+        return resource is FrontComposerSkillMcpResource
+            && protocol is not null
+            && protocol.Uri == "frontcomposer://skills/manifest"
+            && protocol.MimeType == "text/markdown"
+            && resource.Metadata.Single() is SkillResourceDescriptor;
+    }
+
+    private static bool IsSkillIndexResource(McpServerResource resource) {
+        Resource? protocol = resource.ProtocolResource;
+        return resource is FrontComposerSkillMcpResource
+            && protocol is not null
+            && protocol.Uri == "frontcomposer://skills/index"
+            && protocol.MimeType == "text/markdown"
+            && resource.Metadata.Single() is SkillResourceDescriptor descriptor
+            && descriptor.Fingerprint is not null;
+    }
 
     private sealed class SampleCommand;
+
+    private sealed class SampleProjection;
 }

@@ -36,6 +36,8 @@
 
 generated: 2026-06-03
 last_updated: 2026-06-05
+# 5-3 moved review -> done on 2026-06-05 (story-automator-review; adversarial review, 0 Critical / 0 High. All 5 ACs implemented and test-backed; FC-MCP-RESOURCES v1 contract recorded and resolves the projection URI grammar to frontcomposer://<context>/projections/<name>; reserved frontcomposer://skills/ prefix rejection, skill agent-reference-only 32 KB no-truncation, stable canceled/response_too_large/malformed tokens, and projection-vs-skill visibility split all confirmed. Independently reproduced Release build 0/0 and MCP 338/338 in-process. Auto-fixed 1 Medium (File List drift: added six story-delivered sample-host + e2e files that were git-changed but undocumented, incl. mcp-resources.spec.ts, mcp-client.ts, CounterMcpSampleQueryService.cs, Program.cs, Counter.Web.csproj, tests/e2e/package.json). No production code change.)
+# 5-3 moved backlog -> ready-for-dev on 2026-06-05 (create-story; projection and skill-corpus MCP resources. Brownfield reality: FrontComposerMcpResource, FrontComposerMcpProjectionReader, McpMarkdownProjectionRenderer, SkillCorpusLoader/Parser/Provider, FrontComposerSkillMcpResource, and resource registration already exist. Dev must record FC-MCP-RESOURCES v1 contract, pin actual MCP resource adapter reads, preserve projection tenant/auth visibility and schema negotiation, preserve skill-corpus agent-reference-only 32 KB no-truncation behavior, prove skills bypass projection visibility by design, and keep Story 5.1 command tools plus Story 5.2 lifecycle unchanged.)
 # 5-2 moved review -> done on 2026-06-05 (story-automator-review; adversarial review, 0 Critical / 0 High. All 4 ACs traced to live source and passing pins; nested retry wire-shape, opaque hidden/unknown redaction, terminal idempotency/bounded history, and retry/timeout/capacity option clamping all confirmed. Independently reproduced Release build 0/0 and MCP 323/323 (322 pre-fix + 1 new redaction test); exact-solution VSTest socket-blocked locally as recorded. Auto-fixed 1 Medium (File List omitted tests/test-summary.md -> added) + 2 Low (using-order in McpCommandToolAdapterTests.cs; added P42 catch-all redaction test proving a non-FrontComposerMcpException from GetContext collapses to sanitized AuthFailed without leaking the exception message). No production code change.)
 # 5-2 moved in-progress -> review on 2026-06-05 (dev-story; FC-MCP-LIFECYCLE v1 contract recorded; lifecycle schema now advertises canonical ULID pattern and maxLength; MCP handler-level pins added for tools/list lifecycle catalog ordering, non-lifecycle command routing, auth-context gate before handle lookup, and nested retry snapshot shape. Runtime handle validation expanded for exact-one string input. Build 0/0; exact solution test socket-blocked locally; Release MCP in-process fallback 321/321 green.)
 # 5-2 moved ready-for-dev -> in-progress on 2026-06-05 (dev-story; starting lifecycle subscription contract, schema metadata hardening, MCP call-handler route coverage, runtime handle validation pins, and retry/terminal/capacity verification. Existing baseline_commit preserved.)
@@ -188,7 +190,7 @@ development_status:
   epic-5: in-progress
   5-1-expose-generated-commands-as-mcp-tools: done
   5-2-lifecycle-subscription-tool: done
-  5-3-projection-and-skill-corpus-resources: backlog
+  5-3-projection-and-skill-corpus-resources: done
   5-4-fail-closed-security-gates: backlog
   5-5-schema-fingerprint-negotiation: backlog
   epic-5-retrospective: optional

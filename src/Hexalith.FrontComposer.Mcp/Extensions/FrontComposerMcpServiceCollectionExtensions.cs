@@ -92,10 +92,10 @@ public static class FrontComposerMcpServiceCollectionExtensions {
             manifestUris.Add(descriptor.ProtocolUri);
         }
 
-        foreach (string skillUri in skillProvider.ResourceUris) {
-            if (manifestUris.Contains(skillUri)) {
+        foreach (string manifestUri in manifestUris) {
+            if (manifestUri.StartsWith("frontcomposer://skills/", StringComparison.OrdinalIgnoreCase)) {
                 throw new InvalidOperationException(
-                    $"AddFrontComposerMcp detected a URI collision between a manifest projection resource and a skill resource ('{skillUri}'). " +
+                    $"AddFrontComposerMcp detected a URI collision between a manifest projection resource and a skill resource ('{manifestUri}'). " +
                     "Skill resource URIs are reserved under the 'frontcomposer://skills/' prefix; rename the colliding projection resource.");
             }
         }

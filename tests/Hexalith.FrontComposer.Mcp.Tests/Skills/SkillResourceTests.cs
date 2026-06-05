@@ -1,5 +1,10 @@
 using Hexalith.FrontComposer.Mcp.Skills;
 
+using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
+
+using NSubstitute;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Skills;
@@ -47,6 +52,61 @@ public sealed class SkillResourceTests {
         resource.ProtocolResource.Uri.ShouldBe("frontcomposer://skills/index");
         resource.ProtocolResource.MimeType.ShouldBe("text/markdown");
         resource.Metadata.ShouldContain(resource.Descriptor);
+        resource.IsMatch("frontcomposer://skills/index").ShouldBeTrue();
+        resource.IsMatch("frontcomposer://skills/Index").ShouldBeFalse();
+        Should.Throw<NotSupportedException>(() => _ = resource.ProtocolResourceTemplate)
+            .Message.ShouldContain("URI templates");
+    }
+
+    [Fact]
+    public async Task ProtocolAdapter_ReadsOnlyRequestedSkillResourceAndEchoesRequestedUri() {
+        SkillCorpusSnapshot snapshot = SkillCorpusLoader.LoadEmbedded();
+        var provider = new FrontComposerSkillResourceProvider(snapshot);
+        FrontComposerSkillMcpResource resource = provider.CreateMcpResources().Single(r => r.Descriptor.ResourceUri == "frontcomposer://skills/index");
+
+        ReadResourceResult result = await resource.ReadAsync(
+            Request("frontcomposer://skills/index"),
+            TestContext.Current.CancellationToken);
+
+        TextResourceContents text = result.Contents.Single().ShouldBeOfType<TextResourceContents>();
+        text.Uri.ShouldBe("frontcomposer://skills/index");
+        text.MimeType.ShouldBe("text/markdown");
+        text.Text.ShouldBe(snapshot.Resources.Single(r => r.ResourceUri == "frontcomposer://skills/index").Markdown);
+        text.Text.ShouldNotContain("frontcomposer:section narrative");
+    }
+
+    [Fact]
+    public async Task ProtocolAdapter_MissingUriUsesDescriptorUriAndMalformedToken() {
+        SkillCorpusSnapshot snapshot = SkillCorpusLoader.LoadEmbedded();
+        var provider = new FrontComposerSkillResourceProvider(snapshot);
+        FrontComposerSkillMcpResource resource = provider.CreateMcpResources().Single(r => r.Descriptor.ResourceUri == "frontcomposer://skills/index");
+
+        ReadResourceResult result = await resource.ReadAsync(
+            Request(null),
+            TestContext.Current.CancellationToken);
+
+        TextResourceContents text = result.Contents.Single().ShouldBeOfType<TextResourceContents>();
+        text.Uri.ShouldBe("frontcomposer://skills/index");
+        text.MimeType.ShouldBe("text/plain");
+        text.Text.ShouldBe("malformed_request");
+    }
+
+    [Fact]
+    public async Task ProtocolAdapter_CancellationReturnsStableTokenWithoutEscaping() {
+        SkillCorpusSnapshot snapshot = SkillCorpusLoader.LoadEmbedded();
+        var provider = new FrontComposerSkillResourceProvider(snapshot);
+        FrontComposerSkillMcpResource resource = provider.CreateMcpResources().Single(r => r.Descriptor.ResourceUri == "frontcomposer://skills/index");
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        ReadResourceResult result = await resource.ReadAsync(
+            Request("frontcomposer://skills/index"),
+            cts.Token);
+
+        TextResourceContents text = result.Contents.Single().ShouldBeOfType<TextResourceContents>();
+        text.Uri.ShouldBe("frontcomposer://skills/index");
+        text.MimeType.ShouldBe("text/plain");
+        text.Text.ShouldBe("canceled");
     }
 
     [Fact]
@@ -60,6 +120,25 @@ public sealed class SkillResourceTests {
 
         result.IsSuccess.ShouldBeFalse();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.SkillResourceTooLarge);
+        result.Markdown.ShouldBe("response_too_large");
+    }
+
+    [Fact]
+    public void Provider_ManifestReadIsDeterministicAndIncludesResourceMetadata() {
+        SkillCorpusSnapshot snapshot = SkillCorpusLoader.LoadEmbedded();
+        var provider = new FrontComposerSkillResourceProvider(snapshot);
+
+        SkillResourceReadResult first = provider.Read("frontcomposer://skills/manifest", CancellationToken.None);
+        SkillResourceReadResult second = provider.Read("frontcomposer://skills/manifest", CancellationToken.None);
+
+        first.IsSuccess.ShouldBeTrue();
+        first.ContentType.ShouldBe("text/markdown");
+        first.Markdown.ShouldBe(second.Markdown);
+        first.Markdown.ShouldContain("manifestSchemaVersion");
+        first.Markdown.ShouldContain("corpusVersion");
+        first.Markdown.ShouldContain("resourceCount");
+        first.Markdown.ShouldContain("publicApiReferences");
+        first.Markdown.ShouldContain("samplePaths");
     }
 
     [Fact]
@@ -126,5 +205,18 @@ public sealed class SkillResourceTests {
             .Count()
             .ShouldBeGreaterThanOrEqualTo(11);
         embeddedNames.ShouldContain("Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json");
+    }
+
+    private static RequestContext<ReadResourceRequestParams> Request(string? uri) {
+        var request = new JsonRpcRequest {
+            Id = new RequestId("test-skill-read"),
+            Method = RequestMethods.ResourcesRead,
+        };
+        return new RequestContext<ReadResourceRequestParams>(
+            Substitute.For<McpServer>(),
+            request,
+            new ReadResourceRequestParams {
+                Uri = uri!,
+            });
     }
 }
