@@ -5,6 +5,7 @@ using System.Text.Json;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
+using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Mcp.Invocation;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -152,6 +153,63 @@ public sealed class ToolAdmissionTests {
         string[] absentKeys = [.. absent.StructuredContent!.Select(kvp => kvp.Key).Order(StringComparer.Ordinal)];
         hiddenKeys.ShouldBe(absentKeys);
         hiddenKeys.ShouldNotContain("requestedToolName");
+    }
+
+    [Fact]
+    public async Task HiddenTool_WithStaleSchemaFingerprint_StillUsesUnknownToolEnvelope() {
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
+            out RecordingCommandService service,
+            services => {
+                services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ =>
+                    new StaticAccessor(clientFingerprintHint: SchemaHintFor("stale-client")));
+                services.AddSingleton<IFrontComposerMcpTenantToolGate>(
+                    new TenantBoundedContextGate(new Dictionary<string, string>(StringComparer.Ordinal) {
+                        ["Billing"] = "tenant-a",
+                        ["Catalog"] = "tenant-b",
+                    }));
+            });
+
+        FrontComposerMcpResult hidden = await invoker.InvokeAsync(
+            "Catalog.LabelProductCommand.Execute",
+            Args("""{"Label":"Widget"}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpResult absent = await invoker.InvokeAsync(
+            "Catalog.GhostCommand.Execute",
+            Args("""{"Label":"Widget"}"""),
+            TestContext.Current.CancellationToken);
+
+        hidden.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+        absent.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+        hidden.StructuredContent!.ToJsonString().ShouldNotContain("schema-mismatch");
+        hidden.StructuredContent.ToJsonString().ShouldNotContain("HFC-SCHEMA-");
+        hidden.StructuredContent.ToJsonString().ShouldNotContain("Catalog.LabelProductCommand.Execute");
+        hidden.StructuredContent.Select(kvp => kvp.Key).Order(StringComparer.Ordinal)
+            .ShouldBe(absent.StructuredContent!.Select(kvp => kvp.Key).Order(StringComparer.Ordinal));
+        service.Dispatched.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task PolicyHiddenTool_WithStaleSchemaFingerprint_DoesNotExposeSchemaDetails() {
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
+            out RecordingCommandService service,
+            services => {
+                services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ =>
+                    new StaticAccessor(clientFingerprintHint: SchemaHintFor("stale-client")));
+                services.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new DenyingPolicyGate());
+            });
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Billing.RestrictedCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+        string json = result.StructuredContent!.ToJsonString();
+        json.ShouldNotContain("schema-mismatch");
+        json.ShouldNotContain("HFC-SCHEMA-");
+        json.ShouldNotContain("RestrictedPolicy");
+        json.ShouldNotContain("Billing.RestrictedCommand.Execute");
+        service.Dispatched.ShouldBeNull();
     }
 
     [Fact]
@@ -373,6 +431,9 @@ public sealed class ToolAdmissionTests {
     private static Dictionary<string, JsonElement> Args(string json)
         => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
 
+    private static SchemaFingerprint SchemaHintFor(string scenario)
+        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x').Substring(0, 64));
+
     private static McpManifest Manifest()
         => new("frontcomposer.mcp.v1", [
             new McpCommandDescriptor(
@@ -451,9 +512,11 @@ public sealed class ToolAdmissionTests {
         }
     }
 
-    private sealed class StaticAccessor : IFrontComposerMcpAgentContextAccessor {
+    private sealed class StaticAccessor(SchemaFingerprint? clientFingerprintHint = null) : IFrontComposerMcpAgentContextAccessor {
         public FrontComposerMcpAgentContext GetContext()
             => new("tenant-a", "agent-a", new ClaimsPrincipal(new ClaimsIdentity("test")));
+
+        public SchemaFingerprint? ClientFingerprintHint => clientFingerprintHint;
     }
 
     private sealed class FixedUlidFactory : IUlidFactory {

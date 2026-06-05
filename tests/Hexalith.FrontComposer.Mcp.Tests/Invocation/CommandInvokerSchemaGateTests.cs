@@ -27,9 +27,12 @@ public sealed class CommandInvokerSchemaGateTests {
     [Fact]
     public async Task SchemaMismatch_OnCommand_ReturnsSanitizedSchemaCategory_WithoutDispatching() {
         RecordingCommandService dispatcher = new();
+        CountingUlidFactory ulids = new();
+        PayInvoiceCommand.ResetConstructionCount();
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             dispatcher,
-            clientFingerprintHint: SchemaHintFor("stale-client"));
+            clientFingerprintHint: SchemaHintFor("stale-client"),
+            ulidFactory: ulids);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -42,6 +45,8 @@ public sealed class CommandInvokerSchemaGateTests {
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("schema-mismatch");
         result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldStartWith("HFC-SCHEMA-");
         dispatcher.Dispatched.ShouldBeNull("AC1: schema-mismatch must short-circuit before command dispatch.");
+        ulids.CallCount.ShouldBe(0, "AC1: schema-mismatch must short-circuit before server-side ULID allocation.");
+        PayInvoiceCommand.ConstructionCount.ShouldBe(0, "AC1: schema-mismatch must short-circuit before command construction.");
     }
 
     [Fact]
@@ -101,10 +106,11 @@ public sealed class CommandInvokerSchemaGateTests {
 
     private static FrontComposerMcpCommandInvoker BuildInvoker(
         ICommandService dispatcher,
-        SchemaFingerprint? clientFingerprintHint = null) {
+        SchemaFingerprint? clientFingerprintHint = null,
+        IUlidFactory? ulidFactory = null) {
         ServiceCollection services = [];
         services.AddSingleton(dispatcher);
-        services.AddSingleton<IUlidFactory, FixedUlidFactory>();
+        services.AddSingleton(ulidFactory ?? new FixedUlidFactory());
         services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddSingleton<FrontComposerMcpToolAdmissionService>();
@@ -137,6 +143,16 @@ public sealed class CommandInvokerSchemaGateTests {
     }
 
     public sealed class PayInvoiceCommand {
+        private static int s_constructionCount;
+
+        public PayInvoiceCommand() {
+            Interlocked.Increment(ref s_constructionCount);
+        }
+
+        public static int ConstructionCount => Volatile.Read(ref s_constructionCount);
+
+        public static void ResetConstructionCount() => Volatile.Write(ref s_constructionCount, 0);
+
         public string MessageId { get; set; } = "";
         public string TenantId { get; set; } = "";
         public string UserId { get; set; } = "";
@@ -164,6 +180,18 @@ public sealed class CommandInvokerSchemaGateTests {
                 2 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0D",
                 _ => "01JZ0R5K9N8W4Y7V3Q2P6C1A0E",
             };
+        }
+    }
+
+    private sealed class CountingUlidFactory : IUlidFactory {
+        private readonly FixedUlidFactory _inner = new();
+        private int _callCount;
+
+        public int CallCount => Volatile.Read(ref _callCount);
+
+        public string NewUlid() {
+            Interlocked.Increment(ref _callCount);
+            return _inner.NewUlid();
         }
     }
 

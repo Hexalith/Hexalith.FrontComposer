@@ -109,6 +109,49 @@ public sealed class SchemaNegotiationTests {
         result.AgentCategory.ShouldBe("schema-compatible-warning");
     }
 
+    [Fact]
+    public void Negotiate_CompatibleWarning_AllowsSideEffects_WithWarningClassification() {
+        SchemaBaselineSnapshot baseline = BuildSnapshot(
+            fingerprintValue: new string('a', 64),
+            fields: [
+                new SchemaFieldContract(
+                    "Status",
+                    "String",
+                    "string",
+                    true,
+                    false,
+                    EnumValues: ["Pending", "Paid"]),
+            ]);
+        SchemaBaselineSnapshot server = BuildSnapshot(
+            fingerprintValue: new string('b', 64),
+            fields: [
+                new SchemaFieldContract(
+                    "Status",
+                    "String",
+                    "string",
+                    true,
+                    false,
+                    EnumValues: ["Pending", "Paid", "Canceled"]),
+            ]);
+
+        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
+            IsHiddenOrUnknown: false,
+            IsStaleDescriptor: false,
+            Client,
+            Server,
+            HasTrustedBaseline: true,
+            HasCompatibleAdditiveDrift: false,
+            HasSchemaIntegrityMismatch: false,
+            Baseline: baseline,
+            Server: server));
+
+        result.Kind.ShouldBe(McpSchemaNegotiationResultKind.CompatibleWarning);
+        result.AllowsSideEffects.ShouldBeTrue();
+        result.AgentCategory.ShouldBe("schema-compatible-warning");
+        result.MessageKey.ShouldBe("schema.compatible-warning");
+        result.DocsCode.ShouldBe("HFC-SCHEMA-COMPATIBLE-WARNING");
+    }
+
     private static SchemaBaselineSnapshot BuildSnapshot(string fingerprintValue, IReadOnlyList<SchemaFieldContract> fields)
         => new(
             new SchemaBaselineProvenance(

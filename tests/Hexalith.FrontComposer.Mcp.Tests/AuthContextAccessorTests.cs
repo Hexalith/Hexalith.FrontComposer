@@ -172,6 +172,22 @@ public sealed class AuthContextAccessorTests {
     }
 
     [Fact]
+    public void ClientFingerprintHint_AcceptsSourceToolsBlobAlgorithm() {
+        // Story 5.5: generated descriptors carry SourceTools-emitted fingerprints, so the HTTP
+        // trust boundary must admit the same v1 algorithm as the negotiator.
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        string fingerprint = new('c', 64);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
+            SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1 + ":" + fingerprint;
+
+        SchemaFingerprint? hint = sut.ClientFingerprintHint;
+
+        hint.ShouldNotBeNull();
+        hint.AlgorithmId.ShouldBe(SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
+        hint.Value.ShouldBe(fingerprint);
+    }
+
+    [Fact]
     public void ClientFingerprintHint_CachesSuccessfulParse_ForRequestLifetime() {
         var sut = BuildAccessor(out HttpContext http, configure: null);
         string fingerprint = new('a', 64);
@@ -264,6 +280,20 @@ public sealed class AuthContextAccessorTests {
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
+    }
+
+    [Theory]
+    [InlineData("frontcomposer.schema.sha256.canonical-json.v1 :aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")]
+    [InlineData("frontcomposer.schema.sha256.canonical-json.v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:tail")]
+    [InlineData("frontcomposer.schema.sha256.canonical-json.v1:gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")]
+    public void ClientFingerprintHint_InvalidWireForms_FailClosed(string headerValue) {
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] = headerValue;
+
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
+
+        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
+        ex.Message.ShouldNotContain(headerValue);
     }
 
     [Fact]
