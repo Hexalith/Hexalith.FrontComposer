@@ -25,7 +25,6 @@ internal static class MigrationCommand
         }
 
         bool apply = options.Has("apply");
-        bool dryRun = options.Has("dry-run") || !apply;
         if (apply && options.Has("dry-run")) {
             await error.WriteLineAsync("Choose either --dry-run or --apply, not both.").ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
@@ -73,15 +72,27 @@ internal static class MigrationCommand
             : ExitCodes.Success;
     }
 
-    private static void RenderText(MigrationResult result, TextWriter output)
+    internal static void RenderText(MigrationResult result, TextWriter output)
     {
         output.WriteLine(result.Applied ? "Migration apply completed." : "Migration dry-run completed.");
         output.WriteLine($"Changed: {result.Summary.Changed}; Unchanged: {result.Summary.Unchanged}; Skipped: {result.Summary.Skipped}; Failed: {result.Summary.Failed}; Manual-only: {result.Summary.ManualOnly}; Conflicts: {result.Summary.Conflicts}");
+        // AC6: text output honors the same per-entry (8,000) and aggregate (64,000) diff budgets as JSON,
+        // so "many changed files" cannot grow terminal output beyond the contracted aggregate cap.
+        int diffBudget = MigrationJson.MaxAggregateDiffChars;
         foreach (MigrationEntry entry in result.Entries.OrderBy(x => x.Path, StringComparer.Ordinal).ThenBy(x => x.DiagnosticId, StringComparer.Ordinal)) {
             output.WriteLine($"- {entry.Kind} {entry.DiagnosticId} {OutputSanitizer.Sanitize(entry.Path)}: {OutputSanitizer.Sanitize(entry.What)}");
-            if (!string.IsNullOrWhiteSpace(entry.Diff)) {
-                output.Write(OutputSanitizer.SanitizeMultiLine(entry.Diff, 8_000));
+            if (string.IsNullOrWhiteSpace(entry.Diff)) {
+                continue;
             }
+
+            if (diffBudget <= 0) {
+                output.WriteLine("[diff omitted: aggregate diff budget exceeded]");
+                continue;
+            }
+
+            string rendered = OutputSanitizer.SanitizeMultiLine(entry.Diff, Math.Min(diffBudget, MigrationJson.MaxPerEntryDiffChars));
+            output.Write(rendered);
+            diffBudget -= rendered.Length;
         }
     }
 }
@@ -1449,8 +1460,8 @@ internal static class MigrationJson
 {
     // Top-level cap on accumulated diff bytes across all entries; once exceeded subsequent diffs
     // are emitted as a `[diff omitted: budget]` placeholder so JSON cannot grow unbounded.
-    private const int MaxAggregateDiffChars = 64_000;
-    private const int MaxPerEntryDiffChars = 8_000;
+    internal const int MaxAggregateDiffChars = 64_000;
+    internal const int MaxPerEntryDiffChars = 8_000;
 
     public static object From(MigrationResult result)
     {

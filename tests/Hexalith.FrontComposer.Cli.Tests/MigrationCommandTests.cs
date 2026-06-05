@@ -168,10 +168,18 @@ public sealed class MigrationCommandTests
         File.ReadAllText(source).ShouldContain("AddFrontComposerDebugOverlay");
 
         using JsonDocument document = JsonDocument.Parse(output.ToString());
+        document.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.migrate.v1");
+        document.RootElement.GetProperty("applied").GetBoolean().ShouldBeFalse();
         JsonElement summary = document.RootElement.GetProperty("summary");
         summary.GetProperty("changed").GetInt32().ShouldBe(1);
         summary.GetProperty("unchanged").GetInt32().ShouldBe(0);
-        document.RootElement.GetProperty("applied").GetBoolean().ShouldBeFalse();
+        JsonElement entry = document.RootElement.GetProperty("entries").EnumerateArray().Single();
+        entry.GetProperty("diagnosticId").GetString().ShouldBe("HFCM9001");
+        entry.GetProperty("kind").GetString().ShouldBe("safe-fix");
+        entry.GetProperty("path").GetString().ShouldBe("Program.cs");
+        entry.GetProperty("docsLink").GetString().ShouldBe("docs/migrations/9.1-to-9.2.md");
+        entry.GetProperty("diff").GetString()!.ShouldContain("AddFrontComposerDevMode");
+        entry.GetProperty("formattingApplied").GetBoolean().ShouldBeFalse();
     }
 
     [Fact]
@@ -193,6 +201,9 @@ public sealed class MigrationCommandTests
         exitCode.ShouldBe(0, output + error.ToString());
         error.ToString().ShouldBeEmpty();
         File.ReadAllText(source).ShouldContain("AddFrontComposerDevMode");
+        using (JsonDocument firstDocument = JsonDocument.Parse(output.ToString())) {
+            firstDocument.RootElement.GetProperty("applied").GetBoolean().ShouldBeTrue();
+        }
 
         using StringWriter secondOutput = new();
         using StringWriter secondError = new();
@@ -362,6 +373,27 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
+    public async Task Migrate_DoesNotTreatNameofObsoleteApiAsSafeFix()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        fixture.WriteSource("Acme.App", "Program.cs", "var api = nameof(AddFrontComposerDebugOverlay);");
+
+        using StringWriter output = new();
+        using StringWriter error = new();
+        int exitCode = await CliApplication.RunAsync(
+            ["migrate", "--project", project, "--from", "9.1.0", "--to", "9.2.0", "--format", "json"],
+            output,
+            error,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(0, output + error.ToString());
+        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(0);
+        document.RootElement.GetProperty("summary").GetProperty("unchanged").GetInt32().ShouldBe(1);
+    }
+
+    [Fact]
     public async Task MigrateApply_DetectsContentDriftBeforeWriting()
     {
         using CliFixture fixture = CliFixture.Create();
@@ -462,6 +494,28 @@ public sealed class MigrationCommandTests
         document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
     }
 
+    [Theory]
+    [InlineData("obj/Debug/net10.0/Generated.cs")]
+    [InlineData(".git/hooks/Generated.cs")]
+    [InlineData("packages/cache/Generated.cs")]
+    [InlineData(".nuget/packages/Generated.cs")]
+    [InlineData("nupkgs/Generated.cs")]
+    [InlineData("src/generated/Generated.cs")]
+    public void WriteSafetyPolicy_RefusesExcludedSegments(string relativePath)
+    {
+        ArgumentNullException.ThrowIfNull(relativePath);
+
+        using CliFixture fixture = CliFixture.Create();
+        string projectDirectory = Path.Combine(fixture.Root, "Acme.App");
+        string fullPath = Path.Combine(projectDirectory, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
+        File.WriteAllText(fullPath, "services.AddFrontComposerDebugOverlay();");
+
+        bool allowed = WriteSafetyPolicy.IsAllowed(projectDirectory, fullPath, []);
+
+        allowed.ShouldBeFalse();
+    }
+
     [Fact]
     public async Task Migrate_LargeFixtureUsesProjectDocumentsAndStaysWithinCiBudget()
     {
@@ -511,6 +565,107 @@ public sealed class MigrationCommandTests
         error.ToString().ShouldContain("Supported edges");
         File.ReadAllText(source).ShouldContain("AddFrontComposerDebugOverlay");
         output.ToString().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Migrate_InvalidFormatAndConflictingApplyFlagsFailBeforeWriting()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string source = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+
+        using StringWriter invalidFormatOutput = new();
+        using StringWriter invalidFormatError = new();
+        int invalidFormatExitCode = await CliApplication.RunAsync(
+            ["migrate", "--project", project, "--from", "9.1.0", "--to", "9.2.0", "--format", "xml", "--apply"],
+            invalidFormatOutput,
+            invalidFormatError,
+            CancellationToken.None);
+
+        invalidFormatExitCode.ShouldBe(ExitCodes.InvalidArguments);
+        invalidFormatOutput.ToString().ShouldBeEmpty();
+        invalidFormatError.ToString().ShouldContain("--format");
+        File.ReadAllText(source).ShouldContain("AddFrontComposerDebugOverlay");
+
+        using StringWriter conflictingFlagsOutput = new();
+        using StringWriter conflictingFlagsError = new();
+        int conflictingFlagsExitCode = await CliApplication.RunAsync(
+            ["migrate", "--project", project, "--from", "9.1.0", "--to", "9.2.0", "--dry-run", "--apply"],
+            conflictingFlagsOutput,
+            conflictingFlagsError,
+            CancellationToken.None);
+
+        conflictingFlagsExitCode.ShouldBe(ExitCodes.InvalidArguments);
+        conflictingFlagsOutput.ToString().ShouldBeEmpty();
+        conflictingFlagsError.ToString().ShouldContain("Choose either");
+        File.ReadAllText(source).ShouldContain("AddFrontComposerDebugOverlay");
+    }
+
+    [Fact]
+    public async Task Migrate_FailOnFindingsReturnsOneOnlyForActionableFindings()
+    {
+        using CliFixture changedFixture = CliFixture.Create();
+        string changedProject = changedFixture.WriteProject("Acme.App", "net10.0");
+        changedFixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+
+        using StringWriter changedOutput = new();
+        using StringWriter changedError = new();
+        int changedExitCode = await CliApplication.RunAsync(
+            ["migrate", "--project", changedProject, "--from", "9.1.0", "--to", "9.2.0", "--fail-on-findings", "--format", "json"],
+            changedOutput,
+            changedError,
+            CancellationToken.None);
+
+        changedExitCode.ShouldBe(ExitCodes.ActionableFindings, changedOutput + changedError.ToString());
+
+        using CliFixture manualOnlyFixture = CliFixture.Create();
+        string manualOnlyProject = manualOnlyFixture.WriteProject("Acme.App", "net10.0");
+        manualOnlyFixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+        manualOnlyFixture.WriteGeneratedDiagnosticSidecar(
+            "Acme.App",
+            "Debug",
+            "net10.0",
+            "frontcomposer.migration.diagnostics.json",
+            """
+            {
+              "diagnostics": [
+                {
+                  "id": "HFCM9002",
+                  "severity": "Warning",
+                  "path": "Program.cs",
+                  "what": "Custom FrontComposer migration requires manual review"
+                }
+              ]
+            }
+            """);
+
+        using StringWriter manualOnlyOutput = new();
+        using StringWriter manualOnlyError = new();
+        int manualOnlyExitCode = await CliApplication.RunAsync(
+            ["migrate", "--project", manualOnlyProject, "--from", "9.1.0", "--to", "9.2.0", "--fail-on-findings", "--format", "json"],
+            manualOnlyOutput,
+            manualOnlyError,
+            CancellationToken.None);
+
+        manualOnlyExitCode.ShouldBe(ExitCodes.ActionableFindings, manualOnlyOutput + manualOnlyError.ToString());
+        using (JsonDocument manualOnlyDocument = JsonDocument.Parse(manualOnlyOutput.ToString()))
+        {
+            manualOnlyDocument.RootElement.GetProperty("summary").GetProperty("manualOnly").GetInt32().ShouldBe(1);
+        }
+
+        using CliFixture unchangedFixture = CliFixture.Create();
+        string unchangedProject = unchangedFixture.WriteProject("Acme.App", "net10.0");
+        unchangedFixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+
+        using StringWriter unchangedOutput = new();
+        using StringWriter unchangedError = new();
+        int unchangedExitCode = await CliApplication.RunAsync(
+            ["migrate", "--project", unchangedProject, "--from", "9.1.0", "--to", "9.2.0", "--fail-on-findings", "--format", "json"],
+            unchangedOutput,
+            unchangedError,
+            CancellationToken.None);
+
+        unchangedExitCode.ShouldBe(ExitCodes.Success, unchangedOutput + unchangedError.ToString());
     }
 
     [Fact]
@@ -581,6 +736,65 @@ public sealed class MigrationCommandTests
         ];
 
         MigrationPlanner.HasOverlappingChanges(changes).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void MigrationJson_CapsPerEntryAndAggregateDiffs()
+    {
+        string longDiff = new('x', 12_000);
+        MigrationEntry[] entries = Enumerable.Range(0, 10)
+            .Select(i => new MigrationEntry(
+                MigrationDiagnostics.ObsoleteDevOverlay.Id,
+                "safe-fix",
+                "File" + i.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".cs",
+                "what",
+                "expected",
+                "got",
+                "fix",
+                "docs/migrations/9.1-to-9.2.md",
+                longDiff))
+            .ToArray();
+        MigrationResult result = new(false, entries, MigrationSummary.From(entries));
+
+        string json = JsonSerializer.Serialize(MigrationJson.From(result), JsonOptions.Stable);
+
+        using JsonDocument document = JsonDocument.Parse(json);
+        JsonElement[] jsonEntries = document.RootElement.GetProperty("entries").EnumerateArray().ToArray();
+        string firstDiff = jsonEntries[0].GetProperty("diff").GetString()!;
+        firstDiff.Length.ShouldBeLessThan(8_100);
+        firstDiff.ShouldContain("[truncated:");
+        string lastDiff = jsonEntries[^1].GetProperty("diff").GetString()!;
+        lastDiff.ShouldBe("[diff omitted: aggregate diff budget exceeded]");
+    }
+
+    [Fact]
+    public void MigrationText_CapsPerEntryAndAggregateDiffs()
+    {
+        string longDiff = new('x', 12_000);
+        MigrationEntry[] entries = Enumerable.Range(0, 10)
+            .Select(i => new MigrationEntry(
+                MigrationDiagnostics.ObsoleteDevOverlay.Id,
+                "safe-fix",
+                "File" + i.ToString(System.Globalization.CultureInfo.InvariantCulture) + ".cs",
+                "what",
+                "expected",
+                "got",
+                "fix",
+                "docs/migrations/9.1-to-9.2.md",
+                longDiff))
+            .ToArray();
+        MigrationResult result = new(false, entries, MigrationSummary.From(entries));
+
+        using StringWriter writer = new();
+        MigrationCommand.RenderText(result, writer);
+        string text = writer.ToString();
+
+        // Per-entry cap: at least one rendered diff is truncated to the 8,000-char budget.
+        text.ShouldContain("[truncated:");
+        // Aggregate cap: once 64,000 chars of diff are emitted, later entries are omitted in text mode too.
+        text.ShouldContain("[diff omitted: aggregate diff budget exceeded]");
+        // The last file's diff body must not leak past the aggregate budget.
+        text.ShouldContain("- safe-fix HFCM9001 File9.cs:");
     }
 
     [Fact]

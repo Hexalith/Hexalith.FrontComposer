@@ -51,7 +51,7 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
             }
 
             string[] canonicalProjects = parse.ProjectPaths
-                .Select(path => PathUtilities.Canonical(Path.GetFullPath(path, solutionDirectory)))
+                .Select(path => PathUtilities.Canonical(Path.GetFullPath(NormalizeSolutionProjectPath(path), solutionDirectory)))
                 .ToArray();
             if (canonicalProjects.Any(path => !IsSameOrUnder(solutionDirectory, path))) {
                 return new ProjectSelection(false, null, "Solution contains project paths outside the solution directory; pass --project with a repository-local .csproj file.");
@@ -142,6 +142,9 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
 
         return fields.ToArray();
     }
+
+    private static string NormalizeSolutionProjectPath(string path)
+        => path.Replace('\\', Path.DirectorySeparatorChar).Replace('/', Path.DirectorySeparatorChar);
 
     private sealed record SolutionProjectParseResult(
         string[] ProjectPaths,
