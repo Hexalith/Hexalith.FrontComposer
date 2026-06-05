@@ -2,11 +2,13 @@ using Fluxor;
 using Fluxor.Blazor.Web.Components;
 
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
@@ -14,6 +16,7 @@ using Hexalith.FrontComposer.Shell.State.Theme;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -175,6 +178,9 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// <summary>Injected navigation manager used to resolve static web asset URLs against the app base path.</summary>
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
 
+    /// <summary>Injected root service provider used for optional dev-mode-only services.</summary>
+    [Inject] private IServiceProvider Services { get; set; } = default!;
+
     /// <summary>
     /// Injected shortcut service (Story 3-4 D1). The shell's <c>@onkeydown</c> binding routes every
     /// global key through this surface; the Story 3-3 inline <c>Ctrl+,</c> branch is RETIRED per
@@ -250,6 +256,19 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     protected string PageLayoutCssClass => _pageLayoutCoordinator.Mode == FcPageLayoutMode.Constrained
         ? "fc-page-layout fc-page-layout--constrained"
         : "fc-page-layout";
+
+    /// <summary>Development-only customization contract mismatch diagnostics.</summary>
+    protected IReadOnlyList<CustomizationDiagnostic> ContractMismatchDiagnostics {
+        get {
+            if (!IsDevModeBuild) {
+                return [];
+            }
+
+            ICustomizationContractMismatchDiagnosticProvider? provider =
+                Services.GetService<ICustomizationContractMismatchDiagnosticProvider>();
+            return provider?.GetDiagnostics() ?? [];
+        }
+    }
 
     /// <summary>
     /// [JSInvokable] called by the <c>fc-beforeunload.js</c> module before the page unloads.

@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services.DevMode;
+using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -27,6 +28,7 @@ public sealed class AddFrontComposerDevModeExtensionsTests {
         services.ShouldContain(d => d.ServiceType == typeof(IRazorEmitter) && d.Lifetime == ServiceLifetime.Scoped);
         services.ShouldContain(d => d.ServiceType == typeof(IClipboardJSModule) && d.Lifetime == ServiceLifetime.Scoped);
         services.ShouldContain(d => d.ServiceType == typeof(IDevModeAnnotationSnapshotVisitor) && d.Lifetime == ServiceLifetime.Scoped);
+        services.ShouldContain(d => d.ServiceType == typeof(ICustomizationContractMismatchDiagnosticProvider) && d.Lifetime == ServiceLifetime.Scoped);
     }
 #endif
 
@@ -43,6 +45,19 @@ public sealed class AddFrontComposerDevModeExtensionsTests {
         services.ShouldContain(d => d.ServiceType == typeof(IRazorEmitter) && d.Lifetime == ServiceLifetime.Scoped);
         services.ShouldContain(d => d.ServiceType == typeof(IClipboardJSModule) && d.Lifetime == ServiceLifetime.Scoped);
         services.ShouldContain(d => d.ServiceType == typeof(IDevModeAnnotationSnapshotVisitor) && d.Lifetime == ServiceLifetime.Scoped);
+        services.ShouldContain(d => d.ServiceType == typeof(ICustomizationContractMismatchDiagnosticProvider) && d.Lifetime == ServiceLifetime.Scoped);
+    }
+#endif
+
+#if !DEBUG
+    [Fact]
+    public void AddFrontComposerDevMode_ReleaseDevelopmentEnvironmentResolvesNoContractMismatchProvider() {
+        ServiceCollection services = [];
+        services.AddLogging();
+
+        services.AddFrontComposerDevMode(new TestHostEnvironment("Development"));
+
+        services.ShouldNotContain(d => d.ServiceType == typeof(ICustomizationContractMismatchDiagnosticProvider));
     }
 #endif
 
@@ -76,6 +91,7 @@ public sealed class AddFrontComposerDevModeExtensionsTests {
         scope.ServiceProvider.GetService<IRazorEmitter>().ShouldBeNull();
         scope.ServiceProvider.GetService<IClipboardJSModule>().ShouldBeNull();
         scope.ServiceProvider.GetService<IDevModeAnnotationSnapshotVisitor>().ShouldBeNull();
+        scope.ServiceProvider.GetService<ICustomizationContractMismatchDiagnosticProvider>().ShouldBeNull();
     }
 
     [Fact]
@@ -91,6 +107,7 @@ public sealed class AddFrontComposerDevModeExtensionsTests {
         services.ShouldNotContain(d => d.ServiceType == typeof(IDevModeOverlayController));
         services.ShouldNotContain(d => d.ServiceType == typeof(IRazorEmitter));
         services.ShouldNotContain(d => d.ServiceType == typeof(IClipboardJSModule));
+        services.ShouldNotContain(d => d.ServiceType == typeof(ICustomizationContractMismatchDiagnosticProvider));
     }
 
     private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment {

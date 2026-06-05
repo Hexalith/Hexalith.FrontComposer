@@ -13,6 +13,7 @@ using Hexalith.FrontComposer.Mcp.Extensions;
 using Hexalith.FrontComposer.Shell.Components.Specimens;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -76,6 +77,18 @@ else {
     // what adopters should reach for; the Type-taking overload exists for codegen scenarios.
     builder.Services.AddSlotOverride<CounterProjection, int, CounterCountSlot>(
         field: x => x.Count);
+
+    if (builder.Configuration.GetValue<bool>("Hexalith:FrontComposer:E2E:SeedContractMismatch")) {
+        builder.Services.AddSingleton(new ProjectionSlotDescriptorSource([
+            new ProjectionSlotDescriptor(
+                ProjectionType: typeof(CounterProjection),
+                FieldName: nameof(CounterProjection.Count),
+                FieldType: typeof(int),
+                Role: null,
+                ComponentType: typeof(CounterCountSlot),
+                ContractVersion: (ProjectionSlotContractVersion.Major + 1) * 1_000_000),
+        ]));
+    }
 
     // Story 6-4 T9 / AC12 — Level 4 full view replacement reference. The replacement owns the
     // projection body only; generated shell, loading/empty state, lifecycle, grid envelope, and

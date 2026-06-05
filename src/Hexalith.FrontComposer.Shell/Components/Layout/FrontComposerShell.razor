@@ -3,6 +3,8 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Hexalith.FrontComposer.Contracts.Registration
 @using Hexalith.FrontComposer.Contracts.Rendering
+@using Hexalith.FrontComposer.Contracts.Diagnostics
+@using Hexalith.FrontComposer.Shell.Components.Diagnostics
 @using Hexalith.FrontComposer.Shell.Components.DevMode
 @using Hexalith.FrontComposer.Shell.Components.EventStore
 @using Hexalith.FrontComposer.Shell.Resources
@@ -128,6 +130,10 @@
     <FluentProviders />
     @if (IsDevModeBuild)
     {
+        @foreach (CustomizationDiagnostic diagnostic in ContractMismatchDiagnostics)
+        {
+            <FcCustomizationDiagnosticPanel Diagnostic="@diagnostic" />
+        }
         <FcDevModeOverlay />
     }
 </div>

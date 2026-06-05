@@ -62,9 +62,10 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
 
     private static void OnCompilationStart(CompilationStartAnalysisContext compilationContext) {
         // P16 — collect component types referenced from registration calls. The set is
-        // mutated by SyntaxNodeAction passes (one per InvocationExpression) and read by
-        // the SymbolAction pass below. ConcurrentDictionary keyed by SymbolEqualityComparer
-        // prevents key conflation across nested generic instantiations.
+        // mutated by SyntaxNodeAction passes (one per InvocationExpression) and read at
+        // compilation end so the registration collection is complete before analysis.
+        // ConcurrentDictionary keyed by SymbolEqualityComparer prevents key conflation
+        // across nested generic instantiations.
         ConcurrentDictionary<INamedTypeSymbol, byte> referencedComponents =
             new(SymbolEqualityComparer.Default);
 
@@ -73,8 +74,11 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
             SyntaxKind.InvocationExpression);
 
         compilationContext.RegisterSymbolAction(
-            ctx => AnalyzeType(ctx, referencedComponents),
+            AnalyzeProjectionTemplateType,
             SymbolKind.NamedType);
+
+        compilationContext.RegisterCompilationEndAction(
+            ctx => AnalyzeRegisteredTypes(ctx, referencedComponents));
     }
 
     private static void CollectRegistrationReferences(
@@ -114,15 +118,32 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
         _ => null,
     };
 
-    private static void AnalyzeType(
-        SymbolAnalysisContext context,
-        ConcurrentDictionary<INamedTypeSymbol, byte> referencedComponents) {
+    private static void AnalyzeProjectionTemplateType(SymbolAnalysisContext context) {
         INamedTypeSymbol type = (INamedTypeSymbol)context.Symbol;
-        if (!IsCustomizationComponent(type, referencedComponents)) {
+        if (!HasProjectionTemplateAttribute(type)) {
             return;
         }
 
-        string? source = GetDeclaredSource(type, context.CancellationToken);
+        AnalyzeType(type, context.CancellationToken, diagnostic => context.ReportDiagnostic(diagnostic));
+    }
+
+    private static void AnalyzeRegisteredTypes(
+        CompilationAnalysisContext context,
+        ConcurrentDictionary<INamedTypeSymbol, byte> referencedComponents) {
+        foreach (INamedTypeSymbol type in referencedComponents.Keys) {
+            if (HasProjectionTemplateAttribute(type)) {
+                continue;
+            }
+
+            AnalyzeType(type, context.CancellationToken, diagnostic => context.ReportDiagnostic(diagnostic));
+        }
+    }
+
+    private static void AnalyzeType(
+        INamedTypeSymbol type,
+        CancellationToken cancellationToken,
+        Action<Diagnostic> report) {
+        string? source = GetDeclaredSource(type, cancellationToken);
         if (source is null || source.Length == 0) {
             return;
         }
@@ -138,7 +159,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
 
         if (hasClick && !hasAccessibleName) {
             Report(
-                context,
+                report,
                 DiagnosticDescriptors.CustomizationAccessibleNameMissing,
                 location,
                 what: "A customization component renders an interactive element without an accessible name.",
@@ -150,7 +171,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
 
         if (Contains(source, "\"tabindex\", -1") || Contains(source, "\"tabindex\", \"-1\"")) {
             Report(
-                context,
+                report,
                 DiagnosticDescriptors.CustomizationKeyboardReachabilityIssue,
                 location,
                 what: "A customization component removes the only obvious keyboard path from an interactive element.",
@@ -162,7 +183,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
 
         if ((Contains(source, "outline: none") || Contains(source, "box-shadow: none")) && !Contains(source, "focus-visible")) {
             Report(
-                context,
+                report,
                 DiagnosticDescriptors.CustomizationFocusVisibilitySuppressed,
                 location,
                 what: "A customization component suppresses visible focus styling.",
@@ -174,7 +195,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
 
         if ((Contains(source, "data-fc-lifecycle") || Contains(source, "data-fc-status")) && !Contains(source, "\"aria-live\"")) {
             Report(
-                context,
+                report,
                 DiagnosticDescriptors.CustomizationAriaLiveParityMissing,
                 location,
                 what: "A customization component replaces lifecycle/status UI without aria-live parity.",
@@ -187,7 +208,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
         if ((Contains(source, "transition:") || Contains(source, "@keyframes") || Contains(source, "animation:"))
             && !Contains(source, "prefers-reduced-motion")) {
             Report(
-                context,
+                report,
                 DiagnosticDescriptors.CustomizationReducedMotionMissing,
                 location,
                 what: "A customization component defines motion without a reduced-motion fallback.",
@@ -200,7 +221,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
         if ((Contains(source, "color:") || Contains(source, "background:") || Contains(source, "border-color:") || Contains(source, "fill:"))
             && !Contains(source, "forced-colors")) {
             Report(
-                context,
+                report,
                 DiagnosticDescriptors.CustomizationForcedColorsMissing,
                 location,
                 what: "A customization component defines custom color styling without forced-colors evidence.",
@@ -211,9 +232,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
         }
     }
 
-    private static bool IsCustomizationComponent(
-        INamedTypeSymbol type,
-        ConcurrentDictionary<INamedTypeSymbol, byte> referencedComponents) {
+    private static bool HasProjectionTemplateAttribute(INamedTypeSymbol type) {
         // Level 2 — class-level attribute.
         foreach (AttributeData attribute in type.GetAttributes()) {
             if (attribute.AttributeClass?.ToDisplayString() == ProjectionTemplateAttributeName) {
@@ -221,10 +240,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
             }
         }
 
-        // Levels 3 / 4 — type referenced from an Add{Slot,View,ProjectionTemplate}Override call.
-        // P16 — extends analyzer reach without requiring a class-level attribute on slot/view
-        // override components.
-        return referencedComponents.ContainsKey(type);
+        return false;
     }
 
     private static string? GetDeclaredSource(INamedTypeSymbol type, CancellationToken cancellationToken) {
@@ -357,7 +373,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
         => source.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0;
 
     private static void Report(
-        SymbolAnalysisContext context,
+        Action<Diagnostic> report,
         DiagnosticDescriptor descriptor,
         Location location,
         string what,
@@ -373,7 +389,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
             + "Fallback: The generated framework path remains available when the override is not selected.\n"
             + $"DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/{docsId}";
 
-        context.ReportDiagnostic(Diagnostic.Create(
+        report(Diagnostic.Create(
             descriptor,
             location,
             message));

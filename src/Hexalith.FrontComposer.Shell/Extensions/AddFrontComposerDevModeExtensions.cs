@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Shell.Services.DevMode;
+using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -42,6 +43,7 @@ public static class AddFrontComposerDevModeExtensions {
             services.TryAddScoped<IRazorEmitter, RazorEmitter>();
             services.TryAddScoped<IClipboardJSModule, ClipboardJSModule>();
             services.TryAddScoped<IDevModeAnnotationSnapshotVisitor, DevModeAnnotationSnapshotVisitor>();
+            services.TryAddScoped<ICustomizationContractMismatchDiagnosticProvider, CustomizationContractMismatchDiagnosticProvider>();
             services.TryAddSingleton<DevModeRegistrationLogMarker>();
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DevModeRegistrationLogger>());
 #endif

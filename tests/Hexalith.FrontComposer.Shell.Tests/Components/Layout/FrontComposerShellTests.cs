@@ -4,17 +4,24 @@ using Bunit.TestDoubles;
 using Fluxor;
 using Fluxor.Blazor.Web;
 
+using Hexalith.FrontComposer.Contracts.DevMode;
+using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
+using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services.Customization;
+using Hexalith.FrontComposer.Shell.Tests.Services.Diagnostics;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
@@ -30,6 +37,57 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// adopter-supplied override path.
 /// </summary>
 public sealed class FrontComposerShellTests : LayoutComponentTestBase {
+#if DEBUG
+    [Fact]
+    public void ContractMismatchDiagnostics_WhenDebugDevelopmentProviderRegistered_RendersExistingDiagnosticPanel() {
+        Services.AddFrontComposerDevMode(new TestHostEnvironment("Development"));
+        Services.GetRequiredService<ICustomizationContractRejectionLog>()
+            .Record(CustomizationContractMismatchDiagnosticProviderTests.NewRejection());
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("role=\"alert\"");
+            cut.Markup.ShouldContain(FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch);
+            cut.Markup.ShouldContain("Demo.CounterProjection");
+            cut.Markup.ShouldContain("Demo.CounterSlot");
+            cut.Markup.ShouldContain("DetailRecord");
+            cut.Markup.ShouldContain("Count");
+            cut.Markup.ShouldContain("2.0.0");
+            cut.Markup.ShouldContain("1.0.0");
+            cut.Markup.ShouldContain("https://hexalith.github.io/FrontComposer/diagnostics/HFC1041");
+        });
+    }
+
+    [Fact]
+    public void ContractMismatchDiagnostics_WhenDebugNonDevelopment_DoesNotRenderDiagnosticPanel() {
+        Services.AddFrontComposerDevMode(new TestHostEnvironment("Production"));
+        Services.GetRequiredService<ICustomizationContractRejectionLog>()
+            .Record(CustomizationContractMismatchDiagnosticProviderTests.NewRejection());
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() =>
+            cut.Markup.ShouldNotContain(FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch));
+    }
+#endif
+
+#if !DEBUG
+    [Fact]
+    public void ContractMismatchDiagnostics_WhenReleaseBuild_DoesNotRenderDiagnosticPanel() {
+        Services.AddSingleton<Hexalith.FrontComposer.Shell.Services.Diagnostics.ICustomizationContractMismatchDiagnosticProvider>(
+            new StaticContractMismatchDiagnosticProvider());
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() =>
+            cut.Markup.ShouldNotContain(FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch));
+    }
+#endif
+
     [Fact]
     public void Renders_shell_chrome_and_omits_navigation_when_not_provided() {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
@@ -481,4 +539,34 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/"));
     }
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment {
+        public string EnvironmentName { get; set; } = environmentName;
+        public string ApplicationName { get; set; } = "Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
+
+#if !DEBUG
+    private sealed class StaticContractMismatchDiagnosticProvider : Hexalith.FrontComposer.Shell.Services.Diagnostics.ICustomizationContractMismatchDiagnosticProvider {
+        public IReadOnlyList<CustomizationDiagnostic> GetDiagnostics()
+            => [
+                CustomizationDiagnostic.Create(
+                    id: FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch,
+                    severity: CustomizationDiagnosticSeverity.Warning,
+                    phase: CustomizationDiagnosticPhase.Runtime,
+                    level: CustomizationLevel.Level3,
+                    projectionTypeName: "Demo.CounterProjection",
+                    componentTypeName: "Demo.CounterSlot",
+                    role: "DetailRecord",
+                    fieldName: "Count",
+                    what: "Release test diagnostic.",
+                    expected: "No release render.",
+                    got: "Provider was registered.",
+                    fix: "Do not render in release.",
+                    fallback: "Generated path remains available.",
+                    docsLink: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1041"),
+            ];
+    }
+#endif
 }
