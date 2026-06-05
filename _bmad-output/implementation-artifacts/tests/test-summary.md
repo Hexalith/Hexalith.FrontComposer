@@ -3,32 +3,19 @@
 ## Generated Tests
 
 ### API Tests
-- [x] `tests/e2e/specs/mcp-schema-fingerprint-negotiation.spec.ts` - Playwright MCP JSON-RPC coverage for Story 5.5 schema fingerprint negotiation.
-- [x] `tests/e2e/helpers/mcp-schema-fingerprints.ts` - Reads generated Counter MCP descriptor fingerprints from Release/Debug source-generator output for exact-match E2E requests.
+- [x] Not applicable for Story 6.1; no API endpoint behavior is introduced by Level-2 ProjectionTemplate overrides.
 
 ### E2E Tests
-- [x] `tests/e2e/specs/mcp-schema-fingerprint-negotiation.spec.ts` - Covers exact command fingerprint success, stale fingerprint command rejection, current-server validation after exact negotiation, malformed header fail-closed behavior, and hidden-tool precedence over schema diagnostics.
-- [x] `tests/e2e/package.json` - Added focused `test:mcp-schema` script.
+- [x] `tests/e2e/specs/projection-template-overrides.spec.ts` - Browser-level specimen coverage for registered Level-2 projection templates rendering before generated default bodies while preserving generated field renderers.
 
 ## Coverage
-
-- API/protocol surfaces: 1/1 Story 5.5 side-effecting MCP command surface covered in E2E (`tools/call`).
-- UI features: 0/0 applicable; Story 5.5 is an MCP protocol/schema negotiation story with no browser UI workflow.
-- Happy path: exact generated descriptor fingerprint allows `Counter.BatchIncrementCommand.Execute` to acknowledge successfully.
-- Critical error cases: stale supported fingerprint returns sanitized `schema-mismatch`; malformed uppercase fingerprint header fails closed without raw header echo; hidden policy command with stale fingerprint returns `unknown_tool`, not schema diagnostics.
-- Current-server validation: exact schema negotiation still rejects caller-supplied `TenantId` before dispatch-visible success.
-- Existing in-process MCP tests retain broader parser, negotiator, command gate, projection gate, hidden precedence, and aggregate integrity coverage.
-
-## Validation
-
-- [x] `npm --prefix tests/e2e run typecheck` - passed.
-- [x] `dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Release -m:1 /nr:false` - passed.
-- [x] `npm --prefix tests/e2e run test:mcp-schema -- --list` - discovered 5 tests.
-- [x] `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Mcp.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Mcp.Tests.dll -noLogo -noColor -method "*Schema*" -method "*AuthContextAccessor*" -method "*ToolAdmission*" -method "*CommandInvokerSchemaGate*" -method "*ProjectionReaderSchemaGate*" -method "*ProjectionReaderSchemaTaxonomy*" -method "*AggregateManifestIntegrity*"` - 132/132 passed via xUnit v3 in-process fallback.
-- [x] `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.Mcp.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Mcp.Tests.dll -noLogo -noColor` - 358/358 passed via xUnit v3 in-process fallback.
-- [ ] `npm --prefix tests/e2e run test:mcp-schema` - blocked in this sandbox because Kestrel cannot bind a local socket: `System.Net.Sockets.SocketException (13): Permission denied`.
-- [ ] `dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj -c Release --no-build ...` - blocked in this sandbox by VSTest socket startup: `System.Net.Sockets.SocketException (13): Permission denied`.
+- API endpoints: 0/0 applicable for Story 6.1.
+- UI features: 1/1 Story 6.1 Level-2 projection-template browser workflow covered.
+- Existing default-lane xUnit/bUnit pins remain the primary AC1/AC2 contract coverage for diagnostics, registry resolution, host isolation, manifest determinism, and marker cache-key equality.
 
 ## Next Steps
-
-- Run `npm --prefix tests/e2e run test:mcp-schema` in a local/CI environment that permits binding `127.0.0.1:5070`.
+- `npm run typecheck` from `tests/e2e` passed.
+- `npx playwright test specs/projection-template-overrides.spec.ts --project=chromium --list` discovers 2 tests.
+- Browser execution of `npx playwright test specs/projection-template-overrides.spec.ts --project=chromium` is blocked in this sandbox because the configured Kestrel web server cannot bind a socket (`System.Net.Sockets.SocketException (13): Permission denied`). CI or a local environment with socket binding remains the execution gate for this browser spec.
+- `DiffEngine_Disabled=true dotnet tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests.dll -class Hexalith.FrontComposer.SourceTools.Tests.Integration.ProjectionTemplateMarkerTests -noLogo` passed 15/15 through the xUnit v3 in-process runner after VSTest socket transport was blocked.
+- Keep solution-level `dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` as the CI gate for the default .NET lane.

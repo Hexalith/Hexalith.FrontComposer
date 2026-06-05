@@ -1,4 +1,7 @@
+using System.Collections.Immutable;
+
 using Hexalith.FrontComposer.SourceTools.Emitters;
+using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
 
 using Microsoft.CodeAnalysis;
@@ -15,6 +18,45 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 /// validation diagnostics, manifest emission, deduplication, and contract version handling.
 /// </summary>
 public sealed class ProjectionTemplateMarkerTests {
+    [Fact]
+    public void ProjectionTemplateMarkerInfo_ValueEquality_UsesEveryCacheKeyField() {
+        ProjectionTemplateMarkerInfo baseline = Marker();
+        ProjectionTemplateMarkerInfo identical = Marker();
+
+        baseline.ShouldBe(identical);
+        baseline.GetHashCode().ShouldBe(identical.GetHashCode());
+
+        AssertDifferent(Marker(templateTypeFullName: "TestDomain.OtherTemplate"));
+        AssertDifferent(Marker(templateNamespace: "OtherDomain"));
+        AssertDifferent(Marker(templateTypeName: "OtherTemplate"));
+        AssertDifferent(Marker(projectionTypeFullName: "TestDomain.OtherProjection"));
+        AssertDifferent(Marker(projectionNamespace: "OtherDomain"));
+        AssertDifferent(Marker(projectionTypeName: "OtherProjection"));
+        AssertDifferent(Marker(role: "DetailRecord"));
+        AssertDifferent(Marker(expectedContractVersion: 1_001_000));
+        AssertDifferent(Marker(filePath: "/repo/OtherTemplate.cs"));
+        AssertDifferent(Marker(line: 42));
+        AssertDifferent(Marker(column: 9));
+
+        void AssertDifferent(ProjectionTemplateMarkerInfo changed) {
+            baseline.ShouldNotBe(changed);
+            baseline.GetHashCode().ShouldNotBe(changed.GetHashCode());
+        }
+    }
+
+    [Fact]
+    public void ProjectionTemplateMarkerResult_ValueEquality_UsesMarkerAndDiagnostics() {
+        ProjectionTemplateMarkerResult baseline = Result(Marker(), Diagnostic("HFC1034"));
+        ProjectionTemplateMarkerResult identical = Result(Marker(), Diagnostic("HFC1034"));
+
+        baseline.ShouldBe(identical);
+        baseline.GetHashCode().ShouldBe(identical.GetHashCode());
+
+        baseline.ShouldNotBe(Result(Marker(role: "Timeline"), Diagnostic("HFC1034")));
+        baseline.ShouldNotBe(Result(Marker(), Diagnostic("HFC1035")));
+        baseline.ShouldNotBe(new ProjectionTemplateMarkerResult(null, Diagnostics(Diagnostic("HFC1034"))));
+    }
+
     [Fact]
     public void RunGenerators_ValidMarker_EmitsManifestWithDescriptor() {
         GeneratorDriverRunResult result = RunWithSources(ValidProjection, ValidTemplate);
@@ -374,6 +416,42 @@ public sealed class ProjectionTemplateMarkerTests {
             System.IO.Path.GetFileName(t.FilePath).Contains(
                 ProjectionTemplateManifestEmitter.GeneratedHintName,
                 StringComparison.Ordinal));
+
+    private static ProjectionTemplateMarkerResult Result(
+        ProjectionTemplateMarkerInfo? marker,
+        params DiagnosticInfo[] diagnostics) =>
+        new(marker, Diagnostics(diagnostics));
+
+    private static EquatableArray<DiagnosticInfo> Diagnostics(params DiagnosticInfo[] diagnostics) =>
+        new(ImmutableArray.Create(diagnostics));
+
+    private static DiagnosticInfo Diagnostic(string id) =>
+        new(id, "message", "Warning", "/repo/CounterCardTemplate.cs", 12, 5);
+
+    private static ProjectionTemplateMarkerInfo Marker(
+        string templateTypeFullName = "TestDomain.CounterCardTemplate",
+        string templateNamespace = "TestDomain",
+        string templateTypeName = "CounterCardTemplate",
+        string projectionTypeFullName = "TestDomain.CounterProjection",
+        string projectionNamespace = "TestDomain",
+        string projectionTypeName = "CounterProjection",
+        string? role = null,
+        int expectedContractVersion = 1_000_000,
+        string filePath = "/repo/CounterCardTemplate.cs",
+        int line = 12,
+        int column = 5) =>
+        new(
+            templateTypeFullName,
+            templateNamespace,
+            templateTypeName,
+            projectionTypeFullName,
+            projectionNamespace,
+            projectionTypeName,
+            role,
+            expectedContractVersion,
+            filePath,
+            line,
+            column);
 
     private const string ValidProjection = """
         using Hexalith.FrontComposer.Contracts.Attributes;

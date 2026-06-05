@@ -113,9 +113,14 @@ public sealed class ProjectionTemplateMarkerInfo : IEquatable<ProjectionTemplate
         unchecked {
             int hash = 17;
             hash = (hash * 31) + (TemplateTypeFullName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (TemplateNamespace?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (TemplateTypeName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ProjectionTypeFullName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (ProjectionNamespace?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (ProjectionTypeName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Role?.GetHashCode() ?? 0);
             hash = (hash * 31) + ExpectedContractVersion.GetHashCode();
+            hash = (hash * 31) + (FilePath?.GetHashCode() ?? 0);
             hash = (hash * 31) + Line.GetHashCode();
             hash = (hash * 31) + Column.GetHashCode();
             return hash;
