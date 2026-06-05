@@ -25,7 +25,9 @@ as `TemplateManifest`.
 diagnostics whose IDs start with `HFC` are reported. Missing optional fields emit empty strings,
 malformed or unreadable sidecars emit the deterministic warning sentinel `HFCM0002`, and unsafe
 sidecar paths are redacted rather than trusted. `--severity` and `--type` filtering are applied
-before `--fail-on-warning` or `--fail-on-error` determines the final exit code.
+before `--fail-on-warning` or `--fail-on-error` determines the final exit code. Severity filtering
+uses threshold semantics: `hidden` includes all diagnostics, `info` includes Info/Warning/Error,
+`warning` includes Warning/Error, and `error` includes Error only.
 
 ## Exit Codes and Fail Flags
 

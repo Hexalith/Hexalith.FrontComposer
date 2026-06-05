@@ -35,15 +35,19 @@ internal static class InspectCommand
         InspectReport report = load.Report!;
         string? severity = options.Get("severity");
         if (!string.IsNullOrWhiteSpace(severity)) {
-            string normalizedSeverity = NormalizeSeverity(severity);
-            if (normalizedSeverity.Length == 0) {
+            int minimumSeverity = NormalizeSeverityRank(severity);
+            if (minimumSeverity < 0) {
                 await error.WriteLineAsync("--severity must be one of hidden, info, warning, or error.").ConfigureAwait(false);
                 return ExitCodes.InvalidArguments;
             }
 
+            // AC2: `hidden` is the "show everything" level and must include all diagnostics, even
+            // sidecar entries whose severity is non-canonical (rank -1, e.g. a malformed sidecar).
+            // Higher levels keep strict threshold semantics, so a non-canonical severity stays
+            // visible only under `hidden` and never satisfies info/warning/error thresholds.
             report = report with {
                 Diagnostics = report.Diagnostics
-                    .Where(x => string.Equals(x.Severity, normalizedSeverity, StringComparison.OrdinalIgnoreCase))
+                    .Where(x => minimumSeverity == 0 || SeverityRank(x.Severity) >= minimumSeverity)
                     .ToArray(),
             };
         }
@@ -78,13 +82,22 @@ internal static class InspectCommand
         return ExitCodes.Success;
     }
 
-    private static string NormalizeSeverity(string severity)
+    private static int NormalizeSeverityRank(string severity)
         => severity.ToLowerInvariant() switch {
-            "hidden" => "Hidden",
-            "info" or "information" => "Info",
-            "warning" => "Warning",
-            "error" => "Error",
-            _ => string.Empty,
+            "hidden" => 0,
+            "info" or "information" => 1,
+            "warning" => 2,
+            "error" => 3,
+            _ => -1,
+        };
+
+    private static int SeverityRank(string severity)
+        => severity switch {
+            "Hidden" => 0,
+            "Info" => 1,
+            "Warning" => 2,
+            "Error" => 3,
+            _ => -1,
         };
 
     private static void RenderText(InspectReport report, TextWriter output)

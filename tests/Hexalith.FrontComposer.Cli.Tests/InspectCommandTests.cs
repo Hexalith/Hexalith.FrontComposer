@@ -242,7 +242,7 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectSeverity_FiltersHfcDiagnostics()
+    public async Task InspectSeverity_UsesThresholdSemanticsInJsonOutput()
     {
         using CliFixture fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
@@ -255,8 +255,105 @@ public sealed class InspectCommandTests
             """
             {
               "diagnostics": [
-                { "id": "HFC1002", "severity": "Warning", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "warn", "docsLink": "https://example.invalid/warn" },
-                { "id": "HFC1003", "severity": "Error", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "err", "docsLink": "https://example.invalid/error" }
+                { "id": "CS1001", "severity": "Error", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "ignored" },
+                { "id": "HFC1001", "severity": "Hidden", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "hidden" },
+                { "id": "HFC1002", "severity": "Info", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "info" },
+                { "id": "HFC1003", "severity": "Warning", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "warn" },
+                { "id": "HFC1004", "severity": "Error", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "err" }
+              ]
+            }
+            """);
+
+        (await ReadDiagnosticIdsAsync("hidden")).ShouldBe(["HFC1001", "HFC1002", "HFC1003", "HFC1004"], ignoreOrder: false);
+        (await ReadDiagnosticIdsAsync("info")).ShouldBe(["HFC1002", "HFC1003", "HFC1004"], ignoreOrder: false);
+        (await ReadDiagnosticIdsAsync("warning")).ShouldBe(["HFC1003", "HFC1004"], ignoreOrder: false);
+        (await ReadDiagnosticIdsAsync("error")).ShouldBe(["HFC1004"], ignoreOrder: false);
+
+        async Task<string[]> ReadDiagnosticIdsAsync(string severity)
+        {
+            using StringWriter output = new();
+            using StringWriter error = new();
+            int exitCode = await CliApplication.RunAsync(
+                ["inspect", "--project", project, "--configuration", "Debug", "--framework", "net10.0", "--severity", severity, "--format", "json"],
+                output,
+                error,
+                CancellationToken.None).ConfigureAwait(false);
+
+            exitCode.ShouldBe(0);
+            error.ToString().ShouldBeEmpty();
+
+            using JsonDocument document = JsonDocument.Parse(output.ToString());
+            return document.RootElement.GetProperty("diagnostics")
+                .EnumerateArray()
+                .Select(x => x.GetProperty("id").GetString()!)
+                .ToArray();
+        }
+    }
+
+    [Fact]
+    public async Task InspectSeverity_Hidden_IncludesNonCanonicalSeverities()
+    {
+        // AC2: `hidden` must include all diagnostics. A malformed sidecar can carry a severity
+        // outside Hidden/Info/Warning/Error; such an entry is shown unfiltered, so `--severity hidden`
+        // must remain a superset of the unfiltered output while strict levels still exclude it.
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        fixture.WriteGenerated(
+            "Acme.App",
+            "Debug",
+            "net10.0",
+            "FrontComposer.diagnostics.json",
+            """
+            {
+              "diagnostics": [
+                { "id": "HFC1001", "severity": "Critical", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "noncanonical" },
+                { "id": "HFC1002", "severity": "Error", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "err" }
+              ]
+            }
+            """);
+
+        (await ReadDiagnosticIdsAsync("hidden")).ShouldBe(["HFC1001", "HFC1002"], ignoreOrder: false);
+        (await ReadDiagnosticIdsAsync("error")).ShouldBe(["HFC1002"], ignoreOrder: false);
+
+        async Task<string[]> ReadDiagnosticIdsAsync(string severity)
+        {
+            using StringWriter output = new();
+            using StringWriter error = new();
+            int exitCode = await CliApplication.RunAsync(
+                ["inspect", "--project", project, "--configuration", "Debug", "--framework", "net10.0", "--severity", severity, "--format", "json"],
+                output,
+                error,
+                CancellationToken.None).ConfigureAwait(false);
+
+            exitCode.ShouldBe(0);
+            error.ToString().ShouldBeEmpty();
+
+            using JsonDocument document = JsonDocument.Parse(output.ToString());
+            return document.RootElement.GetProperty("diagnostics")
+                .EnumerateArray()
+                .Select(x => x.GetProperty("id").GetString()!)
+                .ToArray();
+        }
+    }
+
+    [Fact]
+    public async Task InspectSeverity_UsesThresholdSemanticsInTextSummary()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        fixture.WriteGenerated(
+            "Acme.App",
+            "Debug",
+            "net10.0",
+            "FrontComposer.diagnostics.json",
+            """
+            {
+              "diagnostics": [
+                { "id": "HFC1001", "severity": "Info", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "info" },
+                { "id": "HFC1002", "severity": "Warning", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "warn" },
+                { "id": "HFC1003", "severity": "Error", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "err" }
               ]
             }
             """);
@@ -264,17 +361,39 @@ public sealed class InspectCommandTests
         using StringWriter output = new();
         using StringWriter error = new();
         int exitCode = await CliApplication.RunAsync(
-            ["inspect", "--project", project, "--configuration", "Debug", "--framework", "net10.0", "--severity", "error", "--format", "json"],
+            ["inspect", "--project", project, "--configuration", "Debug", "--framework", "net10.0", "--severity", "warning"],
             output,
             error,
             CancellationToken.None);
 
         exitCode.ShouldBe(0);
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
-        document.RootElement.GetProperty("summary").GetProperty("errors").GetInt32().ShouldBe(1);
-        document.RootElement.GetProperty("summary").GetProperty("warnings").GetInt32().ShouldBe(0);
-        JsonElement diagnostic = document.RootElement.GetProperty("diagnostics").EnumerateArray().Single();
-        diagnostic.GetProperty("id").GetString().ShouldBe("HFC1003");
+        error.ToString().ShouldBeEmpty();
+        string text = output.ToString();
+        text.ShouldNotContain("HFC1001");
+        text.ShouldContain("HFC1002 Warning");
+        text.ShouldContain("HFC1003 Error");
+        text.ShouldContain("Warnings: 1");
+        text.ShouldContain("Errors: 1");
+    }
+
+    [Fact]
+    public async Task InspectSeverity_InvalidValue_ReturnsInvalidArguments()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+
+        using StringWriter output = new();
+        using StringWriter error = new();
+        int exitCode = await CliApplication.RunAsync(
+            ["inspect", "--project", project, "--configuration", "Debug", "--framework", "net10.0", "--severity", "verbose"],
+            output,
+            error,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(ExitCodes.InvalidArguments);
+        error.ToString().ShouldContain("--severity");
+        output.ToString().ShouldBeEmpty();
     }
 
     [Fact]
@@ -393,7 +512,7 @@ public sealed class InspectCommandTests
         int typeFiltered = await RunInspectAsync(project, ["--type", "Acme.Shipping.ShipmentProjection", "--fail-on-error"]);
         int warningFiltered = await RunInspectAsync(project, ["--type", "Acme.Shipping.ShipmentProjection", "--fail-on-warning"]);
 
-        severityFiltered.ShouldBe(0);
+        severityFiltered.ShouldBe(ExitCodes.ActionableFindings);
         typeFiltered.ShouldBe(0);
         warningFiltered.ShouldBe(ExitCodes.ActionableFindings);
     }

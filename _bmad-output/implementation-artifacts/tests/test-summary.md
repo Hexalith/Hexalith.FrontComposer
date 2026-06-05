@@ -95,3 +95,59 @@
 - [x] Test summary updated.
 - [x] Tests saved to appropriate directories.
 - [x] Summary includes coverage metrics.
+
+## Story 7.3 - surface the HFC diagnostic catalog
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Cli.Tests/InspectCommandTests.cs` - added mixed Hidden/Info/Warning/Error threshold pins for JSON and text inspect output, invalid `--severity` validation, and updated fail-flag expectations after threshold filtering.
+- [x] `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs` - added `SourceToolsHfc1001ThroughHfc1070_SeverityChannelsStayAligned`, deriving active/reserved SourceTools rows from the registry and pinning descriptor, release-row, registry, and docs-stub severity parity.
+- [x] `tests/e2e/specs/diagnostic-catalog-inspect.spec.ts` - added Playwright process-level CLI E2E coverage for `frontcomposer inspect` severity threshold filtering, invalid severity exit handling, malformed-sidecar `HFCM0002`, non-HFC sidecar filtering, JSON schema, text summary counts, and absolute path redaction.
+
+### API Tests
+- [x] Not applicable - Story 7.3 has no HTTP API endpoint surface.
+
+### E2E Tests
+- [x] Browser UI E2E tests are not applicable - Story 7.3 changes CLI inspect filtering and diagnostic catalog governance.
+- [x] CLI E2E coverage now runs through Playwright by shelling out to the `frontcomposer` CLI project against disposable generated-output sidecars.
+- [x] `tests/e2e/package.json` - added `test:fc-diagnostics` for the focused Story 7.3 CLI E2E lane.
+
+### Coverage
+- Inspect severity threshold semantics: hidden includes Hidden/Info/Warning/Error; info includes Info/Warning/Error; warning includes Warning/Error; error includes Error only.
+- Inspect invalid severity remains `ExitCodes.InvalidArguments` (`2`).
+- Inspect warning/error summary counts are calculated after severity filtering in text and JSON output.
+- `--fail-on-warning` / `--fail-on-error` remain evaluated after severity and type filtering.
+- Sidecar HFC filtering, optional fields, malformed-sidecar `HFCM0002`, and path sanitization remain covered by existing inspect pins.
+- HFC1001-HFC1070 SourceTools catalog parity is covered through registry-derived descriptor/release-row/docs-stub checks.
+- HFC1056/HFC1057 parser emission remains covered by existing focused parser pins.
+
+### Validation
+- [x] `dotnet build tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj -c Release -m:1 /nr:false --no-restore` passed with 0 warnings / 0 errors.
+- [x] `dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Release -m:1 /nr:false --no-restore` passed with 0 warnings / 0 errors.
+- [x] `DiffEngine_Disabled=true ./tests/Hexalith.FrontComposer.Cli.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Cli.Tests -noLogo -noColor -class Hexalith.FrontComposer.Cli.Tests.InspectCommandTests` passed 18/18.
+- [x] (Senior Developer Review, AI) `./tests/Hexalith.FrontComposer.Cli.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Cli.Tests -class Hexalith.FrontComposer.Cli.Tests.InspectCommandTests` passed 19/19 after adding `InspectSeverity_Hidden_IncludesNonCanonicalSeverities`, which pins that `--severity hidden` includes non-canonical-severity sidecar entries (the AC2 include-all level) while `error` still excludes them.
+- [x] `DiffEngine_Disabled=true ./tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests -noLogo -noColor -method Hexalith.FrontComposer.SourceTools.Tests.Diagnostics.DiagnosticRegistryTests.SourceToolsHfc1001ThroughHfc1070_SeverityChannelsStayAligned` passed 1/1.
+- [x] `DiffEngine_Disabled=true ./tests/Hexalith.FrontComposer.SourceTools.Tests/bin/Release/net10.0/Hexalith.FrontComposer.SourceTools.Tests -noLogo -noColor -class Hexalith.FrontComposer.SourceTools.Tests.Diagnostics.DiagnosticDescriptorTests -class Hexalith.FrontComposer.SourceTools.Tests.Diagnostics.DiagnosticCatalogTests` passed 24/24.
+- [x] Focused HFC1056/HFC1057 parser lane passed 7/7 via direct xUnit v3 in-process runner.
+- [x] `DOTNET_CLI_HOME=/tmp/frontcomposer-dotnet-home DiffEngine_Disabled=true ./tests/Hexalith.FrontComposer.Cli.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Cli.Tests -noLogo -noColor -class- Hexalith.FrontComposer.Cli.Tests.ToolPackagingSmokeTests` passed 60/60.
+- [x] `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 /nr:false -p:RestoreIgnoreFailedSources=true` passed with 0 warnings / 0 errors.
+- [x] (QA Generate E2E Tests, AI) `npm --prefix tests/e2e run typecheck` passed.
+- [x] (QA Generate E2E Tests, AI) `npm --prefix tests/e2e run test:fc-diagnostics` passed 3/3 in Chromium with `PLAYWRIGHT_SKIP_WEBSERVER=1`.
+- [ ] `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 /nr:false --no-restore` failed in `src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj` with `NU1301` because this sandbox blocks `api.nuget.org:443`.
+- [ ] Full CLI in-process assembly without exclusions ran 61 tests: 60 passed, 1 environmental packaging smoke failure (`ToolPackagingSmokeTests.DotnetToolPackage_CanInstallAndRunFromLocalManifest`). First run failed on read-only `/home/administrator/.dotnet/toolResolverCache`; rerun with `DOTNET_CLI_HOME=/tmp/frontcomposer-dotnet-home` failed on blocked NuGet access.
+- [ ] Broad `DiagnosticRegistryTests` class ran 115 tests: 114 passed, 1 pre-existing governance failure `Story112_LedgerRowsMapToOneOfThreeFinalStates` because `deferred-work.md` is missing. The Story 7.3 catalog parity method passed separately.
+- [ ] Configured solution-level `dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` aborted locally because VSTest cannot create its TCP listener (`System.Net.Sockets.SocketException (13): Permission denied`), even with `-m:1 /nr:false`.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no HTTP API endpoint surface.
+- [x] E2E tests generated if UI exists: N/A for browser UI; CLI workflow covered through Playwright process-level command execution.
+- [x] Tests use standard test framework APIs.
+- [x] Tests cover the happy path.
+- [x] Tests cover critical error cases.
+- [x] Story-owned generated tests run successfully in focused in-process and Playwright CLI E2E lanes.
+- [x] Tests use proper locators: N/A for CLI/catalog governance; assertions target semantic CLI JSON/text fields, exit codes, and catalog metadata.
+- [x] Tests have clear descriptions.
+- [x] No hardcoded waits or sleeps.
+- [x] Tests are independent.
+- [x] Test summary updated.
+- [x] Tests saved to appropriate directories.
+- [x] Summary includes coverage metrics.

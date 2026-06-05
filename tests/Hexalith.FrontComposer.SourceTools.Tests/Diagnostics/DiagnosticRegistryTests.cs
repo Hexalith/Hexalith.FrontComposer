@@ -229,6 +229,53 @@ public sealed partial class DiagnosticRegistryTests {
     }
 
     [Fact]
+    public void SourceToolsHfc1001ThroughHfc1070_SeverityChannelsStayAligned() {
+        // Story 7.3: the registry remains the catalog authority; this test derives the covered
+        // HFC1001-HFC1070 rows from that registry and pins the four build/documentation channels
+        // that must agree whenever a SourceTools descriptor row exists.
+        DiagnosticRegistry registry = LoadRegistry();
+        Dictionary<string, DiagnosticDescriptor> descriptorsById = DiagnosticDescriptorFields().ToDictionary(d => d.Id, Ordinal);
+        Dictionary<string, string> releaseRowSeverityById = LoadReleaseRowSeverityMap();
+        DirectoryInfo docsRoot = DiagnosticsDocsRoot();
+        Regex frontMatterSeverity = FrontMatterSeverityLineRegex();
+
+        DiagnosticEntry[] sourceToolsRows = registry.Diagnostics
+            .Where(entry => entry.OwnerPackage == "SourceTools")
+            .Where(entry => entry.Lifecycle is "active" or "reserved")
+            .Where(entry => {
+                int numericId = int.Parse(entry.Id[3..], NumberStyles.None, CultureInfo.InvariantCulture);
+                return numericId is >= 1001 and <= 1070;
+            })
+            .OrderBy(entry => entry.Id, Ordinal)
+            .ToArray();
+
+        sourceToolsRows.Select(entry => entry.Id).ShouldContain("HFC1001");
+        sourceToolsRows.Select(entry => entry.Id).ShouldContain("HFC1070");
+
+        foreach (DiagnosticEntry entry in sourceToolsRows) {
+            descriptorsById.ShouldContainKey(entry.Id, $"{entry.Id} registry row must have a SourceTools DiagnosticDescriptor.");
+            DiagnosticDescriptor descriptor = descriptorsById[entry.Id];
+
+            entry.CompilerSeverity.ShouldNotBeNull($"{entry.Id} SourceTools row must declare compilerSeverity.");
+            descriptor.DefaultSeverity.ToString().ShouldBe(entry.CompilerSeverity, $"{entry.Id} descriptor severity drift from registry compilerSeverity.");
+            descriptor.Category.ShouldBe("HexalithFrontComposer", $"{entry.Id} descriptor category drift.");
+            descriptor.HelpLinkUri.ShouldBe(entry.HelpLinkUri, $"{entry.Id} descriptor help link drift.");
+            descriptor.Title.ToString(CultureInfo.InvariantCulture).ShouldBe(entry.Title, $"{entry.Id} descriptor title drift.");
+
+            releaseRowSeverityById.ShouldContainKey(entry.Id, $"{entry.Id} must have an AnalyzerReleases row.");
+            releaseRowSeverityById[entry.Id].ShouldBe(entry.CompilerSeverity, $"{entry.Id} AnalyzerReleases severity drift.");
+            entry.ReleaseRow.ShouldBe(
+                "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
+                $"{entry.Id} must point at the SourceTools unshipped release ledger while it is tracked by current SourceTools descriptors.");
+
+            string stubText = File.ReadAllText(Path.Combine(docsRoot.FullName, $"{entry.Id}.md"), Encoding.UTF8);
+            Match severityMatch = frontMatterSeverity.Match(stubText);
+            severityMatch.Success.ShouldBeTrue($"{entry.Id} docs stub must declare severity.");
+            severityMatch.Groups["severity"].Value.ShouldBe(entry.CompilerSeverity, $"{entry.Id} docs stub severity drift.");
+        }
+    }
+
+    [Fact]
     public void Registry_SeverityChannelMappings_AreInternallyConsistent() {
         DiagnosticRegistry registry = LoadRegistry();
         string[] allowedRuntimeLogLevels = ["Trace", "Debug", "Information", "Warning", "Error", "Critical"];
