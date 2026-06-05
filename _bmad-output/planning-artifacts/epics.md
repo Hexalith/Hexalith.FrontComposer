@@ -60,7 +60,7 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 **MCP server (`Hexalith.FrontComposer.Mcp`)**
 
 - FR16: Expose each generated command as an MCP tool (built dynamically at every `tools/list`) plus a fixed `frontcomposer.lifecycle.subscribe` polling tool.
-- FR17: Expose projections (`frontcomposer://<context>/<projection>`, tenant-scoped Markdown) and skill-corpus docs (`frontcomposer://skills/<id>`) as MCP resources.
+- FR17: Expose projections (`frontcomposer://<bounded-context>/projections/<projection-name>`, tenant-scoped Markdown) and skill-corpus docs (`frontcomposer://skills/<id>`) as MCP resources.
 - FR18: Enforce fail-closed security — both `IFrontComposerMcpTenantToolGate` and `IFrontComposerMcpResourceVisibilityGate` required or startup throws; opaque error shape; server-controlled fields (`TenantId`/`UserId`/`MessageId`/`CorrelationId`) blocked from tool input.
 - FR19: Negotiate schema compatibility (`McpSchemaNegotiator`: Exact / CompatibleAdditive / CompatibleWarning / Incompatible) and block side-effects on mismatch.
 
@@ -733,7 +733,7 @@ So that I can await confirmation after invoking it.
 
 **Given** the fixed `frontcomposer.lifecycle.subscribe` tool,
 **When** I pass a `correlationId`/`messageId` (ULID, ≤64 ASCII),
-**Then** I receive an `McpLifecycleSnapshot` (state, terminal, outcome, bounded history, `retryAfterMs`, `maxLongPollMs`). *(FR16)*
+**Then** I receive an `McpLifecycleSnapshot` (state, terminal, outcome, bounded transitions, nested `retry.retryAfterMs` and `retry.maxLongPollMs`). *(FR16)*
 
 **Given** a malformed identifier,
 **When** passed,
@@ -747,7 +747,7 @@ So that I can read tenant data and reference material.
 
 **Acceptance Criteria:**
 
-**Given** a projection resource URI `frontcomposer://<context>/<projection>`,
+**Given** a projection resource URI `frontcomposer://<bounded-context>/projections/<projection-name>`,
 **When** read,
 **Then** tenant-scoped results render as Markdown via `McpMarkdownProjectionRenderer`. *(FR17)*
 

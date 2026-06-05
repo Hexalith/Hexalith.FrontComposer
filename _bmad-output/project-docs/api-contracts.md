@@ -155,13 +155,13 @@ HTTP streamable MCP server (default endpoint `/mcp`). Tools are built **dynamica
 | Tool | Source | Inputs | Output |
 |---|---|---|---|
 | *(one per command)* `descriptor.ProtocolName` | each `McpCommandDescriptor` | per-descriptor JSON schema (`McpJsonSchemaBuilder`); server-controlled fields `TenantId`/`UserId`/`MessageId`/`CorrelationId` are **blocked** | success → `McpCommandAcknowledgement` (`messageId`, `correlationId`, state `Acknowledged`, `McpLifecycleSubscription`); failure → typed rejection (`errorCode`, `reasonCategory`, `suggestedAction`, `docsCode`) |
-| `frontcomposer.lifecycle.subscribe` *(name = `FrontComposerMcpOptions.LifecycleToolName`)* | fixed | one arg: `correlationId` or `messageId` (ULID, 26 Crockford chars, ASCII, ≤64) | `McpLifecycleSnapshot` (`state`, `terminal`, `outcome`, bounded `history`, `retryAfterMs`, `maxLongPollMs`, `historyTruncated`) |
+| `frontcomposer.lifecycle.subscribe` *(name = `FrontComposerMcpOptions.LifecycleToolName`)* | fixed | one arg: `correlationId` or `messageId` (ULID, 26 Crockford chars, ASCII, ≤64) | `McpLifecycleSnapshot` (`state`, `terminal`, `outcome`, bounded `transitions`, nested `retry.retryAfterMs` / `retry.maxLongPollMs`, `historyTruncated`) |
 
 ### 2.2 Resources
 
 | Resource | URI | Content |
 |---|---|---|
-| Projection | `frontcomposer://<context>/<projection>` | tenant-scoped query results rendered as Markdown (`McpMarkdownProjectionRenderer`) |
+| Projection | `frontcomposer://<bounded-context>/projections/<projection-name>` | tenant-scoped query results rendered as Markdown (`McpMarkdownProjectionRenderer`); matching is by the exact generated descriptor URI |
 | Skill corpus | `frontcomposer://skills/<id>` | embedded markdown docs (`docs/skills/frontcomposer/**/*.md`); bypass visibility gate |
 | Skill manifest | `frontcomposer://skills/manifest` | aggregate of all skill resources (id/uri/version/owningStory/publicApiReferences/samplePaths) |
 
@@ -170,7 +170,7 @@ HTTP streamable MCP server (default endpoint `/mcp`). Tools are built **dynamica
 - **Bootstrap:** host registers `IFrontComposerMcpTenantToolGate` + `IFrontComposerMcpResourceVisibilityGate` **before** `AddFrontComposerMcp(...)` (startup throws otherwise — **fail-closed**); then `MapFrontComposerMcp()`.
 - **`tools/list`** → `ToolAdmissionService.BuildVisibleCatalogAsync` (auth + tenant + policy gates). Auth/tenant failure returns an **empty list**, not an error.
 - **`tools/call`** → lifecycle tool path, or `CommandInvoker`: admission → schema negotiation → arg validation → instantiate → inject derivable values → DataAnnotations → `ICommandService.DispatchAsync<T>` → lifecycle tracking.
-- **Auth:** `X-FrontComposer-Mcp-Key` header (constant-time compare) or `ClaimsPrincipal`. Schema fingerprint header `x-frontcomposer-schema-fingerprint` = `algorithmId:64-hex-lowercase`.
+- **Auth:** `X-FrontComposer-Mcp-Key` header (constant-time compare) or `ClaimsPrincipal`. Schema fingerprint header `x-frontcomposer-schema-fingerprint` = `algorithmId:64-hex-lowercase`; v1 accepts `frontcomposer.schema.sha256.canonical-json.v1` and `frontcomposer.schema.sha256.v1.sourcetools-blob`.
 - **Hidden-equivalent errors:** `AuthFailed` / `TenantMissing` / `UnknownResource` / `unknown_tool` return the same opaque shape.
 
 ### 2.4 Skill-corpus authoring contract

@@ -128,14 +128,14 @@ _This file contains critical rules and patterns that AI agents must follow when 
   `CorrelationId` are injected server-side
 - **Tools are built dynamically at each `tools/list`** from generated `McpCommandDescriptor`s + the
   fixed `frontcomposer.lifecycle.subscribe`. Resources: projections
-  (`frontcomposer://<context>/<projection>`, tenant-scoped Markdown) + skill-corpus
+  (`frontcomposer://<bounded-context>/projections/<projection-name>`, tenant-scoped Markdown) + skill-corpus
   (`frontcomposer://skills/<id>` from `docs/skills/frontcomposer/**/*.md`)
 - **Schema negotiation:** `McpSchemaNegotiator` classifies fingerprint pairs (Exact /
   CompatibleAdditive / CompatibleWarning / Incompatible) and **blocks side-effects on mismatch**
 
 ### Schema Fingerprint & Integrity Rules
 
-- **Fingerprints (SHA-256 over canonical JSON) bind producer ↔ all consumers.**
+- **Fingerprints (SHA-256 over the supported v1 canonical-JSON or SourceTools-blob algorithms) bind producer ↔ all consumers.**
   `CanonicalSchemaMaterial` pins `JavaScriptEncoder.Create(UnicodeRanges.All)`, a STJ source-gen
   context, `AbsentValueSentinel = "<absent>"`, and `StringComparer.Ordinal` everywhere
 - **Changing the encoder / sentinel / comparer / canonical serialization silently invalidates every

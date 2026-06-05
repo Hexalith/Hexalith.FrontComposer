@@ -81,8 +81,8 @@ This is the backbone of FrontComposer's "drift detection" — how producer (gene
 ### 5.2 Fingerprint
 | Type | Role |
 |---|---|
-| `SchemaFingerprint` | A `(algorithmId, value)` SHA-256-over-canonical-JSON identity. |
-| `SchemaFingerprintAlgorithm` | Algorithm-id constants. |
+| `SchemaFingerprint` | A `(algorithmId, value)` SHA-256 identity used by generated descriptors, runtime resources, and baselines. |
+| `SchemaFingerprintAlgorithm` | Algorithm-id constants: `frontcomposer.schema.sha256.canonical-json.v1` and `frontcomposer.schema.sha256.v1.sourcetools-blob` are both supported in v1. |
 | `CanonicalSchemaMaterial` | Deterministic canonical-JSON + SHA-256 helper. **Pins** `JavaScriptEncoder.Create(UnicodeRanges.All)` + a STJ source-gen context (`SchemaFingerprintJsonContext`) for AOT; uses `AbsentValueSentinel = "<absent>"` and `StringComparer.Ordinal`. |
 | `SchemaMaterialValidationException` / `…Result` | Validation surface for canonicalization. |
 

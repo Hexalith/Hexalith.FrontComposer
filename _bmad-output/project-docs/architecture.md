@@ -4,7 +4,7 @@
 
 ## 1. Executive summary
 
-FrontComposer is a **source-generation-driven Blazor application framework**. Its architecture is organized around one idea: a leaf **contracts kernel** defines a vocabulary of attributes and types; a **Roslyn incremental generator** reads domain types annotated with that vocabulary and emits all the boilerplate (Blazor views, command forms, Fluxor state, DI registration, MCP manifest); and several **consumers** (the Blazor shell, the MCP server, the CLI) use the generated artifacts at runtime/build-time. The producer and all consumers are bound together by **schema fingerprints** (SHA-256 over canonical JSON) so incompatibilities are detected as **drift** rather than failing silently.
+FrontComposer is a **source-generation-driven Blazor application framework**. Its architecture is organized around one idea: a leaf **contracts kernel** defines a vocabulary of attributes and types; a **Roslyn incremental generator** reads domain types annotated with that vocabulary and emits all the boilerplate (Blazor views, command forms, Fluxor state, DI registration, MCP manifest); and several **consumers** (the Blazor shell, the MCP server, the CLI) use the generated artifacts at runtime/build-time. The producer and all consumers are bound together by **schema fingerprints** (v1 supports canonical-JSON and SourceTools-blob SHA-256 algorithms) so incompatibilities are detected as **drift** rather than failing silently.
 
 ## 2. Layered structure
 
@@ -85,7 +85,7 @@ state.
 `Hexalith.FrontComposer.Mcp` is an ASP.NET Core adapter (HTTP streamable MCP) that turns the generated `McpManifest` into a live tool/resource surface:
 
 - **Tools** are built dynamically at each `tools/list`: every generated `McpCommandDescriptor` becomes a command tool; plus a fixed `frontcomposer.lifecycle.subscribe` tool for polling command lifecycle.
-- **Resources:** projection resources (`frontcomposer://<context>/<projection>`, tenant-scoped, rendered as Markdown) and **skill-corpus** resources (`frontcomposer://skills/<id>`) — the embedded markdown docs under `docs/skills/frontcomposer/**/*.md`.
+- **Resources:** projection resources (`frontcomposer://<bounded-context>/projections/<projection-name>`, tenant-scoped, rendered as Markdown) and **skill-corpus** resources (`frontcomposer://skills/<id>`) — the embedded markdown docs under `docs/skills/frontcomposer/**/*.md`.
 - **Security is fail-closed:** both `IFrontComposerMcpTenantToolGate` and `IFrontComposerMcpResourceVisibilityGate` must be registered or startup throws. Auth/tenant/unknown failures return a single opaque shape so callers can't fingerprint the cause. Server-controlled fields (`TenantId`, `UserId`, `MessageId`, `CorrelationId`) cannot be supplied by agents.
 - **Schema negotiation:** `McpSchemaNegotiator` classifies client/server fingerprint pairs (Exact / CompatibleAdditive / CompatibleWarning / Incompatible) and blocks side-effects on mismatch.
 
