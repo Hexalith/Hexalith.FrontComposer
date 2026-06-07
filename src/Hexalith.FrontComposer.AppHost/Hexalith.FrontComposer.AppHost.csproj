@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Sdk Name="Aspire.AppHost.Sdk" Version="13.4.2" />
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsAspireHost>true</IsAspireHost>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>true</IsPublishable>
+    <UserSecretsId>hexalith-frontcomposer</UserSecretsId>
+    <!-- Suppress transitive vulnerability audit warnings from Aspire dependencies -->
+    <NoWarn>$(NoWarn);NU1902;NU1903;NU1904</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+    <PackageReference Include="Aspire.Hosting.Keycloak" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Reusable DAPR topology orchestration (state store + pub/sub, sidecars, resiliency)
+         for the Hexalith event store. Consumed via the platform Aspire extension methods
+         (AddHexalithEventStore / AddEventStoreDomainModule). EventStore is ALWAYS taken from
+         the root submodule (see deps.local.props), never Tenants' nested copy. -->
+    <ProjectReference Include="$(EventStorePath)/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj" IsAspireProjectResource="false" />
+  </ItemGroup>
+</Project>

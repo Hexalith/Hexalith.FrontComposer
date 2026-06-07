@@ -1,0 +1,15 @@
+using Projects;
+
+namespace Hexalith.FrontComposer.AppHost;
+
+/// <summary>EventStore Admin REST API host (root submodule copy).</summary>
+public class HexalithEventStoreAdminServerHost : IProjectMetadata {
+
+    public string ProjectPath => ProjectMetadataPaths.GetProjectPath(
+        "Hexalith.EventStore",
+        "src",
+        "Hexalith.EventStore.Admin.Server.Host",
+        "Hexalith.EventStore.Admin.Server.Host.csproj");
+
+    public bool SuppressBuild => true;
+}

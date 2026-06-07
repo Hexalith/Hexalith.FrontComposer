@@ -1,0 +1,20 @@
+# WARNING: Local development only.
+# Production MUST use receiver-specific deny-by-default configs with mTLS.
+# See deploy/dapr/ for production templates.
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: accesscontrol
+spec:
+  accessControl:
+    defaultAction: allow
+    trustDomain: "public"
+    policies:
+      - appId: eventstore
+        defaultAction: deny
+        trustDomain: "public"
+        namespace: "default"
+        operations:
+          - name: /**
+            httpVerb: ['POST']
+            action: allow

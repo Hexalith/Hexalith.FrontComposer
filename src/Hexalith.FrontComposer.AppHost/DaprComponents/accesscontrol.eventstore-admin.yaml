@@ -1,0 +1,26 @@
+# DAPR Access Control Configuration for the Admin.Server sidecar
+# ================================================================================
+# This Configuration CRD is loaded ONLY by the eventstore-admin sidecar and therefore
+# governs which CALLERS may invoke Admin.Server through Dapr service invocation.
+#
+# Allowed callers in the local topology:
+#   - eventstore-admin-ui: Admin Blazor UI. Invokes the Admin REST API via Dapr
+#     service invocation. The UI forwards the user JWT in the Authorization header;
+#     Admin.Server enforces RBAC/tenant scope.
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: accesscontrol-eventstore-admin
+spec:
+  accessControl:
+    defaultAction: allow  # Local-only allow-by-default; production uses deploy/dapr/accesscontrol.eventstore-admin.yaml
+    trustDomain: "public"
+    policies:
+      - appId: eventstore-admin-ui
+        defaultAction: deny
+        trustDomain: "public"
+        namespace: "default"
+        operations:
+          - name: /**
+            httpVerb: ['GET', 'POST', 'PUT', 'DELETE']
+            action: allow

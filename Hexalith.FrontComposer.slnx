@@ -15,6 +15,7 @@
     <Project Path="samples/Counter/Counter.Specimens/Counter.Specimens.csproj" />
   </Folder>
   <Folder Name="/src/">
+    <Project Path="src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj" />
