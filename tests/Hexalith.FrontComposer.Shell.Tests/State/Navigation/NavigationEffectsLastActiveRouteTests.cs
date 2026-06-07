@@ -113,7 +113,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
 
         await sut.HandleBoundedContextChanged(new BoundedContextChangedAction("counter"), dispatcher);
 
-        dispatcher.Received(1).Dispatch(Arg.Is<LastActiveRouteChangedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<LastActiveRouteChangedAction>(a =>
             a.Route == "domain/counter/counter-list?tab=1#recent"));
     }
 
@@ -131,8 +131,8 @@ public sealed class NavigationEffectsLastActiveRouteTests {
         // Story 3-6 Review F-EH-002 / F-EH-012: empty blob must dispatch the full reset triple so
         // prior in-memory state (from a different user in the same circuit) is cleared. Previously
         // this branch silently left state untouched, enabling cross-user leak.
-        dispatcher.Received(1).Dispatch(Arg.Is<LastActiveRouteHydratedAction>(a => a.Route == null));
-        dispatcher.Received(1).Dispatch(Arg.Is<NavigationHydratedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<LastActiveRouteHydratedAction>(a => a.Route == null));
+        dispatcher.Received(1).Dispatch(ArgEx.Is<NavigationHydratedAction>(a =>
             a.SidebarCollapsed == false && a.CollapsedGroups.Count == 0));
     }
 
@@ -160,7 +160,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
-        dispatcher.Received(1).Dispatch(Arg.Is<LastActiveRouteHydratedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<LastActiveRouteHydratedAction>(a =>
             a.Route == "domain/counter/counter-list"));
     }
 
@@ -193,7 +193,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
-        dispatcher.Received(1).Dispatch(Arg.Is<LastActiveRouteHydratedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<LastActiveRouteHydratedAction>(a =>
             a.Route == "domain/counter/counter-list?tab=1#recent"));
     }
 
@@ -220,7 +220,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
-        dispatcher.Received(1).Dispatch(Arg.Is<LastActiveRouteHydratedAction>(a => a.Route == null));
+        dispatcher.Received(1).Dispatch(ArgEx.Is<LastActiveRouteHydratedAction>(a => a.Route == null));
     }
 
     [Fact]
@@ -247,6 +247,6 @@ public sealed class NavigationEffectsLastActiveRouteTests {
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
         // D21 — prune path emits the null LastActiveRouteChanged + null LastActiveRouteHydrated.
-        dispatcher.Received(1).Dispatch(Arg.Is<LastActiveRouteHydratedAction>(a => a.Route == null));
+        dispatcher.Received(1).Dispatch(ArgEx.Is<LastActiveRouteHydratedAction>(a => a.Route == null));
     }
 }

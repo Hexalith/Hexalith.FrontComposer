@@ -91,7 +91,7 @@ public sealed class DataGridNavigationEffectsTests {
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
-        dispatcher.Received(1).Dispatch(Arg.Is<GridViewHydratedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<GridViewHydratedAction>(a =>
             a.ViewKey == ViewKey && Math.Abs(a.Snapshot.ScrollTop - 123.0) < 0.001));
     }
 
@@ -140,7 +140,7 @@ public sealed class DataGridNavigationEffectsTests {
 
         await sut.HandleRestoreGridState(new RestoreGridStateAction(ViewKey), dispatcher);
 
-        dispatcher.Received(1).Dispatch(Arg.Is<GridViewHydratedAction>(a => a.ViewKey == ViewKey));
+        dispatcher.Received(1).Dispatch(ArgEx.Is<GridViewHydratedAction>(a => a.ViewKey == ViewKey));
     }
 
     [Fact]

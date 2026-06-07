@@ -129,7 +129,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() =>
             ThemeService.Received(1).SetThemeAsync(
-                Arg.Is<ThemeSettings>(settings => settings.Mode == ThemeMode.Light && settings.Color == "#0097A7")));
+                ArgEx.Is<ThemeSettings>(settings => settings.Mode == ThemeMode.Light && settings.Color == "#0097A7")));
     }
 
     // --- Story 3-2 Task 10.10 — ADR-035 / D18 auto-populate + override ---

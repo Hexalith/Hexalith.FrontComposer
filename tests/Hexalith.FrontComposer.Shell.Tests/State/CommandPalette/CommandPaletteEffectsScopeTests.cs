@@ -51,7 +51,7 @@ public class CommandPaletteEffectsScopeTests {
         await sut.HandleRecentRouteVisited(new RecentRouteVisitedAction("/x"), dispatcher);
 
         await storage.Received().SetAsync(
-            Arg.Is<string>(k => k.StartsWith("tenant-a:user-1:palette-recent", StringComparison.Ordinal)),
+            ArgEx.Is<string>(k => k.StartsWith("tenant-a:user-1:palette-recent", StringComparison.Ordinal)),
             Arg.Any<string[]>());
     }
 

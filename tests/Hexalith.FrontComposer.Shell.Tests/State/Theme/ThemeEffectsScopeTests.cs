@@ -39,7 +39,7 @@ public sealed class ThemeEffectsScopeTests
 
         _ = storage.DidNotReceiveWithAnyArgs().SetAsync(default!, default(ThemeValue), Arg.Any<CancellationToken>());
         await themeService.Received(1)
-            .SetThemeAsync(Arg.Is<ThemeSettings>(t => t.Mode == ThemeMode.Dark && t.Color == "#0097A7"));
+            .SetThemeAsync(ArgEx.Is<ThemeSettings>(t => t.Mode == ThemeMode.Dark && t.Color == "#0097A7"));
         AssertLoggedInformation(logger, FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
     }
 
@@ -56,7 +56,7 @@ public sealed class ThemeEffectsScopeTests
 
         _ = storage.DidNotReceiveWithAnyArgs().SetAsync(default!, default(ThemeValue), Arg.Any<CancellationToken>());
         await themeService.Received(1)
-            .SetThemeAsync(Arg.Is<ThemeSettings>(t => t.Mode == ThemeMode.Dark && t.Color == "#0097A7"));
+            .SetThemeAsync(ArgEx.Is<ThemeSettings>(t => t.Mode == ThemeMode.Dark && t.Color == "#0097A7"));
         AssertLoggedInformation(logger, FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
     }
 
@@ -75,7 +75,7 @@ public sealed class ThemeEffectsScopeTests
 
         _ = storage.DidNotReceiveWithAnyArgs().SetAsync(default!, default(ThemeValue), Arg.Any<CancellationToken>());
         await themeService.Received(1)
-            .SetThemeAsync(Arg.Is<ThemeSettings>(t => t.Mode == ThemeMode.Dark && t.Color == "#0097A7"));
+            .SetThemeAsync(ArgEx.Is<ThemeSettings>(t => t.Mode == ThemeMode.Dark && t.Color == "#0097A7"));
         AssertLoggedInformation(logger, FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
     }
 
@@ -94,7 +94,7 @@ public sealed class ThemeEffectsScopeTests
         string expectedKey = StorageKeys.BuildKey("acme", "alice", "theme");
         (await storage.GetAsync<ThemeValue>(expectedKey, ct)).ShouldBe(ThemeValue.Dark);
         await themeService.Received(1)
-            .SetThemeAsync(Arg.Is<ThemeSettings>(t => t.Mode == ThemeMode.Dark && t.Color == "#0097A7"));
+            .SetThemeAsync(ArgEx.Is<ThemeSettings>(t => t.Mode == ThemeMode.Dark && t.Color == "#0097A7"));
     }
 
     [Fact]

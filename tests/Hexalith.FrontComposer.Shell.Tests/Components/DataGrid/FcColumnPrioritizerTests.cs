@@ -104,7 +104,7 @@ public sealed class FcColumnPrioritizerTests : BunitContext {
         AngleSharp.Dom.IElement checkbox = cut.Find("[data-testid=\"fc-column-prioritizer-checkbox-Col3\"]");
         checkbox.Change(false);
 
-        _dispatcher.Received(1).Dispatch(Arg.Is<ColumnVisibilityChangedAction>(a =>
+        _dispatcher.Received(1).Dispatch(ArgEx.Is<ColumnVisibilityChangedAction>(a =>
             a.ViewKey == "acme:OrdersProjection"
             && a.ColumnKey == "Col3"
             && a.IsVisible == false));
@@ -119,7 +119,7 @@ public sealed class FcColumnPrioritizerTests : BunitContext {
         cut.Find("[data-testid=\"fc-column-prioritizer-gear\"]").Click();
         cut.Find("[data-testid=\"fc-column-prioritizer-reset\"]").Click();
 
-        _dispatcher.Received(1).Dispatch(Arg.Is<ResetColumnVisibilityAction>(a =>
+        _dispatcher.Received(1).Dispatch(ArgEx.Is<ResetColumnVisibilityAction>(a =>
             a.ViewKey == "acme:OrdersProjection"));
     }
 

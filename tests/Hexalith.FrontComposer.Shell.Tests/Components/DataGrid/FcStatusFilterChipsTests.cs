@@ -57,7 +57,7 @@ public sealed class FcStatusFilterChipsTests : BunitContext
         // handler directly to pin the toggle → action contract, mirroring the debounce-cell harness.
         await cut.InvokeAsync(() => InvokeSlotClickedAsync(cut.Instance, BadgeSlot.Success));
 
-        _dispatcher.Received(1).Dispatch(Arg.Is<StatusFilterToggledAction>(action =>
+        _dispatcher.Received(1).Dispatch(ArgEx.Is<StatusFilterToggledAction>(action =>
             action.ViewKey == ViewKeyValue && action.SlotName == "Success"));
     }
 

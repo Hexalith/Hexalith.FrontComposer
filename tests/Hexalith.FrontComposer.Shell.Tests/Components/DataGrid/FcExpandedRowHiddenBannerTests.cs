@@ -70,6 +70,6 @@ public sealed class FcExpandedRowHiddenBannerTests : BunitContext {
 
         cut.Find("[data-testid='fc-expanded-row-hidden-banner-clear']").Click();
 
-        _dispatcher.Received(1).Dispatch(Arg.Is<FiltersResetAction>(a => a.ViewKey == "orders:Orders"));
+        _dispatcher.Received(1).Dispatch(ArgEx.Is<FiltersResetAction>(a => a.ViewKey == "orders:Orders"));
     }
 }

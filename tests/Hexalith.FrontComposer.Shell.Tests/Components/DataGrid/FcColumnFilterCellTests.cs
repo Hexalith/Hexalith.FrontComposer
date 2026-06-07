@@ -65,7 +65,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
         _time.Advance(TimeSpan.FromMilliseconds(300));
         await pending;
 
-        _dispatcher.Received(1).Dispatch(Arg.Is<ColumnFilterChangedAction>(action =>
+        _dispatcher.Received(1).Dispatch(ArgEx.Is<ColumnFilterChangedAction>(action =>
             action.ViewKey == ViewKeyValue
             && action.ColumnKey == ColumnKeyValue
             && action.FilterValue == "Acme"));
@@ -80,7 +80,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
         _time.Advance(TimeSpan.FromMilliseconds(300));
         await pending;
 
-        _dispatcher.Received(1).Dispatch(Arg.Is<ColumnFilterChangedAction>(action =>
+        _dispatcher.Received(1).Dispatch(ArgEx.Is<ColumnFilterChangedAction>(action =>
             action.ViewKey == ViewKeyValue
             && action.ColumnKey == ColumnKeyValue
             && action.FilterValue == null));
@@ -101,7 +101,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
         await second;
 
         _dispatcher.Received(1).Dispatch(Arg.Any<ColumnFilterChangedAction>());
-        _dispatcher.Received(1).Dispatch(Arg.Is<ColumnFilterChangedAction>(action =>
+        _dispatcher.Received(1).Dispatch(ArgEx.Is<ColumnFilterChangedAction>(action =>
             action.FilterValue == "Acme"));
     }
 

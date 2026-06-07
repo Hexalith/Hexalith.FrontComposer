@@ -176,9 +176,9 @@ public sealed class NavigationEffectsScopeTests {
         // reset triple (Hydrating → Hydrated-with-defaults → LastActiveRoute=null → Completed) so
         // prior in-memory state (from a different user within the same circuit) is cleared rather
         // than silently leaked. Previous behavior (no Hydrated dispatch) was a cross-user leak.
-        dispatcher.Received(1).Dispatch(Arg.Is<NavigationHydratedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<NavigationHydratedAction>(a =>
             a.SidebarCollapsed == false && a.CollapsedGroups.Count == 0));
-        dispatcher.Received(1).Dispatch(Arg.Is<LastActiveRouteHydratedAction>(a => a.Route == null));
+        dispatcher.Received(1).Dispatch(ArgEx.Is<LastActiveRouteHydratedAction>(a => a.Route == null));
         dispatcher.Received(1).Dispatch(Arg.Any<NavigationHydratedCompletedAction>());
     }
 
@@ -199,7 +199,7 @@ public sealed class NavigationEffectsScopeTests {
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
-        dispatcher.Received(1).Dispatch(Arg.Is<NavigationHydratedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<NavigationHydratedAction>(a =>
             a.SidebarCollapsed == true && a.CollapsedGroups.ContainsKey("Counter")));
     }
 
@@ -220,7 +220,7 @@ public sealed class NavigationEffectsScopeTests {
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
-        dispatcher.Received(1).Dispatch(Arg.Is<NavigationHydratedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<NavigationHydratedAction>(a =>
             a.SidebarCollapsed && a.CollapsedGroups.Count == 0));
     }
 

@@ -51,7 +51,7 @@ public class DensityEffectsTests {
 
         // Assert — hydrate path dispatches DensityHydratedAction (NOT the legacy DensityChangedAction).
         dispatcher.Received(1).Dispatch(
-            Arg.Is<DensityHydratedAction>(a =>
+            ArgEx.Is<DensityHydratedAction>(a =>
                 a.UserPreference == DensityLevel.Compact &&
                 a.NewEffective == DensityLevel.Comfortable));
     }
@@ -72,7 +72,7 @@ public class DensityEffectsTests {
         await sut.HandleAppInitialized(new AppInitializedAction("corr-init"), dispatcher);
 
         dispatcher.Received(1).Dispatch(
-            Arg.Is<DensityHydratedAction>(a =>
+            ArgEx.Is<DensityHydratedAction>(a =>
                 a.UserPreference == null &&
                 a.NewEffective == DensityLevel.Comfortable));
     }
@@ -93,7 +93,7 @@ public class DensityEffectsTests {
         await sut.HandleAppInitialized(new AppInitializedAction("corr-init"), dispatcher);
 
         dispatcher.Received(1).Dispatch(
-            Arg.Is<DensityHydratedAction>(a =>
+            ArgEx.Is<DensityHydratedAction>(a =>
                 a.UserPreference == null &&
                 a.NewEffective == DensityLevel.Comfortable));
     }
@@ -119,7 +119,7 @@ public class DensityEffectsTests {
 
         await storage.Received(1).SetAsync<DensityLevel?>(key, DensityLevel.Compact, Arg.Any<CancellationToken>());
         dispatcher.Received(1).Dispatch(
-            Arg.Is<DensityHydratedAction>(a =>
+            ArgEx.Is<DensityHydratedAction>(a =>
                 a.UserPreference == DensityLevel.Compact &&
                 a.NewEffective == DensityLevel.Comfortable));
     }
@@ -144,7 +144,7 @@ public class DensityEffectsTests {
         await sut.HandleViewportTierChanged(new ViewportTierChangedAction(ViewportTier.Tablet), dispatcher);
 
         dispatcher.Received(1).Dispatch(
-            Arg.Is<EffectiveDensityRecomputedAction>(a => a.NewEffective == DensityLevel.Comfortable));
+            ArgEx.Is<EffectiveDensityRecomputedAction>(a => a.NewEffective == DensityLevel.Comfortable));
     }
 
     [Fact]

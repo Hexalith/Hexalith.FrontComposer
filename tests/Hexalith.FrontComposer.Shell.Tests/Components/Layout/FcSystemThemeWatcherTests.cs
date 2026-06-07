@@ -26,7 +26,7 @@ public sealed class FcSystemThemeWatcherTests : LayoutComponentTestBase
         await cut.Instance.OnSystemThemeChangedAsync(true);
 
         await ThemeService.Received(1)
-            .SetThemeAsync(Arg.Is<ThemeSettings>(settings => settings.Mode == ThemeMode.Dark && settings.Color == "#0097A7"));
+            .SetThemeAsync(ArgEx.Is<ThemeSettings>(settings => settings.Mode == ThemeMode.Dark && settings.Color == "#0097A7"));
     }
 
     [Fact]

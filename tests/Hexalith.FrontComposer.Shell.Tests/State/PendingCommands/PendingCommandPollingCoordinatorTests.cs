@@ -36,10 +36,14 @@ public sealed class PendingCommandPollingCoordinatorTests {
 
         IPendingCommandStatusQuery query = Substitute.For<IPendingCommandStatusQuery>();
         query.QueryAsync(Arg.Any<PendingCommandEntry>(), Arg.Any<CancellationToken>())
-            .Returns(call => ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(
-                PendingCommandOutcomeSource.FallbackPolling,
-                PendingCommandTerminalOutcome.Confirmed,
-                ((PendingCommandEntry)call[0]).MessageId)));
+            .Returns(call => {
+                PendingCommandEntry entry = call[0] as PendingCommandEntry
+                    ?? throw new InvalidOperationException("Expected a pending command entry argument.");
+                return ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(
+                    PendingCommandOutcomeSource.FallbackPolling,
+                    PendingCommandTerminalOutcome.Confirmed,
+                    entry.MessageId));
+            });
 
         PendingCommandPollingCoordinator sut = new(
             state,
@@ -128,7 +132,8 @@ public sealed class PendingCommandPollingCoordinatorTests {
         IPendingCommandStatusQuery query = Substitute.For<IPendingCommandStatusQuery>();
         query.QueryAsync(Arg.Any<PendingCommandEntry>(), Arg.Any<CancellationToken>())
             .Returns<ValueTask<PendingCommandOutcomeObservation?>>(call => {
-                PendingCommandEntry entry = (PendingCommandEntry)call[0];
+                PendingCommandEntry entry = call[0] as PendingCommandEntry
+                    ?? throw new InvalidOperationException("Expected a pending command entry argument.");
                 return entry.MessageId == "01ARZ3NDEKTSV4RRFFQ69G5FAV"
                     ? throw new InvalidOperationException("simulated transient failure")
                     : ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(

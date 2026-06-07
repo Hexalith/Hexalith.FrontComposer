@@ -57,7 +57,7 @@ public sealed class FcDataGridInputPersistenceTests : BunitContext {
         _time.Advance(TimeSpan.FromMilliseconds(300));
         await pendingChange;
 
-        _dispatcher.Received(1).Dispatch(Arg.Is<ColumnFilterChangedAction>(action =>
+        _dispatcher.Received(1).Dispatch(ArgEx.Is<ColumnFilterChangedAction>(action =>
             action.ViewKey == "acme:OrdersProjection"
             && action.ColumnKey == "Name"
             && action.FilterValue == "Acme Corp"));
@@ -83,7 +83,7 @@ public sealed class FcDataGridInputPersistenceTests : BunitContext {
         _time.Advance(TimeSpan.FromMilliseconds(300));
         await pendingChange;
 
-        _dispatcher.Received(1).Dispatch(Arg.Is<GlobalSearchChangedAction>(action =>
+        _dispatcher.Received(1).Dispatch(ArgEx.Is<GlobalSearchChangedAction>(action =>
             action.ViewKey == "acme:OrdersProjection"
             && action.Query == "Acme Corp"));
     }

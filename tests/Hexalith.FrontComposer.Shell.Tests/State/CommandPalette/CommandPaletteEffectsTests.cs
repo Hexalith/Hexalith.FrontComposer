@@ -91,7 +91,7 @@ public class CommandPaletteEffectsTests
         // that auto-registers shell defaults inside ShortcutService's ctor doesn't silently
         // invalidate the assertion. The shortcuts-bypass branch must surface ALL registrations as
         // Shortcut-category results.
-        dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             a.Results.Length >= 2
             && a.Results.All(r => r.Category == PaletteResultCategory.Shortcut)
             && a.Results.Any(r => r.DescriptionKey == "PaletteShortcutDescription")
@@ -114,7 +114,7 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             a.Results.Length >= 1
             && a.Results.All(r => r.Category == PaletteResultCategory.Shortcut)));
     }
@@ -133,7 +133,7 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a => HasContextualBonus(a)));
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a => HasContextualBonus(a)));
     }
 
     private static bool HasContextualBonus(PaletteResultsComputedAction action)
@@ -156,7 +156,7 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             a.Results.All(r => !r.IsInCurrentContext)));
     }
 
@@ -170,7 +170,7 @@ public class CommandPaletteEffectsTests
         // P22 (Pass-6): assert the full record shape per AC6 / D23 / D32. The earlier predicate
         // only checked CommandTypeName; a silent shape regression (wrong category, missing
         // description key, mistyped score) would have slipped through.
-        dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             a.Results.Any(r =>
                 r.CommandTypeName == CommandPaletteEffects.KeyboardShortcutsSentinel
                 && r.Category == PaletteResultCategory.Command
@@ -209,7 +209,7 @@ public class CommandPaletteEffectsTests
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
         // The hydrate dispatch (if any) must NOT include the tampered URL — only the safe entry survives.
-        dispatcher.Received().Dispatch(Arg.Is<PaletteHydratedAction>(a =>
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteHydratedAction>(a =>
             !a.RecentRouteUrls.Contains(tampered)
             && a.RecentRouteUrls.Contains("/safe/route")));
     }
@@ -238,7 +238,7 @@ public class CommandPaletteEffectsTests
 
         await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
 
-        dispatcher.Received(1).Dispatch(Arg.Is<PaletteQueryChangedAction>(q => q.Query == "shortcuts"));
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteQueryChangedAction>(q => q.Query == "shortcuts"));
         dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
     }
 
@@ -251,7 +251,7 @@ public class CommandPaletteEffectsTests
         await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
 
         dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
-        dispatcher.Received(1).Dispatch(Arg.Is<RecentRouteVisitedAction>(r => r.Url == "/domain/commerce/submit-order-command"));
+        dispatcher.Received(1).Dispatch(ArgEx.Is<RecentRouteVisitedAction>(r => r.Url == "/domain/commerce/submit-order-command"));
     }
 
     [Fact]
@@ -297,7 +297,7 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             a.Results.Any(r => r.CommandTypeName == CommandPaletteEffects.KeyboardShortcutsSentinel)
             && a.Results.Any(r => r.Category == PaletteResultCategory.Recent && r.RouteUrl == "/orders/recent")
             && a.Results.Any(r => r.Category == PaletteResultCategory.Projection && r.RouteUrl == "/orders/order-line-item-view")));
@@ -316,7 +316,7 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             a.Results.Any(r => r.RouteUrl == "/orders/order-line-item-view")));
     }
 
@@ -333,7 +333,7 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a => a.Results.IsEmpty));
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a => a.Results.IsEmpty));
     }
 
     [Fact]
@@ -349,7 +349,7 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             a.Results.Any(r => r.RouteUrl == "/orders/order-line-item-view")));
     }
 
@@ -369,7 +369,7 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             !a.Results.Any(r => r.CommandTypeName == "Counter.UnreachableCommand")));
     }
 
@@ -401,10 +401,10 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             !a.Results.Any(r => r.CommandTypeName == commandTypeName)));
         await evaluator.Received(1).EvaluateAsync(
-            Arg.Is<CommandAuthorizationRequest>(r =>
+            ArgEx.Is<CommandAuthorizationRequest>(r =>
                 r.PolicyName == "OrderApprover"
                 && r.SourceSurface == CommandAuthorizationSurface.CommandPalette
                 && r.BoundedContext == "Orders"),
@@ -437,7 +437,7 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             a.Results.Any(r => r.Category == PaletteResultCategory.Projection && r.RouteUrl == "/orders/order-line-item-view")
             && a.Results.Any(r => r.Category == PaletteResultCategory.Projection && r.RouteUrl == "/orders/order-summary-view")
             && !a.Results.Any(r => r.RouteUrl == "/billing/invoice-view")
@@ -457,7 +457,7 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a => a.Results.IsEmpty));
+        dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a => a.Results.IsEmpty));
     }
 
     private static bool IsRankedByScoreDescending(PaletteResultsComputedAction action)

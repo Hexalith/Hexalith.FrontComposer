@@ -46,7 +46,7 @@ public sealed class FcFilterResetButtonTests : BunitContext
 
         await cut.InvokeAsync(() => cut.Find("[data-testid=\"fc-filter-reset\"]").Click());
 
-        _dispatcher.Received(1).Dispatch(Arg.Is<FiltersResetAction>(action => action.ViewKey == ViewKeyValue));
+        _dispatcher.Received(1).Dispatch(ArgEx.Is<FiltersResetAction>(action => action.ViewKey == ViewKeyValue));
     }
 
     [Fact]

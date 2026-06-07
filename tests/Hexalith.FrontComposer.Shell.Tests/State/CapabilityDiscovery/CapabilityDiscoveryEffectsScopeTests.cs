@@ -107,7 +107,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
         await storage.DidNotReceiveWithAnyArgs()
             .GetAsync<ImmutableHashSet<string>>(default!, Arg.Any<CancellationToken>());
         AssertLoggedInformation(logger, FcDiagnosticIds.HFC2105_StoragePersistenceSkipped, "hydrate");
-        dispatcher.Received().Dispatch(Arg.Is<SeenCapabilitiesHydratedAction>(a =>
+        dispatcher.Received().Dispatch(ArgEx.Is<SeenCapabilitiesHydratedAction>(a =>
             a.SeenCapabilities.IsEmpty));
     }
 
@@ -141,7 +141,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
         await sut.HandleAppInitialized(new AppInitializedAction("c-1"), dispatcher);
 
         AssertLoggedAtLevel(logger, LogLevel.Warning, FcDiagnosticIds.HFC2112_BadgeInitialFetchFault);
-        dispatcher.Received().Dispatch(Arg.Is<SeenCapabilitiesHydratedAction>(a => a.SeenCapabilities.IsEmpty));
+        dispatcher.Received().Dispatch(ArgEx.Is<SeenCapabilitiesHydratedAction>(a => a.SeenCapabilities.IsEmpty));
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
 
         await sut.HandleAppInitialized(new AppInitializedAction("c-1"), dispatcher);
 
-        dispatcher.Received().Dispatch(Arg.Is<SeenCapabilitiesHydratedAction>(a => a.SeenCapabilities.IsEmpty));
+        dispatcher.Received().Dispatch(ArgEx.Is<SeenCapabilitiesHydratedAction>(a => a.SeenCapabilities.IsEmpty));
     }
 
     [Fact]
@@ -200,7 +200,7 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
 
         await sut.HandleAppInitialized(new AppInitializedAction("c-1"), dispatcher);
 
-        dispatcher.Received().Dispatch(Arg.Is<SeenCapabilitiesHydratedAction>(a =>
+        dispatcher.Received().Dispatch(ArgEx.Is<SeenCapabilitiesHydratedAction>(a =>
             a.SeenCapabilities.Contains("bc:Counter")));
     }
 

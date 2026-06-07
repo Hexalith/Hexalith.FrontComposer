@@ -66,7 +66,7 @@ public class ThemeEffectsTests {
 
         // Assert
         dispatcher.Received(1).Dispatch(
-            Arg.Is<ThemeChangedAction>(a => a.NewTheme == ThemeValue.Dark && a.CorrelationId == "corr-init"));
+            ArgEx.Is<ThemeChangedAction>(a => a.NewTheme == ThemeValue.Dark && a.CorrelationId == "corr-init"));
     }
 
     [Fact]
@@ -120,7 +120,7 @@ public class ThemeEffectsTests {
         await sut.HandleStorageReady(new Hexalith.FrontComposer.Shell.State.Navigation.StorageReadyAction("corr-ready"), dispatcher);
 
         dispatcher.Received(1).Dispatch(Arg.Any<ThemeHydratingAction>());
-        dispatcher.Received(1).Dispatch(Arg.Is<ThemeChangedAction>(a => a.NewTheme == ThemeValue.Dark));
+        dispatcher.Received(1).Dispatch(ArgEx.Is<ThemeChangedAction>(a => a.NewTheme == ThemeValue.Dark));
         dispatcher.Received(1).Dispatch(Arg.Any<ThemeHydratedCompletedAction>());
     }
 
