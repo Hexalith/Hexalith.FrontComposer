@@ -41,7 +41,9 @@
   <!-- Referenced Hexalith submodule library projects (project references, not packages).
        This is the transitive project-reference closure of the FrontComposer projects plus the
        AppHost-orchestrated EventStore/Tenants services. -->
-  <Folder Name="/Hexalith.Commons/" />
+  <Folder Name="/Hexalith.Commons/">
+    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj" />
+  </Folder>
   <Folder Name="/Hexalith.EventStore/">
     <Project Path="Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj" />
     <Project Path="Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj" />
