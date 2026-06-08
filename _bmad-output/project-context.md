@@ -38,8 +38,11 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **netstandard2.0 backports** (in-box on net10.0; pulled only for the analyzer TFM):
   `System.Collections.Immutable` 10.0.8, `System.Text.Json` 10.0.8,
   `System.Threading.Tasks.Extensions` 4.6.3, `System.ComponentModel.Annotations` 5.0.0
-- **Orchestration:** `Aspire.Hosting.AppHost` **13.4.0** — only the `samples/Counter` AppHost
-  (FrontComposer itself ships no deployed service)
+- **Orchestration:** `Aspire.Hosting.AppHost` **13.4.2** — a SINGLE AppHost,
+  `src/Hexalith.FrontComposer.AppHost`, orchestrates the whole local stack (keycloak, eventstore +
+  admin/admin-ui, tenants, tenants-ui, and the `counter-web` sample) via DAPR. FrontComposer itself
+  ships no deployed service; the sample shell (`samples/Counter/Counter.Web`) also runs standalone
+  for the a11y/visual specimen gate.
 - **Testing:** xUnit **v3** `3.2.2`, Shouldly `4.3.0`, NSubstitute `5.3.0`, bUnit `2.7.2`,
   **Verify** `31.19.0` (use `Verify.XunitV3`, NOT `Verify.Xunit`), **FsCheck.Xunit.v3** `3.3.3`,
   **PactNet** `5.0.1`, **BenchmarkDotNet** `0.15.8`, coverlet `10.0.1`, `Microsoft.NET.Test.Sdk`

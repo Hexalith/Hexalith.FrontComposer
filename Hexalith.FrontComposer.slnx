@@ -10,7 +10,6 @@
     <Project Path="samples/IdeParityCounter/IdeParityCounter.csproj" />
   </Folder>
   <Folder Name="/samples/Counter/">
-    <Project Path="samples/Counter/Counter.AppHost/Counter.AppHost.csproj" />
     <Project Path="samples/Counter/Counter.Specimens.Domain/Counter.Specimens.Domain.csproj" />
     <Project Path="samples/Counter/Counter.Specimens/Counter.Specimens.csproj" />
   </Folder>

@@ -126,7 +126,7 @@ dotnet docfx serve docs/_site     # preview
 
 | Sample | What it is |
 |---|---|
-| `samples/Counter/` | Full **Aspire-orchestrated** example: `Counter.AppHost` (Aspire), `Counter.Domain`, `Counter.Web` (Blazor shell host), `Counter.Specimens(.Domain)` (a11y/visual specimen host). Run via the Aspire CLI (`aspire run`) on the AppHost. |
+| `samples/Counter/` | FrontComposer demo: `Counter.Domain`, `Counter.Web` (Blazor shell host), `Counter.Specimens(.Domain)` (a11y/visual specimen host). The `counter-web` resource is orchestrated by the **single platform host** `src/Hexalith.FrontComposer.AppHost` (`aspire run` / `dotnet run` on that host); `Counter.Web` also runs standalone for the specimen/e2e gate. |
 | `samples/IdeParityCounter/` | Minimal counter used by the IDE-parity revalidation job. |
 
 ## eng/ scripts
