@@ -66,6 +66,13 @@ IResourceBuilder<ProjectResource> tenantsUI = builder.AddProject<HexalithTenants
     .WithEnvironment("EventStore__BaseAddress", eventStoreHttps)
     .WithExternalHttpEndpoints();
 
+// Counter sample — the FrontComposer demo shell. Co-hosted in the single platform AppHost so the
+// whole stack (EventStore, Tenants, Tenants UI, Counter) runs from ONE orchestrator. It stays a
+// self-contained demo (fake auth + seeded specimen data) and is intentionally NOT wired to the
+// EventStore/Tenants/Keycloak backend, to keep the a11y/visual specimen gate deterministic.
+IResourceBuilder<ProjectResource> counterWeb = builder.AddProject<Projects.Counter_Web>("counter-web")
+    .WithExternalHttpEndpoints();
+
 // Wire Keycloak auth to EventStore, Tenants, Admin.Server, and Admin.UI if enabled.
 if (keycloak is not null && realmUrl is not null) {
     _ = eventStore

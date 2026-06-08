@@ -101,8 +101,11 @@ Troubleshooting:
 npm --prefix tests/e2e install
 npm --prefix tests/e2e run install:browsers
 
-# Start the Counter sample (in another terminal)
-dotnet run --project samples/Counter/Counter.AppHost
+# Start the app under test (in another terminal):
+#   • Full platform (counter-web hosted alongside eventstore/tenants/tenants-ui):
+dotnet run --project src/Hexalith.FrontComposer.AppHost
+#   • Or just the Counter specimen shell (what the e2e webServer auto-launches):
+dotnet run --project samples/Counter/Counter.Web
 
 # Copy env template and point BASE_URL at the URL Aspire printed
 cp tests/e2e/.env.example tests/e2e/.env.local
