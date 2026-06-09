@@ -1,0 +1,5 @@
+{
+  "appHost": {
+    "path": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj"
+  }
+}
