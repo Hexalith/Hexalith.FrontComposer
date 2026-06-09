@@ -5,6 +5,7 @@
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.Extensions.DependencyInjection
 @using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
 @implements IDisposable
 @inject IServiceProvider Services
 @inject IStringLocalizer<DevModeStrings> Localizer
@@ -22,10 +23,10 @@
                    @onkeydown="HandleKeyDown">
                 <header class="fc-devmode-drawer__header">
                     <h2>@node.Convention.Name</h2>
-                    <button type="button"
-                            class="fc-devmode-icon-button"
-                            aria-label="@Text("CloseButtonLabel", "Close")"
-                            @onclick="Close">@Text("CloseButtonLabel", "Close")</button>
+                    <FluentButton Appearance="ButtonAppearance.Transparent"
+                                  Class="fc-devmode-icon-button"
+                                  aria-label="@Text("CloseButtonLabel", "Close")"
+                                  OnClick="Close">@Text("CloseButtonLabel", "Close")</FluentButton>
                 </header>
                 <dl class="fc-devmode-details">
                     <dt>@Text("ConventionLabel", "Convention")</dt>
@@ -44,19 +45,19 @@
                     @if (node.HasActiveOverride)
                     {
                         <dt>@Text("BeforeAfterLabel", "Before/after")</dt>
-                        <dd><input type="checkbox" /> @Text("BeforeAfterToggleLabel", "Show generated default")</dd>
+                        <dd><FluentCheckbox Label="@Text("BeforeAfterToggleLabel", "Show generated default")" /></dd>
                     }
                 </dl>
-                <button type="button"
-                        class="fc-devmode-copy-button"
-                        disabled="@(!CanCopy(node))"
-                        @onclick="() => CopyAsync(node)">
+                <FluentButton Appearance="ButtonAppearance.Subtle"
+                              Class="fc-devmode-copy-button"
+                              Disabled="@(!CanCopy(node))"
+                              OnClick="() => CopyAsync(node)">
                     @Text("CopyStarterTemplateLabel", "Copy starter template")
-                </button>
+                </FluentButton>
                 <p class="fc-devmode-status" role="status">@_statusText</p>
                 @if (!string.IsNullOrEmpty(_sourcePreview))
                 {
-                    <textarea class="fc-devmode-source" readonly>@_sourcePreview</textarea>
+                    <FluentTextArea Class="fc-devmode-source" ReadOnly="true" Value="@_sourcePreview" />
                 }
             </aside>
         }

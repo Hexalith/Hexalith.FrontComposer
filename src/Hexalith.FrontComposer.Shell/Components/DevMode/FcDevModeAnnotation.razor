@@ -2,18 +2,19 @@
 @using Hexalith.FrontComposer.Contracts.DevMode
 @using Hexalith.FrontComposer.Shell.Services.DevMode
 @using Microsoft.Extensions.DependencyInjection
+@using Microsoft.FluentUI.AspNetCore.Components
 @implements IAsyncDisposable
 @inject IServiceProvider Services
 
 @if (Controller?.IsActive == true && Node is not null)
 {
-    <button type="button"
-            class="@CssClass"
-            aria-label="@AccessibleName"
-            title="@AccessibleName"
-            @onclick="OpenAsync">
+    <FluentButton Appearance="ButtonAppearance.Transparent"
+                  Class="@CssClass"
+                  aria-label="@AccessibleName"
+                  title="@AccessibleName"
+                  OnClick="OpenAsync">
         <span class="fc-devmode-badge">@Node.Convention.Name</span>
-    </button>
+    </FluentButton>
 }
 
 @code {
