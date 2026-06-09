@@ -47,9 +47,17 @@ HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
 IResourceBuilder<ProjectResource> tenants = builder.AddProject<HexalithTenants>("tenants")
     .AddEventStoreDomainModule(eventStoreResources, "tenants", accessControlConfigPath);
 
+// Tenants sample domain service. EventStore's appsettings register the sample/counter/greeting
+// (and orders/inventory) domains against the "sample" app id; its sidecar shares the EventStore
+// state store + pub/sub. Without it, the EventStore admin operational-index poll to "sample" fails
+// at startup (500) and the whole index build is skipped.
+_ = builder.AddProject<HexalithTenantsSample>("sample")
+    .AddEventStoreDomainModule(eventStoreResources, "sample", accessControlConfigPath);
+
 // Wire Admin.UI to Admin.Server + EventStore SignalR (domain-agnostic composition kept in the AppHost).
 EndpointReference adminServerHttps = adminServer.GetEndpoint("https");
 EndpointReference eventStoreHttps = eventStore.GetEndpoint("https");
+EndpointReference tenantsHttps = tenants.GetEndpoint("https");
 _ = adminUI
     .WithReference(adminServer)
     .WaitFor(adminServer)
@@ -63,6 +71,7 @@ IResourceBuilder<ProjectResource> tenantsUI = builder.AddProject<HexalithTenants
     .WithReference(eventStore)
     .WaitFor(tenants)
     .WaitFor(eventStore)
+    .WithEnvironment("Tenants__BaseAddress", tenantsHttps)
     .WithEnvironment("EventStore__BaseAddress", eventStoreHttps)
     .WithExternalHttpEndpoints();
 
