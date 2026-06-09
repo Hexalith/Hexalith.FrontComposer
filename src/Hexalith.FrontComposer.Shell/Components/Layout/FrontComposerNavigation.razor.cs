@@ -7,11 +7,13 @@ using Fluxor.Blazor.Web.Components;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.Components.Icons;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Hexalith.FrontComposer.Shell.Components.Layout;
 
@@ -66,6 +68,83 @@ public partial class FrontComposerNavigation : FluxorComponent {
     public static string ProjectionLabel(string projectionFqn) {
         ArgumentException.ThrowIfNullOrEmpty(projectionFqn);
         return LastSegment(projectionFqn);
+    }
+
+    /// <summary>
+    /// Returns the registered navigation entries that belong to the given bounded context, preserving
+    /// the registry's already-applied <see cref="FrontComposerNavEntry.Order"/> / title sort.
+    /// </summary>
+    /// <param name="entries">All registered navigation entries.</param>
+    /// <param name="boundedContext">The bounded context to filter by.</param>
+    /// <returns>The entries for the bounded context.</returns>
+    internal static List<FrontComposerNavEntry> EntriesForContext(
+        IReadOnlyList<FrontComposerNavEntry> entries,
+        string boundedContext) {
+        ArgumentNullException.ThrowIfNull(entries);
+        List<FrontComposerNavEntry> list = [];
+        foreach (FrontComposerNavEntry entry in entries) {
+            if (string.Equals(entry.BoundedContext, boundedContext, StringComparison.Ordinal)) {
+                list.Add(entry);
+            }
+        }
+
+        return list;
+    }
+
+    /// <summary>
+    /// Resolves a navigation entry icon key to an inline-SVG glyph, defaulting to the bounded-context
+    /// glyph when the key is null or unknown. The icon contract stays a plain string so domains never
+    /// reference a Fluent UI type.
+    /// </summary>
+    /// <param name="iconKey">The optional icon key (e.g. <c>Regular.Size20.Search</c>).</param>
+    /// <returns>The resolved icon.</returns>
+    internal static Icon ResolveNavEntryIcon(string? iconKey)
+        => FcFluentIcons.TryCreate(iconKey, out Icon? icon) && icon is not null
+            ? icon
+            : FcFluentIcons.Apps20();
+
+    /// <summary>
+    /// Builds the stable <c>data-testid</c> for a navigation entry item.
+    /// </summary>
+    /// <param name="entry">The navigation entry.</param>
+    /// <returns>The test id.</returns>
+    internal static string NavEntryTestId(FrontComposerNavEntry entry) {
+        ArgumentNullException.ThrowIfNull(entry);
+        return $"fc-nav-entry-{entry.BoundedContext}-{Slug(entry.Title)}";
+    }
+
+    /// <summary>
+    /// Returns the bounded contexts that have registered navigation entries but no matching
+    /// <see cref="DomainManifest"/>, so those entries render as their own category instead of being
+    /// silently dropped. First-seen order is preserved.
+    /// </summary>
+    /// <param name="entries">All registered navigation entries.</param>
+    /// <returns>The orphan bounded-context names.</returns>
+    private IReadOnlyList<string> OrphanEntryContexts(IReadOnlyList<FrontComposerNavEntry> entries) {
+        ArgumentNullException.ThrowIfNull(entries);
+        HashSet<string> manifestContexts = new(StringComparer.Ordinal);
+        foreach (DomainManifest manifest in Registry.GetManifests()) {
+            _ = manifestContexts.Add(manifest.BoundedContext);
+        }
+
+        List<string> orphans = [];
+        HashSet<string> seen = new(StringComparer.Ordinal);
+        foreach (FrontComposerNavEntry entry in entries) {
+            if (!manifestContexts.Contains(entry.BoundedContext) && seen.Add(entry.BoundedContext)) {
+                orphans.Add(entry.BoundedContext);
+            }
+        }
+
+        return orphans;
+    }
+
+    private static string Slug(string value) {
+        StringBuilder sb = new(value.Length);
+        foreach (char c in value) {
+            _ = sb.Append(char.IsWhiteSpace(c) ? '-' : char.ToLowerInvariant(c));
+        }
+
+        return sb.ToString();
     }
 
     internal static List<string> RenderableProjections(DomainManifest manifest) {

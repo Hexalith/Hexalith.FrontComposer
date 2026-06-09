@@ -19,10 +19,13 @@
      aria-label="@Localizer["NavMenuAriaLabel"].Value">
     @{
         FrontComposerCapabilityDiscoveryState discovery = DiscoveryState.Value;
+        HashSet<string> navEntryContexts = new(
+            Registry.GetNavEntries().Select(static entry => entry.BoundedContext),
+            StringComparer.Ordinal);
     }
 
-    @foreach (DomainManifest manifest in Registry.GetManifests().Where(static manifest => manifest.Projections.Count >
-    0))
+    @foreach (DomainManifest manifest in Registry.GetManifests().Where(manifest =>
+        manifest.Projections.Count > 0 || navEntryContexts.Contains(manifest.BoundedContext)))
     {
         string anchorId = $"fc-rail-{manifest.BoundedContext}";
         int aggregateCount = AggregateCount(manifest, discovery.Counts);

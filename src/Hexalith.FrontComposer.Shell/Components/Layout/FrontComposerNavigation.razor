@@ -4,6 +4,7 @@
 @using Hexalith.FrontComposer.Shell.Resources
 @using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery
 @using Hexalith.FrontComposer.Shell.State.Navigation
+@using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.Extensions.Localization
 @using Microsoft.FluentUI.AspNetCore.Components
 @inherits Fluxor.Blazor.Web.Components.FluxorComponent
@@ -28,13 +29,44 @@
 else
 {
     FrontComposerCapabilityDiscoveryState discovery = DiscoveryState.Value;
+    IReadOnlyList<FrontComposerNavEntry> navEntries = Registry.GetNavEntries();
+
+    // Explicit nav entries are rendered as FluentNavItems alongside projection items. Gated entries
+    // (RequiredPolicy set) wrap in AuthorizeView; disabled entries render a non-link affordance + reason.
+    RenderFragment<FrontComposerNavEntry> navEntryItem = entry =>
+        @<FluentNavItem Href="@(entry.Enabled ? entry.Href : null)"
+                        Disabled="@(!entry.Enabled)"
+                        IconRest="@ResolveNavEntryIcon(entry.Icon)"
+                        Tooltip="@(entry.Enabled ? null : entry.DisabledReason)"
+                        data-testid="@NavEntryTestId(entry)">
+            @entry.Title
+            @if (!entry.Enabled && !string.IsNullOrWhiteSpace(entry.DisabledReason))
+            {
+                <span class="fc-nav-entry__reason" data-testid="@($"{NavEntryTestId(entry)}-reason")">@entry.DisabledReason</span>
+            }
+        </FluentNavItem>;
+
+    RenderFragment<FrontComposerNavEntry> navEntry = entry =>
+        @<text>
+            @if (!string.IsNullOrWhiteSpace(entry.RequiredPolicy))
+            {
+                <AuthorizeView Policy="@entry.RequiredPolicy">
+                    <Authorized>@navEntryItem(entry)</Authorized>
+                </AuthorizeView>
+            }
+            else
+            {
+                @navEntryItem(entry)
+            }
+        </text>;
 
     <FluentNav UseIcons="true" data-testid="fc-navigation-full"
                aria-label="@Localizer["NavMenuAriaLabel"].Value">
         @foreach (DomainManifest manifest in Registry.GetManifests())
         {
             List<string> projections = VisibleProjections(manifest, discovery.Counts);
-            @if (projections.Count == 0)
+            List<FrontComposerNavEntry> entries = EntriesForContext(navEntries, manifest.BoundedContext);
+            @if (projections.Count == 0 && entries.Count == 0)
             {
                 continue;
             }
@@ -73,6 +105,10 @@ else
                         }
                     </FluentNavItem>
                 }
+                @foreach (FrontComposerNavEntry entry in entries)
+                {
+                    @navEntry(entry)
+                }
                 @if (bcShowsNew)
                 {
                     <FluentBadge Appearance="@BadgeAppearance.Tint"
@@ -80,6 +116,19 @@ else
                                  data-testid="@($"fc-nav-bc-new-{manifest.BoundedContext}")">
                         @Localizer["NewCapabilityBadgeText"].Value
                     </FluentBadge>
+                }
+            </FluentNavCategory>
+        }
+        @foreach (string orphanBc in OrphanEntryContexts(navEntries))
+        {
+            <FluentNavCategory Id="@orphanBc"
+                               Title="@orphanBc"
+                               Expanded="@(!IsGroupCollapsed(orphanBc))"
+                               ExpandedChanged="@(value => OnGroupExpandedChanged(orphanBc, CapabilityIds.ForBoundedContext(orphanBc), value))"
+                               data-testid="@($"fc-nav-category-{orphanBc}")">
+                @foreach (FrontComposerNavEntry entry in EntriesForContext(navEntries, orphanBc))
+                {
+                    @navEntry(entry)
                 }
             </FluentNavCategory>
         }

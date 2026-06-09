@@ -6,6 +6,58 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
 public static class FrontComposerRegistryExtensions
 {
     /// <summary>
+    /// Adds a declarative navigation entry so the shell can render the domain menu in the global left
+    /// navigation automatically.
+    /// </summary>
+    /// <remarks>
+    /// The extension preserves backward compatibility with <see cref="IFrontComposerRegistry"/>
+    /// implementers that do not collect navigation entries: when the registry also implements
+    /// <see cref="IFrontComposerNavEntryRegistry"/> the entry is stored; otherwise the call is a no-op.
+    /// </remarks>
+    /// <param name="registry">The registry to add the entry to.</param>
+    /// <param name="entry">The navigation entry to register.</param>
+    public static void AddNavEntry(this IFrontComposerRegistry registry, FrontComposerNavEntry entry)
+    {
+        if (registry is null)
+        {
+            throw new ArgumentNullException(nameof(registry));
+        }
+
+        if (entry is null)
+        {
+            throw new ArgumentNullException(nameof(entry));
+        }
+
+        if (registry is IFrontComposerNavEntryRegistry navAware)
+        {
+            navAware.AddNavEntry(entry);
+        }
+    }
+
+    /// <summary>
+    /// Returns the declarative navigation entries registered against the registry.
+    /// </summary>
+    /// <remarks>
+    /// The extension preserves backward compatibility with <see cref="IFrontComposerRegistry"/>
+    /// implementers that do not collect navigation entries: when the registry also implements
+    /// <see cref="IFrontComposerNavEntryRegistry"/> its entries are returned; otherwise an empty list
+    /// is returned.
+    /// </remarks>
+    /// <param name="registry">The registry to query.</param>
+    /// <returns>The registered navigation entries, or an empty list when none are collected.</returns>
+    public static IReadOnlyList<FrontComposerNavEntry> GetNavEntries(this IFrontComposerRegistry registry)
+    {
+        if (registry is null)
+        {
+            throw new ArgumentNullException(nameof(registry));
+        }
+
+        return registry is IFrontComposerNavEntryRegistry navAware
+            ? navAware.GetNavEntries()
+            : [];
+    }
+
+    /// <summary>
     /// Returns whether a generated FullPage route exists for the given command type
     /// (Story 3-4 D21 cross-story contract). Used by <c>FcCommandPalette</c> to filter unreachable
     /// command results out of the search index BEFORE they appear to the user — preventing a 404

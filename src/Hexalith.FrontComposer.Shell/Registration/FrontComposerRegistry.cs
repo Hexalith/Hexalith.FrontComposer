@@ -9,9 +9,10 @@ namespace Hexalith.FrontComposer.Shell.Registration;
 /// Stores registered domain manifests and navigation groups for runtime composition.
 /// Domain registrations from <see cref="DomainRegistrationAction"/> are applied on construction.
 /// </summary>
-internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry, IFrontComposerCommandWriteAccessRegistry, IFrontComposerCommandPolicyRegistry {
+internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerNavEntryRegistry, IFrontComposerFullPageRouteRegistry, IFrontComposerCommandWriteAccessRegistry, IFrontComposerCommandPolicyRegistry {
     private readonly List<DomainManifest> _manifests = [];
     private readonly List<(string Name, string BoundedContext)> _navGroups = [];
+    private readonly List<FrontComposerNavEntry> _navEntries = [];
     private readonly ILogger<FrontComposerRegistry> _logger;
 
     public FrontComposerRegistry(
@@ -69,6 +70,16 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
 
     /// <inheritdoc />
     public void AddNavGroup(string name, string boundedContext) => _navGroups.Add((name, boundedContext));
+
+    /// <inheritdoc />
+    public void AddNavEntry(FrontComposerNavEntry entry) {
+        ArgumentNullException.ThrowIfNull(entry);
+        _navEntries.Add(entry);
+    }
+
+    /// <inheritdoc />
+    public IReadOnlyList<FrontComposerNavEntry> GetNavEntries()
+        => [.. _navEntries.OrderBy(static e => e.Order).ThenBy(static e => e.Title, StringComparer.Ordinal)];
 
     /// <inheritdoc />
     public IReadOnlyList<DomainManifest> GetManifests() => _manifests;

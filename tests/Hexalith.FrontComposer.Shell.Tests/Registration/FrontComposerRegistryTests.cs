@@ -28,6 +28,30 @@ public class FrontComposerRegistryTests {
     }
 
     [Fact]
+    public void NavEntries_AreReturnedSortedByOrderThenTitleOrdinal() {
+        ServiceCollection services = new();
+        _ = services.AddHexalithFrontComposer();
+        using ServiceProvider sp = services.BuildServiceProvider();
+        IFrontComposerRegistry registry = sp.GetRequiredService<IFrontComposerRegistry>();
+
+        registry.AddNavEntry(new FrontComposerNavEntry("tenants", "Zebra", "/z", Order: 2));
+        registry.AddNavEntry(new FrontComposerNavEntry("tenants", "Apple", "/a", Order: 2));
+        registry.AddNavEntry(new FrontComposerNavEntry("tenants", "Middle", "/m", Order: 1));
+
+        registry.GetNavEntries().Select(static e => e.Title).ShouldBe(["Middle", "Apple", "Zebra"]);
+    }
+
+    [Fact]
+    public void GetNavEntries_OnRegistryWithoutEntries_ReturnsEmpty() {
+        ServiceCollection services = new();
+        _ = services.AddHexalithFrontComposer();
+        using ServiceProvider sp = services.BuildServiceProvider();
+        IFrontComposerRegistry registry = sp.GetRequiredService<IFrontComposerRegistry>();
+
+        registry.GetNavEntries().ShouldBeEmpty();
+    }
+
+    [Fact]
     public void AddHexalithDomain_PartialRegistration_LogsWarning() {
         ServiceCollection services = new();
         CollectingLoggerProvider loggerProvider = new();

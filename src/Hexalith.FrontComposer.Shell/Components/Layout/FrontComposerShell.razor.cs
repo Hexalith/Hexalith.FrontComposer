@@ -215,7 +215,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     /// <summary>
     /// Whether the shell should render the Navigation area. Adopter-supplied content always wins;
-    /// framework auto-navigation appears only when at least one manifest has projections.
+    /// framework auto-navigation appears when at least one manifest has projections OR a domain has
+    /// registered explicit navigation entries.
     /// </summary>
     protected bool HasNavigation => Navigation is not null || HasRenderableManifest();
 
@@ -568,7 +569,9 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             }
         }
 
-        return false;
+        // A domain that declares only explicit navigation entries (e.g. bespoke pages rather than
+        // projection list views) still contributes a renderable global menu.
+        return Registry.GetNavEntries().Count > 0;
     }
 
     private bool ShouldUseCollapsedRailWidth() {
