@@ -16,15 +16,18 @@
         <span aria-hidden="true">@Localizer[GetCurrentLabelKey()].Value</span>
     </FluentMenuButton>
     <FluentMenuList>
-        <FluentMenuItem @onclick="@(() => SelectThemeAsync(ThemeValue.Light))"
+        @* Fluent UI v5: menu-item activation is surfaced via the FluentMenuItem OnClick
+           EventCallback<MenuItemEventArgs>, NOT @onclick. Using @onclick faults at runtime when
+           the menu is used (see Fluent UI v5 migration guide → Menu). *@
+        <FluentMenuItem OnClick="@(_ => SelectThemeAsync(ThemeValue.Light))"
                         aria-label="@Localizer["ThemeLightLabel"].Value">
             @Localizer["ThemeLightLabel"].Value
         </FluentMenuItem>
-        <FluentMenuItem @onclick="@(() => SelectThemeAsync(ThemeValue.Dark))"
+        <FluentMenuItem OnClick="@(_ => SelectThemeAsync(ThemeValue.Dark))"
                         aria-label="@Localizer["ThemeDarkLabel"].Value">
             @Localizer["ThemeDarkLabel"].Value
         </FluentMenuItem>
-        <FluentMenuItem @onclick="@(() => SelectThemeAsync(ThemeValue.System))"
+        <FluentMenuItem OnClick="@(_ => SelectThemeAsync(ThemeValue.System))"
                         aria-label="@Localizer["ThemeSystemLabel"].Value">
             @Localizer["ThemeSystemLabel"].Value
         </FluentMenuItem>
