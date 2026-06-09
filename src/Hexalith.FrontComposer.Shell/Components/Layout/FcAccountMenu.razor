@@ -1,0 +1,46 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Hexalith.FrontComposer.Shell.Resources
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@* Framework-owned account control: a FluentAvatar in the shell header that opens a sign in / sign
+   out menu — the Fluent UI idiom for header authentication affordances. The current principal is
+   read from AuthenticationStateProvider (the established Shell seam, cf. CommandAuthorizationEvaluator)
+   rather than <AuthorizeView>, so the control renders without a cascading Task<AuthenticationState>
+   in component tests and falls back to the anonymous (Sign in) state when no host auth is wired.
+   Sign in / out navigate to the framework auth endpoints with forceLoad so the OIDC challenge /
+   sign-out round-trips through the server (equivalent to the retired auth-bar's data-enhance-nav). *@
+
+<div class="fc-account-menu" data-testid="fc-account-menu">
+    @if (IsAuthenticated)
+    {
+        <FluentAvatar Id="@AvatarId"
+                      Name="@UserName"
+                      Color="AvatarColor.Colorful"
+                      Title="@SignedInAsText"
+                      Style="cursor: pointer;" />
+        <FluentMenu Trigger="@AvatarId" aria-label="@Localizer["AccountMenuAriaLabel"].Value">
+            <FluentMenuList>
+                <FluentMenuItem Disabled="true" data-testid="fc-account-user">@SignedInAsText</FluentMenuItem>
+                <FluentDivider />
+                <FluentMenuItem @onclick="SignOut" data-testid="fc-account-sign-out">
+                    @Localizer["SignOutLabel"].Value
+                </FluentMenuItem>
+            </FluentMenuList>
+        </FluentMenu>
+    }
+    else
+    {
+        <FluentAvatar Id="@AvatarId"
+                      Title="@Localizer["AccountMenuAriaLabel"].Value"
+                      Style="cursor: pointer;" />
+        <FluentMenu Trigger="@AvatarId" aria-label="@Localizer["AccountMenuAriaLabel"].Value">
+            <FluentMenuList>
+                <FluentMenuItem @onclick="SignIn" data-testid="fc-account-sign-in">
+                    @Localizer["SignInLabel"].Value
+                </FluentMenuItem>
+            </FluentMenuList>
+        </FluentMenu>
+    }
+</div>

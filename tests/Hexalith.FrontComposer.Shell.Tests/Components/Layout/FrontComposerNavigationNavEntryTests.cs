@@ -39,10 +39,9 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
         ulidFactory.NewUlid().Returns("01J0TEST0000000000000000000");
         Services.Replace(ServiceDescriptor.Singleton(ulidFactory));
 
-        // bUnit forbids service registration after the provider is built; auth must be wired BEFORE
-        // EnsureStoreInitialized triggers the first resolution. Default state is not-authorized.
-        // bUnit's fake authorization grants AuthorizeView Policy checks via SetPolicies(...).
-        _auth = AddAuthorization();
+        // Reuse the base's authorization context (wired before any provider build). Default state is
+        // not-authorized; bUnit's fake authorization grants AuthorizeView Policy checks via SetPolicies(...).
+        _auth = Authorization;
 
         EnsureStoreInitialized();
     }

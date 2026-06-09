@@ -110,6 +110,20 @@
     <value>Skip to navigation</value>
   </data>
 
+  <!-- Account / authentication header control (FcAccountMenu) — avatar-triggered sign in / sign out. -->
+  <data name="AccountMenuAriaLabel" xml:space="preserve">
+    <value>Account menu</value>
+  </data>
+  <data name="SignInLabel" xml:space="preserve">
+    <value>Sign in</value>
+  </data>
+  <data name="SignOutLabel" xml:space="preserve">
+    <value>Sign out</value>
+  </data>
+  <data name="SignedInAsLabel" xml:space="preserve">
+    <value>Signed in as {0}</value>
+  </data>
+
   <!-- Story 3-3 Task 9.1 (D17 / AC2 / AC4 / AC7) — 13 settings/density keys (11 spec-time + 2 new
        for Restore helper text + preview badge + 1 renamed Reset→Restore per D13 Freya review, plus
        DensityAnnouncementTemplate per D20). Existing SettingsTriggerAriaLabel (seeded in 3-1) is

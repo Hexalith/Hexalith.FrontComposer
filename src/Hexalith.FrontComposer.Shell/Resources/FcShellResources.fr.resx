@@ -102,6 +102,20 @@
     <value>Passer à la navigation</value>
   </data>
 
+  <!-- Contrôle de compte / authentification de l'en-tête (FcAccountMenu) — connexion / déconnexion via l'avatar. -->
+  <data name="AccountMenuAriaLabel" xml:space="preserve">
+    <value>Menu du compte</value>
+  </data>
+  <data name="SignInLabel" xml:space="preserve">
+    <value>Se connecter</value>
+  </data>
+  <data name="SignOutLabel" xml:space="preserve">
+    <value>Se déconnecter</value>
+  </data>
+  <data name="SignedInAsLabel" xml:space="preserve">
+    <value>Connecté en tant que {0}</value>
+  </data>
+
   <!-- Story 3-3 Task 9.2 (D17) — 13 clés paramètres/densité (FR). -->
   <data name="SettingsDialogTitle" xml:space="preserve">
     <value>Paramètres</value>

@@ -15,10 +15,12 @@ test.describe('Story 3-2: sidebar navigation responsive behavior @p0 @smoke', ()
     await shell.goto();
 
     // --- Desktop (≥1366) — AC3 ---
+    // 2026-06 (supersedes D9): the hamburger is now visible at Desktop too — it toggles the sidebar
+    // between the full nav and the collapsed rail.
     await shell.resizeTo(1920);
     await expect(shell.fullNav).toBeVisible();
     await expect(shell.collapsedRail).toBeHidden();
-    await expect(shell.hamburgerToggle).toBeHidden();
+    await expect(shell.hamburgerToggle).toBeVisible();
 
     // --- CompactDesktop (1024–1365) — AC4 ---
     await shell.resizeTo(1200);
@@ -40,7 +42,7 @@ test.describe('Story 3-2: sidebar navigation responsive behavior @p0 @smoke', ()
   // F11 — boundary coverage. Catches off-by-one in `matchMedia` queries (e.g., `(min-width: 1366px)`
   // vs `(min-width: 1367px)`). The interior-width test above can't see this class of bug.
   const boundaryCases = [
-    { width: ViewportBreakpoints.desktopMin, tier: 'Desktop', expectFull: true, expectRail: false, expectHamburger: false },
+    { width: ViewportBreakpoints.desktopMin, tier: 'Desktop', expectFull: true, expectRail: false, expectHamburger: true },
     { width: ViewportBreakpoints.compactDesktopMax, tier: 'CompactDesktop-upper', expectFull: false, expectRail: true, expectHamburger: true },
     { width: ViewportBreakpoints.compactDesktopMin, tier: 'CompactDesktop-lower', expectFull: false, expectRail: true, expectHamburger: true },
     { width: ViewportBreakpoints.tabletMax, tier: 'Tablet-upper', expectFull: false, expectRail: false, expectHamburger: true },
@@ -103,12 +105,12 @@ test.describe('Story 3-2: sidebar navigation responsive behavior @p0 @smoke', ()
     await shell.shellRoot.waitFor();
     await expect(shell.collapsedRail).toBeVisible({ timeout: 5_000 });
 
-    // Resize back to Desktop: D9-amendment sticky-collapse rule — rail persists (does NOT auto-expand).
+    // Resize back to Desktop: sticky-collapse rule — rail persists (does NOT auto-expand).
     await shell.resizeTo(1920);
     await expect(shell.collapsedRail).toBeVisible();
     await expect(shell.fullNav).toBeHidden();
-    // Desktop hamburger stays hidden (AC3 literal + D9 amendment).
-    await expect(shell.hamburgerToggle).toBeHidden();
+    // 2026-06 (supersedes D9): the Desktop hamburger is now visible — it is the manual sidebar toggle.
+    await expect(shell.hamburgerToggle).toBeVisible();
   });
 
   test('Counter bounded context renders exactly one nav category with one projection item (AC1 + AC7) @p0 @smoke', async ({ page, tenant }) => {

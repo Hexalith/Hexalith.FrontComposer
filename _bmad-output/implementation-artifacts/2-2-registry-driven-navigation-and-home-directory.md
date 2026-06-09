@@ -81,6 +81,7 @@ so that I can find every bounded context and projection without a hand-built men
     - `FrontComposerShellTests.AutoRenderedNavigationUsesRailWidthAtCompactDesktop` — **48px** width at `CompactDesktop`; `NavigationPaneHiddenAtSubCompactDesktopViewports` — nav pane hidden at Tablet/Phone.
     - `FrontComposerNavigationTests.RendersRailAtCompactDesktop` / `RendersFullNavAtDesktop` — rail vs full `FluentNav` swap.
     - `FcHamburgerToggleTests` — hamburger visible at CompactDesktop/Tablet/Phone, hidden at Desktop (incl. Desktop+manual-collapse, D9).
+      - **⚠️ D9 SUPERSEDED (2026-06, sprint-change-proposal-2026-06-09-shell-account-hamburger):** the hamburger is now **always visible**; at Desktop it toggles `SidebarCollapsed` (full sidebar ↔ 48px rail) via `SidebarToggledAction`. The `FcHamburgerToggleTests` Desktop assertions and `sidebar-responsive.spec.ts` were updated to match.
   - [x] Confirm `fc-layout-breakpoints.js` breakpoints are unchanged: Desktop ≥1366px, CompactDesktop ≥1024px, Tablet ≥768px, Phone <768px; `ViewportTier` enum ordinals pinned (Phone=0, Tablet=1, CompactDesktop=2, Desktop=3) by `NavigationReducerTests.ViewportTierEnumValuesArePinned`. **Only add a pin if a genuine gap is found** — none is expected here.
 
 - [x] **Task 4 — Run the build + test lanes; re-prove the pre-existing baseline (DoD)**

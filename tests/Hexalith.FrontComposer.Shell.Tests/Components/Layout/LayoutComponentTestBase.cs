@@ -57,6 +57,12 @@ public abstract class LayoutComponentTestBase : BunitContext {
         FocusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
         _ = FocusModule.SetupVoid("focusBodyIfNeeded", _ => true).SetVoidResult();
 
+        // The framework header's FcAccountMenu reads AuthenticationStateProvider, so every shell render
+        // needs a bUnit authorization context (bUnit's placeholder provider throws otherwise). The
+        // default state is anonymous → the "Sign in" affordance; tests needing a signed-in user call
+        // Authorization.SetAuthorized(...). Wired here, before any provider build.
+        Authorization = AddAuthorization();
+
         // Story 3-2 Task 10 — Do NOT initialize the Fluxor store here. bUnit locks the service
         // container on first service resolution, which blocks derived tests from
         // Services.Replace(registry) / Services.Replace(ulidFactory) calls in their own
@@ -64,6 +70,12 @@ public abstract class LayoutComponentTestBase : BunitContext {
     }
 
     protected IThemeService ThemeService { get; }
+
+    /// <summary>
+    /// bUnit authorization context backing the shell's auth-aware chrome (FcAccountMenu). Anonymous by
+    /// default; tests call <c>SetAuthorized</c> / <c>SetNotAuthorized</c> / <c>SetPolicies</c> on it.
+    /// </summary>
+    protected BunitAuthorizationContext Authorization { get; }
 
     protected BunitJSModuleInterop BeforeUnloadModule { get; }
 

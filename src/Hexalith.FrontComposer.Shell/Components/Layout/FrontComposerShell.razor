@@ -79,6 +79,10 @@
                             <FcPaletteTriggerButton />
                             <FcSettingsButton />
                         }
+                        @* Account avatar (sign in / sign out) — rendered ALWAYS as the right-most header
+                           action so it survives adopter HeaderEnd customization, matching the Fluent
+                           "account at far right" convention. *@
+                        <FcAccountMenu />
                     </FluentStack>
                 </FluentStack>
             </FluentLayoutItem>

@@ -1,5 +1,8 @@
-// ATDD RED PHASE — Story 3-2 Task 10.3 (D7, D8, D9; AC4, AC5)
-// Fails at compile until Task 8 (FcHamburgerToggle component) lands.
+// Story 3-2 Task 10.3 — FluentLayoutHamburger wrapper.
+// 2026-06 (supersedes the D9 "no Desktop hamburger" decision): the hamburger is now visible at every
+// viewport tier so it can toggle the navigation, matching the Fluent reference shell. At Desktop it is
+// a FluentButton whose click dispatches SidebarToggledAction (full sidebar <-> collapsed rail); at every
+// other tier it stays the FluentLayoutHamburger that opens the responsive drawer.
 
 using Bunit;
 
@@ -15,9 +18,8 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
 /// <summary>
-/// Story 3-2 Task 10.3 — FluentLayoutHamburger wrapper.
-/// D8: Visible = CurrentViewport != Desktop.
-/// D9 amended 2026-04-19: manual Desktop collapse dropped; Desktop has no visible toggle.
+/// Story 3-2 Task 10.3 — hamburger toggle. The 2026-06 UX direction makes the toggle visible at all
+/// tiers; at Desktop a click toggles <c>SidebarCollapsed</c> via <see cref="SidebarToggledAction"/>.
 /// </summary>
 public sealed class FcHamburgerToggleTests : LayoutComponentTestBase
 {
@@ -27,7 +29,7 @@ public sealed class FcHamburgerToggleTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void VisibleFalseAtDesktopWhenNotCollapsed()
+    public void VisibleAtDesktopAsSidebarToggleButton()
     {
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
@@ -35,8 +37,34 @@ public sealed class FcHamburgerToggleTests : LayoutComponentTestBase
         IRenderedComponent<FcHamburgerToggle> cut = Render<FcHamburgerToggle>();
 
         cut.WaitForAssertion(() =>
-            cut.Instance.IsVisibleForTest.ShouldBeFalse(
-                "Desktop + SidebarCollapsed=false → hamburger is HIDDEN (D8)"));
+        {
+            // 2026-06 (supersedes D9): the hamburger is visible at Desktop too, as the in-layout
+            // sidebar-toggle button branch.
+            cut.Instance.IsDesktop.ShouldBeTrue("Desktop renders the in-layout sidebar-toggle button branch.");
+
+            // F5 — lock the e2e selector contract at the unit level (present in both branches).
+            cut.Markup.ShouldContain("data-testid=\"fc-hamburger-toggle\"");
+        });
+    }
+
+    [Fact]
+    public async Task ClickAtDesktopTogglesSidebarCollapsed()
+    {
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
+
+        IState<FrontComposerNavigationState> navState =
+            Services.GetRequiredService<IState<FrontComposerNavigationState>>();
+        bool before = navState.Value.SidebarCollapsed;
+
+        IRenderedComponent<FcHamburgerToggle> cut = Render<FcHamburgerToggle>();
+
+        await cut.InvokeAsync(() => cut.Find("[data-testid=\"fc-hamburger-toggle\"]").Click());
+
+        cut.WaitForAssertion(() =>
+            navState.Value.SidebarCollapsed.ShouldBe(
+                !before,
+                "Clicking the Desktop hamburger dispatches SidebarToggledAction, flipping SidebarCollapsed."));
     }
 
     [Theory]
@@ -52,38 +80,10 @@ public sealed class FcHamburgerToggleTests : LayoutComponentTestBase
 
         cut.WaitForAssertion(() =>
         {
-            cut.Instance.IsVisibleForTest.ShouldBeTrue(
-                $"At {tier}, hamburger MUST be visible (D7 / D8)");
+            cut.Instance.IsDesktop.ShouldBeFalse($"At {tier} the responsive drawer hamburger renders, not the Desktop button.");
 
-            // F5 — lock the e2e selector contract at the unit level.
+            // F5 — lock the e2e selector contract at the unit level (hamburger visible at every tier).
             cut.Markup.ShouldContain("data-testid=\"fc-hamburger-toggle\"");
         });
     }
-
-    [Fact]
-    public void HiddenAtDesktopEvenWhenSidebarCollapsed()
-    {
-        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
-        dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
-        dispatcher.Dispatch(new SidebarToggledAction("c1")); // collapse via hydrated state
-
-        IRenderedComponent<FcHamburgerToggle> cut = Render<FcHamburgerToggle>();
-
-        // D9 amended 2026-04-19: Desktop follows persisted SidebarCollapsed without a visible
-        // toggle (AC3 literal: FluentLayoutHamburger.Visible = false at Desktop).
-        cut.WaitForAssertion(() =>
-            cut.Instance.IsVisibleForTest.ShouldBeFalse(
-                "D9 amended 2026-04-19: hamburger toggle stays hidden at Desktop regardless of SidebarCollapsed."));
-    }
-
-    // REMOVED 2026-04-19 (code-review round 2): `ManualToggleAtDesktopDispatchesSidebarToggled`
-    // asserted the Desktop-side OnHamburgerOpened dispatch path. D9 was narrowed via the
-    // D9-2026-04-19 addendum to "manual toggle applies at CompactDesktop / Tablet / Phone only;
-    // Desktop has no visible manual-collapse affordance". The Desktop dispatch branch is removed
-    // from FcHamburgerToggle; this test is obsolete.
-
-    // REMOVED 2026-04-19 (test-review F2): `ViewportDrivenVisibilityDoesNotDispatchToggle` was
-    // asserting a guard behavior ("at non-Desktop tiers, OnHamburgerOpened must not dispatch
-    // SidebarToggledAction") that is not stated in D9, D7, or AC4/AC5. Superseded by the D9
-    // amendment above which removes Desktop dispatch entirely.
 }
