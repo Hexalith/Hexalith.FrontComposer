@@ -47,7 +47,7 @@
     <PackageVersion Include="Fluxor.Blazor.Web" Version="6.9.0" />
   </ItemGroup>
   <ItemGroup Label="Aspire">
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.4.2" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.4.3" />
     <!-- Keycloak hosting for the FrontComposer AppHost (OIDC/JWT identity provider).
          Pinned to the exact preview build shared by the Hexalith.Tenants / Hexalith.EventStore
          AppHosts. There is no stable 13.4.x Keycloak-hosting line, so the ecosystem holds this
@@ -71,12 +71,12 @@
     <!-- Story 10-3 — file-based Pact consumer contracts for the EventStore REST boundary. -->
     <PackageVersion Include="PactNet" Version="5.0.1" />
     <!-- Verify snapshot testing — XunitV3 for xUnit v3 (NOT Verify.Xunit which is v2) -->
-    <PackageVersion Include="Verify" Version="31.19.0" />
-    <PackageVersion Include="Verify.XunitV3" Version="31.19.0" />
+    <PackageVersion Include="Verify" Version="31.19.1" />
+    <PackageVersion Include="Verify.XunitV3" Version="31.19.1" />
     <!-- FsCheck property-based testing (Story 2.1 adds FsCheck.Xunit.v3 for xUnit v3 integration) -->
     <PackageVersion Include="FsCheck.Xunit.v3" Version="3.3.3" />
     <!-- Story 2-4 Task 0.3 — FakeTimeProvider for deterministic ITimer-callback-driven threshold tests. -->
-    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.6.0" />
+    <PackageVersion Include="Microsoft.Extensions.TimeProvider.Testing" Version="10.7.0" />
     <!-- Story 3-7 T2 — BenchmarkDotNet for PaletteScorerBench (AC5). Runs in the
          tests/Hexalith.FrontComposer.Shell.Tests.Bench project under [Trait("Category", "Performance")]. -->
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
