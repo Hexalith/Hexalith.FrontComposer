@@ -13,14 +13,15 @@ namespace Hexalith.FrontComposer.Contracts.Conformance;
 /// bump invalidates IDE-parity evidence manifests and triggers Story 9-3 revalidation.
 /// </remarks>
 public static class GeneratedOutputPathContract {
-    /// <summary>The semantic version of the generated-output layout. Bumping invalidates evidence manifests.</summary>
-    public const string Version = "v1";
+
+    /// <summary>The directory portion of <see cref="Template"/> that adopter docs reference.</summary>
+    public const string Directory = "obj/{Config}/{TFM}/generated/HexalithFrontComposer";
 
     /// <summary>The project-relative template; placeholders are <c>{Config}</c>, <c>{TFM}</c>, and <c>{TypeName}</c>.</summary>
     public const string Template = "obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs";
 
-    /// <summary>The directory portion of <see cref="Template"/> that adopter docs reference.</summary>
-    public const string Directory = "obj/{Config}/{TFM}/generated/HexalithFrontComposer";
+    /// <summary>The semantic version of the generated-output layout. Bumping invalidates evidence manifests.</summary>
+    public const string Version = "v1";
 
     private static readonly char[] _forbiddenFilenameChars =
     {
@@ -61,18 +62,7 @@ public static class GeneratedOutputPathContract {
             generatedFileName);
     }
 
-    private static void ValidateSegment(string value, string parameterName) {
-        if (string.IsNullOrWhiteSpace(value)) {
-            throw new ArgumentException($"{parameterName} is required.", parameterName);
-        }
-
-        if (value.IndexOfAny(_forbiddenFilenameChars) >= 0
-            || value.Equals(".", StringComparison.Ordinal)
-            || value.Equals("..", StringComparison.Ordinal)) {
-            throw new ArgumentException($"{parameterName} must not contain path separators, control characters, or traversal segments.", parameterName);
-        }
-    }
-
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0057:Use range operator", Justification = "Not supported in this context")]
     private static void ValidateFilename(string value, string parameterName) {
         if (string.IsNullOrWhiteSpace(value)) {
             throw new ArgumentException($"{parameterName} is required.", parameterName);
@@ -96,13 +86,25 @@ public static class GeneratedOutputPathContract {
         int dot = value.IndexOf('.');
 
         if (dot > 0) {
-            baseName = value[..dot];
+            baseName = value.Substring(0, dot);
         }
 
         for (int i = 0; i < _windowsReservedDeviceNames.Length; i++) {
             if (baseName.Equals(_windowsReservedDeviceNames[i], StringComparison.OrdinalIgnoreCase)) {
                 throw new ArgumentException($"{parameterName} must not begin with a Windows reserved device name ('{baseName}').", parameterName);
             }
+        }
+    }
+
+    private static void ValidateSegment(string value, string parameterName) {
+        if (string.IsNullOrWhiteSpace(value)) {
+            throw new ArgumentException($"{parameterName} is required.", parameterName);
+        }
+
+        if (value.IndexOfAny(_forbiddenFilenameChars) >= 0
+            || value.Equals(".", StringComparison.Ordinal)
+            || value.Equals("..", StringComparison.Ordinal)) {
+            throw new ArgumentException($"{parameterName} must not contain path separators, control characters, or traversal segments.", parameterName);
         }
     }
 }

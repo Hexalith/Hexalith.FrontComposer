@@ -7,45 +7,10 @@ using System.Text.Unicode;
 
 namespace Hexalith.FrontComposer.Contracts.Schema;
 
-/// <summary>
-/// Sanitized exception type raised by canonical schema material validation failures.
-/// The message contains stable category/key only; raw paths and validation values are
-/// kept on the typed properties so callers can decide whether to log them.
-/// </summary>
-public sealed class SchemaMaterialValidationException : InvalidOperationException {
-    public SchemaMaterialValidationException(SchemaMaterialValidationResult validation)
-        : base(validation?.MessageKey ?? "schema.material.invalid") => Validation = validation ?? throw new ArgumentNullException(nameof(validation));
-
-    public SchemaMaterialValidationResult Validation { get; }
+public enum SchemaCollectionOrder {
+    NonStructuralSorted,
+    StructuralOrder,
 }
-
-/// <summary>
-/// Well-known v1 schema fingerprint algorithm identifiers.
-/// </summary>
-public static class SchemaFingerprintAlgorithm {
-    /// <summary>SHA-256 over canonical JSON serialization performed by <see cref="CanonicalSchemaMaterial"/>.</summary>
-    public const string Sha256CanonicalJsonV1 = "frontcomposer.schema.sha256.canonical-json.v1";
-
-    /// <summary>
-    /// SHA-256 over the SourceTools-emitted newline-delimited key=value canonical blob. Distinct
-    /// from <see cref="Sha256CanonicalJsonV1"/> because the build-time canonicalizer cannot share
-    /// the runtime System.Text.Json source-gen pipeline (Roslyn analyzer hosting constraint).
-    /// Documented as the v1 dual-algorithm contract (D23 in Story 8-6).
-    /// </summary>
-    public const string Sha256SourceToolsBlobV1 = "frontcomposer.schema.sha256.v1.sourcetools-blob";
-
-    public const string CanonicalizerVersionV1 = "frontcomposer.canonical-json.v1";
-    public const string TestVectorIdV1 = "hfc-schema-v1";
-}
-
-/// <summary>
-/// SDK-neutral fingerprint metadata emitted with a generated contract descriptor.
-/// </summary>
-public sealed record SchemaFingerprint(
-    string AlgorithmId,
-    string Value,
-    string CanonicalizerVersion = SchemaFingerprintAlgorithm.CanonicalizerVersionV1,
-    string TestVectorId = SchemaFingerprintAlgorithm.TestVectorIdV1);
 
 public enum SchemaContractFamily {
     CommandTool,
@@ -56,45 +21,6 @@ public enum SchemaContractFamily {
     SkillCorpusResource,
     AggregateMcpManifest,
 }
-
-public enum SchemaCollectionOrder {
-    NonStructuralSorted,
-    StructuralOrder,
-}
-
-public sealed record SchemaCollectionContract(
-    string Name,
-    SchemaCollectionOrder Order,
-    string StableIdField);
-
-public sealed record SchemaFieldContract(
-    string Name,
-    string TypeName,
-    string JsonType,
-    bool IsRequired,
-    bool IsNullable,
-    string? Title = null,
-    string? Description = null,
-    IReadOnlyList<string>? EnumValues = null,
-    IReadOnlyDictionary<string, string>? ValidationConstraints = null,
-    IReadOnlyDictionary<string, string>? Metadata = null);
-
-public sealed record SchemaContractDocument(
-    string RootDiscriminator,
-    SchemaContractFamily Family,
-    string ContractId,
-    string ContractSchemaVersion,
-    string? BoundedContext,
-    string? FullyQualifiedName,
-    string? ProtocolIdentifier,
-    IReadOnlyList<SchemaFieldContract> Fields,
-    IReadOnlyList<SchemaCollectionContract> Collections,
-    IReadOnlyDictionary<string, string> Metadata);
-
-public sealed record SchemaCanonicalPayload(
-    SchemaContractDocument Document,
-    string Json,
-    SchemaFingerprint Fingerprint);
 
 public enum SchemaMaterialValidationCategory {
     None,
@@ -108,19 +34,17 @@ public enum SchemaMaterialValidationCategory {
     PayloadTooLarge,
 }
 
-public sealed record SchemaMaterialValidationResult(
-    bool IsValid,
-    SchemaMaterialValidationCategory Category,
-    string MessageKey,
-    string? Path = null) {
-    public static SchemaMaterialValidationResult Valid { get; } = new(true, SchemaMaterialValidationCategory.None, "schema.valid");
-}
-
 /// <summary>
 /// Deterministic canonical JSON and SHA-256 fingerprint helper for structural schema material.
 /// </summary>
 public static class CanonicalSchemaMaterial {
-    private const int MaxDepth = 32;
+
+    /// <summary>
+    /// Sentinel surrogate-pair-free placeholder used by canonical fingerprint material to
+    /// distinguish a logical "value not provided" from an explicit empty string. Chosen to
+    /// avoid collision with any plausible user-provided scalar.
+    /// </summary>
+    public const string AbsentValueSentinel = "<absent>";
 
     /// <summary>
     /// Upper bound on raw canonical JSON byte length accepted by <see cref="ValidateCanonicalJson"/>.
@@ -128,21 +52,23 @@ public static class CanonicalSchemaMaterial {
     /// </summary>
     public const int MaxCanonicalJsonBytes = 4 * 1024 * 1024;
 
+    private const int _maxDepth = 32;
+
     /// <summary>
     /// Canonical JSON serialization options pinned with a stable JavaScript encoder so default
     /// encoder escape tables changing between .NET runtimes cannot silently drift fingerprints.
     /// The source-gen <see cref="SchemaFingerprintJsonContext"/> is the type-info resolver, so
-    /// AOT/trim consumers stay supported via the typed <see cref="s_canonicalTypeInfo"/> below.
+    /// AOT/trim consumers stay supported via the typed <see cref="_canonicalTypeInfo"/> below.
     /// </summary>
-    private static readonly JsonSerializerOptions s_canonicalOptions = new() {
+    private static readonly JsonSerializerOptions _canonicalOptions = new() {
         WriteIndented = false,
         DefaultIgnoreCondition = JsonIgnoreCondition.Never,
         Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
         TypeInfoResolver = SchemaFingerprintJsonContext.Default,
     };
 
-    private static readonly System.Text.Json.Serialization.Metadata.JsonTypeInfo<SchemaContractDocument> s_canonicalTypeInfo
-        = (System.Text.Json.Serialization.Metadata.JsonTypeInfo<SchemaContractDocument>)s_canonicalOptions.GetTypeInfo(typeof(SchemaContractDocument));
+    private static readonly System.Text.Json.Serialization.Metadata.JsonTypeInfo<SchemaContractDocument> _canonicalTypeInfo
+        = (System.Text.Json.Serialization.Metadata.JsonTypeInfo<SchemaContractDocument>)_canonicalOptions.GetTypeInfo(typeof(SchemaContractDocument));
 
     public static SchemaCanonicalPayload CreatePayload(SchemaContractDocument document) {
         if (document is null) {
@@ -154,7 +80,7 @@ public static class CanonicalSchemaMaterial {
         }
 
         SchemaContractDocument normalized = Normalize(document);
-        string json = JsonSerializer.Serialize(normalized, s_canonicalTypeInfo);
+        string json = JsonSerializer.Serialize(normalized, _canonicalTypeInfo);
         // P-43: producer-side parser validation closes the AC25 / D16 emit-side gap.
         SchemaMaterialValidationResult roundTrip = ValidateCanonicalJson(json);
         if (!roundTrip.IsValid) {
@@ -167,13 +93,14 @@ public static class CanonicalSchemaMaterial {
             new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, hash));
     }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0057:Use range operator", Justification = "Not supported in this context")]
     public static SchemaMaterialValidationResult ValidateCanonicalJson(string json) {
         if (string.IsNullOrWhiteSpace(json)) {
             return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.malformed", "$");
         }
 
         // P-31: strip a leading UTF-8 BOM before we hand bytes to Utf8JsonReader.
-        string normalizedJson = json.Length > 0 && json[0] == '﻿' ? json[1..] : json;
+        string normalizedJson = json.Length == 0 || json[0] != '﻿' ? json : json.Substring(1);
 
         // P-33: bound payload size before allocating the UTF-8 byte array.
         int byteCount = Encoding.UTF8.GetByteCount(normalizedJson);
@@ -185,7 +112,7 @@ public static class CanonicalSchemaMaterial {
             var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(normalizedJson), new JsonReaderOptions {
                 AllowTrailingCommas = false,
                 CommentHandling = JsonCommentHandling.Disallow,
-                MaxDepth = MaxDepth,
+                MaxDepth = _maxDepth,
             });
             return ValidateJsonObject(ref reader, "$");
         }
@@ -249,20 +176,6 @@ public static class CanonicalSchemaMaterial {
             Metadata = NormalizeDictionary(document.Metadata),
         };
 
-    private static SchemaFieldContract NormalizeField(SchemaFieldContract field)
-        => field with {
-            Name = NormalizeScalar(field.Name),
-            TypeName = NormalizeScalar(field.TypeName),
-            JsonType = NormalizeScalar(field.JsonType),
-            Title = NormalizeOptional(field.Title),
-            Description = NormalizeOptional(field.Description),
-            EnumValues = field.EnumValues is null
-                ? []
-                : [.. field.EnumValues.Select(NormalizeScalar).OrderBy(v => v, StringComparer.Ordinal)],
-            ValidationConstraints = NormalizeDictionary(field.ValidationConstraints),
-            Metadata = NormalizeDictionary(field.Metadata),
-        };
-
     private static IReadOnlyDictionary<string, string> NormalizeDictionary(IReadOnlyDictionary<string, string>? values)
         => values is null
             ? new SortedDictionary<string, string>(StringComparer.Ordinal)
@@ -273,12 +186,33 @@ public static class CanonicalSchemaMaterial {
                     StringComparer.Ordinal),
                 StringComparer.Ordinal);
 
+    private static SchemaFieldContract NormalizeField(SchemaFieldContract field)
+            => field with {
+                Name = NormalizeScalar(field.Name),
+                TypeName = NormalizeScalar(field.TypeName),
+                JsonType = NormalizeScalar(field.JsonType),
+                Title = NormalizeOptional(field.Title),
+                Description = NormalizeOptional(field.Description),
+                EnumValues = field.EnumValues is null
+                ? []
+                : [.. field.EnumValues.Select(NormalizeScalar).OrderBy(v => v, StringComparer.Ordinal)],
+                ValidationConstraints = NormalizeDictionary(field.ValidationConstraints),
+                Metadata = NormalizeDictionary(field.Metadata),
+            };
+
     /// <summary>
-    /// Sentinel surrogate-pair-free placeholder used by canonical fingerprint material to
-    /// distinguish a logical "value not provided" from an explicit empty string. Chosen to
-    /// avoid collision with any plausible user-provided scalar.
+    /// Returns null only for null inputs; whitespace-only strings normalize to a sentinel so a
+    /// logical "value not provided" is not silently merged with `"   "`. Callers comparing
+    /// fingerprints can rely on the distinction surviving canonicalization.
     /// </summary>
-    public const string AbsentValueSentinel = "<absent>";
+    private static string? NormalizeOptional(string? value) {
+        if (value is null) {
+            return null;
+        }
+
+        string normalized = NormalizeScalar(value);
+        return normalized.Length == 0 ? AbsentValueSentinel : normalized;
+    }
 
     private static string NormalizeScalar(string value) {
         if (string.IsNullOrEmpty(value)) {
@@ -312,20 +246,6 @@ public static class CanonicalSchemaMaterial {
         return sb.ToString().Replace("\r\n", "\n").Trim();
     }
 
-    /// <summary>
-    /// Returns null only for null inputs; whitespace-only strings normalize to a sentinel so a
-    /// logical "value not provided" is not silently merged with `"   "`. Callers comparing
-    /// fingerprints can rely on the distinction surviving canonicalization.
-    /// </summary>
-    private static string? NormalizeOptional(string? value) {
-        if (value is null) {
-            return null;
-        }
-
-        string normalized = NormalizeScalar(value);
-        return normalized.Length == 0 ? AbsentValueSentinel : normalized;
-    }
-
     private static string Sha256Hex(string value) {
         using var sha = SHA256.Create();
         byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(value));
@@ -339,6 +259,24 @@ public static class CanonicalSchemaMaterial {
         return new string(chars);
     }
 
+    private static SchemaMaterialValidationResult ValidateArray(ref Utf8JsonReader reader, string path) {
+        int index = 0;
+        while (reader.Read()) {
+            if (reader.TokenType == JsonTokenType.EndArray) {
+                return SchemaMaterialValidationResult.Valid;
+            }
+
+            SchemaMaterialValidationResult nested = ValidateJsonValue(ref reader, path + "[" + index.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]");
+            if (!nested.IsValid) {
+                return nested;
+            }
+
+            index++;
+        }
+
+        return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.unclosed-array", path);
+    }
+
     private static SchemaMaterialValidationResult ValidateJsonObject(ref Utf8JsonReader reader, string path) {
         if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) {
             return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.root-object", path);
@@ -346,6 +284,15 @@ public static class CanonicalSchemaMaterial {
 
         return ValidateObjectBody(ref reader, path);
     }
+
+    private static SchemaMaterialValidationResult ValidateJsonValue(ref Utf8JsonReader reader, string path)
+        => reader.TokenType switch {
+            JsonTokenType.StartObject => ValidateObjectBody(ref reader, path),
+            JsonTokenType.StartArray => ValidateArray(ref reader, path),
+            JsonTokenType.String or JsonTokenType.Number or JsonTokenType.True or JsonTokenType.False or JsonTokenType.Null
+                => SchemaMaterialValidationResult.Valid,
+            _ => new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.value-invalid", path),
+        };
 
     private static SchemaMaterialValidationResult ValidateObjectBody(ref Utf8JsonReader reader, string path) {
         HashSet<string> exact = new(StringComparer.Ordinal);
@@ -377,33 +324,88 @@ public static class CanonicalSchemaMaterial {
 
         return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.unclosed-object", path);
     }
+}
 
-    private static SchemaMaterialValidationResult ValidateJsonValue(ref Utf8JsonReader reader, string path)
-        => reader.TokenType switch {
-            JsonTokenType.StartObject => ValidateObjectBody(ref reader, path),
-            JsonTokenType.StartArray => ValidateArray(ref reader, path),
-            JsonTokenType.String or JsonTokenType.Number or JsonTokenType.True or JsonTokenType.False or JsonTokenType.Null
-                => SchemaMaterialValidationResult.Valid,
-            _ => new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.value-invalid", path),
-        };
+/// <summary>
+/// Well-known v1 schema fingerprint algorithm identifiers.
+/// </summary>
+public static class SchemaFingerprintAlgorithm {
+    public const string CanonicalizerVersionV1 = "frontcomposer.canonical-json.v1";
 
-    private static SchemaMaterialValidationResult ValidateArray(ref Utf8JsonReader reader, string path) {
-        int index = 0;
-        while (reader.Read()) {
-            if (reader.TokenType == JsonTokenType.EndArray) {
-                return SchemaMaterialValidationResult.Valid;
-            }
+    /// <summary>SHA-256 over canonical JSON serialization performed by <see cref="CanonicalSchemaMaterial"/>.</summary>
+    public const string Sha256CanonicalJsonV1 = "frontcomposer.schema.sha256.canonical-json.v1";
 
-            SchemaMaterialValidationResult nested = ValidateJsonValue(ref reader, path + "[" + index.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]");
-            if (!nested.IsValid) {
-                return nested;
-            }
+    /// <summary>
+    /// SHA-256 over the SourceTools-emitted newline-delimited key=value canonical blob. Distinct
+    /// from <see cref="Sha256CanonicalJsonV1"/> because the build-time canonicalizer cannot share
+    /// the runtime System.Text.Json source-gen pipeline (Roslyn analyzer hosting constraint).
+    /// Documented as the v1 dual-algorithm contract (D23 in Story 8-6).
+    /// </summary>
+    public const string Sha256SourceToolsBlobV1 = "frontcomposer.schema.sha256.v1.sourcetools-blob";
 
-            index++;
-        }
+    public const string TestVectorIdV1 = "hfc-schema-v1";
+}
 
-        return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.unclosed-array", path);
-    }
+/// <summary>
+/// Sanitized exception type raised by canonical schema material validation failures.
+/// The message contains stable category/key only; raw paths and validation values are
+/// kept on the typed properties so callers can decide whether to log them.
+/// </summary>
+public sealed class SchemaMaterialValidationException : InvalidOperationException {
+
+    public SchemaMaterialValidationException(SchemaMaterialValidationResult validation)
+        : base(validation?.MessageKey ?? "schema.material.invalid") => Validation = validation ?? throw new ArgumentNullException(nameof(validation));
+
+    public SchemaMaterialValidationResult Validation { get; }
+}
+
+/// <summary>
+/// SDK-neutral fingerprint metadata emitted with a generated contract descriptor.
+/// </summary>
+public sealed record SchemaFingerprint(
+    string AlgorithmId,
+    string Value,
+    string CanonicalizerVersion = SchemaFingerprintAlgorithm.CanonicalizerVersionV1,
+    string TestVectorId = SchemaFingerprintAlgorithm.TestVectorIdV1);
+public sealed record SchemaCollectionContract(
+    string Name,
+    SchemaCollectionOrder Order,
+    string StableIdField);
+
+public sealed record SchemaFieldContract(
+    string Name,
+    string TypeName,
+    string JsonType,
+    bool IsRequired,
+    bool IsNullable,
+    string? Title = null,
+    string? Description = null,
+    IReadOnlyList<string>? EnumValues = null,
+    IReadOnlyDictionary<string, string>? ValidationConstraints = null,
+    IReadOnlyDictionary<string, string>? Metadata = null);
+
+public sealed record SchemaContractDocument(
+    string RootDiscriminator,
+    SchemaContractFamily Family,
+    string ContractId,
+    string ContractSchemaVersion,
+    string? BoundedContext,
+    string? FullyQualifiedName,
+    string? ProtocolIdentifier,
+    IReadOnlyList<SchemaFieldContract> Fields,
+    IReadOnlyList<SchemaCollectionContract> Collections,
+    IReadOnlyDictionary<string, string> Metadata);
+
+public sealed record SchemaCanonicalPayload(
+    SchemaContractDocument Document,
+    string Json,
+    SchemaFingerprint Fingerprint);
+public sealed record SchemaMaterialValidationResult(
+    bool IsValid,
+    SchemaMaterialValidationCategory Category,
+    string MessageKey,
+    string? Path = null) {
+    public static SchemaMaterialValidationResult Valid { get; } = new(true, SchemaMaterialValidationCategory.None, "schema.valid");
 }
 
 // P-2: pin the JavaScript encoder to a stable Unicode allowlist so default-encoder escape-table

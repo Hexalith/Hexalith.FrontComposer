@@ -1,5 +1,7 @@
 #if NET10_0_OR_GREATER
+
 using Microsoft.AspNetCore.Components.Web;
+
 #endif
 
 namespace Hexalith.FrontComposer.Contracts.Shortcuts;
@@ -13,6 +15,30 @@ namespace Hexalith.FrontComposer.Contracts.Shortcuts;
 /// </remarks>
 public static class ShortcutBinding {
     private static readonly string[] _modifierOrder = ["ctrl", "shift", "alt", "meta"];
+
+    /// <summary>
+    /// Renders a normalised binding (e.g., <c>"ctrl+k"</c>) as a human-readable label
+    /// (e.g., <c>"Ctrl+K"</c>) for the palette's "shortcuts" reference view.
+    /// </summary>
+    /// <param name="normalisedBinding">The normalised binding string.</param>
+    /// <returns>The human-readable label.</returns>
+    public static string FormatLabel(string normalisedBinding) {
+        if (string.IsNullOrWhiteSpace(normalisedBinding)) {
+            throw new ArgumentException("Binding must be a non-empty, non-whitespace string.", nameof(normalisedBinding));
+        }
+
+        if (normalisedBinding.Contains(' ')) {
+            string[] parts = normalisedBinding.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
+            return $"{Capitalise(parts[0])} {Capitalise(parts[1])}";
+        }
+
+        string[] tokens = normalisedBinding.Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
+        for (int i = 0; i < tokens.Length; i++) {
+            tokens[i] = Capitalise(tokens[i]);
+        }
+
+        return string.Join("+", tokens);
+    }
 
     /// <summary>
     /// Normalises a binding string to the canonical form used by the lookup dictionary.
@@ -70,31 +96,8 @@ public static class ShortcutBinding {
         return NormalizeSingleKey(trimmed, allowBareLetter: false);
     }
 
-    /// <summary>
-    /// Renders a normalised binding (e.g., <c>"ctrl+k"</c>) as a human-readable label
-    /// (e.g., <c>"Ctrl+K"</c>) for the palette's "shortcuts" reference view.
-    /// </summary>
-    /// <param name="normalisedBinding">The normalised binding string.</param>
-    /// <returns>The human-readable label.</returns>
-    public static string FormatLabel(string normalisedBinding) {
-        if (string.IsNullOrWhiteSpace(normalisedBinding)) {
-            throw new ArgumentException("Binding must be a non-empty, non-whitespace string.", nameof(normalisedBinding));
-        }
-
-        if (normalisedBinding.Contains(' ')) {
-            string[] parts = normalisedBinding.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
-            return $"{Capitalise(parts[0])} {Capitalise(parts[1])}";
-        }
-
-        string[] tokens = normalisedBinding.Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
-        for (int i = 0; i < tokens.Length; i++) {
-            tokens[i] = Capitalise(tokens[i]);
-        }
-
-        return string.Join("+", tokens);
-    }
-
 #if NET10_0_OR_GREATER
+
     /// <summary>
     /// Builds a normalised binding string from a Blazor <see cref="KeyboardEventArgs"/>. Returns
     /// <see langword="false"/> when the event is a modifier-only press (Shift / Ctrl / Alt / Meta
@@ -149,7 +152,13 @@ public static class ShortcutBinding {
         binding = string.Join("+", parts);
         return true;
     }
+
 #endif
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0057:Use range operator", Justification = "Not supported in this context")]
+    private static string Capitalise(string token) => string.IsNullOrEmpty(token)
+                                                           ? token
+                                                           : char.ToUpperInvariant(token[0]) + token.Substring(1);
 
     private static string NormalizeSingleKey(string raw, bool allowBareLetter) {
         if (string.IsNullOrWhiteSpace(raw)) {
@@ -183,7 +192,9 @@ public static class ShortcutBinding {
             }
         }
 
-        string keyToken = parts[^1];
+#pragma warning disable IDE0056 // Use index operator
+        string keyToken = parts[parts.Length - 1];
+#pragma warning restore IDE0056 // Use index operator
         if (Array.IndexOf(_modifierOrder, keyToken) >= 0) {
             throw new ArgumentException($"Binding must end with a non-modifier key; got '{raw}'.", nameof(raw));
         }
@@ -214,9 +225,4 @@ public static class ShortcutBinding {
         rebuilt.Add(keyToken);
         return string.Join("+", rebuilt);
     }
-
-    private static string Capitalise(string token)
-        => string.IsNullOrEmpty(token)
-            ? token
-            : char.ToUpperInvariant(token[0]) + token[1..];
 }
