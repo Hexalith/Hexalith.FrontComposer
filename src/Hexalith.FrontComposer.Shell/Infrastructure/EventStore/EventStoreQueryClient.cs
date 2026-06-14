@@ -384,11 +384,13 @@ public sealed class EventStoreQueryClient(
         }
     }
 
+#pragma warning disable HFC0001 // Legacy Filter read intentionally retained for v0.x back-compat (removed in v0.4).
     private static bool HasCacheUnsafeQueryShape(QueryRequest request) => !string.IsNullOrWhiteSpace(request.Filter)
             || (request.ColumnFilters is { Count: > 0 })
             || (request.StatusFilters is { Count: > 0 })
             || !string.IsNullOrWhiteSpace(request.SearchQuery)
             || !string.IsNullOrWhiteSpace(request.SortColumn);
+#pragma warning restore HFC0001
 
     private static IReadOnlyList<string> GetRequestEtags(QueryRequest request) {
         if (request.ETags is not null) {
@@ -491,6 +493,7 @@ public sealed class EventStoreQueryClient(
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
         Justification = "EventStore adapter serializes query payload metadata through System.Text.Json web defaults.")]
+#pragma warning disable HFC0001 // Legacy Filter forwarded on the wire for v0.x back-compat (removed in v0.4).
     private static JsonElement SerializeQueryPayload(QueryRequest request) => JsonSerializer.SerializeToElement(
             new QueryPayload(
                 request.Filter,
@@ -502,6 +505,7 @@ public sealed class EventStoreQueryClient(
                 request.SortColumn,
                 request.SortDescending),
             EventStoreRequestContent.JsonOptions);
+#pragma warning restore HFC0001
 
     private sealed record SubmitQueryRequest(
         string Tenant,

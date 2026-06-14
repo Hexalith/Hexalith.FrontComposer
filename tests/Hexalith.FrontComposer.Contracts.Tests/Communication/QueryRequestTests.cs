@@ -26,7 +26,9 @@ public sealed class QueryRequestTests {
         request.EntityId.ShouldBeNull();
         request.ProjectionActorType.ShouldBeNull();
         request.ETags.ShouldBeNull();
+#pragma warning disable HFC0001 // Intentional legacy Filter read — this test guards the v0.x back-compat contract.
         request.Filter.ShouldBeNull();
+#pragma warning restore HFC0001
     }
 
     [Fact]

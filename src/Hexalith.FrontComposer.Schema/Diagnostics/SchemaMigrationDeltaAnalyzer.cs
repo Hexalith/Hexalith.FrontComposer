@@ -3,15 +3,36 @@ using Hexalith.FrontComposer.Contracts.Schema;
 namespace Hexalith.FrontComposer.Schema.Diagnostics;
 
 public static class SchemaMigrationDeltaAnalyzer {
-    private const int MaxDeltaCount = 25;
-    private const int MaxPathLength = 256;
+    private const int _maxDeltaCount = 25;
+    private const int _maxPathLength = 256;
+
+    private static readonly HashSet<string> _boundsKeyPrefixes = new(StringComparer.Ordinal) {
+        "bounds.",
+    };
+
+    /// <summary>
+    /// Exact metadata-key allowlist. Keys whose CHANGE has a specific compatibility meaning
+    /// (renderer capability, bounds, skill-corpus resource) are mapped to their dedicated delta
+    /// kinds; every other change emits a generic <see cref="SchemaDeltaKind.MetadataChanged"/>
+    /// delta so changes are never silently dropped (P-6, P-7).
+    /// </summary>
+    private static readonly HashSet<string> _rendererCapabilityKeys = new(StringComparer.Ordinal) {
+        "capability",
+        "outputContentType",
+    };
+
+    private static readonly HashSet<string> _skillCorpusKeys = new(StringComparer.Ordinal) {
+        "publicApiReferences",
+        "samplePaths",
+        "resourceCount",
+    };
 
     /// <summary>
     /// Algorithm identifiers the analyzer accepts. Mirrors the negotiator's supported set; the
     /// SourceTools build-time canonicalizer also flows through here when comparing baselines
     /// captured at build time. Per D23.
     /// </summary>
-    private static readonly HashSet<string> SupportedAlgorithms = new(StringComparer.Ordinal) {
+    private static readonly HashSet<string> _supportedAlgorithms = new(StringComparer.Ordinal) {
         SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
         SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1,
     };
@@ -19,7 +40,7 @@ public static class SchemaMigrationDeltaAnalyzer {
     public static SchemaMigrationDeltaResult Compare(
         SchemaBaselineSnapshot baseline,
         SchemaBaselineSnapshot current,
-        int maxDeltaCount = MaxDeltaCount) {
+        int maxDeltaCount = _maxDeltaCount) {
         if (baseline is null) {
             throw new ArgumentNullException(nameof(baseline));
         }
@@ -34,8 +55,8 @@ public static class SchemaMigrationDeltaAnalyzer {
             throw new ArgumentOutOfRangeException(nameof(maxDeltaCount), maxDeltaCount, "maxDeltaCount must be positive.");
         }
 
-        if (!SupportedAlgorithms.Contains(baseline.Provenance.FingerprintAlgorithm ?? string.Empty)
-            || !SupportedAlgorithms.Contains(current.Provenance.FingerprintAlgorithm ?? string.Empty)) {
+        if (!_supportedAlgorithms.Contains(baseline.Provenance.FingerprintAlgorithm ?? string.Empty)
+            || !_supportedAlgorithms.Contains(current.Provenance.FingerprintAlgorithm ?? string.Empty)) {
             return Result(SchemaCompatibilityDecision.UnsupportedAlgorithm, [
                 Delta(SchemaDeltaKind.CanonicalizerUnsupported, SchemaCompatibilityDecision.UnsupportedAlgorithm, "$.fingerprintAlgorithm", "schema.delta.unsupported-algorithm"),
             ], false);
@@ -176,8 +197,34 @@ public static class SchemaMigrationDeltaAnalyzer {
         return Result(aggregate, deltas, truncated);
     }
 
+    private static void AddMetadataDelta(string key, List<SchemaDelta> deltas) {
+        string path = "$.Metadata." + key;
+
+        if (_rendererCapabilityKeys.Contains(key)) {
+            deltas.Add(Delta(SchemaDeltaKind.RendererCapabilityChanged, SchemaCompatibilityDecision.Breaking, path, "schema.delta.renderer-contract-changed"));
+            return;
+        }
+
+        foreach (string prefix in _boundsKeyPrefixes) {
+            if (key.StartsWith(prefix, StringComparison.Ordinal)) {
+                deltas.Add(Delta(SchemaDeltaKind.BoundsChanged, SchemaCompatibilityDecision.CompatibleWarning, path, "schema.delta.bounds-changed"));
+                return;
+            }
+        }
+
+        if (_skillCorpusKeys.Contains(key)) {
+            deltas.Add(Delta(SchemaDeltaKind.SkillCorpusResourceChanged, SchemaCompatibilityDecision.CompatibleWarning, path, "schema.delta.skill-corpus-changed"));
+            return;
+        }
+
+        // P-6: catch-all so authorization-policy / description / title / etc. changes are
+        // surfaced rather than silently dropped. CompatibleWarning by default; if the key
+        // semantically demands Breaking, map it explicitly above.
+        deltas.Add(Delta(SchemaDeltaKind.MetadataChanged, SchemaCompatibilityDecision.CompatibleWarning, path, "schema.delta.metadata-changed"));
+    }
+
     private static SchemaCompatibilityDecision ComputeAggregate(List<SchemaDelta> deltas)
-        => deltas.Count == 0
+            => deltas.Count == 0
             ? SchemaCompatibilityDecision.Unknown
             : deltas.Any(d => d.Decision == SchemaCompatibilityDecision.Breaking)
                 ? SchemaCompatibilityDecision.Breaking
@@ -197,54 +244,11 @@ public static class SchemaMigrationDeltaAnalyzer {
         };
 
     /// <summary>
-    /// Exact metadata-key allowlist. Keys whose CHANGE has a specific compatibility meaning
-    /// (renderer capability, bounds, skill-corpus resource) are mapped to their dedicated delta
-    /// kinds; every other change emits a generic <see cref="SchemaDeltaKind.MetadataChanged"/>
-    /// delta so changes are never silently dropped (P-6, P-7).
+    /// P-9: bound the structural path length so a hostile or extremely deep field name cannot
+    /// balloon downstream telemetry/log payloads. Truncation is deterministic and marked.
     /// </summary>
-    private static readonly HashSet<string> RendererCapabilityKeys = new(StringComparer.Ordinal) {
-        "capability",
-        "outputContentType",
-    };
-
-    private static readonly HashSet<string> BoundsKeyPrefixes = new(StringComparer.Ordinal) {
-        "bounds.",
-    };
-
-    private static readonly HashSet<string> SkillCorpusKeys = new(StringComparer.Ordinal) {
-        "publicApiReferences",
-        "samplePaths",
-        "resourceCount",
-    };
-
-    private static void AddMetadataDelta(string key, List<SchemaDelta> deltas) {
-        string path = "$.Metadata." + key;
-
-        if (RendererCapabilityKeys.Contains(key)) {
-            deltas.Add(Delta(SchemaDeltaKind.RendererCapabilityChanged, SchemaCompatibilityDecision.Breaking, path, "schema.delta.renderer-contract-changed"));
-            return;
-        }
-
-        foreach (string prefix in BoundsKeyPrefixes) {
-            if (key.StartsWith(prefix, StringComparison.Ordinal)) {
-                deltas.Add(Delta(SchemaDeltaKind.BoundsChanged, SchemaCompatibilityDecision.CompatibleWarning, path, "schema.delta.bounds-changed"));
-                return;
-            }
-        }
-
-        if (SkillCorpusKeys.Contains(key)) {
-            deltas.Add(Delta(SchemaDeltaKind.SkillCorpusResourceChanged, SchemaCompatibilityDecision.CompatibleWarning, path, "schema.delta.skill-corpus-changed"));
-            return;
-        }
-
-        // P-6: catch-all so authorization-policy / description / title / etc. changes are
-        // surfaced rather than silently dropped. CompatibleWarning by default; if the key
-        // semantically demands Breaking, map it explicitly above.
-        deltas.Add(Delta(SchemaDeltaKind.MetadataChanged, SchemaCompatibilityDecision.CompatibleWarning, path, "schema.delta.metadata-changed"));
-    }
-
-    private static bool SequenceEqual(IReadOnlyList<string>? left, IReadOnlyList<string>? right)
-        => (left ?? []).OrderBy(v => v, StringComparer.Ordinal).SequenceEqual((right ?? []).OrderBy(v => v, StringComparer.Ordinal), StringComparer.Ordinal);
+    private static SchemaDelta Delta(SchemaDeltaKind kind, SchemaCompatibilityDecision decision, string path, string messageKey)
+        => new(kind, decision, TruncatePath(path), messageKey);
 
     private static bool DictionaryEqual(IReadOnlyDictionary<string, string>? left, IReadOnlyDictionary<string, string>? right)
         => (left ?? new Dictionary<string, string>(StringComparer.Ordinal))
@@ -253,30 +257,6 @@ public static class SchemaMigrationDeltaAnalyzer {
                 (right ?? new Dictionary<string, string>(StringComparer.Ordinal)).OrderBy(p => p.Key, StringComparer.Ordinal),
                 EqualityComparer<KeyValuePair<string, string>>.Default);
 
-    /// <summary>
-    /// P-9: bound the structural path length so a hostile or extremely deep field name cannot
-    /// balloon downstream telemetry/log payloads. Truncation is deterministic and marked.
-    /// </summary>
-    private static SchemaDelta Delta(SchemaDeltaKind kind, SchemaCompatibilityDecision decision, string path, string messageKey)
-        => new(kind, decision, TruncatePath(path), messageKey);
-
-    private static string TruncatePath(string path) {
-        if (path.Length <= MaxPathLength) {
-            return path;
-        }
-
-        // P-45 (8-6a Group B): UTF-16 Substring at code-unit MaxPathLength can split a surrogate
-        // pair and leave an unpaired high surrogate at the truncation boundary. Downstream JSON
-        // and structured-log encoders would then emit U+FFFD or non-deterministic escape
-        // sequences. Step back one code unit when the cut would land between paired surrogates.
-        int cut = MaxPathLength;
-        if (char.IsHighSurrogate(path[cut - 1])) {
-            cut--;
-        }
-
-        return path[..cut] + "...";
-    }
-
     private static SchemaMigrationDeltaResult Result(SchemaCompatibilityDecision decision, IReadOnlyList<SchemaDelta> deltas, bool truncated)
         => new(
             decision,
@@ -284,4 +264,25 @@ public static class SchemaMigrationDeltaAnalyzer {
             truncated,
             "HFC-SCHEMA-DELTA",
             "https://docs.hexalith.dev/frontcomposer/schema-migration");
+
+    private static bool SequenceEqual(IReadOnlyList<string>? left, IReadOnlyList<string>? right)
+                    => (left ?? []).OrderBy(v => v, StringComparer.Ordinal).SequenceEqual((right ?? []).OrderBy(v => v, StringComparer.Ordinal), StringComparer.Ordinal);
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0057:Use range operator", Justification = "Not supported in this context")]
+    private static string TruncatePath(string path) {
+        if (path.Length <= _maxPathLength) {
+            return path;
+        }
+
+        // P-45 (8-6a Group B): UTF-16 Substring at code-unit MaxPathLength can split a surrogate
+        // pair and leave an unpaired high surrogate at the truncation boundary. Downstream JSON
+        // and structured-log encoders would then emit U+FFFD or non-deterministic escape
+        // sequences. Step back one code unit when the cut would land between paired surrogates.
+        int cut = _maxPathLength;
+        if (char.IsHighSurrogate(path[cut - 1])) {
+            cut--;
+        }
+
+        return path.Substring(0, cut) + "...";
+    }
 }
