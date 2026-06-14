@@ -63,9 +63,7 @@ public sealed class FrontComposerNavigationCapabilityBadgeTests : LayoutComponen
         // counts.IsEmpty → VisibleProjections returns RenderableProjections (no Story-3-5 hide).
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("/counter/counter-view");
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("/counter/counter-view"));
     }
 
     [Fact]

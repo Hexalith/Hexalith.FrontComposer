@@ -1,7 +1,5 @@
 using System.Reflection;
 
-using Hexalith.FrontComposer.Contracts.Rendering;
-
 using Shouldly;
 
 using Xunit;
@@ -42,11 +40,10 @@ public class ProjectionContextTypeTests {
     }
 
     [Fact]
-    public void IsSealedToProhibitSubclassing() {
+    public void IsSealedToProhibitSubclassing() =>
         // Story 2-2 D27 — the cascading-parameter shape is frozen; adopter subclassing
         // would break value equality invariants and the incremental cache contract.
         typeof(Hexalith.FrontComposer.Contracts.Rendering.ProjectionContext).IsSealed.ShouldBeTrue();
-    }
 
     [Fact]
     public void CurrentShapeIsSealedRecordClassNotStruct_DocumentsDeferralToStory2_2Followup() {

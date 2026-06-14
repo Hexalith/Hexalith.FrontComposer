@@ -1,5 +1,5 @@
-using System.Security.Claims;
 using System.Diagnostics;
+using System.Security.Claims;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Communication;
@@ -27,7 +27,7 @@ public sealed class ToolAdmissionTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
         // Fail-closed parity (AC3): the unknown-tool envelope must not echo the requested name,
         // otherwise an absent tool would be distinguishable from a tenant/policy-hidden one.
@@ -160,9 +160,9 @@ public sealed class ToolAdmissionTests {
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             out RecordingCommandService service,
             services => {
-                services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ =>
+                _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ =>
                     new StaticAccessor(clientFingerprintHint: SchemaHintFor("stale-client")));
-                services.AddSingleton<IFrontComposerMcpTenantToolGate>(
+                _ = services.AddSingleton<IFrontComposerMcpTenantToolGate>(
                     new TenantBoundedContextGate(new Dictionary<string, string>(StringComparer.Ordinal) {
                         ["Billing"] = "tenant-a",
                         ["Catalog"] = "tenant-b",
@@ -193,9 +193,9 @@ public sealed class ToolAdmissionTests {
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             out RecordingCommandService service,
             services => {
-                services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ =>
+                _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ =>
                     new StaticAccessor(clientFingerprintHint: SchemaHintFor("stale-client")));
-                services.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new DenyingPolicyGate());
+                _ = services.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new DenyingPolicyGate());
             });
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
@@ -246,7 +246,7 @@ public sealed class ToolAdmissionTests {
             TestContext.Current.CancellationToken);
 
         result.IsError.ShouldBeFalse();
-        service.Dispatched.ShouldBeOfType<RestrictedCommand>();
+        _ = service.Dispatched.ShouldBeOfType<RestrictedCommand>();
     }
 
     [Fact]
@@ -377,7 +377,7 @@ public sealed class ToolAdmissionTests {
 
         List<long> elapsed = [];
         for (int i = 0; i < 30; i++) {
-            Stopwatch sw = Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
             FrontComposerMcpResult result = await invoker.InvokeAsync(
                 $"Billing.Missing{i}.Execute",
                 null,
@@ -397,18 +397,18 @@ public sealed class ToolAdmissionTests {
         Action<FrontComposerMcpOptions>? configureOptions = null) {
         service = new RecordingCommandService();
         ServiceCollection sc = new();
-        sc.AddSingleton<ICommandService>(service);
-        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
-        sc.Configure<FrontComposerMcpOptions>(o => {
+        _ = sc.AddSingleton<ICommandService>(service);
+        _ = sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
+        _ = sc.Configure<FrontComposerMcpOptions>(o => {
             o.Manifests.Add(Manifest());
             configureOptions?.Invoke(o);
         });
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        sc.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>));
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>));
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         configureServices?.Invoke(sc);
         ServiceProvider provider = sc.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
@@ -416,13 +416,13 @@ public sealed class ToolAdmissionTests {
 
     private static FrontComposerMcpToolAdmissionService BuildAdmission(Action<IServiceCollection>? configureServices = null) {
         ServiceCollection sc = new();
-        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        sc.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>));
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>));
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         configureServices?.Invoke(sc);
         ServiceProvider provider = sc.BuildServiceProvider();
         return provider.GetRequiredService<FrontComposerMcpToolAdmissionService>();
@@ -432,7 +432,7 @@ public sealed class ToolAdmissionTests {
         => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
 
     private static SchemaFingerprint SchemaHintFor(string scenario)
-        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x').Substring(0, 64));
+        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x')[..64]);
 
     private static McpManifest Manifest()
         => new("frontcomposer.mcp.v1", [

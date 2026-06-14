@@ -37,8 +37,8 @@ public class PaletteScorerPropertyTests {
             return true;
         }
 
-        int shorter = PaletteScorer.Score(c.Substring(0, 1), c);
-        int longer = PaletteScorer.Score(c.Substring(0, 2), c);
+        int shorter = PaletteScorer.Score(c[..1], c);
+        int longer = PaletteScorer.Score(c[..2], c);
         return longer > shorter;
     }
 }

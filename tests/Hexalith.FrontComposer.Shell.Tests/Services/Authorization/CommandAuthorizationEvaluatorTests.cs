@@ -311,9 +311,7 @@ public sealed class CommandAuthorizationEvaluatorTests {
 
         public bool IsEnabled(LogLevel logLevel) => true;
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
-            _entries.Add(formatter(state, exception));
-        }
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => _entries.Add(formatter(state, exception));
     }
 
     private static CommandAuthorizationEvaluator Create(

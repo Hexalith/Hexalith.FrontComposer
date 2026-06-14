@@ -101,7 +101,7 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
             return;
         }
 
-        TimeSpan interval = TimeSpan.FromMilliseconds(intervalMs);
+        var interval = TimeSpan.FromMilliseconds(intervalMs);
         _ = _timer.Change(interval, interval);
     }
 

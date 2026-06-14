@@ -12,15 +12,13 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
-public sealed class CommandExecutionAdmissionGateTests
-{
+public sealed class CommandExecutionAdmissionGateTests {
     private const string CommandTypeName = "Counter.Increment";
     private const string MessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
     private const string CorrelationId = "01CPZ3NDEKTSV4RRFFQ69G5FAV";
 
     [Fact]
-    public void TryAcquire_WhenIdle_AdmitsFirstCommand()
-    {
+    public void TryAcquire_WhenIdle_AdmitsFirstCommand() {
         CommandExecutionAdmissionGate sut = Create();
 
         using CommandExecutionAdmission admission = sut.TryAcquire(Request());
@@ -30,8 +28,7 @@ public sealed class CommandExecutionAdmissionGateTests
     }
 
     [Fact]
-    public void TryAcquire_WhenAdmissionAlreadyHeld_DeniesSecondCommand()
-    {
+    public void TryAcquire_WhenAdmissionAlreadyHeld_DeniesSecondCommand() {
         CommandExecutionAdmissionGate sut = Create();
         using CommandExecutionAdmission first = sut.TryAcquire(Request());
 
@@ -44,8 +41,7 @@ public sealed class CommandExecutionAdmissionGateTests
     }
 
     [Fact]
-    public void TryAcquire_WhenPendingSnapshotContainsPendingEntry_DeniesAdmission()
-    {
+    public void TryAcquire_WhenPendingSnapshotContainsPendingEntry_DeniesAdmission() {
         PendingCommandStateService pending = CreatePendingState();
         pending.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
         CommandExecutionAdmissionGate sut = Create(pending);
@@ -62,8 +58,7 @@ public sealed class CommandExecutionAdmissionGateTests
     [InlineData(PendingCommandTerminalOutcome.Rejected)]
     [InlineData(PendingCommandTerminalOutcome.IdempotentConfirmed)]
     [InlineData(PendingCommandTerminalOutcome.NeedsReview)]
-    public void TryAcquire_WhenOnlyTerminalEntriesExist_AdmitsCommand(PendingCommandTerminalOutcome outcome)
-    {
+    public void TryAcquire_WhenOnlyTerminalEntriesExist_AdmitsCommand(PendingCommandTerminalOutcome outcome) {
         PendingCommandStateService pending = CreatePendingState();
         pending.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
         pending.ResolveTerminal(Observation(outcome)).Status.ShouldBe(PendingCommandResolutionStatus.Resolved);
@@ -75,18 +70,15 @@ public sealed class CommandExecutionAdmissionGateTests
     }
 
     [Fact]
-    public void Dispose_AfterExceptionalPath_ReleasesAdmissionFlag()
-    {
+    public void Dispose_AfterExceptionalPath_ReleasesAdmissionFlag() {
         CommandExecutionAdmissionGate sut = Create();
 
-        try
-        {
+        try {
             using CommandExecutionAdmission admission = sut.TryAcquire(Request());
             admission.IsAdmitted.ShouldBeTrue();
             throw new InvalidOperationException("simulated dispatch failure");
         }
-        catch (InvalidOperationException)
-        {
+        catch (InvalidOperationException) {
         }
 
         using CommandExecutionAdmission next = sut.TryAcquire(Request("Counter.Reset"));
@@ -99,8 +91,7 @@ public sealed class CommandExecutionAdmissionGateTests
     private static CommandExecutionAdmissionRequest Request(string commandTypeName = CommandTypeName) =>
         new(commandTypeName, "Submit command");
 
-    private static PendingCommandStateService CreatePendingState()
-    {
+    private static PendingCommandStateService CreatePendingState() {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
         return new PendingCommandStateService(
             global::Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
@@ -117,8 +108,7 @@ public sealed class CommandExecutionAdmissionGateTests
             CommandTypeName);
 
     private static PendingCommandTerminalObservation Observation(PendingCommandTerminalOutcome outcome) =>
-        outcome switch
-        {
+        outcome switch {
             PendingCommandTerminalOutcome.Confirmed => PendingCommandTerminalObservation.Confirmed(MessageId),
             PendingCommandTerminalOutcome.Rejected => PendingCommandTerminalObservation.Rejected(MessageId, "Rejected", "No change was applied."),
             PendingCommandTerminalOutcome.IdempotentConfirmed => PendingCommandTerminalObservation.IdempotentConfirmed(MessageId),

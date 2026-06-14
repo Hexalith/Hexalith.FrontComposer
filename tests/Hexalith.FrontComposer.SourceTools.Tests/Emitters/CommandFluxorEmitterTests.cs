@@ -9,8 +9,7 @@ using Shouldly;
 namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 
 public class CommandFluxorEmitterTests {
-    private static CommandFluxorModel BuildModel(string typeName = "IncrementCommand", string @namespace = "Counter.Domain") {
-        return new CommandFluxorModel(
+    private static CommandFluxorModel BuildModel(string typeName = "IncrementCommand", string @namespace = "Counter.Domain") => new(
             typeName,
             @namespace,
             typeName + "LifecycleState",
@@ -19,7 +18,6 @@ public class CommandFluxorEmitterTests {
             typeName + "Reducers",
             @namespace + "." + typeName,
             @namespace + "." + typeName + "LifecycleState");
-    }
 
     [Fact]
     public void Actions_Emit_ContainsAllFiveLifecycleRecords() {

@@ -17,7 +17,7 @@ public readonly record struct CustomizationContractVersion(int Major, int Minor,
                 "Packed customization contract versions are non-negative integers of the form Major*1_000_000 + Minor*1_000 + Build.");
         }
 
-        return new(packed / 1_000_000, (packed / 1_000) % 1_000, packed % 1_000);
+        return new(packed / 1_000_000, packed / 1_000 % 1_000, packed % 1_000);
     }
 
     /// <summary>

@@ -36,7 +36,7 @@ public sealed class RazorEmitterScopeGuardrailTests {
     [InlineData(ProjectionRenderStrategy.Timeline)]
     [InlineData(ProjectionRenderStrategy.Dashboard)]
     public void ProjectionViewBodyStaysMinimal(ProjectionRenderStrategy strategy) {
-        RazorModel model = new RazorModel(
+        var model = new RazorModel(
             "OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 new ColumnModel("Id", "Id", TypeCategory.Text, null, false, _emptyBadges),

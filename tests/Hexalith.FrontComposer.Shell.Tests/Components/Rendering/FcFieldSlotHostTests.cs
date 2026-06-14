@@ -1,6 +1,5 @@
 using Bunit;
 
-using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Rendering;
@@ -15,8 +14,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Rendering;
 
@@ -67,7 +64,7 @@ public sealed class FcFieldSlotHostTests : BunitContext {
     public void Render_NoDescriptor_FallsBackToRenderDefault() {
         Services.Replace(ServiceDescriptor.Singleton<IProjectionSlotRegistry>(EmptyRegistry()));
 
-        RenderFragment<FieldSlotContext<SlotProjection, int>> defaultFragment = ctx => builder => {
+        RenderFragment defaultFragment(FieldSlotContext<SlotProjection, int> ctx) => builder => {
             builder.OpenElement(0, "span");
             builder.AddAttribute(1, "data-default", "true");
             builder.AddContent(2, $"v={ctx.Value}");
@@ -129,7 +126,7 @@ public sealed class FcFieldSlotHostTests : BunitContext {
         Services.Replace(ServiceDescriptor.Singleton<IProjectionSlotRegistry>(registry));
 
         bool defaultInvoked = false;
-        RenderFragment<FieldSlotContext<SlotProjection, int>> defaultFragment = _ => builder => {
+        RenderFragment defaultFragment(FieldSlotContext<SlotProjection, int> _) => builder => {
             defaultInvoked = true;
             builder.OpenElement(0, "span");
             builder.AddAttribute(1, "data-fallback", "true");
@@ -179,12 +176,12 @@ public sealed class FcFieldSlotHostTests : BunitContext {
         cut.Markup.ShouldContain("role=\"alert\"");
 
         // Log entry redaction.
-        (LogLevel Level, string Message) entry = _logger.Entries
+        (LogLevel Level, string Message) = _logger.Entries
             .Where(e => e.Message.Contains(FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault))
             .ShouldHaveSingleItem();
-        entry.Message.ShouldContain("HFC2115");
-        entry.Message.ShouldNotContain("PayloadValueMustNotLog");
-        entry.Message.ShouldNotContain("raw slot exception");
+        Message.ShouldContain("HFC2115");
+        Message.ShouldNotContain("PayloadValueMustNotLog");
+        Message.ShouldNotContain("raw slot exception");
 
         // Sink event redaction.
         DevDiagnosticEvent evt = sink.RecentEvents.ShouldHaveSingleItem();

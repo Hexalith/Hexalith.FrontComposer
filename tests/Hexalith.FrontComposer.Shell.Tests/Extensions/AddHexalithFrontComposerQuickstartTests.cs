@@ -16,12 +16,10 @@ namespace Hexalith.FrontComposer.Shell.Tests.Extensions;
 /// <summary>
 /// Story 3-1 Task 10.14 (D28) — Quickstart sugar extension tests.
 /// </summary>
-public sealed class AddHexalithFrontComposerQuickstartTests
-{
+public sealed class AddHexalithFrontComposerQuickstartTests {
     [Fact]
-    public void ResolvesIStorageServiceAsScoped()
-    {
-        ServiceCollection services = new();
+    public void ResolvesIStorageServiceAsScoped() {
+        ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposerQuickstart();
         services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
@@ -36,9 +34,8 @@ public sealed class AddHexalithFrontComposerQuickstartTests
     }
 
     [Fact]
-    public void ResolvesIStringLocalizer()
-    {
-        ServiceCollection services = new();
+    public void ResolvesIStringLocalizer() {
+        ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposerQuickstart();
         services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
@@ -51,9 +48,8 @@ public sealed class AddHexalithFrontComposerQuickstartTests
     }
 
     [Fact]
-    public void IdempotentAgainstDuplicateAddLocalization()
-    {
-        ServiceCollection services = new();
+    public void IdempotentAgainstDuplicateAddLocalization() {
+        ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddLocalization(); // adopter registers FIRST
         _ = services.AddHexalithFrontComposerQuickstart();
@@ -68,12 +64,10 @@ public sealed class AddHexalithFrontComposerQuickstartTests
     }
 
     [Fact]
-    public void ConfiguresRequestLocalizationFromShellOptions()
-    {
-        ServiceCollection services = new();
+    public void ConfiguresRequestLocalizationFromShellOptions() {
+        ServiceCollection services = [];
         _ = services.AddLogging();
-        _ = services.Configure<FcShellOptions>(o =>
-        {
+        _ = services.Configure<FcShellOptions>(o => {
             o.DefaultCulture = "fr";
             o.SupportedCultures = ["fr", "en"];
         });

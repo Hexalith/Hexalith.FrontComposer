@@ -31,7 +31,7 @@ public sealed class ProjectionReaderTaxonomyTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(expectedCategory);
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe(expectedTaxonomy);
         result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe(expectedDocsCode);
         result.StructuredContent!["retryable"]!.GetValue<bool>().ShouldBe(expectedRetryable);
@@ -79,7 +79,7 @@ public sealed class ProjectionReaderTaxonomyTests {
             TestContext.Current.CancellationToken);
 
         result.IsError.ShouldBeTrue();
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe(expectedTaxonomy);
         result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe(expectedDocsCode);
         result.StructuredContent!["retryable"]!.GetValue<bool>().ShouldBe(expectedRetryable);
@@ -127,9 +127,9 @@ public sealed class ProjectionReaderTaxonomyTests {
         FrontComposerMcpProjectionReader reader = BuildReader(
             query,
             configureServices: services => {
-                services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(
+                _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(
                     new ToggleResourceVisibilityGate(visible: false));
-                services.AddSingleton<IFrontComposerMcpVisibleToolCatalogProvider>(catalog);
+                _ = services.AddSingleton<IFrontComposerMcpVisibleToolCatalogProvider>(catalog);
             });
 
         FrontComposerMcpResult result = await reader.ReadAsync(
@@ -172,8 +172,8 @@ public sealed class ProjectionReaderTaxonomyTests {
             query,
             manifest: Manifest(renderStrategy: McpProjectionRenderStrategy.Dashboard),
             configureServices: services => {
-                services.AddSingleton<IFrontComposerMcpProjectionRenderer>(renderer);
-                services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
+                _ = services.AddSingleton<IFrontComposerMcpProjectionRenderer>(renderer);
+                _ = services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
                     // P-1 sampled epochs at preLookup + postLookup, so this sequence covers
                     // four reads: preLookup, postLookup, preQuery-validate (query runs), preRender-validate (advance).
                     new SequenceEpochProvider(
@@ -209,9 +209,9 @@ public sealed class ProjectionReaderTaxonomyTests {
             query,
             manifest: Manifest(renderStrategy: McpProjectionRenderStrategy.Dashboard),
             configureServices: services => {
-                services.AddSingleton<IFrontComposerMcpProjectionRenderer>(renderer);
-                services.RemoveAll<IFrontComposerMcpResourceVisibilityGate>();
-                services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(gate);
+                _ = services.AddSingleton<IFrontComposerMcpProjectionRenderer>(renderer);
+                _ = services.RemoveAll<IFrontComposerMcpResourceVisibilityGate>();
+                _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(gate);
             });
 
         FrontComposerMcpResult result = await reader.ReadAsync(
@@ -235,19 +235,19 @@ public sealed class ProjectionReaderTaxonomyTests {
         Action<FrontComposerMcpOptions>? configureOptions = null,
         Action<IServiceCollection>? configureServices = null) {
         ServiceCollection services = [];
-        services.AddSingleton(queryService);
-        services.Configure<FrontComposerMcpOptions>(o => {
+        _ = services.AddSingleton(queryService);
+        _ = services.Configure<FrontComposerMcpOptions>(o => {
             o.Manifests.Add(manifest ?? Manifest());
             configureOptions?.Invoke(o);
         });
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => accessor ?? new StaticAccessor());
-        services.AddScoped<FrontComposerMcpProjectionReader>();
-        services.AddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => accessor ?? new StaticAccessor());
+        _ = services.AddScoped<FrontComposerMcpProjectionReader>();
+        _ = services.AddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
         // P-3: visibility gate is required by the reader. Tests register a permissive default
         // so every reader build resolves a gate; tests that need restrictive visibility can
         // still override via configureServices.
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         configureServices?.Invoke(services);
         ServiceProvider provider = services.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);

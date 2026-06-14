@@ -10,7 +10,6 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Microsoft.FSharp.Core;
 
@@ -62,7 +61,7 @@ public sealed class CommandIdempotencyPropertyTests {
     [Fact]
     [Trait("Category", "NightlyProperty")]
     public void Nightly_replay_preserves_terminal_outcomes_and_transition_stream() {
-        PropertyReplaySeed replaySeed = PropertyReplaySeed.FromEnvironmentOrRandom();
+        var replaySeed = PropertyReplaySeed.FromEnvironmentOrRandom();
         Config config = Config.QuickThrowOnFailure
             .WithMaxTest(GetPropertyMaxTest(defaultValue: 10000))
             .WithMaxRejected(0)
@@ -75,7 +74,7 @@ public sealed class CommandIdempotencyPropertyTests {
             config,
             FProp.ForAll(
                 CommandSequenceArbitraries.CommandSequence(),
-                (CommandSequence sequence) => Replay_preserves_terminal_outcomes_and_transition_stream(sequence)));
+                Replay_preserves_terminal_outcomes_and_transition_stream));
     }
 
     [Property(
@@ -159,7 +158,7 @@ public sealed class CommandIdempotencyPropertyTests {
             JsonOptions) ?? throw new InvalidOperationException("Could not read counterexample catalog.");
 
         foreach (CounterexampleFixture fixture in catalog.Fixtures) {
-            CommandSequence sequence = CommandSequence.FromFixture(fixture);
+            var sequence = CommandSequence.FromFixture(fixture);
             Evaluation result = Evaluate(sequence);
             string correlation = fixture.MinimalSequence[0].Correlation;
 
@@ -197,15 +196,15 @@ public sealed class CommandIdempotencyPropertyTests {
 
         Dictionary<string, CommandLifecycleState> finalStates = Correlations.ToDictionary(c => c, service.GetState);
         Dictionary<string, string?> messageIds = Correlations.ToDictionary(c => c, service.GetMessageId);
-        Dictionary<string, int> visibleOutcomes = transitions.ToDictionary(
+        var visibleOutcomes = transitions.ToDictionary(
             pair => pair.Key,
             pair => pair.Value.Count(t => IsTerminal(t.NewState) && !t.IdempotencyResolved));
-        Dictionary<string, int> idempotentTerminals = transitions.ToDictionary(
+        var idempotentTerminals = transitions.ToDictionary(
             pair => pair.Key,
             pair => pair.Value.Count(t => IsTerminal(t.NewState) && t.IdempotencyResolved));
-        Dictionary<string, IReadOnlyList<CommandLifecycleState>> statesByCorrelation = transitions.ToDictionary(
+        var statesByCorrelation = transitions.ToDictionary(
             pair => pair.Key,
-            pair => (IReadOnlyList<CommandLifecycleState>) pair.Value.Select(t => t.NewState).ToArray());
+            pair => (IReadOnlyList<CommandLifecycleState>)pair.Value.Select(t => t.NewState).ToArray());
         string[] trace = transitions
             .SelectMany(pair => pair.Value.Select(t => $"{pair.Key}:{t.PreviousState}->{t.NewState}:idempotent={t.IdempotencyResolved}:message={Redact(t.MessageId)}"))
             .Order(StringComparer.Ordinal)
@@ -379,9 +378,9 @@ public sealed class CommandIdempotencyPropertyTests {
         public static CommandOperation FromToken(int token) {
             int value = Math.Abs(token);
             return new CommandOperation(
-                (OperationKind) (value % 10),
-                (value / 10) % Correlations.Length,
-                (value / 40) % 6,
+                (OperationKind)(value % 10),
+                value / 10 % Correlations.Length,
+                value / 40 % 6,
                 (value & 1) == 0);
         }
 
@@ -447,8 +446,6 @@ public sealed class CommandIdempotencyPropertyTests {
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter) {
-            Messages.Add(formatter(state, exception));
-        }
+            Func<TState, Exception?, string> formatter) => Messages.Add(formatter(state, exception));
     }
 }

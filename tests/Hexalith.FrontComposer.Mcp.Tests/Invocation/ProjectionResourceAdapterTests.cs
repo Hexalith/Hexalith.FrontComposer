@@ -32,7 +32,7 @@ public sealed class ProjectionResourceAdapterTests {
         text.MimeType.ShouldBe("text/markdown");
         text.Text.ShouldContain("# Invoices");
         text.Text.ShouldContain("INV-1");
-        query.Request.ShouldNotBeNull();
+        _ = query.Request.ShouldNotBeNull();
         query.Request!.TenantId.ShouldBe("tenant-a");
     }
 
@@ -115,12 +115,12 @@ public sealed class ProjectionResourceAdapterTests {
         IQueryService queryService,
         Action<IServiceCollection>? configureServices = null) {
         ServiceCollection services = [];
-        services.AddSingleton(queryService);
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddScoped<IFrontComposerMcpAgentContextAccessor, StaticAgentContextAccessor>();
-        services.AddScoped<FrontComposerMcpProjectionReader>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton(queryService);
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor, StaticAgentContextAccessor>();
+        _ = services.AddScoped<FrontComposerMcpProjectionReader>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         configureServices?.Invoke(services);
         return services.BuildServiceProvider();
     }

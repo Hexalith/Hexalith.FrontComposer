@@ -2,7 +2,6 @@ using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Mcp.Schema;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 
@@ -212,7 +211,6 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             ]);
         }
 
-#pragma warning disable CS0618, HFC4001
         return new McpSchemaNegotiationInput(
             IsHiddenOrUnknown: row.IsHidden,
             IsStaleDescriptor: row.IsStale,
@@ -223,7 +221,6 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             HasSchemaIntegrityMismatch: row.IntegrityMismatch,
             Baseline: baseline,
             Server: serverSnapshot);
-#pragma warning restore CS0618, HFC4001
     }
 
     private static SchemaBaselineSnapshot BuildSnapshot(string fingerprintValue, IReadOnlyList<SchemaFieldContract> fields)

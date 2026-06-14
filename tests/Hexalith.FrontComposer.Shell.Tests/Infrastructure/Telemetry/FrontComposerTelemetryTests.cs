@@ -5,8 +5,6 @@ using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 [Trait("Category", "Governance")]
@@ -39,7 +37,7 @@ public sealed class FrontComposerTelemetryTests {
         // F36 / D14 — Telemetry helpers must not throw when inputs are degenerate. Derivation
         // failures (null, whitespace, unrepresentable) must produce a no-op or bounded marker
         // without affecting caller behaviour.
-        using ActivityCapture capture = ActivityCapture.Start();
+        using var capture = ActivityCapture.Start();
 
         using (Activity? activity = FrontComposerTelemetry.StartCommandDispatch(
             string.Empty,
@@ -62,7 +60,7 @@ public sealed class FrontComposerTelemetryTests {
 
     [Fact]
     public void CommandDispatchActivity_UsesApprovedNameAndSanitizedTags() {
-        using ActivityCapture capture = ActivityCapture.Start();
+        using var capture = ActivityCapture.Start();
         const string messageId = "01HX-CORR_123-telemetry-test";
 
         using (Activity? activity = FrontComposerTelemetry.StartCommandDispatch(
@@ -88,7 +86,7 @@ public sealed class FrontComposerTelemetryTests {
 
     [Fact]
     public void NestedActivities_ParentUnderCurrentActivity() {
-        using ActivityCapture capture = ActivityCapture.Start();
+        using var capture = ActivityCapture.Start();
         using ActivitySource parentSource = new("test-parent");
         using Activity? parent = parentSource.StartActivity("parent");
         const string correlationId = "corr-parent-test-unique";
@@ -111,10 +109,8 @@ public sealed class FrontComposerTelemetryTests {
     }
 
     [Fact]
-    public void FailureCategory_IsBoundedAndSanitized() {
-        FrontComposerTelemetry.BoundCategory("bad value\r\nwith spaces and a very very very very very long suffix")
+    public void FailureCategory_IsBoundedAndSanitized() => FrontComposerTelemetry.BoundCategory("bad value\r\nwith spaces and a very very very very very long suffix")
             .ShouldBe("bad_value__with_spaces_and_a_very_very_very_very_very_long_suffi");
-    }
 
     private sealed class ActivityCapture : IDisposable {
         private readonly ActivityListener _listener;

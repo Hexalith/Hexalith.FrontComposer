@@ -64,7 +64,7 @@ public sealed class SkillCorpusTests {
         // P-34: AC15 covers nested, overlapping, unterminated, AND duplicated marker blocks. A
         // dedicated test case for the duplicate-block scenario (two consecutive openers of the
         // same kind) protects the seenKinds guard from regression.
-        string BuildSource(string body) => $$"""
+        static string BuildSource(string body) => $$"""
             ---
             id: bad
             title: Bad
@@ -404,7 +404,7 @@ public sealed class SkillCorpusTests {
             current,
             new EmptySkillCorpusBaselineProvider());
 
-        result.Diagnostics.ShouldHaveSingleItem();
+        _ = result.Diagnostics.ShouldHaveSingleItem();
         result.Diagnostics.Single().Category.ShouldBe(SkillCorpusDiagnosticCategory.BaselineMismatch);
     }
 

@@ -1,5 +1,4 @@
 using System.Collections.Frozen;
-using System.Collections.Generic;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 
@@ -22,8 +21,8 @@ namespace Hexalith.FrontComposer.Shell.Components.Badges;
 /// <see cref="BadgeSlot"/> without a matching entry here fails the test at build time.</para>
 /// </remarks>
 internal static class SlotAppearanceTable {
-    private static readonly FrozenDictionary<BadgeSlot, (BadgeColor Color, BadgeAppearance Appearance)> _mapping =
-        new KeyValuePair<BadgeSlot, (BadgeColor, BadgeAppearance)>[] {
+    /// <summary>Gets the frozen lookup of slot → (color, appearance).</summary>
+    public static FrozenDictionary<BadgeSlot, (BadgeColor Color, BadgeAppearance Appearance)> Mapping { get; } = new KeyValuePair<BadgeSlot, (BadgeColor, BadgeAppearance)>[] {
             new(BadgeSlot.Neutral, (BadgeColor.Subtle, BadgeAppearance.Tint)),
             new(BadgeSlot.Info, (BadgeColor.Informative, BadgeAppearance.Tint)),
             new(BadgeSlot.Success, (BadgeColor.Success, BadgeAppearance.Tint)),
@@ -32,14 +31,11 @@ internal static class SlotAppearanceTable {
             new(BadgeSlot.Accent, (BadgeColor.Brand, BadgeAppearance.Filled)),
         }.ToFrozenDictionary();
 
-    /// <summary>Gets the frozen lookup of slot → (color, appearance).</summary>
-    public static FrozenDictionary<BadgeSlot, (BadgeColor Color, BadgeAppearance Appearance)> Mapping => _mapping;
-
     /// <summary>
     /// Resolves the Fluent UI v5 visual pair for a given slot. Throws
     /// <see cref="KeyNotFoundException"/> when the caller passes a slot that is not declared
     /// on <see cref="BadgeSlot"/> (for example the result of an unsafe cast). Callers should
     /// treat that as a programmer error — the component API makes it unreachable in practice.
     /// </summary>
-    public static (BadgeColor Color, BadgeAppearance Appearance) Resolve(BadgeSlot slot) => _mapping[slot];
+    public static (BadgeColor Color, BadgeAppearance Appearance) Resolve(BadgeSlot slot) => Mapping[slot];
 }

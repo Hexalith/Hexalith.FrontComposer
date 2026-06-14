@@ -57,9 +57,8 @@ public partial class FcAccountMenu : ComponentBase {
 
     private void SignOut() => NavigateToAuthEndpoint(AuthenticationOptions.Value.Redirect.LogoutPath);
 
-    private void NavigateToAuthEndpoint(string path) {
+    private void NavigateToAuthEndpoint(string path) =>
         // forceLoad guarantees the full server round-trip the cookie/OIDC endpoints require, matching
         // the retired Tenants auth-bar's data-enhance-nav="false" anchors.
         NavigationManager.NavigateTo($"{path}?returnUrl=/", forceLoad: true);
-    }
 }

@@ -113,14 +113,12 @@ public sealed class Story13AccessibilityPrimitivesTests : LayoutComponentTestBas
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));
 
-        cut.WaitForAssertion(() => {
-            // AC1 names *every* interactive shell-chrome element — the auto-populated navigation
-            // landmark (the #fc-nav focus target's content) must itself carry the localized accessible
-            // name so the skip-to-nav link lands on a named region, not an anonymous one. Asserted
-            // against the localized IStringLocalizer<FcShellResources> value (FC-L10N-safe), not English.
+        cut.WaitForAssertion(() =>             // AC1 names *every* interactive shell-chrome element — the auto-populated navigation
+                                               // landmark (the #fc-nav focus target's content) must itself carry the localized accessible
+                                               // name so the skip-to-nav link lands on a named region, not an anonymous one. Asserted
+                                               // against the localized IStringLocalizer<FcShellResources> value (FC-L10N-safe), not English.
             cut.Find("[data-testid=\"fc-navigation-full\"]").GetAttribute("aria-label")
-                .ShouldBe(navLabel);
-        });
+                .ShouldBe(navLabel));
     }
 
     // ── AC2 / primitive #3 — aria-live politeness ladder wired into the shell frame ──────────────

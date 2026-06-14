@@ -12,8 +12,6 @@ using Microsoft.Extensions.Options;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 /// <summary>
@@ -170,9 +168,7 @@ public sealed class EventStoreDiagnosticsTests {
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter) {
-            Entries.Add(new Entry(logLevel, formatter(state, exception)));
-        }
+            Func<TState, Exception?, string> formatter) => Entries.Add(new Entry(logLevel, formatter(state, exception)));
 
         public sealed record Entry(LogLevel Level, string Message);
     }

@@ -1,5 +1,3 @@
-using System.Collections.Immutable;
-
 namespace Hexalith.FrontComposer.SourceTools.Parsing;
 
 /// <summary>

@@ -8,11 +8,8 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 

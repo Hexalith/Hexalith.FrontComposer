@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Hexalith.FrontComposer.SourceTools.Parsing;
@@ -184,7 +183,7 @@ public static class CommandParser {
         // Case-insensitive dedup + MessageId lookup (patch 2026-04-16 P-02): a property named
         // `messageId` satisfies the runtime MessageId contract, so HFC1006 must not fire on casing alone.
         HashSet<string> seenNames = new(StringComparer.Ordinal);
-        List<IPropertySymbol> nonDerivableSymbols = new();
+        List<IPropertySymbol> nonDerivableSymbols = [];
         INamedTypeSymbol? currentType = typeSymbol;
         while (currentType is not null && currentType.SpecialType != SpecialType.System_Object) {
             foreach (ISymbol member in currentType.GetMembers()) {
@@ -611,26 +610,26 @@ public static class CommandParser {
 
         // Escape control characters so log readers see "\\t" / "\\n" rather than embedded whitespace.
         var sb = new System.Text.StringBuilder(truncated.Length + 2);
-        sb.Append('\'');
+        _ = sb.Append('\'');
         foreach (char c in truncated) {
             switch (c) {
-                case '\t': sb.Append("\\t"); break;
-                case '\r': sb.Append("\\r"); break;
-                case '\n': sb.Append("\\n"); break;
-                case '\\': sb.Append("\\\\"); break;
+                case '\t': _ = sb.Append("\\t"); break;
+                case '\r': _ = sb.Append("\\r"); break;
+                case '\n': _ = sb.Append("\\n"); break;
+                case '\\': _ = sb.Append("\\\\"); break;
                 default:
                     if (char.IsControl(c)) {
-                        sb.Append("\\u").Append(((int)c).ToString("X4", System.Globalization.CultureInfo.InvariantCulture));
+                        _ = sb.Append("\\u").Append(((int)c).ToString("X4", System.Globalization.CultureInfo.InvariantCulture));
                     }
                     else {
-                        sb.Append(c);
+                        _ = sb.Append(c);
                     }
 
                     break;
             }
         }
 
-        sb.Append('\'');
+        _ = sb.Append('\'');
         return sb.ToString();
     }
 
@@ -734,7 +733,7 @@ public static class CommandParser {
             }
 
             if (!assignable) {
-                AttributeSyntax? attrSyntax = attr.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
+                var attrSyntax = attr.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
                 Microsoft.CodeAnalysis.Text.LinePosition linePos = attrSyntax?.GetLocation().GetLineSpan().StartLinePosition ?? default;
                 diagnostics.Add(new DiagnosticInfo(
                     "HFC1012",

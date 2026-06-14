@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.IO;
 
 using Hexalith.FrontComposer.SourceTools.Emitters;
 using Hexalith.FrontComposer.SourceTools.Parsing;
@@ -27,7 +26,7 @@ public class RazorEmitterStrategyDispatchTests {
     private static RazorModel BuildModel(
         ProjectionRenderStrategy strategy,
         EquatableArray<string>? whenStates = null) =>
-        new RazorModel(
+        new(
             typeName: "OrderProjection",
             @namespace: "TestDomain",
             boundedContext: "Orders",
@@ -48,7 +47,7 @@ public class RazorEmitterStrategyDispatchTests {
         bool isNullable = false,
         EquatableArray<BadgeMappingEntry>? badges = null,
         EquatableArray<string> enumMemberNames = default) =>
-        new ColumnModel(name, header, category, formatHint, isNullable, badges ?? _emptyBadges, enumMemberNames);
+        new(name, header, category, formatHint, isNullable, badges ?? _emptyBadges, enumMemberNames);
 
     [Theory]
     [InlineData(ProjectionRenderStrategy.Default)]

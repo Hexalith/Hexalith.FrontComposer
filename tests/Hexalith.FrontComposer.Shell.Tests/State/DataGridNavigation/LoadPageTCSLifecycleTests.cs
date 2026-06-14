@@ -1,8 +1,5 @@
 #pragma warning disable CA2007
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -71,7 +68,7 @@ public sealed class LoadPageTCSLifecycleTests {
         TaskCompletionSource<object> b = new();
         TaskCompletionSource<object> c = new();
 
-        LoadedPageState state = new LoadedPageState();
+        var state = new LoadedPageState();
         state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 0, a));
         state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 20, b));
         state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 40, c));
@@ -90,7 +87,7 @@ public sealed class LoadPageTCSLifecycleTests {
         TaskCompletionSource<object> ordersTcs = new();
         TaskCompletionSource<object> usersTcs = new();
 
-        LoadedPageState state = new LoadedPageState();
+        var state = new LoadedPageState();
         state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage("acme:Orders", 0, ordersTcs));
         state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage("acme:Users", 0, usersTcs));
 
@@ -150,7 +147,7 @@ public sealed class LoadPageTCSLifecycleTests {
         second.Task.IsCompleted.ShouldBeFalse();
         state.PagesByKey.ContainsKey((ViewKey, 0)).ShouldBeFalse();
 
-        state = reducers.ReduceLoadPageSucceeded(
+        _ = reducers.ReduceLoadPageSucceeded(
             state,
             new LoadPageSucceededAction(ViewKey, 0, items, totalCount: 1, elapsedMs: 1, completion: secondAction.Completion));
 

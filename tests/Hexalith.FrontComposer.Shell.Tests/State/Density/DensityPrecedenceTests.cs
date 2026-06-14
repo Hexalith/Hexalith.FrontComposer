@@ -15,8 +15,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// (1) tier ≤ Tablet → Comfortable; (2) user preference; (3) deployment default;
 /// (4) factory hybrid by surface.
 /// </summary>
-public sealed class DensityPrecedenceTests
-{
+public sealed class DensityPrecedenceTests {
     [Theory]
     // (userPreference, deploymentDefault, surface, tier, expected)
     // Row 1 — no preferences, Default surface, Desktop → factory hybrid (Comfortable)
@@ -36,8 +35,7 @@ public sealed class DensityPrecedenceTests
         DensityLevel? deploymentDefault,
         DensitySurface surface,
         ViewportTier tier,
-        DensityLevel expected)
-    {
+        DensityLevel expected) {
         DensityLevel actual = DensityPrecedence.Resolve(userPreference, deploymentDefault, surface, tier);
 
         actual.ShouldBe(expected);

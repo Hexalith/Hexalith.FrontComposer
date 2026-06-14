@@ -72,7 +72,7 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
         // Fire-and-forget continuation. We observe the task via ContinueWith so an unhandled
         // exception inside the user-supplied onLifecycleChange (e.g., disposed Fluxor dispatcher)
         // does not escape as an unobserved task exception. (See code-review 2026-04-15, patch P9.)
-        Task continuation = Task.Run(
+        var continuation = Task.Run(
             async () => {
                 try {
                     if (opts.SyncingDelayMs > 0) {

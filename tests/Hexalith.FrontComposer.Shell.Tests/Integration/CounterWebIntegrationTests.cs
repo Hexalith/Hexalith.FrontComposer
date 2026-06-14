@@ -1,8 +1,6 @@
 // ATDD RED PHASE — Story 3-2 Task 10.10 (D17; AC7)
 // Fails at assertion time until Task 9 rewires Counter.Web MainLayout.razor to its three-line form.
 
-using System.Text.RegularExpressions;
-
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Integration;
@@ -15,11 +13,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.Integration;
 ///   &lt;FrontComposerShell&gt;@Body&lt;/FrontComposerShell&gt;
 /// The @inject IFrontComposerRegistry line is REMOVED. The framework sidebar auto-populates via D18.
 /// </summary>
-public sealed class CounterWebIntegrationTests
-{
+public sealed class CounterWebIntegrationTests {
     [Fact]
-    public void MainLayoutIsThreeSubstantiveLines()
-    {
+    public void MainLayoutIsThreeSubstantiveLines() {
         string projectRoot = FindRepoRoot();
         string path = Path.Combine(projectRoot, "samples", "Counter", "Counter.Web", "Components", "Layout", "MainLayout.razor");
         File.Exists(path).ShouldBeTrue($"Expected Counter.Web MainLayout.razor at {path}");
@@ -47,14 +43,11 @@ public sealed class CounterWebIntegrationTests
         body.ShouldNotContain("<Navigation>", Case.Sensitive, "D17: explicit Navigation slot must be removed; framework auto-populates via D18.");
     }
 
-    private static string FindRepoRoot()
-    {
+    private static string FindRepoRoot() {
         // Walks up from the test binary dir until Hexalith.FrontComposer.slnx is found.
         DirectoryInfo? dir = new(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
-            if (dir.GetFiles("Hexalith.FrontComposer.slnx").Length > 0)
-            {
+        while (dir is not null) {
+            if (dir.GetFiles("Hexalith.FrontComposer.slnx").Length > 0) {
                 return dir.FullName;
             }
 

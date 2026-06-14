@@ -1,18 +1,17 @@
 using System.Diagnostics;
 
 using Shouldly;
+
 using Xunit;
 
 namespace Hexalith.FrontComposer.Cli.Tests;
 
-public sealed class ToolPackagingSmokeTests
-{
+public sealed class ToolPackagingSmokeTests {
     // Generous per-process budget; CI cold-start pack/install can take ~60s on slow hosts.
     private static readonly TimeSpan PerProcessTimeout = TimeSpan.FromMinutes(5);
 
     [Fact]
-    public async Task DotnetToolPackage_CanInstallAndRunFromLocalManifest()
-    {
+    public async Task DotnetToolPackage_CanInstallAndRunFromLocalManifest() {
         if (FindOnPath("dotnet") is null) {
             // Skip when the SDK is unavailable; this fact is environment-bound.
             return;
@@ -28,7 +27,7 @@ public sealed class ToolPackagingSmokeTests
             // IDE/watch builds; serialize this test against the regression suite or run it
             // standalone. Full source-tree isolation via BaseIntermediateOutputPath conflicts with
             // the existing obj/.../AssemblyAttributes.cs and is intentionally not used here.
-            await RunAsync(
+            _ = await RunAsync(
                 "dotnet",
                 [
                     "pack",
@@ -41,8 +40,8 @@ public sealed class ToolPackagingSmokeTests
                 ],
                 repositoryRoot);
 
-            await RunAsync("dotnet", ["new", "tool-manifest"], workDirectory);
-            await RunAsync(
+            _ = await RunAsync("dotnet", ["new", "tool-manifest"], workDirectory);
+            _ = await RunAsync(
                 "dotnet",
                 [
                     "tool",
@@ -81,8 +80,7 @@ public sealed class ToolPackagingSmokeTests
         }
     }
 
-    private static async Task<ProcessResult> RunAsync(string fileName, string[] arguments, string workingDirectory)
-    {
+    private static async Task<ProcessResult> RunAsync(string fileName, string[] arguments, string workingDirectory) {
         ProcessStartInfo startInfo = new(fileName) {
             WorkingDirectory = workingDirectory,
             RedirectStandardOutput = true,
@@ -117,8 +115,7 @@ public sealed class ToolPackagingSmokeTests
         return new ProcessResult(output, error);
     }
 
-    private static string LocateRepositoryRoot()
-    {
+    private static string LocateRepositoryRoot() {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
         while (directory is not null) {
             if (File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx"))) {
@@ -131,8 +128,7 @@ public sealed class ToolPackagingSmokeTests
         throw new DirectoryNotFoundException("Could not locate repository root.");
     }
 
-    private static string? FindOnPath(string command)
-    {
+    private static string? FindOnPath(string command) {
         string[] extensions = OperatingSystem.IsWindows()
             ? (Environment.GetEnvironmentVariable("PATHEXT") ?? ".EXE;.CMD;.BAT").Split(';')
             : [string.Empty];
@@ -154,8 +150,7 @@ public sealed class ToolPackagingSmokeTests
         return null;
     }
 
-    private static void TryDelete(string path)
-    {
+    private static void TryDelete(string path) {
         try {
             if (Directory.Exists(path)) {
                 Directory.Delete(path, recursive: true);

@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Frozen;
-using System.Collections.Generic;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Shell.Components.Badges;

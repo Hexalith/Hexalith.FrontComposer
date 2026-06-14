@@ -2,8 +2,6 @@ using Hexalith.FrontComposer.SourceTools.Parsing;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
 
 public sealed class Level1FormatAnnotationParserTests {

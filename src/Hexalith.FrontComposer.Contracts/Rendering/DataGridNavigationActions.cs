@@ -14,9 +14,6 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// duplicate-state-update suppression.
 /// </remarks>
 public sealed record GridViewSnapshot {
-    private readonly double _scrollTop;
-    private readonly IImmutableDictionary<string, string> _filters = ImmutableDictionary<string, string>.Empty;
-    private readonly DateTimeOffset _capturedAt;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GridViewSnapshot"/> record.
@@ -57,13 +54,13 @@ public sealed record GridViewSnapshot {
     /// full hydrate lifecycle.
     /// </remarks>
     public double ScrollTop {
-        get => _scrollTop;
+        get;
         init {
             if (double.IsNaN(value) || double.IsInfinity(value) || value < 0) {
                 throw new ArgumentOutOfRangeException(nameof(value), value, "ScrollTop must be a non-negative finite value.");
             }
 
-            _scrollTop = value;
+            field = value;
         }
     }
 
@@ -79,9 +76,9 @@ public sealed record GridViewSnapshot {
     /// reserved for framework use.
     /// </remarks>
     public IImmutableDictionary<string, string> Filters {
-        get => _filters;
-        init => _filters = value ?? throw new ArgumentNullException(nameof(value));
-    }
+        get;
+        init => field = value ?? throw new ArgumentNullException(nameof(value));
+    } = ImmutableDictionary<string, string>.Empty;
 
     /// <summary>Gets the column key currently sorted by, or <see langword="null"/> when unsorted.</summary>
     public string? SortColumn { get; init; }
@@ -97,13 +94,13 @@ public sealed record GridViewSnapshot {
 
     /// <summary>Gets the UTC timestamp when the snapshot was captured.</summary>
     public DateTimeOffset CapturedAt {
-        get => _capturedAt;
+        get;
         init {
             if (value.Offset != TimeSpan.Zero) {
                 throw new ArgumentException("CapturedAt offset must be TimeSpan.Zero (UTC).", nameof(value));
             }
 
-            _capturedAt = value;
+            field = value;
         }
     }
 
@@ -167,8 +164,6 @@ public sealed record GridViewSnapshot {
 
 /// <summary>Fluxor action — Epic 4 producer; Story 2-2 reducer.</summary>
 public sealed record CaptureGridStateAction {
-    private readonly string _viewKey = string.Empty;
-    private readonly GridViewSnapshot _snapshot = null!;
 
     /// <summary>Initializes a new instance of the <see cref="CaptureGridStateAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key that identifies the snapshot bucket.</param>
@@ -182,71 +177,65 @@ public sealed record CaptureGridStateAction {
 
     /// <summary>Gets the stable per-view key that identifies the snapshot bucket.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the captured grid state.</summary>
     public GridViewSnapshot Snapshot {
-        get => _snapshot;
-        init => _snapshot = value ?? throw new ArgumentNullException(nameof(value));
-    }
+        get;
+        init => field = value ?? throw new ArgumentNullException(nameof(value));
+    } = null!;
 }
 
 /// <summary>
 /// Story 2-2 renderer dispatches on mount; read-side action (reducer is a pure no-op, D30).
 /// </summary>
 public sealed record RestoreGridStateAction {
-    private readonly string _viewKey = string.Empty;
 
     /// <summary>Initializes a new instance of the <see cref="RestoreGridStateAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key that identifies which snapshot to restore.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="viewKey"/> is null, empty, or whitespace.</exception>
-    public RestoreGridStateAction(string viewKey) {
-        ViewKey = viewKey;
-    }
+    public RestoreGridStateAction(string viewKey) => ViewKey = viewKey;
 
     /// <summary>Gets the stable per-view key that identifies which snapshot to restore.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 }
 
 /// <summary>Removes a captured snapshot for a view.</summary>
 public sealed record ClearGridStateAction {
-    private readonly string _viewKey = string.Empty;
 
     /// <summary>Initializes a new instance of the <see cref="ClearGridStateAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key whose snapshot should be removed.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="viewKey"/> is null, empty, or whitespace.</exception>
-    public ClearGridStateAction(string viewKey) {
-        ViewKey = viewKey;
-    }
+    public ClearGridStateAction(string viewKey) => ViewKey = viewKey;
 
     /// <summary>Gets the stable per-view key whose snapshot should be removed.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 }
 
 /// <summary>Prunes snapshots whose <see cref="GridViewSnapshot.CapturedAt"/> is strictly before the threshold.</summary>
@@ -257,24 +246,21 @@ public sealed record ClearGridStateAction {
 /// prunes every snapshot.
 /// </remarks>
 public sealed record PruneExpiredAction {
-    private readonly DateTimeOffset _threshold;
 
     /// <summary>Initializes a new instance of the <see cref="PruneExpiredAction"/> record.</summary>
     /// <param name="threshold">UTC threshold; snapshots captured strictly before this moment are pruned.</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="threshold"/> has a non-UTC offset.</exception>
-    public PruneExpiredAction(DateTimeOffset threshold) {
-        Threshold = threshold;
-    }
+    public PruneExpiredAction(DateTimeOffset threshold) => Threshold = threshold;
 
     /// <summary>Gets the UTC threshold below which snapshots are pruned.</summary>
     public DateTimeOffset Threshold {
-        get => _threshold;
+        get;
         init {
             if (value.Offset != TimeSpan.Zero) {
                 throw new ArgumentException("Threshold offset must be TimeSpan.Zero (UTC).", nameof(value));
             }
 
-            _threshold = value;
+            field = value;
         }
     }
 }

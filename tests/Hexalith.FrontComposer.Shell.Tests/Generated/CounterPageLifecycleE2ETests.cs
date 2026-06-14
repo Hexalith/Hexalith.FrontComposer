@@ -1,13 +1,9 @@
-using Bunit;
-
 using Counter.Domain;
 
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
-using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Extensions;
-using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -20,9 +16,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// dispatches to <see cref="ILifecycleStateService"/>.
 /// </summary>
 public sealed class CounterPageLifecycleE2ETests : CommandRendererTestBase {
-    public CounterPageLifecycleE2ETests() {
-        _ = Services.AddHexalithDomain<IncrementCommand>();
-    }
+    public CounterPageLifecycleE2ETests() => _ = Services.AddHexalithDomain<IncrementCommand>();
     [Fact]
     public async Task IncrementCommand_ActionsDispatched_ServiceReachesConfirmed() {
         await InitializeStoreAsync();

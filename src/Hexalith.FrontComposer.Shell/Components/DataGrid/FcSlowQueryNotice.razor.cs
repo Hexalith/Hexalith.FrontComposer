@@ -53,7 +53,7 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
 
     private void OnStateChanged(object? sender, EventArgs e) {
         ReconcileVisibility();
-        InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void ReconcileVisibility() {
@@ -95,7 +95,7 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
     private void AutoDismiss() {
         _dismissed = true;
         _visible = false;
-        InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(StateHasChanged);
     }
 
     /// <inheritdoc />

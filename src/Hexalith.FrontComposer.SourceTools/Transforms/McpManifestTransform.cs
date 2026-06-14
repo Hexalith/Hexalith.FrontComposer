@@ -125,16 +125,14 @@ public static class McpManifestTransform {
 
         var sb = new StringBuilder(value.Length);
         foreach (char c in value) {
-            sb.Append(IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-' ? c : '-');
+            _ = sb.Append(IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-' ? c : '-');
         }
 
         return sb.Length == 0 ? "_" : sb.ToString();
     }
 
     private static bool IsAsciiLetterOrDigit(char c)
-        => (c >= 'A' && c <= 'Z')
-            || (c >= 'a' && c <= 'z')
-            || (c >= '0' && c <= '9');
+        => c is (>= 'A' and <= 'Z') or (>= 'a' and <= 'z') or (>= '0' and <= '9');
 }
 
 public sealed class McpCommandDescriptorModel {

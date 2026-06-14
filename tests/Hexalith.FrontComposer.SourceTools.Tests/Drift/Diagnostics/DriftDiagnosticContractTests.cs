@@ -2,7 +2,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
 
@@ -74,15 +73,15 @@ public sealed class DriftDiagnosticContractTests {
 
         Diagnostic? drift = diagnostics.FirstOrDefault(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
                                                          && d.GetMessage().Contains("Removed", StringComparison.Ordinal));
-        drift.ShouldNotBeNull();
+        _ = drift.ShouldNotBeNull();
         string message = drift!.GetMessage();
         // Story 9-1 review CB-6: AC12 enumerates "What, Expected, Got, Fix, and DocsLink fields".
         // Production templates do emit "What:" — assert it explicitly so a regression that drops
         // the leading What: clause is caught.
-        message.ShouldContain("What",     Case.Insensitive);
+        message.ShouldContain("What", Case.Insensitive);
         message.ShouldContain("Expected", Case.Insensitive);
-        message.ShouldContain("Got",      Case.Insensitive);
-        message.ShouldContain("Fix",      Case.Insensitive);
+        message.ShouldContain("Got", Case.Insensitive);
+        message.ShouldContain("Fix", Case.Insensitive);
         message.ShouldContain("https://hexalith.github.io/FrontComposer/diagnostics/", Case.Insensitive);
     }
 
@@ -107,7 +106,7 @@ public sealed class DriftDiagnosticContractTests {
     [InlineData("C:\\repo\\frontcomposer.drift-baseline.json", true)]
     [InlineData("C:repo/frontcomposer.drift-baseline.json", false)]
     public void WindowsDriveRootedPathCheck_AllowsBenignColonOnly(string path, bool expected) {
-        path.ShouldNotBeNull();
+        _ = path.ShouldNotBeNull();
         IsWindowsDriveRootedPath(path).ShouldBe(expected);
     }
 

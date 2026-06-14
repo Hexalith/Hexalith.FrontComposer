@@ -1,5 +1,4 @@
 using System.Collections.Immutable;
-using System.Threading.Tasks;
 
 using Fluxor;
 
@@ -56,7 +55,7 @@ public sealed class LoadedPageReducers {
 
         if (nextPending.TryGetValue(key, out TaskCompletionSource<object>? existing)
             && !ReferenceEquals(existing, action.Completion)) {
-            existing.TrySetCanceled();
+            _ = existing.TrySetCanceled();
             nextPending = nextPending.SetItem(key, action.Completion);
         }
         else if (!nextPending.ContainsKey(key)) {
@@ -109,7 +108,7 @@ public sealed class LoadedPageReducers {
                 action.Skip);
 
             if (state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? nullTcs)) {
-                nullTcs.TrySetException(new InvalidOperationException(
+                _ = nullTcs.TrySetException(new InvalidOperationException(
                     $"LoadPageSucceededAction received null Items payload for (ViewKey={action.ViewKey}, Skip={action.Skip})."));
                 return state with {
                     PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
@@ -130,7 +129,7 @@ public sealed class LoadedPageReducers {
         ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>> nextPending = state.PendingCompletionsByKey;
 
         if (nextPending.TryGetValue(key, out TaskCompletionSource<object>? tcs)) {
-            tcs.TrySetResult(action.Items);
+            _ = tcs.TrySetResult(action.Items);
             nextPending = nextPending.Remove(key);
         }
 
@@ -180,7 +179,7 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
-        tcs.TrySetResult(action.CachedItems);
+        _ = tcs.TrySetResult(action.CachedItems);
         return state with {
             PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
         };
@@ -201,7 +200,7 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
-        tcs.TrySetException(new InvalidOperationException(action.ErrorMessage));
+        _ = tcs.TrySetException(new InvalidOperationException(action.ErrorMessage));
         return state with {
             PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
         };
@@ -222,7 +221,7 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
-        tcs.TrySetCanceled();
+        _ = tcs.TrySetCanceled();
         return state with {
             PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
         };
@@ -240,7 +239,7 @@ public sealed class LoadedPageReducers {
         ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>> next = state.PendingCompletionsByKey;
         foreach (KeyValuePair<(string ViewKey, int Skip), TaskCompletionSource<object>> kvp in state.PendingCompletionsByKey) {
             if (string.Equals(kvp.Key.ViewKey, action.ViewKey, StringComparison.Ordinal)) {
-                kvp.Value.TrySetCanceled();
+                _ = kvp.Value.TrySetCanceled();
                 next = next.Remove(kvp.Key);
             }
         }
@@ -282,9 +281,10 @@ public static class VirtualizationViewStateReducers {
 
         HashSet<string> hidden = ParseHiddenCsv(current.Filters);
         if (action.IsVisible) {
-            hidden.Remove(action.ColumnKey);
-        } else {
-            hidden.Add(action.ColumnKey);
+            _ = hidden.Remove(action.ColumnKey);
+        }
+        else {
+            _ = hidden.Add(action.ColumnKey);
         }
 
         IImmutableDictionary<string, string> nextFilters = current.Filters.SetItem(
@@ -365,7 +365,7 @@ public static class VirtualizationViewStateReducers {
 
         HashSet<string> result = new(StringComparer.Ordinal);
         foreach (string part in csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
-            result.Add(part);
+            _ = result.Add(part);
         }
 
         return result;

@@ -4,7 +4,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
 
@@ -103,7 +102,7 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
 
         // Story 9-1 review CB-21: pin to HFC1068 (TruncationId).
         Diagnostic? truncation = diagnostics.FirstOrDefault(d => d.Id == "HFC1068");
-        truncation.ShouldNotBeNull("AC16 — exactly one HFC1068 truncation summary must follow the cap.");
+        _ = truncation.ShouldNotBeNull("AC16 — exactly one HFC1068 truncation summary must follow the cap.");
         truncation!.GetMessage().ShouldContain((totalDrifts - 50).ToString(System.Globalization.CultureInfo.InvariantCulture),
             customMessage: "AC16 — truncation summary must report the omitted count.");
         diagnostics.Count(d => d.Id == "HFC1068")
@@ -153,15 +152,15 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
         // the baseline ⇒ N "removed" drifts. We declare them in *reverse* alphabetical source
         // order to prove the impl re-sorts.
         StringBuilder sb = new();
-        sb.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
-        sb.AppendLine("namespace TestDomain;");
-        sb.AppendLine("[BoundedContext(\"Orders\")] [Projection]");
-        sb.AppendLine("public partial class OrderProjection {");
+        _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
+        _ = sb.AppendLine("namespace TestDomain;");
+        _ = sb.AppendLine("[BoundedContext(\"Orders\")] [Projection]");
+        _ = sb.AppendLine("public partial class OrderProjection {");
         for (int i = driftCount; i > 0; i--) {
-            sb.AppendFormat(System.Globalization.CultureInfo.InvariantCulture,
+            _ = sb.AppendFormat(System.Globalization.CultureInfo.InvariantCulture,
                 "    public string Member{0:D3} {{ get; set; }} = string.Empty;{1}", i, Environment.NewLine);
         }
-        sb.AppendLine("}");
+        _ = sb.AppendLine("}");
 
         string baseline = """
             { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",

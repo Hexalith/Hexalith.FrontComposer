@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Collections.Immutable;
-
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 
 using Microsoft.CodeAnalysis;
@@ -8,7 +5,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.DriftTestFixtures;
 

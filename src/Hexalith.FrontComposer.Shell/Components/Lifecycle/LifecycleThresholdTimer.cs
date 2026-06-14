@@ -87,9 +87,9 @@ public sealed class LifecycleThresholdTimer : IDisposable {
     /// <param name="stillSyncingMs">New still-syncing threshold.</param>
     /// <param name="timeoutMs">New timeout-action threshold.</param>
     public void UpdateThresholds(int pulseMs, int stillSyncingMs, int timeoutMs) {
-        Interlocked.Exchange(ref _pulseThresholdMs, pulseMs);
-        Interlocked.Exchange(ref _stillSyncingThresholdMs, stillSyncingMs);
-        Interlocked.Exchange(ref _timeoutActionThresholdMs, timeoutMs);
+        _ = Interlocked.Exchange(ref _pulseThresholdMs, pulseMs);
+        _ = Interlocked.Exchange(ref _stillSyncingThresholdMs, stillSyncingMs);
+        _ = Interlocked.Exchange(ref _timeoutActionThresholdMs, timeoutMs);
     }
 
     /// <summary>

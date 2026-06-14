@@ -7,7 +7,6 @@ using Hexalith.FrontComposer.Mcp.Schema;
 using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 
@@ -22,13 +21,13 @@ public sealed class SchemaBaselineResolverTests {
     [Fact]
     public void Resolver_TypeExists_AndHasExpectedShape() {
         Type? resolver = TryFindResolverType();
-        resolver.ShouldNotBeNull(
+        _ = resolver.ShouldNotBeNull(
             "AC4 / T1 require an ISchemaBaselineProvider (or extension of ISkillCorpusBaselineProvider). "
             + "Implement T1 before unskipping.");
 
         // Method shape: TryResolve(SchemaContractFamily, string packageOwner, string fixtureId, out SchemaBaselineSnapshot? snapshot)
         MethodInfo? tryResolve = resolver!.GetMethod("TryResolve", BindingFlags.Public | BindingFlags.Instance);
-        tryResolve.ShouldNotBeNull();
+        _ = tryResolve.ShouldNotBeNull();
         ParameterInfo[] parameters = tryResolve!.GetParameters();
         parameters.Length.ShouldBe(4);
         parameters[0].ParameterType.ShouldBe(typeof(SchemaContractFamily));
@@ -47,18 +46,18 @@ public sealed class SchemaBaselineResolverTests {
         ServiceCollection services = [];
         // AddFrontComposerMcp probes the service collection for tenant/visibility gates and fails
         // closed if absent. Register the AllowAll variants up front so the probe succeeds.
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
 
         // Provide a minimal manifest so the descriptor registry can be activated by the probe inside
         // AddFrontComposerMcp.
-        services.AddFrontComposerMcp(options => options.Manifests.Add(new Hexalith.FrontComposer.Contracts.Mcp.McpManifest(
+        _ = services.AddFrontComposerMcp(options => options.Manifests.Add(new Hexalith.FrontComposer.Contracts.Mcp.McpManifest(
             "frontcomposer.mcp.v1",
             [],
             [])));
 
         ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ISchemaBaselineProvider));
-        descriptor.ShouldNotBeNull(
+        _ = descriptor.ShouldNotBeNull(
             "AC4 / T1: AddFrontComposerMcp must register an ISchemaBaselineProvider.");
         descriptor!.Lifetime.ShouldBe(
             ServiceLifetime.Scoped,
@@ -70,7 +69,7 @@ public sealed class SchemaBaselineResolverTests {
         // AC4: a caller-supplied package owner that looks like a filesystem path must not resolve
         // to anything. SchemaBaselineProvenance P-17 already rejects "../" via SafeIdentifier; the
         // resolver must surface that as a TryResolve=false (no exception escapes to the agent).
-        ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
+        var resolver = ResolverInvoker.CreateOrSkip();
 
         resolver.TryResolve(SchemaContractFamily.ProjectionResource, "../etc/passwd", "baseline-known-v1")
             .Resolved.ShouldBeFalse("AC4 forbids path-traversal segments in package owner.");
@@ -82,7 +81,7 @@ public sealed class SchemaBaselineResolverTests {
 
     [Fact]
     public void Resolver_RejectsCallerSuppliedAbsolutePathsForPackageOwner() {
-        ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
+        var resolver = ResolverInvoker.CreateOrSkip();
 
         resolver.TryResolve(SchemaContractFamily.ProjectionResource, "C:/Users/agent/inj.json", "baseline-known-v1")
             .Resolved.ShouldBeFalse();
@@ -94,7 +93,7 @@ public sealed class SchemaBaselineResolverTests {
     public void Resolver_RejectsExternalPackageOwners() {
         // AC4: only package-owned identifiers are accepted. A different package owner must not
         // resolve, even if the safe-identifier pattern accepts the string.
-        ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
+        var resolver = ResolverInvoker.CreateOrSkip();
 
         resolver.TryResolve(SchemaContractFamily.ProjectionResource, "Contoso.NotShipped", "baseline-known-v1")
             .Resolved.ShouldBeFalse("Resolver must whitelist package owners shipped with HFC, not honor any safe-identifier string.");
@@ -108,7 +107,7 @@ public sealed class SchemaBaselineResolverTests {
         // adopter request — fail-closed by default. New default behavior: TryResolve returns
         // false so the gate falls back to descriptor.Fingerprint byte-match. Hosts wanting
         // fixture-driven baselines must register their own ISchemaBaselineProvider.
-        ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
+        var resolver = ResolverInvoker.CreateOrSkip();
 
         ResolverInvoker.Outcome outcome = resolver.TryResolve(
             SchemaContractFamily.ProjectionResource,
@@ -122,7 +121,7 @@ public sealed class SchemaBaselineResolverTests {
 
     [Fact]
     public void Resolver_RejectsNullOrWhitespaceArguments() {
-        ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
+        var resolver = ResolverInvoker.CreateOrSkip();
 
         resolver.TryResolve(SchemaContractFamily.ProjectionResource, "", "baseline-known-v1")
             .Resolved.ShouldBeFalse();
@@ -132,9 +131,7 @@ public sealed class SchemaBaselineResolverTests {
             .Resolved.ShouldBeFalse();
     }
 
-    private static Type? TryFindResolverType() {
-        return typeof(ISchemaBaselineProvider);
-    }
+    private static Type? TryFindResolverType() => typeof(ISchemaBaselineProvider);
 
     private sealed class ResolverInvoker {
         private readonly object _instance;
@@ -146,21 +143,18 @@ public sealed class SchemaBaselineResolverTests {
         }
 
         public static ResolverInvoker CreateOrSkip() {
-            Type? resolver = TryFindResolverType();
-            if (resolver is null) {
-                throw new InvalidOperationException(
+            Type? resolver = TryFindResolverType() ?? throw new InvalidOperationException(
                     "AC4 / T1 require ISchemaBaselineProvider; implement T1 before unskipping.");
-            }
-
             object instance;
             if (resolver.IsInterface) {
                 instance = new InMemorySchemaBaselineProvider();
-            } else {
+            }
+            else {
                 instance = Activator.CreateInstance(resolver)!;
             }
 
             MethodInfo? tryResolve = resolver.GetMethod("TryResolve", BindingFlags.Public | BindingFlags.Instance);
-            tryResolve.ShouldNotBeNull();
+            _ = tryResolve.ShouldNotBeNull();
             return new ResolverInvoker(instance, tryResolve!);
         }
 

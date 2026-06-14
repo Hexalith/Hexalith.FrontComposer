@@ -5,24 +5,17 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Routing;
 
-public class CommandRouteBuilderTests
-{
+public class CommandRouteBuilderTests {
     [Theory]
     [InlineData("SubmitOrderCommand", "submit-order-command")]
     [InlineData("IncrementCommand", "increment-command")]
     [InlineData("XMLParser", "xml-parser")]
     [InlineData("Counter.Domain.IncrementCommand", "increment-command")]
-    public void KebabCase_ProducesExpectedSlug(string input, string expected)
-    {
-        CommandRouteBuilder.KebabCase(input).ShouldBe(expected);
-    }
+    public void KebabCase_ProducesExpectedSlug(string input, string expected) => CommandRouteBuilder.KebabCase(input).ShouldBe(expected);
 
     [Fact]
-    public void BuildRoute_ProducesCanonicalDomainUrl()
-    {
-        CommandRouteBuilder.BuildRoute("Commerce", "SubmitOrderCommand")
+    public void BuildRoute_ProducesCanonicalDomainUrl() => CommandRouteBuilder.BuildRoute("Commerce", "SubmitOrderCommand")
             .ShouldBe("/domain/commerce/submit-order-command");
-    }
 
     [Theory]
     [InlineData("/")]
@@ -33,10 +26,7 @@ public class CommandRouteBuilderTests
     [InlineData("/calendar/10:30")]
     [InlineData("/path?at=10:30")]
     [InlineData("/path#section:2")]
-    public void IsInternalRoute_AcceptsValidInternalUrls(string url)
-    {
-        CommandRouteBuilder.IsInternalRoute(url).ShouldBeTrue();
-    }
+    public void IsInternalRoute_AcceptsValidInternalUrls(string url) => CommandRouteBuilder.IsInternalRoute(url).ShouldBeTrue();
 
     [Theory]
     [InlineData("//evil.com")]
@@ -50,8 +40,5 @@ public class CommandRouteBuilderTests
     [InlineData("\\\\unc")]
     [InlineData("")]
     [InlineData(null)]
-    public void IsInternalRoute_RejectsTamperedOrAbsoluteUrls(string? url)
-    {
-        CommandRouteBuilder.IsInternalRoute(url).ShouldBeFalse();
-    }
+    public void IsInternalRoute_RejectsTamperedOrAbsoluteUrls(string? url) => CommandRouteBuilder.IsInternalRoute(url).ShouldBeFalse();
 }

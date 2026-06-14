@@ -15,8 +15,6 @@ using Microsoft.Extensions.Options;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 [Trait("Category", "Governance")]
@@ -36,7 +34,7 @@ public sealed class EventStoreTelemetryTests {
             new TestUserContextAccessor("tenant-secret", "user-secret"),
             EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
-        using ActivityCapture capture = ActivityCapture.Start();
+        using var capture = ActivityCapture.Start();
 
         _ = await sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
 
@@ -81,7 +79,7 @@ public sealed class EventStoreTelemetryTests {
             new EmptyKeyedCache(),
             new EventStoreTestSupport.RecordingAuthRedirector(),
             NullLogger<EventStoreQueryClient>.Instance);
-        using ActivityCapture capture = ActivityCapture.Start();
+        using var capture = ActivityCapture.Start();
 
         QueryRequest request = new(
             ProjectionType: "orders",
@@ -148,7 +146,7 @@ public sealed class EventStoreTelemetryTests {
             new EventStoreTestSupport.NoCache(),
             new EventStoreTestSupport.RecordingAuthRedirector(),
             NullLogger<EventStoreQueryClient>.Instance);
-        using ActivityCapture capture = ActivityCapture.Start();
+        using var capture = ActivityCapture.Start();
 
         _ = await sut.QueryAsync<OrderProjection>(
             new QueryRequest(

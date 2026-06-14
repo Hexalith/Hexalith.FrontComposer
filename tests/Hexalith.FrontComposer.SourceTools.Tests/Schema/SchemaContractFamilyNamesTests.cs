@@ -4,7 +4,6 @@ using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Schema;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Schema;
 

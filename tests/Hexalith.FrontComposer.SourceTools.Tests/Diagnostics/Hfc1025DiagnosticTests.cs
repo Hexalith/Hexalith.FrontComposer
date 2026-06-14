@@ -1,11 +1,7 @@
-using System.Linq;
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 

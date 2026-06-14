@@ -183,8 +183,7 @@ public class CommandFormTransformTests {
         bool isNullable = false,
         bool isUnsupported = false,
         string? displayName = null,
-        string? enumFqn = null) {
-        return new PropertyModel(
+        string? enumFqn = null) => new(
             name,
             typeName,
             isNullable,
@@ -192,7 +191,6 @@ public class CommandFormTransformTests {
             displayName,
             new EquatableArray<BadgeMappingEntry>(ImmutableArray<BadgeMappingEntry>.Empty),
             enumFqn);
-    }
 
     private static CommandModel BuildCommand(
         string typeName = "TestCommand",
@@ -202,7 +200,7 @@ public class CommandFormTransformTests {
         IReadOnlyList<PropertyModel>? nonDerivable = null,
         IReadOnlyList<PropertyModel>? derivable = null,
         string? authorizationPolicyName = null) {
-        IReadOnlyList<PropertyModel> all = ((derivable ?? Array.Empty<PropertyModel>()).Concat(nonDerivable ?? Array.Empty<PropertyModel>())).ToList();
+        IReadOnlyList<PropertyModel> all = (derivable ?? Array.Empty<PropertyModel>()).Concat(nonDerivable ?? Array.Empty<PropertyModel>()).ToList();
 
         return new CommandModel(
             typeName,

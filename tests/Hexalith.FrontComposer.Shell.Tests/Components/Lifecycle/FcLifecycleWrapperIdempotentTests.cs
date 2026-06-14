@@ -14,7 +14,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
 public sealed class FcLifecycleWrapperIdempotentTests : LifecycleWrapperTestBase {
     [Fact]
     public void Idempotent_confirmed_renders_info_bar_with_default_copy() {
-        var (cut, push) = RenderWrapperWithLiveService();
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService();
 
         push(IdempotentConfirmed());
 
@@ -26,7 +26,7 @@ public sealed class FcLifecycleWrapperIdempotentTests : LifecycleWrapperTestBase
 
     [Fact]
     public void Idempotent_confirmed_honours_adopter_override() {
-        var (cut, push) = RenderWrapperWithLiveService(
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService(
             idempotentInfoMessage: "Another user already approved this order.");
 
         push(IdempotentConfirmed());
@@ -36,7 +36,7 @@ public sealed class FcLifecycleWrapperIdempotentTests : LifecycleWrapperTestBase
 
     [Fact]
     public void Idempotent_copy_is_plain_text_not_markup() {
-        var (cut, push) = RenderWrapperWithLiveService(
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService(
             idempotentInfoMessage: "<script>alert('xss')</script>");
 
         push(IdempotentConfirmed());
@@ -49,7 +49,7 @@ public sealed class FcLifecycleWrapperIdempotentTests : LifecycleWrapperTestBase
     public async Task Idempotent_bar_auto_dismisses_after_IdempotentInfoToastDurationMs() {
         int durationMs = new FcShellOptions().IdempotentInfoToastDurationMs; // default 5000
 
-        var (cut, push) = RenderWrapperWithLiveService();
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService();
 
         push(IdempotentConfirmed());
         cut.Markup.ShouldContain("fc-idempotent");
@@ -62,7 +62,7 @@ public sealed class FcLifecycleWrapperIdempotentTests : LifecycleWrapperTestBase
 
     [Fact]
     public void Non_idempotent_confirmed_still_renders_success_bar() {
-        var (cut, push) = RenderWrapperWithLiveService();
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService();
 
         push(TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed, FakeTime.GetUtcNow(), idempotencyResolved: false));
 

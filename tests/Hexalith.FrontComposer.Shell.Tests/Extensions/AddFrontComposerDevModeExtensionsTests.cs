@@ -3,8 +3,8 @@ using Hexalith.FrontComposer.Shell.Services.DevMode;
 using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 
 using Shouldly;
 

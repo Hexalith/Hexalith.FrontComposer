@@ -17,8 +17,7 @@ namespace Hexalith.FrontComposer.Shell.Extensions;
 /// <c>AddHexalithFrontComposerQuickstart()</c>). Depends only on the singleton markers and a logger,
 /// so it is scope-safe under <c>ValidateScopes = true</c> (ADR-030).
 /// </remarks>
-internal sealed class FrontComposerBootstrapValidationGate : IHostedService
-{
+internal sealed class FrontComposerBootstrapValidationGate : IHostedService {
     private readonly IEnumerable<IFrontComposerBootstrapMarker> _markers;
     private readonly ILogger<FrontComposerBootstrapValidationGate> _logger;
 
@@ -29,8 +28,7 @@ internal sealed class FrontComposerBootstrapValidationGate : IHostedService
     /// <param name="logger">Logger used to surface the validation failure before it is thrown.</param>
     public FrontComposerBootstrapValidationGate(
         IEnumerable<IFrontComposerBootstrapMarker> markers,
-        ILogger<FrontComposerBootstrapValidationGate> logger)
-    {
+        ILogger<FrontComposerBootstrapValidationGate> logger) {
         ArgumentNullException.ThrowIfNull(markers);
         ArgumentNullException.ThrowIfNull(logger);
         _markers = markers;
@@ -38,16 +36,13 @@ internal sealed class FrontComposerBootstrapValidationGate : IHostedService
     }
 
     /// <inheritdoc />
-    public Task StartAsync(CancellationToken cancellationToken)
-    {
+    public Task StartAsync(CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
 
-        try
-        {
+        try {
             FrontComposerBootstrapValidator.Validate(_markers);
         }
-        catch (InvalidOperationException ex)
-        {
+        catch (InvalidOperationException ex) {
             // Mirror CustomizationContractValidationGate: log the message first, then throw so the
             // host start fails fast with the same named diagnostic surfaced in both channels.
             _logger.LogError(ex, "FrontComposer bootstrap validation failed: {Message}", ex.Message);

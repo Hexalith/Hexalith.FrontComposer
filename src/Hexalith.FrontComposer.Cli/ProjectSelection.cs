@@ -1,9 +1,7 @@
 namespace Hexalith.FrontComposer.Cli;
 
-internal sealed record ProjectSelection(bool Success, string? ProjectPath, string Error)
-{
-    public static ProjectSelection Resolve(CommandOptions options, string currentDirectory)
-    {
+internal sealed record ProjectSelection(bool Success, string? ProjectPath, string Error) {
+    public static ProjectSelection Resolve(CommandOptions options, string currentDirectory) {
         string? explicitProject = options.Get("project");
         if (!string.IsNullOrWhiteSpace(explicitProject)) {
             string fullPath = PathUtilities.Canonical(Path.GetFullPath(explicitProject, currentDirectory));
@@ -78,8 +76,7 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
         };
     }
 
-    private static SolutionProjectParseResult ReadSolutionProjects(string solutionPath)
-    {
+    private static SolutionProjectParseResult ReadSolutionProjects(string solutionPath) {
         List<string> projectPaths = [];
         HashSet<string> unsupported = new(StringComparer.OrdinalIgnoreCase);
         int malformed = 0;
@@ -108,8 +105,7 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
         return new SolutionProjectParseResult(projectPaths.ToArray(), unsupported.ToArray(), malformed);
     }
 
-    private static string[] ReadQuotedFields(string line)
-    {
+    private static string[] ReadQuotedFields(string line) {
         List<string> fields = [];
         for (int i = 0; i < line.Length; i++) {
             if (line[i] != '"') {
@@ -151,8 +147,7 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
         string[] UnsupportedProjectTypes,
         int MalformedLines);
 
-    private static bool IsSameOrUnder(string root, string path)
-    {
+    private static bool IsSameOrUnder(string root, string path) {
         string normalizedRoot = PathUtilities.Canonical(root);
         string normalizedPath = PathUtilities.Canonical(path);
         if (string.Equals(normalizedPath, normalizedRoot, PathUtilities.PathComparison)) {

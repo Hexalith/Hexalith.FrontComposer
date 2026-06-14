@@ -1,7 +1,6 @@
 // ATDD RED PHASE — Story 3-3 Task 10.8 (D13, D14, D15, D17; AC2, AC4, AC5; ADR-040)
 // Fails at compile until Task 6.1 (FcSettingsDialog) + Task 2.3 (UserPreferenceChangedAction etc.) land.
 
-using System.Collections.Immutable;
 using System.Collections.Concurrent;
 using System.Reflection;
 
@@ -28,20 +27,14 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// D15 (FcThemeToggle embedded verbatim), D17 (radio labels resolved from resx),
 /// ADR-040 (forced-by-viewport informational note).
 /// </summary>
-public sealed class FcSettingsDialogTests : LayoutComponentTestBase
-{
-    public FcSettingsDialogTests()
-    {
-        EnsureStoreInitialized();
-    }
+public sealed class FcSettingsDialogTests : LayoutComponentTestBase {
+    public FcSettingsDialogTests() => EnsureStoreInitialized();
 
     [Fact]
-    public void RendersDensityRadioThemeAndPreview()
-    {
+    public void RendersDensityRadioThemeAndPreview() {
         IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             // Density radio group (3 options) — D13 + D17.
             cut.Markup.ShouldContain("Compact", Case.Sensitive);
             cut.Markup.ShouldContain("Comfortable", Case.Sensitive);
@@ -56,8 +49,7 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void DensityRadioSelectionDispatchesAction()
-    {
+    public void DensityRadioSelectionDispatchesAction() {
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
 
@@ -65,8 +57,7 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
         // with NewEffective pre-resolved per D3.
         cut.Instance.SelectedDensity = DensityLevel.Compact;
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             IState<FrontComposerDensityState> state =
                 Services.GetRequiredService<IState<FrontComposerDensityState>>();
             state.Value.UserPreference.ShouldBe(DensityLevel.Compact);
@@ -75,8 +66,7 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void ResetToDefaultsDispatchesClearedAndThemeSystem()
-    {
+    public void ResetToDefaultsDispatchesClearedAndThemeSystem() {
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
 
         // Pre-set a non-default state so reset has visible effect.
@@ -88,8 +78,7 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
         // Click "Reset to defaults" footer button (FluentButton renders as <fluent-button>).
         cut.Find("[data-testid=\"fc-settings-reset\"]").Click();
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             IState<FrontComposerDensityState> density =
                 Services.GetRequiredService<IState<FrontComposerDensityState>>();
             IState<FrontComposerThemeState> theme =
@@ -101,8 +90,7 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public async Task DoneButtonClosesDialog()
-    {
+    public async Task DoneButtonClosesDialog() {
         IDialogInstance dialog = CreateRegisteredDialogInstance();
 
         IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
@@ -117,12 +105,10 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void RendersForcedDensityNoteAtTabletWhenUserPrefersCompact()
-    {
+    public void RendersForcedDensityNoteAtTabletWhenUserPrefersCompact() {
         System.Globalization.CultureInfo previous = System.Globalization.CultureInfo.CurrentUICulture;
         System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
-        try
-        {
+        try {
             IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
 
             // Seed Tablet viewport so DensityEffects.HandleViewportTierChanged forces Comfortable.
@@ -138,19 +124,16 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
                     Case.Sensitive,
                     "ADR-040 — settings dialog must surface the forcing-by-viewport reason."));
         }
-        finally
-        {
+        finally {
             System.Globalization.CultureInfo.CurrentUICulture = previous;
         }
     }
 
     [Fact]
-    public void NoForcedNoteAtDesktop()
-    {
+    public void NoForcedNoteAtDesktop() {
         System.Globalization.CultureInfo previous = System.Globalization.CultureInfo.CurrentUICulture;
         System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
-        try
-        {
+        try {
             IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
             dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
             dispatcher.Dispatch(new UserPreferenceChangedAction("c1", DensityLevel.Compact, DensityLevel.Compact));
@@ -163,14 +146,12 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
                     Case.Sensitive,
                     "Forced-note must be absent when EffectiveDensity matches the user's choice."));
         }
-        finally
-        {
+        finally {
             System.Globalization.CultureInfo.CurrentUICulture = previous;
         }
     }
 
-    private IDialogInstance CreateRegisteredDialogInstance()
-    {
+    private IDialogInstance CreateRegisteredDialogInstance() {
         IDialogService dialogService = Services.GetRequiredService<IDialogService>();
         ConstructorInfo constructor = typeof(DialogInstance).GetConstructor(
             BindingFlags.Instance | BindingFlags.NonPublic,
@@ -178,7 +159,7 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
             [typeof(IDialogService), typeof(Type), typeof(DialogOptions)],
             modifiers: null) ?? throw new InvalidOperationException("Fluent UI DialogInstance constructor was not found.");
 
-        IDialogInstance dialog = (IDialogInstance)constructor.Invoke(
+        var dialog = (IDialogInstance)constructor.Invoke(
             [dialogService, typeof(FcSettingsDialog), new DialogOptions()]);
 
         FieldInfo itemsField = typeof(DialogService).BaseType?.GetField(
@@ -186,7 +167,7 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
             BindingFlags.Instance | BindingFlags.NonPublic)
             ?? throw new InvalidOperationException("Fluent UI dialog registry was not found.");
 
-        ConcurrentDictionary<string, IDialogInstance> items =
+        var items =
             (ConcurrentDictionary<string, IDialogInstance>)itemsField.GetValue(dialogService)!;
         items.TryAdd(dialog.Id, dialog).ShouldBeTrue();
         return dialog;

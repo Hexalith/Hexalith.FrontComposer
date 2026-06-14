@@ -43,29 +43,25 @@ public sealed class CapabilityDiscoveryEffectsScopeTests {
         return state;
     }
 
-    private static BadgeCountService MakeBadgeService() {
-        return new BadgeCountService(
+    private static BadgeCountService MakeBadgeService() => new(
             new StubCatalog(),
             new NullActionQueueCountReader(),
             new ServiceCollection().BuildServiceProvider(),
             Substitute.For<ILogger<BadgeCountService>>(),
             new FakeTimeProvider());
-    }
 
     private static CapabilityDiscoveryEffects MakeEffect(
         IStorageService storage,
         IUserContextAccessor accessor,
         IDispatcher dispatcher,
         ILogger<CapabilityDiscoveryEffects> logger,
-        FrontComposerCapabilityDiscoveryState? state = null) {
-        return new CapabilityDiscoveryEffects(
+        FrontComposerCapabilityDiscoveryState? state = null) => new(
             dispatcher,
             storage,
             accessor,
             MakeBadgeService(),
             FakeState(state ?? FrontComposerCapabilityDiscoveryState.Empty),
             logger);
-    }
 
     [Theory]
     [InlineData(null, "alice")]

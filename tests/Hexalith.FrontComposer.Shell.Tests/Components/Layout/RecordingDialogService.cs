@@ -1,6 +1,3 @@
-using System;
-using System.Threading.Tasks;
-
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -9,20 +6,17 @@ using NSubstitute;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
-internal sealed class RecordingDialogService : DialogService
-{
+internal sealed class RecordingDialogService : DialogService {
     public RecordingDialogService()
         : this(
             new ServiceCollection()
                 .AddSingleton(Substitute.For<IJSRuntime>())
                 .BuildServiceProvider(),
-            Substitute.For<IFluentLocalizer>())
-    {
+            Substitute.For<IFluentLocalizer>()) {
     }
 
     public RecordingDialogService(IServiceProvider serviceProvider, IFluentLocalizer localizer)
-        : base(serviceProvider, localizer)
-    {
+        : base(serviceProvider, localizer) {
     }
 
     public Type? LastDialogType { get; private set; }
@@ -31,8 +25,7 @@ internal sealed class RecordingDialogService : DialogService
 
     public int ShowDialogCallCount { get; private set; }
 
-    public override Task<DialogResult> ShowDialogAsync(Type dialogComponent, DialogOptions options)
-    {
+    public override Task<DialogResult> ShowDialogAsync(Type dialogComponent, DialogOptions options) {
         LastDialogType = dialogComponent;
         LastOptions = options;
         ShowDialogCallCount++;

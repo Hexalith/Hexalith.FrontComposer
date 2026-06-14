@@ -309,7 +309,7 @@ internal static class DriftBaselineLoader {
         ImmutableArray<DriftDiagnosticFact>.Builder diagnostics = ImmutableArray.CreateBuilder<DriftDiagnosticFact>();
         ImmutableArray<DriftBaselineContract>.Builder contracts = ImmutableArray.CreateBuilder<DriftBaselineContract>();
 
-        ImmutableArray<DriftBaselineInput> sorted = inputs
+        var sorted = inputs
             .OrderBy(static i => i.Path, StringComparer.Ordinal)
             .ToImmutableArray();
 
@@ -741,7 +741,7 @@ internal static class DriftBaselineLoader {
 
     private static void TrackUnsafe(string? value, HashSet<string> unsafeValues) {
         if (value is not null && DriftSanitizer.IsUnsafe(value)) {
-            unsafeValues.Add(value);
+            _ = unsafeValues.Add(value);
         }
     }
 }
@@ -947,7 +947,7 @@ internal sealed class DriftComparisonService {
 
         HashSet<string> baselineKeys = new(StringComparer.Ordinal);
         foreach (DriftBaselineContract baselineContract in baseline.Contracts) {
-            baselineKeys.Add(baselineContract.IdentityWithoutContext);
+            _ = baselineKeys.Add(baselineContract.IdentityWithoutContext);
             if (!currentByType.TryGetValue(baselineContract.IdentityWithoutContext, out DriftCurrentContract? currentContract)) {
                 facts.Add(DriftDiagnosticFact.Structural(
                     "RemovedDeclaration",
@@ -976,7 +976,7 @@ internal sealed class DriftComparisonService {
                 severity));
         }
 
-        ImmutableArray<DriftDiagnosticFact> sorted = facts
+        var sorted = facts
             .OrderBy(static f => f.SortKey, StringComparer.Ordinal)
             .ToImmutableArray();
 
@@ -1007,8 +1007,8 @@ internal sealed class DriftComparisonService {
 
         CompareContractMetadata(baseline, current, severity, facts);
 
-        Dictionary<string, DriftBaselineProperty> baselineProperties = baseline.Properties.ToDictionary(static p => p.Name, StringComparer.Ordinal);
-        Dictionary<string, DriftCurrentProperty> currentProperties = current.Properties.ToDictionary(static p => p.Name, StringComparer.Ordinal);
+        var baselineProperties = baseline.Properties.ToDictionary(static p => p.Name, StringComparer.Ordinal);
+        var currentProperties = current.Properties.ToDictionary(static p => p.Name, StringComparer.Ordinal);
         List<DriftBaselineProperty> removed = [.. baseline.Properties.Where(p => !currentProperties.ContainsKey(p.Name))];
         List<DriftCurrentProperty> added = [.. current.Properties.Where(p => !baselineProperties.ContainsKey(p.Name))];
 
@@ -1175,15 +1175,13 @@ internal sealed class DriftComparisonService {
             AddMetadata(kind, expectedValue, gotValue);
         }
 
-        void AddMetadata(string kind, string? expectedValue, string? gotValue) {
-            facts.Add(DriftDiagnosticFact.Metadata(
+        void AddMetadata(string kind, string? expectedValue, string? gotValue) => facts.Add(DriftDiagnosticFact.Metadata(
                 kind,
                 baseline,
                 current,
                 got.Name,
                 "What: metadata drift changed " + kind + " for '" + DriftSanitizer.Safe(got.Name) + "' on " + DriftSanitizer.Safe(current.Type) + ". Expected: " + DriftSanitizer.Safe(expectedValue ?? "<none>") + ". Got: " + DriftSanitizer.Safe(gotValue ?? "<none>") + ". Fix: update source metadata or reconcile the checked-in generated UI baseline. Affected surface: renderer-impacting metadata, DataGrid, detail, MCP descriptor metadata. DocsLink: " + Docs(DriftConstants.MetadataDriftId),
                 severity));
-        }
     }
 
     private static string SurfaceFor(string family, string category) {
@@ -1191,7 +1189,7 @@ internal sealed class DriftComparisonService {
             return "generated form input and command registration";
         }
 
-        if (category == "Collection" || category == "Unsupported") {
+        if (category is "Collection" or "Unsupported") {
             return "unsupported placeholder, detail field, and MCP projection field metadata";
         }
 
@@ -1490,7 +1488,7 @@ internal sealed class DriftDiagnosticFact(
         byte[] hash = sha.ComputeHash(bytes);
         StringBuilder sb = new(hash.Length * 2);
         foreach (byte b in hash) {
-            sb.Append(b.ToString("x2", CultureInfo.InvariantCulture));
+            _ = sb.Append(b.ToString("x2", CultureInfo.InvariantCulture));
         }
 
         return sb.ToString();
@@ -1588,15 +1586,13 @@ internal static class DriftSanitizer {
         return string.IsNullOrWhiteSpace(normalized) ? "<none>" : normalized;
     }
 
-    private static bool ContainsRedactionTrigger(string text) {
-        return text.IndexOf("SENTINEL_", StringComparison.Ordinal) >= 0
+    private static bool ContainsRedactionTrigger(string text) => text.IndexOf("SENTINEL_", StringComparison.Ordinal) >= 0
             || text.IndexOf("Bearer ", StringComparison.OrdinalIgnoreCase) >= 0
             || text.IndexOf("Authorization:", StringComparison.OrdinalIgnoreCase) >= 0
             || text.IndexOf("eyJ", StringComparison.Ordinal) >= 0
             || text.IndexOf("{\"", StringComparison.Ordinal) >= 0
             || text.IndexOf("///auto/", StringComparison.Ordinal) >= 0
             || ContainsAbsolutePath(text);
-    }
 
     private static bool ContainsAbsolutePath(string value) {
         // Windows drive root with forward OR backslash: a single ASCII letter, then ':',
@@ -1606,7 +1602,7 @@ internal static class DriftSanitizer {
         // not a drive root.
         for (int i = 0; i + 2 < value.Length; i++) {
             char c0 = value[i];
-            if (!((c0 >= 'A' && c0 <= 'Z') || (c0 >= 'a' && c0 <= 'z'))) {
+            if (c0 is not ((>= 'A' and <= 'Z') or (>= 'a' and <= 'z'))) {
                 continue;
             }
 
@@ -1615,7 +1611,7 @@ internal static class DriftSanitizer {
             }
 
             char sep = value[i + 2];
-            if (sep != '\\' && sep != '/') {
+            if (sep is not '\\' and not '/') {
                 continue;
             }
 
@@ -1628,12 +1624,10 @@ internal static class DriftSanitizer {
         return value.IndexOf("C__", StringComparison.OrdinalIgnoreCase) >= 0;
     }
 
-    private static bool LooksLikeWindowsDriveRoot(string normalized) {
-        return normalized.Length >= 3
+    private static bool LooksLikeWindowsDriveRoot(string normalized) => normalized.Length >= 3
             && ((normalized[0] >= 'A' && normalized[0] <= 'Z') || (normalized[0] >= 'a' && normalized[0] <= 'z'))
             && normalized[1] == ':'
             && normalized[2] == '/';
-    }
 }
 
 internal static class DriftDiagnosticDescriptors {

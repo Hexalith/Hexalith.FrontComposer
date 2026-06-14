@@ -1,9 +1,4 @@
 namespace Hexalith.FrontComposer.Contracts.Communication;
-
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 /// <summary>
 /// Story 4-3 D6 / AC4 — adopter-implemented global search hook for a projection type.
 /// Resolved via nullable DI from the generated view; when unregistered the

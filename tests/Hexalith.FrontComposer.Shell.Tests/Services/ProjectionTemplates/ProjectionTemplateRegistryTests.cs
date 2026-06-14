@@ -6,8 +6,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Services.ProjectionTemplates;
 
 /// <summary>

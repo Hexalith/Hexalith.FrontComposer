@@ -13,9 +13,7 @@ public sealed class CustomizationContractVersionTests {
     [Theory]
     [InlineData(1_000_000, 1, 0, 0)]
     [InlineData(2_003_004, 2, 3, 4)]
-    public void Unpack_ReturnsVersionTriplet(int packed, int major, int minor, int build) {
-        CustomizationContractVersion.Unpack(packed).ShouldBe(new CustomizationContractVersion(major, minor, build));
-    }
+    public void Unpack_ReturnsVersionTriplet(int packed, int major, int minor, int build) => CustomizationContractVersion.Unpack(packed).ShouldBe(new CustomizationContractVersion(major, minor, build));
 
     [Fact]
     public void Compare_ExactMatch_SelectsOverride() {

@@ -3,6 +3,7 @@ using System.Reflection;
 using Hexalith.FrontComposer.Contracts.Attributes;
 
 using Shouldly;
+
 using Xunit;
 
 namespace Hexalith.FrontComposer.Contracts.Tests.Attributes;
@@ -18,9 +19,7 @@ public sealed class ProjectionEmptyStateCtaAttributeTests {
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    public void Constructor_RejectsEmptyCommandTypeName(string value) {
-        Should.Throw<ArgumentException>(() => new ProjectionEmptyStateCtaAttribute(value));
-    }
+    public void Constructor_RejectsEmptyCommandTypeName(string value) => Should.Throw<ArgumentException>(() => new ProjectionEmptyStateCtaAttribute(value));
 
     [Fact]
     public void AttributeUsage_AllowsClassAndStructOnly() {

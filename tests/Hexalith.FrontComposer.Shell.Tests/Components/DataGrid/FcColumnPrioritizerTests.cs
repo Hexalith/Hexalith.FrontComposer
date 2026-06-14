@@ -1,6 +1,4 @@
-#pragma warning disable CA2007
 using System.Globalization;
-using System.Linq;
 
 using Bunit;
 
@@ -47,7 +45,7 @@ public sealed class FcColumnPrioritizerTests : BunitContext {
     private IRenderedComponent<FcColumnPrioritizer> RenderPrioritizer(
         ColumnDescriptor[] columns,
         string[]? hidden = null) {
-        RenderFragment<ColumnVisibilityContext> child = ctx => builder => builder.AddContent(0, "child");
+        static RenderFragment child(ColumnVisibilityContext ctx) => builder => builder.AddContent(0, "child");
         return Render<FcColumnPrioritizer>(parameters => parameters
             .Add(p => p.ViewKey, "acme:OrdersProjection")
             .Add(p => p.AllColumns, columns)

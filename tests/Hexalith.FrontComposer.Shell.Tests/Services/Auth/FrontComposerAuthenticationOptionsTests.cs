@@ -7,8 +7,6 @@ using Microsoft.Extensions.Options;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Services.Auth;
 
 public sealed class FrontComposerAuthenticationOptionsTests {

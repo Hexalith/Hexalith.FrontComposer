@@ -3,7 +3,6 @@ using System.Security.Cryptography;
 using System.Text;
 
 using Hexalith.FrontComposer.Contracts.Conformance;
-using Hexalith.FrontComposer.SourceTools.Conformance;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -15,8 +14,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.IdeParity;
 [Trait("MatrixRowId", "IDE-MUST-001")]
 [Trait("MatrixRowId", "IDE-MUST-003")]
 [Trait("MatrixRowId", "IDE-MUST-005")]
-public sealed class IdeParityConformanceUtilityTests
-{
+public sealed class IdeParityConformanceUtilityTests {
     [Theory]
     [InlineData("Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "obj/Debug/net10.0/generated/HexalithFrontComposer/Acme.Shipping.ShipmentProjection.g.razor.cs")]
     [InlineData("Release", "netstandard2.0", "Acme.Shipping.SubmitOrderCommand.CommandForm.g.razor.cs", "obj/Release/netstandard2.0/generated/HexalithFrontComposer/Acme.Shipping.SubmitOrderCommand.CommandForm.g.razor.cs")]
@@ -31,8 +29,7 @@ public sealed class IdeParityConformanceUtilityTests
     [InlineData("CON.g.cs", "generatedFileName must not begin with a Windows reserved device name ('CON').")]
     [InlineData("nul.g.razor.cs", "generatedFileName must not begin with a Windows reserved device name ('nul').")]
     [Trait("MatrixRowId", "IDE-MUST-003")]
-    public void GeneratedOutputPathContract_RejectsHostilePathSegments(string fileName, string messageStart)
-    {
+    public void GeneratedOutputPathContract_RejectsHostilePathSegments(string fileName, string messageStart) {
         ArgumentException ex = Should.Throw<ArgumentException>(()
             => GeneratedOutputPathContract.BuildProjectRelativePath("Debug", "net10.0", fileName));
         ex.Message.ShouldStartWith(messageStart);
@@ -41,8 +38,7 @@ public sealed class IdeParityConformanceUtilityTests
     [Fact]
     [Trait("MatrixRowId", "IDE-MUST-001")]
     [Trait("MatrixRowId", "IDE-MUST-003")]
-    public void IdeParityCounterFixture_GeneratesDeterministicSymbolsForMatrixRows()
-    {
+    public void IdeParityCounterFixture_GeneratesDeterministicSymbolsForMatrixRows() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(LoadIdeParityCounterFixtureSource());
         FrontComposerGenerator generator = new();
@@ -70,8 +66,7 @@ public sealed class IdeParityConformanceUtilityTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-VERSION-001")]
-    public void IdeParityCounterFixture_HashIsStableAcrossRuns()
-    {
+    public void IdeParityCounterFixture_HashIsStableAcrossRuns() {
         string hash = ComputeIdeParityCounterFixtureHash();
         hash.ShouldStartWith("sha256:");
         hash.Length.ShouldBe("sha256:".Length + 64);
@@ -80,8 +75,7 @@ public sealed class IdeParityConformanceUtilityTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-MUST-003")]
-    public void EvidencePathNormalization_RejectsTraversalAbsoluteUserAndUnsupportedUriPaths()
-    {
+    public void EvidencePathNormalization_RejectsTraversalAbsoluteUserAndUnsupportedUriPaths() {
         string root = Path.Combine(Path.GetTempPath(), "frontcomposer-ide-parity-root");
 
         IdeParityEvidencePath
@@ -116,8 +110,7 @@ public sealed class IdeParityConformanceUtilityTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-REMOTE-001")]
-    public void EvidencePathNormalization_DefaultCaseSensitivityFollowsRuntime()
-    {
+    public void EvidencePathNormalization_DefaultCaseSensitivityFollowsRuntime() {
         bool expected = !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
             && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
         IdeParityEvidencePath.DefaultCaseSensitivityForFilesystem().ShouldBe(expected);
@@ -125,15 +118,13 @@ public sealed class IdeParityConformanceUtilityTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-REMOTE-001")]
-    public void EvidencePathNormalization_HonorsCaseSensitiveFlagOnLinux()
-    {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-        {
+    public void EvidencePathNormalization_HonorsCaseSensitiveFlagOnLinux() {
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows) || RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) {
             return;
         }
 
         string root = Path.Combine(Path.GetTempPath(), "frontcomposer-ide-parity-case");
-        Directory.CreateDirectory(Path.Combine(root, "artifacts", "ide-parity", "evidence"));
+        _ = Directory.CreateDirectory(Path.Combine(root, "artifacts", "ide-parity", "evidence"));
 
         IdeParityEvidencePath
             .TryNormalizeProjectRelativePath(root, "artifacts/ide-parity/evidence/IDE.json", caseSensitive: true, out string lower)
@@ -148,8 +139,7 @@ public sealed class IdeParityConformanceUtilityTests
     [Fact]
     [Trait("MatrixRowId", "IDE-MUST-004")]
     [Trait("MatrixRowId", "IDE-MUST-006")]
-    public void ReportSanitizer_RedactsControlsSecretsAbsolutePathsAndSpreadsheetFormulas()
-    {
+    public void ReportSanitizer_RedactsControlsSecretsAbsolutePathsAndSpreadsheetFormulas() {
         string unsafeValue =
             "=HYPERLINK(\"file:///C:/Users/Ada/AppData/Local/Temp/log.txt\")[31m" +
             " token=ghp_abcdefghijklmnopqrstuvwxyz1234567890" +
@@ -184,8 +174,7 @@ public sealed class IdeParityConformanceUtilityTests
     [InlineData("\n=cmd|/c calc")]
     [InlineData(" =cmd|/c calc")]
     [Trait("MatrixRowId", "IDE-MUST-004")]
-    public void ReportSanitizer_CsvBlocksFormulaInjectionEvenWithLeadingWhitespace(string payload)
-    {
+    public void ReportSanitizer_CsvBlocksFormulaInjectionEvenWithLeadingWhitespace(string payload) {
         string csv = IdeParityReportSanitizer.Sanitize(payload, IdeParityReportFormat.Csv);
         // The leading-formula guard prepends a single quote. CSV-quoting (enclosing double
         // quotes) only fires when the value contains comma, double-quote, or newline; in
@@ -199,8 +188,7 @@ public sealed class IdeParityConformanceUtilityTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-MUST-004")]
-    public void ReportSanitizer_StripsOsc8HyperlinkRuns()
-    {
+    public void ReportSanitizer_StripsOsc8HyperlinkRuns() {
         const string osc8 = "]8;;https://attacker.testlabel]8;;";
         string sanitized = IdeParityReportSanitizer.Sanitize(osc8, IdeParityReportFormat.Terminal);
         sanitized.ShouldNotContain("");
@@ -209,8 +197,7 @@ public sealed class IdeParityConformanceUtilityTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-MUST-004")]
-    public void ReportSanitizer_MarkdownEscapesAllHtmlNotJustScript()
-    {
+    public void ReportSanitizer_MarkdownEscapesAllHtmlNotJustScript() {
         const string payload = "<iframe src=\"x\"></iframe><img src=x onerror=alert(1)>line1\nline2|cell";
         string markdown = IdeParityReportSanitizer.Sanitize(payload, IdeParityReportFormat.Markdown);
         markdown.ShouldNotContain("<iframe", Case.Insensitive);
@@ -223,9 +210,8 @@ public sealed class IdeParityConformanceUtilityTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-MUST-004")]
-    public void ReportSanitizer_GuardsMaxLengthAndSurrogatePairs()
-    {
-        Should.Throw<ArgumentOutOfRangeException>(()
+    public void ReportSanitizer_GuardsMaxLengthAndSurrogatePairs() {
+        _ = Should.Throw<ArgumentOutOfRangeException>(()
             => IdeParityReportSanitizer.Sanitize("anything", IdeParityReportFormat.Terminal, maxLength: 0));
 
         // 33 chars: 32 ASCII + one surrogate pair (U+1F600 'GRINNING FACE').
@@ -233,8 +219,7 @@ public sealed class IdeParityConformanceUtilityTests
         string sanitized = IdeParityReportSanitizer.Sanitize(mixed, IdeParityReportFormat.Terminal, maxLength: 33);
         sanitized.ShouldStartWith(new string('A', 32));
         // Either we kept the full pair or we cut before the high surrogate; never an unpaired high surrogate.
-        if (sanitized.Length > 32)
-        {
+        if (sanitized.Length > 32) {
             char lastBeforeMarker = sanitized[31];
             char.IsHighSurrogate(lastBeforeMarker).ShouldBeFalse();
         }
@@ -242,8 +227,7 @@ public sealed class IdeParityConformanceUtilityTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-VERSION-001")]
-    public void VersionRevalidation_ProducesBlockingDryRunIssueWhenGithubIsUnavailable()
-    {
+    public void VersionRevalidation_ProducesBlockingDryRunIssueWhenGithubIsUnavailable() {
         IdeParityVersionPin supported = new(
             Product: "Visual Studio 2022",
             MinimumInclusive: "17.13",
@@ -277,8 +261,7 @@ public sealed class IdeParityConformanceUtilityTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-VERSION-001")]
-    public void VersionRevalidation_ProbeUnavailableReturnsBlockingDryRun()
-    {
+    public void VersionRevalidation_ProbeUnavailableReturnsBlockingDryRun() {
         IdeParityVersionPin supported = new("VS", "17.13", "17.14", "SourceTools");
         IdeParityDetectedVersion detected = new("VS", "17.13.1", "Windows", "samples/IdeParityCounter", ["IDE-MUST-001"], "in range", "in range");
 
@@ -299,20 +282,17 @@ public sealed class IdeParityConformanceUtilityTests
     [InlineData("17.preview", "Version segment 'preview' must start with a digit.")]
     [InlineData("99999999999.0", "Version segment '99999999999' overflows Int32.")]
     [Trait("MatrixRowId", "IDE-VERSION-001")]
-    public void VersionRevalidation_FailsClosedOnInvalidVersionSegments(string raw, string expectedMessage)
-    {
+    public void VersionRevalidation_FailsClosedOnInvalidVersionSegments(string raw, string expectedMessage) {
         ArgumentException ex = Should.Throw<ArgumentException>(()
             => IdeParityVersionRevalidator.CompareVersions(raw, "17.13"));
         ex.Message.ShouldStartWith(expectedMessage);
     }
 
-    private sealed class FakeProbe : IGithubAvailabilityProbe
-    {
+    private sealed class FakeProbe : IGithubAvailabilityProbe {
         private readonly bool _authenticated;
         private readonly bool _hasLabels;
 
-        public FakeProbe(bool authenticated, bool hasLabels)
-        {
+        public FakeProbe(bool authenticated, bool hasLabels) {
             _authenticated = authenticated;
             _hasLabels = hasLabels;
         }
@@ -322,11 +302,9 @@ public sealed class IdeParityConformanceUtilityTests
         public bool LabelsAccessible(IReadOnlyList<string> labels) => _hasLabels;
     }
 
-    internal static string LoadIdeParityCounterFixtureSource()
-    {
+    internal static string LoadIdeParityCounterFixtureSource() {
         StringBuilder builder = new();
-        foreach (string file in IdeParityCounterFixtureSourceFiles())
-        {
+        foreach (string file in IdeParityCounterFixtureSourceFiles()) {
             _ = builder.Append(File.ReadAllText(file));
             _ = builder.AppendLine();
         }
@@ -334,21 +312,17 @@ public sealed class IdeParityConformanceUtilityTests
         return builder.ToString();
     }
 
-    internal static string ComputeIdeParityCounterFixtureHash()
-    {
+    internal static string ComputeIdeParityCounterFixtureHash() {
         // Strip CR bytes before hashing so the digest is stable across CRLF/LF checkouts.
         // The repo's .gitattributes uses `* text=auto eol=crlf`; without normalization the
         // manifest hash would diverge between Windows-checkout and Linux-checkout runners.
-        using SHA256 sha = SHA256.Create();
-        foreach (string file in IdeParityCounterFixtureSourceFiles())
-        {
+        using var sha = SHA256.Create();
+        foreach (string file in IdeParityCounterFixtureSourceFiles()) {
             byte[] raw = File.ReadAllBytes(file);
             int writeIndex = 0;
             byte[] normalized = new byte[raw.Length];
-            for (int i = 0; i < raw.Length; i++)
-            {
-                if (raw[i] != (byte)'\r')
-                {
+            for (int i = 0; i < raw.Length; i++) {
+                if (raw[i] != (byte)'\r') {
                     normalized[writeIndex++] = raw[i];
                 }
             }
@@ -361,28 +335,22 @@ public sealed class IdeParityConformanceUtilityTests
         return "sha256:" + Convert.ToHexString(digest).ToLowerInvariant();
     }
 
-    private static IEnumerable<string> IdeParityCounterFixtureSourceFiles()
-    {
+    private static IEnumerable<string> IdeParityCounterFixtureSourceFiles() {
         string root = Path.Combine(IdeParityRepositoryRoot.Value, "samples", "IdeParityCounter");
         yield return Path.Combine(root, "IdeParityCounterProjection.cs");
         yield return Path.Combine(root, "ConfigureCounterCommand.cs");
     }
 }
 
-internal static class IdeParityRepositoryRoot
-{
-    public static string Value
-    {
-        get
-        {
+internal static class IdeParityRepositoryRoot {
+    public static string Value {
+        get {
             DirectoryInfo? directory = new(ResolveLinkTarget(Path.GetFullPath(AppContext.BaseDirectory)));
-            while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx")))
-            {
+            while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx"))) {
                 directory = directory.Parent;
             }
 
-            if (directory is null)
-            {
+            if (directory is null) {
                 throw new InvalidOperationException("Tests must run under the repository checkout (Hexalith.FrontComposer.slnx not found in any ancestor).");
             }
 
@@ -390,22 +358,17 @@ internal static class IdeParityRepositoryRoot
         }
     }
 
-    private static string ResolveLinkTarget(string path)
-    {
-        try
-        {
+    private static string ResolveLinkTarget(string path) {
+        try {
             DirectoryInfo directory = new(path);
             FileSystemInfo? resolved = directory.ResolveLinkTarget(returnFinalTarget: true);
             return Path.GetFullPath(resolved?.FullName ?? directory.FullName);
         }
-        catch (IOException)
-        {
+        catch (IOException) {
         }
-        catch (UnauthorizedAccessException)
-        {
+        catch (UnauthorizedAccessException) {
         }
-        catch (NotSupportedException)
-        {
+        catch (NotSupportedException) {
         }
 
         return path;

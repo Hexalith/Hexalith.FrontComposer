@@ -44,7 +44,7 @@ public sealed record CommandAuthorizationRequest(
     string DisplayLabel,
     CommandAuthorizationSurface SourceSurface = CommandAuthorizationSurface.DirectDispatch) {
     private bool PrintMembers(StringBuilder builder) {
-        builder.Append("CommandType = ").Append(CommandType.FullName ?? CommandType.Name)
+        _ = builder.Append("CommandType = ").Append(CommandType.FullName ?? CommandType.Name)
             .Append(", PolicyName = ").Append(PolicyName ?? "<none>")
             .Append(", Command = <redacted>")
             .Append(", BoundedContext = ").Append(BoundedContext ?? "<none>")
@@ -62,7 +62,7 @@ public sealed record CommandAuthorizationResource(
     CommandAuthorizationSurface SourceSurface,
     TenantContextSnapshot? TenantContext) {
     private bool PrintMembers(StringBuilder builder) {
-        builder.Append("CommandType = ").Append(CommandType.FullName ?? CommandType.Name)
+        _ = builder.Append("CommandType = ").Append(CommandType.FullName ?? CommandType.Name)
             .Append(", PolicyName = ").Append(PolicyName)
             .Append(", BoundedContext = ").Append(BoundedContext ?? "<none>")
             .Append(", DisplayLabel = ").Append(DisplayLabel)

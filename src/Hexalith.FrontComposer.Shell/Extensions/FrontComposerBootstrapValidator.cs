@@ -21,8 +21,7 @@ namespace Hexalith.FrontComposer.Shell.Extensions;
 /// required; an empty shell with neither a domain nor an EventStore is a valid bootstrap (AC3).
 /// </para>
 /// </remarks>
-internal static class FrontComposerBootstrapValidator
-{
+internal static class FrontComposerBootstrapValidator {
     /// <summary>
     /// Validates the supplied bootstrap markers (enumerated in DI registration order).
     /// </summary>
@@ -31,8 +30,7 @@ internal static class FrontComposerBootstrapValidator
     /// Thrown when the foundational <c>AddHexalithFrontComposerQuickstart()</c> /
     /// <c>AddHexalithFrontComposer()</c> call is missing, or when the calls are mis-ordered.
     /// </exception>
-    public static void Validate(IEnumerable<IFrontComposerBootstrapMarker> markers)
-    {
+    public static void Validate(IEnumerable<IFrontComposerBootstrapMarker> markers) {
         ArgumentNullException.ThrowIfNull(markers);
 
         // Materialise once, preserving DI registration order.
@@ -42,8 +40,7 @@ internal static class FrontComposerBootstrapValidator
         int domainIndex = ordered.FindIndex(static m => m.Stage == FrontComposerBootstrapStage.Domain);
         int eventStoreIndex = ordered.FindIndex(static m => m.Stage == FrontComposerBootstrapStage.EventStore);
 
-        if (quickstartIndex < 0)
-        {
+        if (quickstartIndex < 0) {
             // Name what the adopter DID call so the message points at the concrete mistake. The
             // empty-marker case (no FrontComposer entry point ran) is defensive only — the gate is
             // registered by an entry point, so a marker is always present in production — but it must
@@ -60,8 +57,7 @@ internal static class FrontComposerBootstrapValidator
                 + "registration.");
         }
 
-        if (eventStoreIndex >= 0 && eventStoreIndex < quickstartIndex)
-        {
+        if (eventStoreIndex >= 0 && eventStoreIndex < quickstartIndex) {
             throw new InvalidOperationException(
                 "FrontComposer bootstrap is mis-ordered: AddHexalithEventStore(...) was called before "
                 + "AddHexalithFrontComposerQuickstart(). Call AddHexalithFrontComposerQuickstart() first so it "
@@ -70,8 +66,7 @@ internal static class FrontComposerBootstrapValidator
                 + "the real ones.");
         }
 
-        if (domainIndex >= 0 && domainIndex < quickstartIndex)
-        {
+        if (domainIndex >= 0 && domainIndex < quickstartIndex) {
             throw new InvalidOperationException(
                 "FrontComposer bootstrap is mis-ordered: AddHexalithDomain<TMarker>() was called before "
                 + "AddHexalithFrontComposerQuickstart(). Call AddHexalithFrontComposerQuickstart() first so the "
@@ -79,8 +74,7 @@ internal static class FrontComposerBootstrapValidator
                 + "generated domain manifests into it.");
         }
 
-        if (domainIndex >= 0 && eventStoreIndex >= 0 && eventStoreIndex < domainIndex)
-        {
+        if (domainIndex >= 0 && eventStoreIndex >= 0 && eventStoreIndex < domainIndex) {
             throw new InvalidOperationException(
                 "FrontComposer bootstrap is mis-ordered: AddHexalithEventStore(...) was called before "
                 + "AddHexalithDomain<TMarker>(). Register domains via AddHexalithDomain<TMarker>() before "

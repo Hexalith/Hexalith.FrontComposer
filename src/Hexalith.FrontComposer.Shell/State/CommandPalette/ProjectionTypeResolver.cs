@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
-using System.Reflection;
 using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 
 namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
 
@@ -8,8 +8,7 @@ namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
 /// Resolves projection type names emitted by the registry into runtime <see cref="Type"/>
 /// instances for the optional badge-count contract.
 /// </summary>
-internal static class ProjectionTypeResolver
-{
+internal static class ProjectionTypeResolver {
     private static readonly ConcurrentDictionary<string, Type?> _cache = new(StringComparer.Ordinal);
 
     /// <summary>
@@ -17,26 +16,22 @@ internal static class ProjectionTypeResolver
     /// </summary>
     /// <param name="typeName">The fully qualified projection type name.</param>
     /// <returns>The resolved runtime type when available; otherwise <see langword="null"/>.</returns>
-    public static Type? Resolve(string? typeName)
-    {
-        if (string.IsNullOrWhiteSpace(typeName))
-        {
+    public static Type? Resolve(string? typeName) {
+        if (string.IsNullOrWhiteSpace(typeName)) {
             return null;
         }
 
         // Cache only positive resolutions. Negative results must remain re-tryable so
         // plug-in / lazy-loaded / hot-reloaded adopter assemblies loaded after the first
         // palette open become visible on the next lookup without a process restart.
-        if (_cache.TryGetValue(typeName, out Type? cached) && cached is not null)
-        {
+        if (_cache.TryGetValue(typeName, out Type? cached) && cached is not null) {
             return cached;
         }
 
         Type? resolved = ResolveCore(typeName);
-        if (resolved is not null)
-        {
+        if (resolved is not null) {
             // Pass-5 P9 — atomic add preserves the first writer's result under concurrent resolves.
-            _cache.TryAdd(typeName, resolved);
+            _ = _cache.TryAdd(typeName, resolved);
         }
 
         return resolved;
@@ -50,29 +45,24 @@ internal static class ProjectionTypeResolver
         "Trimming",
         "IL2026:Members attributed with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code.",
         Justification = "Scanning loaded assemblies is only used for the optional badge contract. If trimming removes a projection type, the palette intentionally degrades to no badge rather than failing.")]
-    private static Type? ResolveCore(string typeName)
-    {
+    private static Type? ResolveCore(string typeName) {
         Type? resolved = null;
-        try
-        {
+        try {
             resolved = Type.GetType(typeName, throwOnError: false);
         }
         catch (TypeLoadException) { }
         catch (FileLoadException) { }
         catch (BadImageFormatException) { }
 
-        if (resolved is not null)
-        {
+        if (resolved is not null) {
             return resolved;
         }
 
         // Pass-5 P8 — snapshot to avoid enumerator-modified exceptions when an assembly loads
         // concurrently during the scan (hot-reload, lazy MEF, dynamic plugin load).
         Assembly[] snapshot = AppDomain.CurrentDomain.GetAssemblies();
-        foreach (Assembly assembly in snapshot)
-        {
-            try
-            {
+        foreach (Assembly assembly in snapshot) {
+            try {
                 resolved = assembly.GetType(typeName, throwOnError: false, ignoreCase: false);
             }
             catch (TypeLoadException) { continue; }
@@ -80,8 +70,7 @@ internal static class ProjectionTypeResolver
             catch (BadImageFormatException) { continue; }
             catch (NotSupportedException) { continue; } // Dynamic assemblies don't support GetType.
 
-            if (resolved is not null)
-            {
+            if (resolved is not null) {
                 return resolved;
             }
         }

@@ -2,7 +2,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
 
@@ -45,7 +44,7 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
         Diagnostic? typeDrift = diagnostics.FirstOrDefault(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
                                                              && d.GetMessage().Contains("Amount", StringComparison.Ordinal)
                                                              && d.Severity == DiagnosticSeverity.Warning);
-        typeDrift.ShouldNotBeNull("AC5 type change must emit a Warning by default.");
+        _ = typeDrift.ShouldNotBeNull("AC5 type change must emit a Warning by default.");
         typeDrift!.GetMessage().ShouldContain(CategoryFor(baselineType), Case.Insensitive);
         typeDrift.GetMessage().ShouldContain(CategoryFor(currentType), Case.Insensitive);
         typeDrift.GetMessage().ShouldContain(expectedSurface, Case.Insensitive);
@@ -99,7 +98,7 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
 
         Diagnostic? nullabilityDrift = diagnostics.FirstOrDefault(d => d.GetMessage().Contains("Reference", StringComparison.Ordinal)
                                                                     && d.GetMessage().Contains("nullable", StringComparison.OrdinalIgnoreCase));
-        nullabilityDrift.ShouldNotBeNull();
+        _ = nullabilityDrift.ShouldNotBeNull();
         // Story 9-1 review CB-25: anchor with word boundaries so a regression that drops the
         // breaking-hint token but leaves an incidental substring (e.g. "required" inside a
         // doc-link path or "tightly-coupled" prose) does not pass silently.
@@ -112,9 +111,9 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
     // (scalar→collection, value→reference, generic-arg) must surface a deterministic
     // structural drift diagnostic; otherwise a regression that misclassifies (or silently
     // accepts) cross-kind transitions slips through.
-    [InlineData("string",                       "System.Collections.Generic.IReadOnlyList<string>", "Tags",      "String")]
-    [InlineData("int",                          "string",                                            "Reference", "Int32")]
-    [InlineData("System.DateTimeOffset",        "string",                                            "OccurredAt","DateTimeOffset")]
+    [InlineData("string", "System.Collections.Generic.IReadOnlyList<string>", "Tags", "String")]
+    [InlineData("int", "string", "Reference", "Int32")]
+    [InlineData("System.DateTimeOffset", "string", "OccurredAt", "DateTimeOffset")]
     public void TypeCategoryChange_AcrossKinds_EmitsStructuralDrift(string baselineClr, string currentClr, string memberName, string baselineCategory) {
         ArgumentNullException.ThrowIfNull(currentClr);
         string baseline = $$"""

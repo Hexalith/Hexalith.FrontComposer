@@ -13,8 +13,7 @@ namespace Hexalith.FrontComposer.Contracts.Badges;
 /// per-circuit <see cref="CountChanged"/> subscriptions do not leak across users or disposed render
 /// trees.
 /// </remarks>
-public interface IBadgeCountService
-{
+public interface IBadgeCountService {
     /// <summary>
     /// Snapshot of actionable-item counts keyed by projection runtime type.
     /// </summary>

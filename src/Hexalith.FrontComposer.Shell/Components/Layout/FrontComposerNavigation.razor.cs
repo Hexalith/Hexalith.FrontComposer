@@ -283,10 +283,10 @@ public partial class FrontComposerNavigation : FluxorComponent {
         for (int i = 0; i < pascal.Length; i++) {
             char c = pascal[i];
             if (i > 0 && char.IsUpper(c)) {
-                sb.Append('-');
+                _ = sb.Append('-');
             }
 
-            sb.Append(char.ToLowerInvariant(c));
+            _ = sb.Append(char.ToLowerInvariant(c));
         }
 
         return sb.ToString();

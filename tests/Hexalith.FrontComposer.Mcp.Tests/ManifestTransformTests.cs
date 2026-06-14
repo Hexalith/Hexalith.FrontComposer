@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Mcp;
+using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
@@ -24,8 +25,8 @@ public sealed class ManifestTransformTests {
             }
             """;
 
-        var parsed = SourceToolCompilationHelper.ParseCommand(Source, "Orders.ApproveOrderCommand").Model!;
-        var descriptor = McpManifestTransform.TransformCommand(parsed);
+        CommandModel parsed = SourceToolCompilationHelper.ParseCommand(Source, "Orders.ApproveOrderCommand").Model!;
+        McpCommandDescriptorModel descriptor = McpManifestTransform.TransformCommand(parsed);
 
         descriptor.ProtocolName.ShouldBe("Sales.ApproveOrderCommand.Execute");
         descriptor.Title.ShouldBe("Approve Order");
@@ -58,8 +59,8 @@ public sealed class ManifestTransformTests {
             }
             """;
 
-        var parsed = SourceToolCompilationHelper.ParseCommand(Source, "Orders.Write.ApproveOrderCommand").Model!;
-        var descriptor = McpManifestTransform.TransformCommand(parsed);
+        CommandModel parsed = SourceToolCompilationHelper.ParseCommand(Source, "Orders.Write.ApproveOrderCommand").Model!;
+        McpCommandDescriptorModel descriptor = McpManifestTransform.TransformCommand(parsed);
 
         descriptor.ProtocolName.ShouldBe("Sales.ApproveOrderCommand.Execute");
         descriptor.CommandTypeName.ShouldBe("Orders.Write.ApproveOrderCommand");
@@ -90,8 +91,8 @@ public sealed class ManifestTransformTests {
             }
             """;
 
-        var parsed = SourceToolCompilationHelper.ParseProjection(Source, "Orders.OrderQueueProjection").Model!;
-        var descriptor = McpManifestTransform.TransformProjection(parsed);
+        DomainModel parsed = SourceToolCompilationHelper.ParseProjection(Source, "Orders.OrderQueueProjection").Model!;
+        McpResourceDescriptorModel descriptor = McpManifestTransform.TransformProjection(parsed);
 
         descriptor.ProtocolUri.ShouldBe("frontcomposer://Sales/projections/OrderQueueProjection");
         descriptor.Title.ShouldBe("Order queue");
@@ -126,15 +127,15 @@ public sealed class ManifestTransformTests {
             }
             """;
 
-        var parsed = SourceToolCompilationHelper.ParseProjection(Source, "Orders.OrderQueueProjection").Model!;
-        var descriptor = McpManifestTransform.TransformProjection(parsed);
+        DomainModel parsed = SourceToolCompilationHelper.ParseProjection(Source, "Orders.OrderQueueProjection").Model!;
+        McpResourceDescriptorModel descriptor = McpManifestTransform.TransformProjection(parsed);
 
         descriptor.RenderStrategy.ShouldBe("ActionQueue");
         descriptor.EntityPluralLabel.ShouldBe("Orders");
         descriptor.EmptyStateCtaCommandName.ShouldBe("CreateOrderCommand");
         descriptor.Fields.Select(f => f.Name).ShouldBe(["Number", "Status", "UpdatedAt"]);
         descriptor.Fields[0].Description.ShouldBe("Stable public order identifier");
-        descriptor.Fields[1].BadgeMappings.ShouldNotBeNull();
+        _ = descriptor.Fields[1].BadgeMappings.ShouldNotBeNull();
         descriptor.Fields[1].BadgeMappings!["Pending"].ShouldBe("Warning");
         descriptor.Fields[1].BadgeMappings!["Approved"].ShouldBe("Success");
         descriptor.Fields[2].DisplayFormat.ShouldBe("RelativeTime");

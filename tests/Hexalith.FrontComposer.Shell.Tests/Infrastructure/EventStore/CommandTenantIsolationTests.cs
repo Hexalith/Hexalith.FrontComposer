@@ -1,20 +1,17 @@
 using System.Net;
 
-using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts;
-using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using MsOptions = Microsoft.Extensions.Options.Options;
 
 using Shouldly;
 
-using Xunit;
+using MsOptions = Microsoft.Extensions.Options.Options;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
@@ -52,8 +49,7 @@ public sealed class CommandTenantIsolationTests {
     private sealed class ExplodingCommand {
         public string TenantId { get; set; } = "tenant-a";
         public string AggregateId { get; set; } = "order-1";
-        private readonly string _secret = "payload-secret";
-        public string Payload => throw new InvalidOperationException(_secret);
+        public string Payload { get => throw new InvalidOperationException(field); } = "payload-secret";
     }
 
     private sealed class FixedUlidFactory : IUlidFactory {

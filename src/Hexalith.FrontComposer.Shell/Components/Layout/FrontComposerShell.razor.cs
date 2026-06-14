@@ -7,23 +7,20 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
-using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 
 // Blazor component: awaited tasks must resume on the component's sync context, so ConfigureAwait(false) is the wrong choice here.
-#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
 namespace Hexalith.FrontComposer.Shell.Components.Layout;
 
@@ -228,7 +225,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     protected bool IsSubCompactDesktopViewport {
         get {
             ViewportTier tier = NavigationState.Value.CurrentViewport;
-            return tier == ViewportTier.Tablet || tier == ViewportTier.Phone;
+            return tier is ViewportTier.Tablet or ViewportTier.Phone;
         }
     }
 

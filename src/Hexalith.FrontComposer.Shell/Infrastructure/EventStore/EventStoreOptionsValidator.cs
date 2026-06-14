@@ -28,7 +28,7 @@ internal sealed class EventStoreOptionsValidator : IValidateOptions<EventStoreOp
             return ValidateOptionsResult.Fail("Timeout must be positive.");
         }
 
-        if (options.MaxETagCount <= 0 || options.MaxETagCount > 10) {
+        if (options.MaxETagCount is <= 0 or > 10) {
             return ValidateOptionsResult.Fail("MaxETagCount must be between 1 and 10.");
         }
 
@@ -36,8 +36,8 @@ internal sealed class EventStoreOptionsValidator : IValidateOptions<EventStoreOp
             return ValidateOptionsResult.Fail("MaxRequestBytes must be positive.");
         }
 
-        if (options.MaxResponseBytes < EventStoreOptions.MinAllowedResponseBytes
-            || options.MaxResponseBytes > EventStoreOptions.MaxAllowedResponseBytes) {
+        if (options.MaxResponseBytes is < EventStoreOptions.MinAllowedResponseBytes
+            or > EventStoreOptions.MaxAllowedResponseBytes) {
             return ValidateOptionsResult.Fail(
                 $"MaxResponseBytes must be between {EventStoreOptions.MinAllowedResponseBytes} and {EventStoreOptions.MaxAllowedResponseBytes}.");
         }

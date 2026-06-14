@@ -38,7 +38,7 @@ public static class ProjectionSlotServiceCollectionExtensions {
         TProjection,
         TField,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        TComponent>(
+    TComponent>(
         this IServiceCollection services,
         Expression<Func<TProjection, TField>> field,
         ProjectionRole? role = null)

@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
 using System.Text;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
@@ -33,13 +31,11 @@ public static class ProjectionRoleBodyEmitter {
     /// one <see cref="Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder"/> per column,
     /// no inline actions, no filter.
     /// </summary>
-    public static void EmitDefaultBody(StringBuilder sb, RazorModel model) {
-        EmitStandardDataGrid(
+    public static void EmitDefaultBody(StringBuilder sb, RazorModel model) => EmitStandardDataGrid(
             sb,
             model,
             filteredItemsExpression: "state.Items.AsQueryable()",
             emitExpandableRows: true);
-    }
 
     /// <summary>
     /// Story 4-1 T3.4 / D14 / G12 — ActionQueue DataGrid body with inline-action row
@@ -318,7 +314,7 @@ public static class ProjectionRoleBodyEmitter {
             return Array.Empty<ColumnModel>();
         }
 
-        ColumnModel[] tail = new ColumnModel[all.Count - primaryCap];
+        var tail = new ColumnModel[all.Count - primaryCap];
         for (int i = primaryCap, k = 0; i < all.Count; i++, k++) {
             tail[k] = all[i];
         }

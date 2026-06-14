@@ -68,9 +68,7 @@ public sealed class CapabilityDiscoveryConsumerIntegrationTests : LayoutComponen
 
         Services.GetRequiredService<IDispatcher>().Dispatch(new AppInitializedAction("c-1"));
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("fluent-badge");
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("fluent-badge"));
     }
 
     [Fact]

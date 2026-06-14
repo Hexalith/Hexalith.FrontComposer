@@ -7,7 +7,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Skills;
 public sealed class BenchmarkHarnessTests {
     [Fact]
     public void PromptSet_LoadsTwentyV1PromptsWithDeterministicIds() {
-        SkillBenchmarkPromptSet promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        var promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
 
         promptSet.Prompts.Count.ShouldBe(20);
         promptSet.Prompts.Select(p => p.Id).ShouldBe(promptSet.Prompts.Select(p => p.Id).Order(StringComparer.Ordinal));
@@ -19,7 +19,7 @@ public sealed class BenchmarkHarnessTests {
         SkillBenchmarkPrompt prompt = SkillBenchmarkPromptSet.LoadEmbeddedV1().Prompts[0];
         var config = new SkillBenchmarkModelConfig("provider", "model", Temperature: 0, Seed: 123, TimeoutSeconds: 60, RetryCount: 0);
 
-        SkillBenchmarkCacheKey first = SkillBenchmarkCacheKey.Create(
+        var first = SkillBenchmarkCacheKey.Create(
             prompt,
             "1.0.0",
             "1.0.0",
@@ -27,7 +27,7 @@ public sealed class BenchmarkHarnessTests {
             "scorer-v1",
             "validator-v1",
             "redaction-v1");
-        SkillBenchmarkCacheKey second = SkillBenchmarkCacheKey.Create(
+        var second = SkillBenchmarkCacheKey.Create(
             prompt with { Text = prompt.Text + " changed" },
             "1.0.0",
             "1.0.0",
@@ -49,7 +49,7 @@ public sealed class BenchmarkHarnessTests {
         SkillBenchmarkPrompt prompt = SkillBenchmarkPromptSet.LoadEmbeddedV1().Prompts[0];
         var config = new SkillBenchmarkModelConfig("provider", "model", Temperature: 0, Seed: 123, TimeoutSeconds: 60, RetryCount: 0);
 
-        SkillBenchmarkCacheKey first = SkillBenchmarkCacheKey.Create(
+        var first = SkillBenchmarkCacheKey.Create(
             prompt,
             "1.0.0",
             "1.0.0",
@@ -57,7 +57,7 @@ public sealed class BenchmarkHarnessTests {
             "scorer-v1",
             "validator-v1",
             "redaction-v1");
-        SkillBenchmarkCacheKey second = SkillBenchmarkCacheKey.Create(
+        var second = SkillBenchmarkCacheKey.Create(
             prompt with { ExpectedShape = [.. prompt.ExpectedShape, "new-acceptance-criterion"] },
             "1.0.0",
             "1.0.0",
@@ -75,10 +75,10 @@ public sealed class BenchmarkHarnessTests {
         // null vs Some(123) flip produces a cache-miss.
         SkillBenchmarkPrompt prompt = SkillBenchmarkPromptSet.LoadEmbeddedV1().Prompts[0];
         var configA = new SkillBenchmarkModelConfig("provider", "model", Temperature: 0, Seed: null, TimeoutSeconds: 60, RetryCount: 0);
-        var configB = configA with { Seed = 123 };
+        SkillBenchmarkModelConfig configB = configA with { Seed = 123 };
 
-        SkillBenchmarkCacheKey first = SkillBenchmarkCacheKey.Create(prompt, "1.0.0", "1.0.0", configA, "scorer-v1", "validator-v1", "redaction-v1");
-        SkillBenchmarkCacheKey second = SkillBenchmarkCacheKey.Create(prompt, "1.0.0", "1.0.0", configB, "scorer-v1", "validator-v1", "redaction-v1");
+        var first = SkillBenchmarkCacheKey.Create(prompt, "1.0.0", "1.0.0", configA, "scorer-v1", "validator-v1", "redaction-v1");
+        var second = SkillBenchmarkCacheKey.Create(prompt, "1.0.0", "1.0.0", configB, "scorer-v1", "validator-v1", "redaction-v1");
 
         first.Value.ShouldNotBe(second.Value);
     }
@@ -242,7 +242,7 @@ public sealed class BenchmarkHarnessTests {
 
     [Fact]
     public void BudgetPolicy_FailsClosedForMissingAtLimitExpiredMalformedAndRetryStormState() {
-        DateTimeOffset now = DateTimeOffset.Parse("2026-05-10T12:00:00Z");
+        var now = DateTimeOffset.Parse("2026-05-10T12:00:00Z");
         var available = new SkillBenchmarkBudgetState(100, 99, now.AddDays(1), ProviderCostMetadataAvailable: true, RetryStormDetected: false);
 
         SkillBenchmarkBudgetPolicy.Evaluate(available, now).ShouldBe(SkillBenchmarkBudgetStatus.Available);
@@ -256,7 +256,7 @@ public sealed class BenchmarkHarnessTests {
 
     [Fact]
     public void BenchmarkGate_RequiresExactlyTwentyValidPromptResultsAndApprovedBaseline() {
-        SkillBenchmarkPromptSet promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        var promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
         SkillBenchmarkResult[] results = [.. promptSet.Prompts.Select((prompt, index) => BenchmarkResultFor(prompt.Id, index < 16))];
 
         SkillBenchmarkGateResult candidate = SkillBenchmarkGate.Evaluate(promptSet, results, approvedBaseline: null);
@@ -310,7 +310,7 @@ public sealed class BenchmarkHarnessTests {
 
     [Fact]
     public void ResultPersistenceAndGate_BlockMissingProviderMetadata() {
-        SkillBenchmarkPromptSet promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        var promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
         SkillBenchmarkResult[] results = [.. promptSet.Prompts.Select((prompt, index) => BenchmarkResultFor(prompt.Id, index < 16))];
         SkillBenchmarkResult missingMetadata = results[0] with { ProviderId = string.Empty };
 
@@ -325,14 +325,14 @@ public sealed class BenchmarkHarnessTests {
         string safe = SkillBenchmarkEvidencePath.NormalizeUnderRoot(root, "summaries/result.json");
 
         safe.ShouldStartWith(Path.GetFullPath(root));
-        Should.Throw<InvalidOperationException>(() => SkillBenchmarkEvidencePath.NormalizeUnderRoot(root, "../outside.json"));
-        Should.Throw<InvalidOperationException>(() => SkillBenchmarkEvidencePath.NormalizeUnderRoot(root, Path.Combine(Path.GetPathRoot(root)!, "outside.json")));
+        _ = Should.Throw<InvalidOperationException>(() => SkillBenchmarkEvidencePath.NormalizeUnderRoot(root, "../outside.json"));
+        _ = Should.Throw<InvalidOperationException>(() => SkillBenchmarkEvidencePath.NormalizeUnderRoot(root, Path.Combine(Path.GetPathRoot(root)!, "outside.json")));
     }
 
     [Fact]
     public void PromptSet_LoadsExpectedTwentyIdsByOrdinalOrderingFromFixture() {
         // Better than asserting "the loader sorted its own output": pin the actual 20 IDs.
-        SkillBenchmarkPromptSet promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        var promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
 
         promptSet.Prompts.Count.ShouldBe(20);
         promptSet.Prompts[0].Id.ShouldStartWith("p");

@@ -71,14 +71,13 @@ public sealed class FilterReducerTests {
     }
 
     [Fact]
-    public void ColumnFilterChanged_RejectsReservedKey() {
+    public void ColumnFilterChanged_RejectsReservedKey() =>
         // Review pass 2 — reserved-key guard now fires at the action-record level (ArgumentException
         // in ColumnKey's init) so a misconfigured caller cannot poison the Filters dictionary even
         // by bypassing the effect. The effect's defensive check remains as a belt-and-suspenders
         // invariant for any future dispatch path we haven't thought of.
         Should.Throw<ArgumentException>(() =>
             new ColumnFilterChangedAction(ViewKey, "__status", "Pending"));
-    }
 
     [Fact]
     public async Task StatusFilterToggled_AddsThenRemovesSlot() {

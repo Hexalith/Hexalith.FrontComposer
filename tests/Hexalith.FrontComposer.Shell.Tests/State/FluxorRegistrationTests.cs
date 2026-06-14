@@ -1,5 +1,3 @@
-using System.Linq;
-
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Storage;
@@ -59,7 +57,7 @@ public class FluxorRegistrationTests {
 
     [Fact]
     public void Fluxor_AssemblyScan_NoDuplicateRegistration() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
 
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposer();
@@ -68,7 +66,7 @@ public class FluxorRegistrationTests {
     }
 
     private static ServiceProvider BuildProvider() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposer();
         // LocalStorageService requires IJSRuntime; test hosts swap in InMemoryStorageService.

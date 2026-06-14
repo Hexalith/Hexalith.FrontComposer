@@ -1,10 +1,8 @@
-#pragma warning disable CA2007
 using Bunit;
 
 using Fluxor;
 
 using Hexalith.FrontComposer.Shell.Components.DataGrid;
-using Hexalith.FrontComposer.Shell.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -20,14 +18,12 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// filter-induced-empty surface (as opposed to the no-data <c>FcProjectionEmptyPlaceholder</c>).
 /// Closes the filter-empty gap (no dedicated test file existed at baseline 8036c3c).
 /// </summary>
-public sealed class FcFilterEmptyStateTests : BunitContext
-{
+public sealed class FcFilterEmptyStateTests : BunitContext {
     private const string ViewKeyValue = "acme:OrdersProjection";
 
     private readonly IDispatcher _dispatcher = Substitute.For<IDispatcher>();
 
-    public FcFilterEmptyStateTests()
-    {
+    public FcFilterEmptyStateTests() {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLogging();
         _ = Services.AddLocalization();
@@ -36,8 +32,7 @@ public sealed class FcFilterEmptyStateTests : BunitContext
     }
 
     [Fact]
-    public void RendersPoliteLiveRegion()
-    {
+    public void RendersPoliteLiveRegion() {
         using CultureScope _ = new("en");
         IRenderedComponent<FcFilterEmptyState> cut = RenderState(2);
 
@@ -47,8 +42,7 @@ public sealed class FcFilterEmptyStateTests : BunitContext
     }
 
     [Fact]
-    public void RendersLocalizedFilteredEmptyMessage()
-    {
+    public void RendersLocalizedFilteredEmptyMessage() {
         using CultureScope _ = new("en");
         IRenderedComponent<FcFilterEmptyState> cut = RenderState(2);
 
@@ -56,8 +50,7 @@ public sealed class FcFilterEmptyStateTests : BunitContext
     }
 
     [Fact]
-    public void RendersResetAffordanceWhenFiltersActive()
-    {
+    public void RendersResetAffordanceWhenFiltersActive() {
         using CultureScope _ = new("en");
         IRenderedComponent<FcFilterEmptyState> cut = RenderState(2);
 
@@ -65,8 +58,7 @@ public sealed class FcFilterEmptyStateTests : BunitContext
     }
 
     [Fact]
-    public void DegradesToTextOnlyWhenNoActiveFilters()
-    {
+    public void DegradesToTextOnlyWhenNoActiveFilters() {
         using CultureScope _ = new("en");
         IRenderedComponent<FcFilterEmptyState> cut = RenderState(0);
 

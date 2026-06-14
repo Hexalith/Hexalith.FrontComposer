@@ -194,10 +194,8 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
     }
 
     private void UnsubscribeFromEditContext() {
-        if (_subscribedEditContext is not null) {
-            _subscribedEditContext.OnFieldChanged -= OnFirstEdit;
-            _subscribedEditContext = null;
-        }
+        _subscribedEditContext?.OnFieldChanged -= OnFirstEdit;
+        _subscribedEditContext = null;
     }
 
     /// <inheritdoc />

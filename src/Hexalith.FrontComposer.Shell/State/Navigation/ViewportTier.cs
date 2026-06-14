@@ -10,8 +10,7 @@ namespace Hexalith.FrontComposer.Shell.State.Navigation;
 /// Phone &lt; 768. The ordering lets downstream consumers (Story 3-3 density override) express
 /// tier predicates as <c>tier &gt;= ViewportTier.Tablet</c>. Tier is NEVER persisted (ADR-037).
 /// </remarks>
-public enum ViewportTier : byte
-{
+public enum ViewportTier : byte {
     /// <summary>Phone viewport: &lt; 768 px.</summary>
     Phone = 0,
 

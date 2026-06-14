@@ -14,15 +14,12 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Navigation;
 /// <c>CurrentViewport</c>/<c>viewport</c>/<c>tier</c> fields are ABSENT from the serialised form
 /// (viewport is derived at runtime, never persisted).
 /// </summary>
-public sealed class NavigationPersistenceSnapshotTests
-{
+public sealed class NavigationPersistenceSnapshotTests {
     [Fact]
-    public Task BlobSchemaLocked()
-    {
+    public Task BlobSchemaLocked() {
         NavigationPersistenceBlob blob = new(
             SidebarCollapsed: true,
-            CollapsedGroups: new Dictionary<string, bool>(StringComparer.Ordinal)
-            {
+            CollapsedGroups: new Dictionary<string, bool>(StringComparer.Ordinal) {
                 ["Counter"] = true,
                 ["Orders"] = false,
             });

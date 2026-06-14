@@ -24,16 +24,14 @@ namespace Hexalith.FrontComposer.Shell.Tests.Spike;
 /// the four confirmed API answers against the live <c>src/</c> code so they cannot silently regress
 /// before 1.1 consumes them. Each test maps to one 🔴 AR5 question from the spike note.
 /// </summary>
-public sealed class Story10ShellIntegrationSpikeTests
-{
+public sealed class Story10ShellIntegrationSpikeTests {
     // ── Q1: AddHexalithFrontComposer* registration path boots an empty shell (AC#1/#2) ─────────────
     // The spike confirmed the canonical 3-call ordering
     //   AddHexalithFrontComposerQuickstart() → AddHexalithDomain<CounterDomain>() → stub AddHexalithEventStore()
     // builds a working container with scope validation on (ADR-030 scoped-lifetime discipline holds).
 
     [Fact]
-    public void Bootstrap_QuickstartThenDomainThenStubEventStore_BuildsWithScopeValidation()
-    {
+    public void Bootstrap_QuickstartThenDomainThenStubEventStore_BuildsWithScopeValidation() {
         using ServiceProvider provider = BuildSpikeHost();
 
         // The authoritative registry resolves (singleton) — empty shell can compose against it.
@@ -47,8 +45,7 @@ public sealed class Story10ShellIntegrationSpikeTests
     }
 
     [Fact]
-    public void Bootstrap_EventStoreRegisteredAfterQuickstart_PreservesAuthoritativeRegistry()
-    {
+    public void Bootstrap_EventStoreRegisteredAfterQuickstart_PreservesAuthoritativeRegistry() {
         // The spike's ordering invariant: AddHexalithEventStore only TryAdds IFrontComposerRegistry,
         // so the registry Quickstart installed (and AddHexalithDomain populated) survives EventStore
         // registration — the domain manifests are NOT dropped when EventStore runs last.
@@ -66,8 +63,7 @@ public sealed class Story10ShellIntegrationSpikeTests
     // verified here through the full Quickstart entry point the spike actually booted.
 
     [Fact]
-    public void ManifestDiscovery_ThroughQuickstart_SurfacesGeneratedCounterRegistration()
-    {
+    public void ManifestDiscovery_ThroughQuickstart_SurfacesGeneratedCounterRegistration() {
         using ServiceProvider provider = BuildSpikeHost();
 
         IFrontComposerRegistry registry = provider.GetRequiredService<IFrontComposerRegistry>();
@@ -86,8 +82,7 @@ public sealed class Story10ShellIntegrationSpikeTests
     // companion, so stock hosts need no extra wiring for full-page routes (Story 3-4 D21 / DN6).
 
     [Fact]
-    public void DefaultRegistry_ImplementsRouteReachabilityCompanions()
-    {
+    public void DefaultRegistry_ImplementsRouteReachabilityCompanions() {
         using ServiceProvider provider = BuildSpikeHost();
 
         IFrontComposerRegistry registry = provider.GetRequiredService<IFrontComposerRegistry>();
@@ -99,8 +94,7 @@ public sealed class Story10ShellIntegrationSpikeTests
     }
 
     [Fact]
-    public void DefaultRegistry_HasFullPageRoute_TrueForRegisteredCommand_FalseForUnknown()
-    {
+    public void DefaultRegistry_HasFullPageRoute_TrueForRegisteredCommand_FalseForUnknown() {
         using ServiceProvider provider = BuildSpikeHost();
 
         IFrontComposerRegistry registry = provider.GetRequiredService<IFrontComposerRegistry>();
@@ -134,26 +128,21 @@ public sealed class Story10ShellIntegrationSpikeTests
     ];
 
     [Fact]
-    public void FcTbl_DocumentedSurface_IsPublicComponentBase()
-    {
-        foreach (Type component in FcTblPublicSurface)
-        {
+    public void FcTbl_DocumentedSurface_IsPublicComponentBase() {
+        foreach (Type component in FcTblPublicSurface) {
             component.IsPublic.ShouldBeTrue($"{component.Name} is part of the adopter-facing FC-TBL surface and must stay public (spike Q4 / Story 2.8).");
             component.IsAssignableTo(typeof(ComponentBase)).ShouldBeTrue($"{component.Name} must be a Blazor ComponentBase.");
         }
     }
 
     [Fact]
-    public void FcColumnPrioritizer_MaxVisibleColumns_DefaultIsTen()
-    {
+    public void FcColumnPrioritizer_MaxVisibleColumns_DefaultIsTen() =>
         // The spike pinned the wide-grid activation default (>15 columns → HFC1028/HFC1029) — the
         // visible-column ceiling defaults to 10.
         new FcColumnPrioritizer().MaxVisibleColumns.ShouldBe(10);
-    }
 
     [Fact]
-    public void FcExpandInRowDetail_ExposesDocumentedParameters()
-    {
+    public void FcExpandInRowDetail_ExposesDocumentedParameters() {
         // WCAG 4.1.2 hidden-expansion contract the spike recorded: PanelId + SuppressedAnnouncement
         // are bindable [Parameter]s on the expand-in-row component.
         ShouldHaveParameter(typeof(FcExpandInRowDetail), "PanelId");
@@ -168,14 +157,12 @@ public sealed class Story10ShellIntegrationSpikeTests
     /// implementation (the real LocalStorageService needs IJSRuntime), built with
     /// <c>ValidateScopes = true</c> to keep the ADR-030 scoped-lifetime guard active.
     /// </summary>
-    private static ServiceProvider BuildSpikeHost()
-    {
-        ServiceCollection services = new();
+    private static ServiceProvider BuildSpikeHost() {
+        ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposerQuickstart();
         _ = services.AddHexalithDomain<CounterDomain>();
-        _ = services.AddHexalithEventStore(o =>
-        {
+        _ = services.AddHexalithEventStore(o => {
             // Stub backend — absolute BaseAddress passes ValidateOnStart without a live EventStore.
             o.BaseAddress = new Uri("http://localhost:9/");
             o.RequireAccessToken = false;
@@ -185,8 +172,7 @@ public sealed class Story10ShellIntegrationSpikeTests
         return services.BuildServiceProvider(new ServiceProviderOptions { ValidateScopes = true });
     }
 
-    private static void ShouldHaveParameter(Type component, string propertyName)
-    {
+    private static void ShouldHaveParameter(Type component, string propertyName) {
         PropertyInfo? property = component.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
         _ = property.ShouldNotBeNull($"{component.Name}.{propertyName} must exist as a public property.");
         property.GetCustomAttribute<ParameterAttribute>()

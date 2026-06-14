@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Testing;
 /// <summary>
 /// Deterministic fault provider for reconnection tests that should not open a live SignalR hub.
 /// </summary>
-public sealed class TestFaultInjectionProvider
-{
+public sealed class TestFaultInjectionProvider {
     private readonly ConcurrentQueue<FaultInjectionEvidence> _evidence = new();
     private readonly FrontComposerTestOptions _options;
 
@@ -31,15 +30,12 @@ public sealed class TestFaultInjectionProvider
     public FaultInjectionEvidence ReconnectNudge(string correlationId) => Capture("reconnect-nudge", correlationId);
 
     /// <summary>Clears captured fault evidence.</summary>
-    public void Reset()
-    {
-        while (_evidence.TryDequeue(out _))
-        {
+    public void Reset() {
+        while (_evidence.TryDequeue(out _)) {
         }
     }
 
-    private FaultInjectionEvidence Capture(string mode, string correlationId)
-    {
+    private FaultInjectionEvidence Capture(string mode, string correlationId) {
         FaultInjectionEvidence evidence = new(
             mode,
             _options.TestTenantId,
@@ -47,8 +43,7 @@ public sealed class TestFaultInjectionProvider
             correlationId,
             _options.TimeProvider.GetUtcNow());
         _evidence.Enqueue(evidence);
-        while (_evidence.Count > _options.MaxEvidenceRecords && _evidence.TryDequeue(out _))
-        {
+        while (_evidence.Count > _options.MaxEvidenceRecords && _evidence.TryDequeue(out _)) {
         }
 
         return evidence;

@@ -9,8 +9,6 @@ using Microsoft.Extensions.Options;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 /// <summary>

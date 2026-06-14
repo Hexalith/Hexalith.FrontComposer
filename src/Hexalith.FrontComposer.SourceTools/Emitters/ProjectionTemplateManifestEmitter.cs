@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Text;
@@ -94,7 +93,7 @@ public static class ProjectionTemplateManifestEmitter {
                 winners.Add(bucket[0]);
             }
 
-            emittedKeys.Add(key);
+            _ = emittedKeys.Add(key);
         }
 
         StringBuilder sb = new(2048);

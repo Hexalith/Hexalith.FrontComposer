@@ -1,7 +1,7 @@
+using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
@@ -24,7 +24,7 @@ public sealed class SchemaFingerprintTransformTests {
             }
             """;
 
-        var parsed = CompilationHelper.ParseCommand(Source, "Orders.ApproveOrderCommand").Model!;
+        CommandModel parsed = CompilationHelper.ParseCommand(Source, "Orders.ApproveOrderCommand").Model!;
         McpCommandDescriptorModel descriptor = McpManifestTransform.TransformCommand(parsed);
         GeneratedSchemaPayload payload = SchemaFingerprintTransform.CreateCommandPayload(descriptor);
         McpCommandDescriptorModel changed = new(

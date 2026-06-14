@@ -3,7 +3,6 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 using Hexalith.FrontComposer.Contracts.Diagnostics;
@@ -56,7 +55,7 @@ public sealed partial class DiagnosticRegistryTests {
 
         registry.SchemaVersion.ShouldBe(SupportedSchemaVersion);
         registry.CanonicalHelpLinkFormat.ShouldBe(CanonicalHelpLinkFormat);
-        registry.Ranges.ShouldNotBeNull();
+        _ = registry.Ranges.ShouldNotBeNull();
         registry.Ranges.Length.ShouldBe(ExpectedRangeBounds.Length);
         registry.Ranges.Select(r => r.OwnerPackage).ShouldBe([
             "Contracts",
@@ -89,7 +88,7 @@ public sealed partial class DiagnosticRegistryTests {
         hfc1601Exception.ApprovingStory.ShouldBe("11-2-diagnostic-registry-and-documentation-governance-follow-ups");
         hfc1601Exception.HelpLinkUri.ShouldBe(string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, "HFC1601"));
 
-        registry.Diagnostics.ShouldNotBeNull();
+        _ = registry.Diagnostics.ShouldNotBeNull();
         registry.Diagnostics.Length.ShouldBeGreaterThan(0, "registry has no diagnostics — accidental wipe.");
 
         string[] ids = registry.Diagnostics.Select(d => d.Id).ToArray();
@@ -118,7 +117,7 @@ public sealed partial class DiagnosticRegistryTests {
             diagnostic.SuppressionPolicy.ShouldBeOneOf(AllowedSuppressionPolicies.ToArray());
 
             DiagnosticRange? range = registry.Ranges.SingleOrDefault(r => r.OwnerPackage == diagnostic.OwnerPackage);
-            range.ShouldNotBeNull($"{diagnostic.Id} ownerPackage '{diagnostic.OwnerPackage}' has no range.");
+            _ = range.ShouldNotBeNull($"{diagnostic.Id} ownerPackage '{diagnostic.OwnerPackage}' has no range.");
             int numericId = int.Parse(diagnostic.Id[3..], NumberStyles.None, CultureInfo.InvariantCulture);
             numericId.ShouldBeInRange(range.Start, range.End, $"{diagnostic.Id} is outside {diagnostic.OwnerPackage} range.");
 
@@ -161,7 +160,7 @@ public sealed partial class DiagnosticRegistryTests {
                 if (!byId.TryGetValue(relatedId, out DiagnosticEntry? relatedEntry)) {
                     Assert.Fail($"{diagnostic.Id} relatedIds references unknown id '{relatedId}'.");
                 }
-                relatedEntry!.RelatedIds.ShouldNotBeNull($"{relatedId} must reciprocate relatedIds from {diagnostic.Id}.");
+                _ = relatedEntry!.RelatedIds.ShouldNotBeNull($"{relatedId} must reciprocate relatedIds from {diagnostic.Id}.");
                 relatedEntry.RelatedIds!.ShouldContain(diagnostic.Id, $"{diagnostic.Id} and {relatedId} relatedIds must be reciprocal.");
             }
         }
@@ -186,9 +185,9 @@ public sealed partial class DiagnosticRegistryTests {
     public void Registry_CoversDescriptorConstantsAndReleaseRowsBidirectionally() {
         DiagnosticRegistry registry = LoadRegistry();
         Dictionary<string, DiagnosticEntry> byId = registry.Diagnostics.ToDictionary(d => d.Id, Ordinal);
-        HashSet<string> constantIds = TypeIdConstants(typeof(FcDiagnosticIds)).ToHashSet(Ordinal);
-        HashSet<string> descriptorIds = DiagnosticDescriptorFields().Select(d => d.Id).ToHashSet(Ordinal);
-        HashSet<string> releaseRows = ReleaseRows().ToHashSet(Ordinal);
+        var constantIds = TypeIdConstants(typeof(FcDiagnosticIds)).ToHashSet(Ordinal);
+        var descriptorIds = DiagnosticDescriptorFields().Select(d => d.Id).ToHashSet(Ordinal);
+        var releaseRows = ReleaseRows().ToHashSet(Ordinal);
 
         constantIds.Count.ShouldBeGreaterThan(0, "FcDiagnosticIds appears empty — refactor regression?");
         descriptorIds.Count.ShouldBeGreaterThan(0, "DiagnosticDescriptors has no static fields — refactor regression?");
@@ -200,7 +199,7 @@ public sealed partial class DiagnosticRegistryTests {
         foreach (DiagnosticDescriptor descriptor in DiagnosticDescriptorFields()) {
             byId.ShouldContainKey(descriptor.Id, $"{descriptor.Id} descriptor lacks a registry row.");
             DiagnosticEntry entry = byId[descriptor.Id];
-            entry.CompilerSeverity.ShouldNotBeNull($"{descriptor.Id} has a Roslyn descriptor; registry must declare compilerSeverity.");
+            _ = entry.CompilerSeverity.ShouldNotBeNull($"{descriptor.Id} has a Roslyn descriptor; registry must declare compilerSeverity.");
             entry.CompilerSeverity.ShouldBe(descriptor.DefaultSeverity.ToString());
             descriptor.Category.ShouldBe("HexalithFrontComposer");
             descriptor.Title.ToString(CultureInfo.InvariantCulture).ShouldBe(entry.Title);
@@ -234,7 +233,7 @@ public sealed partial class DiagnosticRegistryTests {
         // HFC1001-HFC1070 rows from that registry and pins the four build/documentation channels
         // that must agree whenever a SourceTools descriptor row exists.
         DiagnosticRegistry registry = LoadRegistry();
-        Dictionary<string, DiagnosticDescriptor> descriptorsById = DiagnosticDescriptorFields().ToDictionary(d => d.Id, Ordinal);
+        var descriptorsById = DiagnosticDescriptorFields().ToDictionary(d => d.Id, Ordinal);
         Dictionary<string, string> releaseRowSeverityById = LoadReleaseRowSeverityMap();
         DirectoryInfo docsRoot = DiagnosticsDocsRoot();
         Regex frontMatterSeverity = FrontMatterSeverityLineRegex();
@@ -256,7 +255,7 @@ public sealed partial class DiagnosticRegistryTests {
             descriptorsById.ShouldContainKey(entry.Id, $"{entry.Id} registry row must have a SourceTools DiagnosticDescriptor.");
             DiagnosticDescriptor descriptor = descriptorsById[entry.Id];
 
-            entry.CompilerSeverity.ShouldNotBeNull($"{entry.Id} SourceTools row must declare compilerSeverity.");
+            _ = entry.CompilerSeverity.ShouldNotBeNull($"{entry.Id} SourceTools row must declare compilerSeverity.");
             descriptor.DefaultSeverity.ToString().ShouldBe(entry.CompilerSeverity, $"{entry.Id} descriptor severity drift from registry compilerSeverity.");
             descriptor.Category.ShouldBe("HexalithFrontComposer", $"{entry.Id} descriptor category drift.");
             descriptor.HelpLinkUri.ShouldBe(entry.HelpLinkUri, $"{entry.Id} descriptor help link drift.");
@@ -358,7 +357,8 @@ public sealed partial class DiagnosticRegistryTests {
             Match severityMatch = frontMatterSeverityLine.Match(frontMatter);
             if (diagnostic.Lifecycle == "retired") {
                 severityMatch.Success.ShouldBeFalse($"{diagnostic.Id} retired stub must omit `severity` front-matter field.");
-            } else {
+            }
+            else {
                 severityMatch.Success.ShouldBeTrue($"{diagnostic.Id} stub missing `severity` front-matter field.");
                 string expectedSeverity = diagnostic.CompilerSeverity ?? diagnostic.PanelSeverity ?? diagnostic.RuntimeLogLevel ?? "Info";
                 if (expectedSeverity == "Information") {
@@ -435,40 +435,40 @@ public sealed partial class DiagnosticRegistryTests {
 
         switch (expectedCategory) {
             case "duplicate-id": {
-                JsonArray diagnostics = json["diagnostics"]!.AsArray();
-                diagnostics.Add(diagnostics[0]!.DeepClone());
-                break;
-            }
+                    JsonArray diagnostics = json["diagnostics"]!.AsArray();
+                    diagnostics.Add(diagnostics[0]!.DeepClone());
+                    break;
+                }
 
             case "duplicate-slug": {
-                JsonArray diagnostics = json["diagnostics"]!.AsArray();
-                JsonObject clone = diagnostics[0]!.DeepClone().AsObject();
-                clone["id"] = "HFC9990";
-                diagnostics.Add(clone);
-                break;
-            }
+                    JsonArray diagnostics = json["diagnostics"]!.AsArray();
+                    JsonObject clone = diagnostics[0]!.DeepClone().AsObject();
+                    clone["id"] = "HFC9990";
+                    diagnostics.Add(clone);
+                    break;
+                }
 
             case "missing-diagnostics-array":
-                json.Remove("diagnostics");
+                _ = json.Remove("diagnostics");
                 break;
 
             case "out-of-range-id": {
-                JsonObject diagnostic = json["diagnostics"]!.AsArray()[0]!.AsObject();
-                diagnostic["id"] = "HFC9999";
-                break;
-            }
+                    JsonObject diagnostic = json["diagnostics"]!.AsArray()[0]!.AsObject();
+                    diagnostic["id"] = "HFC9999";
+                    break;
+                }
 
             case "missing-owner": {
-                JsonObject diagnostic = json["diagnostics"]!.AsArray()[0]!.AsObject();
-                diagnostic.Remove("ownerPackage");
-                break;
-            }
+                    JsonObject diagnostic = json["diagnostics"]!.AsArray()[0]!.AsObject();
+                    _ = diagnostic.Remove("ownerPackage");
+                    break;
+                }
 
             case "invalid-lifecycle": {
-                JsonObject diagnostic = json["diagnostics"]!.AsArray()[0]!.AsObject();
-                diagnostic["lifecycle"] = "frozen";
-                break;
-            }
+                    JsonObject diagnostic = json["diagnostics"]!.AsArray()[0]!.AsObject();
+                    diagnostic["lifecycle"] = "frozen";
+                    break;
+                }
         }
 
         string[] categories = ValidateRegistryJson(json).ToArray();
@@ -487,11 +487,11 @@ public sealed partial class DiagnosticRegistryTests {
     [InlineData("future")]
     public void RegistryValidator_UnsupportedSchemaShortCircuitsBeforeNestedRows(string schemaCase) {
         JsonObject json = RegistryJson().DeepClone().AsObject();
-        json.Remove("diagnostics");
+        _ = json.Remove("diagnostics");
 
         switch (schemaCase) {
             case "missing":
-                json.Remove("schemaVersion");
+                _ = json.Remove("schemaVersion");
                 break;
             case "malformed":
                 json["schemaVersion"] = 10;
@@ -537,14 +537,15 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject? diagnostic = json["diagnostics"]!.AsArray()
             .Select(node => node!.AsObject())
             .FirstOrDefault(node => node["id"]!.GetValue<string>() == "HFC1058");
-        diagnostic.ShouldNotBeNull("HFC1058 fixture row missing — registry edit broke this Theory's reference id.");
+        _ = diagnostic.ShouldNotBeNull("HFC1058 fixture row missing — registry edit broke this Theory's reference id.");
         diagnostic["docsSlug"] = docsSlug;
 
         string[] categories = ValidateRegistryJson(json).ToArray();
 
         if (expectInvalid) {
             categories.ShouldContain("invalid-slug", $"slug '{docsSlug}' must be rejected as invalid.");
-        } else {
+        }
+        else {
             categories.ShouldNotContain("invalid-slug", $"slug '{docsSlug}' is canonical and must not be flagged.");
         }
     }
@@ -552,7 +553,7 @@ public sealed partial class DiagnosticRegistryTests {
     [Fact]
     public void FrontComposerObsoleteAttributes_FollowDiagnosticDeprecationPolicy() {
         DiagnosticRegistry registry = LoadRegistry();
-        HashSet<string> ids = registry.Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);
+        var ids = registry.Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);
         Regex obsoleteRegex = ObsoleteAttributeRegex();
         Regex obsoleteMessageShape = ObsoleteMessageShapeRegex();
 
@@ -560,7 +561,8 @@ public sealed partial class DiagnosticRegistryTests {
             string text;
             try {
                 text = File.ReadAllText(file, Encoding.UTF8);
-            } catch (IOException) {
+            }
+            catch (IOException) {
                 continue;
             }
 
@@ -591,7 +593,8 @@ public sealed partial class DiagnosticRegistryTests {
             string text;
             try {
                 text = File.ReadAllText(file, Encoding.UTF8);
-            } catch (IOException) {
+            }
+            catch (IOException) {
                 continue;
             }
 
@@ -609,7 +612,8 @@ public sealed partial class DiagnosticRegistryTests {
                     (removal.Minor - target.Minor).ShouldBeGreaterThanOrEqualTo(
                         1,
                         $"{ProjectRelativePath(file)}: removal v{removal} must be at least one minor after deprecation v{target} on the same major (AC11).");
-                } else {
+                }
+                else {
                     removal.Major.ShouldBeGreaterThan(target.Major, $"{ProjectRelativePath(file)}: removal v{removal} must not precede deprecation v{target}.");
                 }
             }
@@ -641,7 +645,7 @@ public sealed partial class DiagnosticRegistryTests {
 
         Regex hfcIdRegex = StrictHfcIdRegex();
         Regex targetReleaseRegex = TargetReleaseRegex();
-        HashSet<(string Package, string Tfm, string Old)> uniqueness = new();
+        HashSet<(string Package, string Tfm, string Old)> uniqueness = [];
 
         foreach (JsonNode? node in suppressions) {
             JsonObject item = node!.AsObject();
@@ -702,7 +706,7 @@ public sealed partial class DiagnosticRegistryTests {
 
         switch (mutation) {
             case "missing-package":
-                row.Remove("package");
+                _ = row.Remove("package");
                 break;
             case "unknown-diagnostic":
                 row["hfcId"] = "HFC9999";
@@ -731,7 +735,7 @@ public sealed partial class DiagnosticRegistryTests {
         string modules = File.ReadAllText(gitmodules.FullName, Encoding.UTF8);
 
         Regex sectionPath = SubmodulePathRegex();
-        HashSet<string> declaredPaths = sectionPath.Matches(modules)
+        var declaredPaths = sectionPath.Matches(modules)
             .Select(m => m.Groups["path"].Value.Trim())
             .ToHashSet(Ordinal);
         declaredPaths.ShouldContain("Hexalith.EventStore");
@@ -742,7 +746,7 @@ public sealed partial class DiagnosticRegistryTests {
         registry.ExternalBoundaries.Select(b => b.Package).ShouldContain("Hexalith.Tenants");
 
         // No registry diagnostic may claim ownership in a submodule-named package.
-        HashSet<string> boundarySegments = registry.ExternalBoundaries
+        var boundarySegments = registry.ExternalBoundaries
             .Select(b => b.Package.Split('.').Last())
             .ToHashSet(OrdinalIgnoreCase);
 
@@ -757,7 +761,7 @@ public sealed partial class DiagnosticRegistryTests {
     [Fact]
     public void SourceHfcIds_AreRegistryBackedAndDiagnosticLinksUseCanonicalHost() {
         DiagnosticRegistry registry = LoadRegistry();
-        HashSet<string> registryIds = registry.Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);
+        var registryIds = registry.Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);
         HashSet<string> rangeMarkers = new(Ordinal) {
             "HFC0000", "HFC0999", "HFC1000", "HFC1099", "HFC1999",
             "HFC2000", "HFC2999", "HFC3000", "HFC3999", "HFC4000", "HFC4999", "HFC5000", "HFC5999",
@@ -770,7 +774,8 @@ public sealed partial class DiagnosticRegistryTests {
             string text;
             try {
                 text = File.ReadAllText(file, Encoding.UTF8);
-            } catch (IOException) {
+            }
+            catch (IOException) {
                 continue;
             }
 
@@ -933,10 +938,10 @@ public sealed partial class DiagnosticRegistryTests {
                 json["releaseBucket"] = "analyzer-release";
                 break;
             case "missing-release-note":
-                row.Remove("releaseNote");
+                _ = row.Remove("releaseNote");
                 break;
             case "missing-owner-story":
-                row.Remove("ownerStory");
+                _ = row.Remove("ownerStory");
                 break;
             case "malformed-introduced-in":
                 // Pass-2 R39: use a clearly non-empty but non-SemVer value so the path under
@@ -944,16 +949,16 @@ public sealed partial class DiagnosticRegistryTests {
                 row["introducedIn"] = "1.x";
                 break;
             case "missing-release-provenance":
-                row.Remove("releaseProvenance");
+                _ = row.Remove("releaseProvenance");
                 break;
             case "missing-schema-version":
-                json.Remove("schemaVersion");
+                _ = json.Remove("schemaVersion");
                 break;
             case "wrong-schema-version":
                 json["schemaVersion"] = "2.0";
                 break;
             case "missing-findings-array":
-                json.Remove("findings");
+                _ = json.Remove("findings");
                 break;
             case "invalid-severity":
                 row["severity"] = "Verbose";
@@ -1063,7 +1068,8 @@ public sealed partial class DiagnosticRegistryTests {
                 || !TryGetString(provenance, "approvedOn", out string? approvedOn)
                 || !TryGetString(provenance, "rationale", out _)) {
                 yield return "hfcm-missing-release-provenance";
-            } else if (!isoDate.IsMatch(approvedOn!)) {
+            }
+            else if (!isoDate.IsMatch(approvedOn!)) {
                 // Pass-2 R14: provenance exists but approvedOn is not ISO date — distinct category.
                 yield return "hfcm-malformed-approved-on";
             }
@@ -1087,7 +1093,8 @@ public sealed partial class DiagnosticRegistryTests {
         string decoded;
         try {
             decoded = Uri.UnescapeDataString(slug);
-        } catch (UriFormatException) {
+        }
+        catch (UriFormatException) {
             return false;
         }
 
@@ -1286,7 +1293,8 @@ public sealed partial class DiagnosticRegistryTests {
                 .ShouldBeUnique($"under {culture}, id case-insensitive uniqueness must hold (Turkish-i hazard).");
 
             ValidateRegistryJson(RegistryJson().DeepClone().AsObject()).ShouldNotContain("invalid-slug");
-        } finally {
+        }
+        finally {
             CultureInfo.CurrentCulture = prior;
             CultureInfo.CurrentUICulture = priorUi;
         }
@@ -1299,7 +1307,7 @@ public sealed partial class DiagnosticRegistryTests {
         // the emit site; this meta-test enforces the registry-side classification contract so that
         // any new diagnostic without a class is rejected.
         DiagnosticRegistry registry = LoadRegistry();
-        Dictionary<string, int> usage = AllowedRedactionClasses.ToDictionary(c => c, _ => 0, Ordinal);
+        var usage = AllowedRedactionClasses.ToDictionary(c => c, _ => 0, Ordinal);
 
         foreach (DiagnosticEntry diagnostic in registry.Diagnostics) {
             AllowedRedactionClasses.ShouldContain(diagnostic.RedactionClass, $"{diagnostic.Id} redactionClass '{diagnostic.RedactionClass}' is not in the documented set.");
@@ -1419,7 +1427,7 @@ public sealed partial class DiagnosticRegistryTests {
         // fail the test immediately.
         DiagnosticRegistry registry = LoadRegistry();
         Dictionary<string, DiagnosticEntry> byId = registry.Diagnostics.ToDictionary(d => d.Id, Ordinal);
-        Dictionary<string, DiagnosticDescriptor> descriptorsById = DiagnosticDescriptorFields().ToDictionary(d => d.Id, Ordinal);
+        var descriptorsById = DiagnosticDescriptorFields().ToDictionary(d => d.Id, Ordinal);
         Dictionary<string, string> releaseRowSeverityById = LoadReleaseRowSeverityMap();
         DirectoryInfo docsRoot = DiagnosticsDocsRoot();
         Regex frontMatterSeverity = FrontMatterSeverityLineRegex();
@@ -1686,7 +1694,7 @@ public sealed partial class DiagnosticRegistryTests {
         //   (b) no HFCM row appears in the SourceTools AnalyzerReleases.*.md files (HFCM rows
         //       belong in docs/diagnostics/migration-findings.json instead).
         // Pass-2 R28: enumeration uses an ordinal sort so failure ordering is platform-stable.
-        HashSet<string> descriptorIds = DiagnosticDescriptorFields().Select(d => d.Id).ToHashSet(Ordinal);
+        var descriptorIds = DiagnosticDescriptorFields().Select(d => d.Id).ToHashSet(Ordinal);
         Regex strictHfcId = StrictHfcIdRegex();
         Regex hfcmIdShape = HfcmIdShapeRegex();
         string[] orderedReleaseRows = SourceToolsReleaseRows()
@@ -1885,7 +1893,8 @@ public sealed partial class DiagnosticRegistryTests {
         if (json["externalBoundaries"] is not JsonArray boundariesArray || boundariesArray.Count == 0) {
             // Story 11.2 code-review P9: empty externalBoundaries must fail closed, not pass silently.
             yield return "missing-external-boundaries";
-        } else {
+        }
+        else {
             HashSet<string> boundaryPackages = new(Ordinal);
             foreach (JsonNode? node in boundariesArray) {
                 if (node is not JsonObject boundary
@@ -1948,7 +1957,7 @@ public sealed partial class DiagnosticRegistryTests {
                     continue;
                 }
 
-                crossPackageExceptions.Add(id);
+                _ = crossPackageExceptions.Add(id);
             }
         }
 
@@ -1979,10 +1988,12 @@ public sealed partial class DiagnosticRegistryTests {
 
             if (slug is null) {
                 yield return "missing-slug";
-            } else if (!slugs.Add(slug) && !yieldedDuplicateSlug) {
+            }
+            else if (!slugs.Add(slug) && !yieldedDuplicateSlug) {
                 yieldedDuplicateSlug = true;
                 yield return "duplicate-slug";
-            } else if (!IsCanonicalDocsSlug(slug, id)) {
+            }
+            else if (!IsCanonicalDocsSlug(slug, id)) {
                 yield return "invalid-slug";
             }
 
@@ -2024,7 +2035,7 @@ public sealed partial class DiagnosticRegistryTests {
             yield break;
         }
 
-        HashSet<string> registryIds = LoadRegistry().Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);
+        var registryIds = LoadRegistry().Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);
         // Pass-2 R21: include newState in the dedupe tuple so two suppressions differing only in
         // newState ("removed" vs "modified") are treated as distinct compatibility scenarios, not
         // collapsed into a spurious duplicate.
@@ -2139,7 +2150,8 @@ public sealed partial class DiagnosticRegistryTests {
         try {
             version = ParseVersionToken(value);
             return true;
-        } catch (Exception) {
+        }
+        catch (Exception) {
             return false;
         }
     }
@@ -2153,7 +2165,8 @@ public sealed partial class DiagnosticRegistryTests {
         try {
             value = jsonValue.GetValue<string>();
             return !string.IsNullOrWhiteSpace(value);
-        } catch (Exception ex) when (ex is InvalidOperationException or FormatException) {
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or FormatException) {
             return false;
         }
     }
@@ -2175,7 +2188,8 @@ public sealed partial class DiagnosticRegistryTests {
         string decoded;
         try {
             decoded = Uri.UnescapeDataString(slug);
-        } catch (UriFormatException) {
+        }
+        catch (UriFormatException) {
             return false;
         }
 
@@ -2232,7 +2246,7 @@ public sealed partial class DiagnosticRegistryTests {
         }
 
         // Unix-style rooted (`/diagnostics/...`) — rooted on every platform.
-        if (slug[0] == '/' || slug[0] == '\\') {
+        if (slug[0] is '/' or '\\') {
             return true;
         }
 
@@ -2249,7 +2263,7 @@ public sealed partial class DiagnosticRegistryTests {
         StringBuilder sb = new(value.Length);
         foreach (char c in value) {
             if (!IsConfusableOrFormatChar(c)) {
-                sb.Append(c);
+                _ = sb.Append(c);
             }
         }
 
@@ -2268,7 +2282,7 @@ public sealed partial class DiagnosticRegistryTests {
 
     private static DiagnosticRegistry LoadRegistry() {
         DiagnosticRegistry? registry = RegistryJson().Deserialize<DiagnosticRegistry>(SerializerOptions);
-        registry.ShouldNotBeNull("registry root deserialized to null — empty or malformed JSON.");
+        _ = registry.ShouldNotBeNull("registry root deserialized to null — empty or malformed JSON.");
         return registry;
     }
 
@@ -2279,8 +2293,8 @@ public sealed partial class DiagnosticRegistryTests {
     private static JsonObject RegistryJson() {
         FileInfo registry = new(Path.Combine(DiagnosticsDocsRoot().FullName, "diagnostic-registry.json"));
         registry.Exists.ShouldBeTrue("docs/diagnostics/diagnostic-registry.json is missing.");
-        JsonNode? parsed = JsonNode.Parse(File.ReadAllText(registry.FullName, Encoding.UTF8));
-        parsed.ShouldNotBeNull("registry json parsed to null.");
+        var parsed = JsonNode.Parse(File.ReadAllText(registry.FullName, Encoding.UTF8));
+        _ = parsed.ShouldNotBeNull("registry json parsed to null.");
         return parsed.AsObject();
     }
 
@@ -2297,7 +2311,7 @@ public sealed partial class DiagnosticRegistryTests {
             }
         }
 
-        current.ShouldNotBeNull("Could not locate repository root.");
+        _ = current.ShouldNotBeNull("Could not locate repository root.");
         return current;
     }
 
@@ -2347,8 +2361,8 @@ public sealed partial class DiagnosticRegistryTests {
     private static IEnumerable<DiagnosticDescriptor> DiagnosticDescriptorFields() {
         foreach (FieldInfo field in typeof(DiagnosticDescriptors).GetFields(BindingFlags.Public | BindingFlags.Static)) {
             if (field.FieldType == typeof(DiagnosticDescriptor)) {
-                DiagnosticDescriptor? descriptor = field.GetValue(null) as DiagnosticDescriptor;
-                descriptor.ShouldNotBeNull($"DiagnosticDescriptors.{field.Name} is null at runtime.");
+                var descriptor = field.GetValue(null) as DiagnosticDescriptor;
+                _ = descriptor.ShouldNotBeNull($"DiagnosticDescriptors.{field.Name} is null at runtime.");
                 yield return descriptor;
             }
         }

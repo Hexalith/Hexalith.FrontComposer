@@ -71,7 +71,7 @@ public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService
         // dueTime ensures no callback fires before the entry is stored under the gate.
         ITimer timer = _time.CreateTimer(
             static state => {
-                TimerState ctx = (TimerState)state!;
+                var ctx = (TimerState)state!;
                 ctx.Owner.OnTimerFired(ctx.ViewKey, ctx.EntityKey, ctx.Generation);
             },
             new TimerState(this, entry.ViewKey, entry.EntityKey, generation),
@@ -220,7 +220,7 @@ public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService
                 return;
             }
 
-            _entries.Remove((viewKey, entityKey));
+            _ = _entries.Remove((viewKey, entityKey));
             timer = tracked.Timer;
         }
 

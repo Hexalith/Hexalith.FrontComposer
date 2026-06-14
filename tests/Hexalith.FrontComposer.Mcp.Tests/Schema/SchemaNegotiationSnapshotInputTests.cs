@@ -4,7 +4,6 @@ using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Mcp.Schema;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 
@@ -28,8 +27,8 @@ public sealed class SchemaNegotiationSnapshotInputTests {
         PropertyInfo? baseline = input.GetProperty("Baseline", BindingFlags.Public | BindingFlags.Instance);
         PropertyInfo? server = input.GetProperty("Server", BindingFlags.Public | BindingFlags.Instance);
 
-        baseline.ShouldNotBeNull("AC6 requires a typed Baseline snapshot input.");
-        server.ShouldNotBeNull("AC6 requires a typed Server snapshot input.");
+        _ = baseline.ShouldNotBeNull("AC6 requires a typed Baseline snapshot input.");
+        _ = server.ShouldNotBeNull("AC6 requires a typed Server snapshot input.");
         baseline!.PropertyType.ShouldBe(typeof(SchemaBaselineSnapshot));
         server!.PropertyType.ShouldBe(typeof(SchemaBaselineSnapshot));
     }
@@ -45,7 +44,7 @@ public sealed class SchemaNegotiationSnapshotInputTests {
             return; // removed outright — acceptable.
         }
 
-        legacy.GetCustomAttribute<ObsoleteAttribute>().ShouldNotBeNull(
+        _ = legacy.GetCustomAttribute<ObsoleteAttribute>().ShouldNotBeNull(
             "AC6 requires HasCompatibleAdditiveDrift be [Obsolete] (or removed). The negotiator must derive additive vs breaking internally.");
     }
 
@@ -128,14 +127,9 @@ public sealed class SchemaNegotiationSnapshotInputTests {
         bool legacyAdditiveBool = false) {
         ConstructorInfo? snapshotCtor = typeof(McpSchemaNegotiationInput)
             .GetConstructors()
-            .FirstOrDefault(c => c.GetParameters().Any(p => p.ParameterType == typeof(SchemaBaselineSnapshot)));
-
-        if (snapshotCtor is null) {
-            throw new InvalidOperationException(
+            .FirstOrDefault(c => c.GetParameters().Any(p => p.ParameterType == typeof(SchemaBaselineSnapshot))) ?? throw new InvalidOperationException(
                 "AC6 requires McpSchemaNegotiationInput to expose a constructor accepting SchemaBaselineSnapshot inputs. "
                 + "Implement T2 before unskipping this test.");
-        }
-
         ParameterInfo[] parameters = snapshotCtor.GetParameters();
         object?[] args = new object?[parameters.Length];
         for (int i = 0; i < parameters.Length; i++) {

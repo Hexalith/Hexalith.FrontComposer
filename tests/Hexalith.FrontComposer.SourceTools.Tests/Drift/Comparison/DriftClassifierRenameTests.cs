@@ -2,7 +2,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
 
@@ -118,8 +117,8 @@ public sealed class DriftClassifierRenameTests {
     // Numeric within a width family (Int32→Int64): documented as a TYPE change on the same
     // member name; cross-name numeric pairs are NOT collapsed into a rename, they degrade to
     // add+remove. Same for DateTime→DateTimeOffset and String→String? (nullability-only).
-    [InlineData("Int32",    "Int64",          "false",  "false")]
-    [InlineData("DateTime", "DateTimeOffset", "false",  "false")]
+    [InlineData("Int32", "Int64", "false", "false")]
+    [InlineData("DateTime", "DateTimeOffset", "false", "false")]
     public void OneRemoved_OneAdded_NumericOrTemporalBoundary_NotClassifiedAsRename(
         string baselineCategory, string addedCategory, string baselineNullable, string addedNullable) {
         string baseline = $$"""

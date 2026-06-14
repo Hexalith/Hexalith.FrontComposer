@@ -2,9 +2,6 @@ using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Mcp.Schema;
 
 using Shouldly;
-using Xunit;
-
-#pragma warning disable CS0618, HFC4001 // Story 8-6a / Story 9-4: HasCompatibleAdditiveDrift is exercised here for legacy-input precedence tests.
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 

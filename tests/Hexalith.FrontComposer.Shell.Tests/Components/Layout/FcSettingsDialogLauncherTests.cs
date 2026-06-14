@@ -6,11 +6,9 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
-public sealed class FcSettingsDialogLauncherTests
-{
+public sealed class FcSettingsDialogLauncherTests {
     [Fact]
-    public void CreateOptions_UsesModal480pxSettingsContract()
-    {
+    public void CreateOptions_UsesModal480pxSettingsContract() {
         DialogOptions options = FcSettingsDialogLauncher.CreateOptions("Settings");
 
         options.Modal.ShouldBe(true);

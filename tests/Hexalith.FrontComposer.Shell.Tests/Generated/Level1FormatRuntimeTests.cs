@@ -4,8 +4,6 @@ using Microsoft.Extensions.Time.Testing;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 /// <summary>
@@ -57,28 +55,22 @@ public sealed class Level1FormatRuntimeTests {
     }
 
     [Fact]
-    public void Currency_DecimalEnUsHasDollarSymbol() {
-        WithCulture("en-US", () => {
-            string rendered = SampleAmount.ToString("C", CultureInfo.CurrentCulture);
-            rendered.ShouldContain("$");
-        });
-    }
+    public void Currency_DecimalEnUsHasDollarSymbol() => WithCulture("en-US", () => {
+        string rendered = SampleAmount.ToString("C", CultureInfo.CurrentCulture);
+        rendered.ShouldContain("$");
+    });
 
     [Fact]
-    public void Currency_DecimalFrFrUsesEuroSymbol() {
-        WithCulture("fr-FR", () => {
-            string rendered = SampleAmount.ToString("C", CultureInfo.CurrentCulture);
-            rendered.ShouldContain("€");
-        });
-    }
+    public void Currency_DecimalFrFrUsesEuroSymbol() => WithCulture("fr-FR", () => {
+        string rendered = SampleAmount.ToString("C", CultureInfo.CurrentCulture);
+        rendered.ShouldContain("€");
+    });
 
     [Fact]
-    public void Currency_NegativeDecimalIsRendered() {
-        WithCulture("en-US", () => {
-            string rendered = NegativeAmount.ToString("C", CultureInfo.CurrentCulture);
-            rendered.ShouldContain("42");
-        });
-    }
+    public void Currency_NegativeDecimalIsRendered() => WithCulture("en-US", () => {
+        string rendered = NegativeAmount.ToString("C", CultureInfo.CurrentCulture);
+        rendered.ShouldContain("42");
+    });
 
     [Fact]
     public void Currency_NullableDecimal_NullRendersDashViaGuard() {
@@ -90,14 +82,12 @@ public sealed class Level1FormatRuntimeTests {
     }
 
     [Fact]
-    public void Currency_DoubleAndFloatVariantsHonourCurrentCulture() {
-        WithCulture("en-US", () => {
-            double d = 9.99;
-            float f = 9.99f;
-            d.ToString("C", CultureInfo.CurrentCulture).ShouldStartWith("$");
-            f.ToString("C", CultureInfo.CurrentCulture).ShouldStartWith("$");
-        });
-    }
+    public void Currency_DoubleAndFloatVariantsHonourCurrentCulture() => WithCulture("en-US", () => {
+        double d = 9.99;
+        float f = 9.99f;
+        d.ToString("C", CultureInfo.CurrentCulture).ShouldStartWith("$");
+        f.ToString("C", CultureInfo.CurrentCulture).ShouldStartWith("$");
+    });
 
     [Fact]
     public void Currency_CultureScope_RestoresOriginalCultureOnException() {
@@ -182,7 +172,7 @@ public sealed class Level1FormatRuntimeTests {
     [Fact]
     public void RelativeTime_DateTimeLocalKind_NormalizesToUtcThenFormats() {
         DateTime localValue = TimeZoneInfo.ConvertTimeFromUtc(NowUtc.AddHours(-2).UtcDateTime, TimeZoneInfo.Local);
-        DateTime asLocal = DateTime.SpecifyKind(localValue, DateTimeKind.Local);
+        var asLocal = DateTime.SpecifyKind(localValue, DateTimeKind.Local);
         FormatRelativeTime(asLocal, NowUtc, 7).ShouldBe("2h ago");
     }
 
@@ -190,7 +180,7 @@ public sealed class Level1FormatRuntimeTests {
     public void RelativeTime_DateTimeUnspecifiedKind_TreatedAsUtc() {
         // Story 6-1 review F8 / D12 — Unspecified is interpreted as UTC, matching the
         // canonical comparison frame and the typical .NET server-side persistence pattern.
-        DateTime value = DateTime.SpecifyKind(NowUtc.AddHours(-5).UtcDateTime, DateTimeKind.Unspecified);
+        var value = DateTime.SpecifyKind(NowUtc.AddHours(-5).UtcDateTime, DateTimeKind.Unspecified);
         FormatRelativeTime(value, NowUtc, 7).ShouldBe("5h ago");
     }
 
@@ -198,7 +188,7 @@ public sealed class Level1FormatRuntimeTests {
     public void RelativeTime_DateTimeLocalExtreme_FallsBackToAbsoluteDate() {
         // Story 6-1 review F2 — Local-kind extremes overflow DateTimeOffset construction.
         // Generator wraps the conversion with try/catch and falls back to "d".
-        DateTime value = DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Local);
+        var value = DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Local);
         string rendered = FormatRelativeTime(value, NowUtc, 7);
         rendered.ShouldBe(value.ToString("d", CultureInfo.CurrentCulture));
     }

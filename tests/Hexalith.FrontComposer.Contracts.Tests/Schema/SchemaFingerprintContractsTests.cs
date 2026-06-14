@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Schema;
 
 using Shouldly;
+
 using Xunit;
 
 namespace Hexalith.FrontComposer.Contracts.Tests.Schema;

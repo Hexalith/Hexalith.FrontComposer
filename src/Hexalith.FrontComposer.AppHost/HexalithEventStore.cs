@@ -1,5 +1,3 @@
-using Projects;
-
 namespace Hexalith.FrontComposer.AppHost;
 
 /// <summary>EventStore command gateway service (root submodule copy).</summary>

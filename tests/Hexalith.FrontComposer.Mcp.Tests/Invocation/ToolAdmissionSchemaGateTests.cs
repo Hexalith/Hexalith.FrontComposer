@@ -1,6 +1,5 @@
 using System.Security.Claims;
 
-using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Mcp.Invocation;
@@ -10,7 +9,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 
@@ -75,17 +73,17 @@ public sealed class ToolAdmissionSchemaGateTests {
     }
 
     private static SchemaFingerprint SchemaHintFor(string scenario)
-        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x').Substring(0, 64));
+        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x')[..64]);
 
     private static FrontComposerMcpToolAdmissionService BuildAdmission(SchemaFingerprint clientFingerprintHint) {
         ServiceCollection services = [];
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new SchemaAwareStaticAccessor(clientFingerprintHint));
-        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new SchemaAwareStaticAccessor(clientFingerprintHint));
+        _ = services.AddSingleton<FrontComposerMcpToolAdmissionService>();
         ServiceProvider provider = services.BuildServiceProvider();
         return provider.GetRequiredService<FrontComposerMcpToolAdmissionService>();
     }
@@ -101,7 +99,7 @@ public sealed class ToolAdmissionSchemaGateTests {
                 null,
                 [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
                 ["TenantId", "UserId", "MessageId"],
-                Fingerprint: new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's').Substring(0, 64))),
+                Fingerprint: new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's')[..64])),
         ], []);
 
     private sealed class SchemaAwareStaticAccessor(SchemaFingerprint clientFingerprintHint) : IFrontComposerMcpAgentContextAccessor {

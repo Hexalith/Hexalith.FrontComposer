@@ -10,8 +10,6 @@ using Microsoft.Extensions.Options;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Extensions;
 
 public sealed class FrontComposerAuthenticationServiceExtensionsTests {
@@ -51,9 +49,7 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
     public async Task AddHexalithFrontComposerAuthentication_WiresEventStoreAccessTokenProvider() {
         ServiceCollection services = new();
         _ = services.AddHexalithFrontComposer();
-        _ = services.AddHexalithEventStore(options => {
-            options.BaseAddress = new Uri("https://eventstore.test");
-        });
+        _ = services.AddHexalithEventStore(options => options.BaseAddress = new Uri("https://eventstore.test"));
         _ = services.AddHexalithFrontComposerAuthentication(options => {
             options.CustomBrokered.Enabled = true;
             options.TenantClaimTypes.Add("tenant_id");

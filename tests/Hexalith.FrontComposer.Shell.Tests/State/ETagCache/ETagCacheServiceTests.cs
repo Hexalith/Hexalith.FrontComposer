@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
@@ -9,8 +6,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.ETagCache;
 

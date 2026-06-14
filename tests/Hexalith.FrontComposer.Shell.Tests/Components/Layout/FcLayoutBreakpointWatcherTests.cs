@@ -2,7 +2,6 @@
 // Fails at compile until Task 5 (FcLayoutBreakpointWatcher component) lands.
 
 using Bunit;
-using Bunit.TestDoubles;
 
 using Fluxor;
 
@@ -22,9 +21,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 public sealed class FcLayoutBreakpointWatcherTests : LayoutComponentTestBase {
     private const string ModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-layout-breakpoints.js";
 
-    public FcLayoutBreakpointWatcherTests() {
-        EnsureStoreInitialized();
-    }
+    public FcLayoutBreakpointWatcherTests() => EnsureStoreInitialized();
 
     [Fact]
     public void ImportsModuleOnFirstRender() {
@@ -112,10 +109,8 @@ public sealed class FcLayoutBreakpointWatcherTests : LayoutComponentTestBase {
         state.Value.CurrentViewport.ShouldBe(ViewportTier.Desktop);
         await cut.Instance.OnViewportTierChangedAsync((int)ViewportTier.Tablet);
 
-        cut.WaitForAssertion(() => {
-            state.Value.CurrentViewport.ShouldBe(ViewportTier.Tablet,
-                "Skip-tier jump must land on the reported tier, not the intermediate CompactDesktop.");
-        });
+        cut.WaitForAssertion(() => state.Value.CurrentViewport.ShouldBe(ViewportTier.Tablet,
+                "Skip-tier jump must land on the reported tier, not the intermediate CompactDesktop."));
     }
 
     [Fact]

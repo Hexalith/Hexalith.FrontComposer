@@ -1,5 +1,3 @@
-using System.Linq;
-
 using Bunit;
 
 using Fluxor;
@@ -22,9 +20,7 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
 
         IRenderedComponent<ZeroFieldInlineCommandRenderer> cut = Render<ZeroFieldInlineCommandRenderer>();
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("fluent-button", Case.Insensitive);
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("fluent-button", Case.Insensitive));
     }
 
     [Fact]
@@ -36,9 +32,7 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
         cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
         cut.Find("fluent-button").Click();
 
-        cut.WaitForAssertion(() => {
-            state.Value.State.ShouldNotBe(CommandLifecycleState.Idle);
-        });
+        cut.WaitForAssertion(() => state.Value.State.ShouldNotBe(CommandLifecycleState.Idle));
     }
 
     [Fact]
@@ -50,9 +44,7 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
         cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
         cut.Find("fluent-button").Click();
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("fluent-popover", Case.Insensitive);
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("fluent-popover", Case.Insensitive));
     }
 
     [Fact]
@@ -72,9 +64,7 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
 
         IRenderedComponent<OneFieldInlineCommandRenderer> cut = Render<OneFieldInlineCommandRenderer>();
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("appearance=\"outline\"", Case.Insensitive);
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("appearance=\"outline\"", Case.Insensitive));
     }
 
     [Fact]
@@ -84,16 +74,12 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
         IRenderedComponent<OneFieldInlineCommandRenderer> cut = Render<OneFieldInlineCommandRenderer>();
         cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
         cut.Find("fluent-button").Click();
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("opened=\"true\"", Case.Insensitive);
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("opened=\"true\"", Case.Insensitive));
 
         cut.Find(".fc-popover").KeyDown(new KeyboardEventArgs { Key = "Escape" });
 
-        cut.WaitForAssertion(() => {
-            // FluentPopover stays in markup; the Opened attribute flips to false after ClosePopoverAsync.
-            cut.Markup.ShouldNotContain("opened=\"true\"", Case.Insensitive);
-        });
+        cut.WaitForAssertion(() =>             // FluentPopover stays in markup; the Opened attribute flips to false after ClosePopoverAsync.
+            cut.Markup.ShouldNotContain("opened=\"true\"", Case.Insensitive));
     }
 
     [Fact]
@@ -108,9 +94,7 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
 
         cut.Find("form").Submit();
 
-        cut.WaitForAssertion(() => {
-            state.Value.State.ShouldNotBe(CommandLifecycleState.Idle);
-        });
+        cut.WaitForAssertion(() => state.Value.State.ShouldNotBe(CommandLifecycleState.Idle));
     }
 
     // NOTE: `Renderer_Inline_LeadingIconPresent` remains deferred because command icons now resolve
@@ -143,9 +127,7 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
         cut.WaitForAssertion(() => _ = cut.Find(".fc-popover"));
         cut.Find(".fc-popover").KeyDown(new KeyboardEventArgs { Key = "Escape" });
 
-        cut.WaitForAssertion(() => {
-            FcExpandInRowModule.Invocations.Last().Identifier.ShouldBe("focusTriggerElementById");
-        });
+        cut.WaitForAssertion(() => FcExpandInRowModule.Invocations.Last().Identifier.ShouldBe("focusTriggerElementById"));
     }
 
     [Fact]
@@ -164,9 +146,7 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
 
         cut.Find("fluent-button").Click();
 
-        cut.WaitForAssertion(() => {
-            state.Value.State.ShouldNotBe(CommandLifecycleState.Idle);
-        });
+        cut.WaitForAssertion(() => state.Value.State.ShouldNotBe(CommandLifecycleState.Idle));
     }
 
     [Fact]
@@ -177,10 +157,8 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
 
         IRenderedComponent<IconFallbackInlineCommandRenderer> cut = Render<IconFallbackInlineCommandRenderer>();
 
-        cut.WaitForAssertion(() => {
-            // Renderer succeeded — icon resolution did not throw, fallback path used.
-            cut.Markup.ShouldContain("fluent-button", Case.Insensitive);
-        });
+        cut.WaitForAssertion(() =>             // Renderer succeeded — icon resolution did not throw, fallback path used.
+            cut.Markup.ShouldContain("fluent-button", Case.Insensitive));
 
         logger.WarningMessages.ShouldContain(message =>
             message.IndexOf("Icon", StringComparison.OrdinalIgnoreCase) >= 0

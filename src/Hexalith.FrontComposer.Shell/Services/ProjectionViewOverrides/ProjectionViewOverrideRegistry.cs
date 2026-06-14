@@ -21,7 +21,6 @@ namespace Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
 /// </summary>
 public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegistry {
     private readonly ConcurrentDictionary<RegistryKey, RegistryEntry> _entries = new();
-    private readonly IReadOnlyCollection<ProjectionViewOverrideDescriptor> _descriptorsSnapshot;
     private readonly ILogger<ProjectionViewOverrideRegistry> _logger;
     private readonly ICustomizationContractRejectionLog? _rejectionLog;
 
@@ -82,11 +81,11 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
         visible.Sort(static (a, b) => string.CompareOrdinal(
             a.ProjectionType.FullName + "|" + a.Role?.ToString() + "|" + a.ComponentType.FullName,
             b.ProjectionType.FullName + "|" + b.Role?.ToString() + "|" + b.ComponentType.FullName));
-        _descriptorsSnapshot = new ReadOnlyCollection<ProjectionViewOverrideDescriptor>(visible);
+        Descriptors = new ReadOnlyCollection<ProjectionViewOverrideDescriptor>(visible);
     }
 
     /// <inheritdoc />
-    public IReadOnlyCollection<ProjectionViewOverrideDescriptor> Descriptors => _descriptorsSnapshot;
+    public IReadOnlyCollection<ProjectionViewOverrideDescriptor> Descriptors { get; }
 
     /// <inheritdoc />
     public ProjectionViewOverrideDescriptor? Resolve(Type projectionType, ProjectionRole? role) {

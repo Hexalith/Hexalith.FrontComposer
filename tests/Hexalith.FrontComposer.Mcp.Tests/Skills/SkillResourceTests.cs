@@ -1,5 +1,4 @@
 using Hexalith.FrontComposer.Contracts.Mcp;
-using Hexalith.FrontComposer.Mcp;
 using Hexalith.FrontComposer.Mcp.Skills;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -85,7 +84,7 @@ public sealed class SkillResourceTests {
         var provider = new FrontComposerSkillResourceProvider(snapshot);
         FrontComposerSkillMcpResource resource = provider.CreateMcpResources().Single(r => r.Descriptor.ResourceUri == "frontcomposer://skills/index");
         ServiceCollection services = [];
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, ThrowingVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, ThrowingVisibilityGate>();
         await using ServiceProvider serviceProvider = services.BuildServiceProvider();
 
         ReadResourceResult result = await resource.ReadAsync(
@@ -182,19 +181,19 @@ public sealed class SkillResourceTests {
 
     [Fact]
     public void ReadResultFactories_EnforceValidStateMatrix() {
-        SkillResourceReadResult success = SkillResourceReadResult.Success("# Safe markdown");
+        var success = SkillResourceReadResult.Success("# Safe markdown");
         success.IsSuccess.ShouldBeTrue();
         success.Category.ShouldBe(FrontComposerMcpFailureCategory.None);
         success.ContentType.ShouldBe("text/markdown");
         success.Markdown.ShouldBe("# Safe markdown");
 
-        SkillResourceReadResult missing = SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.UnknownResource);
+        var missing = SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.UnknownResource);
         missing.IsSuccess.ShouldBeFalse();
         missing.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownResource);
         missing.ContentType.ShouldBe("text/plain");
         missing.Markdown.ShouldBe("unknown_resource");
 
-        SkillResourceReadResult denied = SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.AuthFailed);
+        var denied = SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.AuthFailed);
         denied.IsSuccess.ShouldBeFalse();
         // 11-5 review P4: AuthFailed and UnknownResource intentionally project the same opaque
         // "unknown_resource" markdown body (Story 8-4a DN-2 hidden-equivalence) so an unauth'd
@@ -206,7 +205,7 @@ public sealed class SkillResourceTests {
         denied.Category.ShouldNotBe(missing.Category);
         denied.Markdown.ShouldBe("unknown_resource");
 
-        SkillResourceReadResult invalid = SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.MalformedRequest);
+        var invalid = SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.MalformedRequest);
         invalid.IsSuccess.ShouldBeFalse();
         invalid.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
         invalid.Markdown.ShouldBe("malformed_request");

@@ -5,7 +5,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.TrimAot;
 
@@ -45,7 +44,7 @@ public sealed class TrimAotReflectionCatalogDiagnosticTests {
 
         Diagnostic? trim = diagnostics.FirstOrDefault(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning);
         // CH-6 / CM-6 — pin to HFC ID, then sanity-check message references catalog.
-        trim.ShouldNotBeNull(
+        _ = trim.ShouldNotBeNull(
             $"AC14 — HFC1070 must fire when PublishTrimmed={publishTrimmed} (PublishAot={publishAot}) with default reflection catalog.");
         trim!.Severity.ShouldBe(DiagnosticSeverity.Warning);
         trim.GetMessage().ShouldContain("IActionQueueProjectionCatalog", Case.Insensitive);
@@ -131,7 +130,7 @@ public sealed class TrimAotReflectionCatalogDiagnosticTests {
 
         CancellationToken ct = TestContext.Current.CancellationToken;
         // Compile WITHOUT the Contracts/SourceTools-backed reference set — minimal corlib only.
-        CSharpCompilation compilation = CSharpCompilation.Create(
+        var compilation = CSharpCompilation.Create(
             "Isolated",
             [CSharpSyntaxTree.ParseText(source, cancellationToken: ct)],
             [
@@ -161,7 +160,7 @@ public sealed class TrimAotReflectionCatalogDiagnosticTests {
         // mentions the source-generated path — the user-visible "recorded explicitly" surface.
         IReadOnlyList<Diagnostic> diagnostics = Run(ProjectionSource, publishTrimmed: true, publishAot: false);
         Diagnostic? trim = diagnostics.FirstOrDefault(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning);
-        trim.ShouldNotBeNull("AC14 — HFC1070 must fire under the test conditions.");
+        _ = trim.ShouldNotBeNull("AC14 — HFC1070 must fire under the test conditions.");
         trim!.GetMessage().ShouldContain("source-generated", Case.Insensitive,
             "AC15 — HFC1070 message must point at the source-generated catalog path so the runtime-authoritative remediation is recorded explicitly.");
     }

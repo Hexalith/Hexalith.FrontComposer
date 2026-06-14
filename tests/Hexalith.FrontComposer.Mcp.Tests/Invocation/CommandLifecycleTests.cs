@@ -22,7 +22,7 @@ public sealed class CommandLifecycleTests {
 
     [Fact]
     public async Task InvokeAsync_ValidCommand_ReturnsAcknowledgementWithLifecycleReference() {
-        var invoker = Build(out LifecycleAwareCommandService service, out _);
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out _);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -30,7 +30,7 @@ public sealed class CommandLifecycleTests {
             TestContext.Current.CancellationToken);
 
         result.IsError.ShouldBeFalse();
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Acknowledged");
         result.StructuredContent!["messageId"]!.GetValue<string>().ShouldBe(MessageId);
         result.StructuredContent!["correlationId"]!.GetValue<string>().ShouldBe(CorrelationId);
@@ -45,7 +45,7 @@ public sealed class CommandLifecycleTests {
     [Fact]
     public async Task ReadAsync_KnownLifecycleHandle_ReturnsOrderedTerminalSnapshot() {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -56,7 +56,7 @@ public sealed class CommandLifecycleTests {
             TestContext.Current.CancellationToken);
 
         snapshot.IsError.ShouldBeFalse();
-        snapshot.StructuredContent.ShouldNotBeNull();
+        _ = snapshot.StructuredContent.ShouldNotBeNull();
         snapshot.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Confirmed");
         snapshot.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
         snapshot.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("confirmed");
@@ -79,7 +79,7 @@ public sealed class CommandLifecycleTests {
     [Fact]
     public async Task ReadAsync_TerminalStateIsMonotonic_LateNonTerminalObservationIsIgnored() {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -102,7 +102,7 @@ public sealed class CommandLifecycleTests {
     [Fact]
     public async Task ReadAsync_DuplicateTerminalObservation_DoesNotProduceTerminalRegression() {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -124,7 +124,7 @@ public sealed class CommandLifecycleTests {
     [Fact]
     public async Task ReadAsync_LifecycleHandle_RejectsUnicodeConfusableAsHiddenUnknown() {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -152,7 +152,7 @@ public sealed class CommandLifecycleTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.CommandRejected);
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
         result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("COMMAND_REJECTED");
         result.StructuredContent!["outcome"]!["rejection"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
@@ -165,7 +165,7 @@ public sealed class CommandLifecycleTests {
     public async Task ReadAsync_AfterPolicyLoss_ReturnsHiddenUnknownShape() {
         MutablePolicyGate policyGate = new() { Allow = true };
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider, policyGate);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -178,7 +178,7 @@ public sealed class CommandLifecycleTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
         result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
         result.StructuredContent!.ToJsonString().ShouldNotContain(MessageId);
@@ -188,7 +188,7 @@ public sealed class CommandLifecycleTests {
     public async Task ReadAsync_AfterTenantVisibilityLoss_ReturnsHiddenUnknownShape() {
         MutableTenantToolGate tenantGate = new() { Visible = true };
         FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider, tenantGate: tenantGate);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -202,7 +202,7 @@ public sealed class CommandLifecycleTests {
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
         result.Text.ShouldBe("Request failed.");
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
         result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
         result.StructuredContent!.ToJsonString().ShouldNotContain(MessageId);
@@ -213,7 +213,7 @@ public sealed class CommandLifecycleTests {
     [Fact]
     public async Task ReadAsync_IdempotencyResolvedTerminal_MapsToIdempotentConfirmedSuccess() {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -226,7 +226,7 @@ public sealed class CommandLifecycleTests {
             TestContext.Current.CancellationToken);
 
         result.IsError.ShouldBeFalse();
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("idempotent_confirmed");
         result.StructuredContent!["outcome"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
     }
@@ -241,7 +241,7 @@ public sealed class CommandLifecycleTests {
             configureOptions: o => o.MaxLifecycleInProgressMs = 10,
             timeProvider: fakeTime);
         service.CompleteSynchronously = false;
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -253,7 +253,7 @@ public sealed class CommandLifecycleTests {
             TestContext.Current.CancellationToken);
 
         result.IsError.ShouldBeFalse();
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
         result.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
         result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("timed_out");
@@ -277,7 +277,7 @@ public sealed class CommandLifecycleTests {
             configureOptions: o => o.MaxLifecycleInProgressMs = 10,
             timeProvider: fakeTime);
         service.CompleteSynchronously = false;
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -321,7 +321,7 @@ public sealed class CommandLifecycleTests {
             configureOptions: o => o.MaxLifecycleInProgressMs = 10,
             timeProvider: fakeTime);
         service.CompleteSynchronously = false;
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -353,13 +353,13 @@ public sealed class CommandLifecycleTests {
                 o.MaxLifecycleInProgressMs = 60_000;
             });
         service.CompleteSynchronously = false;
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
         string firstCorrelationId = service.LastCorrelationId;
 
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":43}"""),
             TestContext.Current.CancellationToken);
@@ -370,7 +370,7 @@ public sealed class CommandLifecycleTests {
             TestContext.Current.CancellationToken);
 
         result.IsError.ShouldBeFalse();
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
         result.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
         result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("needs_review");
@@ -430,7 +430,7 @@ public sealed class CommandLifecycleTests {
     [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0C\\t")] // trailing tab (escaped in JSON)
     public async Task ReadAsync_MalformedLifecycleHandle_FailsAsHiddenUnknownWithoutStoreLookup(string correlationId) {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -443,7 +443,7 @@ public sealed class CommandLifecycleTests {
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
         result.Text.ShouldBe("Request failed.");
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
         result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
     }
@@ -451,7 +451,7 @@ public sealed class CommandLifecycleTests {
     [Fact]
     public async Task ReadAsync_OversizedLifecycleHandle_FailsAsHiddenUnknownWithoutStoreLookup() {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -473,7 +473,7 @@ public sealed class CommandLifecycleTests {
         // P17 / AC23: the schema's `oneOf` is enforced at runtime by `arguments.Count != 1`;
         // pinning the behavior here prevents future schema/runtime drift.
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -501,7 +501,7 @@ public sealed class CommandLifecycleTests {
     [InlineData("""{"messageId":[]}""")]
     public async Task ReadAsync_LifecycleHandleMustBeExactlyOneStringArgument(string json) {
         FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -513,7 +513,7 @@ public sealed class CommandLifecycleTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
         result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
         result.StructuredContent!.ToJsonString().ShouldNotContain(MessageId);
@@ -525,7 +525,7 @@ public sealed class CommandLifecycleTests {
         // AC18 / P4: simultaneous lifecycle reads against a terminal entry must converge to the
         // same idempotent terminal snapshot without duplicate registration or duplicate dispatch.
         FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -554,7 +554,7 @@ public sealed class CommandLifecycleTests {
             out _,
             out ServiceProvider provider,
             configureOptions: o => o.MaxLifecycleTransitionHistory = 32);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -580,7 +580,7 @@ public sealed class CommandLifecycleTests {
         // P52: same-state Confirmed re-delivery must not append additional rows to the bounded
         // history — otherwise the truncation loop would eventually evict the original Acknowledged.
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -639,7 +639,7 @@ public sealed class CommandLifecycleTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.ValidationFailed);
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("validation");
         result.StructuredContent!["outcome"]!["rejection"]!["reasonCategory"]!.GetValue<string>().ShouldBe("validation");
         result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("COMMAND_VALIDATION_FAILED");
@@ -651,7 +651,7 @@ public sealed class CommandLifecycleTests {
         // authorized lifecycle reads; a duplicate Confirmed delivery cannot upgrade the outcome.
         FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
         service.CompleteSynchronously = false;
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -683,7 +683,7 @@ public sealed class CommandLifecycleTests {
         // outcome category remains idempotent_confirmed.
         FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
         service.CompleteSynchronously = false;
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -713,7 +713,7 @@ public sealed class CommandLifecycleTests {
                 o.MinLifecycleRetryAfterMs = 1;
                 o.MaxLifecycleRetryAfterMs = 10_000;
             });
-        await invoker.InvokeAsync(
+        _ = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
@@ -737,30 +737,30 @@ public sealed class CommandLifecycleTests {
         TimeProvider? timeProvider = null) {
         commandService = new LifecycleAwareCommandService();
         ServiceCollection services = new();
-        services.AddSingleton<ICommandService>(commandService);
-        services.AddSingleton<IQueryService, FastQueryService>();
-        services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
-        services.AddSingleton(ulidFactory ?? new FixedUlidFactory());
+        _ = services.AddSingleton<ICommandService>(commandService);
+        _ = services.AddSingleton<IQueryService, FastQueryService>();
+        _ = services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
+        _ = services.AddSingleton(ulidFactory ?? new FixedUlidFactory());
         if (timeProvider is not null) {
-            services.AddSingleton(timeProvider);
+            _ = services.AddSingleton(timeProvider);
         }
 
-        services.Configure<FrontComposerMcpOptions>(o => {
+        _ = services.Configure<FrontComposerMcpOptions>(o => {
             o.Manifests.Add(Manifest(policyGate is null ? null : "LifecyclePolicy"));
             configureOptions?.Invoke(o);
         });
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        services.AddSingleton<FrontComposerMcpLifecycleTracker>();
-        services.AddSingleton<FrontComposerMcpProjectionReader>();
-        services.AddSingleton(tenantGate ?? new AllowAllMcpTenantToolGate());
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = services.AddSingleton<FrontComposerMcpLifecycleTracker>();
+        _ = services.AddSingleton<FrontComposerMcpProjectionReader>();
+        _ = services.AddSingleton(tenantGate ?? new AllowAllMcpTenantToolGate());
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         if (policyGate is not null) {
-            services.AddSingleton(policyGate);
+            _ = services.AddSingleton(policyGate);
         }
 
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         provider = services.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
     }

@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Linq;
 using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts;
@@ -23,7 +22,7 @@ public sealed class LocalStorageServiceTests {
     [Fact]
     public async Task GetAsync_MissingKey_ReturnsDefault() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        await using LocalStorageService sut = CreateService(out TestJsRuntime js);
+        await using LocalStorageService sut = CreateService(out _);
 
         string? result = await sut.GetAsync<string?>("missing", ct);
 

@@ -1,7 +1,7 @@
+using System.Text;
+
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
-
-using System.Text;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.FaultInjection;
 
@@ -42,7 +42,6 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
     private readonly List<string> _handlerFailureCategories = [];
 
     private int _nextSequence;
-    private bool _isConnected;
     private bool _disposed;
 
     /// <summary>Capacity guard for staged scripts/queues. Default = 256 (per-scenario bound).</summary>
@@ -52,9 +51,11 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
     public bool IsConnected {
         get {
             lock (_gate) {
-                return _isConnected;
+                return field;
             }
         }
+
+        private set;
     }
 
     /// <summary>Bounded list of subscriber failure category names captured during nudge dispatch.</summary>
@@ -87,7 +88,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate) {
             ThrowIfDisposedLocked();
-            _isConnected = true;
+            IsConnected = true;
         }
 
         await PublishStateAsync(HarnessConnectionStates.Connected()).ConfigureAwait(false);
@@ -96,7 +97,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
     public async Task JoinGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         ThrowIfDisposed();
-        HarnessCheckpoint checkpoint = HarnessCheckpoint.Join(projectionType, tenantId);
+        var checkpoint = HarnessCheckpoint.Join(projectionType, tenantId);
         await CrossCheckpointAsync(checkpoint, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate) {
@@ -111,7 +112,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
     public async Task LeaveGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         ThrowIfDisposed();
-        HarnessCheckpoint checkpoint = HarnessCheckpoint.Leave(projectionType, tenantId);
+        var checkpoint = HarnessCheckpoint.Leave(projectionType, tenantId);
         await CrossCheckpointAsync(checkpoint, cancellationToken).ConfigureAwait(false);
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate) {
@@ -127,7 +128,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
         cancellationToken.ThrowIfCancellationRequested();
         lock (_gate) {
             ThrowIfDisposedLocked();
-            _isConnected = false;
+            IsConnected = false;
         }
     }
 
@@ -138,7 +139,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
             }
 
             _disposed = true;
-            _isConnected = false;
+            IsConnected = false;
             _projectionHandlers.Clear();
             _stateHandlers.Clear();
             _activeQualifiers.Clear();
@@ -238,7 +239,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
 
         if (cancellationToken.CanBeCanceled) {
             CancellationTokenRegistration registration = cancellationToken.Register(static state => {
-                TaskCompletionSource source = (TaskCompletionSource)state!;
+                var source = (TaskCompletionSource)state!;
                 _ = source.TrySetCanceled();
             }, tcs);
             _ = tcs.Task.ContinueWith(_ => {
@@ -261,7 +262,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
 
     /// <summary>Fires <c>OnProjectionChanged</c> handlers immediately (after applying any scripted nudge selector).</summary>
     public async Task PublishNudgeAsync(string projectionType, string tenantId) {
-        HarnessCheckpoint checkpoint = HarnessCheckpoint.Nudge(projectionType, tenantId);
+        var checkpoint = HarnessCheckpoint.Nudge(projectionType, tenantId);
         string qualifier = checkpoint.Qualifier!;
         if (IsDisposed()) {
             return;
@@ -373,7 +374,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
                 return;
             }
 
-            _isConnected = change.State is ProjectionHubConnectionState.Connected or ProjectionHubConnectionState.Reconnected;
+            IsConnected = change.State is ProjectionHubConnectionState.Connected or ProjectionHubConnectionState.Reconnected;
         }
 
         await PublishStateAsync(change).ConfigureAwait(false);
@@ -426,7 +427,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
                 }
 
                 using (cancellationToken.Register(static state => {
-                    TaskCompletionSource source = (TaskCompletionSource)state!;
+                    var source = (TaskCompletionSource)state!;
                     _ = source.TrySetCanceled();
                 }, action.Tcs!)) {
                     try {
@@ -467,9 +468,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
         }
     }
 
-    private void IncrementHitsLocked(HarnessCheckpoint checkpoint) {
-        _hits[checkpoint] = _hits.GetValueOrDefault(checkpoint) + 1;
-    }
+    private void IncrementHitsLocked(HarnessCheckpoint checkpoint) => _hits[checkpoint] = _hits.GetValueOrDefault(checkpoint) + 1;
 
     private void CompleteWaitersLocked(HarnessCheckpoint checkpoint) {
         if (!_waiters.TryGetValue(checkpoint, out List<WaiterEntry>? list)) {

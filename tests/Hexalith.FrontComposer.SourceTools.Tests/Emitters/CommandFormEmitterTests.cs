@@ -12,8 +12,7 @@ using Shouldly;
 namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 
 public class CommandFormEmitterTests {
-    private static CommandFluxorModel BuildFluxor(string typeName = "IncrementCommand", string @namespace = "Counter.Domain") {
-        return new CommandFluxorModel(
+    private static CommandFluxorModel BuildFluxor(string typeName = "IncrementCommand", string @namespace = "Counter.Domain") => new(
             typeName,
             @namespace,
             typeName + "LifecycleState",
@@ -22,14 +21,12 @@ public class CommandFormEmitterTests {
             typeName + "Reducers",
             @namespace + "." + typeName,
             @namespace + "." + typeName + "LifecycleState");
-    }
 
     private static CommandFormModel BuildForm(
         IEnumerable<FormFieldModel> fields,
         string typeName = "IncrementCommand",
         string @namespace = "Counter.Domain",
-        string? authorizationPolicyName = null) {
-        return new CommandFormModel(
+        string? authorizationPolicyName = null) => new(
             typeName,
             @namespace,
             null,
@@ -37,7 +34,6 @@ public class CommandFormEmitterTests {
             "Send " + typeName,
             new EquatableArray<FormFieldModel>(fields.ToImmutableArray()),
             authorizationPolicyName);
-    }
 
     [Fact]
     public void Emit_ProducesValidCSharp() {

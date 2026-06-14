@@ -35,11 +35,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// <c>NavigationEffectsScopeTests</c> (Story 3-2). Adds reflective invariants for ADR-038
 /// (hydrate is read-only) and ADR-037 mirror (viewport never persisted).
 /// </summary>
-public sealed class DensityEffectsScopeTests
-{
+public sealed class DensityEffectsScopeTests {
     [Fact]
-    public async Task PersistsOnValidScope_UserPreferenceChanged()
-    {
+    public async Task PersistsOnValidScope_UserPreferenceChanged() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         InMemoryStorageService storage = new();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
@@ -60,8 +58,7 @@ public sealed class DensityEffectsScopeTests
     }
 
     [Fact]
-    public async Task SkipsOnNullTenant_UserPreferenceChanged_LogsAndDoesNotCallStorage()
-    {
+    public async Task SkipsOnNullTenant_UserPreferenceChanged_LogsAndDoesNotCallStorage() {
         IStorageService storage = Substitute.For<IStorageService>();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IUserContextAccessor accessor = MakeAccessor(tenantId: null, userId: "alice");
@@ -76,8 +73,7 @@ public sealed class DensityEffectsScopeTests
     }
 
     [Fact]
-    public async Task SkipsOnNullUser_UserPreferenceChanged_LogsAndDoesNotCallStorage()
-    {
+    public async Task SkipsOnNullUser_UserPreferenceChanged_LogsAndDoesNotCallStorage() {
         IStorageService storage = Substitute.For<IStorageService>();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IUserContextAccessor accessor = MakeAccessor(tenantId: "acme", userId: null);
@@ -96,8 +92,7 @@ public sealed class DensityEffectsScopeTests
     [InlineData("acme", " ")]
     [InlineData("", "alice")]
     [InlineData("acme", "")]
-    public async Task SkipsOnWhitespaceUserContext_UserPreferenceChanged(string tenantId, string userId)
-    {
+    public async Task SkipsOnWhitespaceUserContext_UserPreferenceChanged(string tenantId, string userId) {
         IStorageService storage = Substitute.For<IStorageService>();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IUserContextAccessor accessor = MakeAccessor(tenantId, userId);
@@ -112,8 +107,7 @@ public sealed class DensityEffectsScopeTests
     }
 
     [Fact]
-    public async Task PersistsNullOnUserPreferenceCleared()
-    {
+    public async Task PersistsNullOnUserPreferenceCleared() {
         // D8 — clear path writes a literal `null` JSON value (DensityLevel? round-trip).
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         InMemoryStorageService storage = new();
@@ -134,8 +128,7 @@ public sealed class DensityEffectsScopeTests
     }
 
     [Fact]
-    public async Task HydrateDoesNotRePersist()
-    {
+    public async Task HydrateDoesNotRePersist() {
         // ADR-038 mirror — DensityHydratedAction must NOT trigger a storage write.
         InMemoryStorageService inner = new();
         ObservingStorage spy = new(inner);
@@ -154,13 +147,11 @@ public sealed class DensityEffectsScopeTests
                 m.GetParameters()[0].ParameterType == typeof(DensityHydratedAction) &&
                 m.GetParameters()[1].ParameterType == typeof(IDispatcher));
 
-        if (hydrateHandler is not null)
-        {
+        if (hydrateHandler is not null) {
             object? task = hydrateHandler.Invoke(sut, [
                 new DensityHydratedAction(DensityLevel.Compact, DensityLevel.Compact),
                 Substitute.For<IDispatcher>()]);
-            if (task is Task t)
-            {
+            if (task is Task t) {
                 await t.ConfigureAwait(true);
             }
         }
@@ -169,8 +160,7 @@ public sealed class DensityEffectsScopeTests
     }
 
     [Fact]
-    public async Task ViewportTierChangedDoesNotPersist()
-    {
+    public async Task ViewportTierChangedDoesNotPersist() {
         // D7 / D8 — the cross-feature viewport handler is a pure compute path; no storage write.
         IStorageService storage = Substitute.For<IStorageService>();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
@@ -185,8 +175,7 @@ public sealed class DensityEffectsScopeTests
     }
 
     [Fact]
-    public void NoHandlePersistEffectMethodAcceptsDensityHydratedAction()
-    {
+    public void NoHandlePersistEffectMethodAcceptsDensityHydratedAction() {
         // ADR-038 mirror — borrow the Story 3-2 NavigationEffectsScopeTests F4 reflective invariant.
         MethodInfo? offender = typeof(DensityEffects)
             .GetMethods(BindingFlags.Instance | BindingFlags.Public)
@@ -199,8 +188,7 @@ public sealed class DensityEffectsScopeTests
     }
 
     [Fact]
-    public void NoHandlePersistEffectMethodAcceptsViewportTierChangedAction()
-    {
+    public void NoHandlePersistEffectMethodAcceptsViewportTierChangedAction() {
         // ADR-037 mirror (viewport is observation, never persisted).
         MethodInfo? offender = typeof(DensityEffects)
             .GetMethods(BindingFlags.Instance | BindingFlags.Public)
@@ -215,16 +203,14 @@ public sealed class DensityEffectsScopeTests
     private static DensityEffects MakeSut(
         IStorageService storage,
         IUserContextAccessor accessor,
-        ILogger<DensityEffects> logger)
-    {
+        ILogger<DensityEffects> logger) {
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
         IState<FrontComposerDensityState> densityState = FakeDensityState();
         return new DensityEffects(storage, accessor, logger, navState, options, densityState);
     }
 
-    private static IState<FrontComposerNavigationState> FakeNavState(ViewportTier tier)
-    {
+    private static IState<FrontComposerNavigationState> FakeNavState(ViewportTier tier) {
         IState<FrontComposerNavigationState> state = Substitute.For<IState<FrontComposerNavigationState>>();
         state.Value.Returns(new FrontComposerNavigationState(
             SidebarCollapsed: false,
@@ -235,36 +221,30 @@ public sealed class DensityEffectsScopeTests
 
     private static IState<FrontComposerDensityState> FakeDensityState(
         DensityLevel? userPreference = null,
-        DensityLevel effective = DensityLevel.Comfortable)
-    {
+        DensityLevel effective = DensityLevel.Comfortable) {
         IState<FrontComposerDensityState> state = Substitute.For<IState<FrontComposerDensityState>>();
         state.Value.Returns(new FrontComposerDensityState(userPreference, effective));
         return state;
     }
 
-    private static IUserContextAccessor MakeAccessor(string? tenantId, string? userId)
-    {
+    private static IUserContextAccessor MakeAccessor(string? tenantId, string? userId) {
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
         accessor.TenantId.Returns(tenantId);
         accessor.UserId.Returns(userId);
         return accessor;
     }
 
-    private static void AssertLoggedInformation(ILogger<DensityEffects> logger, string diagnosticId)
-    {
+    private static void AssertLoggedInformation(ILogger<DensityEffects> logger, string diagnosticId) {
         bool found = false;
-        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls())
-        {
-            if (!string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal))
-            {
+        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls()) {
+            if (!string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal)) {
                 continue;
             }
 
             object?[] args = call.GetArguments();
             bool isInformation = args.Any(a => a is LogLevel lvl && lvl == LogLevel.Information);
             bool mentionsId = args.Any(a => a is not null && a.ToString()?.Contains(diagnosticId, StringComparison.Ordinal) == true);
-            if (isInformation && mentionsId)
-            {
+            if (isInformation && mentionsId) {
                 found = true;
                 break;
             }
@@ -273,8 +253,7 @@ public sealed class DensityEffectsScopeTests
         found.ShouldBeTrue($"Expected ILogger.Log call with LogLevel.Information referencing '{diagnosticId}'.");
     }
 
-    private sealed class ObservingStorage(IStorageService inner) : IStorageService
-    {
+    private sealed class ObservingStorage(IStorageService inner) : IStorageService {
         public int SetAsyncCallCount { get; private set; }
 
         public Task FlushAsync(CancellationToken cancellationToken = default)
@@ -289,8 +268,7 @@ public sealed class DensityEffectsScopeTests
         public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
             => inner.RemoveAsync(key, cancellationToken);
 
-        public Task SetAsync<T>(string key, T value, CancellationToken cancellationToken = default)
-        {
+        public Task SetAsync<T>(string key, T value, CancellationToken cancellationToken = default) {
             SetAsyncCallCount++;
             return inner.SetAsync(key, value, cancellationToken);
         }

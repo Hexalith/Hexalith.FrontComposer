@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 using Hexalith.FrontComposer.Contracts.Communication;
 
 namespace Hexalith.FrontComposer.Shell.Services.Auth;

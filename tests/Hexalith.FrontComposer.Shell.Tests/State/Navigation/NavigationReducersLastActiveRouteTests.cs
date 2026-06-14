@@ -1,6 +1,5 @@
 using System.Collections.Immutable;
 
-using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Shouldly;

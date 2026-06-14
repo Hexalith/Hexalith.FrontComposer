@@ -94,7 +94,7 @@ public sealed class SlotContrastTests {
     }
 
     public static TheoryData<string, BadgeSlot, int, int> ThemeContrastData() {
-        TheoryData<string, BadgeSlot, int, int> data = new();
+        TheoryData<string, BadgeSlot, int, int> data = [];
         foreach ((string theme, BadgeSlot slot, int fg, int bg) in FluentV5ThemePairs) {
             data.Add(theme, slot, fg, bg);
         }

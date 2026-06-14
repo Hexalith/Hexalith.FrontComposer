@@ -1,27 +1,27 @@
 using System.Text.Json;
+
 using Shouldly;
+
 using Xunit;
 
 namespace Hexalith.FrontComposer.Cli.Tests;
 
-public sealed class InspectCommandTests
-{
+public sealed class InspectCommandTests {
     [Fact]
-    public async Task InspectJson_ReportsGeneratedFilesWithDeterministicRelativePaths()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectJson_ReportsGeneratedFilesWithDeterministicRelativePaths() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated(
+        _ = fixture.WriteGenerated(
             "Acme.App",
             "Debug",
             "net10.0",
             "Acme.Shipping.ShipmentProjection.g.razor.cs",
             "namespace Acme.Shipping { }");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjectionActions.g.cs", "");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjectionReducers.g.cs", "");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjectionRegistration.g.cs", "");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.CreateShipment.CommandForm.g.razor.cs", "");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "FrontComposerMcpManifest.g.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjectionActions.g.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjectionReducers.g.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjectionRegistration.g.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.CreateShipment.CommandForm.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "FrontComposerMcpManifest.g.cs", "");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -34,7 +34,7 @@ public sealed class InspectCommandTests
         exitCode.ShouldBe(0);
         error.ToString().ShouldBeEmpty();
 
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         JsonElement root = document.RootElement;
         root.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.inspect.v1");
         root.GetProperty("summary").GetProperty("generatedFiles").GetInt32().ShouldBe(6);
@@ -55,7 +55,7 @@ public sealed class InspectCommandTests
             })
             .ToArray();
 
-        var triKeyExpected = entries
+        string[] triKeyExpected = entries
             .OrderBy(x => x.RelatedType, StringComparer.Ordinal)
             .ThenBy(x => x.Family, StringComparer.Ordinal)
             .ThenBy(x => x.Path, StringComparer.Ordinal)
@@ -70,9 +70,8 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectJson_ClassifiesGeneratedFamiliesAndCountsMcpManifestFiles()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectJson_ClassifiesGeneratedFamiliesAndCountsMcpManifestFiles() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         string[] generatedFiles = [
             "Acme.Shipping.ShipmentProjection.g.razor.cs",
@@ -89,7 +88,7 @@ public sealed class InspectCommandTests
             "__FrontComposerProjectionTemplatesRegistration.g.cs",
         ];
         foreach (string fileName in generatedFiles) {
-            fixture.WriteGenerated("Acme.App", "Debug", "net10.0", fileName, "");
+            _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", fileName, "");
         }
 
         using StringWriter output = new();
@@ -103,7 +102,7 @@ public sealed class InspectCommandTests
         exitCode.ShouldBe(0);
         error.ToString().ShouldBeEmpty();
 
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         JsonElement root = document.RootElement;
         root.GetProperty("summary").GetProperty("generatedFiles").GetInt32().ShouldBe(generatedFiles.Length);
         root.GetProperty("summary").GetProperty("forms").GetInt32().ShouldBe(1);
@@ -134,8 +133,7 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public void InspectBuildArguments_UsePublicGeneratedOutputPathContractShape()
-    {
+    public void InspectBuildArguments_UsePublicGeneratedOutputPathContractShape() {
         IReadOnlyList<string> explicitFramework = GeneratedOutputLoader.CreateBuildArguments(
             "Acme.App.csproj",
             "Release",
@@ -154,12 +152,11 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectType_NotFound_ReturnsBoundedClosestKnownTypeNames()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectType_NotFound_ReturnsBoundedClosestKnownTypeNames() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Billing.InvoiceProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Billing.InvoiceProjection.g.razor.cs", "");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -177,12 +174,11 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task Inspect_RequiresFrameworkWhenGeneratedOutputIsAmbiguous()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Inspect_RequiresFrameworkWhenGeneratedOutputIsAmbiguous() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0;netstandard2.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated("Acme.App", "Debug", "netstandard2.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "netstandard2.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -200,11 +196,10 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task Inspect_MissingGeneratedOutput_ReturnsStableUnavailableExitCode()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Inspect_MissingGeneratedOutput_ReturnsStableUnavailableExitCode() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteSource("Acme.App", "Projection.cs", "[Projection] public partial class ShipmentProjection { }");
+        _ = fixture.WriteSource("Acme.App", "Projection.cs", "[Projection] public partial class ShipmentProjection { }");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -222,11 +217,10 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task Inspect_MissingGeneratedOutputWithoutAnnotations_StillSuggestsBuild()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Inspect_MissingGeneratedOutputWithoutAnnotations_StillSuggestsBuild() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+        _ = fixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -242,12 +236,11 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectSeverity_UsesThresholdSemanticsInJsonOutput()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectSeverity_UsesThresholdSemanticsInJsonOutput() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated(
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -269,8 +262,7 @@ public sealed class InspectCommandTests
         (await ReadDiagnosticIdsAsync("warning")).ShouldBe(["HFC1003", "HFC1004"], ignoreOrder: false);
         (await ReadDiagnosticIdsAsync("error")).ShouldBe(["HFC1004"], ignoreOrder: false);
 
-        async Task<string[]> ReadDiagnosticIdsAsync(string severity)
-        {
+        async Task<string[]> ReadDiagnosticIdsAsync(string severity) {
             using StringWriter output = new();
             using StringWriter error = new();
             int exitCode = await CliApplication.RunAsync(
@@ -282,7 +274,7 @@ public sealed class InspectCommandTests
             exitCode.ShouldBe(0);
             error.ToString().ShouldBeEmpty();
 
-            using JsonDocument document = JsonDocument.Parse(output.ToString());
+            using var document = JsonDocument.Parse(output.ToString());
             return document.RootElement.GetProperty("diagnostics")
                 .EnumerateArray()
                 .Select(x => x.GetProperty("id").GetString()!)
@@ -291,15 +283,14 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectSeverity_Hidden_IncludesNonCanonicalSeverities()
-    {
+    public async Task InspectSeverity_Hidden_IncludesNonCanonicalSeverities() {
         // AC2: `hidden` must include all diagnostics. A malformed sidecar can carry a severity
         // outside Hidden/Info/Warning/Error; such an entry is shown unfiltered, so `--severity hidden`
         // must remain a superset of the unfiltered output while strict levels still exclude it.
-        using CliFixture fixture = CliFixture.Create();
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated(
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -316,8 +307,7 @@ public sealed class InspectCommandTests
         (await ReadDiagnosticIdsAsync("hidden")).ShouldBe(["HFC1001", "HFC1002"], ignoreOrder: false);
         (await ReadDiagnosticIdsAsync("error")).ShouldBe(["HFC1002"], ignoreOrder: false);
 
-        async Task<string[]> ReadDiagnosticIdsAsync(string severity)
-        {
+        async Task<string[]> ReadDiagnosticIdsAsync(string severity) {
             using StringWriter output = new();
             using StringWriter error = new();
             int exitCode = await CliApplication.RunAsync(
@@ -329,7 +319,7 @@ public sealed class InspectCommandTests
             exitCode.ShouldBe(0);
             error.ToString().ShouldBeEmpty();
 
-            using JsonDocument document = JsonDocument.Parse(output.ToString());
+            using var document = JsonDocument.Parse(output.ToString());
             return document.RootElement.GetProperty("diagnostics")
                 .EnumerateArray()
                 .Select(x => x.GetProperty("id").GetString()!)
@@ -338,12 +328,11 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectSeverity_UsesThresholdSemanticsInTextSummary()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectSeverity_UsesThresholdSemanticsInTextSummary() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated(
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -377,11 +366,10 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectSeverity_InvalidValue_ReturnsInvalidArguments()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectSeverity_InvalidValue_ReturnsInvalidArguments() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -397,12 +385,11 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectText_SummaryLineReportsWarningAndErrorTotals()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectText_SummaryLineReportsWarningAndErrorTotals() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated(
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -435,12 +422,11 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectFailFlags_UseExpectedSeverityThresholds()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectFailFlags_UseExpectedSeverityThresholds() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated(
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -462,12 +448,11 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectFailOnError_DoesNotFailForWarningOnlyDiagnostics()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectFailOnError_DoesNotFailForWarningOnlyDiagnostics() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated(
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -488,13 +473,12 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectFailFlags_AreEvaluatedAfterSeverityAndTypeFiltering()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectFailFlags_AreEvaluatedAfterSeverityAndTypeFiltering() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Billing.InvoiceProjection.g.razor.cs", "");
-        fixture.WriteGenerated(
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Billing.InvoiceProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -518,13 +502,12 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task InspectDiagnosticsSidecars_DefaultMissingOptionalFieldsIgnoreNonHfcAndRedactHostilePaths()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task InspectDiagnosticsSidecars_DefaultMissingOptionalFieldsIgnoreNonHfcAndRedactHostilePaths() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteSource("Acme.App", "Projection.cs", "namespace Acme.App;");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated(
+        _ = fixture.WriteSource("Acme.App", "Projection.cs", "namespace Acme.App;");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -550,7 +533,7 @@ public sealed class InspectCommandTests
         exitCode.ShouldBe(0);
         error.ToString().ShouldBeEmpty();
 
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         JsonElement[] diagnostics = document.RootElement.GetProperty("diagnostics").EnumerateArray().ToArray();
         diagnostics.Length.ShouldBe(2);
         diagnostics.Select(x => x.GetProperty("id").GetString()).ShouldNotContain("CS1001");
@@ -570,11 +553,10 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task Inspect_RejectsFrameworkPathTraversal()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Inspect_RejectsFrameworkPathTraversal() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -590,12 +572,11 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task Inspect_EmitsSentinelForMalformedDiagnosticsSidecars()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Inspect_EmitsSentinelForMalformedDiagnosticsSidecars() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Broken.diagnostics.json", "{not-json");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Broken.diagnostics.json", "{not-json");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -609,7 +590,7 @@ public sealed class InspectCommandTests
         // dropping diagnostics. The sentinel itself is a Warning (not Error), so default exit stays 0.
         exitCode.ShouldBe(0);
         error.ToString().ShouldBeEmpty();
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         JsonElement diagnostics = document.RootElement.GetProperty("diagnostics");
         diagnostics.GetArrayLength().ShouldBe(1);
         diagnostics[0].GetProperty("id").GetString().ShouldBe("HFCM0002");
@@ -617,9 +598,8 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task Inspect_RejectsProjectDirectoryArgument()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Inspect_RejectsProjectDirectoryArgument() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
 
         using StringWriter output = new();
@@ -635,8 +615,7 @@ public sealed class InspectCommandTests
         output.ToString().ShouldBeEmpty();
     }
 
-    private static async Task<int> RunInspectAsync(string project, string[] additionalArgs)
-    {
+    private static async Task<int> RunInspectAsync(string project, string[] additionalArgs) {
         using StringWriter output = new();
         using StringWriter error = new();
         string[] args = [

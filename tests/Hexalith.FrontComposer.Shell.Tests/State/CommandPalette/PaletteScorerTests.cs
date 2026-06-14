@@ -10,9 +10,7 @@ public class PaletteScorerTests {
     [InlineData("counter", "CounterProjection")]
     [InlineData("Counter", "counterprojection")]
     [InlineData("cou", "CounterProjection")]
-    public void Score_ExactPrefixCaseInsensitive_Returns100Plus(string query, string candidate) {
-        PaletteScorer.Score(query, candidate).ShouldBeGreaterThanOrEqualTo(100);
-    }
+    public void Score_ExactPrefixCaseInsensitive_Returns100Plus(string query, string candidate) => PaletteScorer.Score(query, candidate).ShouldBeGreaterThanOrEqualTo(100);
 
     [Theory]
     [InlineData("ord", "SubmitOrderCommand")]
@@ -30,16 +28,12 @@ public class PaletteScorerTests {
     [Theory]
     [InlineData("smtod", "SubmitOrder")]
     [InlineData("inccmd", "IncrementCommand")]
-    public void Score_FuzzySubsequence_WhenFullSubsequence_ReturnsAtLeastOne(string query, string candidate) {
-        PaletteScorer.Score(query, candidate).ShouldBeGreaterThanOrEqualTo(1);
-    }
+    public void Score_FuzzySubsequence_WhenFullSubsequence_ReturnsAtLeastOne(string query, string candidate) => PaletteScorer.Score(query, candidate).ShouldBeGreaterThanOrEqualTo(1);
 
     [Theory]
     [InlineData("xyz", "CounterProjection")]
     [InlineData("zzz", "Increment")]
-    public void Score_NoMatch_ReturnsZero(string query, string candidate) {
-        PaletteScorer.Score(query, candidate).ShouldBe(0);
-    }
+    public void Score_NoMatch_ReturnsZero(string query, string candidate) => PaletteScorer.Score(query, candidate).ShouldBe(0);
 
     [Fact]
     public void Score_EmptyInputs_ReturnsZero() {

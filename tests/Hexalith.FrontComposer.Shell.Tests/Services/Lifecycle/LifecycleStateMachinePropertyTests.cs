@@ -225,7 +225,7 @@ public class LifecycleStateMachinePropertyTests {
         using LifecycleStateService service = Create();
         string[] pool = Enumerable.Range(0, 8).Select(i => "p11-" + seed + "-" + i).ToArray();
         int[] terminalCounts = new int[pool.Length];
-        List<IDisposable> subs = new();
+        List<IDisposable> subs = [];
         for (int i = 0; i < pool.Length; i++) {
             int idx = i;
             subs.Add(service.Subscribe(pool[idx], t => {

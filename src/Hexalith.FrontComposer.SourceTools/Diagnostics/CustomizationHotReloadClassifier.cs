@@ -37,8 +37,8 @@ public sealed class HotReloadRebuildClassification {
 /// </summary>
 public static class CustomizationHotReloadClassifier {
     public static HotReloadRebuildClassification Classify(CustomizationHotReloadChangeKind changeKind) {
-        if (changeKind == CustomizationHotReloadChangeKind.RazorBodyEdit
-            || changeKind == CustomizationHotReloadChangeKind.CssOnlyEdit) {
+        if (changeKind is CustomizationHotReloadChangeKind.RazorBodyEdit
+            or CustomizationHotReloadChangeKind.CssOnlyEdit) {
             return new HotReloadRebuildClassification(
                 requiresRebuild: false,
                 diagnosticId: null,

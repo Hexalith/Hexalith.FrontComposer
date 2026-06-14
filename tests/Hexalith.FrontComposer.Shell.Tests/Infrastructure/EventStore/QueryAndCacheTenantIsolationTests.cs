@@ -9,12 +9,10 @@ using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
 
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
-using MsOptions = Microsoft.Extensions.Options.Options;
 
 using Shouldly;
 
-using Xunit;
+using MsOptions = Microsoft.Extensions.Options.Options;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 

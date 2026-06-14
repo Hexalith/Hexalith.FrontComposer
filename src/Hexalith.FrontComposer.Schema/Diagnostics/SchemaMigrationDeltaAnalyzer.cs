@@ -59,8 +59,8 @@ public static class SchemaMigrationDeltaAnalyzer {
             deltas.Add(Delta(SchemaDeltaKind.ProtocolIdentifierChanged, SchemaCompatibilityDecision.Breaking, "$.ProtocolIdentifier", "schema.delta.protocol-id-changed"));
         }
 
-        Dictionary<string, SchemaFieldContract> oldFields = baseline.Document.Fields.ToDictionary(f => f.Name, StringComparer.Ordinal);
-        Dictionary<string, SchemaFieldContract> newFields = current.Document.Fields.ToDictionary(f => f.Name, StringComparer.Ordinal);
+        var oldFields = baseline.Document.Fields.ToDictionary(f => f.Name, StringComparer.Ordinal);
+        var newFields = current.Document.Fields.ToDictionary(f => f.Name, StringComparer.Ordinal);
 
         foreach (string name in oldFields.Keys.OrderBy(k => k, StringComparer.Ordinal)) {
             if (!newFields.ContainsKey(name)) {

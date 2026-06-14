@@ -24,14 +24,10 @@ public class Hfc1026ReservationTests {
     }
 
     [Fact]
-    public void FcDiagnosticIdsPublishesHFC1026Constant() {
-        FcDiagnosticIds.HFC1026_ColorOnlyBadgeDetected.ShouldBe("HFC1026");
-    }
+    public void FcDiagnosticIdsPublishesHFC1026Constant() => FcDiagnosticIds.HFC1026_ColorOnlyBadgeDetected.ShouldBe("HFC1026");
 
     [Fact]
-    public void FcDiagnosticIdsPublishesHFC1025Constant() {
-        FcDiagnosticIds.HFC1025_BadgeSlotFallbackApplied.ShouldBe("HFC1025");
-    }
+    public void FcDiagnosticIdsPublishesHFC1025Constant() => FcDiagnosticIds.HFC1025_BadgeSlotFallbackApplied.ShouldBe("HFC1025");
 
     [Fact]
     public void FcDiagnosticIdsPublishesLevel3SlotConstants() {

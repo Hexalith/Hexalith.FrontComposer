@@ -102,14 +102,14 @@ public sealed class ProjectionViewOverrideContractsTests {
             fieldRenderer: static (_, _) => static _ => { });
 
         // Projection metadata — projection type, bounded context, role.
-        context.ProjectionType.ShouldNotBeNull();
+        _ = context.ProjectionType.ShouldNotBeNull();
         context.BoundedContext.ShouldNotBeNullOrWhiteSpace();
-        context.Role.ShouldNotBeNull();
+        _ = context.Role.ShouldNotBeNull();
 
         // Field/section descriptors — non-null collections, both with at least one entry.
-        context.Columns.ShouldNotBeNull();
+        _ = context.Columns.ShouldNotBeNull();
         context.Columns.ShouldNotBeEmpty();
-        context.Sections.ShouldNotBeNull();
+        _ = context.Sections.ShouldNotBeNull();
         context.Sections.ShouldNotBeEmpty();
 
         // Localization-safe accessible names/labels/help text — non-null and non-whitespace.
@@ -119,15 +119,15 @@ public sealed class ProjectionViewOverrideContractsTests {
         context.Columns[0].Description.ShouldNotBeNullOrWhiteSpace();
 
         // Current render flags — RenderContext non-null with tenant/user/density/read-only.
-        context.RenderContext.ShouldNotBeNull();
+        _ = context.RenderContext.ShouldNotBeNull();
         context.DensityLevel.ShouldBe(DensityLevel.Roomy);
         context.IsReadOnly.ShouldBeFalse();
 
         // Safe default-render delegates — all four reachable and non-null.
-        context.DefaultBody.ShouldNotBeNull();
-        context.SectionRenderer.ShouldNotBeNull();
-        context.RowRenderer.ShouldNotBeNull();
-        context.FieldRenderer.ShouldNotBeNull();
+        _ = context.DefaultBody.ShouldNotBeNull();
+        _ = context.SectionRenderer.ShouldNotBeNull();
+        _ = context.RowRenderer.ShouldNotBeNull();
+        _ = context.FieldRenderer.ShouldNotBeNull();
     }
 
     public sealed record ViewProjection(int Id, string Name);

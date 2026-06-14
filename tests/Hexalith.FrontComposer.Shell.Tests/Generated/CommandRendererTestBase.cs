@@ -21,8 +21,6 @@ using Microsoft.FluentUI.AspNetCore.Components;
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public abstract class CommandRendererTestBase : BunitContext {
-    private readonly TestUserContextAccessor _userContext = new();
-    private readonly TestCommandPageContext _pageContext = new();
     private bool _storeInitialized;
 
     /// <summary>JS module for <c>fc-expandinrow.js</c> (expand-in-row init + inline popover focus restore).</summary>
@@ -72,13 +70,13 @@ public abstract class CommandRendererTestBase : BunitContext {
         _ = Services.AddScoped<IPendingCommandStateService, PendingCommandStateService>();
         _ = Services.AddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
 
-        Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => _userContext));
-        Services.Replace(ServiceDescriptor.Scoped<ICommandPageContext>(_ => _pageContext));
+        Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => UserContext));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandPageContext>(_ => PageContext));
     }
 
-    protected TestUserContextAccessor UserContext => _userContext;
+    protected TestUserContextAccessor UserContext { get; } = new();
 
-    protected TestCommandPageContext PageContext => _pageContext;
+    protected TestCommandPageContext PageContext { get; } = new();
 
     protected async Task InitializeStoreAsync() {
         if (_storeInitialized) {

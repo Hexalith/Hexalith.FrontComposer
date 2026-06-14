@@ -9,7 +9,6 @@ using Hexalith.FrontComposer.Mcp.Invocation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 using Shouldly;
 
@@ -22,7 +21,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 public sealed class CommandInvokerCoverageTests {
     [Fact]
     public async Task UnknownTool_IsRejectedWithGenericFailureText() {
-        var invoker = BuildInvoker(out _);
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out _);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.NoSuchCommand.Execute",
@@ -36,7 +35,7 @@ public sealed class CommandInvokerCoverageTests {
 
     [Fact]
     public async Task NullToolName_IsRejectedAsUnknownTool() {
-        var invoker = BuildInvoker(out _);
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out _);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             null!,
@@ -49,7 +48,7 @@ public sealed class CommandInvokerCoverageTests {
 
     [Fact]
     public async Task DuplicateJsonProperty_IsRejectedBeforeDispatch() {
-        var invoker = BuildInvoker(out RecordingCommandService service);
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out RecordingCommandService service);
 
         // Two case-variant keys for the same descriptor parameter trip the OrdinalIgnoreCase
         // duplicate-detection set even though the C# Dictionary stores them as distinct entries.
@@ -70,7 +69,7 @@ public sealed class CommandInvokerCoverageTests {
 
     [Fact]
     public async Task NestedObjectArgument_IsRejectedBeforeDispatch() {
-        var invoker = BuildInvoker(out RecordingCommandService service);
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out RecordingCommandService service);
         Dictionary<string, JsonElement> args = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
             """{"Amount":{"value":42}}""")!;
 
@@ -86,7 +85,7 @@ public sealed class CommandInvokerCoverageTests {
 
     [Fact]
     public async Task NullJsonForRequiredParameter_IsRejectedBeforeDispatch() {
-        var invoker = BuildInvoker(out RecordingCommandService service);
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out RecordingCommandService service);
         Dictionary<string, JsonElement> args = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
             """{"Amount":null}""")!;
 
@@ -102,7 +101,7 @@ public sealed class CommandInvokerCoverageTests {
 
     [Fact]
     public async Task OversizedArguments_AreRejectedBeforeDispatch() {
-        var invoker = BuildInvoker(out RecordingCommandService service, configure: o => o.MaxArgumentBytes = 8);
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out RecordingCommandService service, configure: o => o.MaxArgumentBytes = 8);
         Dictionary<string, JsonElement> args = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
             """{"Amount":42}""")!;
 
@@ -118,7 +117,7 @@ public sealed class CommandInvokerCoverageTests {
 
     [Fact]
     public async Task CancellationToken_IsHonored_BeforeDispatch() {
-        var invoker = BuildInvoker(out RecordingCommandService service);
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out RecordingCommandService service);
         Dictionary<string, JsonElement> args = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
             """{"Amount":42}""")!;
         using CancellationTokenSource cts = new();
@@ -137,7 +136,7 @@ public sealed class CommandInvokerCoverageTests {
 
     [Fact]
     public async Task CommandRejectedException_IsTranslatedToProtocolFailure() {
-        var invoker = BuildInvoker(out RecordingCommandService service);
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out RecordingCommandService service);
         service.RejectNext = true;
         Dictionary<string, JsonElement> args = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(
             """{"Amount":42}""")!;
@@ -161,17 +160,17 @@ public sealed class CommandInvokerCoverageTests {
         // by comparing error kinds.
         RecordingCommandService service = new();
         ServiceCollection sc = new();
-        sc.AddSingleton<ICommandService>(service);
-        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
-        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<ICommandService>(service);
+        _ = sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
+        _ = sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         ServiceProvider provider = sc.BuildServiceProvider();
-        var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.RestrictedCommand.Execute",
@@ -189,18 +188,18 @@ public sealed class CommandInvokerCoverageTests {
         // failure category (UnknownTool) as an absent tool to prevent enumeration oracles.
         RecordingCommandService service = new();
         ServiceCollection sc = new();
-        sc.AddSingleton<ICommandService>(service);
-        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
-        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
-        sc.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new DenyingGate());
+        _ = sc.AddSingleton<ICommandService>(service);
+        _ = sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
+        _ = sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new DenyingGate());
         ServiceProvider provider = sc.BuildServiceProvider();
-        var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.RestrictedCommand.Execute",
@@ -216,18 +215,18 @@ public sealed class CommandInvokerCoverageTests {
     public async Task PolicyProtectedCommand_ApprovedByGate_Dispatches() {
         RecordingCommandService service = new();
         ServiceCollection sc = new();
-        sc.AddSingleton<ICommandService>(service);
-        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
-        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
-        sc.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new AllowingGate());
+        _ = sc.AddSingleton<ICommandService>(service);
+        _ = sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
+        _ = sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new AllowingGate());
         ServiceProvider provider = sc.BuildServiceProvider();
-        var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.RestrictedCommand.Execute",
@@ -235,7 +234,7 @@ public sealed class CommandInvokerCoverageTests {
             TestContext.Current.CancellationToken);
 
         result.IsError.ShouldBeFalse();
-        service.Dispatched.ShouldBeOfType<RestrictedCommand>();
+        _ = service.Dispatched.ShouldBeOfType<RestrictedCommand>();
     }
 
     [Fact]
@@ -243,17 +242,17 @@ public sealed class CommandInvokerCoverageTests {
         // AC8 second sample command — a string-typed parameter in a different bounded context.
         RecordingCommandService service = new();
         ServiceCollection sc = new();
-        sc.AddSingleton<ICommandService>(service);
-        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
-        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(LabelManifest()));
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<ICommandService>(service);
+        _ = sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
+        _ = sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(LabelManifest()));
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         ServiceProvider provider = sc.BuildServiceProvider();
-        var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Catalog.LabelProductCommand.Execute",
@@ -273,17 +272,17 @@ public sealed class CommandInvokerCoverageTests {
         // AC8 third sample command — no parameters; ensures empty-argument path is correct.
         RecordingCommandService service = new();
         ServiceCollection sc = new();
-        sc.AddSingleton<ICommandService>(service);
-        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
-        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(NoArgManifest()));
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<ICommandService>(service);
+        _ = sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
+        _ = sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(NoArgManifest()));
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         ServiceProvider provider = sc.BuildServiceProvider();
-        var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Catalog.PingCommand.Execute",
@@ -291,7 +290,7 @@ public sealed class CommandInvokerCoverageTests {
             TestContext.Current.CancellationToken);
 
         result.IsError.ShouldBeFalse();
-        service.Dispatched.ShouldBeOfType<PingCommand>();
+        _ = service.Dispatched.ShouldBeOfType<PingCommand>();
     }
 
     [Fact]
@@ -300,17 +299,17 @@ public sealed class CommandInvokerCoverageTests {
         // generic DownstreamFailed catch-all.
         RecordingCommandService service = new();
         ServiceCollection sc = new();
-        sc.AddSingleton<ICommandService>(service);
-        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
-        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(RecordManifest()));
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<ICommandService>(service);
+        _ = sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
+        _ = sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(RecordManifest()));
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         ServiceProvider provider = sc.BuildServiceProvider();
-        var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Catalog.PositionalRecordCommand.Execute",
@@ -327,7 +326,7 @@ public sealed class CommandInvokerCoverageTests {
         // AC15 redaction: ensure the user-facing Text is identical for unrelated failure
         // categories so a probing client cannot distinguish e.g. TenantMissing from AuthFailed
         // by string content.
-        var invoker = BuildInvoker(out _);
+        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out _);
 
         FrontComposerMcpResult unknown = await invoker.InvokeAsync("missing", null, TestContext.Current.CancellationToken);
         FrontComposerMcpResult validation = await invoker.InvokeAsync(
@@ -347,18 +346,18 @@ public sealed class CommandInvokerCoverageTests {
         Action<FrontComposerMcpOptions>? configure = null) {
         service = new RecordingCommandService();
         ServiceCollection sc = new();
-        sc.AddSingleton<ICommandService>(service);
-        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
-        sc.Configure<FrontComposerMcpOptions>(o => {
+        _ = sc.AddSingleton<ICommandService>(service);
+        _ = sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
+        _ = sc.Configure<FrontComposerMcpOptions>(o => {
             o.Manifests.Add(PayInvoiceManifest());
             configure?.Invoke(o);
         });
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         ServiceProvider provider = sc.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
     }

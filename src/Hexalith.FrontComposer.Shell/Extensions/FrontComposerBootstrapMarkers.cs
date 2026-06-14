@@ -6,8 +6,7 @@ namespace Hexalith.FrontComposer.Shell.Extensions;
 /// <see cref="FrontComposerBootstrapValidator"/> reads the markers back (DI preserves registration
 /// order) to verify presence and ordering at host start, before first render.
 /// </summary>
-internal enum FrontComposerBootstrapStage
-{
+internal enum FrontComposerBootstrapStage {
     /// <summary>
     /// The foundational <c>AddHexalithFrontComposer()</c> call (reached directly via the granular
     /// 3-call path or via <c>AddHexalithFrontComposerQuickstart()</c>). Establishes the authoritative
@@ -35,29 +34,25 @@ internal enum FrontComposerBootstrapStage
 /// duplicate entry-point call (e.g. calling Quickstart twice) does not double-register or change the
 /// observed insertion order (D33 — no mutable process-static).
 /// </summary>
-internal interface IFrontComposerBootstrapMarker
-{
+internal interface IFrontComposerBootstrapMarker {
     /// <summary>Gets the bootstrap stage this marker represents.</summary>
     FrontComposerBootstrapStage Stage { get; }
 }
 
 /// <summary>Marks that the foundational <c>AddHexalithFrontComposer()</c> call ran.</summary>
-internal sealed record QuickstartBootstrapMarker : IFrontComposerBootstrapMarker
-{
+internal sealed record QuickstartBootstrapMarker : IFrontComposerBootstrapMarker {
     /// <inheritdoc />
     public FrontComposerBootstrapStage Stage => FrontComposerBootstrapStage.Quickstart;
 }
 
 /// <summary>Marks that an <c>AddHexalithDomain&lt;TMarker&gt;()</c> call ran.</summary>
-internal sealed record DomainBootstrapMarker : IFrontComposerBootstrapMarker
-{
+internal sealed record DomainBootstrapMarker : IFrontComposerBootstrapMarker {
     /// <inheritdoc />
     public FrontComposerBootstrapStage Stage => FrontComposerBootstrapStage.Domain;
 }
 
 /// <summary>Marks that an <c>AddHexalithEventStore(...)</c> call ran.</summary>
-internal sealed record EventStoreBootstrapMarker : IFrontComposerBootstrapMarker
-{
+internal sealed record EventStoreBootstrapMarker : IFrontComposerBootstrapMarker {
     /// <inheritdoc />
     public FrontComposerBootstrapStage Stage => FrontComposerBootstrapStage.EventStore;
 }

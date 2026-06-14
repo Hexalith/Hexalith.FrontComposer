@@ -27,12 +27,12 @@ public sealed class ExplicitDefaultValueProvider : IDerivedValueProvider {
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
         ct.ThrowIfCancellationRequested();
 
-        (bool HasAttribute, object? Value) entry = Cache.GetOrAdd(
+        (bool HasAttribute, object? Value) = Cache.GetOrAdd(
             (commandType, propertyName),
             static k => LookupDefaultValueAttribute(k.Item1, k.Item2));
 
-        return Task.FromResult(entry.HasAttribute
-            ? new DerivedValueResult(true, entry.Value)
+        return Task.FromResult(HasAttribute
+            ? new DerivedValueResult(true, Value)
             : DerivedValueResult.None);
     }
 

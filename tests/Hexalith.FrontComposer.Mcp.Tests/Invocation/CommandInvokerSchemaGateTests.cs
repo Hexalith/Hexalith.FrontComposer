@@ -13,7 +13,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 
@@ -41,7 +40,7 @@ public sealed class CommandInvokerSchemaGateTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.SchemaMismatch);
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("schema-mismatch");
         result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldStartWith("HFC-SCHEMA-");
         dispatcher.Dispatched.ShouldBeNull("AC1: schema-mismatch must short-circuit before command dispatch.");
@@ -90,16 +89,17 @@ public sealed class CommandInvokerSchemaGateTests {
                 FrontComposerMcpFailureCategory.ValidationFailed,
                 FrontComposerMcpFailureCategory.MalformedRequest);
             dispatcher.Dispatched.ShouldBeNull();
-        } else {
-            dispatcher.Dispatched.ShouldNotBeNull();
-            PayInvoiceCommand command = (PayInvoiceCommand)dispatcher.Dispatched!;
+        }
+        else {
+            _ = dispatcher.Dispatched.ShouldNotBeNull();
+            var command = (PayInvoiceCommand)dispatcher.Dispatched!;
             command.Amount.ShouldBeInRange(1, 100,
                 "AC5: post-additive validation/defaulting must clamp/normalize bounds — never silently pass an out-of-bounds caller value through to the dispatcher.");
         }
     }
 
     private static SchemaFingerprint SchemaHintFor(string scenario)
-        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x').Substring(0, 64));
+        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x')[..64]);
 
     private static Dictionary<string, JsonElement> Args(string json)
         => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
@@ -109,15 +109,15 @@ public sealed class CommandInvokerSchemaGateTests {
         SchemaFingerprint? clientFingerprintHint = null,
         IUlidFactory? ulidFactory = null) {
         ServiceCollection services = [];
-        services.AddSingleton(dispatcher);
-        services.AddSingleton(ulidFactory ?? new FixedUlidFactory());
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new SchemaAwareStaticAccessor(clientFingerprintHint));
+        _ = services.AddSingleton(dispatcher);
+        _ = services.AddSingleton(ulidFactory ?? new FixedUlidFactory());
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new SchemaAwareStaticAccessor(clientFingerprintHint));
         ServiceProvider provider = services.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
     }
@@ -127,7 +127,7 @@ public sealed class CommandInvokerSchemaGateTests {
             ? null
             : clientFingerprintHint?.Value.StartsWith("compatible-additive", StringComparison.Ordinal) == true
                 ? clientFingerprintHint
-                : new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's').Substring(0, 64));
+                : new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's')[..64]);
         return new("frontcomposer.mcp.v1", [
             new McpCommandDescriptor(
                 "Billing.PayInvoiceCommand.Execute",
@@ -145,9 +145,7 @@ public sealed class CommandInvokerSchemaGateTests {
     public sealed class PayInvoiceCommand {
         private static int s_constructionCount;
 
-        public PayInvoiceCommand() {
-            Interlocked.Increment(ref s_constructionCount);
-        }
+        public PayInvoiceCommand() => Interlocked.Increment(ref s_constructionCount);
 
         public static int ConstructionCount => Volatile.Read(ref s_constructionCount);
 
@@ -190,7 +188,7 @@ public sealed class CommandInvokerSchemaGateTests {
         public int CallCount => Volatile.Read(ref _callCount);
 
         public string NewUlid() {
-            Interlocked.Increment(ref _callCount);
+            _ = Interlocked.Increment(ref _callCount);
             return _inner.NewUlid();
         }
     }

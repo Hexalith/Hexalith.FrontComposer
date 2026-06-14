@@ -88,9 +88,7 @@ public sealed class ReflectionActionQueueProjectionCatalogTests {
     }
 
     [Fact]
-    public void Constructor_ThrowsArgumentNullException_OnNullAssemblies() {
-        Should.Throw<ArgumentNullException>(() => new ReflectionActionQueueProjectionCatalog(
+    public void Constructor_ThrowsArgumentNullException_OnNullAssemblies() => Should.Throw<ArgumentNullException>(() => new ReflectionActionQueueProjectionCatalog(
             null!,
             Substitute.For<ILogger<ReflectionActionQueueProjectionCatalog>>()));
-    }
 }

@@ -36,7 +36,7 @@ public sealed class RazorEmitterPerformanceTests {
     [Fact]
     public void ActionQueueWhereFilterStaysUnder50MsFor500Rows() {
         // Build 500 synthetic rows with varied status enum values.
-        OrderRow[] rows = new OrderRow[500];
+        var rows = new OrderRow[500];
         OrderStatus[] cycle = { OrderStatus.Pending, OrderStatus.Submitted, OrderStatus.Approved, OrderStatus.Rejected };
         for (int i = 0; i < rows.Length; i++) {
             rows[i] = new OrderRow { Status = cycle[i % cycle.Length] };
@@ -47,11 +47,11 @@ public sealed class RazorEmitterPerformanceTests {
         //                       || x.Status.ToString() == "Submitted"
         //                       || x.Status.ToString() == "Approved"
         //                       || x.Status.ToString() == "Rejected")
-        bool Filter(OrderRow x) =>
-            x.Status.ToString() == "Pending"
-            || x.Status.ToString() == "Submitted"
-            || x.Status.ToString() == "Approved"
-            || x.Status.ToString() == "Rejected";
+        static bool Filter(OrderRow x) =>
+            x.Status.ToString() is "Pending"
+            or "Submitted"
+            or "Approved"
+            or "Rejected";
 
         // Warmup
         for (int w = 0; w < 3; w++) {

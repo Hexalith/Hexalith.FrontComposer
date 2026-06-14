@@ -144,7 +144,7 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         SetField(guard, "_pendingTarget", "/somewhere-else");
 
         await cut.InvokeAsync(() => {
-            Task stayTask = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
+            var stayTask = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
                 "OnStayClickedAsync",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .Invoke(guard, null)!;
@@ -153,7 +153,7 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
 
         GetField<bool>(guard, "_showingWarning").ShouldBeFalse();
         GetField<string?>(guard, "_pendingTarget").ShouldBeNull();
-        TestNavigationManager nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
+        var nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
         nav.LastNavigateCall.ShouldBeNull("Stay must not navigate.");
     }
 
@@ -167,7 +167,7 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         SetField(guard, "_pendingTarget", "/somewhere-else");
 
         await cut.InvokeAsync(() => {
-            Task escapeTask = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
+            var escapeTask = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
                 "HandleBarKeyDownAsync",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .Invoke(guard, [new KeyboardEventArgs { Key = "Escape" }])!;
@@ -176,7 +176,7 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
 
         GetField<bool>(guard, "_showingWarning").ShouldBeFalse();
         GetField<string?>(guard, "_pendingTarget").ShouldBeNull();
-        TestNavigationManager nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
+        var nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
         nav.LastNavigateCall.ShouldBeNull("Escape must behave like Stay and preserve the form.");
     }
 
@@ -194,14 +194,14 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         SetField(guard, "_pendingTarget", "/target");
 
         await cut.InvokeAsync(() => {
-            Task leaveTask = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
+            var leaveTask = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
                 "OnLeaveClickedAsync",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .Invoke(guard, null)!;
             return leaveTask;
         });
 
-        TestNavigationManager nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
+        var nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
         nav.LastNavigateCall?.Uri.ShouldBe("/target");
         GetIsLeavingFlag(guard).ShouldBeTrue("Flag stays TRUE until the resulting nav event consumes it.");
 
@@ -326,7 +326,7 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         FcFormAbandonmentGuard guard,
         Microsoft.AspNetCore.Components.Routing.LocationChangingContext context)
         => cut.InvokeAsync(() => {
-            Task handle = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
+            var handle = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
                 "HandleNavigationChangingAsync",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .Invoke(guard, [context])!;
@@ -384,7 +384,6 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
         // registration because SetNavigationLockState is intentionally abstract-ish. Override to no-op.
         protected override void SetNavigationLockState(bool value) => NavigationLockState = value;
     }
-
 
     private sealed class TestModel {
         public string Name { get; set; } = string.Empty;

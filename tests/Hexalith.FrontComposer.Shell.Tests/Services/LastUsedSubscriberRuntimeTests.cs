@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Reflection;
 
 using Counter.Domain;
@@ -27,12 +26,10 @@ public sealed class LastUsedSubscriberRuntimeTests {
         int activations = 0;
         (ServiceProvider provider, _, _) = await CreateProviderAsync(
             registerDomain: true,
-            configure: services => {
-                services.Replace(ServiceDescriptor.Scoped<IncrementCommandLastUsedSubscriber>(sp => {
-                    activations++;
-                    return ActivatorUtilities.CreateInstance<IncrementCommandLastUsedSubscriber>(sp);
-                }));
-            });
+            configure: services => services.Replace(ServiceDescriptor.Scoped<IncrementCommandLastUsedSubscriber>(sp => {
+                activations++;
+                return ActivatorUtilities.CreateInstance<IncrementCommandLastUsedSubscriber>(sp);
+            })));
 
         using (provider) {
             activations.ShouldBe(0);
@@ -85,12 +82,10 @@ public sealed class LastUsedSubscriberRuntimeTests {
         int activations = 0;
         (ServiceProvider provider, _, _) = await CreateProviderAsync(
             registerDomain: true,
-            configure: services => {
-                services.Replace(ServiceDescriptor.Scoped<IncrementCommandLastUsedSubscriber>(sp => {
-                    activations++;
-                    return ActivatorUtilities.CreateInstance<IncrementCommandLastUsedSubscriber>(sp);
-                }));
-            });
+            configure: services => services.Replace(ServiceDescriptor.Scoped<IncrementCommandLastUsedSubscriber>(sp => {
+                activations++;
+                return ActivatorUtilities.CreateInstance<IncrementCommandLastUsedSubscriber>(sp);
+            })));
 
         using (provider) {
             ILastUsedSubscriberRegistry registry = provider.GetRequiredService<ILastUsedSubscriberRegistry>();
@@ -213,13 +208,11 @@ public sealed class LastUsedSubscriberRuntimeTests {
         IServiceProvider provider,
         TestLastUsedRecorder recorder,
         TimeProvider clock,
-        ILogger<IncrementCommandLastUsedSubscriber>? logger = null) {
-        return new IncrementCommandLastUsedSubscriber(
+        ILogger<IncrementCommandLastUsedSubscriber>? logger = null) => new(
             provider.GetRequiredService<IActionSubscriber>(),
             recorder,
             logger,
             clock);
-    }
 
     private static async Task<(ServiceProvider Provider, TestLastUsedRecorder Recorder, FakeTimeProvider Clock)> CreateProviderAsync(
         bool registerDomain = false,
@@ -227,7 +220,7 @@ public sealed class LastUsedSubscriberRuntimeTests {
         TestLastUsedRecorder recorder = new();
         FakeTimeProvider clock = new(new DateTimeOffset(2026, 4, 15, 12, 0, 0, TimeSpan.Zero));
 
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposer(o => o.ScanAssemblies(typeof(CounterDomain).Assembly));
         if (registerDomain) {
@@ -246,13 +239,11 @@ public sealed class LastUsedSubscriberRuntimeTests {
         return (provider, recorder, clock);
     }
 
-    private static IncrementCommand CreateCommand(int amount, string? messageId = null) {
-        return new IncrementCommand {
-            Amount = amount,
-            MessageId = messageId ?? $"msg-{amount}",
-            TenantId = "tenant-a",
-        };
-    }
+    private static IncrementCommand CreateCommand(int amount, string? messageId = null) => new() {
+        Amount = amount,
+        MessageId = messageId ?? $"msg-{amount}",
+        TenantId = "tenant-a",
+    };
 
     private static int GetPendingCount(IncrementCommandLastUsedSubscriber subscriber) {
         FieldInfo field = typeof(IncrementCommandLastUsedSubscriber).GetField("_pending", BindingFlags.Instance | BindingFlags.NonPublic)

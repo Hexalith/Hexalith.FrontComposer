@@ -1,7 +1,5 @@
 using Bunit;
 
-using Hexalith.FrontComposer.Contracts.Rendering;
-
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;

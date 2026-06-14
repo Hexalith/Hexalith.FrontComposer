@@ -3,8 +3,7 @@ namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 /// <summary>
 /// Circuit-local admission gate for one-at-a-time command execution.
 /// </summary>
-public interface ICommandExecutionAdmissionGate
-{
+public interface ICommandExecutionAdmissionGate {
     /// <summary>
     /// Attempts to admit a command before generated-form lifecycle or dispatch side effects run.
     /// </summary>
@@ -16,10 +15,8 @@ public interface ICommandExecutionAdmissionGate
 /// <summary>
 /// Framework metadata for FC-CNC admission. It intentionally excludes command payloads and form values.
 /// </summary>
-public sealed record CommandExecutionAdmissionRequest
-{
-    public CommandExecutionAdmissionRequest(string commandTypeName, string? displayLabel = null)
-    {
+public sealed record CommandExecutionAdmissionRequest {
+    public CommandExecutionAdmissionRequest(string commandTypeName, string? displayLabel = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(commandTypeName);
         CommandTypeName = commandTypeName;
         DisplayLabel = displayLabel;
@@ -31,16 +28,14 @@ public sealed record CommandExecutionAdmissionRequest
 }
 
 /// <summary>Reason a command admission was denied.</summary>
-public enum CommandExecutionAdmissionDenialReason
-{
+public enum CommandExecutionAdmissionDenialReason {
     None,
     AdmissionAlreadyInProgress,
     PendingCommandAlreadyExists,
 }
 
 /// <summary>Result of an FC-CNC admission attempt.</summary>
-public sealed class CommandExecutionAdmission : IDisposable
-{
+public sealed class CommandExecutionAdmission : IDisposable {
     private readonly ICommandExecutionAdmissionReleaser? _releaser;
 
     private CommandExecutionAdmission(
@@ -48,8 +43,7 @@ public sealed class CommandExecutionAdmission : IDisposable
         CommandExecutionAdmissionDenialReason denialReason,
         string? blockingCommandTypeName,
         string? blockingMessageId,
-        ICommandExecutionAdmissionReleaser? releaser)
-    {
+        ICommandExecutionAdmissionReleaser? releaser) {
         IsAdmitted = isAdmitted;
         DenialReason = denialReason;
         BlockingCommandTypeName = blockingCommandTypeName;
@@ -87,7 +81,6 @@ public sealed class CommandExecutionAdmission : IDisposable
             releaser: null);
 }
 
-internal interface ICommandExecutionAdmissionReleaser : IDisposable
-{
+internal interface ICommandExecutionAdmissionReleaser : IDisposable {
 }
 

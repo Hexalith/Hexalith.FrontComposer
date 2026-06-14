@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 /// </summary>
 public sealed class CommandExecutionAdmissionGate(
     IPendingCommandStateService pendingCommandState,
-    TimeProvider? timeProvider = null) : ICommandExecutionAdmissionGate
-{
+    TimeProvider? timeProvider = null) : ICommandExecutionAdmissionGate {
     private readonly object _sync = new();
     private readonly IPendingCommandStateService _pendingCommandState = pendingCommandState ?? throw new ArgumentNullException(nameof(pendingCommandState));
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
@@ -14,14 +13,11 @@ public sealed class CommandExecutionAdmissionGate(
     private long _nextAdmissionId;
 
     /// <inheritdoc />
-    public CommandExecutionAdmission TryAcquire(CommandExecutionAdmissionRequest request)
-    {
+    public CommandExecutionAdmission TryAcquire(CommandExecutionAdmissionRequest request) {
         ArgumentNullException.ThrowIfNull(request);
 
-        lock (_sync)
-        {
-            if (_currentAdmission is not null)
-            {
+        lock (_sync) {
+            if (_currentAdmission is not null) {
                 return CommandExecutionAdmission.Denied(
                     CommandExecutionAdmissionDenialReason.AdmissionAlreadyInProgress,
                     _currentAdmission.CommandTypeName,
@@ -32,8 +28,7 @@ public sealed class CommandExecutionAdmissionGate(
                 .Snapshot()
                 .FirstOrDefault(static e => e.Status == PendingCommandStatus.Pending);
 
-            if (pending is not null)
-            {
+            if (pending is not null) {
                 return CommandExecutionAdmission.Denied(
                     CommandExecutionAdmissionDenialReason.PendingCommandAlreadyExists,
                     pending.CommandTypeName,
@@ -51,12 +46,9 @@ public sealed class CommandExecutionAdmissionGate(
         }
     }
 
-    private void Release(long admissionId)
-    {
-        lock (_sync)
-        {
-            if (_currentAdmission?.AdmissionId == admissionId)
-            {
+    private void Release(long admissionId) {
+        lock (_sync) {
+            if (_currentAdmission?.AdmissionId == admissionId) {
                 _currentAdmission = null;
             }
         }
@@ -68,14 +60,11 @@ public sealed class CommandExecutionAdmissionGate(
         string? DisplayLabel,
         DateTimeOffset AdmittedAt);
 
-    private sealed class AdmissionReleaser(CommandExecutionAdmissionGate owner, long admissionId) : ICommandExecutionAdmissionReleaser
-    {
+    private sealed class AdmissionReleaser(CommandExecutionAdmissionGate owner, long admissionId) : ICommandExecutionAdmissionReleaser {
         private int _released;
 
-        public void Dispose()
-        {
-            if (Interlocked.Exchange(ref _released, 1) == 0)
-            {
+        public void Dispose() {
+            if (Interlocked.Exchange(ref _released, 1) == 0) {
                 owner.Release(admissionId);
             }
         }

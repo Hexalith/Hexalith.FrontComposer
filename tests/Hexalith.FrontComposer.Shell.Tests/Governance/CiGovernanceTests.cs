@@ -3,11 +3,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 
@@ -18,7 +15,7 @@ public sealed class CiGovernanceTests {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
 
-        string buildJob = workflow[(workflow.IndexOf("  build-and-test:", StringComparison.Ordinal))..];
+        string buildJob = workflow[workflow.IndexOf("  build-and-test:", StringComparison.Ordinal)..];
         string buildJobHeader = buildJob[..buildJob.IndexOf("    steps:", StringComparison.Ordinal)];
 
         buildJobHeader.ShouldNotContain("continue-on-error: true");
@@ -163,7 +160,7 @@ public sealed class CiGovernanceTests {
             "--output", output,
         ]);
         run.ExitCode.ShouldNotBe(0);
-        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
         doc.RootElement.GetProperty("prompt_count").GetInt32().ShouldBe(20);
         doc.RootElement.GetProperty("classification").GetString().ShouldBe("budget-blocked");
     }
@@ -243,7 +240,7 @@ public sealed class CiGovernanceTests {
         ]);
 
         result.ExitCode.ShouldBe(0, result.Error);
-        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
         doc.RootElement.GetProperty("status").GetString().ShouldBe("valid");
         doc.RootElement.GetProperty("expected_version_source").GetString().ShouldBe("semantic-release");
 
@@ -281,7 +278,7 @@ public sealed class CiGovernanceTests {
             "--output", output,
         ]);
         budget.ExitCode.ShouldBe(0, budget.Error);
-        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output))) {
+        using (var doc = JsonDocument.Parse(File.ReadAllText(output))) {
             (doc.RootElement.GetProperty("marker").GetString() ?? string.Empty).ShouldContain("frontcomposer:package-count-collapse");
             doc.RootElement.GetProperty("action").GetString().ShouldBe("open-or-update-package-count-collapse-issue");
             (doc.RootElement.GetProperty("recommendation").GetString() ?? string.Empty).ShouldContain("8 packages to 5");
@@ -621,7 +618,7 @@ public sealed class CiGovernanceTests {
             "rerun-review",
         ];
 
-        using (JsonDocument fixtureDoc = JsonDocument.Parse(fixtureJson)) {
+        using (var fixtureDoc = JsonDocument.Parse(fixtureJson)) {
             HashSet<string> caseNames = [];
             foreach (JsonElement caseElement in fixtureDoc.RootElement.GetProperty("cases").EnumerateArray()) {
                 if (caseElement.TryGetProperty("name", out JsonElement nameElement) && nameElement.ValueKind == JsonValueKind.String) {
@@ -644,7 +641,7 @@ public sealed class CiGovernanceTests {
         ]);
 
         result.ExitCode.ShouldBe(0, result.Error);
-        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
         doc.RootElement.GetProperty("status").GetString().ShouldBe("valid");
 
         JsonElement trustedReady = doc.RootElement.GetProperty("results").EnumerateArray()
@@ -852,7 +849,7 @@ public sealed class CiGovernanceTests {
         // could pass even when classifier crashed before writing.
         classify.ExitCode.ShouldBeOneOf(0, 1);
         File.Exists(decisionPath).ShouldBeTrue();
-        using JsonDocument decision = JsonDocument.Parse(File.ReadAllText(decisionPath));
+        using var decision = JsonDocument.Parse(File.ReadAllText(decisionPath));
         JsonElement root_el = decision.RootElement;
         root_el.TryGetProperty("approval_matrix", out JsonElement matrix).ShouldBeTrue();
         matrix.ValueKind.ShouldBe(JsonValueKind.Array);
@@ -911,7 +908,7 @@ public sealed class CiGovernanceTests {
             "--output", output,
         ]);
         result.ExitCode.ShouldNotBe(0);
-        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
         doc.RootElement.GetProperty("status").GetString().ShouldBe("invalid");
         string diagnostics = doc.RootElement.GetProperty("diagnostics").ToString();
         diagnostics.ShouldContain("failed test");
@@ -946,7 +943,7 @@ public sealed class CiGovernanceTests {
             "--output", output,
         ]);
         result.ExitCode.ShouldNotBe(0);
-        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
         doc.RootElement.GetProperty("status").GetString().ShouldBe("invalid");
         string diagnostics = doc.RootElement.GetProperty("diagnostics").ToString();
         diagnostics.ShouldContain(expectedDiag);
@@ -985,7 +982,7 @@ public sealed class CiGovernanceTests {
             "--output", output,
         ]);
         result.ExitCode.ShouldNotBe(0);
-        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
         doc.RootElement.GetProperty("status").GetString().ShouldBe("invalid");
         string diagnostics = doc.RootElement.GetProperty("diagnostics").ToString();
         diagnostics.ShouldContain("skipped");
@@ -1085,7 +1082,7 @@ public sealed class CiGovernanceTests {
             ]);
 
             result.ExitCode.ShouldBe(0, $"verify-manifest must succeed for a clean round-trip; got: {File.ReadAllText(output)}");
-            using JsonDocument verification = JsonDocument.Parse(File.ReadAllText(output));
+            using var verification = JsonDocument.Parse(File.ReadAllText(output));
             verification.RootElement.GetProperty("status").GetString().ShouldBe("valid");
         }
         finally {
@@ -1112,7 +1109,7 @@ public sealed class CiGovernanceTests {
             "--output", output,
         ]);
         result.ExitCode.ShouldBe(0);
-        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
         JsonElement results = doc.RootElement.GetProperty("results");
         bool foundCase = false;
         foreach (JsonElement c in results.EnumerateArray()) {
@@ -1136,7 +1133,7 @@ public sealed class CiGovernanceTests {
         // if the helper returned `blocked` for a different reason).
         string root = RepositoryRoot();
         string fixtures = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
-        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixtures));
+        using var fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixtures));
         string evidencePath = Path.Combine(Path.GetTempPath(), $"fc-classify-concurrency-{Guid.NewGuid():N}.json");
         string output = Path.Combine(Path.GetTempPath(), $"fc-classify-concurrency-out-{Guid.NewGuid():N}.json");
         File.WriteAllText(evidencePath, fixtureDoc.RootElement.GetProperty("base_evidence").GetRawText());
@@ -1152,7 +1149,7 @@ public sealed class CiGovernanceTests {
         ]);
 
         result.ExitCode.ShouldBe(1, result.Error);
-        using JsonDocument decision = JsonDocument.Parse(File.ReadAllText(output));
+        using var decision = JsonDocument.Parse(File.ReadAllText(output));
         decision.RootElement.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse();
         string blocking = string.Join('\n', decision.RootElement.GetProperty("grouped_reasons").GetProperty("blocking").EnumerateArray().Select(r => r.GetString()));
         blocking.ShouldContain("concurrency-probe");
@@ -1209,7 +1206,7 @@ public sealed class CiGovernanceTests {
 
         result.ExitCode.ShouldBe(0, result.Error);
         string decisionJson = File.ReadAllText(output);
-        using JsonDocument decision = JsonDocument.Parse(decisionJson);
+        using var decision = JsonDocument.Parse(decisionJson);
         decision.RootElement.GetProperty("classification").GetString().ShouldBe("blocked");
         decisionJson.ShouldContain("approval section must be an object");
         decisionJson.ShouldContain("attestation section must be an object");
@@ -1261,7 +1258,7 @@ public sealed class CiGovernanceTests {
         string evidence = Path.Combine(Path.GetTempPath(), $"fc-classify-carveout-block-{Guid.NewGuid():N}.json");
         string output = Path.Combine(Path.GetTempPath(), $"fc-classify-carveout-block-out-{Guid.NewGuid():N}.json");
         string fixtureContent = File.ReadAllText(Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json"));
-        using JsonDocument fixtureDoc = JsonDocument.Parse(fixtureContent);
+        using var fixtureDoc = JsonDocument.Parse(fixtureContent);
         string baseText = fixtureDoc.RootElement.GetProperty("base_evidence").GetRawText();
         // Set dry_run=true AND test_count=0 to introduce a real blocker beyond the candidate blocker.
         string mutated = baseText
@@ -1280,7 +1277,7 @@ public sealed class CiGovernanceTests {
         ]);
 
         result.ExitCode.ShouldBe(1, result.Error);
-        using JsonDocument decision = JsonDocument.Parse(File.ReadAllText(output));
+        using var decision = JsonDocument.Parse(File.ReadAllText(output));
         decision.RootElement.GetProperty("classification").GetString().ShouldBe("blocked");
         decision.RootElement.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse();
     }
@@ -1314,15 +1311,18 @@ public sealed class CiGovernanceTests {
             proc.WaitForExit();
             proc.ExitCode.ShouldBe(0, proc.StandardError.ReadToEnd());
             string content = File.ReadAllText(markerPath);
-            using JsonDocument marker = JsonDocument.Parse(content);
+            using var marker = JsonDocument.Parse(content);
             marker.RootElement.GetProperty("decision_contract").GetString().ShouldBe("frontcomposer.release-budget-skipped.v1");
             marker.RootElement.GetProperty("classification").GetString().ShouldBe("budget-unavailable");
             string reason = marker.RootElement.GetProperty("reason").GetString() ?? string.Empty;
             reason.ShouldContain("RELEASE_STARTED_AT empty");
             marker.RootElement.TryGetProperty("skipped_at", out JsonElement skippedAt).ShouldBeTrue();
             skippedAt.GetString().ShouldNotBeNullOrEmpty();
-        } finally {
-            if (File.Exists(markerPath)) File.Delete(markerPath);
+        }
+        finally {
+            if (File.Exists(markerPath)) {
+                File.Delete(markerPath);
+            }
         }
     }
 
@@ -1354,7 +1354,7 @@ public sealed class CiGovernanceTests {
         ]);
 
         result.ExitCode.ShouldBe(0, result.Error);
-        using JsonDocument budget = JsonDocument.Parse(File.ReadAllText(output));
+        using var budget = JsonDocument.Parse(File.ReadAllText(output));
         JsonElement release = budget.RootElement.GetProperty("releases").EnumerateArray().Last();
         release.GetProperty("tag").GetString().ShouldBe("v9.9.9");
         release.GetProperty("package_count").GetInt32().ShouldBe(1);
@@ -1487,7 +1487,7 @@ public sealed class CiGovernanceTests {
         ]);
 
         result.ExitCode.ShouldBe(0, result.Error);
-        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
         doc.RootElement.GetProperty("classification").GetString().ShouldBe("flaky");
         doc.RootElement.GetProperty("decision").GetString().ShouldBe("open-or-update-issue-and-pr");
         doc.RootElement.GetProperty("manual_patch_required").GetBoolean().ShouldBeTrue();
@@ -1498,7 +1498,7 @@ public sealed class CiGovernanceTests {
             "--output", output,
         ]);
         approvedWindow.ExitCode.ShouldBe(0, approvedWindow.Error);
-        using JsonDocument approvedDoc = JsonDocument.Parse(File.ReadAllText(output));
+        using var approvedDoc = JsonDocument.Parse(File.ReadAllText(output));
         approvedDoc.RootElement.GetProperty("classification").GetString().ShouldBe("flaky");
 
         ProcessResult outsideApprovedWindow = RunGovernance(root, [
@@ -1507,7 +1507,7 @@ public sealed class CiGovernanceTests {
             "--output", output,
         ]);
         outsideApprovedWindow.ExitCode.ShouldBe(0, outsideApprovedWindow.Error);
-        using JsonDocument outsideApprovedDoc = JsonDocument.Parse(File.ReadAllText(output));
+        using var outsideApprovedDoc = JsonDocument.Parse(File.ReadAllText(output));
         outsideApprovedDoc.RootElement.GetProperty("classification").GetString().ShouldBe("not-flaky");
     }
 
@@ -1522,7 +1522,7 @@ public sealed class CiGovernanceTests {
             "--output", output,
         ]);
         outsideWindow.ExitCode.ShouldBe(0, outsideWindow.Error);
-        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output))) {
+        using (var doc = JsonDocument.Parse(File.ReadAllText(output))) {
             doc.RootElement.GetProperty("classification").GetString().ShouldBe("not-flaky");
         }
 
@@ -1566,7 +1566,7 @@ public sealed class CiGovernanceTests {
             "--output", reintroOutput,
         ]);
         reintro.ExitCode.ShouldBe(0, reintro.Error);
-        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(reintroOutput))) {
+        using (var doc = JsonDocument.Parse(File.ReadAllText(reintroOutput))) {
             doc.RootElement.GetProperty("action").GetString().ShouldBe("track");
         }
 
@@ -1577,7 +1577,7 @@ public sealed class CiGovernanceTests {
             "--output", durationOutput,
         ]);
         duration.ExitCode.ShouldBe(0, duration.Error);
-        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(durationOutput))) {
+        using (var doc = JsonDocument.Parse(File.ReadAllText(durationOutput))) {
             doc.RootElement.GetProperty("action").GetString().ShouldBe("open-or-update-ci-diet-issue");
         }
 
@@ -1587,7 +1587,7 @@ public sealed class CiGovernanceTests {
             "--output", durationOutput,
         ]);
         nonconsecutiveDuration.ExitCode.ShouldBe(0, nonconsecutiveDuration.Error);
-        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(durationOutput))) {
+        using (var doc = JsonDocument.Parse(File.ReadAllText(durationOutput))) {
             doc.RootElement.GetProperty("action").GetString().ShouldBe("record-only");
         }
 
@@ -1600,7 +1600,7 @@ public sealed class CiGovernanceTests {
             "--output", batchOutput,
         ]);
         batchReintro.ExitCode.ShouldBe(0, batchReintro.Error);
-        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(batchOutput))) {
+        using (var doc = JsonDocument.Parse(File.ReadAllText(batchOutput))) {
             JsonElement items = doc.RootElement.GetProperty("items");
             items.GetArrayLength().ShouldBe(2);
         }
@@ -1735,7 +1735,7 @@ public sealed class CiGovernanceTests {
                 next = jobBodyEnd;
             }
 
-            string line = workflow.Substring(cursor, next - cursor);
+            string line = workflow[cursor..next];
             // Allow blank lines inside the permissions block, but stop on the first
             // non-blank line that does not start with six spaces (the permission-entry indent).
             string trimmed = line.TrimEnd('\r');

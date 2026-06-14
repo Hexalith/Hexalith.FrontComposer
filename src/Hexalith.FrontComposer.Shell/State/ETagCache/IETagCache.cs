@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace Hexalith.FrontComposer.Shell.State.ETagCache;
 
 /// <summary>

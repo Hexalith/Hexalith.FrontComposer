@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
-using System.Threading;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
@@ -27,7 +26,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
     /// for the same scope provider trips the constructor throw. <see cref="ConditionalWeakTable{TKey, TValue}"/>
     /// lets GC reclaim the entry when the scope is collected.
     /// </summary>
-    private static readonly ConditionalWeakTable<IServiceProvider, LifecycleStateService> _perScope = new();
+    private static readonly ConditionalWeakTable<IServiceProvider, LifecycleStateService> _perScope = [];
 
     private readonly ConcurrentDictionary<string, LifecycleEntry> _entries = new(StringComparer.Ordinal);
 

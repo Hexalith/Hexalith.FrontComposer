@@ -105,9 +105,7 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
 
         IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("href=\"/\"", Case.Insensitive);
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("href=\"/\"", Case.Insensitive));
     }
 
     [Fact]
@@ -147,9 +145,7 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
 
         IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("aria-label=\"breadcrumb\"", Case.Insensitive);
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("aria-label=\"breadcrumb\"", Case.Insensitive));
     }
 
     [Fact]
@@ -162,9 +158,7 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
 
         IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldNotContain("aria-label=\"breadcrumb\"", Case.Insensitive);
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("aria-label=\"breadcrumb\"", Case.Insensitive));
     }
 
     [Fact]
@@ -179,11 +173,7 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
 
         IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("href=\"/\"", Case.Insensitive);
-            // The breadcrumb itself does not log (it just falls back); the navigation path logs
-            // when invoked. We assert the breadcrumb fallback here as the user-visible D32 effect.
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("href=\"/\"", Case.Insensitive));
     }
 
     [Fact]
@@ -229,7 +219,7 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
         IRenderedComponent<FcFormAbandonmentGuard> guardCut,
         LocationChangingContext context)
         => guardCut.InvokeAsync(() => {
-            Task handle = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
+            var handle = (Task)typeof(FcFormAbandonmentGuard).GetMethod(
                 "HandleNavigationChangingAsync",
                 System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!
                 .Invoke(guardCut.Instance, [context])!;

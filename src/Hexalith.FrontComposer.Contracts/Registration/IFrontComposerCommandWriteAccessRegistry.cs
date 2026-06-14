@@ -10,8 +10,7 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
 /// which falls back to <see langword="true"/> when the registry does not implement this companion
 /// interface — preserving the historical "every registered command is treated as writable" behaviour.
 /// </remarks>
-public interface IFrontComposerCommandWriteAccessRegistry
-{
+public interface IFrontComposerCommandWriteAccessRegistry {
     /// <summary>
     /// Returns whether the given command performs a write/state-change action (vs. a read-only
     /// query) and is therefore eligible to surface as an empty-state CTA.

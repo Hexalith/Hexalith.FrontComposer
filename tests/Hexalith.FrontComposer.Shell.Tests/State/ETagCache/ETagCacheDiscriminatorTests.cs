@@ -2,8 +2,6 @@ using Hexalith.FrontComposer.Shell.State.ETagCache;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.State.ETagCache;
 
 /// <summary>
@@ -15,15 +13,11 @@ public class ETagCacheDiscriminatorTests {
     [Theory]
     [InlineData("Counter.Domain.OrderProjection", 0, 25, "projection-page:Counter.Domain.OrderProjection:s0-t25")]
     [InlineData("Counter.Domain.OrderProjection", 25, 25, "projection-page:Counter.Domain.OrderProjection:s25-t25")]
-    public void ForProjectionPage_BuildsAllowlistedDiscriminator(string typeFqn, int skip, int take, string expected) {
-        ETagCacheDiscriminator.ForProjectionPage(typeFqn, skip, take).ShouldBe(expected);
-    }
+    public void ForProjectionPage_BuildsAllowlistedDiscriminator(string typeFqn, int skip, int take, string expected) => ETagCacheDiscriminator.ForProjectionPage(typeFqn, skip, take).ShouldBe(expected);
 
     [Fact]
-    public void ForActionQueueCount_BuildsAllowlistedDiscriminator() {
-        ETagCacheDiscriminator.ForActionQueueCount("Counter.Domain.ApprovalQueue")
+    public void ForActionQueueCount_BuildsAllowlistedDiscriminator() => ETagCacheDiscriminator.ForActionQueueCount("Counter.Domain.ApprovalQueue")
             .ShouldBe("action-queue-count:Counter.Domain.ApprovalQueue");
-    }
 
     [Theory]
     [InlineData(null)]
@@ -35,17 +29,13 @@ public class ETagCacheDiscriminatorTests {
     [InlineData("contains:colon")]
     [InlineData("contains?query")]
     [InlineData("contains#fragment")]
-    public void ForProjectionPage_RejectsUnsafeTypeFqn(string? typeFqn) {
-        ETagCacheDiscriminator.ForProjectionPage(typeFqn, 0, 25).ShouldBeNull();
-    }
+    public void ForProjectionPage_RejectsUnsafeTypeFqn(string? typeFqn) => ETagCacheDiscriminator.ForProjectionPage(typeFqn, 0, 25).ShouldBeNull();
 
     [Theory]
     [InlineData("Some.Type", -1, 10)]
     [InlineData("Some.Type", 0, 0)]
     [InlineData("Some.Type", 0, -1)]
-    public void ForProjectionPage_RejectsInvalidPaging(string typeFqn, int skip, int take) {
-        ETagCacheDiscriminator.ForProjectionPage(typeFqn, skip, take).ShouldBeNull();
-    }
+    public void ForProjectionPage_RejectsInvalidPaging(string typeFqn, int skip, int take) => ETagCacheDiscriminator.ForProjectionPage(typeFqn, skip, take).ShouldBeNull();
 
     [Theory]
     [InlineData("projection-page:Foo:s0-t25", true)]
@@ -60,7 +50,5 @@ public class ETagCacheDiscriminatorTests {
     [InlineData("projection-page:Foo/Bar:s0-t25", false)]
     [InlineData("action-queue-count:Foo:Bar", false)]
     [InlineData("projection-page:Foo s0-t25", false)]
-    public void IsAllowlisted_AcceptsOnlyKnownLanePrefixesAndCleanShape(string discriminator, bool expected) {
-        ETagCacheDiscriminator.IsAllowlisted(discriminator).ShouldBe(expected);
-    }
+    public void IsAllowlisted_AcceptsOnlyKnownLanePrefixesAndCleanShape(string discriminator, bool expected) => ETagCacheDiscriminator.IsAllowlisted(discriminator).ShouldBe(expected);
 }

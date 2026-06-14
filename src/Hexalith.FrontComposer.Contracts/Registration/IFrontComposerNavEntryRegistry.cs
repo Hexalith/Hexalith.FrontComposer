@@ -13,8 +13,7 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
 /// back to a no-op / empty result when the registry does not implement this companion interface —
 /// preserving backward compatibility.
 /// </remarks>
-public interface IFrontComposerNavEntryRegistry
-{
+public interface IFrontComposerNavEntryRegistry {
     /// <summary>
     /// Adds a declarative navigation entry to the registry.
     /// </summary>

@@ -18,8 +18,6 @@ using PactNet;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Pact;
 
 #pragma warning disable CA2007 // xUnit v3 test continuations intentionally resume on the test context.
@@ -594,7 +592,7 @@ public sealed class EventStorePactContractTests {
     }
 
     private static void WriteProviderStateCatalog(string pactDirectory) {
-        var states = new[] {
+        object[] states = new[] {
             State("command-accepted", "Seed tenant-contract-a, user-contract-a, order-1, and accept ShipOrderCommand.", "Clear seeded command inbox and status resource for the run.", "202 Accepted; CommandResult.Status Accepted", isolated: true),
             State("command-validation-failure", "Reject ShipOrderCommand with bounded validation ProblemDetails.", "No persisted state; reset validation fixture.", "400 validation ProblemDetails", isolated: true),
             State("command-unauthorized", "Run without an accepted bearer context.", "No persisted state.", "401 auth redirect classification", isolated: true),

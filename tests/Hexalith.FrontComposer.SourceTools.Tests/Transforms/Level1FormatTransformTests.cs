@@ -5,8 +5,6 @@ using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
 public sealed class Level1FormatTransformTests {

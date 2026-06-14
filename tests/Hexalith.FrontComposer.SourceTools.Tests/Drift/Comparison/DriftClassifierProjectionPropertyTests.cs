@@ -2,7 +2,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison;
 
@@ -71,7 +70,7 @@ public sealed class DriftClassifierProjectionPropertyTests {
     }
 
     [Theory()]
-    [InlineData("public int RowVersion { get; set; }",      "DataGrid")]
+    [InlineData("public int RowVersion { get; set; }", "DataGrid")]
     [InlineData("public string Notes { get; set; } = \"\";", "detail")]
     [InlineData("public IReadOnlyList<string> Tags { get; } = [];", "unsupported")]
     public void Added_Property_ClassifiesIntoDocumentedSurfaceLabel(string addedProperty, string expectedSurface) {

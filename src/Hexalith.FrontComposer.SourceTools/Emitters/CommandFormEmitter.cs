@@ -404,8 +404,8 @@ public static class CommandFormEmitter {
 
     private static void EmitFieldBackingFields(StringBuilder sb, CommandFormModel form) {
         foreach (FormFieldModel field in form.Fields) {
-            if (field.TypeCategory == FormFieldTypeCategory.NumberInput
-                || field.TypeCategory == FormFieldTypeCategory.DecimalInput) {
+            if (field.TypeCategory is FormFieldTypeCategory.NumberInput
+                or FormFieldTypeCategory.DecimalInput) {
                 _ = sb.AppendLine("    private string? _" + field.PropertyName + "String;");
                 _ = sb.AppendLine("    private string? _" + field.PropertyName + "ParseError;");
             }
@@ -1061,8 +1061,8 @@ public static class CommandFormEmitter {
         }
 
         foreach (FormFieldModel field in form.Fields) {
-            if (field.TypeCategory != FormFieldTypeCategory.NumberInput
-                && field.TypeCategory != FormFieldTypeCategory.DecimalInput) {
+            if (field.TypeCategory is not FormFieldTypeCategory.NumberInput
+                and not FormFieldTypeCategory.DecimalInput) {
                 continue;
             }
 

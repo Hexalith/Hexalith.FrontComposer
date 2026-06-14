@@ -36,7 +36,7 @@ public sealed class ProjectionContextProvider : IDerivedValueProvider {
 
         if (!string.IsNullOrWhiteSpace(projectionContext.AggregateId)
             && propertyName.EndsWith("Id", StringComparison.Ordinal)) {
-            string stem = propertyName.Substring(0, propertyName.Length - 2);
+            string stem = propertyName[..^2];
             string shortName = ShortName(projectionContext.ProjectionTypeFqn);
             if (string.Equals(stem, shortName, StringComparison.Ordinal)) {
                 return Task.FromResult(new DerivedValueResult(true, projectionContext.AggregateId));
@@ -58,6 +58,6 @@ public sealed class ProjectionContextProvider : IDerivedValueProvider {
         int lastDot = head.LastIndexOf('.');
         int lastPlus = head.LastIndexOf('+');
         int cut = Math.Max(lastDot, lastPlus);
-        return cut < 0 ? head.ToString() : head.Slice(cut + 1).ToString();
+        return cut < 0 ? head.ToString() : head[(cut + 1)..].ToString();
     }
 }

@@ -13,18 +13,15 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Shortcuts;
 
-public class ShortcutServiceTests
-{
-    private static ShortcutService BuildService(out FakeTimeProvider time, out ILogger<ShortcutService> logger)
-    {
+public class ShortcutServiceTests {
+    private static ShortcutService BuildService(out FakeTimeProvider time, out ILogger<ShortcutService> logger) {
         time = new FakeTimeProvider();
         logger = Substitute.For<ILogger<ShortcutService>>();
         return new ShortcutService(time, logger);
     }
 
     [Fact]
-    public async Task RegisterThenInvoke_RunsHandler()
-    {
+    public async Task RegisterThenInvoke_RunsHandler() {
         ShortcutService sut = BuildService(out _, out _);
         int hits = 0;
         sut.Register("ctrl+k", "PaletteShortcutDescription", () => { hits++; return Task.CompletedTask; });
@@ -36,8 +33,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task DuplicateRegister_LastWriterWins_AndLogsHFC2108()
-    {
+    public async Task DuplicateRegister_LastWriterWins_AndLogsHFC2108() {
         ShortcutService sut = BuildService(out _, out ILogger<ShortcutService> logger);
         int firstHits = 0, secondHits = 0;
         sut.Register("ctrl+k", "FirstDescription", () => { firstHits++; return Task.CompletedTask; });
@@ -61,8 +57,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task DisposedRegistration_DoesNotFire_WhenNoReplacement()
-    {
+    public async Task DisposedRegistration_DoesNotFire_WhenNoReplacement() {
         ShortcutService sut = BuildService(out _, out _);
         int hits = 0;
         IDisposable handle = sut.Register("ctrl+k", "Desc", () => { hits++; return Task.CompletedTask; });
@@ -75,8 +70,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task DisposedOriginal_DoesNotRemoveReplacement()
-    {
+    public async Task DisposedOriginal_DoesNotRemoveReplacement() {
         ShortcutService sut = BuildService(out _, out _);
         int firstHits = 0, secondHits = 0;
         IDisposable handle = sut.Register("ctrl+k", "First", () => { firstHits++; return Task.CompletedTask; });
@@ -89,8 +83,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task Chord_GH_FiresWhenSecondKeyArrivesAt1499ms()
-    {
+    public async Task Chord_GH_FiresWhenSecondKeyArrivesAt1499ms() {
         ShortcutService sut = BuildService(out FakeTimeProvider time, out _);
         int hits = 0;
         sut.Register("g h", "HomeShortcutDescription", () => { hits++; return Task.CompletedTask; });
@@ -104,8 +97,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task Chord_GH_DoesNotFireAfter1500ms()
-    {
+    public async Task Chord_GH_DoesNotFireAfter1500ms() {
         ShortcutService sut = BuildService(out FakeTimeProvider time, out _);
         int hits = 0;
         sut.Register("g h", "HomeShortcutDescription", () => { hits++; return Task.CompletedTask; });
@@ -118,8 +110,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task Chord_GH_DoesNotFireExactlyAt1500ms()
-    {
+    public async Task Chord_GH_DoesNotFireExactlyAt1500ms() {
         // P20 (2026-04-21 pass-4): boundary companion for Chord_GH_FiresWhenSecondKeyArrivesAt1499ms.
         // The 1499ms test proves sync lookup succeeds when the timer has NOT yet fired; this test
         // pins the inclusive/exclusive boundary by advancing to exactly 1500ms so the FakeTimeProvider
@@ -138,8 +129,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task Chord_NonMatchingSecondKey_ClearsPending_AndDoesNotFire()
-    {
+    public async Task Chord_NonMatchingSecondKey_ClearsPending_AndDoesNotFire() {
         ShortcutService sut = BuildService(out _, out _);
         int hits = 0;
         sut.Register("g h", "HomeShortcutDescription", () => { hits++; return Task.CompletedTask; });
@@ -152,8 +142,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task Chord_RepeatPrefix_OverwritesPending_NewWindowStarts()
-    {
+    public async Task Chord_RepeatPrefix_OverwritesPending_NewWindowStarts() {
         ShortcutService sut = BuildService(out FakeTimeProvider time, out _);
         int hits = 0;
         sut.Register("g h", "HomeShortcutDescription", () => { hits++; return Task.CompletedTask; });
@@ -169,8 +158,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task ModifierBindingDuringPending_FiresAndClearsPending()
-    {
+    public async Task ModifierBindingDuringPending_FiresAndClearsPending() {
         ShortcutService sut = BuildService(out _, out _);
         int chordHits = 0, modifierHits = 0;
         sut.Register("g h", "HomeShortcutDescription", () => { chordHits++; return Task.CompletedTask; });
@@ -185,8 +173,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task TryInvokeAsync_WhenHandlerThrows_LogsHFC2109_AndReturnsTrue()
-    {
+    public async Task TryInvokeAsync_WhenHandlerThrows_LogsHFC2109_AndReturnsTrue() {
         ShortcutService sut = BuildService(out _, out ILogger<ShortcutService> logger);
         sut.Register("ctrl+k", "Desc", () => throw new InvalidOperationException("boom"));
 
@@ -205,8 +192,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task TryInvokeAsync_WhenHandlerThrowsOperationCanceledException_LogsHFC2109_AndReturnsTrue()
-    {
+    public async Task TryInvokeAsync_WhenHandlerThrowsOperationCanceledException_LogsHFC2109_AndReturnsTrue() {
         ShortcutService sut = BuildService(out _, out ILogger<ShortcutService> logger);
         sut.Register("ctrl+k", "Desc", () => throw new OperationCanceledException("cancelled"));
 
@@ -231,22 +217,19 @@ public class ShortcutServiceTests
     [InlineData("ctrl+k", null)]
     [InlineData("ctrl+k", "")]
     [InlineData("ctrl+k", "  ")]
-    public void Register_ThrowsArgumentException_OnNullOrEmptyArguments(string? binding, string? descriptionKey)
-    {
+    public void Register_ThrowsArgumentException_OnNullOrEmptyArguments(string? binding, string? descriptionKey) {
         ShortcutService sut = BuildService(out _, out _);
         Should.Throw<ArgumentException>(() => sut.Register(binding!, descriptionKey!, () => Task.CompletedTask));
     }
 
     [Fact]
-    public void Register_ThrowsArgumentNullException_OnNullHandler()
-    {
+    public void Register_ThrowsArgumentNullException_OnNullHandler() {
         ShortcutService sut = BuildService(out _, out _);
         Should.Throw<ArgumentNullException>(() => sut.Register("ctrl+k", "Desc", null!));
     }
 
     [Fact]
-    public void GetRegistrations_ReturnsAllCurrentlyRegistered()
-    {
+    public void GetRegistrations_ReturnsAllCurrentlyRegistered() {
         ShortcutService sut = BuildService(out _, out _);
         sut.Register("ctrl+k", "PaletteShortcutDescription", () => Task.CompletedTask);
         sut.Register("ctrl+,", "SettingsShortcutDescription", () => Task.CompletedTask);
@@ -258,27 +241,21 @@ public class ShortcutServiceTests
         regs.ShouldContain(r => r.Binding == "ctrl+,");
     }
 
-    private static IReadOnlyList<LoggedEntry> GetLogEntries(ILogger<ShortcutService> logger)
-    {
+    private static IReadOnlyList<LoggedEntry> GetLogEntries(ILogger<ShortcutService> logger) {
         List<LoggedEntry> entries = [];
-        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls())
-        {
-            if (!string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal))
-            {
+        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls()) {
+            if (!string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal)) {
                 continue;
             }
 
             object?[] args = call.GetArguments();
-            if (args.Length < 5 || args[0] is not LogLevel level)
-            {
+            if (args.Length < 5 || args[0] is not LogLevel level) {
                 continue;
             }
 
             Dictionary<string, object?> state = new(StringComparer.Ordinal);
-            if (args[2] is IEnumerable<KeyValuePair<string, object?>> kvps)
-            {
-                foreach (KeyValuePair<string, object?> kvp in kvps)
-                {
+            if (args[2] is IEnumerable<KeyValuePair<string, object?>> kvps) {
+                foreach (KeyValuePair<string, object?> kvp in kvps) {
                     state[kvp.Key] = kvp.Value;
                 }
             }
@@ -290,8 +267,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task Chord_RepeatPrefixBeforeTimeout_OverwritesPendingField()
-    {
+    public async Task Chord_RepeatPrefixBeforeTimeout_OverwritesPendingField() {
         // D4 sub-decision (c): pressing the same prefix twice before timeout keeps only the latest
         // prefix pending — the second press resets the generation counter.
         ShortcutService sut = BuildService(out _, out _);
@@ -307,8 +283,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task Chord_ModifierBindingDuringPending_FiresAndClearsPending()
-    {
+    public async Task Chord_ModifierBindingDuringPending_FiresAndClearsPending() {
         // D4 sub-decision (d): a modifier-bearing shortcut pressed during a pending chord must
         // both fire AND clear the pending first-key (chord does not complete later).
         ShortcutService sut = BuildService(out _, out _);
@@ -328,8 +303,7 @@ public class ShortcutServiceTests
     }
 
     [Fact]
-    public async Task TryInvokeAsync_AfterDispose_ReturnsFalse_WithoutAllocatingTimer()
-    {
+    public async Task TryInvokeAsync_AfterDispose_ReturnsFalse_WithoutAllocatingTimer() {
         ShortcutService sut = BuildService(out _, out _);
         sut.Register("g h", "Home", () => Task.CompletedTask);
         sut.Dispose();

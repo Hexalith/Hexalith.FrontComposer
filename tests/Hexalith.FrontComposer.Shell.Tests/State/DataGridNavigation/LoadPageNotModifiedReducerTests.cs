@@ -1,12 +1,9 @@
 using System.Collections.Immutable;
-using System.Threading.Tasks;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.DataGridNavigation;
 

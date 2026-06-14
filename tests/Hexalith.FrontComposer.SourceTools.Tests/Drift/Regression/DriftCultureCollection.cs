@@ -1,5 +1,3 @@
-using Xunit;
-
 namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Regression;
 
 /// <summary>

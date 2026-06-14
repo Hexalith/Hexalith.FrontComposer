@@ -9,8 +9,7 @@ namespace Hexalith.FrontComposer.Shell.State.Navigation;
 /// Story 3-6 D19).
 /// Default tier is <see cref="ViewportTier.Desktop"/> per UX spec §170 ("new users start expanded").
 /// </summary>
-public sealed class FrontComposerNavigationFeature : Feature<FrontComposerNavigationState>
-{
+public sealed class FrontComposerNavigationFeature : Feature<FrontComposerNavigationState> {
     /// <inheritdoc/>
     public override string GetName() => "FrontComposerNavigation";
 

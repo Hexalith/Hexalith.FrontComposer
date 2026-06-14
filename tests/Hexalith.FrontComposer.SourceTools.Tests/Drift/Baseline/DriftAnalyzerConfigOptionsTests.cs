@@ -1,9 +1,10 @@
+using System.Globalization;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
 
@@ -85,11 +86,11 @@ public sealed class DriftAnalyzerConfigOptionsTests {
     // Story 9-1 review CB-14: pin ReadPositiveInt boundary cases. Production accepts
     // NumberStyles.Integer (P25), so signed `+50` parses; `2147483648` overflows Int32 and
     // must be rejected; `0` is invalid (min is 1); `1` is the minimum valid value.
-    [InlineData("1",            true)]
-    [InlineData("+50",          true)]
-    [InlineData("0",            false)]
-    [InlineData("-1",           false)]
-    [InlineData("2147483648",   false)]
+    [InlineData("1", true)]
+    [InlineData("+50", true)]
+    [InlineData("0", false)]
+    [InlineData("-1", false)]
+    [InlineData("2147483648", false)]
     public void HfcDriftMaxDiagnostics_BoundaryParsing(string raw, bool expectAccepted) {
         IReadOnlyList<Diagnostic> diagnostics = RunWithOption(SourceWithProjection, "build_property.HfcDriftMaxDiagnostics", raw);
 
@@ -103,11 +104,11 @@ public sealed class DriftAnalyzerConfigOptionsTests {
     // Story 9-1 review CB-15: HfcDriftDetectionEnabled boolean parsing. Only "true" was tested
     // before. Probe case-insensitivity ("True"/"TRUE"), the negative path ("false" disables
     // drift comparison), and a garbage value ("yes" should be parsed as false / disabled).
-    [InlineData("true",  true)]
-    [InlineData("True",  true)]
-    [InlineData("TRUE",  true)]
+    [InlineData("true", true)]
+    [InlineData("True", true)]
+    [InlineData("TRUE", true)]
     [InlineData("false", false)]
-    [InlineData("yes",   false)] // Garbage values must not be silently treated as truthy.
+    [InlineData("yes", false)] // Garbage values must not be silently treated as truthy.
     public void HfcDriftDetectionEnabled_BooleanParsing_DeterministicAcrossCasing(string value, bool expectEnabled) {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -204,7 +205,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
         // AC19 — parsing "1,000" must NOT be accepted as 1000 under fr-FR. The binder must use
         // CultureInfo.InvariantCulture; the value should be rejected with the same configuration
         // diagnostic regardless of host culture.
-        var prior = System.Globalization.CultureInfo.CurrentCulture;
+        CultureInfo prior = System.Globalization.CultureInfo.CurrentCulture;
         try {
             System.Globalization.CultureInfo.CurrentCulture = new System.Globalization.CultureInfo("fr-FR");
 

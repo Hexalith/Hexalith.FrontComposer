@@ -64,7 +64,7 @@ public sealed class AuthorizingCommandServiceDecoratorTests {
         ICommandDispatchAuthorizationGate gate = Substitute.For<ICommandDispatchAuthorizationGate>();
         AuthorizingCommandServiceDecorator sut = new(inner, gate);
         SampleCommand command = new();
-        Action<CommandLifecycleState, string?> callback = (_, _) => { };
+        static void callback(CommandLifecycleState _1, string? _2) { }
 
         _ = await sut.DispatchAsync(command, callback, TestContext.Current.CancellationToken).ConfigureAwait(true);
 

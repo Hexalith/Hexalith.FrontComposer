@@ -1,5 +1,3 @@
-using System;
-
 using Hexalith.FrontComposer.Contracts.Communication;
 
 namespace Hexalith.FrontComposer.Shell.Services.Feedback;

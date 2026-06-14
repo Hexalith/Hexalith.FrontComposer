@@ -54,9 +54,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
     }
 
     private sealed class TestNavigationManager : NavigationManager {
-        public TestNavigationManager(string baseUri, string currentUri) {
-            Initialize(baseUri, currentUri);
-        }
+        public TestNavigationManager(string baseUri, string currentUri) => Initialize(baseUri, currentUri);
 
         protected override void NavigateToCore(string uri, bool forceLoad)
             => Initialize(BaseUri, ToAbsoluteUri(uri).ToString());
@@ -149,9 +147,9 @@ public sealed class NavigationEffectsLastActiveRouteTests {
         await storage.SetAsync(key, blob, ct);
 
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
-        registry.GetManifests().Returns(new List<DomainManifest> {
+        registry.GetManifests().Returns([
             new("Counter", "counter", Array.Empty<string>(), Array.Empty<string>()),
-        });
+        ]);
 
         var sut = new NavigationEffects(
             storage, MakeAccessor(), logger, FakeState(BaseState()),
@@ -177,9 +175,9 @@ public sealed class NavigationEffectsLastActiveRouteTests {
         await storage.SetAsync(key, blob, ct);
 
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
-        registry.GetManifests().Returns(new List<DomainManifest> {
+        registry.GetManifests().Returns([
             new("Counter", "counter", Array.Empty<string>(), Array.Empty<string>()),
-        });
+        ]);
 
         NavigationManager navigation = new TestNavigationManager("https://localhost/app/", "https://localhost/app/");
         var sut = new NavigationEffects(

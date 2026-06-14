@@ -2,7 +2,6 @@ using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Schema.Diagnostics;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 

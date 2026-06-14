@@ -2,18 +2,15 @@ namespace Hexalith.FrontComposer.Cli;
 
 internal sealed class CommandLineException(string message) : Exception(message);
 
-internal sealed class CommandOptions
-{
+internal sealed class CommandOptions {
     private static readonly HashSet<string> AllowedShortOptions = new(StringComparer.Ordinal) { "h" };
 
     private readonly Dictionary<string, List<string>> _values = new(StringComparer.Ordinal);
 
-    private CommandOptions()
-    {
+    private CommandOptions() {
     }
 
-    public static CommandOptions Parse(IEnumerable<string> args)
-    {
+    public static CommandOptions Parse(IEnumerable<string> args) {
         CommandOptions options = new();
         string? pending = null;
         bool positionalOnly = false;
@@ -111,8 +108,7 @@ internal sealed class CommandOptions
     private static bool IsValidLongName(string name)
         => !string.IsNullOrEmpty(name) && name.All(c => char.IsLetterOrDigit(c) || c is '-' or '_');
 
-    private void Add(string name, string value)
-    {
+    private void Add(string name, string value) {
         if (!_values.TryGetValue(name, out List<string>? values)) {
             values = [];
             _values.Add(name, values);

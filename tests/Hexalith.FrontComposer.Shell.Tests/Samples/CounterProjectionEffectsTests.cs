@@ -16,7 +16,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Samples;
 public sealed class CounterProjectionEffectsTests {
     [Fact]
     public async Task BatchIncrementConfirmed_UsesSubmittedAmount() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposer(
             o => o.ScanAssemblies(typeof(CounterProjection).Assembly, typeof(CounterProjectionEffects).Assembly));
@@ -44,8 +44,7 @@ public sealed class CounterProjectionEffectsTests {
         string correlationId = Guid.NewGuid().ToString();
         dispatcher.Dispatch(new BatchIncrementCommandActions.SubmittedAction(
             correlationId,
-            new BatchIncrementCommand
-            {
+            new BatchIncrementCommand {
                 MessageId = "batch-1",
                 TenantId = "counter-demo",
                 Amount = 7,
@@ -61,7 +60,7 @@ public sealed class CounterProjectionEffectsTests {
 
     [Fact]
     public async Task IncrementConfirmed_UsesSubmittedAmount() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposer(
             o => o.ScanAssemblies(typeof(CounterProjection).Assembly, typeof(CounterProjectionEffects).Assembly));
@@ -78,8 +77,7 @@ public sealed class CounterProjectionEffectsTests {
         string correlationId = Guid.NewGuid().ToString();
         dispatcher.Dispatch(new IncrementCommandActions.SubmittedAction(
             correlationId,
-            new IncrementCommand
-            {
+            new IncrementCommand {
                 MessageId = "inc-1",
                 TenantId = "counter-demo",
                 Amount = 5,

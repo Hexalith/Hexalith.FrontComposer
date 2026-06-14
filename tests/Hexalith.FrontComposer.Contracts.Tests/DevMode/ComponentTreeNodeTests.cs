@@ -93,16 +93,14 @@ public sealed class ComponentTreeNodeTests {
         descriptor.Description.ShouldBe("Relative time formatting");
         descriptor.RecommendedOverrideLevel.ShouldBe(CustomizationLevel.Level1);
 
-        Should.Throw<ArgumentException>(() => new ConventionDescriptor(" ", "Description", "Recommendation", CustomizationLevel.Level2));
+        _ = Should.Throw<ArgumentException>(() => new ConventionDescriptor(" ", "Description", "Recommendation", CustomizationLevel.Level2));
     }
 
     [Fact]
-    public void ComponentTreeContractVersion_IsPackedVersion() {
-        ComponentTreeContractVersion.Current.ShouldBe(
+    public void ComponentTreeContractVersion_IsPackedVersion() => ComponentTreeContractVersion.Current.ShouldBe(
             (ComponentTreeContractVersion.Major * 1_000_000)
             + (ComponentTreeContractVersion.Minor * 1_000)
             + ComponentTreeContractVersion.Build);
-    }
 
     private static ComponentTreeNode CreateNode(
         string annotationKey,

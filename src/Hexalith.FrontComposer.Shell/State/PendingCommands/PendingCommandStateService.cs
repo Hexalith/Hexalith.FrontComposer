@@ -1,5 +1,5 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
@@ -524,12 +524,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 _ => c,
             };
 
-            bool valid = (normalized >= '0' && normalized <= '9')
-                || (normalized >= 'A' && normalized <= 'H')
-                || (normalized >= 'J' && normalized <= 'K')
-                || (normalized >= 'M' && normalized <= 'N')
-                || (normalized >= 'P' && normalized <= 'T')
-                || (normalized >= 'V' && normalized <= 'Z');
+            bool valid = normalized is (>= '0' and <= '9') or (>= 'A' and <= 'H') or (>= 'J' and <= 'K') or (>= 'M' and <= 'N') or (>= 'P' and <= 'T') or (>= 'V' and <= 'Z');
 
             if (!valid) {
                 canonical = null;

@@ -35,8 +35,7 @@ public sealed record FrontComposerCommandPaletteState(
     ImmutableArray<string> RecentRouteUrls,
     int SelectedIndex,
     PaletteLoadState LoadState,
-    CommandPaletteHydrationState HydrationState = CommandPaletteHydrationState.Idle)
-{
+    CommandPaletteHydrationState HydrationState = CommandPaletteHydrationState.Idle) {
     /// <summary>Maximum size of the recent-route ring buffer (Story 3-4 D10).</summary>
     public const int RingBufferCap = 5;
 }

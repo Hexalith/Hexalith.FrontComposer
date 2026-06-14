@@ -18,9 +18,7 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
 public sealed class FcDensityAnnouncerTests : LayoutComponentTestBase {
-    public FcDensityAnnouncerTests() {
-        EnsureStoreInitialized();
-    }
+    public FcDensityAnnouncerTests() => EnsureStoreInitialized();
 
     [Fact]
     public void RendersVisuallyHiddenAriaLiveRegion() {

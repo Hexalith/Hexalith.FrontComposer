@@ -43,16 +43,14 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
     /// <summary>Internal sentinel key that flags a <see cref="FlushAsync"/> drain request.</summary>
     internal const string SentinelKey = "\0fc-flush\0";
 
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) {
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault,
-    };
-
     /// <summary>
     /// Shared <see cref="JsonSerializerOptions"/> used by every read / write through this service.
     /// Exposed <c>internal</c> so schema-lock tests pin the actual production wire format rather
     /// than the default serializer (Story 3-6 Review Finding F-AA-001 / F-BH-003).
     /// </summary>
-    internal static JsonSerializerOptions SchemaLockJsonOptions => JsonOptions;
+    internal static JsonSerializerOptions SchemaLockJsonOptions { get; } = new(JsonSerializerDefaults.Web) {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault,
+    };
 
     private readonly IJSRuntime _js;
     private readonly FcShellOptions _options;
@@ -110,7 +108,7 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
         _lruTimestamps[key] = _time.GetUtcNow().UtcTicks;
 
         try {
-            return JsonSerializer.Deserialize<T>(json, JsonOptions);
+            return JsonSerializer.Deserialize<T>(json, SchemaLockJsonOptions);
         }
         catch (JsonException ex) {
             _logger.LogWarning(ex, "LocalStorageService: failed to deserialize value for key '{Key}'", key);
@@ -127,7 +125,7 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
         ArgumentException.ThrowIfNullOrEmpty(key);
         _lruTimestamps[key] = _time.GetUtcNow().UtcTicks;
         EvictIfOverCap();
-        string json = JsonSerializer.Serialize(value, JsonOptions);
+        string json = JsonSerializer.Serialize(value, SchemaLockJsonOptions);
         _ = _writes.Writer.TryWrite(new PendingWrite(key, json, FlushSignal: null));
         return Task.CompletedTask;
     }
@@ -244,7 +242,7 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
                 catch (Exception ex) {
                     _pendingDrainFailure ??= ex;
                     _logger.LogWarning(ex, "LocalStorageService: drain write failed for key '{Key}'", write.Key);
-                    write.FlushSignal?.TrySetException(ex);
+                    _ = (write.FlushSignal?.TrySetException(ex));
                 }
             }
         }

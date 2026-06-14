@@ -1,7 +1,5 @@
 using System.Reflection;
 
-using Hexalith.FrontComposer.SourceTools.Conformance;
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -17,12 +15,10 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.IdeParity;
 /// </summary>
 [Trait("MatrixRowId", "IDE-MUST-002")]
 [Trait("MatrixRowId", "IDE-MUST-004")]
-public sealed class IdeParitySampleDiagnosticsTests
-{
+public sealed class IdeParitySampleDiagnosticsTests {
     [Fact]
     [Trait("MatrixRowId", "IDE-MUST-004")]
-    public void IdeParityCounterFixture_AllEmittedHfcDiagnosticsHaveHelpLinkUri()
-    {
+    public void IdeParityCounterFixture_AllEmittedHfcDiagnosticsHaveHelpLinkUri() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(IdeParityConformanceUtilityTests.LoadIdeParityCounterFixtureSource());
         FrontComposerGenerator generator = new();
@@ -35,8 +31,7 @@ public sealed class IdeParitySampleDiagnosticsTests
             .Where(d => d.Id.StartsWith("HFC", StringComparison.Ordinal))
             .ToArray();
 
-        foreach (Diagnostic diagnostic in hfcDiagnostics)
-        {
+        foreach (Diagnostic diagnostic in hfcDiagnostics) {
             diagnostic.Descriptor.HelpLinkUri.ShouldNotBeNullOrWhiteSpace(
                 $"HFC diagnostic '{diagnostic.Id}' surfaced from the IdeParityCounter fixture must carry a HelpLinkUri so IDE squiggles link to documentation.");
         }
@@ -44,8 +39,7 @@ public sealed class IdeParitySampleDiagnosticsTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-MUST-002")]
-    public void PublicFrontComposerAttributes_HaveIdeVisibleXmlDocs()
-    {
+    public void PublicFrontComposerAttributes_HaveIdeVisibleXmlDocs() {
         // The attribute source files (not the compiled XML doc) are the authoritative
         // location for IDE Quick Info text. Asserting `/// <summary>` blocks here keeps
         // the test independent of <GenerateDocumentationFile> wiring on the Contracts
@@ -59,8 +53,7 @@ public sealed class IdeParitySampleDiagnosticsTests
             "src/Hexalith.FrontComposer.Contracts/Attributes/ProjectionAttribute.cs",
         };
 
-        foreach (string relative in relativeAttributeSources)
-        {
+        foreach (string relative in relativeAttributeSources) {
             string path = Path.Combine(IdeParityRepositoryRoot.Value, relative.Replace('/', Path.DirectorySeparatorChar));
             File.Exists(path).ShouldBeTrue($"Attribute source '{relative}' must exist.");
 
@@ -72,8 +65,7 @@ public sealed class IdeParitySampleDiagnosticsTests
 
     [Fact]
     [Trait("MatrixRowId", "IDE-MUST-004")]
-    public void GeneratedFixtureCompilation_ProducesNoErrorSeverityDiagnosticsAndExposesHfcCatalog()
-    {
+    public void GeneratedFixtureCompilation_ProducesNoErrorSeverityDiagnosticsAndExposesHfcCatalog() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(IdeParityConformanceUtilityTests.LoadIdeParityCounterFixtureSource());
         FrontComposerGenerator generator = new();
@@ -96,8 +88,7 @@ public sealed class IdeParitySampleDiagnosticsTests
             ?? Array.Empty<DiagnosticDescriptor>();
         // FrontComposerGenerator may not expose SupportedDiagnostics directly; fall back to
         // probing the descriptors discovered through the generator-emitted diagnostics list.
-        if (hfcDescriptors.Length == 0)
-        {
+        if (hfcDescriptors.Length == 0) {
             hfcDescriptors = result.Diagnostics
                 .Where(d => d.Id.StartsWith("HFC", StringComparison.Ordinal))
                 .Select(d => d.Descriptor)
@@ -109,7 +100,7 @@ public sealed class IdeParitySampleDiagnosticsTests
         // (the sample is shaped to be clean). The contract is: anything that *does* surface
         // must carry HelpLinkUri (asserted in the dedicated test above), and the assembly
         // exposes the diagnostic-descriptor surface in its public API.
-        typeof(FrontComposerGenerator).Assembly
+        _ = typeof(FrontComposerGenerator).Assembly
             .GetType("Hexalith.FrontComposer.SourceTools.Diagnostics.DiagnosticDescriptors")
             .ShouldNotBeNull("The diagnostic descriptor catalog must be reachable so IDEs can render HFC-specific Quick Info.");
     }

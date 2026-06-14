@@ -1,7 +1,5 @@
-using System.Collections.Generic;
 using System.Text;
 
-using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 namespace Hexalith.FrontComposer.SourceTools.Emitters;
@@ -20,9 +18,7 @@ internal static class RoleBodyHelpers {
     /// is non-empty (the <c>[ProjectionBadge]</c>-carrying enum); (2) first enum-typed
     /// column in declaration order. Ties broken by declaration order.
     /// </summary>
-    public static string? ResolveStatusEnumProperty(RazorModel model) {
-        return ResolveStatusEnumColumn(model)?.PropertyName;
-    }
+    public static string? ResolveStatusEnumProperty(RazorModel model) => ResolveStatusEnumColumn(model)?.PropertyName;
 
     public static ColumnModel? ResolveStatusEnumColumn(RazorModel model) {
         ColumnModel? badgedEnum = null;
@@ -49,9 +45,7 @@ internal static class RoleBodyHelpers {
     /// order. Returns null when no DateTime property exists on the projection; the
     /// caller falls back to declaration-order rendering and Transform emits HFC1022.
     /// </summary>
-    public static string? ResolveFirstDateTimeProperty(RazorModel model) {
-        return ResolveFirstDateTimeColumn(model)?.PropertyName;
-    }
+    public static string? ResolveFirstDateTimeProperty(RazorModel model) => ResolveFirstDateTimeColumn(model)?.PropertyName;
 
     public static ColumnModel? ResolveFirstDateTimeColumn(RazorModel model) {
         foreach (ColumnModel col in model.Columns) {
@@ -67,9 +61,7 @@ internal static class RoleBodyHelpers {
     /// Story 4-1 Timeline row composition — returns the first text column used as a
     /// row label next to the timestamp.
     /// </summary>
-    public static string? ResolveFirstTextProperty(RazorModel model) {
-        return ResolveFirstTextColumn(model)?.PropertyName;
-    }
+    public static string? ResolveFirstTextProperty(RazorModel model) => ResolveFirstTextColumn(model)?.PropertyName;
 
     public static ColumnModel? ResolveFirstTextColumn(RazorModel model) {
         foreach (ColumnModel col in model.Columns) {
@@ -89,9 +81,7 @@ internal static class RoleBodyHelpers {
     /// This keeps Guid-like identifiers from crowding out the human-readable event label
     /// while preserving the existing <c>Id</c>-only fallback used by generic fixtures.
     /// </summary>
-    public static string? ResolveTimelineLabelProperty(RazorModel model) {
-        return ResolveTimelineLabelColumn(model)?.PropertyName;
-    }
+    public static string? ResolveTimelineLabelProperty(RazorModel model) => ResolveTimelineLabelColumn(model)?.PropertyName;
 
     public static ColumnModel? ResolveTimelineLabelColumn(RazorModel model) {
         ColumnModel? preferred = null;
@@ -193,41 +183,19 @@ internal static class RoleBodyHelpers {
 
         StringBuilder sb = new(value.Length + 8);
         foreach (char c in value) {
-            switch (c) {
-                case '\\':
-                    _ = sb.Append("\\\\");
-                    break;
-                case '"':
-                    _ = sb.Append("\\\"");
-                    break;
-                case '\r':
-                    _ = sb.Append("\\r");
-                    break;
-                case '\n':
-                    _ = sb.Append("\\n");
-                    break;
-                case '\t':
-                    _ = sb.Append("\\t");
-                    break;
-                case '\b':
-                    _ = sb.Append("\\b");
-                    break;
-                case '\f':
-                    _ = sb.Append("\\f");
-                    break;
-                case '\v':
-                    _ = sb.Append("\\v");
-                    break;
-                case '\u2028':
-                    _ = sb.Append("\\u2028");
-                    break;
-                case '\u2029':
-                    _ = sb.Append("\\u2029");
-                    break;
-                default:
-                    _ = sb.Append(c);
-                    break;
-            }
+            _ = c switch {
+                '\\' => sb.Append("\\\\"),
+                '"' => sb.Append("\\\""),
+                '\r' => sb.Append("\\r"),
+                '\n' => sb.Append("\\n"),
+                '\t' => sb.Append("\\t"),
+                '\b' => sb.Append("\\b"),
+                '\f' => sb.Append("\\f"),
+                '\v' => sb.Append("\\v"),
+                '\u2028' => sb.Append("\\u2028"),
+                '\u2029' => sb.Append("\\u2029"),
+                _ => sb.Append(c),
+            };
         }
 
         return sb.ToString();
@@ -240,10 +208,10 @@ internal static class RoleBodyHelpers {
     /// and are exempt.
     /// </summary>
     public static bool IsGridRenderingStrategy(ProjectionRenderStrategy strategy)
-        => strategy == ProjectionRenderStrategy.Default
-            || strategy == ProjectionRenderStrategy.ActionQueue
-            || strategy == ProjectionRenderStrategy.StatusOverview
-            || strategy == ProjectionRenderStrategy.Dashboard;
+        => strategy is ProjectionRenderStrategy.Default
+            or ProjectionRenderStrategy.ActionQueue
+            or ProjectionRenderStrategy.StatusOverview
+            or ProjectionRenderStrategy.Dashboard;
 
     /// <summary>
     /// Story 4-4 T2.1 / D13 / D18 — first-match item-key accessor expression. Precedence:
@@ -330,8 +298,8 @@ internal static class RoleBodyHelpers {
         // a non-null FieldGroup is seen, append subsequent same-name columns to that bucket.
         // Ungrouped columns go into a deferred catch-all that's appended at the end.
         Dictionary<string, List<ColumnModel>> grouped = new(StringComparer.Ordinal);
-        List<string> orderedNames = new();
-        List<ColumnModel> ungrouped = new();
+        List<string> orderedNames = [];
+        List<ColumnModel> ungrouped = [];
         for (int i = 0; i < columns.Count; i++) {
             ColumnModel col = columns[i];
             if (col.FieldGroup is null) {
@@ -340,7 +308,7 @@ internal static class RoleBodyHelpers {
             }
 
             if (!grouped.TryGetValue(col.FieldGroup, out List<ColumnModel>? bucket)) {
-                bucket = new List<ColumnModel>();
+                bucket = [];
                 grouped.Add(col.FieldGroup, bucket);
                 orderedNames.Add(col.FieldGroup);
             }

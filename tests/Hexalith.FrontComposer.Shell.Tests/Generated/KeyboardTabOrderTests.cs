@@ -15,9 +15,7 @@ public sealed class KeyboardTabOrderTests : CommandRendererTestBase {
 
         cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
         cut.Find("fluent-button").Click();
-        cut.WaitForAssertion(() => {
-            cut.FindAll(".fc-popover").Count.ShouldBeGreaterThan(0);
-        });
+        cut.WaitForAssertion(() => cut.FindAll(".fc-popover").Count.ShouldBeGreaterThan(0));
 
         Should.NotThrow(() => cut.Find(".fc-popover").KeyDown(new KeyboardEventArgs { Key = "Escape" }));
     }

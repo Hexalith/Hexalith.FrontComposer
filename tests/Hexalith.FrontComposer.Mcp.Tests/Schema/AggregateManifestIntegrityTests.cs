@@ -1,6 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Contracts.Schema;
-using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.Mcp.Schema;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -8,7 +7,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 
@@ -43,9 +41,9 @@ public sealed class AggregateManifestIntegrityTests {
             Fingerprint: forgedAggregateFp);
 
         ServiceCollection services = [];
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(tampered));
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(tampered));
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
 
         // CK4-P2: pin to the typed FrontComposerMcpException so DI activation wrappers, NREs, or
         // localized message rewrites cannot silently satisfy the assertion. AC7 mandates the
@@ -138,9 +136,9 @@ public sealed class AggregateManifestIntegrityTests {
     public void DescriptorRegistry_DiConstruction_UsesCorpusAwareConstructor() {
         CountingCorpusFingerprintProvider provider = new([]);
         ServiceCollection services = [];
-        services.Configure<FrontComposerMcpOptions>(_ => { });
-        services.AddSingleton<ISkillCorpusFingerprintProvider>(provider);
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.Configure<FrontComposerMcpOptions>(_ => { });
+        _ = services.AddSingleton<ISkillCorpusFingerprintProvider>(provider);
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
 
         _ = services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>();
 
@@ -157,10 +155,10 @@ public sealed class AggregateManifestIntegrityTests {
         CountingCorpusFingerprintProvider providerA = new([]);
         CountingCorpusFingerprintProvider providerB = new([]);
         ServiceCollection services = [];
-        services.Configure<FrontComposerMcpOptions>(_ => { });
-        services.AddSingleton<ISkillCorpusFingerprintProvider>(providerA);
-        services.AddSingleton<ISkillCorpusFingerprintProvider>(providerB);
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.Configure<FrontComposerMcpOptions>(_ => { });
+        _ = services.AddSingleton<ISkillCorpusFingerprintProvider>(providerA);
+        _ = services.AddSingleton<ISkillCorpusFingerprintProvider>(providerB);
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
 
         _ = services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>();
 
@@ -176,12 +174,12 @@ public sealed class AggregateManifestIntegrityTests {
         // runtime aggregate is empty. A regression that treated missing providers as fail-closed
         // would block every host that does not ship a skill corpus.
         ServiceCollection services = [];
-        services.Configure<FrontComposerMcpOptions>(_ => { });
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.Configure<FrontComposerMcpOptions>(_ => { });
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
 
         FrontComposerMcpDescriptorRegistry registry = services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>();
 
-        registry.ShouldNotBeNull();
+        _ = registry.ShouldNotBeNull();
     }
 
     [Fact]
@@ -229,11 +227,11 @@ public sealed class AggregateManifestIntegrityTests {
         };
 
         ServiceCollection services = [];
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(tampered));
-        services.AddSingleton<ISkillCorpusFingerprintProvider>(
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(tampered));
+        _ = services.AddSingleton<ISkillCorpusFingerprintProvider>(
             new StaticCorpusFingerprintProvider([new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('b', 64))]));
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
 
         // CK4-P2: pin to the typed FrontComposerMcpException so DI activation wrappers, NREs, or
         // localized message rewrites cannot silently satisfy the assertion.

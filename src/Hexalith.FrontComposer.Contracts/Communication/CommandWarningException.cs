@@ -1,5 +1,3 @@
-using System;
-
 namespace Hexalith.FrontComposer.Contracts.Communication;
 
 /// <summary>

@@ -1,5 +1,3 @@
-using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.FaultInjection;
 
 /// <summary>
@@ -10,14 +8,12 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.FaultInje
 /// payload-bearing publication APIs; raw SignalR client types are not part of the surface.
 /// </summary>
 internal sealed class ProjectionHubFaultScenarioBuilder {
-    private readonly FaultInjectingProjectionHubConnection _connection;
-
     public ProjectionHubFaultScenarioBuilder(FaultInjectingProjectionHubConnection connection) {
         ArgumentNullException.ThrowIfNull(connection);
-        _connection = connection;
+        Connection = connection;
     }
 
-    public FaultInjectingProjectionHubConnection Connection => _connection;
+    public FaultInjectingProjectionHubConnection Connection { get; }
 
     // ---------- Connection lifecycle ----------
 
@@ -26,99 +22,99 @@ internal sealed class ProjectionHubFaultScenarioBuilder {
 
     /// <summary>Initial <c>StartAsync</c> faults with the supplied exception.</summary>
     public ProjectionHubFaultScenarioBuilder StartFails(Exception exception) {
-        _connection.FailNext(HarnessCheckpoint.Start, exception);
+        Connection.FailNext(HarnessCheckpoint.Start, exception);
         return this;
     }
 
     /// <summary>Initial <c>StartAsync</c> blocks until <c>ReleaseStart()</c> is called.</summary>
     public ProjectionHubFaultScenarioBuilder StartBlocks() {
-        _connection.BlockUntil(HarnessCheckpoint.Start);
+        Connection.BlockUntil(HarnessCheckpoint.Start);
         return this;
     }
 
     public ProjectionHubFaultScenarioBuilder ReleaseStart() {
-        _connection.Release(HarnessCheckpoint.Start);
+        Connection.Release(HarnessCheckpoint.Start);
         return this;
     }
 
     /// <summary>Initial <c>StartAsync</c> completes canceled when crossed.</summary>
     public ProjectionHubFaultScenarioBuilder StartCancels() {
-        _connection.CancelNext(HarnessCheckpoint.Start);
+        Connection.CancelNext(HarnessCheckpoint.Start);
         return this;
     }
 
     // ---------- Group join/leave ----------
 
     public ProjectionHubFaultScenarioBuilder JoinFails(string projectionType, string tenantId, Exception exception) {
-        _connection.FailNext(HarnessCheckpoint.Join(projectionType, tenantId), exception);
+        Connection.FailNext(HarnessCheckpoint.Join(projectionType, tenantId), exception);
         return this;
     }
 
     public ProjectionHubFaultScenarioBuilder JoinBlocks(string projectionType, string tenantId) {
-        _connection.BlockUntil(HarnessCheckpoint.Join(projectionType, tenantId));
+        Connection.BlockUntil(HarnessCheckpoint.Join(projectionType, tenantId));
         return this;
     }
 
     public ProjectionHubFaultScenarioBuilder ReleaseJoin(string projectionType, string tenantId) {
-        _connection.Release(HarnessCheckpoint.Join(projectionType, tenantId));
+        Connection.Release(HarnessCheckpoint.Join(projectionType, tenantId));
         return this;
     }
 
     public ProjectionHubFaultScenarioBuilder LeaveFails(string projectionType, string tenantId, Exception exception) {
-        _connection.FailNext(HarnessCheckpoint.Leave(projectionType, tenantId), exception);
+        Connection.FailNext(HarnessCheckpoint.Leave(projectionType, tenantId), exception);
         return this;
     }
 
     // ---------- Connection state events ----------
 
     public Task RaiseReconnectingAsync(Exception? cause = null)
-        => _connection.RaiseStateAsync(HarnessConnectionStates.Reconnecting(cause));
+        => Connection.RaiseStateAsync(HarnessConnectionStates.Reconnecting(cause));
 
     public Task RaiseReconnectedAsync(string? connectionId = null)
-        => _connection.RaiseStateAsync(HarnessConnectionStates.Reconnected(connectionId));
+        => Connection.RaiseStateAsync(HarnessConnectionStates.Reconnected(connectionId));
 
     public Task RaiseClosedAsync(Exception? cause = null)
-        => _connection.RaiseStateAsync(HarnessConnectionStates.Closed(cause));
+        => Connection.RaiseStateAsync(HarnessConnectionStates.Closed(cause));
 
     public async Task RaiseClosedAfterRetryAsync(Exception cause) {
         // Equivalent to: server signaled Reconnecting then automatic reconnect failed → Closed.
-        await _connection.RaiseStateAsync(HarnessConnectionStates.Reconnecting(cause)).ConfigureAwait(false);
-        await _connection.RaiseStateAsync(HarnessConnectionStates.Closed(cause)).ConfigureAwait(false);
+        await Connection.RaiseStateAsync(HarnessConnectionStates.Reconnecting(cause)).ConfigureAwait(false);
+        await Connection.RaiseStateAsync(HarnessConnectionStates.Closed(cause)).ConfigureAwait(false);
     }
 
     // ---------- Nudge faults ----------
 
     public ProjectionHubFaultScenarioBuilder DropNextNudge(string projectionType, string tenantId) {
-        _connection.DropNextNudge(projectionType, tenantId);
+        Connection.DropNextNudge(projectionType, tenantId);
         return this;
     }
 
     public ProjectionHubFaultScenarioBuilder DuplicateNextNudge(string projectionType, string tenantId, int count = 2) {
-        _connection.DuplicateNextNudge(projectionType, tenantId, count);
+        Connection.DuplicateNextNudge(projectionType, tenantId, count);
         return this;
     }
 
     public NudgeQueueToken DelayNextNudge(string projectionType, string tenantId)
-        => _connection.DelayNextNudge(projectionType, tenantId);
+        => Connection.DelayNextNudge(projectionType, tenantId);
 
     public NudgeQueueToken Queue(string projectionType, string tenantId)
-        => _connection.QueueNudge(projectionType, tenantId);
+        => Connection.QueueNudge(projectionType, tenantId);
 
     public Task PublishNudgeAsync(string projectionType, string tenantId)
-        => _connection.PublishNudgeAsync(projectionType, tenantId);
+        => Connection.PublishNudgeAsync(projectionType, tenantId);
 
-    public Task ReleaseAsync(NudgeQueueToken token) => _connection.ReleaseAsync(token);
+    public Task ReleaseAsync(NudgeQueueToken token) => Connection.ReleaseAsync(token);
 
     public Task ReleaseInOrderAsync(IEnumerable<NudgeQueueToken> tokens)
-        => _connection.ReleaseInOrderAsync(tokens);
+        => Connection.ReleaseInOrderAsync(tokens);
 
     public ProjectionHubFaultScenarioBuilder FallbackTriggerBlocks() {
-        _connection.BlockUntil(HarnessCheckpoint.FallbackTrigger);
+        Connection.BlockUntil(HarnessCheckpoint.FallbackTrigger);
         return this;
     }
 
     public ProjectionHubFaultScenarioBuilder ReleaseFallbackTrigger() {
-        _connection.Release(HarnessCheckpoint.FallbackTrigger);
+        Connection.Release(HarnessCheckpoint.FallbackTrigger);
         return this;
     }
 }

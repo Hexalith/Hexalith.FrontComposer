@@ -14,11 +14,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// single append at index 1 (between HeaderStart and HeaderEnd, mirroring the L→R visual header
 /// layout). Append-only discipline: no rename, retype, removal, or reorder of existing parameters.
 /// </summary>
-public sealed class FrontComposerShellParameterSurfaceTests
-{
+public sealed class FrontComposerShellParameterSurfaceTests {
     [Fact]
-    public void Parameter_surface_matches_story_3_2_contract()
-    {
+    public void Parameter_surface_matches_story_3_2_contract() {
         // ATDD RED PHASE — this array encodes the post-3-2 surface. It will diverge from the
         // current 6-parameter implementation until Story 3-2 Task 8.4 adds HeaderCenter.
         string[] actual = [..

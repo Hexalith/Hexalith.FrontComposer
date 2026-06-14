@@ -1,7 +1,6 @@
 using System.Collections.Immutable;
 
 using Bunit;
-using Bunit.Rendering;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
@@ -76,13 +75,9 @@ public sealed class ActionQueueProjectionContextIsolationTests : GeneratedCompon
 
         [Parameter] public EventCallback<string?> OnObservedAggregateId { get; set; }
 
-        protected override void OnInitialized() {
-            Navigation.LocationChanged += HandleLocationChanged;
-        }
+        protected override void OnInitialized() => Navigation.LocationChanged += HandleLocationChanged;
 
-        public void Dispose() {
-            Navigation.LocationChanged -= HandleLocationChanged;
-        }
+        public void Dispose() => Navigation.LocationChanged -= HandleLocationChanged;
 
         protected override void BuildRenderTree(RenderTreeBuilder builder) {
             bool isViewB = string.Equals(
@@ -97,9 +92,7 @@ public sealed class ActionQueueProjectionContextIsolationTests : GeneratedCompon
             builder.CloseComponent();
         }
 
-        private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) {
-            _ = InvokeAsync(StateHasChanged);
-        }
+        private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
     }
 
     private sealed class ActionQueueViewHarness : ComponentBase {

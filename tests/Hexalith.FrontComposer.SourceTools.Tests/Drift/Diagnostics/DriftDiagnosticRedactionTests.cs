@@ -2,9 +2,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
+
 using DriftBaselineTrustFailureTests = Hexalith.FrontComposer.SourceTools.Tests.Drift.Baseline.DriftBaselineTrustFailureTests;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Diagnostics;
@@ -63,7 +63,10 @@ public sealed class DriftDiagnosticRedactionTests {
                 message.ShouldNotContain(sentinel,
                     customMessage: $"AC13 — diagnostic {d.Id} leaked sentinel '{sentinel}' into its message.");
                 foreach (KeyValuePair<string, string?> property in d.Properties) {
-                    if (property.Value is null) continue;
+                    if (property.Value is null) {
+                        continue;
+                    }
+
                     property.Value.ShouldNotContain(sentinel,
                         customMessage: $"AC13 — diagnostic {d.Id} property '{property.Key}' leaked sentinel '{sentinel}'.");
                 }

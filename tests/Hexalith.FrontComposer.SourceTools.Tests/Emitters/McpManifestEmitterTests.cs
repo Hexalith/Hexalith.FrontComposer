@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.SourceTools.Emitters;
+using Hexalith.FrontComposer.SourceTools.Parsing;
 
 using Shouldly;
 
@@ -38,8 +39,8 @@ public sealed class McpManifestEmitterTests {
             }
             """;
 
-        var orders = CompilationHelper.ParseCommand(OrdersSource, "Orders.ApproveCommand").Model!;
-        var billing = CompilationHelper.ParseCommand(BillingSource, "Billing.ApproveCommand").Model!;
+        CommandModel orders = CompilationHelper.ParseCommand(OrdersSource, "Orders.ApproveCommand").Model!;
+        CommandModel billing = CompilationHelper.ParseCommand(BillingSource, "Billing.ApproveCommand").Model!;
 
         string source = McpManifestEmitter.Emit(ImmutableArray.Create(orders, billing), []);
 
@@ -72,7 +73,7 @@ public sealed class McpManifestEmitterTests {
             }
             """;
 
-        var parsed = CompilationHelper.ParseProjection(Source, "Orders.OrderTimelineProjection").Model!;
+        DomainModel parsed = CompilationHelper.ParseProjection(Source, "Orders.OrderTimelineProjection").Model!;
 
         string source = McpManifestEmitter.Emit([], ImmutableArray.Create(parsed));
 

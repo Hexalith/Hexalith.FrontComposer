@@ -11,7 +11,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 
@@ -63,7 +62,6 @@ public sealed class Story11_5ResolutionTests {
         // fields. Inject the sentinels through the raw string positions that can reach this
         // surface (algorithm/value), and cover every public negotiation branch this test claims.
         McpSchemaNegotiationResult[] results = [
-#pragma warning disable CS0618, HFC4001
             McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
                 IsHiddenOrUnknown: true,
                 IsStaleDescriptor: false,
@@ -130,7 +128,6 @@ public sealed class Story11_5ResolutionTests {
                 HasTrustedBaseline: true,
                 HasCompatibleAdditiveDrift: false,
                 HasSchemaIntegrityMismatch: false)),
-#pragma warning restore CS0618, HFC4001
         ];
 
         foreach (McpSchemaNegotiationResult result in results) {
@@ -175,7 +172,7 @@ public sealed class Story11_5ResolutionTests {
             Principal: new ClaimsPrincipal(new ClaimsIdentity()));
         McpVisibleToolCatalog catalog = new(context, [], false);
 
-        McpToolResolutionResult rejection = McpToolResolutionResult.Reject(
+        var rejection = McpToolResolutionResult.Reject(
             requestedName: SafeRequestedToolName,
             category: FrontComposerMcpFailureCategory.SchemaMismatch,
             catalog: catalog,
@@ -184,7 +181,7 @@ public sealed class Story11_5ResolutionTests {
         // The descriptor itself is stripped — public callers cannot read back the resolved tool.
         rejection.Tool.ShouldBeNull();
         // The correlation key is an opaque 16-char hex prefix; not reversible to the descriptor.
-        rejection.InternalCorrelationKey.ShouldNotBeNull();
+        _ = rejection.InternalCorrelationKey.ShouldNotBeNull();
         rejection.InternalCorrelationKey!.Length.ShouldBe(16);
         rejection.InternalCorrelationKey.ShouldNotContain(SentinelDescriptor);
         rejection.InternalCorrelationKey.ShouldNotContain(SentinelHidden);
@@ -249,10 +246,10 @@ public sealed class Story11_5ResolutionTests {
             Fingerprint: forgedManifestFingerprint);
 
         ServiceCollection services = [];
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(conflict));
-        services.AddSingleton<ISkillCorpusFingerprintProvider>(new StaticCorpusFingerprintProvider([corpusFingerprint]));
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(conflict));
+        _ = services.AddSingleton<ISkillCorpusFingerprintProvider>(new StaticCorpusFingerprintProvider([corpusFingerprint]));
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(
             () => services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>());
@@ -272,13 +269,13 @@ public sealed class Story11_5ResolutionTests {
     [Fact]
     public void DN11_DescriptorLookup_DeterministicAcrossRetries() {
         ServiceCollection services = [];
-        services.Configure<FrontComposerMcpOptions>(_ => { });
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.Configure<FrontComposerMcpOptions>(_ => { });
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         FrontComposerMcpDescriptorRegistry registry = services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>();
 
-        bool firstFound = registry.TryGetCommand(SentinelDescriptor, out McpCommandDescriptor _);
-        bool secondFound = registry.TryGetCommand(SentinelDescriptor, out McpCommandDescriptor _);
-        bool thirdFound = registry.TryGetCommand(SentinelDescriptor.ToUpperInvariant(), out McpCommandDescriptor _);
+        bool firstFound = registry.TryGetCommand(SentinelDescriptor, out _);
+        bool secondFound = registry.TryGetCommand(SentinelDescriptor, out _);
+        bool thirdFound = registry.TryGetCommand(SentinelDescriptor.ToUpperInvariant(), out _);
 
         firstFound.ShouldBeFalse();
         secondFound.ShouldBe(firstFound, "DN11 / AC29: repeated descriptor lookups must yield the same bounded outcome on retry.");
@@ -298,17 +295,14 @@ public sealed class Story11_5ResolutionTests {
     /// </summary>
     [Fact]
     public void DN11_FingerprintNegotiation_DeterministicAcrossRetries() {
-#pragma warning disable CS0618, HFC4001
         McpSchemaNegotiationInput input = new(
             IsHiddenOrUnknown: false,
             IsStaleDescriptor: false,
-            new SchemaFingerprint("frontcomposer.schema.attacker.v1", SentinelToken.PadRight(64, 'x').Substring(0, 64)),
+            new SchemaFingerprint("frontcomposer.schema.attacker.v1", SentinelToken.PadRight(64, 'x')[..64]),
             ServerFingerprint,
             HasTrustedBaseline: true,
             HasCompatibleAdditiveDrift: false,
             HasSchemaIntegrityMismatch: false);
-#pragma warning restore CS0618, HFC4001
-
         McpSchemaNegotiationResult first = McpSchemaNegotiator.Negotiate(input);
         McpSchemaNegotiationResult second = McpSchemaNegotiator.Negotiate(input);
         McpSchemaNegotiationResult third = McpSchemaNegotiator.Negotiate(input);
@@ -333,8 +327,7 @@ public sealed class Story11_5ResolutionTests {
     [InlineData("de-DE")]
     [InlineData("ja-JP")]
     public void DN12_AgentContract_RemainsOrdinalAcrossNonInvariantCultures(string cultureName) {
-#pragma warning disable CS0618, HFC4001
-        McpSchemaNegotiationInput input = new(
+        _ = new McpSchemaNegotiationInput(
             IsHiddenOrUnknown: false,
             IsStaleDescriptor: false,
             ClientFingerprint,
@@ -342,8 +335,6 @@ public sealed class Story11_5ResolutionTests {
             HasTrustedBaseline: true,
             HasCompatibleAdditiveDrift: false,
             HasSchemaIntegrityMismatch: false);
-#pragma warning restore CS0618, HFC4001
-
         CultureInfo previous = CultureInfo.CurrentCulture;
         CultureInfo previousUi = CultureInfo.CurrentUICulture;
         try {
@@ -389,7 +380,6 @@ public sealed class Story11_5ResolutionTests {
         string[] enumNames = [.. Enum.GetNames(typeof(McpSchemaNegotiationResultKind))];
 
         McpSchemaNegotiationResult[] results = [
-#pragma warning disable CS0618, HFC4001
             McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
                 IsHiddenOrUnknown: true, IsStaleDescriptor: false,
                 ClientFingerprint, ServerFingerprint,
@@ -406,7 +396,6 @@ public sealed class Story11_5ResolutionTests {
                 IsHiddenOrUnknown: false, IsStaleDescriptor: false,
                 ClientFingerprint, ServerFingerprint,
                 HasTrustedBaseline: true, HasCompatibleAdditiveDrift: false, HasSchemaIntegrityMismatch: false)),
-#pragma warning restore CS0618, HFC4001
         ];
 
         foreach (McpSchemaNegotiationResult result in results) {
@@ -478,7 +467,7 @@ public sealed class Story11_5ResolutionTests {
         SchemaFingerprint descriptorFingerprint,
         CountingCorpusFingerprintProvider provider) {
         ServiceCollection services = [];
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(new McpManifest(
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(new McpManifest(
             "frontcomposer.mcp.v1",
             [new McpCommandDescriptor(
                 SafeRequestedToolName,
@@ -491,13 +480,13 @@ public sealed class Story11_5ResolutionTests {
                 ["TenantId", "UserId", "MessageId"],
                 Fingerprint: descriptorFingerprint)],
             [])));
-        services.AddSingleton<ISkillCorpusFingerprintProvider>(provider);
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new SchemaAwareStaticAccessor(clientFingerprintHint));
-        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = services.AddSingleton<ISkillCorpusFingerprintProvider>(provider);
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new SchemaAwareStaticAccessor(clientFingerprintHint));
+        _ = services.AddSingleton<FrontComposerMcpToolAdmissionService>();
 
         return services.BuildServiceProvider().GetRequiredService<FrontComposerMcpToolAdmissionService>();
     }
@@ -506,7 +495,7 @@ public sealed class Story11_5ResolutionTests {
         => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, FingerprintValue(sentinel));
 
     private static string FingerprintValue(string seed)
-        => (seed + new string('x', 64)).Substring(0, 64);
+        => (seed + new string('x', 64))[..64];
 
     private static SchemaBaselineSnapshot SnapshotWithFields(params string[] fieldNames) {
         SchemaContractDocument document = new(
@@ -537,14 +526,12 @@ public sealed class Story11_5ResolutionTests {
 
     private static McpSchemaNegotiationResult[] CultureCases()
         => [
-#pragma warning disable CS0618, HFC4001
             McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(true, false, ClientFingerprint, ServerFingerprint, true, false, false)),
             McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(false, true, ClientFingerprint, ServerFingerprint, true, false, false)),
             McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(false, false, ClientFingerprint, ServerFingerprint, true, false, true)),
             McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(false, false, new SchemaFingerprint("frontcomposer.schema.future", new string('c', 64)), ServerFingerprint, true, false, false)),
             McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(false, false, ClientFingerprint, null, true, false, false)),
             McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(false, false, ClientFingerprint, ServerFingerprint, true, false, false)),
-#pragma warning restore CS0618, HFC4001
         ];
 
     private static string[] EnumLabelVariants(string enumName)

@@ -28,7 +28,7 @@ public static class ProjectionViewOverrideServiceCollectionExtensions {
     public static IServiceCollection AddViewOverride<
         TProjection,
         [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
-        TComponent>(
+    TComponent>(
         this IServiceCollection services,
         ProjectionRole? role = null,
         [CallerMemberName] string? registrationSource = null)

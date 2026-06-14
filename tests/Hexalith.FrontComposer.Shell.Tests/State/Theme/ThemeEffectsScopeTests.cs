@@ -7,7 +7,6 @@ using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
@@ -24,11 +23,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Theme;
 /// persistence and log <see cref="FcDiagnosticIds.HFC2105_StoragePersistenceSkipped"/>. Both
 /// non-null AND non-whitespace → persist and use the tenant-scoped key.
 /// </summary>
-public sealed class ThemeEffectsScopeTests
-{
+public sealed class ThemeEffectsScopeTests {
     [Fact]
-    public async Task HandleThemeChanged_NullTenant_SkipsPersistenceAndLogsHFC2105()
-    {
+    public async Task HandleThemeChanged_NullTenant_SkipsPersistenceAndLogsHFC2105() {
         IStorageService storage = Substitute.For<IStorageService>();
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
@@ -44,8 +41,7 @@ public sealed class ThemeEffectsScopeTests
     }
 
     [Fact]
-    public async Task HandleThemeChanged_NullUser_SkipsPersistenceAndLogsHFC2105()
-    {
+    public async Task HandleThemeChanged_NullUser_SkipsPersistenceAndLogsHFC2105() {
         IStorageService storage = Substitute.For<IStorageService>();
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
@@ -63,8 +59,7 @@ public sealed class ThemeEffectsScopeTests
     [Theory]
     [InlineData("   ", "alice")]
     [InlineData("acme", " ")]
-    public async Task HandleThemeChanged_WhitespaceSegment_SkipsPersistence(string tenantId, string userId)
-    {
+    public async Task HandleThemeChanged_WhitespaceSegment_SkipsPersistence(string tenantId, string userId) {
         IStorageService storage = Substitute.For<IStorageService>();
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
@@ -80,8 +75,7 @@ public sealed class ThemeEffectsScopeTests
     }
 
     [Fact]
-    public async Task HandleThemeChanged_ValidTenantAndUser_PersistsWithScopedKey()
-    {
+    public async Task HandleThemeChanged_ValidTenantAndUser_PersistsWithScopedKey() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
         IThemeService themeService = Substitute.For<IThemeService>();
@@ -98,8 +92,7 @@ public sealed class ThemeEffectsScopeTests
     }
 
     [Fact]
-    public async Task HandleAppInitialized_ValidContextEmptyStorage_LogsHFC2106AndDoesNotDispatchThemeChanged()
-    {
+    public async Task HandleAppInitialized_ValidContextEmptyStorage_LogsHFC2106AndDoesNotDispatchThemeChanged() {
         var storage = new InMemoryStorageService();
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
@@ -116,29 +109,24 @@ public sealed class ThemeEffectsScopeTests
         AssertLoggedInformation(logger, FcDiagnosticIds.HFC2106_ThemeHydrationEmpty);
     }
 
-    private static IUserContextAccessor MakeAccessor(string? tenantId, string? userId)
-    {
+    private static IUserContextAccessor MakeAccessor(string? tenantId, string? userId) {
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
         accessor.TenantId.Returns(tenantId);
         accessor.UserId.Returns(userId);
         return accessor;
     }
 
-    private static void AssertLoggedInformation(ILogger<ThemeEffects> logger, string diagnosticId)
-    {
+    private static void AssertLoggedInformation(ILogger<ThemeEffects> logger, string diagnosticId) {
         bool found = false;
-        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls())
-        {
-            if (!string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal))
-            {
+        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls()) {
+            if (!string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal)) {
                 continue;
             }
 
             object?[] args = call.GetArguments();
             bool isInformation = args.Any(a => a is LogLevel lvl && lvl == LogLevel.Information);
             bool mentionsId = args.Any(a => a is not null && a.ToString()?.Contains(diagnosticId, StringComparison.Ordinal) == true);
-            if (isInformation && mentionsId)
-            {
+            if (isInformation && mentionsId) {
                 found = true;
                 break;
             }

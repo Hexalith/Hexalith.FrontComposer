@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 using Hexalith.FrontComposer.Contracts.Communication;
 
 using Microsoft.AspNetCore.Components.Forms;
@@ -39,10 +37,7 @@ public sealed class ServerValidationApplicator {
         System.ArgumentNullException.ThrowIfNull(allowlist);
         System.ArgumentNullException.ThrowIfNull(model);
 
-        List<string> formLevel = new();
-        foreach (string global in exception.Problem.GlobalErrors) {
-            formLevel.Add(global);
-        }
+        List<string> formLevel = [.. exception.Problem.GlobalErrors];
 
         foreach (KeyValuePair<string, IReadOnlyList<string>> entry in exception.Problem.ValidationErrors) {
             if (allowlist.TryGetEditableField(entry.Key, out string normalized)) {

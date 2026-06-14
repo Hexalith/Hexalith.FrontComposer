@@ -45,16 +45,14 @@ public sealed record FaultInjectionEvidence(
 /// <summary>
 /// Redacts bounded evidence for assertion messages, logs, and serialized artifacts.
 /// </summary>
-public static class RedactedEvidenceFormatter
-{
+public static class RedactedEvidenceFormatter {
     /// <summary>
     /// Serializes an object to a bounded, redacted diagnostic string.
     /// </summary>
     /// <param name="value">The value to serialize.</param>
     /// <param name="options">The active test-host options.</param>
     /// <returns>A bounded and redacted diagnostic payload.</returns>
-    public static string Format(object? value, FrontComposerTestOptions options)
-    {
+    public static string Format(object? value, FrontComposerTestOptions options) {
         ArgumentNullException.ThrowIfNull(options);
 
         string payload = value is null ? "<null>" : JsonSerializer.Serialize(value);
@@ -66,30 +64,25 @@ public static class RedactedEvidenceFormatter
         redacted = RedactKey(redacted, "secret");
         redacted = RedactKey(redacted, "password");
 
-        if (redacted.Length <= options.MaxDiagnosticPayloadCharacters)
-        {
+        if (redacted.Length <= options.MaxDiagnosticPayloadCharacters) {
             return redacted;
         }
 
         return redacted[..options.MaxDiagnosticPayloadCharacters] + "...<truncated>";
     }
 
-    private static string RedactKey(string value, string key)
-    {
+    private static string RedactKey(string value, string key) {
         const string replacement = "\"<redacted>\"";
         int index = value.IndexOf(key, StringComparison.OrdinalIgnoreCase);
-        while (index >= 0)
-        {
+        while (index >= 0) {
             int colon = value.IndexOf(':', index);
-            if (colon < 0)
-            {
+            if (colon < 0) {
                 return value;
             }
 
             int valueStart = colon + 1;
             int end = ValueEnd(value, valueStart);
-            if (end < 0)
-            {
+            if (end < 0) {
                 return value[..valueStart] + replacement;
             }
 
@@ -103,21 +96,16 @@ public static class RedactedEvidenceFormatter
     // Finds the exclusive end of the JSON value that starts at valueStart so the whole
     // value is redacted. String values are bounded by their closing quote (commas inside
     // the value must not terminate redaction); other scalars stop at the next ',' or '}'.
-    private static int ValueEnd(string value, int valueStart)
-    {
-        if (valueStart < value.Length && value[valueStart] == '"')
-        {
+    private static int ValueEnd(string value, int valueStart) {
+        if (valueStart < value.Length && value[valueStart] == '"') {
             int cursor = valueStart + 1;
-            while (cursor < value.Length)
-            {
-                if (value[cursor] == '\\')
-                {
+            while (cursor < value.Length) {
+                if (value[cursor] == '\\') {
                     cursor += 2;
                     continue;
                 }
 
-                if (value[cursor] == '"')
-                {
+                if (value[cursor] == '"') {
                     return cursor + 1;
                 }
 
@@ -128,8 +116,7 @@ public static class RedactedEvidenceFormatter
         }
 
         int end = value.IndexOf(',', valueStart);
-        if (end < 0)
-        {
+        if (end < 0) {
             end = value.IndexOf('}', valueStart);
         }
 

@@ -3,7 +3,6 @@ using Bunit.TestDoubles;
 
 using Fluxor;
 
-using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;

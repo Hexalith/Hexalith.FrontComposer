@@ -4,8 +4,6 @@ using Hexalith.FrontComposer.Shell.Components.Rendering;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Rendering;
 
 /// <summary>
@@ -22,16 +20,12 @@ public sealed class FcProjectionRoutesTests {
     }
 
     [Fact]
-    public void StatusFilterThrowsOnNullBcRoute() {
-        _ = Should.Throw<ArgumentNullException>(
+    public void StatusFilterThrowsOnNullBcRoute() => _ = Should.Throw<ArgumentNullException>(
             () => FcProjectionRoutes.StatusFilter(null!, TestStatus.Pending));
-    }
 
     [Fact]
-    public void StatusFilterThrowsOnNullStatusValue() {
-        _ = Should.Throw<ArgumentNullException>(
+    public void StatusFilterThrowsOnNullStatusValue() => _ = Should.Throw<ArgumentNullException>(
             () => FcProjectionRoutes.StatusFilter("/orders", null!));
-    }
 
     [Flags]
     private enum FlagsStatus {

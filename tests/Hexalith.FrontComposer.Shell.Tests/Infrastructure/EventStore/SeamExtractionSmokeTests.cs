@@ -8,8 +8,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 /// <summary>
@@ -19,7 +17,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 public sealed class SeamExtractionSmokeTests {
     [Fact]
     public async Task AddHexalithEventStore_ResolvesEverySeam_WithoutLiveEventStore() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposer();
         _ = services.AddHexalithEventStore(options => {
             options.BaseAddress = new Uri("https://eventstore.test");

@@ -12,14 +12,12 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Rendering;
 public sealed class ExpandedRowActionsTests {
     [Fact]
     public void ExpandRowAction_RejectsEmptyViewKey() {
-        Should.Throw<ArgumentException>(() => new ExpandRowAction("", 42));
-        Should.Throw<ArgumentException>(() => new ExpandRowAction("   ", 42));
+        _ = Should.Throw<ArgumentException>(() => new ExpandRowAction("", 42));
+        _ = Should.Throw<ArgumentException>(() => new ExpandRowAction("   ", 42));
     }
 
     [Fact]
-    public void ExpandRowAction_RejectsNullItemKey() {
-        Should.Throw<ArgumentNullException>(() => new ExpandRowAction("orders:View:abc", null!));
-    }
+    public void ExpandRowAction_RejectsNullItemKey() => Should.Throw<ArgumentNullException>(() => new ExpandRowAction("orders:View:abc", null!));
 
     [Fact]
     public void ExpandRowAction_AcceptsValueTypeKey() {
@@ -30,8 +28,8 @@ public sealed class ExpandedRowActionsTests {
 
     [Fact]
     public void CollapseRowAction_RejectsEmptyViewKey() {
-        Should.Throw<ArgumentException>(() => new CollapseRowAction(""));
-        Should.Throw<ArgumentException>(() => new CollapseRowAction("   "));
+        _ = Should.Throw<ArgumentException>(() => new CollapseRowAction(""));
+        _ = Should.Throw<ArgumentException>(() => new CollapseRowAction("   "));
     }
 
     [Fact]

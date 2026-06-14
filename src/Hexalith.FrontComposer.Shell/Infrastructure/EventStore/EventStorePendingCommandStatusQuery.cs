@@ -2,7 +2,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
-using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.Extensions.Logging;

@@ -95,7 +95,7 @@ public static class FrontComposerStorageKey {
 
         // Skip prefix; split the remainder into 4 segments. commandTypeFqn / propertyName are verbatim so they
         // cannot contain ':' — but tenant/user can (URL-encoded). The shape is deterministic: 4 trailing ':'-separated segments.
-        string remainder = key.Substring(LastUsedPrefix.Length + Separator.Length);
+        string remainder = key[(LastUsedPrefix.Length + Separator.Length)..];
         string[] parts = remainder.Split(':');
         if (parts.Length != 4) {
             return null;

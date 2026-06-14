@@ -1,7 +1,5 @@
 using Bunit;
 
-using Microsoft.AspNetCore.Components;
-
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;

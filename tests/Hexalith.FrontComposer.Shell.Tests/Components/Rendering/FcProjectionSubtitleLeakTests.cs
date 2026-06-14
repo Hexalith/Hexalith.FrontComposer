@@ -6,12 +6,10 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Badges;
-using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Components.Rendering;
 using Hexalith.FrontComposer.Shell.Extensions;
-using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -20,8 +18,6 @@ using Microsoft.FluentUI.AspNetCore.Components;
 using NSubstitute;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Rendering;
 
@@ -81,9 +77,7 @@ public sealed class FcProjectionSubtitleLeakTests {
                 private readonly CountingObservable _owner;
                 private bool _disposed;
 
-                public Subscription(CountingObservable owner) {
-                    _owner = owner;
-                }
+                public Subscription(CountingObservable owner) => _owner = owner;
 
                 public void Dispose() {
                     if (_disposed) {

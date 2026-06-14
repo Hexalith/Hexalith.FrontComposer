@@ -1,12 +1,12 @@
-using ModelContextProtocol.Protocol;
-using ModelContextProtocol.Server;
-
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Invocation;
 
 using Microsoft.Extensions.DependencyInjection;
+
+using ModelContextProtocol.Protocol;
+using ModelContextProtocol.Server;
 
 namespace Hexalith.FrontComposer.Mcp;
 

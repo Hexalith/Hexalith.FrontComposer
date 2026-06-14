@@ -3,12 +3,10 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using MsOptions = Microsoft.Extensions.Options.Options;
 
 using Shouldly;
 
-using Xunit;
+using MsOptions = Microsoft.Extensions.Options.Options;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.Tenancy;
 

@@ -9,8 +9,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Extensions;
 
 /// <summary>

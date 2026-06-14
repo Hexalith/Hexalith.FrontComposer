@@ -6,8 +6,6 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Shell.Components.Badges;
 using Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
-using Microsoft.AspNetCore.Components;
-
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Badges;

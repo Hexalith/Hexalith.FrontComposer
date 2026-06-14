@@ -78,7 +78,7 @@ public sealed class ProjectionSlotContractsTests {
         RenderContext renderContext = new("tenant-a", "user-b", FcRenderMode.Server, DensityLevel.Comfortable, IsReadOnly: false);
         ProjectionSlotProjection parent = new(42, "Alpha");
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new FieldSlotContext<ProjectionSlotProjection, int>(
                 value: 42,
                 parent: null!,
@@ -90,7 +90,7 @@ public sealed class ProjectionSlotContractsTests {
                 isDevMode: false,
                 renderDefault: null));
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new FieldSlotContext<ProjectionSlotProjection, int>(
                 value: 42,
                 parent: parent,
@@ -102,7 +102,7 @@ public sealed class ProjectionSlotContractsTests {
                 isDevMode: false,
                 renderDefault: null));
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new FieldSlotContext<ProjectionSlotProjection, int>(
                 value: 42,
                 parent: parent,
@@ -138,63 +138,47 @@ public sealed class ProjectionSlotContractsTests {
 
     [Fact]
     public void ProjectionSlotDescriptor_NullReferenceArguments_Throw() {
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionSlotDescriptor(null!, "Priority", typeof(int), null, typeof(ValidPrioritySlot), 1));
-        Should.Throw<ArgumentException>(() =>
+        _ = Should.Throw<ArgumentException>(() =>
             new ProjectionSlotDescriptor(typeof(ProjectionSlotProjection), "  ", typeof(int), null, typeof(ValidPrioritySlot), 1));
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionSlotDescriptor(typeof(ProjectionSlotProjection), "Priority", null!, null, typeof(ValidPrioritySlot), 1));
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionSlotDescriptor(typeof(ProjectionSlotProjection), "Priority", typeof(int), null, null!, 1));
     }
 
     [Fact]
-    public void SlotSelector_AcceptsDirectPropertyAccess() {
-        ProjectionSlotSelector.Parse<ProjectionSlotProjection, int>(x => x.Priority)
+    public void SlotSelector_AcceptsDirectPropertyAccess() => ProjectionSlotSelector.Parse<ProjectionSlotProjection, int>(x => x.Priority)
             .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int)));
-    }
 
     [Fact]
-    public void SlotSelector_AcceptsNullableDirectPropertyAccess() {
-        ProjectionSlotSelector.Parse<ProjectionSlotWithNullable, int?>(x => x.Priority)
+    public void SlotSelector_AcceptsNullableDirectPropertyAccess() => ProjectionSlotSelector.Parse<ProjectionSlotWithNullable, int?>(x => x.Priority)
             .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int?)));
-    }
 
     [Fact]
-    public void SlotSelector_AcceptsObjectBoxingOfValueProperty() {
-        ProjectionSlotSelector.Parse<ProjectionSlotProjection>(x => x.Priority)
+    public void SlotSelector_AcceptsObjectBoxingOfValueProperty() => ProjectionSlotSelector.Parse<ProjectionSlotProjection>(x => x.Priority)
             .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int)));
-    }
 
     [Fact]
-    public void SlotSelector_AcceptsObjectBoxingOfNullableProperty() {
-        ProjectionSlotSelector.Parse<ProjectionSlotWithNullable>(x => x.Priority)
+    public void SlotSelector_AcceptsObjectBoxingOfNullableProperty() => ProjectionSlotSelector.Parse<ProjectionSlotWithNullable>(x => x.Priority)
             .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int?)));
-    }
 
     [Fact]
-    public void SlotSelector_AcceptsLiftedNullableConversion() {
-        ProjectionSlotSelector.Parse<ProjectionSlotProjection, int?>(x => x.Priority)
+    public void SlotSelector_AcceptsLiftedNullableConversion() => ProjectionSlotSelector.Parse<ProjectionSlotProjection, int?>(x => x.Priority)
             .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int)));
-    }
 
     [Fact]
-    public void SlotSelector_AcceptsInheritedProperty() {
-        ProjectionSlotSelector.Parse<DerivedProjection, int>(x => x.Priority)
+    public void SlotSelector_AcceptsInheritedProperty() => ProjectionSlotSelector.Parse<DerivedProjection, int>(x => x.Priority)
             .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int)));
-    }
 
     [Fact]
-    public void SlotSelector_AcceptsExplicitInterfaceProperty() {
-        ProjectionSlotSelector.Parse<ProjectionWithInterface, string>(x => x.Code)
+    public void SlotSelector_AcceptsExplicitInterfaceProperty() => ProjectionSlotSelector.Parse<ProjectionWithInterface, string>(x => x.Code)
             .ShouldBe(new ProjectionSlotFieldIdentity("Code", typeof(string)));
-    }
 
     [Fact]
-    public void SlotSelector_AcceptsShadowedPropertyAtMostDerived() {
-        ProjectionSlotSelector.Parse<ShadowingProjection, string>(x => x.Code)
+    public void SlotSelector_AcceptsShadowedPropertyAtMostDerived() => ProjectionSlotSelector.Parse<ShadowingProjection, string>(x => x.Code)
             .ShouldBe(new ProjectionSlotFieldIdentity("Code", typeof(string)));
-    }
 
     [Theory]
     [MemberData(nameof(InvalidSelectorCases))]
@@ -212,12 +196,13 @@ public sealed class ProjectionSlotContractsTests {
     }
 
     public static TheoryData<string, Expression<Func<ProjectionSlotProjection, object?>>> InvalidSelectorCases() {
-        TheoryData<string, Expression<Func<ProjectionSlotProjection, object?>>> data = new();
-        data.Add("nested-member-access", x => x.Name.Length);
-        data.Add("method-call-on-field", x => x.Name.ToString());
-        data.Add("computed-expression", x => x.Priority + 1);
-        data.Add("captured-static-field", _ => CapturedField);
-        data.Add("indexer-on-collection", x => x.Tags[0]);
+        TheoryData<string, Expression<Func<ProjectionSlotProjection, object?>>> data = new() {
+            { "nested-member-access", x => x.Name.Length },
+            { "method-call-on-field", x => x.Name.ToString() },
+            { "computed-expression", x => x.Priority + 1 },
+            { "captured-static-field", _ => CapturedField },
+            { "indexer-on-collection", x => x.Tags[0] }
+        };
         return data;
     }
 

@@ -23,16 +23,14 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// TimeProvider-driven debounce. The state/reducer layer is pinned by FilterReducerTests; this
 /// closes the filter-UI debounce gap (no dedicated test file existed at baseline 8036c3c).
 /// </summary>
-public sealed class FcColumnFilterCellTests : BunitContext
-{
+public sealed class FcColumnFilterCellTests : BunitContext {
     private const string ViewKeyValue = "acme:OrdersProjection";
     private const string ColumnKeyValue = "Name";
 
     private readonly IDispatcher _dispatcher = Substitute.For<IDispatcher>();
     private readonly FakeTimeProvider _time = new();
 
-    public FcColumnFilterCellTests()
-    {
+    public FcColumnFilterCellTests() {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLogging();
         _ = Services.AddLocalization();
@@ -42,8 +40,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
     }
 
     [Fact]
-    public async Task TypingThenAdvancingBelowDebounceThreshold_DispatchesNothing()
-    {
+    public async Task TypingThenAdvancingBelowDebounceThreshold_DispatchesNothing() {
         IRenderedComponent<FcColumnFilterCell> cut = RenderCell();
 
         Task pending = InvokeValueChangedAsync(cut.Instance, "Ac");
@@ -57,8 +54,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
     }
 
     [Fact]
-    public async Task TypingThenAdvancingPastDebounceThreshold_DispatchesExactlyOneActionWithTypedValue()
-    {
+    public async Task TypingThenAdvancingPastDebounceThreshold_DispatchesExactlyOneActionWithTypedValue() {
         IRenderedComponent<FcColumnFilterCell> cut = RenderCell();
 
         Task pending = InvokeValueChangedAsync(cut.Instance, "Acme");
@@ -72,8 +68,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
     }
 
     [Fact]
-    public async Task ClearingTheInput_DispatchesActionWithNullFilterValue()
-    {
+    public async Task ClearingTheInput_DispatchesActionWithNullFilterValue() {
         IRenderedComponent<FcColumnFilterCell> cut = RenderCell("Acme");
 
         Task pending = InvokeValueChangedAsync(cut.Instance, "   ");
@@ -87,8 +82,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
     }
 
     [Fact]
-    public async Task RapidTypingWithinWindow_CoalescesToExactlyOneDispatchWithLatestValue()
-    {
+    public async Task RapidTypingWithinWindow_CoalescesToExactlyOneDispatchWithLatestValue() {
         // The debounce contract: each keystroke cancels the prior pending delay, so a burst of
         // typing dispatches ONE ColumnFilterChangedAction carrying only the final value.
         IRenderedComponent<FcColumnFilterCell> cut = RenderCell();
@@ -106,16 +100,14 @@ public sealed class FcColumnFilterCellTests : BunitContext
     }
 
     [Fact]
-    public void HydratesInitialValueFromSnapshot_OnParametersSet()
-    {
+    public void HydratesInitialValueFromSnapshot_OnParametersSet() {
         IRenderedComponent<FcColumnFilterCell> cut = RenderCell("Acme");
 
         GetPrivateField<string>(cut.Instance, "_value").ShouldBe("Acme");
     }
 
     [Fact]
-    public async Task ReRenderWithUnchangedSnapshot_PreservesInFlightTypedValue()
-    {
+    public async Task ReRenderWithUnchangedSnapshot_PreservesInFlightTypedValue() {
         // A re-render that re-supplies the SAME snapshot value must not clobber what the operator is
         // mid-way through typing (OnParametersSet only re-hydrates when the snapshot value changes).
         IRenderedComponent<FcColumnFilterCell> cut = RenderCell();
@@ -125,7 +117,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
             .Add(static p => p.ViewKey, ViewKeyValue)
             .Add(static p => p.ColumnKey, ColumnKeyValue)
             .Add(static p => p.ColumnHeader, "Name")
-            .Add(static p => p.InitialValue, (string?)null));
+            .Add(static p => p.InitialValue, null));
 
         GetPrivateField<string>(cut.Instance, "_value").ShouldBe("Acme");
 
@@ -134,8 +126,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
     }
 
     [Fact]
-    public void ReRenderWithChangedSnapshot_RehydratesToNewValue()
-    {
+    public void ReRenderWithChangedSnapshot_RehydratesToNewValue() {
         // When the hydrated snapshot value actually changes (e.g. cleared/replaced elsewhere), the
         // cell re-hydrates so the input reflects authoritative grid-view state.
         IRenderedComponent<FcColumnFilterCell> cut = RenderCell("Acme");
@@ -151,8 +142,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
     }
 
     [Fact]
-    public async Task Dispose_CancelsPendingDebounce_WithoutDispatching()
-    {
+    public async Task Dispose_CancelsPendingDebounce_WithoutDispatching() {
         IRenderedComponent<FcColumnFilterCell> cut = RenderCell();
 
         Task pending = InvokeValueChangedAsync(cut.Instance, "Acme");
@@ -170,8 +160,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
             .Add(static p => p.ColumnHeader, "Name")
             .Add(static p => p.InitialValue, initialValue));
 
-    private static Task InvokeValueChangedAsync(object component, string value)
-    {
+    private static Task InvokeValueChangedAsync(object component, string value) {
         MethodInfo? method = component.GetType().GetMethod(
             "OnValueChangedAsync",
             BindingFlags.Instance | BindingFlags.NonPublic);
@@ -182,8 +171,7 @@ public sealed class FcColumnFilterCellTests : BunitContext
         return (Task)result!;
     }
 
-    private static T GetPrivateField<T>(object component, string fieldName)
-    {
+    private static T GetPrivateField<T>(object component, string fieldName) {
         FieldInfo? field = component.GetType().GetField(
             fieldName,
             BindingFlags.Instance | BindingFlags.NonPublic);

@@ -1,5 +1,4 @@
 using Hexalith.FrontComposer.Contracts.Diagnostics;
-using Hexalith.FrontComposer.Shell.Services;
 
 namespace Hexalith.FrontComposer.Shell.Services.Diagnostics;
 

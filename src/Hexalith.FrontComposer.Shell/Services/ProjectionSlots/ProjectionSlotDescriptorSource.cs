@@ -18,7 +18,7 @@ public sealed class ProjectionSlotDescriptorSource {
     public ProjectionSlotDescriptorSource(IReadOnlyList<ProjectionSlotDescriptor> descriptors) {
         ArgumentNullException.ThrowIfNull(descriptors);
 
-        ProjectionSlotDescriptor[] copy = new ProjectionSlotDescriptor[descriptors.Count];
+        var copy = new ProjectionSlotDescriptor[descriptors.Count];
         for (int i = 0; i < descriptors.Count; i++) {
             ProjectionSlotDescriptor entry = descriptors[i]
                 ?? throw new ArgumentException(

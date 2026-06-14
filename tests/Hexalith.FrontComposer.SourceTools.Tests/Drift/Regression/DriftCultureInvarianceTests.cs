@@ -1,11 +1,9 @@
-using System.Collections.Generic;
 using System.Globalization;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.DriftTestFixtures;
 
@@ -64,8 +62,8 @@ public sealed class DriftCultureInvarianceTests {
 
         // CH-1 — sort before pairing so culture-induced ordering changes (the bug under test) don't
         // mis-pair items.
-        invariantDrifts = [.. invariantDrifts.OrderBy(d => DiagnosticSortKey(d), StringComparer.Ordinal)];
-        scopedDrifts = [.. scopedDrifts.OrderBy(d => DiagnosticSortKey(d), StringComparer.Ordinal)];
+        invariantDrifts = [.. invariantDrifts.OrderBy(DiagnosticSortKey, StringComparer.Ordinal)];
+        scopedDrifts = [.. scopedDrifts.OrderBy(DiagnosticSortKey, StringComparer.Ordinal)];
 
         for (int i = 0; i < invariantDrifts.Length; i++) {
             // CC-9 — full message text invariance, including formatted numerics.

@@ -1,11 +1,9 @@
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
-using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.State.Density;
 
 using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.Localization;
 
 namespace Hexalith.FrontComposer.Shell.Components.Layout;
 
@@ -53,7 +51,7 @@ public partial class FcDensityAnnouncer : ComponentBase, IDisposable {
             Localizer["DensityAnnouncementTemplate"].Value,
             LocalizedDensityLabel(current));
         _hasAnnouncement = true;
-        InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private string LocalizedDensityLabel(DensityLevel level) => level switch {

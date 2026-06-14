@@ -9,7 +9,6 @@ using Hexalith.FrontComposer.SourceTools.Diagnostics;
 using Microsoft.CodeAnalysis;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Diagnostics;
 
@@ -44,7 +43,7 @@ public sealed class DriftDiagnosticCatalogTests {
 
     [Fact]
     public void EveryDriftDescriptor_PopulatesHelpLinkUri_AgainstCanonicalDocsPrefix() {
-        Regex pathSegment(string id) => new($"/{Regex.Escape(id)}(/|$|\\.html|\\.md)", RegexOptions.CultureInvariant);
+        static Regex pathSegment(string id) => new($"/{Regex.Escape(id)}(/|$|\\.html|\\.md)", RegexOptions.CultureInvariant);
 
         foreach (DiagnosticDescriptor descriptor in DriftDescriptors()) {
             descriptor.HelpLinkUri.ShouldNotBeNullOrWhiteSpace($"AC12 — {descriptor.Id} missing HelpLinkUri.");

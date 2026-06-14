@@ -8,9 +8,6 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// Host DataGrid rows (Epic 4) cascade this; Story 2-2 renderers tolerate <see langword="null"/>.
 /// </summary>
 public sealed record ProjectionContext {
-    private readonly string _projectionTypeFqn = string.Empty;
-    private readonly string _boundedContext = string.Empty;
-    private readonly IImmutableDictionary<string, object?> _fields = ImmutableDictionary<string, object?>.Empty;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ProjectionContext"/> record.
@@ -34,27 +31,27 @@ public sealed record ProjectionContext {
 
     /// <summary>Gets the fully qualified name of the projection type.</summary>
     public string ProjectionTypeFqn {
-        get => _projectionTypeFqn;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new ArgumentException("Projection type FQN cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _projectionTypeFqn = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the bounded context the projection belongs to.</summary>
     public string BoundedContext {
-        get => _boundedContext;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new ArgumentException("Bounded context cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _boundedContext = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the optional aggregate identifier when the row represents a single entity.</summary>
     public string? AggregateId { get; init; }
@@ -67,7 +64,7 @@ public sealed record ProjectionContext {
     /// mutated by the producer after cascading; consumers can rely on the contents being stable.
     /// </remarks>
     public IImmutableDictionary<string, object?> Fields {
-        get => _fields;
-        init => _fields = value ?? throw new ArgumentNullException(nameof(value));
-    }
+        get;
+        init => field = value ?? throw new ArgumentNullException(nameof(value));
+    } = ImmutableDictionary<string, object?>.Empty;
 }

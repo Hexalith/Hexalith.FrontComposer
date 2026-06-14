@@ -43,7 +43,7 @@ public sealed class CustomizationDiagnosticTests {
 
     [Fact]
     public void Formatter_EmitsCanonicalTeachingSections() {
-        CustomizationDiagnostic diagnostic = CustomizationDiagnostic.Create(
+        var diagnostic = CustomizationDiagnostic.Create(
             id: "HFC1036",
             severity: CustomizationDiagnosticSeverity.Warning,
             phase: CustomizationDiagnosticPhase.Build,
@@ -70,8 +70,7 @@ public sealed class CustomizationDiagnosticTests {
     }
 
     [Fact]
-    public void Create_RejectsMissingTeachingSections() {
-        Should.Throw<ArgumentException>(() =>
+    public void Create_RejectsMissingTeachingSections() => Should.Throw<ArgumentException>(() =>
             CustomizationDiagnostic.Create(
                 id: "HFC2115",
                 severity: CustomizationDiagnosticSeverity.Warning,
@@ -87,5 +86,4 @@ public sealed class CustomizationDiagnosticTests {
                 fix: "Fix text.",
                 fallback: "Fallback text.",
                 docsLink: "https://hexalith.github.io/FrontComposer/diagnostics/HFC2115"));
-    }
 }

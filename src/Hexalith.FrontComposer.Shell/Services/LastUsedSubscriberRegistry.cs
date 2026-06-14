@@ -12,14 +12,12 @@ namespace Hexalith.FrontComposer.Shell.Services;
 /// </summary>
 public sealed class LastUsedSubscriberRegistry : ILastUsedSubscriberRegistry, IDisposable {
     private readonly IServiceProvider _services;
-    private readonly HashSet<Type> _registered = new();
-    private readonly List<IDisposable> _instances = new();
+    private readonly HashSet<Type> _registered = [];
+    private readonly List<IDisposable> _instances = [];
     private readonly object _gate = new();
     private bool _disposed;
 
-    public LastUsedSubscriberRegistry(IServiceProvider services) {
-        _services = services ?? throw new ArgumentNullException(nameof(services));
-    }
+    public LastUsedSubscriberRegistry(IServiceProvider services) => _services = services ?? throw new ArgumentNullException(nameof(services));
 
     /// <summary>
     /// Resolves the per-command subscriber from DI on first call; subsequent calls are no-ops.
@@ -76,7 +74,7 @@ public sealed class LastUsedSubscriberRegistry : ILastUsedSubscriberRegistry, ID
             }
 
             _disposed = true;
-            toDispose = new List<IDisposable>(_instances);
+            toDispose = [.. _instances];
             _instances.Clear();
             _registered.Clear();
         }

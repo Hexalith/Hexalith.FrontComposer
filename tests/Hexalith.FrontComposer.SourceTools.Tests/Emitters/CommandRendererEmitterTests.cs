@@ -27,7 +27,7 @@ public class CommandRendererEmitterTests {
         bool isDestructive = false,
         string? destructiveConfirmTitle = null,
         string? destructiveConfirmBody = null) {
-        ImmutableArray<string> nonDerivable = Enumerable
+        var nonDerivable = Enumerable
             .Range(0, nonDerivableCount)
             .Select(i => "Field" + i)
             .ToImmutableArray();

@@ -5,12 +5,8 @@ using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Services.Auth;
 

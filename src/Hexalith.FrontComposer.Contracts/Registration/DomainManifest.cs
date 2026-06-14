@@ -18,9 +18,6 @@ public record DomainManifest(
     private static readonly IReadOnlyDictionary<string, string> EmptyCommandPolicies =
         new Dictionary<string, string>(StringComparer.Ordinal);
 
-    private readonly IReadOnlyDictionary<string, string> _commandPolicies =
-        CommandPolicies ?? EmptyCommandPolicies;
-
     /// <summary>
     /// Gets command authorization policies keyed by command fully qualified type name.
     /// </summary>
@@ -30,7 +27,7 @@ public record DomainManifest(
     /// (registry merge, catalog validator, palette filter, empty-state CTA resolver).
     /// </remarks>
     public IReadOnlyDictionary<string, string> CommandPolicies {
-        get => _commandPolicies;
-        init => _commandPolicies = value ?? EmptyCommandPolicies;
-    }
+        get;
+        init => field = value ?? EmptyCommandPolicies;
+    } = CommandPolicies ?? EmptyCommandPolicies;
 }

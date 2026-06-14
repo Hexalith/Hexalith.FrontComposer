@@ -39,8 +39,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// DOM mutation as an aria-live announce.
 /// </para>
 /// </remarks>
-public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorComponent, IAsyncDisposable
-{
+public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorComponent, IAsyncDisposable {
     private const string FocusModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js";
     private const string KeyboardModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js";
 
@@ -87,18 +86,15 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             : null;
 
     /// <inheritdoc />
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
+    protected override async Task OnAfterRenderAsync(bool firstRender) {
+        if (firstRender) {
             await RegisterKeyboardInteropAsync().ConfigureAwait(false);
             await FocusSearchAsync().ConfigureAwait(false);
 
             // D15 empty-then-populate live-region choreography. DO NOT refactor — see anti-regression
             // comment in FcCommandPalette.razor for the full rationale.
             await Task.Yield();
-            if (_disposed || _explicitlyClosed)
-            {
+            if (_disposed || _explicitlyClosed) {
                 return;
             }
 
@@ -109,8 +105,7 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
 
         // Refresh aria-live text on every later render (results changed, query changed, etc.).
         string nextText = ComputeLiveRegionText(PaletteState.Value);
-        if (!string.Equals(_liveRegionText, nextText, StringComparison.Ordinal))
-        {
+        if (!string.Equals(_liveRegionText, nextText, StringComparison.Ordinal)) {
             _liveRegionText = nextText;
             StateHasChanged();
         }
@@ -118,48 +113,42 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
 
     /// <summary>Disposes the component, dispatching a catch-all <see cref="PaletteClosedAction"/> per D11.</summary>
     /// <returns>A value task that completes when disposal finishes.</returns>
-    public new async ValueTask DisposeAsync()
-    {
+    public new async ValueTask DisposeAsync() {
         _disposed = true;
 
         // D11 dismiss-path catch-all — if the dialog was dismissed without going through Escape /
         // activation (X-button, backdrop click, circuit disconnect), make sure Fluxor still sees a
         // PaletteClosedAction so a subsequent Ctrl+K can re-open. Wrap in ObjectDisposedException
         // guard for dirty-disconnect robustness.
-        if (!_explicitlyClosed)
-        {
-            try
-            {
+        if (!_explicitlyClosed) {
+            try {
                 Dispatcher.Dispatch(new PaletteClosedAction(UlidFactory.NewUlid()));
             }
-            catch (ObjectDisposedException)
-            {
+            catch (ObjectDisposedException) {
                 // Circuit disposed — Fluxor store is gone, nothing to update. Silent by design.
             }
-            catch (InvalidOperationException)
-            {
+            catch (InvalidOperationException) {
                 // Fluxor store disposed ("Store has been disposed") — mirrors the FrontComposerShell
                 // HandleLocationChanged guard. Silent by design.
             }
         }
 
-        if (_restoreBodyFocusOnDispose)
-        {
+        if (_restoreBodyFocusOnDispose) {
             await RestoreBodyFocusFallbackAsync().ConfigureAwait(false);
         }
 
-        if (_focusModule is not null)
-        {
+        if (_focusModule is not null) {
             try { await _focusModule.DisposeAsync(); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { } catch (JSException) { }
         }
 
-        if (_keyboardModule is not null)
-        {
+        if (_keyboardModule is not null) {
             // P9 (2026-04-21 pass-3): release the keydown handler attached by
             // registerPaletteKeyFilter before dropping the module so hot-reload / reconnect paths
             // don't accumulate stale handlers on the palette root element.
             try { await _keyboardModule.InvokeVoidAsync("unregisterPaletteKeyFilter", _paletteRoot).ConfigureAwait(false); }
-            catch (OperationCanceledException) { } catch (JSDisconnectedException) { } catch (JSException) { }
+            catch (OperationCanceledException) { }
+            catch (JSDisconnectedException) { }
+            catch (JSException) { }
 
             try { await _keyboardModule.DisposeAsync(); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { } catch (JSException) { }
         }
@@ -167,26 +156,22 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         await base.DisposeAsync();
     }
 
-    private Task OnQueryChangedAsync(string newQuery)
-    {
+    private Task OnQueryChangedAsync(string newQuery) {
         _localQuery = newQuery ?? string.Empty;
         Dispatcher.Dispatch(new PaletteQueryChangedAction(UlidFactory.NewUlid(), _localQuery));
         return Task.CompletedTask;
     }
 
-    private async Task OnSelectionClickedAsync(int flatIndex)
-    {
+    private async Task OnSelectionClickedAsync(int flatIndex) {
         // P7: snapshot Results once — the debounced results effect can replace PaletteState.Value.Results
         // between the bounds check and index read, so a second read could return a different row.
         System.Collections.Immutable.ImmutableArray<PaletteResult> results = PaletteState.Value.Results;
-        if (flatIndex < 0 || flatIndex >= results.Length)
-        {
+        if (flatIndex < 0 || flatIndex >= results.Length) {
             return;
         }
 
         PaletteResult result = results[flatIndex];
-        if (IsInformationalShortcut(result))
-        {
+        if (IsInformationalShortcut(result)) {
             return;
         }
 
@@ -201,36 +186,30 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
 
         Dispatcher.Dispatch(new PaletteResultActivatedAction(flatIndex));
 
-        if (!isSentinel)
-        {
+        if (!isSentinel) {
             _restoreBodyFocusOnDispose = restoreFocus;
             _explicitlyClosed = true;
-            if (Dialog is not null)
-            {
+            if (Dialog is not null) {
                 await Dialog.CloseAsync();
             }
         }
     }
 
-    private async Task HandleKeyDownAsync(KeyboardEventArgs e)
-    {
+    private async Task HandleKeyDownAsync(KeyboardEventArgs e) {
         ArgumentNullException.ThrowIfNull(e);
 
         // P12 — rapid Escape→Enter on a keyboard-buffered input can dispatch both PaletteClosedAction
         // and PaletteResultActivatedAction on the same component instance; the second navigation would
         // race the first close. Bail if the palette was already explicitly dismissed.
-        if (_explicitlyClosed)
-        {
+        if (_explicitlyClosed) {
             return;
         }
 
-        switch (e.Key)
-        {
+        switch (e.Key) {
             case "Escape":
                 _explicitlyClosed = true;
                 Dispatcher.Dispatch(new PaletteClosedAction(UlidFactory.NewUlid()));
-                if (Dialog is not null)
-                {
+                if (Dialog is not null) {
                     await Dialog.CloseAsync();
                 }
 
@@ -248,14 +227,12 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
                 // P7: snapshot Results once — see OnSelectionClickedAsync rationale.
                 System.Collections.Immutable.ImmutableArray<PaletteResult> enterResults = PaletteState.Value.Results;
                 int selected = PaletteState.Value.SelectedIndex;
-                if (selected < 0 || selected >= enterResults.Length)
-                {
+                if (selected < 0 || selected >= enterResults.Length) {
                     return;
                 }
 
                 PaletteResult result = enterResults[selected];
-                if (IsInformationalShortcut(result))
-                {
+                if (IsInformationalShortcut(result)) {
                     return;
                 }
 
@@ -268,12 +245,10 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
                 bool restoreFocus = !isSentinel && ShouldRestoreBodyFocusOnDispose(result);
 
                 Dispatcher.Dispatch(new PaletteResultActivatedAction(selected));
-                if (!isSentinel)
-                {
+                if (!isSentinel) {
                     _restoreBodyFocusOnDispose = restoreFocus;
                     _explicitlyClosed = true;
-                    if (Dialog is not null)
-                    {
+                    if (Dialog is not null) {
                         await Dialog.CloseAsync();
                     }
                 }
@@ -285,16 +260,13 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         }
     }
 
-    private async Task RestoreBodyFocusFallbackAsync()
-    {
+    private async Task RestoreBodyFocusFallbackAsync() {
         IJSObjectReference? focusModule = await EnsureFocusModuleAsync().ConfigureAwait(false);
-        if (focusModule is null)
-        {
+        if (focusModule is null) {
             return;
         }
 
-        try
-        {
+        try {
             await focusModule.InvokeVoidAsync("focusBodyIfNeeded").ConfigureAwait(false);
         }
         catch (OperationCanceledException) { }
@@ -302,38 +274,30 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         catch (JSException) { }
     }
 
-    private async Task RegisterKeyboardInteropAsync()
-    {
+    private async Task RegisterKeyboardInteropAsync() {
         IJSObjectReference? keyboardModule = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
-        if (keyboardModule is null)
-        {
+        if (keyboardModule is null) {
             return;
         }
 
-        try
-        {
+        try {
             await keyboardModule.InvokeVoidAsync("registerPaletteKeyFilter", _paletteRoot).ConfigureAwait(false);
         }
         catch (OperationCanceledException) { }
         catch (JSDisconnectedException) { }
-        catch (JSException)
-        {
+        catch (JSException) {
             // Non-fatal — list navigation still works, but browser-default suppression is skipped.
         }
     }
 
-    private async Task FocusSearchAsync()
-    {
-        if (_searchRef is not { Element: { } element })
-        {
+    private async Task FocusSearchAsync() {
+        if (_searchRef is not { Element: { } element }) {
             return;
         }
 
         IJSObjectReference? keyboardModule = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
-        if (keyboardModule is not null)
-        {
-            try
-            {
+        if (keyboardModule is not null) {
+            try {
                 await keyboardModule.InvokeVoidAsync("focusElement", element).ConfigureAwait(false);
                 return;
             }
@@ -342,73 +306,57 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             catch (JSException) { }
         }
 
-        try
-        {
+        try {
             await element.FocusAsync();
         }
-        catch (InvalidOperationException)
-        {
+        catch (InvalidOperationException) {
             // ElementReference not attached — happens when called pre-render in some test/JS boot
             // races. User's first keystroke implicitly re-focuses the input.
         }
-        catch (JSDisconnectedException)
-        {
+        catch (JSDisconnectedException) {
             // Circuit disconnected mid-focus.
         }
-        catch (JSException)
-        {
+        catch (JSException) {
             // JS interop boot race — element.focus() failed non-fatally.
         }
     }
 
-    private async Task<IJSObjectReference?> EnsureKeyboardModuleAsync()
-    {
-        if (_keyboardModule is not null)
-        {
+    private async Task<IJSObjectReference?> EnsureKeyboardModuleAsync() {
+        if (_keyboardModule is not null) {
             return _keyboardModule;
         }
 
-        try
-        {
+        try {
             _keyboardModule = await JS.InvokeAsync<IJSObjectReference>("import", KeyboardModulePath).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             return null;
         }
-        catch (JSDisconnectedException)
-        {
+        catch (JSDisconnectedException) {
             return null;
         }
-        catch (JSException)
-        {
+        catch (JSException) {
             return null;
         }
 
         return _keyboardModule;
     }
 
-    private async Task<IJSObjectReference?> EnsureFocusModuleAsync()
-    {
-        if (_focusModule is not null)
-        {
+    private async Task<IJSObjectReference?> EnsureFocusModuleAsync() {
+        if (_focusModule is not null) {
             return _focusModule;
         }
 
-        try
-        {
+        try {
             _focusModule = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             return null;
         }
-        catch (JSDisconnectedException)
-        {
+        catch (JSDisconnectedException) {
             return null;
         }
-        catch (JSException)
-        {
+        catch (JSException) {
             return null;
         }
 
@@ -418,10 +366,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     private static bool IsInformationalShortcut(PaletteResult result)
         => result.Category == PaletteResultCategory.Shortcut && string.IsNullOrEmpty(result.RouteUrl);
 
-    private bool ShouldRestoreBodyFocusOnDispose(PaletteResult result)
-    {
-        string? targetUrl = result.Category switch
-        {
+    private bool ShouldRestoreBodyFocusOnDispose(PaletteResult result) {
+        string? targetUrl = result.Category switch {
             PaletteResultCategory.Projection or PaletteResultCategory.Recent or PaletteResultCategory.Shortcut => result.RouteUrl,
             PaletteResultCategory.Command => string.IsNullOrWhiteSpace(result.CommandTypeName)
                     || string.IsNullOrWhiteSpace(result.BoundedContext)
@@ -430,8 +376,7 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             _ => null,
         };
 
-        if (string.IsNullOrWhiteSpace(targetUrl))
-        {
+        if (string.IsNullOrWhiteSpace(targetUrl)) {
             return false;
         }
 

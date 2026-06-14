@@ -5,7 +5,6 @@ using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 
@@ -88,7 +87,7 @@ public sealed class SchemaFingerprintCrossPackageTests {
         return canonical
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Where(line => line.StartsWith("field=", StringComparison.Ordinal))
-            .Select(line => line.Substring("field=".Length).Split('|'))
+            .Select(line => line["field=".Length..].Split('|'))
             .ToArray();
     }
 

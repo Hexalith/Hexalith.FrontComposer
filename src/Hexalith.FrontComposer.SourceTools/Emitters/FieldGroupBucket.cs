@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 namespace Hexalith.FrontComposer.SourceTools.Emitters;

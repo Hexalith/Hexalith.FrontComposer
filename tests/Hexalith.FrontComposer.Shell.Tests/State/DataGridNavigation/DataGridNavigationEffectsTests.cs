@@ -7,7 +7,6 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
-using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
@@ -78,13 +77,13 @@ public sealed class DataGridNavigationEffectsTests {
         ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
         var storage = new InMemoryStorageService();
         string key = StorageKeys.BuildKey(Tenant, User, "datagrid", ViewKey);
-        GridViewPersistenceBlob blob = GridViewPersistenceBlob.FromSnapshot(Snap());
+        var blob = GridViewPersistenceBlob.FromSnapshot(Snap());
         await storage.SetAsync(key, blob, ct);
 
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
-        registry.GetManifests().Returns(new List<DomainManifest> {
+        registry.GetManifests().Returns([
             new("Counter", "counter", Array.Empty<string>(), Array.Empty<string>()),
-        });
+        ]);
 
         var sut = new DataGridNavigationEffects(storage, MakeAccessor(), logger, FakeState(), registry);
         IDispatcher dispatcher = Substitute.For<IDispatcher>();

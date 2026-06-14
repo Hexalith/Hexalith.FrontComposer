@@ -7,7 +7,6 @@ using Hexalith.FrontComposer.SourceTools.Parsing;
 using Microsoft.CodeAnalysis;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Seam;
 
@@ -26,15 +25,12 @@ public sealed class DriftSeamPublicSurfaceContractTests {
     ];
 
     [Fact]
-    public void NoPublicTypeWithDriftKeyword_ShipsInSourceToolsAssembly() {
-        AssertNoForbiddenPublicTypes(typeof(DomainModel).Assembly);
-    }
+    public void NoPublicTypeWithDriftKeyword_ShipsInSourceToolsAssembly() => AssertNoForbiddenPublicTypes(typeof(DomainModel).Assembly);
 
     [Fact]
-    public void NoPublicTypeWithDriftKeyword_ShipsInContractsAssembly() {
+    public void NoPublicTypeWithDriftKeyword_ShipsInContractsAssembly() =>
         // CM-17 — extend the seam check to the Contracts assembly.
         AssertNoForbiddenPublicTypes(typeof(FcDiagnosticIds).Assembly);
-    }
 
     [Fact]
     public void NoPublicCommandLineEntryPoint_ShipsInSourceToolsAssembly() {
@@ -88,7 +84,7 @@ public sealed class DriftSeamPublicSurfaceContractTests {
         // a brittle Name-string match.
         Assembly sourceTools = typeof(DomainModel).Assembly;
         Type? service = sourceTools.GetType("Hexalith.FrontComposer.SourceTools.Drift.DriftComparisonService", throwOnError: false);
-        service.ShouldNotBeNull("AC17 — DriftComparisonService must exist as an internal type once T3 lands.");
+        _ = service.ShouldNotBeNull("AC17 — DriftComparisonService must exist as an internal type once T3 lands.");
         service!.IsPublic.ShouldBeFalse("AC17 — the seam must remain internal.");
         service.IsSealed.ShouldBeTrue(
             "AC17 — DriftComparisonService should be sealed so InternalsVisibleTo grantees cannot subclass and bypass.");
@@ -105,13 +101,13 @@ public sealed class DriftSeamPublicSurfaceContractTests {
         // returning DriftComparisonResult. Renames or signature drift surface here.
         Assembly sourceTools = typeof(DomainModel).Assembly;
         Type? service = sourceTools.GetType("Hexalith.FrontComposer.SourceTools.Drift.DriftComparisonService", throwOnError: false);
-        service.ShouldNotBeNull();
+        _ = service.ShouldNotBeNull();
         Type? snapshot = sourceTools.GetType("Hexalith.FrontComposer.SourceTools.Drift.DriftCurrentSnapshot", throwOnError: false);
         Type? baseline = sourceTools.GetType("Hexalith.FrontComposer.SourceTools.Drift.DriftBaselineSet", throwOnError: false);
         Type? result = sourceTools.GetType("Hexalith.FrontComposer.SourceTools.Drift.DriftComparisonResult", throwOnError: false);
-        snapshot.ShouldNotBeNull();
-        baseline.ShouldNotBeNull();
-        result.ShouldNotBeNull();
+        _ = snapshot.ShouldNotBeNull();
+        _ = baseline.ShouldNotBeNull();
+        _ = result.ShouldNotBeNull();
 
         MethodInfo? compare = service!
             .GetMethods(BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Public)
@@ -119,7 +115,7 @@ public sealed class DriftSeamPublicSurfaceContractTests {
                               && m.GetParameters().Length == 2
                               && m.GetParameters()[0].ParameterType == snapshot
                               && m.GetParameters()[1].ParameterType == baseline);
-        compare.ShouldNotBeNull("AC17 — Compare(DriftCurrentSnapshot, DriftBaselineSet) overload is the seam contract for Story 9-2.");
+        _ = compare.ShouldNotBeNull("AC17 — Compare(DriftCurrentSnapshot, DriftBaselineSet) overload is the seam contract for Story 9-2.");
         compare!.ReturnType.ShouldBe(result, "AC17 — Compare must return DriftComparisonResult.");
     }
 

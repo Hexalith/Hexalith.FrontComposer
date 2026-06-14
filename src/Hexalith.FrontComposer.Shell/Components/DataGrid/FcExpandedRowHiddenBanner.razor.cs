@@ -1,5 +1,3 @@
-using System.Globalization;
-
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -47,11 +45,10 @@ public partial class FcExpandedRowHiddenBanner : ComponentBase {
     private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
 
     /// <inheritdoc />
-    protected override void OnParametersSet() {
+    protected override void OnParametersSet() =>
         // Single-expand invariant in v1 — count is always "1" per UX-DR17. ICU pluralization
         // bundles with multi-expand v2 commit per the Known Gaps ledger (2026-04-24).
         _bannerMessage = Localizer["ExpandedRowHiddenByFilterBanner", "1"].Value;
-    }
 
     private Task OnClearFilterClickedAsync() {
         Dispatcher.Dispatch(new FiltersResetAction(ViewKey));

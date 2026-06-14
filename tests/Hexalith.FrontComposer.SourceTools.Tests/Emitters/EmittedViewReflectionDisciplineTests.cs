@@ -85,7 +85,7 @@ public sealed class EmittedViewReflectionDisciplineTests {
         parseDiagnostics.ShouldBeEmpty(
             $"Strategy {strategy} emitted code that does not parse as valid C#; AOT scan cannot proceed.");
 
-        List<string> findings = new();
+        List<string> findings = [];
         string sourceText = root.ToFullString();
         foreach ((string pattern, string rationale) in _aotHostilePatterns) {
             int index = sourceText.IndexOf(pattern, StringComparison.Ordinal);
@@ -146,7 +146,7 @@ public sealed class EmittedViewReflectionDisciplineTests {
     }
 
     private static RazorModel BuildModel(ProjectionRenderStrategy strategy) =>
-        new RazorModel(
+        new(
             typeName: "OrderProjection",
             @namespace: "TestDomain",
             boundedContext: "Orders",

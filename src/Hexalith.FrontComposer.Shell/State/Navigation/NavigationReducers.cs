@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Shell.State.Navigation;
 /// <summary>
 /// Pure reducers for <see cref="FrontComposerNavigationState"/> (Story 3-2 D3, D11, D13, D14, D15).
 /// </summary>
-public static class NavigationReducers
-{
+public static class NavigationReducers {
     /// <summary>
     /// Flips <see cref="FrontComposerNavigationState.SidebarCollapsed"/> (Story 3-2 D9).
     /// </summary>
@@ -16,8 +15,7 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceSidebarToggled(
         FrontComposerNavigationState state,
-        SidebarToggledAction action)
-    {
+        SidebarToggledAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
         return state with { SidebarCollapsed = !state.SidebarCollapsed };
@@ -33,12 +31,10 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceNavGroupToggled(
         FrontComposerNavigationState state,
-        NavGroupToggledAction action)
-    {
+        NavGroupToggledAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state with
-        {
+        return state with {
             CollapsedGroups = action.Collapsed
                 ? state.CollapsedGroups.SetItem(action.BoundedContext, true)
                 : state.CollapsedGroups.Remove(action.BoundedContext),
@@ -58,8 +54,7 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceViewportTierChanged(
         FrontComposerNavigationState state,
-        ViewportTierChangedAction action)
-    {
+        ViewportTierChangedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
         return state.CurrentViewport == action.NewTier
@@ -76,8 +71,7 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceSidebarExpanded(
         FrontComposerNavigationState state,
-        SidebarExpandedAction action)
-    {
+        SidebarExpandedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
         return state with { SidebarCollapsed = false };
@@ -94,12 +88,10 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceNavigationHydrated(
         FrontComposerNavigationState state,
-        NavigationHydratedAction action)
-    {
+        NavigationHydratedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state with
-        {
+        return state with {
             SidebarCollapsed = action.SidebarCollapsed,
             CollapsedGroups = action.CollapsedGroups,
         };
@@ -115,8 +107,7 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceBoundedContextChanged(
         FrontComposerNavigationState state,
-        BoundedContextChangedAction action)
-    {
+        BoundedContextChangedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
         return string.Equals(state.CurrentBoundedContext, action.NewBoundedContext, StringComparison.Ordinal)
@@ -136,8 +127,7 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceLastActiveRouteChanged(
         FrontComposerNavigationState state,
-        LastActiveRouteChangedAction action)
-    {
+        LastActiveRouteChangedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
         string? normalised = string.IsNullOrWhiteSpace(action.Route) ? null : action.Route;
@@ -156,8 +146,7 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceLastActiveRouteHydrated(
         FrontComposerNavigationState state,
-        LastActiveRouteHydratedAction action)
-    {
+        LastActiveRouteHydratedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
         string? normalised = string.IsNullOrWhiteSpace(action.Route) ? null : action.Route;
@@ -175,8 +164,7 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceStorageReady(
         FrontComposerNavigationState state,
-        StorageReadyAction action)
-    {
+        StorageReadyAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
         return state.StorageReady
@@ -196,8 +184,7 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceNavigationHydrating(
         FrontComposerNavigationState state,
-        NavigationHydratingAction action)
-    {
+        NavigationHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
         return state.HydrationState == NavigationHydrationState.Hydrated
@@ -217,8 +204,7 @@ public static class NavigationReducers
     [ReducerMethod]
     public static FrontComposerNavigationState ReduceNavigationHydratedCompleted(
         FrontComposerNavigationState state,
-        NavigationHydratedCompletedAction action)
-    {
+        NavigationHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
         return state.HydrationState == NavigationHydrationState.Hydrated

@@ -2,8 +2,6 @@ using System.Text.RegularExpressions;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Architecture;
 
 [Trait("Category", "Governance")]

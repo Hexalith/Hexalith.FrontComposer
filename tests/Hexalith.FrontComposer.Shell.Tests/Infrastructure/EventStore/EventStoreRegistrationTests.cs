@@ -11,14 +11,12 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 public sealed class EventStoreRegistrationTests {
     [Fact]
     public async Task AddHexalithFrontComposer_Alone_UsesNullPendingCommandStatusQuery() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposer();
 
         await using ServiceProvider provider = services.BuildServiceProvider();
@@ -28,7 +26,7 @@ public sealed class EventStoreRegistrationTests {
 
     [Fact]
     public async Task AddHexalithEventStore_ReplacesNullPendingCommandStatusQuery() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposer();
         _ = services.AddHexalithEventStore(options => {
             options.BaseAddress = new Uri("https://eventstore.test");
@@ -42,7 +40,7 @@ public sealed class EventStoreRegistrationTests {
 
     [Fact]
     public async Task AddHexalithEventStore_ReplacesFrontComposerStubDefaults() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposer();
         _ = services.AddHexalithEventStore(options => {
             options.BaseAddress = new Uri("https://eventstore.test");
@@ -71,7 +69,7 @@ public sealed class EventStoreRegistrationTests {
 
     [Fact]
     public async Task ConsumerReplacementWinsAfterEventStoreRegistration() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposer();
         _ = services.AddHexalithEventStore(options => {
             options.BaseAddress = new Uri("https://eventstore.test");
@@ -86,7 +84,7 @@ public sealed class EventStoreRegistrationTests {
 
     [Fact]
     public async Task AddHexalithEventStore_Alone_RegistersDispatchAuthorizationDependencies() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddHexalithEventStore(options => {
             options.BaseAddress = new Uri("https://eventstore.test");
             options.RequireAccessToken = false;
@@ -102,7 +100,7 @@ public sealed class EventStoreRegistrationTests {
 
     [Fact]
     public void InvalidOptionsFailConsistently() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddHexalithEventStore();
 
         using ServiceProvider provider = services.BuildServiceProvider();

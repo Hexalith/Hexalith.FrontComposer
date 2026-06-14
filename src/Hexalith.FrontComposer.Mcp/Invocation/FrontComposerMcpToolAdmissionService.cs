@@ -28,7 +28,7 @@ public sealed class FrontComposerMcpToolAdmissionService(
 
         // Policy gate is optional: hosts that do not declare any AuthorizationPolicyName-bearing
         // commands need not register a gate. Resolved lazily so missing-registration ≠ DI failure.
-        IFrontComposerMcpCommandPolicyGate? policyGate = (IFrontComposerMcpCommandPolicyGate?)services.GetService(typeof(IFrontComposerMcpCommandPolicyGate));
+        var policyGate = (IFrontComposerMcpCommandPolicyGate?)services.GetService(typeof(IFrontComposerMcpCommandPolicyGate));
 
         List<McpVisibleToolCatalogEntry> visible = [];
         int maxItems = Math.Max(0, options.Value.MaxVisibleToolListItems);

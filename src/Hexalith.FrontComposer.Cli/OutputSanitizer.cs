@@ -2,10 +2,8 @@ using System.Text;
 
 namespace Hexalith.FrontComposer.Cli;
 
-public static class OutputSanitizer
-{
-    public static string SanitizeMultiLine(string? value, int maxLength = 8_000)
-    {
+public static class OutputSanitizer {
+    public static string SanitizeMultiLine(string? value, int maxLength = 8_000) {
         if (string.IsNullOrEmpty(value)) {
             return string.Empty;
         }
@@ -38,8 +36,7 @@ public static class OutputSanitizer
         return builder.ToString();
     }
 
-    public static string Sanitize(string? value, int maxLength = 240)
-    {
+    public static string Sanitize(string? value, int maxLength = 240) {
         if (string.IsNullOrEmpty(value)) {
             return string.Empty;
         }

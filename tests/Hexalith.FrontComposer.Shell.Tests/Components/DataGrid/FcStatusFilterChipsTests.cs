@@ -1,5 +1,4 @@
 #pragma warning disable CA2007
-using System.Collections.Generic;
 using System.Reflection;
 
 using Bunit;
@@ -9,7 +8,6 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.DataGrid;
-using Hexalith.FrontComposer.Shell.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -25,14 +23,12 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// toggle dispatches <see cref="StatusFilterToggledAction"/> and reflects active state via
 /// <c>aria-pressed</c>.
 /// </summary>
-public sealed class FcStatusFilterChipsTests : BunitContext
-{
+public sealed class FcStatusFilterChipsTests : BunitContext {
     private const string ViewKeyValue = "acme:OrdersProjection";
 
     private readonly IDispatcher _dispatcher = Substitute.For<IDispatcher>();
 
-    public FcStatusFilterChipsTests()
-    {
+    public FcStatusFilterChipsTests() {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLogging();
         _ = Services.AddLocalization();
@@ -41,8 +37,7 @@ public sealed class FcStatusFilterChipsTests : BunitContext
     }
 
     [Fact]
-    public async Task TogglingChip_DispatchesStatusFilterToggledActionWithSlotName()
-    {
+    public async Task TogglingChip_DispatchesStatusFilterToggledActionWithSlotName() {
         using CultureScope _ = new("en");
         IReadOnlyList<BadgeSlot> available = [BadgeSlot.Success, BadgeSlot.Warning];
         IReadOnlyList<BadgeSlot> active = [];
@@ -62,8 +57,7 @@ public sealed class FcStatusFilterChipsTests : BunitContext
     }
 
     [Fact]
-    public void RendersChipGroup_WithActivePressedState()
-    {
+    public void RendersChipGroup_WithActivePressedState() {
         using CultureScope _ = new("en");
         IReadOnlyList<BadgeSlot> available = [BadgeSlot.Success, BadgeSlot.Warning];
         IReadOnlyList<BadgeSlot> active = [BadgeSlot.Success];
@@ -79,8 +73,7 @@ public sealed class FcStatusFilterChipsTests : BunitContext
         cut.Find("[data-fc-status-chip=\"Warning\"]").GetAttribute("aria-pressed").ShouldBe("false");
     }
 
-    private static Task InvokeSlotClickedAsync(object component, BadgeSlot slot)
-    {
+    private static Task InvokeSlotClickedAsync(object component, BadgeSlot slot) {
         MethodInfo? method = component.GetType().GetMethod(
             "OnSlotClickedAsync",
             BindingFlags.Instance | BindingFlags.NonPublic);

@@ -13,7 +13,7 @@ public sealed class RelativeTimeAttribute : Attribute {
     /// </summary>
     /// <param name="relativeWindowDays">Relative-time window in days; supported range is 1..365.</param>
     public RelativeTimeAttribute(int relativeWindowDays = DefaultRelativeWindowDays) {
-        if (relativeWindowDays < 1 || relativeWindowDays > 365) {
+        if (relativeWindowDays is < 1 or > 365) {
             throw new ArgumentOutOfRangeException(nameof(relativeWindowDays), relativeWindowDays, "Relative-time window must be between 1 and 365 days.");
         }
 

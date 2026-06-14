@@ -16,7 +16,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.Storage;
 public sealed class IStorageServiceLifetimeTests {
     [Fact]
     public void IStorageServiceIsScoped_DistinctScopesYieldDistinctInstances() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposer();
         services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
@@ -33,7 +33,7 @@ public sealed class IStorageServiceLifetimeTests {
 
     [Fact]
     public void IStorageServiceIsScoped_SameScopeYieldsSameInstance() {
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposer();
         services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());

@@ -6,8 +6,7 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// monospace family, but non-FluentText consumers (e.g. <c>&lt;code&gt;</c> blocks, inline HTML)
 /// can reference <see cref="CodeFontFamily"/> directly in a <c>style</c> attribute.
 /// </summary>
-public static class TypographyStyle
-{
+public static class TypographyStyle {
     /// <summary>
     /// CSS <c>font-family</c> stack used for code-style content. Prioritises Cascadia Code on
     /// Windows, then Cascadia Mono, Consolas, and Courier New as fallbacks, terminating with

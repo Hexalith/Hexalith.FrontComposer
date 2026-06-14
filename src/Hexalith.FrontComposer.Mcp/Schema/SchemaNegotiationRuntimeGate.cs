@@ -38,9 +38,7 @@ internal sealed class SchemaNegotiationRuntimeGate {
             client,
             serverFingerprint,
             HasTrustedBaseline: baseline is not null || descriptor.Fingerprint is not null,
-#pragma warning disable CS0618, HFC4001
             HasCompatibleAdditiveDrift: false,
-#pragma warning restore CS0618, HFC4001
             HasSchemaIntegrityMismatch: false,
             Baseline: baseline,
             Server: server)), accessor, services);
@@ -64,9 +62,7 @@ internal sealed class SchemaNegotiationRuntimeGate {
             client,
             serverFingerprint,
             HasTrustedBaseline: baseline is not null || descriptor.Fingerprint is not null,
-#pragma warning disable CS0618, HFC4001
             HasCompatibleAdditiveDrift: false,
-#pragma warning restore CS0618, HFC4001
             HasSchemaIntegrityMismatch: false,
             Baseline: baseline,
             Server: server)), accessor, services);

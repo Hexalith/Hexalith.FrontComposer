@@ -201,10 +201,10 @@ public static class RazorEmitter {
     /// DetailRecord render different shells (no DataGrid) and are excluded per D1.
     /// </summary>
     private static bool EmitsExpandInRowMachinery(ProjectionRenderStrategy strategy)
-        => strategy == ProjectionRenderStrategy.Default
-            || strategy == ProjectionRenderStrategy.ActionQueue
-            || strategy == ProjectionRenderStrategy.StatusOverview
-            || strategy == ProjectionRenderStrategy.Dashboard;
+        => strategy is ProjectionRenderStrategy.Default
+            or ProjectionRenderStrategy.ActionQueue
+            or ProjectionRenderStrategy.StatusOverview
+            or ProjectionRenderStrategy.Dashboard;
 
     private static bool HasBadgeMappings(RazorModel model) {
         foreach (ColumnModel col in model.Columns) {
@@ -270,9 +270,7 @@ public static class RazorEmitter {
     private static string ResolveDomIdSuffix(string value) {
         StringBuilder sb = new(value.Length);
         foreach (char c in value) {
-            if ((c >= 'a' && c <= 'z')
-                || (c >= 'A' && c <= 'Z')
-                || (c >= '0' && c <= '9')) {
+            if (c is (>= 'a' and <= 'z') or (>= 'A' and <= 'Z') or (>= '0' and <= '9')) {
                 _ = sb.Append(c);
             }
             else {
@@ -967,7 +965,6 @@ public static class RazorEmitter {
                 _ = sb.AppendLine("    }");
                 _ = sb.AppendLine();
             }
-
 
             EmitGridStateHelpers(sb, model);
         }

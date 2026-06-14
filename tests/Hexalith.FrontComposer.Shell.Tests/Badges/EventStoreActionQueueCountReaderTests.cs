@@ -1,6 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
-
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Badges;
@@ -8,8 +5,6 @@ using Hexalith.FrontComposer.Shell.Badges;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Badges;
 

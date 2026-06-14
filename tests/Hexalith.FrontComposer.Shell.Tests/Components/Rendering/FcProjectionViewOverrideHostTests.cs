@@ -1,6 +1,5 @@
 using Bunit;
 
-using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Rendering;
@@ -13,8 +12,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Rendering;
 

@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 
@@ -470,5 +469,4 @@ internal static class ColumnEmitter {
             ? "GridSort<" + typeName + ">.ByDescending(x => x." + col.PropertyName + " == null ? 0 : System.Linq.Enumerable.Count(x." + col.PropertyName + "))"
             : "GridSort<" + typeName + ">.ByDescending(x => x." + col.PropertyName + ")";
 }
-
 

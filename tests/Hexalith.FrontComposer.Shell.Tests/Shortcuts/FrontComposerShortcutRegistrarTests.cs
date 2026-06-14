@@ -7,14 +7,13 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
-using Hexalith.FrontComposer.Shell.Services;
-
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -24,11 +23,9 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Shortcuts;
 
-public class FrontComposerShortcutRegistrarTests
-{
+public class FrontComposerShortcutRegistrarTests {
     [Fact]
-    public async Task RegisterShellDefaultsAsync_RegistersFiveShellBindings()
-    {
+    public async Task RegisterShellDefaultsAsync_RegistersFiveShellBindings() {
         // P19 (2026-04-21 pass-4): renamed from "RegistersThreeShellBindings" and extended to cover
         // all five shell defaults, including the D25 Mac-parity meta+k / meta+, bindings that the
         // previous test silently skipped.
@@ -45,8 +42,7 @@ public class FrontComposerShortcutRegistrarTests
     }
 
     [Fact]
-    public async Task RegisterShellDefaultsAsync_IsIdempotent_WithinSameInstance()
-    {
+    public async Task RegisterShellDefaultsAsync_IsIdempotent_WithinSameInstance() {
         IShortcutService shortcuts = Substitute.For<IShortcutService>();
         FrontComposerShortcutRegistrar sut = BuildRegistrar(shortcuts, out _);
 
@@ -62,8 +58,7 @@ public class FrontComposerShortcutRegistrarTests
     }
 
     [Fact]
-    public async Task RegisterShellDefaultsAsync_RollsBackIdempotencyFlagOnFailure_SoRetryCanSucceed()
-    {
+    public async Task RegisterShellDefaultsAsync_RollsBackIdempotencyFlagOnFailure_SoRetryCanSucceed() {
         // P2 (2026-04-21 pass-4): if a Register call throws, the idempotency flag must reset so a
         // subsequent first-render pass can retry. Previously _registered stayed at 1 permanently
         // and the shell was left with a partial binding set.
@@ -71,18 +66,16 @@ public class FrontComposerShortcutRegistrarTests
         int callCount = 0;
         shortcuts
             .When(static x => x.Register(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Func<Task>>(), Arg.Any<string?>(), Arg.Any<string>(), Arg.Any<int>()))
-            .Do(_ =>
-            {
+            .Do(_ => {
                 callCount++;
-                if (callCount == 1)
-                {
+                if (callCount == 1) {
                     throw new InvalidOperationException("boom");
                 }
             });
 
         FrontComposerShortcutRegistrar sut = BuildRegistrar(shortcuts, out _);
 
-        _ = await Should.ThrowAsync<InvalidOperationException>(() => sut.RegisterShellDefaultsAsync());
+        _ = await Should.ThrowAsync<InvalidOperationException>(sut.RegisterShellDefaultsAsync);
 
         // Second call should not be a no-op — the rollback freed the flag.
         await sut.RegisterShellDefaultsAsync();
@@ -93,13 +86,12 @@ public class FrontComposerShortcutRegistrarTests
     }
 
     [Fact]
-    public async Task OpenPaletteAsync_WhenDialogOpenFails_DispatchesCloseRollback_AndRethrows()
-    {
+    public async Task OpenPaletteAsync_WhenDialogOpenFails_DispatchesCloseRollback_AndRethrows() {
         IShortcutService shortcuts = Substitute.For<IShortcutService>();
         ThrowingDialogService dialog = new();
         FrontComposerShortcutRegistrar sut = BuildRegistrar(shortcuts, out IDispatcher dispatcher, dialog: dialog);
 
-        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(() => sut.OpenPaletteAsync());
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(sut.OpenPaletteAsync);
 
         ex.Message.ShouldBe("dialog failed");
         dispatcher.Received(1).Dispatch(Arg.Any<PaletteOpenedAction>());
@@ -110,8 +102,7 @@ public class FrontComposerShortcutRegistrarTests
         IShortcutService shortcuts,
         out IDispatcher dispatcher,
         bool isOpen = false,
-        IDialogService? dialog = null)
-    {
+        IDialogService? dialog = null) {
         dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerCommandPaletteState> state = Substitute.For<IState<FrontComposerCommandPaletteState>>();
         state.Value.Returns(new FrontComposerCommandPaletteState(isOpen, string.Empty,
@@ -127,30 +118,26 @@ public class FrontComposerShortcutRegistrarTests
         return new FrontComposerShortcutRegistrar(shortcuts, dispatcher, state, dialog, nav, loc, ulids, focus);
     }
 
-    private sealed class BunitNavigationManager : NavigationManager
-    {
+    private sealed class BunitNavigationManager : NavigationManager {
         public BunitNavigationManager() => Initialize("https://localhost/", "https://localhost/");
 
         protected override void NavigateToCore(string uri, bool forceLoad) { }
     }
 
-    private sealed class ThrowingDialogService : DialogService
-    {
+    private sealed class ThrowingDialogService : DialogService {
         public ThrowingDialogService()
             : base(
                 new ServiceCollection()
                     .AddSingleton(Substitute.For<IJSRuntime>())
                     .BuildServiceProvider(),
-                Substitute.For<IFluentLocalizer>())
-        {
+                Substitute.For<IFluentLocalizer>()) {
         }
 
         public override Task<DialogResult> ShowDialogAsync(Type dialogComponent, DialogOptions options)
             => throw new InvalidOperationException("dialog failed");
     }
 
-    private sealed class EchoLocalizer : IStringLocalizer<FcShellResources>
-    {
+    private sealed class EchoLocalizer : IStringLocalizer<FcShellResources> {
         public LocalizedString this[string name] => new(name, name);
 
         public LocalizedString this[string name, params object[] arguments] => new(name, name);

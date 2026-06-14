@@ -5,7 +5,6 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.DataGrid;
-using Hexalith.FrontComposer.Shell.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -20,14 +19,12 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// Story 2-3 AC1 — dedicated regression pins for <see cref="FcFilterResetButton"/>. Closes the
 /// reset-button gap (no dedicated test file existed at baseline 8036c3c).
 /// </summary>
-public sealed class FcFilterResetButtonTests : BunitContext
-{
+public sealed class FcFilterResetButtonTests : BunitContext {
     private const string ViewKeyValue = "acme:OrdersProjection";
 
     private readonly IDispatcher _dispatcher = Substitute.For<IDispatcher>();
 
-    public FcFilterResetButtonTests()
-    {
+    public FcFilterResetButtonTests() {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLogging();
         _ = Services.AddLocalization();
@@ -36,8 +33,7 @@ public sealed class FcFilterResetButtonTests : BunitContext
     }
 
     [Fact]
-    public async Task Click_DispatchesFiltersResetActionForView()
-    {
+    public async Task Click_DispatchesFiltersResetActionForView() {
         using CultureScope _ = new("en");
         IRenderedComponent<FcFilterResetButton> cut = Render<FcFilterResetButton>(parameters => parameters
             .Add(b => b.ViewKey, ViewKeyValue)
@@ -50,8 +46,7 @@ public sealed class FcFilterResetButtonTests : BunitContext
     }
 
     [Fact]
-    public void DisabledWhenNoActiveFilters()
-    {
+    public void DisabledWhenNoActiveFilters() {
         using CultureScope _ = new("en");
         IRenderedComponent<FcFilterResetButton> cut = Render<FcFilterResetButton>(parameters => parameters
             .Add(b => b.ViewKey, ViewKeyValue)
@@ -62,8 +57,7 @@ public sealed class FcFilterResetButtonTests : BunitContext
     }
 
     [Fact]
-    public void EnabledWhenFiltersActive()
-    {
+    public void EnabledWhenFiltersActive() {
         using CultureScope _ = new("en");
         IRenderedComponent<FcFilterResetButton> cut = Render<FcFilterResetButton>(parameters => parameters
             .Add(b => b.ViewKey, ViewKeyValue)
@@ -74,8 +68,7 @@ public sealed class FcFilterResetButtonTests : BunitContext
     }
 
     [Fact]
-    public void AriaLabelReflectsActiveFilterCount()
-    {
+    public void AriaLabelReflectsActiveFilterCount() {
         using CultureScope _ = new("en");
         IRenderedComponent<FcFilterResetButton> cut = Render<FcFilterResetButton>(parameters => parameters
             .Add(b => b.ViewKey, ViewKeyValue)

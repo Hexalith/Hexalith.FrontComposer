@@ -1,12 +1,7 @@
 #pragma warning disable CA2007
-using System;
-using System.Linq;
-
 using Bunit;
 
 using Fluxor;
-
-using Hexalith.FrontComposer.Shell.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,18 +22,15 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// generator-emitted <c>_allColumnsDescriptor</c> verbatim — rather than the FluentUI-v5 data-grid
 /// header DOM, keeping the order assertion robust (per the story's brittleness caveat).
 /// </summary>
-public sealed class WidePriorityProjectionRenderTests : GeneratedComponentTestBase
-{
+public sealed class WidePriorityProjectionRenderTests : GeneratedComponentTestBase {
     private const string CheckboxTestIdPrefix = "fc-column-prioritizer-checkbox-";
 
     public WidePriorityProjectionRenderTests()
-        : base(typeof(WidePriorityProjection).Assembly)
-    {
+        : base(typeof(WidePriorityProjection).Assembly) {
     }
 
     [Fact]
-    public async Task WideGrid_WrapsGeneratedGridInColumnPrioritizer_WithDefaultHiddenCount()
-    {
+    public async Task WideGrid_WrapsGeneratedGridInColumnPrioritizer_WithDefaultHiddenCount() {
         using CultureScope cultureScope = new("en");
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
@@ -52,8 +44,7 @@ public sealed class WidePriorityProjectionRenderTests : GeneratedComponentTestBa
 
         IRenderedComponent<WidePriorityProjectionView> cut = Render<WidePriorityProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             // AC1 — the generated grid is wrapped by FcColumnPrioritizer (the >15-column emitter branch).
             AngleSharp.Dom.IElement root = cut.Find("div.fc-column-prioritizer");
             (root.GetAttribute("data-fc-column-prioritizer") ?? string.Empty).ShouldNotBeNullOrEmpty();
@@ -68,8 +59,7 @@ public sealed class WidePriorityProjectionRenderTests : GeneratedComponentTestBa
     }
 
     [Fact]
-    public async Task WideGrid_OrdersColumnsByPriorityThenDeclaration_AtRenderTime()
-    {
+    public async Task WideGrid_OrdersColumnsByPriorityThenDeclaration_AtRenderTime() {
         using CultureScope cultureScope = new("en");
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
@@ -87,8 +77,7 @@ public sealed class WidePriorityProjectionRenderTests : GeneratedComponentTestBa
         await cut.WaitForAssertionAsync(() => _ = cut.Find("[data-testid=\"fc-column-prioritizer-gear\"]"));
         await cut.InvokeAsync(() => cut.Find("[data-testid=\"fc-column-prioritizer-gear\"]").Click());
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             string[] renderedOrder = cut
                 .FindAll($"[data-testid^=\"{CheckboxTestIdPrefix}\"]")
                 .Select(node => node.GetAttribute("data-testid")![CheckboxTestIdPrefix.Length..])

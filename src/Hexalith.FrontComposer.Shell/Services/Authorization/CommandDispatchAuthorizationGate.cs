@@ -40,12 +40,8 @@ public sealed class CommandDispatchAuthorizationGate(
 
         Type declaredCommandType = typeof(TCommand);
         Type runtimeCommandType = command.GetType();
-        Type? commandType = null;
-        string? commandTypeName = null;
-        string policyName = string.Empty;
-        string? boundedContext = null;
-
-        if (!TryResolvePolicyForCandidate(declaredCommandType, out commandTypeName, out policyName, out boundedContext)) {
+        Type? commandType;
+        if (!TryResolvePolicyForCandidate(declaredCommandType, out string? commandTypeName, out string policyName, out string? boundedContext)) {
             if (runtimeCommandType != declaredCommandType
                 && TryResolvePolicyForCandidate(runtimeCommandType, out commandTypeName, out policyName, out boundedContext)) {
                 commandType = runtimeCommandType;

@@ -56,8 +56,6 @@ public sealed class CommandPaletteEffects : IDisposable {
     private readonly IState<FrontComposerCommandPaletteState> _paletteState;
     private readonly ILogger<CommandPaletteEffects> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly TimeProvider _timeProvider;
-
     private readonly object _ctsSync = new();
     private readonly SemaphoreSlim _persistGate = new(1, 1);
     private CancellationTokenSource? _queryCts;
@@ -90,10 +88,10 @@ public sealed class CommandPaletteEffects : IDisposable {
         // of a single debounce cycle if the test harness rewired DI mid-flight, and split the chord
         // timer (ShortcutService, ctor-injected) from the debounce timer (effect, previously
         // per-dispatch) on different clocks.
-        _timeProvider = serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
+        Time = serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
     }
 
-    private TimeProvider Time => _timeProvider;
+    private TimeProvider Time { get; }
 
     private string NewCorrelationId()
         => TryGetService<IUlidFactory>()?.NewUlid() ?? Guid.NewGuid().ToString("N");
@@ -185,7 +183,7 @@ public sealed class CommandPaletteEffects : IDisposable {
             dispatcher.Dispatch(new PaletteHydratedCompletedAction());
             return;
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
             // P8 (Pass-6): distinguish deserialisation/schema corruption from transient I/O so
             // operators can triage HFC2111 without misdiagnosing a network blip as data corruption.
             // P6 (Pass-1 review): InvalidOperationException is too broad to classify as "Corrupt"
@@ -342,7 +340,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         try {
             manifests = (scoringRegistry?.GetManifests() ?? []).ToList();
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
             _logger.LogWarning(
                 ex,
                 "{DiagnosticId}: Registry enumeration threw during palette scoring — dispatching empty result set.",
@@ -401,7 +399,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                         IsInCurrentContext: inContext));
                 }
             }
-            catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+            catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
                 _logger.LogWarning(
                     ex,
                     "{DiagnosticId}: Manifest '{BoundedContext}' threw during palette scoring — skipping manifest, keeping other results.",
@@ -644,7 +642,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         catch (OperationCanceledException) {
             _logger.LogDebug("Palette recent-route persist cancelled — circuit disposing.");
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
             _logger.LogInformation(
                 ex,
                 "{DiagnosticId}: Palette recent-route persistence failed.",
@@ -652,7 +650,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
         finally {
             try {
-                _persistGate.Release();
+                _ = _persistGate.Release();
             }
             catch (ObjectDisposedException) {
                 // Disposed mid-await — benign.
@@ -749,7 +747,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         try {
             manifests = (registry?.GetManifests() ?? []).OrderBy(static m => m.Name, StringComparer.Ordinal).ToList();
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
             _logger.LogWarning(
                 ex,
                 "{DiagnosticId}: Registry enumeration failed during palette open — falling back to empty projection preview.",
@@ -779,7 +777,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                     projectionCount++;
                 }
             }
-            catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+            catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
                 _logger.LogWarning(
                     ex,
                     "{DiagnosticId}: Manifest '{BoundedContext}' threw during palette open preview — skipping manifest, keeping other projection rows.",
@@ -944,7 +942,7 @@ public sealed class CommandPaletteEffects : IDisposable {
             rawTenant = accessor?.TenantId;
             rawUser = accessor?.UserId;
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
             _logger.LogInformation(
                 ex,
                 "{DiagnosticId}: Palette {Direction} skipped — IUserContextAccessor threw on TenantId/UserId access. Reason=AccessorThrew.",

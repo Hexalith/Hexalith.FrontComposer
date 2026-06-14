@@ -5,8 +5,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 
 public sealed class CustomizationAccessibilityAnalyzerTests {

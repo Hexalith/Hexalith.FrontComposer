@@ -15,8 +15,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Rendering;
 
 /// <summary>

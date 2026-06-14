@@ -1,7 +1,6 @@
 using System.Globalization;
 
 using Hexalith.FrontComposer.Contracts.Mcp;
-using Hexalith.FrontComposer.Mcp;
 using Hexalith.FrontComposer.Mcp.Rendering;
 
 using Shouldly;
@@ -278,7 +277,7 @@ public sealed class McpMarkdownProjectionRendererTests {
             TotalCount: 1), new FrontComposerMcpOptions { MaxProjectionMarkdownCharacters = 64 }, TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
-        result.Document.ShouldNotBeNull();
+        _ = result.Document.ShouldNotBeNull();
         result.Document!.IsTruncated.ShouldBeTrue();
         result.Document.Text.Length.ShouldBeLessThanOrEqualTo(64);
     }
@@ -419,9 +418,7 @@ public sealed class McpMarkdownProjectionRendererTests {
     }
 
     public sealed class BrokenProjection {
-        private readonly string _message = "raw tenant-a exception text";
-
-        public string Explodes => throw new InvalidOperationException(_message);
+        public string Explodes { get => throw new InvalidOperationException(field); } = "raw tenant-a exception text";
     }
 
     public sealed class CancelingCell(CancellationTokenSource source) {

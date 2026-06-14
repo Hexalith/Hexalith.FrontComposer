@@ -12,8 +12,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Services.Auth;
 
 public sealed class FrontComposerAccessTokenProviderTests {
@@ -38,9 +36,7 @@ public sealed class FrontComposerAccessTokenProviderTests {
 
     [Fact]
     public async Task GetAccessTokenAsync_Fails_WhenGitHubOAuthHasNoBrokeredToken() {
-        FrontComposerAccessTokenProvider sut = Build(options => {
-            options.GitHubOAuth.Enabled = true;
-        });
+        FrontComposerAccessTokenProvider sut = Build(options => options.GitHubOAuth.Enabled = true);
 
         FrontComposerAuthenticationException ex = await Should.ThrowAsync<FrontComposerAuthenticationException>(
             () => sut.GetAccessTokenAsync(TestContext.Current.CancellationToken).AsTask());

@@ -18,8 +18,7 @@ public static class StorageKeys {
     /// <param name="feature">The feature name.</param>
     /// <returns>A storage key in the format <c>{tenantId}:{userId}:{feature}</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="tenantId"/> or <paramref name="userId"/> contains a colon — prevents cross-tenant collision on keys that re-use <c>:</c> as segment separator.</exception>
-    public static string BuildKey(string tenantId, string userId, string feature)
-    {
+    public static string BuildKey(string tenantId, string userId, string feature) {
         GuardIdentitySegments(tenantId, userId);
         return $"{tenantId}:{userId}:{feature}";
     }
@@ -31,23 +30,19 @@ public static class StorageKeys {
     /// <param name="discriminator">The discriminator (e.g., projection type).</param>
     /// <returns>A storage key in the format <c>{tenantId}:{userId}:{feature}:{discriminator}</c>.</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="tenantId"/> or <paramref name="userId"/> contains a colon.</exception>
-    public static string BuildKey(string tenantId, string userId, string feature, string discriminator)
-    {
+    public static string BuildKey(string tenantId, string userId, string feature, string discriminator) {
         GuardIdentitySegments(tenantId, userId);
         return $"{tenantId}:{userId}:{feature}:{discriminator}";
     }
 
-    private static void GuardIdentitySegments(string tenantId, string userId)
-    {
+    private static void GuardIdentitySegments(string tenantId, string userId) {
         // Two tuples ("a:b","c") and ("a","b:c") would otherwise yield identical prefixes; enumerate
         // / prune paths could then cross-read or cross-delete a foreign tenant's keys. Reject colons.
-        if (tenantId is not null && tenantId.Contains(':', StringComparison.Ordinal))
-        {
+        if (tenantId is not null && tenantId.Contains(':', StringComparison.Ordinal)) {
             throw new ArgumentException("tenantId must not contain ':'.", nameof(tenantId));
         }
 
-        if (userId is not null && userId.Contains(':', StringComparison.Ordinal))
-        {
+        if (userId is not null && userId.Contains(':', StringComparison.Ordinal)) {
             throw new ArgumentException("userId must not contain ':'.", nameof(userId));
         }
     }

@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using AngleSharp.Dom;
 
 using Bunit;
+using Bunit.Rendering;
 
 using Fluxor;
 
@@ -159,7 +160,7 @@ public sealed class FcCollapsedNavRailTests : LayoutComponentTestBase {
         Services.GetRequiredService<IDispatcher>().Dispatch(new SidebarToggledAction("c-setup"));
         state.Value.SidebarCollapsed.ShouldBeTrue();
 
-        var host = Render(builder => {
+        IRenderedComponent<ContainerFragment> host = Render(builder => {
             builder.OpenComponent<CascadingValue<LayoutHamburgerCoordinator>>(0);
             builder.AddAttribute(1, nameof(CascadingValue<LayoutHamburgerCoordinator>.Value), coordinator);
             builder.AddAttribute(2, nameof(CascadingValue<LayoutHamburgerCoordinator>.IsFixed), true);

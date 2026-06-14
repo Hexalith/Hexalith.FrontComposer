@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -15,11 +13,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.DataGridNavigation;
 /// through the production <see cref="LocalStorageService.SchemaLockJsonOptions"/> so the pinned
 /// shape matches what LocalStorage actually sees.
 /// </summary>
-public sealed class GridViewPersistenceBlobSchemaLockedTests
-{
+public sealed class GridViewPersistenceBlobSchemaLockedTests {
     [Fact]
-    public void BlobSerializesToExpectedJsonShape()
-    {
+    public void BlobSerializesToExpectedJsonShape() {
         GridViewPersistenceBlob blob = new(
             ScrollTop: 128.0,
             Filters: new Dictionary<string, string> { ["Name"] = "ACME" },
@@ -41,8 +37,7 @@ public sealed class GridViewPersistenceBlobSchemaLockedTests
     }
 
     [Fact]
-    public void BlobRoundTripsThroughProductionJsonOptions()
-    {
+    public void BlobRoundTripsThroughProductionJsonOptions() {
         GridViewPersistenceBlob original = new(
             ScrollTop: 42.5,
             Filters: new Dictionary<string, string> { ["Status"] = "Active" },
@@ -68,12 +63,11 @@ public sealed class GridViewPersistenceBlobSchemaLockedTests
     }
 
     [Fact]
-    public void ToSnapshotNormalisesCapturedAtToUtc()
-    {
+    public void ToSnapshotNormalisesCapturedAtToUtc() {
         // Review Finding F-EH-008 — non-zero offset must not throw on snapshot conversion.
         GridViewPersistenceBlob blob = new(
             ScrollTop: 0,
-            Filters: new Dictionary<string, string>(),
+            Filters: [],
             SortColumn: null,
             SortDescending: false,
             ExpandedRowId: null,
@@ -87,11 +81,10 @@ public sealed class GridViewPersistenceBlobSchemaLockedTests
     }
 
     [Fact]
-    public void ToSnapshotClampsScrollTopToNonNegativeFinite()
-    {
+    public void ToSnapshotClampsScrollTopToNonNegativeFinite() {
         GridViewPersistenceBlob blob = new(
             ScrollTop: double.NaN,
-            Filters: new Dictionary<string, string>(),
+            Filters: [],
             SortColumn: null,
             SortDescending: false,
             ExpandedRowId: null,
@@ -133,7 +126,5 @@ public sealed class GridViewPersistenceBlobSchemaLockedTests
     // asserted against the blob contract. If a contributor IDE-renames the constant via
     // "Rename Symbol", the test literal is NOT renamed and catches the contract break.
     [Fact]
-    public void HiddenColumnsKey_LiteralValue_IsPinned() {
-        VirtualizationReservedKeys.HiddenColumnsKey.ShouldBe("__hidden");
-    }
+    public void HiddenColumnsKey_LiteralValue_IsPinned() => VirtualizationReservedKeys.HiddenColumnsKey.ShouldBe("__hidden");
 }

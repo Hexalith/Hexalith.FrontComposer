@@ -15,11 +15,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// <see cref="FrontComposerDensityState"/> = <c>(UserPreference, EffectiveDensity)</c>.
 /// Each reducer takes a payload that already carries the pre-resolved <c>NewEffective</c>.
 /// </summary>
-public sealed class DensityReducersTests
-{
+public sealed class DensityReducersTests {
     [Fact]
-    public void UserPreferenceChanged_AssignsBothFields()
-    {
+    public void UserPreferenceChanged_AssignsBothFields() {
         FrontComposerDensityState state = new(UserPreference: null, EffectiveDensity: DensityLevel.Comfortable);
         UserPreferenceChangedAction action = new("c1", DensityLevel.Compact, DensityLevel.Compact);
 
@@ -30,8 +28,7 @@ public sealed class DensityReducersTests
     }
 
     [Fact]
-    public void UserPreferenceCleared_NullsPreferenceAndAssignsEffective()
-    {
+    public void UserPreferenceCleared_NullsPreferenceAndAssignsEffective() {
         FrontComposerDensityState state = new(UserPreference: DensityLevel.Compact, EffectiveDensity: DensityLevel.Compact);
         UserPreferenceClearedAction action = new("c1", DensityLevel.Comfortable);
 
@@ -45,8 +42,7 @@ public sealed class DensityReducersTests
     [InlineData(DensityLevel.Compact)]
     [InlineData(DensityLevel.Comfortable)]
     [InlineData(DensityLevel.Roomy)]
-    public void DensityHydrated_AssignsBothFieldsFromPayload(DensityLevel hydrated)
-    {
+    public void DensityHydrated_AssignsBothFieldsFromPayload(DensityLevel hydrated) {
         FrontComposerDensityState state = new(UserPreference: null, EffectiveDensity: DensityLevel.Comfortable);
         DensityHydratedAction action = new(UserPreference: hydrated, NewEffective: hydrated);
 
@@ -57,8 +53,7 @@ public sealed class DensityReducersTests
     }
 
     [Fact]
-    public void EffectiveDensityRecomputed_PreservesUserPreference()
-    {
+    public void EffectiveDensityRecomputed_PreservesUserPreference() {
         // ADR-040 — viewport-driven recompute MUST NOT clear UserPreference; only EffectiveDensity changes.
         FrontComposerDensityState state = new(UserPreference: DensityLevel.Compact, EffectiveDensity: DensityLevel.Compact);
         EffectiveDensityRecomputedAction action = new(NewEffective: DensityLevel.Comfortable);
@@ -70,8 +65,7 @@ public sealed class DensityReducersTests
     }
 
     [Fact]
-    public void DensityChangedAction_LegacyEntry_AssignsBothFieldsFromNewDensity()
-    {
+    public void DensityChangedAction_LegacyEntry_AssignsBothFieldsFromNewDensity() {
         // Story 3-1 legacy DensityChangedAction is RETAINED (Task 2.4) so Story 3-4 command-palette
         // can dispatch it directly. Its reducer treats the payload as both the preference and the
         // effective density (no resolver call inside reducer per D3).

@@ -51,9 +51,7 @@ public sealed class InMemorySchemaBaselineProvider : ISchemaBaselineProvider {
     }
 
     private static bool IsAsciiLetterOrDigit(char c)
-        => (c >= '0' && c <= '9')
-            || (c >= 'a' && c <= 'z')
-            || (c >= 'A' && c <= 'Z');
+        => c is (>= '0' and <= '9') or (>= 'a' and <= 'z') or (>= 'A' and <= 'Z');
 
     private sealed record BaselineKey(SchemaContractFamily Family, string PackageOwner, string FixtureId);
 }

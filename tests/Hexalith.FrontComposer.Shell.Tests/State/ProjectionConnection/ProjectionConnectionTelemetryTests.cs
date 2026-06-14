@@ -5,8 +5,6 @@ using Microsoft.Extensions.Time.Testing;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.State.ProjectionConnection;
 
 [Trait("Category", "Governance")]

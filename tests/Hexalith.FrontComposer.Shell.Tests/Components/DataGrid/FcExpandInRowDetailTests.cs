@@ -1,4 +1,3 @@
-#pragma warning disable CA2007
 using Bunit;
 
 using Hexalith.FrontComposer.Shell.Components.DataGrid;

@@ -16,7 +16,6 @@ using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -38,48 +37,45 @@ builder.Services.AddFluentUIComponents();
 // AddHexalithFrontComposer into a single call. Granular 3-call path remains available for
 // advanced adopters who want per-call control.
 builder.Services.AddHexalithFrontComposerQuickstart(
-    o =>
-    {
+    o => {
         if (specimensEnabled) {
-            o.ScanAssemblies(typeof(FrontComposerTypeSpecimen).Assembly);
+            _ = o.ScanAssemblies(typeof(FrontComposerTypeSpecimen).Assembly);
         }
         else {
-            o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly);
+            _ = o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly);
         }
     });
 builder.Services.AddFrontComposerDevMode(builder.Environment);
 builder.Services.AddHexalithDomain<CounterDomain>();
 if (specimensEnabled) {
-    builder.Services.AddHexalithDomain<CounterSpecimensDomain>();
-    builder.Services.AddAuthorizationCore(o =>
-    {
+    _ = builder.Services.AddHexalithDomain<CounterSpecimensDomain>();
+    _ = builder.Services.AddAuthorizationCore(o => {
         o.AddPolicy("Specimens.PolicyAllowed", policy => policy.RequireAssertion(_ => true));
         o.AddPolicy("Specimens.PolicyDenied", policy => policy.RequireAssertion(_ => false));
     });
-    builder.Services.Configure<Hexalith.FrontComposer.Shell.Options.FrontComposerAuthorizationOptions>(o =>
-    {
+    _ = builder.Services.Configure<Hexalith.FrontComposer.Shell.Options.FrontComposerAuthorizationOptions>(o => {
         o.KnownPolicies.Add("Specimens.PolicyAllowed");
         o.KnownPolicies.Add("Specimens.PolicyDenied");
     });
 }
 
 if (specimensEnabled) {
-    builder.Services.AddHexalithProjectionTemplates<FrontComposerTypeSpecimen>();
+    _ = builder.Services.AddHexalithProjectionTemplates<FrontComposerTypeSpecimen>();
 }
 else {
     // Story 6-2 T4 / T9 / AC3 — register the SourceTools-emitted Level 2 projection-template
     // manifest through a direct generated descriptor reference so startup stays trim/AOT friendly.
-    builder.Services.AddHexalithProjectionTemplates(__FrontComposerProjectionTemplatesRegistration.Descriptors);
+    _ = builder.Services.AddHexalithProjectionTemplates(__FrontComposerProjectionTemplatesRegistration.Descriptors);
 
     // Story 6-3 T9 / AC15 — reference Level 3 slot override. Only Count is custom-rendered;
     // Id and Last changed continue through generated FrontComposer field rendering. The typed
     // 3-generic overload (GB-P10) catches component-type mismatches at compile time, which is
     // what adopters should reach for; the Type-taking overload exists for codegen scenarios.
-    builder.Services.AddSlotOverride<CounterProjection, int, CounterCountSlot>(
+    _ = builder.Services.AddSlotOverride<CounterProjection, int, CounterCountSlot>(
         field: x => x.Count);
 
     if (builder.Configuration.GetValue<bool>("Hexalith:FrontComposer:E2E:SeedContractMismatch")) {
-        builder.Services.AddSingleton(new ProjectionSlotDescriptorSource([
+        _ = builder.Services.AddSingleton(new ProjectionSlotDescriptorSource([
             new ProjectionSlotDescriptor(
                 ProjectionType: typeof(CounterProjection),
                 FieldName: nameof(CounterProjection.Count),
@@ -97,7 +93,7 @@ else {
     // fallback-to-generated evidence lives in the SourceTools test fixtures and in the
     // `CounterProjectionView_LoadedState_RendersColumnsAndFormatting` Shell test which renders
     // the same view without `AddViewOverride`.
-    builder.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
+    _ = builder.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
 }
 
 // Story 2-4 Task 6.2 — bind FcShellOptions from configuration so adopters can tune
@@ -105,12 +101,10 @@ else {
 // / SupportedCultures values from appsettings.
 builder.Services.Configure<FcShellOptions>(builder.Configuration.GetSection("Hexalith:Shell"));
 builder.Services.Configure<FcShellOptions>(o =>
-{
     // Story 7-2 — the Counter sample's DemoUserContextAccessor is intentionally visible and
     // local-only. Production hosts must supply Story 7-1 real auth claims instead.
     o.AllowDemoTenantContext = builder.Environment.IsDevelopment()
-        || builder.Environment.IsEnvironment("Test");
-});
+        || builder.Environment.IsEnvironment("Test"));
 
 // Story 2-2 Task 9.4 — demo user context so LastUsed pre-fill works end-to-end without real auth.
 // Story 7-1 keeps this default credential-free; fake auth is opt-in and visibly sample-only.
@@ -136,8 +130,7 @@ Type userContextAccessorType = fakeAuthRequested
 builder.Services.Replace(new ServiceDescriptor(typeof(IUserContextAccessor), userContextAccessorType, ServiceLifetime.Scoped));
 
 // Slightly higher stub latencies so the 5-state lifecycle is observable in the Counter sample.
-builder.Services.Configure<StubCommandServiceOptions>(o =>
-{
+builder.Services.Configure<StubCommandServiceOptions>(o => {
     o.AcknowledgeDelayMs = 150;
     o.SyncingDelayMs = 150;
     o.ConfirmDelayMs = 200;
@@ -147,10 +140,9 @@ builder.Services.Configure<StubCommandServiceOptions>(
 
 if (mcpEnabled) {
     builder.Services.TryAddScoped<IQueryService, CounterMcpSampleQueryService>();
-    builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-    builder.Services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-    builder.Services.AddFrontComposerMcp(o =>
-    {
+    _ = builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+    _ = builder.Services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+    _ = builder.Services.AddFrontComposerMcp(o => {
         o.ManifestAssemblies.Add(typeof(CounterDomain).Assembly);
         if (specimensEnabled) {
             o.ManifestAssemblies.Add(typeof(CounterSpecimensDomain).Assembly);
@@ -169,19 +161,19 @@ app.UseStaticFiles();
 app.UseRequestLocalization();
 app.UseAntiforgery();
 
-var razorComponents = app.MapRazorComponents<Counter.Web.Components.App>();
+RazorComponentsEndpointConventionBuilder razorComponents = app.MapRazorComponents<Counter.Web.Components.App>();
 if (specimensEnabled) {
-    razorComponents.AddAdditionalAssemblies(typeof(IncrementCommand).Assembly, typeof(FrontComposerTypeSpecimen).Assembly);
+    _ = razorComponents.AddAdditionalAssemblies(typeof(IncrementCommand).Assembly, typeof(FrontComposerTypeSpecimen).Assembly);
 }
 else {
-    razorComponents.AddAdditionalAssemblies(typeof(IncrementCommand).Assembly);
+    _ = razorComponents.AddAdditionalAssemblies(typeof(IncrementCommand).Assembly);
 }
 
 razorComponents
     .AddInteractiveServerRenderMode();
 
 if (mcpEnabled) {
-    app.MapFrontComposerMcp();
+    _ = app.MapFrontComposerMcp();
 }
 
 app.Run();

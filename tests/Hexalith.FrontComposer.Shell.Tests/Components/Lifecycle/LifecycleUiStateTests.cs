@@ -20,7 +20,7 @@ public sealed class LifecycleUiStateTests {
 
     [Fact]
     public void Idle_phase_NoPulse_produces_no_announcement_no_pulse_no_message_bar() {
-        LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Idle, CommandLifecycleState.Idle), LifecycleTimerPhase.NoPulse);
+        var state = LifecycleUiState.From(T(CommandLifecycleState.Idle, CommandLifecycleState.Idle), LifecycleTimerPhase.NoPulse);
 
         state.Current.ShouldBe(CommandLifecycleState.Idle);
         state.TimerPhase.ShouldBe(LifecycleTimerPhase.NoPulse);
@@ -29,7 +29,7 @@ public sealed class LifecycleUiStateTests {
 
     [Fact]
     public void Submitting_phase_NoPulse_produces_submitting_announcement_polite_no_pulse() {
-        LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Idle, CommandLifecycleState.Submitting), LifecycleTimerPhase.NoPulse);
+        var state = LifecycleUiState.From(T(CommandLifecycleState.Idle, CommandLifecycleState.Submitting), LifecycleTimerPhase.NoPulse);
 
         state.Current.ShouldBe(CommandLifecycleState.Submitting);
         state.TimerPhase.ShouldBe(LifecycleTimerPhase.NoPulse);
@@ -37,7 +37,7 @@ public sealed class LifecycleUiStateTests {
 
     [Fact]
     public void Acknowledged_phase_NoPulse_produces_no_announcement_no_pulse() {
-        LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Submitting, CommandLifecycleState.Acknowledged), LifecycleTimerPhase.NoPulse);
+        var state = LifecycleUiState.From(T(CommandLifecycleState.Submitting, CommandLifecycleState.Acknowledged), LifecycleTimerPhase.NoPulse);
 
         state.Current.ShouldBe(CommandLifecycleState.Acknowledged);
         state.TimerPhase.ShouldBe(LifecycleTimerPhase.NoPulse);
@@ -45,7 +45,7 @@ public sealed class LifecycleUiStateTests {
 
     [Fact]
     public void Syncing_phase_Pulse_preserves_pulse_phase() {
-        LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing), LifecycleTimerPhase.Pulse);
+        var state = LifecycleUiState.From(T(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing), LifecycleTimerPhase.Pulse);
 
         state.Current.ShouldBe(CommandLifecycleState.Syncing);
         state.TimerPhase.ShouldBe(LifecycleTimerPhase.Pulse);
@@ -53,7 +53,7 @@ public sealed class LifecycleUiStateTests {
 
     [Fact]
     public void Syncing_phase_StillSyncing_preserves_still_syncing_phase() {
-        LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing), LifecycleTimerPhase.StillSyncing);
+        var state = LifecycleUiState.From(T(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing), LifecycleTimerPhase.StillSyncing);
 
         state.Current.ShouldBe(CommandLifecycleState.Syncing);
         state.TimerPhase.ShouldBe(LifecycleTimerPhase.StillSyncing);
@@ -61,7 +61,7 @@ public sealed class LifecycleUiStateTests {
 
     [Fact]
     public void Syncing_phase_ActionPrompt_preserves_action_prompt_phase() {
-        LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing), LifecycleTimerPhase.ActionPrompt);
+        var state = LifecycleUiState.From(T(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing), LifecycleTimerPhase.ActionPrompt);
 
         state.Current.ShouldBe(CommandLifecycleState.Syncing);
         state.TimerPhase.ShouldBe(LifecycleTimerPhase.ActionPrompt);
@@ -69,7 +69,7 @@ public sealed class LifecycleUiStateTests {
 
     [Fact]
     public void Confirmed_forces_timer_phase_Terminal_regardless_of_input_phase() {
-        LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed), LifecycleTimerPhase.ActionPrompt);
+        var state = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed), LifecycleTimerPhase.ActionPrompt);
 
         state.Current.ShouldBe(CommandLifecycleState.Confirmed);
         state.TimerPhase.ShouldBe(LifecycleTimerPhase.Terminal);
@@ -77,7 +77,7 @@ public sealed class LifecycleUiStateTests {
 
     [Fact]
     public void Rejected_forces_timer_phase_Terminal_regardless_of_input_phase() {
-        LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected), LifecycleTimerPhase.Pulse);
+        var state = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected), LifecycleTimerPhase.Pulse);
 
         state.Current.ShouldBe(CommandLifecycleState.Rejected);
         state.TimerPhase.ShouldBe(LifecycleTimerPhase.Terminal);
@@ -86,7 +86,7 @@ public sealed class LifecycleUiStateTests {
     [Fact]
     public void Rejected_carries_parameter_RejectionMessage_when_populated() {
         const string DomainCopy = "Approval failed: insufficient inventory.";
-        LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected), LifecycleTimerPhase.Terminal, DomainCopy);
+        var state = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected), LifecycleTimerPhase.Terminal, DomainCopy);
 
         state.RejectionMessage.ShouldBe(DomainCopy);
     }
@@ -94,7 +94,7 @@ public sealed class LifecycleUiStateTests {
     [Fact]
     public void Rejected_carries_typed_RejectionDetails_when_populated() {
         CommandRejectionDetails details = new("INV-409", "Inventory", "Lower quantity", "FC-CMD-409");
-        LifecycleUiState state = LifecycleUiState.From(
+        var state = LifecycleUiState.From(
             T(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected),
             LifecycleTimerPhase.Terminal,
             rejectionDetails: details);
@@ -104,8 +104,8 @@ public sealed class LifecycleUiStateTests {
 
     [Fact]
     public void IdempotencyResolved_true_on_Confirmed_produces_same_output_as_fresh_Confirmed_in_v01() {
-        LifecycleUiState fresh = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed, idempotencyResolved: false), LifecycleTimerPhase.Terminal);
-        LifecycleUiState idempotent = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed, idempotencyResolved: true), LifecycleTimerPhase.Terminal);
+        var fresh = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed, idempotencyResolved: false), LifecycleTimerPhase.Terminal);
+        var idempotent = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed, idempotencyResolved: true), LifecycleTimerPhase.Terminal);
 
         fresh.Current.ShouldBe(idempotent.Current);
         fresh.TimerPhase.ShouldBe(idempotent.TimerPhase);
@@ -119,7 +119,7 @@ public sealed class LifecycleUiStateTests {
         // default `@expression` rendering HTML-encodes it at render time. This test asserts
         // the contract at the data layer (plain string in, plain string out — no MarkupString).
         const string Script = "<script>alert(1)</script>";
-        LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected), LifecycleTimerPhase.Terminal, Script);
+        var state = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected), LifecycleTimerPhase.Terminal, Script);
 
         state.RejectionMessage.ShouldBe(Script);
         state.RejectionMessage.ShouldBeAssignableTo<string>();

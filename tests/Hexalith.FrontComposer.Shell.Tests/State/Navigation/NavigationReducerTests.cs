@@ -17,16 +17,14 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Navigation;
 /// D11 (sparse-by-default CollapsedGroups), D14 (ViewportTier NOT persisted — reducer only),
 /// D15 (hydrate replaces wholesale). AC2, AC3, AC4.
 /// </summary>
-public sealed class NavigationReducerTests
-{
+public sealed class NavigationReducerTests {
     private static FrontComposerNavigationState InitialState() => new(
         SidebarCollapsed: false,
         CollapsedGroups: ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal),
         CurrentViewport: ViewportTier.Desktop);
 
     [Fact]
-    public void SidebarToggledFlipsFlag()
-    {
+    public void SidebarToggledFlipsFlag() {
         FrontComposerNavigationState state = InitialState();
 
         FrontComposerNavigationState next = NavigationReducers.ReduceSidebarToggled(state, new SidebarToggledAction("c1"));
@@ -39,8 +37,7 @@ public sealed class NavigationReducerTests
     [Theory]
     [InlineData(true)]
     [InlineData(false)]
-    public void SidebarToggledIsInvolution(bool startCollapsed)
-    {
+    public void SidebarToggledIsInvolution(bool startCollapsed) {
         FrontComposerNavigationState state = InitialState() with { SidebarCollapsed = startCollapsed };
 
         FrontComposerNavigationState once = NavigationReducers.ReduceSidebarToggled(state, new SidebarToggledAction("c1"));
@@ -50,8 +47,7 @@ public sealed class NavigationReducerTests
     }
 
     [Fact]
-    public void NavGroupToggled_Collapse_AddsEntry()
-    {
+    public void NavGroupToggled_Collapse_AddsEntry() {
         FrontComposerNavigationState state = InitialState();
 
         FrontComposerNavigationState next = NavigationReducers.ReduceNavGroupToggled(
@@ -62,12 +58,10 @@ public sealed class NavigationReducerTests
     }
 
     [Fact]
-    public void NavGroupToggled_Expand_RemovesEntryForSparseBlob()
-    {
+    public void NavGroupToggled_Expand_RemovesEntryForSparseBlob() {
         // D11: expanded groups are NOT written as "Counter":false — they are removed from the map
         // so the persisted blob stays minimal. New BCs discovered post-persistence default to expanded.
-        FrontComposerNavigationState state = InitialState() with
-        {
+        FrontComposerNavigationState state = InitialState() with {
             CollapsedGroups = ImmutableDictionary<string, bool>.Empty
                 .WithComparers(StringComparer.Ordinal)
                 .Add("Counter", true)
@@ -83,10 +77,8 @@ public sealed class NavigationReducerTests
     }
 
     [Fact]
-    public void ViewportTierChangedOnlyUpdatesCurrentViewport()
-    {
-        FrontComposerNavigationState state = InitialState() with
-        {
+    public void ViewportTierChangedOnlyUpdatesCurrentViewport() {
+        FrontComposerNavigationState state = InitialState() with {
             SidebarCollapsed = true,
             CollapsedGroups = ImmutableDictionary<string, bool>.Empty
                 .WithComparers(StringComparer.Ordinal)
@@ -103,8 +95,7 @@ public sealed class NavigationReducerTests
     }
 
     [Fact]
-    public void SidebarExpandedIsIdempotent()
-    {
+    public void SidebarExpandedIsIdempotent() {
         FrontComposerNavigationState state = InitialState();
 
         FrontComposerNavigationState first = NavigationReducers.ReduceSidebarExpanded(state, new SidebarExpandedAction("c1"));
@@ -115,11 +106,9 @@ public sealed class NavigationReducerTests
     }
 
     [Fact]
-    public void NavigationHydratedReplacesWholesale()
-    {
+    public void NavigationHydratedReplacesWholesale() {
         // D15 — hydrate replaces SidebarCollapsed + CollapsedGroups wholesale, never merges.
-        FrontComposerNavigationState state = InitialState() with
-        {
+        FrontComposerNavigationState state = InitialState() with {
             SidebarCollapsed = false,
             CollapsedGroups = ImmutableDictionary<string, bool>.Empty
                 .WithComparers(StringComparer.Ordinal)
@@ -140,8 +129,7 @@ public sealed class NavigationReducerTests
     }
 
     [Fact]
-    public void ViewportTierEnumValuesArePinned()
-    {
+    public void ViewportTierEnumValuesArePinned() {
         // D4 — JS wire format depends on these ordinal values staying stable.
         ((byte)ViewportTier.Phone).ShouldBe((byte)0);
         ((byte)ViewportTier.Tablet).ShouldBe((byte)1);

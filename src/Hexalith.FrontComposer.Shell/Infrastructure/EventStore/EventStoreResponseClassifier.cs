@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
@@ -73,42 +72,42 @@ public sealed class EventStoreResponseClassifier {
                     retryAfter: retryAfter);
 
             case HttpStatusCode.BadRequest: {
-                ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
-                return EventStoreCommandClassification.FromFailure(new CommandValidationException(problem));
-            }
+                    ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
+                    return EventStoreCommandClassification.FromFailure(new CommandValidationException(problem));
+                }
 
             case HttpStatusCode.Unauthorized: {
-                await DrainBodyAsync(response, cancellationToken).ConfigureAwait(false);
-                return EventStoreCommandClassification.FromFailure(new AuthRedirectRequiredException());
-            }
+                    await DrainBodyAsync(response, cancellationToken).ConfigureAwait(false);
+                    return EventStoreCommandClassification.FromFailure(new AuthRedirectRequiredException());
+                }
 
             case HttpStatusCode.Forbidden: {
-                ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
-                return EventStoreCommandClassification.FromFailure(
-                    new CommandWarningException(CommandWarningKind.Forbidden, problem));
-            }
+                    ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
+                    return EventStoreCommandClassification.FromFailure(
+                        new CommandWarningException(CommandWarningKind.Forbidden, problem));
+                }
 
             case HttpStatusCode.NotFound: {
-                ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
-                return EventStoreCommandClassification.FromFailure(
-                    new CommandWarningException(CommandWarningKind.NotFound, problem));
-            }
+                    ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
+                    return EventStoreCommandClassification.FromFailure(
+                        new CommandWarningException(CommandWarningKind.NotFound, problem));
+                }
 
             case HttpStatusCode.Conflict: {
-                ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
-                string reason = string.IsNullOrWhiteSpace(problem.Title)
-                    ? (problem.Detail ?? "The command was rejected by the server.")
-                    : problem.Title!;
-                string resolution = problem.Detail ?? string.Empty;
-                return EventStoreCommandClassification.FromFailure(
-                    new CommandRejectedException(reason, resolution, problem.RejectionDetails));
-            }
+                    ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
+                    string reason = string.IsNullOrWhiteSpace(problem.Title)
+                        ? (problem.Detail ?? "The command was rejected by the server.")
+                        : problem.Title!;
+                    string resolution = problem.Detail ?? string.Empty;
+                    return EventStoreCommandClassification.FromFailure(
+                        new CommandRejectedException(reason, resolution, problem.RejectionDetails));
+                }
 
             case (HttpStatusCode)429: {
-                ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
-                return EventStoreCommandClassification.FromFailure(
-                    new CommandWarningException(CommandWarningKind.RateLimited, problem, retryAfter));
-            }
+                    ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
+                    return EventStoreCommandClassification.FromFailure(
+                        new CommandWarningException(CommandWarningKind.RateLimited, problem, retryAfter));
+                }
 
             default:
                 return EventStoreCommandClassification.FromFailure(
@@ -146,27 +145,27 @@ public sealed class EventStoreResponseClassifier {
                 return EventStoreQueryClassification.NotModified(eTag);
 
             case HttpStatusCode.Unauthorized: {
-                await DrainBodyAsync(response, cancellationToken).ConfigureAwait(false);
-                return EventStoreQueryClassification.FromFailure(new AuthRedirectRequiredException());
-            }
+                    await DrainBodyAsync(response, cancellationToken).ConfigureAwait(false);
+                    return EventStoreQueryClassification.FromFailure(new AuthRedirectRequiredException());
+                }
 
             case HttpStatusCode.Forbidden: {
-                ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
-                return EventStoreQueryClassification.FromFailure(
-                    new QueryFailureException(QueryFailureKind.Forbidden, problem));
-            }
+                    ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
+                    return EventStoreQueryClassification.FromFailure(
+                        new QueryFailureException(QueryFailureKind.Forbidden, problem));
+                }
 
             case HttpStatusCode.NotFound: {
-                ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
-                return EventStoreQueryClassification.FromFailure(
-                    new QueryFailureException(QueryFailureKind.NotFound, problem));
-            }
+                    ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
+                    return EventStoreQueryClassification.FromFailure(
+                        new QueryFailureException(QueryFailureKind.NotFound, problem));
+                }
 
             case (HttpStatusCode)429: {
-                ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
-                return EventStoreQueryClassification.FromFailure(
-                    new QueryFailureException(QueryFailureKind.RateLimited, problem, retryAfter));
-            }
+                    ProblemDetailsPayload problem = await ReadProblemDetailsAsync(response, cancellationToken).ConfigureAwait(false);
+                    return EventStoreQueryClassification.FromFailure(
+                        new QueryFailureException(QueryFailureKind.RateLimited, problem, retryAfter));
+                }
 
             default:
                 return EventStoreQueryClassification.FromFailure(
@@ -177,10 +176,6 @@ public sealed class EventStoreResponseClassifier {
         }
     }
 
-    [SuppressMessage(
-        "Trimming",
-        "IL2026:RequiresUnreferencedCode",
-        Justification = "ProblemDetails decoding goes through System.Text.Json web defaults; the ProblemDetailsPayload is a single concrete type used by the Shell adapter.")]
     private async Task<ProblemDetailsPayload> ReadProblemDetailsAsync(
         HttpResponseMessage response,
         CancellationToken cancellationToken) {
@@ -252,7 +247,7 @@ public sealed class EventStoreResponseClassifier {
                     break;
                 }
 
-                List<string> messages = new();
+                List<string> messages = [];
                 switch (entry.Value.ValueKind) {
                     case JsonValueKind.String:
                         if (TryLimitString(entry.Value.GetString()) is { Length: > 0 } single) {
@@ -281,7 +276,7 @@ public sealed class EventStoreResponseClassifier {
             }
         }
 
-        List<string> globals = new();
+        List<string> globals = [];
         if (root.TryGetProperty("globalErrors", out JsonElement globalsElement)
             && globalsElement.ValueKind == JsonValueKind.Array) {
             foreach (JsonElement message in globalsElement.EnumerateArray()) {

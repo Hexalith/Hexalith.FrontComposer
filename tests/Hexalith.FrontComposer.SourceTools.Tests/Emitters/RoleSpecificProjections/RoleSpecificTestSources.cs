@@ -9,8 +9,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters.RoleSpecificProjecti
 /// existing <c>CompilationHelper</c> pattern without a parallel .cs corpus polluting
 /// the test assembly's real compilation.
 /// </summary>
-internal static class RoleSpecificTestSources
-{
+internal static class RoleSpecificTestSources {
     // ---------- Happy path ----------
 
     internal const string ActionQueueProjection = @"

@@ -2,15 +2,12 @@ using System.Collections.Immutable;
 
 using Fluxor;
 
-using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.Logging;
 
 using NSubstitute;
-
-using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.Navigation;
 

@@ -5,11 +5,9 @@ namespace Hexalith.FrontComposer.Shell.Tests;
 /// <summary>
 /// Story 3-1 semantic slot mapping regression lock.
 /// </summary>
-public sealed class SlotMappingRegressionTests
-{
+public sealed class SlotMappingRegressionTests {
     [Fact]
-    public void Binding_table_matches_verified_baseline()
-    {
+    public void Binding_table_matches_verified_baseline() {
         string actual = string.Join("\n", [
             "CSS Slots",
             "--fc-color-accent = var(--accent-base-color)",
@@ -41,14 +39,11 @@ public sealed class SlotMappingRegressionTests
         css.ShouldContain("--fc-color-info: var(--colorStatusInfoForeground1);");
     }
 
-    private static string LocateBaseline()
-    {
+    private static string LocateBaseline() {
         DirectoryInfo? cursor = new(AppContext.BaseDirectory);
-        while (cursor is not null)
-        {
+        while (cursor is not null) {
             string candidate = Path.Combine(cursor.FullName, "tests", "Hexalith.FrontComposer.Shell.Tests", "SlotMappingRegressionTests.BindingTable.verified.txt");
-            if (File.Exists(candidate))
-            {
+            if (File.Exists(candidate)) {
                 return candidate;
             }
 
@@ -58,14 +53,11 @@ public sealed class SlotMappingRegressionTests
         throw new FileNotFoundException("SlotMappingRegressionTests.BindingTable.verified.txt not found.");
     }
 
-    private static string LocateCss()
-    {
+    private static string LocateCss() {
         DirectoryInfo? cursor = new(AppContext.BaseDirectory);
-        while (cursor is not null)
-        {
+        while (cursor is not null) {
             string candidate = Path.Combine(cursor.FullName, "src", "Hexalith.FrontComposer.Shell", "Components", "Layout", "FrontComposerShell.razor.css");
-            if (File.Exists(candidate))
-            {
+            if (File.Exists(candidate)) {
                 return candidate;
             }
 

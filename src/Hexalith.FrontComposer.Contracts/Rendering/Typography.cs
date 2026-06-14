@@ -35,8 +35,7 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// directly on <c>FluentText</c>.
 /// </para>
 /// </remarks>
-public static class Typography
-{
+public static class Typography {
     /// <summary>Application title (UX-DR26 role #1). Mapped to Size700 (28 px), Bold, H1.</summary>
     public static readonly FcTypoToken AppTitle = new(TextSize.Size700, TextWeight.Bold, TextTag.H1);
 

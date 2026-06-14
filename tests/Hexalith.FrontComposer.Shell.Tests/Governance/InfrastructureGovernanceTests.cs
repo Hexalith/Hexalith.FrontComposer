@@ -8,8 +8,6 @@ using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 
 [Trait("Category", "Governance")]
@@ -146,7 +144,7 @@ public sealed class InfrastructureGovernanceTests {
 
     [Fact]
     public void SyntheticForbiddenPackage_WithPrivateAssets_FailsWithRemediation() {
-        using TempRepo temp = TempRepo.Create();
+        using var temp = TempRepo.Create();
         string project = temp.Write(
             "src/Hexalith.FrontComposer.Shell/Forbidden.csproj",
             """
@@ -165,7 +163,7 @@ public sealed class InfrastructureGovernanceTests {
 
     [Fact]
     public void SyntheticCentralPackageVersion_FailsEvenWithoutProjectReference() {
-        using TempRepo temp = TempRepo.Create();
+        using var temp = TempRepo.Create();
         string props = temp.Write(
             "Directory.Packages.props",
             """
@@ -183,7 +181,7 @@ public sealed class InfrastructureGovernanceTests {
 
     [Fact]
     public void SyntheticSourceNamespace_FailsButDocsAndBinAreExcluded() {
-        using TempRepo temp = TempRepo.Create();
+        using var temp = TempRepo.Create();
         _ = temp.Write("src/Hexalith.FrontComposer.Shell/Bad.cs", "using Npgsql;\nnamespace Bad;");
         _ = temp.Write("docs/example.md", "using Npgsql;");
         _ = temp.Write("src/Hexalith.FrontComposer.Shell/bin/Debug/Generated.cs", "using Dapr.Client;");
@@ -198,7 +196,7 @@ public sealed class InfrastructureGovernanceTests {
 
     [Fact]
     public void ShellSignalRClient_IsExactAllowlistOnly() {
-        using TempRepo temp = TempRepo.Create();
+        using var temp = TempRepo.Create();
         string project = temp.Write(
             "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
             """
@@ -219,7 +217,7 @@ public sealed class InfrastructureGovernanceTests {
     public void NonShellProject_RejectsSignalRClient() {
         // F01 — Microsoft.AspNetCore.SignalR.Client is allowed only in Shell.
         // Contracts/SourceTools must fail governance if they reference it.
-        using TempRepo temp = TempRepo.Create();
+        using var temp = TempRepo.Create();
         string project = temp.Write(
             "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
             """
@@ -242,7 +240,7 @@ public sealed class InfrastructureGovernanceTests {
         // deny-list must apply only to NuGet PackageReference elements; otherwise a benign
         // peer project named with a forbidden prefix (e.g. ..\Dapr.Foo\Dapr.Foo.csproj) would
         // false-fail governance.
-        using TempRepo temp = TempRepo.Create();
+        using var temp = TempRepo.Create();
         string project = temp.Write(
             "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
             """
@@ -263,7 +261,7 @@ public sealed class InfrastructureGovernanceTests {
         // F35 — transitive provider packages surfaced only in `project.assets.json` must be
         // caught even when the .csproj does not declare them directly (e.g., PrivateAssets=all
         // on a wrapping framework or central package management transitive flow).
-        using TempRepo temp = TempRepo.Create();
+        using var temp = TempRepo.Create();
         string project = temp.Write(
             "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
             """
@@ -301,7 +299,7 @@ public sealed class InfrastructureGovernanceTests {
     public void DenyList_CoversFullProviderFamilyPanel(string packageId, string expectedFamily) {
         // F41 — exhaust the deny-list panel beyond Dapr/Redis to prove every story-named
         // provider family fails governance via a synthetic project reference.
-        using TempRepo temp = TempRepo.Create();
+        using var temp = TempRepo.Create();
         string project = temp.Write(
             "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
             $"""
@@ -375,7 +373,7 @@ internal static class InfrastructureGovernance {
     ];
 
     public static List<GovernanceViolation> ScanProjectReferences(string projectPath, string root) {
-        XDocument document = XDocument.Load(projectPath);
+        var document = XDocument.Load(projectPath);
         bool allowSignalRClient = IsShellProject(projectPath);
         // F22 — package deny-list applies to PackageReference only. ProjectReference Include is
         // a relative path to a peer project; conflating the two could false-fail governance for
@@ -391,7 +389,7 @@ internal static class InfrastructureGovernance {
     }
 
     public static List<GovernanceViolation> ScanCentralPackageVersions(string propsPath, string root) {
-        XDocument document = XDocument.Load(propsPath);
+        var document = XDocument.Load(propsPath);
         IEnumerable<string> references = document
             .Descendants()
             .Where(static e => e.Name.LocalName is "PackageVersion")
@@ -416,7 +414,7 @@ internal static class InfrastructureGovernance {
 
         bool allowSignalRClient = IsShellProject(projectPath);
         using FileStream stream = File.OpenRead(assetsPath);
-        using JsonDocument document = JsonDocument.Parse(stream);
+        using var document = JsonDocument.Parse(stream);
         HashSet<string> references = new(StringComparer.OrdinalIgnoreCase);
         if (document.RootElement.TryGetProperty("libraries", out JsonElement libraries)) {
             foreach (JsonProperty library in libraries.EnumerateObject()) {

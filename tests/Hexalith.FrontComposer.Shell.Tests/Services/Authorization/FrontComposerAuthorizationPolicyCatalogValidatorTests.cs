@@ -4,7 +4,6 @@ using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 using NSubstitute;
 

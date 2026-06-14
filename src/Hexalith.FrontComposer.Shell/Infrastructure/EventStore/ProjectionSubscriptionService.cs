@@ -1,5 +1,8 @@
-using Hexalith.FrontComposer.Contracts.Communication;
+using System.Collections.Concurrent;
+using System.Diagnostics;
+
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
@@ -9,8 +12,6 @@ using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Collections.Concurrent;
-using System.Diagnostics;
 
 namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
@@ -420,7 +421,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     }
 
     private IReadOnlyDictionary<ProjectionFallbackGroupKey, bool> SnapshotGroupHealth() {
-        Dictionary<ProjectionFallbackGroupKey, bool> snapshot = new();
+        Dictionary<ProjectionFallbackGroupKey, bool> snapshot = [];
         foreach (KeyValuePair<GroupKey, GroupState> group in _activeGroups) {
             snapshot[new ProjectionFallbackGroupKey(group.Key.ProjectionType, group.Key.TenantId)] = group.Value.Health == GroupHealth.Active;
         }

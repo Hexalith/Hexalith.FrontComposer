@@ -86,7 +86,7 @@ public static class AttributeParser {
         // Parse properties
         ImmutableArray<PropertyModel>.Builder propertiesBuilder = ImmutableArray.CreateBuilder<PropertyModel>();
 
-        ImmutableArray<IPropertySymbol> propertySymbols = typeSymbol.GetMembers()
+        var propertySymbols = typeSymbol.GetMembers()
             .OfType<IPropertySymbol>()
             .Where(static propertySymbol =>
                 propertySymbol.DeclaredAccessibility == Accessibility.Public
@@ -561,9 +561,9 @@ public static class AttributeParser {
     }
 
     /// <summary>
-     /// Story 6-1 D5/T2 — supported `[RelativeTime]` window range. Compile-time mirror of the
-     /// runtime constructor guard on <see cref="Hexalith.FrontComposer.Contracts.Attributes.RelativeTimeAttribute"/>.
-     /// </summary>
+    /// Story 6-1 D5/T2 — supported `[RelativeTime]` window range. Compile-time mirror of the
+    /// runtime constructor guard on <see cref="Hexalith.FrontComposer.Contracts.Attributes.RelativeTimeAttribute"/>.
+    /// </summary>
     private const int RelativeTimeWindowMinDays = 1;
     private const int RelativeTimeWindowMaxDays = 365;
     private const int RelativeTimeWindowDefaultDays = 7;
@@ -676,10 +676,10 @@ public static class AttributeParser {
     }
 
     private static bool IsRelativeTimeCompatible(string resolvedTypeName)
-        => resolvedTypeName == "DateTime" || resolvedTypeName == "DateTimeOffset";
+        => resolvedTypeName is "DateTime" or "DateTimeOffset";
 
     private static bool IsCurrencyCompatible(string resolvedTypeName)
-        => resolvedTypeName == "Decimal" || resolvedTypeName == "Double" || resolvedTypeName == "Single";
+        => resolvedTypeName is "Decimal" or "Double" or "Single";
 
     private static void EmitLevel1FormatDiagnostic(
         IPropertySymbol propertySymbol,
@@ -772,7 +772,7 @@ public static class AttributeParser {
             }
 
             colliding ??= new SortedSet<string>(StringComparer.Ordinal);
-            colliding.Add(group);
+            _ = colliding.Add(group);
         }
 
         if (colliding is null) {
@@ -828,12 +828,10 @@ public static class AttributeParser {
                 continue;
             }
 
-            if (groups is null) {
-                groups = new Dictionary<int, List<string>>();
-            }
+            groups ??= [];
 
             if (!groups.TryGetValue(priority, out List<string>? names)) {
-                names = new List<string>();
+                names = [];
                 groups[priority] = names;
             }
 

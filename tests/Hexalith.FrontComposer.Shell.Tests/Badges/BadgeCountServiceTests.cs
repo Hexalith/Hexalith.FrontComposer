@@ -218,7 +218,7 @@ public sealed class BadgeCountServiceTests {
         bool completed = false;
         using IDisposable subscription = sut.CountChanged.Subscribe(
             onNext: _ => { },
-            onCompleted: () => { completed = true; });
+            onCompleted: () => completed = true);
 
         await sut.DisposeAsync();
 
@@ -302,9 +302,7 @@ public sealed class BadgeCountServiceTests {
         TaskCompletionSource<int> betaGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
         StubCatalog catalog = new(typeof(ProjectionAlpha), typeof(ProjectionBeta));
         StubReader reader = new(async (type, ct) => {
-            using CancellationTokenRegistration reg = ct.Register(() => {
-                (type == typeof(ProjectionAlpha) ? alphaGate : betaGate).TrySetCanceled(ct);
-            });
+            using CancellationTokenRegistration reg = ct.Register(() => (type == typeof(ProjectionAlpha) ? alphaGate : betaGate).TrySetCanceled(ct));
             return await (type == typeof(ProjectionAlpha) ? alphaGate.Task : betaGate.Task)
                 ;
         });
@@ -327,8 +325,8 @@ public sealed class BadgeCountServiceTests {
         // D5 / Murat P0 — the ImmutableDictionary + Interlocked.CompareExchange pattern must
         // guarantee readers observe a consistent snapshot and never a torn dictionary, even under
         // concurrent UpdateCount writers for distinct types.
-        Type[] types = Enumerable.Range(0, 32).Select(_ => (Type)typeof(ProjectionAlpha))
-            .Concat(Enumerable.Range(0, 32).Select(_ => (Type)typeof(ProjectionBeta)))
+        Type[] types = Enumerable.Range(0, 32).Select(_ => typeof(ProjectionAlpha))
+            .Concat(Enumerable.Range(0, 32).Select(_ => typeof(ProjectionBeta)))
             .ToArray();
         StubCatalog catalog = new(typeof(ProjectionAlpha), typeof(ProjectionBeta), typeof(ProjectionGamma));
         StubReader reader = new((_, _) => new ValueTask<int>(1));

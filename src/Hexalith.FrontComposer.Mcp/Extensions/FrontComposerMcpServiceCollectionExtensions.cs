@@ -1,16 +1,15 @@
 using System.Text.Json;
 
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.Mcp.Rendering;
 using Hexalith.FrontComposer.Mcp.Schema;
 using Hexalith.FrontComposer.Mcp.Skills;
-using Hexalith.FrontComposer.Contracts.Lifecycle;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
 
-using ModelContextProtocol.AspNetCore;
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -23,11 +22,11 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         ArgumentNullException.ThrowIfNull(services);
 
         if (configure is not null) {
-            services.Configure(configure);
+            _ = services.Configure(configure);
         }
 
-        services.AddSingleton<IValidateOptions<FrontComposerMcpOptions>, FrontComposerMcpOptionsValidator>();
-        services.AddHttpContextAccessor();
+        _ = services.AddSingleton<IValidateOptions<FrontComposerMcpOptions>, FrontComposerMcpOptionsValidator>();
+        _ = services.AddHttpContextAccessor();
         services.TryAddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.TryAddScoped<FrontComposerMcpToolAdmissionService>();
         services.TryAddScoped<IFrontComposerMcpVisibleToolCatalogProvider>(sp => sp.GetRequiredService<FrontComposerMcpToolAdmissionService>());
@@ -89,7 +88,7 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         // vice versa) by naming a bounded context "skills".
         HashSet<string> manifestUris = new(StringComparer.Ordinal);
         foreach (Hexalith.FrontComposer.Contracts.Mcp.McpResourceDescriptor descriptor in registry.Resources) {
-            manifestUris.Add(descriptor.ProtocolUri);
+            _ = manifestUris.Add(descriptor.ProtocolUri);
         }
 
         foreach (string manifestUri in manifestUris) {
@@ -105,7 +104,7 @@ public static class FrontComposerMcpServiceCollectionExtensions {
             .Concat(skillProvider.CreateMcpResources())
             .ToArray();
 
-        services.AddMcpServer()
+        _ = services.AddMcpServer()
             .WithHttpTransport()
             .WithListToolsHandler(ListToolsAsync)
             .WithCallToolHandler(CallToolAsync)

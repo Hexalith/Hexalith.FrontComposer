@@ -85,7 +85,7 @@ public class PaletteScorerBenchAdapter {
     }
 
     private static Statistics AssertReportStatistics(BenchmarkReport report) {
-        report.ResultStatistics.ShouldNotBeNull(
+        _ = report.ResultStatistics.ShouldNotBeNull(
             $"Report for {report.BenchmarkCase.DisplayInfo} has no ResultStatistics.");
         return report.ResultStatistics!;
     }

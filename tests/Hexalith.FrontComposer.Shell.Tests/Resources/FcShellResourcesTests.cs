@@ -351,7 +351,7 @@ public sealed class FcShellResourcesTests {
             string body = template.Substring(i + 1, closing - i - 1);
             // Strip optional ',alignment' or ':format' suffix per String.Format grammar.
             int commaOrColon = body.IndexOfAny([',', ':']);
-            string indexText = commaOrColon >= 0 ? body.Substring(0, commaOrColon) : body;
+            string indexText = commaOrColon >= 0 ? body[..commaOrColon] : body;
             if (int.TryParse(indexText, NumberStyles.Integer, CultureInfo.InvariantCulture, out int index)) {
                 indices.Add(index);
             }

@@ -10,8 +10,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Extensions;
 
 public sealed class ProjectionViewOverrideServiceCollectionExtensionsTests {
@@ -66,7 +64,7 @@ public sealed class ProjectionViewOverrideServiceCollectionExtensionsTests {
 
         ServiceProvider provider = services.BuildServiceProvider();
         InvalidOperationException ex = Should.Throw<InvalidOperationException>(
-            () => provider.GetRequiredService<IProjectionViewOverrideRegistry>());
+            provider.GetRequiredService<IProjectionViewOverrideRegistry>);
 
         ex.Message.ShouldContain("HFC1044");
         ex.Message.ShouldContain(typeof(AnyRoleReplacement).FullName!);

@@ -2,9 +2,9 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
+
 using DriftBaselineTrustFailureTests = Hexalith.FrontComposer.SourceTools.Tests.Drift.Baseline.DriftBaselineTrustFailureTests;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Diagnostics;
@@ -20,13 +20,13 @@ public sealed class DriftDiagnosticPrecedenceTests {
     private const string SkipReason = "RED-PHASE: T4 — diagnostic precedence wiring not yet introduced.";
 
     [Theory()]
-    [InlineData("baseline-empty.json",                 "empty")]
-    [InlineData("baseline-malformed.json",             "malformed")]
-    [InlineData("baseline-unsupported-schema.json",    "schema version")]
+    [InlineData("baseline-empty.json", "empty")]
+    [InlineData("baseline-malformed.json", "malformed")]
+    [InlineData("baseline-unsupported-schema.json", "schema version")]
     [InlineData("baseline-unsupported-algorithm.json", "algorithm")]
-    [InlineData("baseline-oversized.json",             "oversized")]
+    [InlineData("baseline-oversized.json", "oversized")]
     [InlineData("baseline-duplicate-identity-within.json", "duplicate")]
-    [InlineData("baseline-invariant-violation.json",   "invariant")]
+    [InlineData("baseline-invariant-violation.json", "invariant")]
     public void TrustFailure_SuppressesStructuralAndMetadataDrift_ForThatBaseline(string fixtureFile, string trustToken) {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;

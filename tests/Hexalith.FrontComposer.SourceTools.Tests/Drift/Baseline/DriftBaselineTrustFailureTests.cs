@@ -5,7 +5,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
 
@@ -56,7 +55,7 @@ public sealed class DriftBaselineTrustFailureTests {
         Diagnostic? trustFailure = diagnostics.FirstOrDefault(d =>
             d.Severity == DiagnosticSeverity.Error
             && d.GetMessage().Contains(expectedMessageToken, StringComparison.OrdinalIgnoreCase));
-        trustFailure.ShouldNotBeNull(
+        _ = trustFailure.ShouldNotBeNull(
             $"AC9 — fixture {fixtureFileName} must emit a deterministic Error diagnostic carrying the token '{expectedMessageToken}'.");
 
         diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase))
@@ -129,7 +128,7 @@ public sealed class DriftBaselineTrustFailureTests {
             """;
         // Each CJK character is 3 bytes in UTF-8 but 1 char. Build a description ~50 chars but
         // ~150+ bytes; the cap below (set just under the byte length) must reject by bytes.
-        string padding = new string('漢', 60);
+        string padding = new('漢', 60);
         string baseline = $$"""
             { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
               "algorithm": "frontcomposer-structural-v1",
@@ -172,7 +171,7 @@ public sealed class DriftBaselineTrustFailureTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, bomBaseline);
 
-        diagnostics.Any(d => d.Id == "HFC1060" || d.Id == "HFC1061" || d.Id == "HFC1062")
+        diagnostics.Any(d => d.Id is "HFC1060" or "HFC1061" or "HFC1062")
             .ShouldBeFalse("P11 — UTF-8 BOM-prefixed valid baseline must parse cleanly (no malformed/schema/algorithm error).");
     }
 
@@ -234,7 +233,7 @@ public sealed class DriftBaselineTrustFailureTests {
             d.Severity == DiagnosticSeverity.Error
             && d.GetMessage().Contains("duplicate", StringComparison.OrdinalIgnoreCase)
             && d.GetMessage().Contains("Acme.Shipping.ShipmentProjection", StringComparison.Ordinal));
-        duplicate.ShouldNotBeNull(
+        _ = duplicate.ShouldNotBeNull(
             "AC9 — duplicate identity across files MUST fail closed with an Error; no silent last-writer-wins merge.");
 
         // Drift comparison must be fully suppressed for that contract: neither structural drift

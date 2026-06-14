@@ -9,7 +9,6 @@ using Hexalith.FrontComposer.Mcp.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 
@@ -31,7 +30,7 @@ public sealed class ProjectionReaderSchemaGateTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.SchemaMismatch);
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("schema-mismatch");
         result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldStartWith("HFC-MCP-PROJECTION-SCHEMA-");
         query.CallCount.ShouldBe(0, "AC1: schema-mismatch must short-circuit before query dispatch.");
@@ -125,27 +124,27 @@ public sealed class ProjectionReaderSchemaGateTests {
             clientFingerprintHint: SchemaHintFor("incompatible"),
             configureServices: s => s.AddSingleton<IFrontComposerMcpProjectionRenderer>(renderer));
 
-        await reader.ReadAsync("frontcomposer://Billing/projections/InvoiceProjection", TestContext.Current.CancellationToken);
+        _ = await reader.ReadAsync("frontcomposer://Billing/projections/InvoiceProjection", TestContext.Current.CancellationToken);
 
         query.CallCount.ShouldBe(0);
         renderer.CallCount.ShouldBe(0);
     }
 
     private static SchemaFingerprint SchemaHintFor(string scenario)
-        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x').Substring(0, 64));
+        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x')[..64]);
 
     private static FrontComposerMcpProjectionReader BuildReader(
         IQueryService queryService,
         SchemaFingerprint? clientFingerprintHint = null,
         Action<IServiceCollection>? configureServices = null) {
         ServiceCollection services = [];
-        services.AddSingleton(queryService);
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor(clientFingerprintHint));
-        services.AddScoped<FrontComposerMcpProjectionReader>();
-        services.AddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton(queryService);
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor(clientFingerprintHint));
+        _ = services.AddScoped<FrontComposerMcpProjectionReader>();
+        _ = services.AddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         configureServices?.Invoke(services);
         ServiceProvider provider = services.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
@@ -156,7 +155,7 @@ public sealed class ProjectionReaderSchemaGateTests {
             ? null
             : clientFingerprintHint?.Value.StartsWith("compatible-additive", StringComparison.Ordinal) == true
                 ? clientFingerprintHint
-                : new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's').Substring(0, 64));
+                : new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's')[..64]);
         return new("frontcomposer.mcp.v1", [], [
             new McpResourceDescriptor(
                 "frontcomposer://Billing/projections/InvoiceProjection",
@@ -200,7 +199,7 @@ public sealed class ProjectionReaderSchemaGateTests {
             CallCount++;
             // T3 should pin the take bound through the post-additive validator. Until T3 lands,
             // RevalidationCount stays 0 and this scaffold will fail meaningfully when unskipped.
-            if (request.Take > 0 && request.Take <= 1024) {
+            if (request.Take is > 0 and <= 1024) {
                 RevalidationCount++;
             }
 

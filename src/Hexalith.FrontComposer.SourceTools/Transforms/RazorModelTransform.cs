@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
@@ -59,7 +57,7 @@ public static class RazorModelTransform {
         }
 
         if (anyPriority) {
-            ColumnModel[] buffer = new ColumnModel[columnsArray.Length];
+            var buffer = new ColumnModel[columnsArray.Length];
             int[] declarationOrder = new int[columnsArray.Length];
             for (int i = 0; i < columnsArray.Length; i++) {
                 buffer[i] = columnsArray[i];

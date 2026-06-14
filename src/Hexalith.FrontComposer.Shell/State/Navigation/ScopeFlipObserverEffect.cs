@@ -1,6 +1,5 @@
 using Fluxor;
 
-using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Density;

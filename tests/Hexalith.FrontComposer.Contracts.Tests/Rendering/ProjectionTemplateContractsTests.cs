@@ -24,10 +24,8 @@ public sealed class ProjectionTemplateContractsTests {
     }
 
     [Fact]
-    public void Attribute_NullProjectionType_Throws() {
-        Should.Throw<ArgumentNullException>(() =>
+    public void Attribute_NullProjectionType_Throws() => Should.Throw<ArgumentNullException>(() =>
             new ProjectionTemplateAttribute(projectionType: null!, expectedContractVersion: 1));
-    }
 
     [Fact]
     public void Attribute_StoresProjectionTypeAndContractVersion() {
@@ -55,15 +53,15 @@ public sealed class ProjectionTemplateContractsTests {
 
     [Fact]
     public void Context_NullArguments_Throw() {
-        RenderFragment defaultBody = static _ => { };
-        ProjectionTemplateSectionRenderer sectionRenderer = static _ => static _ => { };
-        ProjectionTemplateRowRenderer<string> rowRenderer = static _ => static _ => { };
-        ProjectionTemplateFieldRenderer<string> renderer = static (_, _) => static _ => { };
+        void defaultBody(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder _) { }
+        RenderFragment sectionRenderer(string _) => static _ => { };
+        RenderFragment rowRenderer(string _) => static _ => { };
+        RenderFragment renderer(string _1, string _2) => static _ => { };
         IReadOnlyList<string> items = [];
         IReadOnlyList<ProjectionTemplateColumnDescriptor> columns = [];
         IReadOnlyList<ProjectionTemplateSectionDescriptor> sections = [];
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionTemplateContext<string>(
                 projectionType: null!,
                 boundedContext: null,
@@ -77,7 +75,7 @@ public sealed class ProjectionTemplateContractsTests {
                 rowRenderer: rowRenderer,
                 fieldRenderer: renderer));
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionTemplateContext<string>(
                 projectionType: typeof(string),
                 boundedContext: null,
@@ -91,7 +89,7 @@ public sealed class ProjectionTemplateContractsTests {
                 rowRenderer: rowRenderer,
                 fieldRenderer: renderer));
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionTemplateContext<string>(
                 projectionType: typeof(string),
                 boundedContext: null,
@@ -105,7 +103,7 @@ public sealed class ProjectionTemplateContractsTests {
                 rowRenderer: rowRenderer,
                 fieldRenderer: renderer));
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionTemplateContext<string>(
                 projectionType: typeof(string),
                 boundedContext: null,
@@ -119,7 +117,7 @@ public sealed class ProjectionTemplateContractsTests {
                 rowRenderer: rowRenderer,
                 fieldRenderer: renderer));
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionTemplateContext<string>(
                 projectionType: typeof(string),
                 boundedContext: null,
@@ -133,7 +131,7 @@ public sealed class ProjectionTemplateContractsTests {
                 rowRenderer: rowRenderer,
                 fieldRenderer: renderer));
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionTemplateContext<string>(
                 projectionType: typeof(string),
                 boundedContext: null,
@@ -147,7 +145,7 @@ public sealed class ProjectionTemplateContractsTests {
                 rowRenderer: rowRenderer,
                 fieldRenderer: renderer));
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionTemplateContext<string>(
                 projectionType: typeof(string),
                 boundedContext: null,
@@ -161,7 +159,7 @@ public sealed class ProjectionTemplateContractsTests {
                 rowRenderer: null!,
                 fieldRenderer: renderer));
 
-        Should.Throw<ArgumentNullException>(() =>
+        _ = Should.Throw<ArgumentNullException>(() =>
             new ProjectionTemplateContext<string>(
                 projectionType: typeof(string),
                 boundedContext: null,

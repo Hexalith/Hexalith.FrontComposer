@@ -130,8 +130,7 @@ public class RazorModelRoleStrategyTests {
         m1.GetHashCode().ShouldBe(m2.GetHashCode());
     }
 
-    private static DomainModel BuildDomainModel(string? role, string? whenState = null) {
-        return new DomainModel(
+    private static DomainModel BuildDomainModel(string? role, string? whenState = null) => new(
             "Test",
             "TestDomain",
             null,
@@ -139,5 +138,4 @@ public class RazorModelRoleStrategyTests {
             role,
             new EquatableArray<PropertyModel>(ImmutableArray<PropertyModel>.Empty),
             whenState);
-    }
 }

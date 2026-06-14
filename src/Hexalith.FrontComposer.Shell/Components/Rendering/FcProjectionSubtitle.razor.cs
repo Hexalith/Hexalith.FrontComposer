@@ -217,7 +217,7 @@ public partial class FcProjectionSubtitle : IAsyncDisposable, IDisposable {
         string typeName = ProjectionType?.Name ?? "items";
         const string projectionSuffix = "Projection";
         string baseName = typeName.EndsWith(projectionSuffix, StringComparison.Ordinal)
-            ? typeName.Substring(0, typeName.Length - projectionSuffix.Length)
+            ? typeName[..^projectionSuffix.Length]
             : typeName;
 
         System.Text.StringBuilder sb = new(baseName.Length + 4);

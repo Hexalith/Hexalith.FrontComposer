@@ -45,7 +45,7 @@ public static class EventStoreValidation {
     /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="maxCount"/> is invalid.</exception>
     /// <exception cref="ArgumentException">Thrown when too many validators are supplied.</exception>
     public static void ValidateETagCount(IReadOnlyCollection<string>? etags, int maxCount = MaxETagValidators) {
-        if (maxCount <= 0 || maxCount > MaxETagValidators) {
+        if (maxCount is <= 0 or > MaxETagValidators) {
             throw new ArgumentOutOfRangeException(nameof(maxCount), "The ETag validator maximum must be between 1 and 10.");
         }
 

@@ -38,7 +38,7 @@ public sealed class ClipboardJSModule(
             return ClipboardCopyResult.Failed;
         }
 
-        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         timeout.CancelAfter(TimeSpan.FromMilliseconds(_options.DevMode.CopyTimeoutMilliseconds));
 
         try {

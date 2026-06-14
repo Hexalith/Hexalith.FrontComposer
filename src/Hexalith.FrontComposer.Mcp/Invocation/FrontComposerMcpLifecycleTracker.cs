@@ -1,7 +1,6 @@
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using Hexalith.FrontComposer.Contracts.Communication;
@@ -93,7 +92,7 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
 
             string handleValue = handle!;
             if (!_byCorrelation.TryGetValue(handleValue, out LifecycleEntry? entry)) {
-                _byMessage.TryGetValue(handleValue, out entry);
+                _ = _byMessage.TryGetValue(handleValue, out entry);
             }
 
             if (entry is null) {
@@ -218,7 +217,7 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             created.Subscription = lifecycle.Subscribe(correlationId, created.Observe);
         }
         catch {
-            _byCorrelation.TryRemove(correlationId, out _);
+            _ = _byCorrelation.TryRemove(correlationId, out _);
             created.Dispose();
             throw;
         }
@@ -227,13 +226,13 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
         // unreachable by messageId lookup. Roll back the correlation registration and surface
         // UnsupportedSchema; the framework-issued ULID factory makes this case configuration-only.
         if (!_byMessage.TryAdd(messageId, created)) {
-            _byCorrelation.TryRemove(correlationId, out _);
+            _ = _byCorrelation.TryRemove(correlationId, out _);
             created.Dispose();
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
         }
 
         _insertionOrder.Enqueue(correlationId);
-        Interlocked.Increment(ref _activeCount);
+        _ = Interlocked.Increment(ref _activeCount);
         created.Start();
         EnforceCapacity();
         return created;
@@ -244,7 +243,7 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
         lock (_capacityGate) {
             while (Volatile.Read(ref _activeCount) > max && _insertionOrder.TryDequeue(out string? oldest)) {
                 if (_byCorrelation.TryGetValue(oldest, out LifecycleEntry? entry)) {
-                    entry.MarkNeedsReview(_time.GetUtcNow());
+                    _ = entry.MarkNeedsReview(_time.GetUtcNow());
                 }
             }
 
@@ -254,8 +253,8 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
 
     private void OnEntryTerminalized(string correlationId) {
         lock (_capacityGate) {
-            Interlocked.Decrement(ref _activeCount);
-            Interlocked.Increment(ref _terminalCount);
+            _ = Interlocked.Decrement(ref _activeCount);
+            _ = Interlocked.Increment(ref _terminalCount);
             _terminalOrder.Enqueue(correlationId);
             EnforceTerminalRetention();
         }
@@ -271,10 +270,10 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             if (_byCorrelation.TryRemove(oldest, out LifecycleEntry? removed)) {
                 if (_byMessage.TryGetValue(removed.MessageId, out LifecycleEntry? mapped)
                     && ReferenceEquals(mapped, removed)) {
-                    _byMessage.TryRemove(removed.MessageId, out _);
+                    _ = _byMessage.TryRemove(removed.MessageId, out _);
                 }
 
-                Interlocked.Decrement(ref _terminalCount);
+                _ = Interlocked.Decrement(ref _terminalCount);
                 removed.Dispose();
             }
         }
@@ -408,7 +407,7 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             }
 
             try {
-                _timeoutTimer.Change(_timeout, Timeout.InfiniteTimeSpan);
+                _ = _timeoutTimer.Change(_timeout, Timeout.InfiniteTimeSpan);
             }
             catch (ObjectDisposedException) {
                 // P33: Start lost a race with Dispose; nothing to arm.
@@ -466,7 +465,7 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
 
             if (becameTerminal) {
                 try {
-                    _timeoutTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+                    _ = _timeoutTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
                 }
                 catch (ObjectDisposedException) {
                     // P33: timer disposed concurrently; nothing to cancel.
@@ -500,7 +499,7 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             }
 
             try {
-                _timeoutTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+                _ = _timeoutTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
             }
             catch (ObjectDisposedException) {
                 // P33: timer disposed between flag check and Change call; benign.

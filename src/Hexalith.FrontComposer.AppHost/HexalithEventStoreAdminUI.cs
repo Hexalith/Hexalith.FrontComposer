@@ -1,5 +1,3 @@
-using Projects;
-
 namespace Hexalith.FrontComposer.AppHost;
 
 /// <summary>EventStore Admin Blazor UI (root submodule copy).</summary>

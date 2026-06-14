@@ -17,8 +17,6 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// </para>
 /// </remarks>
 public sealed record ExpandRowAction {
-    private readonly string _viewKey = string.Empty;
-    private readonly object _itemKey = default!;
 
     /// <summary>Initializes a new instance of the <see cref="ExpandRowAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key (D22 ephemeral form; non-empty).</param>
@@ -32,21 +30,21 @@ public sealed record ExpandRowAction {
 
     /// <summary>Gets the stable per-view key (D22 ephemeral form).</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the boxed item identity for the row to expand.</summary>
     public object ItemKey {
-        get => _itemKey;
-        init => _itemKey = value ?? throw new ArgumentNullException(nameof(value));
-    }
+        get;
+        init => field = value ?? throw new ArgumentNullException(nameof(value));
+    } = default!;
 }
 
 /// <summary>
@@ -57,24 +55,21 @@ public sealed record ExpandRowAction {
 /// The PURE reducer removes the entry for the <see cref="ViewKey"/>; idempotent (no-op when absent).
 /// </summary>
 public sealed record CollapseRowAction {
-    private readonly string _viewKey = string.Empty;
 
     /// <summary>Initializes a new instance of the <see cref="CollapseRowAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key (D22 ephemeral form).</param>
     /// <exception cref="ArgumentException">Thrown when <paramref name="viewKey"/> is null, empty, or whitespace.</exception>
-    public CollapseRowAction(string viewKey) {
-        ViewKey = viewKey;
-    }
+    public CollapseRowAction(string viewKey) => ViewKey = viewKey;
 
     /// <summary>Gets the stable per-view key (D22 ephemeral form).</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 }

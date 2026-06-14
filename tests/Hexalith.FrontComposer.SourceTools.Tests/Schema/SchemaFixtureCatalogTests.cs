@@ -1,7 +1,6 @@
 using System.Text.Json;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Schema;
 
@@ -45,7 +44,7 @@ public sealed class SchemaFixtureCatalogTests {
 
         foreach (FileInfo file in dir.EnumerateFiles("*.json")) {
             using FileStream stream = file.OpenRead();
-            using JsonDocument doc = JsonDocument.Parse(stream);
+            using var doc = JsonDocument.Parse(stream);
             JsonElement root = doc.RootElement;
 
             root.TryGetProperty("fixtureId", out JsonElement fixtureId).ShouldBeTrue($"{file.Name} missing fixtureId");
@@ -70,7 +69,7 @@ public sealed class SchemaFixtureCatalogTests {
         rendererFile.Exists.ShouldBeTrue();
 
         using FileStream stream = rendererFile.OpenRead();
-        using JsonDocument doc = JsonDocument.Parse(stream);
+        using var doc = JsonDocument.Parse(stream);
         JsonElement root = doc.RootElement;
 
         root.GetProperty("expectedRendererSurface").GetString().ShouldBe("McpMarkdown");
@@ -85,7 +84,7 @@ public sealed class SchemaFixtureCatalogTests {
         List<string> ids = [];
         foreach (FileInfo file in dir.EnumerateFiles("*.json")) {
             using FileStream stream = file.OpenRead();
-            using JsonDocument doc = JsonDocument.Parse(stream);
+            using var doc = JsonDocument.Parse(stream);
             ids.Add(doc.RootElement.GetProperty("fixtureId").GetString()!);
         }
 

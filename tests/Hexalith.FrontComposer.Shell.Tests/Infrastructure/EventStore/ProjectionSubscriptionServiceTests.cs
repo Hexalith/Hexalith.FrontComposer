@@ -9,11 +9,8 @@ using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
@@ -641,9 +638,7 @@ public sealed class ProjectionSubscriptionServiceTests {
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter) {
-            Entries.Add(new Entry(logLevel, formatter(state, exception), exception?.GetType().Name));
-        }
+            Func<TState, Exception?, string> formatter) => Entries.Add(new Entry(logLevel, formatter(state, exception), exception?.GetType().Name));
 
         public sealed record Entry(LogLevel Level, string Message, string? ExceptionType);
     }

@@ -1,5 +1,5 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text;
 using System.Text.Json;
 
@@ -159,7 +159,7 @@ public sealed class EventStoreQueryClient(
 
             if (ifNoneMatch.Count > 0) {
                 EventStoreValidation.ValidateETagCount(ifNoneMatch, current.MaxETagCount);
-                httpRequest.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
+                _ = httpRequest.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
             }
 
             JsonElement payload = SerializeQueryPayload(request);
@@ -184,127 +184,127 @@ public sealed class EventStoreQueryClient(
 
             switch (classification.Outcome) {
                 case QueryClassificationOutcome.NotModified: {
-                    // F28 — distinguish "served cached payload after 304" (from_cache) from
-                    // "no-change signal returned to caller" (not_modified). Default to
-                    // not_modified; the cached branch overrides to from_cache.
-                    FrontComposerTelemetry.SetOutcome(activity, "not_modified");
-                    if (cachedEntry is not null) {
-                        FrontComposerTelemetry.SetOutcome(activity, "from_cache");
-                        try {
-                            RevalidateSnapshot(tenantContext);
-                            return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
+                        // F28 — distinguish "served cached payload after 304" (from_cache) from
+                        // "no-change signal returned to caller" (not_modified). Default to
+                        // not_modified; the cached branch overrides to from_cache.
+                        FrontComposerTelemetry.SetOutcome(activity, "not_modified");
+                        if (cachedEntry is not null) {
+                            FrontComposerTelemetry.SetOutcome(activity, "from_cache");
+                            try {
+                                RevalidateSnapshot(tenantContext);
+                                return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
+                            }
+                            catch (ProjectionSchemaMismatchException ex) {
+                                FrontComposerLog.QuerySchemaMismatch(
+                                    logger,
+                                    ex.ProjectionType,
+                                    ex.GetType().Name);
+                                throw;
+                            }
                         }
-                        catch (ProjectionSchemaMismatchException ex) {
-                            FrontComposerLog.QuerySchemaMismatch(
-                                logger,
-                                ex.ProjectionType,
-                                ex.GetType().Name);
-                            throw;
+
+                        // Caller did not opt into framework cache integration (no CacheDiscriminator) —
+                        // they own their own cache lifecycle. Surface the explicit no-change signal so
+                        // their existing handler can take its own path.
+                        if (cacheKey is null) {
+                            return QueryResult<T>.NotModified(classification.ETag);
                         }
-                    }
 
-                    // Caller did not opt into framework cache integration (no CacheDiscriminator) —
-                    // they own their own cache lifecycle. Surface the explicit no-change signal so
-                    // their existing handler can take its own path.
-                    if (cacheKey is null) {
-                        return QueryResult<T>.NotModified(classification.ETag);
-                    }
+                        // From here on cacheKey is non-null: caller asked for framework cache integration
+                        // but no compatible entry was readable, so EventStore is asserting a state the
+                        // client doesn't have. AC4 / D10: retry once uncached, fail loudly otherwise.
+                        if (!allowProtocolDriftRetry) {
+                            FrontComposerTelemetry.SetFailure(activity, "ProtocolDriftNoCache");
+                            logger.LogWarning(
+                                "EventStore returned 304 Not Modified twice without a matching cache entry — failing loudly to preserve visible UI state.");
+                            throw new HttpRequestException(
+                                "EventStore returned 304 Not Modified but no compatible cached payload exists.",
+                                inner: null,
+                                statusCode: System.Net.HttpStatusCode.NotModified);
+                        }
 
-                    // From here on cacheKey is non-null: caller asked for framework cache integration
-                    // but no compatible entry was readable, so EventStore is asserting a state the
-                    // client doesn't have. AC4 / D10: retry once uncached, fail loudly otherwise.
-                    if (!allowProtocolDriftRetry) {
-                        FrontComposerTelemetry.SetFailure(activity, "ProtocolDriftNoCache");
-                        logger.LogWarning(
-                            "EventStore returned 304 Not Modified twice without a matching cache entry — failing loudly to preserve visible UI state.");
-                        throw new HttpRequestException(
-                            "EventStore returned 304 Not Modified but no compatible cached payload exists.",
-                            inner: null,
-                            statusCode: System.Net.HttpStatusCode.NotModified);
+                        FrontComposerTelemetry.SetOutcome(activity, "protocol_drift_retry");
+                        logger.LogInformation(
+                            "EventStore returned 304 Not Modified without a matching cache entry — retrying once uncached (Story 5-2 D10).");
+                        return await ExecuteAsync<T>(
+                            request: request with { ETag = null, ETags = null },
+                            current,
+                            tenantContext,
+                            tenant,
+                            cacheKey: cacheKey,
+                            cachedEntry: null,
+                            allowProtocolDriftRetry: false,
+                            cancellationToken).ConfigureAwait(false);
                     }
-
-                    FrontComposerTelemetry.SetOutcome(activity, "protocol_drift_retry");
-                    logger.LogInformation(
-                        "EventStore returned 304 Not Modified without a matching cache entry — retrying once uncached (Story 5-2 D10).");
-                    return await ExecuteAsync<T>(
-                        request: request with { ETag = null, ETags = null },
-                        current,
-                        tenantContext,
-                        tenant,
-                        cacheKey: cacheKey,
-                        cachedEntry: null,
-                        allowProtocolDriftRetry: false,
-                        cancellationToken).ConfigureAwait(false);
-                }
 
                 case QueryClassificationOutcome.Ok: {
-                    FrontComposerTelemetry.SetOutcome(activity, "ok");
-                    string body = await EventStoreHttp.ReadBoundedResponseBodyAsync(response.Content, current.MaxResponseBytes, logger, cancellationToken).ConfigureAwait(false);
-                    IReadOnlyList<T> items;
-                    int totalCount;
-                    try {
-                        using JsonDocument document = JsonDocument.Parse(body);
-                        items = ReadPayloadItems<T>(document.RootElement);
-                        totalCount = ReadTotalCount(document.RootElement, items.Count);
-                    }
-                    catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException or ArgumentException) {
-                        // P2 — broaden beyond JsonException so type-shape mismatches surfaced by
-                        // ReadPayloadItems<T>.Deserialize (InvalidOperationException, NotSupportedException,
-                        // ArgumentException) flow through the schema-mismatch path instead of bubbling raw.
-                        // P4 — null-guard the diagnostic field; request.ProjectionType is normalized non-null
-                        // earlier but logging the literal "null" is still preferable to a NullReferenceException.
-                        string diagnosticProjectionType = projectionType ?? string.Empty;
-                        // DN2 — invalidate the projection family, not just this single cache key.
-                        await TryInvalidateSchemaMismatchAsync(
-                            cacheKey,
-                            diagnosticProjectionType,
-                            tenantContext,
-                            cancellationToken).ConfigureAwait(false);
+                        FrontComposerTelemetry.SetOutcome(activity, "ok");
+                        string body = await EventStoreHttp.ReadBoundedResponseBodyAsync(response.Content, current.MaxResponseBytes, logger, cancellationToken).ConfigureAwait(false);
+                        IReadOnlyList<T> items;
+                        int totalCount;
+                        try {
+                            using var document = JsonDocument.Parse(body);
+                            items = ReadPayloadItems<T>(document.RootElement);
+                            totalCount = ReadTotalCount(document.RootElement, items.Count);
+                        }
+                        catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException or ArgumentException) {
+                            // P2 — broaden beyond JsonException so type-shape mismatches surfaced by
+                            // ReadPayloadItems<T>.Deserialize (InvalidOperationException, NotSupportedException,
+                            // ArgumentException) flow through the schema-mismatch path instead of bubbling raw.
+                            // P4 — null-guard the diagnostic field; request.ProjectionType is normalized non-null
+                            // earlier but logging the literal "null" is still preferable to a NullReferenceException.
+                            string diagnosticProjectionType = projectionType ?? string.Empty;
+                            // DN2 — invalidate the projection family, not just this single cache key.
+                            await TryInvalidateSchemaMismatchAsync(
+                                cacheKey,
+                                diagnosticProjectionType,
+                                tenantContext,
+                                cancellationToken).ConfigureAwait(false);
 
-                        FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
-                        FrontComposerLog.QuerySchemaMismatch(
-                            logger,
-                            diagnosticProjectionType,
-                            ex.GetType().Name);
-                        throw new ProjectionSchemaMismatchException(diagnosticProjectionType, ex);
-                    }
+                            FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+                            FrontComposerLog.QuerySchemaMismatch(
+                                logger,
+                                diagnosticProjectionType,
+                                ex.GetType().Name);
+                            throw new ProjectionSchemaMismatchException(diagnosticProjectionType, ex);
+                        }
 
-                    string? eTag = classification.ETag;
-                    if (cacheKey is not null && eTag is { Length: > 0 } && !ContainsHeaderInjectionChar(eTag)) {
-                        long now = DateTimeOffset.UtcNow.UtcTicks;
-                        ETagCacheEntry entry = new(
-                            ETag: eTag,
-                            Payload: body,
-                            CachedAtUtcTicks: now,
-                            LastAccessedUtcTicks: now,
-                            FormatVersion: ETagCacheEntry.CurrentFormatVersion,
-                            PayloadVersion: request.CachePayloadVersion,
-                            Discriminator: request.CacheDiscriminator ?? string.Empty);
-                        _ = PersistCacheEntryAsync(cacheKey, entry, tenantContext);
-                    }
+                        string? eTag = classification.ETag;
+                        if (cacheKey is not null && eTag is { Length: > 0 } && !ContainsHeaderInjectionChar(eTag)) {
+                            long now = DateTimeOffset.UtcNow.UtcTicks;
+                            ETagCacheEntry entry = new(
+                                ETag: eTag,
+                                Payload: body,
+                                CachedAtUtcTicks: now,
+                                LastAccessedUtcTicks: now,
+                                FormatVersion: ETagCacheEntry.CurrentFormatVersion,
+                                PayloadVersion: request.CachePayloadVersion,
+                                Discriminator: request.CacheDiscriminator ?? string.Empty);
+                            _ = PersistCacheEntryAsync(cacheKey, entry, tenantContext);
+                        }
 
-                    return new QueryResult<T>(items, totalCount, eTag);
-                }
+                        return new QueryResult<T>(items, totalCount, eTag);
+                    }
 
                 case QueryClassificationOutcome.Failure:
                 default: {
-                    string failureCategory = classification.Failure?.GetType().Name ?? "UnexpectedStatus";
-                    FrontComposerTelemetry.SetOutcome(activity, "failure");
-                    FrontComposerTelemetry.SetFailure(activity, failureCategory);
-                    if (classification.Failure is AuthRedirectRequiredException authRequired) {
-                        await authRedirector.RedirectAsync(returnUrl: null, cancellationToken).ConfigureAwait(false);
-                        throw authRequired;
-                    }
+                        string failureCategory = classification.Failure?.GetType().Name ?? "UnexpectedStatus";
+                        FrontComposerTelemetry.SetOutcome(activity, "failure");
+                        FrontComposerTelemetry.SetFailure(activity, failureCategory);
+                        if (classification.Failure is AuthRedirectRequiredException authRequired) {
+                            await authRedirector.RedirectAsync(returnUrl: null, cancellationToken).ConfigureAwait(false);
+                            throw authRequired;
+                        }
 
-                    FrontComposerLog.QueryUnexpectedStatus(
-                        logger,
-                        (int)response.StatusCode,
-                        projectionType,
-                        queryType,
-                        failureCategory,
-                        Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
-                    throw classification.Failure!;
-                }
+                        FrontComposerLog.QueryUnexpectedStatus(
+                            logger,
+                            (int)response.StatusCode,
+                            projectionType,
+                            queryType,
+                            failureCategory,
+                            Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
+                        throw classification.Failure!;
+                    }
             }
         }
         catch (OperationCanceledException oce) when (cancellationToken.IsCancellationRequested
@@ -384,15 +384,14 @@ public sealed class EventStoreQueryClient(
         }
     }
 
-    private static bool HasCacheUnsafeQueryShape(QueryRequest request) {
-#pragma warning disable CS0618, HFC0001 // Legacy Filter remains part of cache-safety gating until removal in v0.4.
-        return !string.IsNullOrWhiteSpace(request.Filter)
+    private static bool HasCacheUnsafeQueryShape(QueryRequest request) =>
+#pragma warning disable HFC0001 // Legacy Filter is honoured for cache-safety until removal in v0.4.
+            !string.IsNullOrWhiteSpace(request.Filter)
+#pragma warning restore HFC0001
             || (request.ColumnFilters is { Count: > 0 })
             || (request.StatusFilters is { Count: > 0 })
             || !string.IsNullOrWhiteSpace(request.SearchQuery)
             || !string.IsNullOrWhiteSpace(request.SortColumn);
-#pragma warning restore CS0618, HFC0001
-    }
 
     private static IReadOnlyList<string> GetRequestEtags(QueryRequest request) {
         if (request.ETags is not null) {
@@ -402,13 +401,9 @@ public sealed class EventStoreQueryClient(
         return string.IsNullOrWhiteSpace(request.ETag) ? [] : [request.ETag];
     }
 
-    [SuppressMessage(
-        "Trimming",
-        "IL2026:RequiresUnreferencedCode",
-        Justification = "EventStore adapter deserializes adopter projection DTOs at runtime; AOT-specific contexts are deferred to Story 9-4.")]
     private static QueryResult<T> DeserializeNotModifiedFromCache<T>(ETagCacheEntry entry, string projectionType) {
         try {
-            using JsonDocument document = JsonDocument.Parse(entry.Payload);
+            using var document = JsonDocument.Parse(entry.Payload);
             IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
             int totalCount = ReadTotalCount(document.RootElement, items.Count);
             return QueryResult<T>.NotModifiedFromCache(items, totalCount, entry.ETag);
@@ -499,11 +494,11 @@ public sealed class EventStoreQueryClient(
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
         Justification = "EventStore adapter serializes query payload metadata through System.Text.Json web defaults.")]
-    private static JsonElement SerializeQueryPayload(QueryRequest request) {
-#pragma warning disable CS0618, HFC4001, HFC0001 // Filter remains part of the compatibility payload until removal in v0.4.
-        return JsonSerializer.SerializeToElement(
+    private static JsonElement SerializeQueryPayload(QueryRequest request) => JsonSerializer.SerializeToElement(
             new QueryPayload(
+#pragma warning disable HFC0001 // Legacy Filter is serialized for wire compatibility until removal in v0.4.
                 request.Filter,
+#pragma warning restore HFC0001
                 request.Skip,
                 request.Take,
                 request.ColumnFilters,
@@ -512,8 +507,6 @@ public sealed class EventStoreQueryClient(
                 request.SortColumn,
                 request.SortDescending),
             EventStoreRequestContent.JsonOptions);
-#pragma warning restore CS0618, HFC4001, HFC0001
-    }
 
     private sealed record SubmitQueryRequest(
         string Tenant,

@@ -89,7 +89,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                     return;
                 }
 
-                DriftCurrentSnapshot current = DriftCurrentSnapshot.From(projections, commands);
+                var current = DriftCurrentSnapshot.From(projections, commands);
                 DriftComparisonResult comparison = DriftComparisonService.Compare(
                     current,
                     baseline.Baseline,

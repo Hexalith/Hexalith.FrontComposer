@@ -16,9 +16,7 @@ public sealed class CounterProjectionEffects {
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, int> _pendingIncrementAmounts = new();
 
     /// <summary>Initializes a new instance of the <see cref="CounterProjectionEffects"/> class.</summary>
-    public CounterProjectionEffects(IState<CounterProjectionState> state) {
-        _state = state ?? throw new ArgumentNullException(nameof(state));
-    }
+    public CounterProjectionEffects(IState<CounterProjectionState> state) => _state = state ?? throw new ArgumentNullException(nameof(state));
 
     /// <summary>Captures the single-field increment amount until confirmation (mirrors batch behaviour).</summary>
     [EffectMethod]

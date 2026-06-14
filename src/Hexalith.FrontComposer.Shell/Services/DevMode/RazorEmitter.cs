@@ -227,7 +227,7 @@ public sealed partial class RazorEmitter : IRazorEmitter {
 
         StringBuilder sb = new(value.Length);
         foreach (char ch in value) {
-            if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_') {
+            if (ch is (>= 'A' and <= 'Z') or (>= 'a' and <= 'z') or (>= '0' and <= '9') or '_') {
                 _ = sb.Append(ch);
             }
         }

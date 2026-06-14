@@ -3,7 +3,6 @@ using Hexalith.FrontComposer.Shell.Shortcuts;
 using Microsoft.AspNetCore.Components;
 
 // Blazor component: awaited tasks must resume on the component's sync context, so ConfigureAwait(false) is the wrong choice here.
-#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
 namespace Hexalith.FrontComposer.Shell.Components.Layout;
 

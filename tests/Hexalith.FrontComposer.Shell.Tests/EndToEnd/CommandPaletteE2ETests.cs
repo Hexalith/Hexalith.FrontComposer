@@ -49,7 +49,7 @@ public sealed class CommandPaletteE2ETests {
 
     [Fact]
     public async Task AC1_PressCtrlK_TypeQuery_ActivateProjection_NavigatesAndPersistsToRecent() {
-        await using PaletteFlowHarness harness = PaletteFlowHarness.Build(
+        await using var harness = PaletteFlowHarness.Build(
             manifests: [new DomainManifest(CounterContext, CounterContext, [CounterProjection], [])]);
 
         // Open the palette (mirrors Ctrl+K → FrontComposerShortcutRegistrar.OpenPaletteAsync).
@@ -92,7 +92,7 @@ public sealed class CommandPaletteE2ETests {
 
     [Fact]
     public async Task AC2_EmptyRegistry_QueryProducesNoResults() {
-        await using PaletteFlowHarness harness = PaletteFlowHarness.Build(manifests: []);
+        await using var harness = PaletteFlowHarness.Build(manifests: []);
 
         await harness.DispatchAndSettleAsync(new PaletteOpenedAction("c-open"));
         harness.Dispatch(new PaletteQueryChangedAction("c-q1", "cou"));
@@ -109,7 +109,7 @@ public sealed class CommandPaletteE2ETests {
 
     [Fact]
     public async Task AC3_ShortcutsQuery_SurfacesFiveShellBindings_WithMacParity() {
-        await using PaletteFlowHarness harness = PaletteFlowHarness.Build(manifests: []);
+        await using var harness = PaletteFlowHarness.Build(manifests: []);
         harness.RegisterShellShortcuts();
 
         await harness.DispatchAndSettleAsync(new PaletteOpenedAction("c-open"));
@@ -150,7 +150,7 @@ public sealed class CommandPaletteE2ETests {
 
     [Fact]
     public async Task AC4_MetaKChord_DispatchesSamePaletteHandler_AsCtrlK() {
-        await using PaletteFlowHarness harness = PaletteFlowHarness.Build(manifests: []);
+        await using var harness = PaletteFlowHarness.Build(manifests: []);
         int paletteHandlerInvocations = 0;
         Task SignalHandler() {
             Interlocked.Increment(ref paletteHandlerInvocations);
@@ -196,14 +196,6 @@ public sealed class CommandPaletteE2ETests {
         private readonly IState<FrontComposerCommandPaletteState> _paletteStateProxy;
         private readonly FakeTimeProvider _time;
 
-        private FrontComposerCommandPaletteState _state = new(
-            IsOpen: false,
-            Query: string.Empty,
-            Results: ImmutableArray<PaletteResult>.Empty,
-            RecentRouteUrls: ImmutableArray<string>.Empty,
-            SelectedIndex: 0,
-            LoadState: PaletteLoadState.Idle);
-
         private PaletteFlowHarness(
             ServiceProvider sp,
             CommandPaletteEffects effects,
@@ -227,7 +219,13 @@ public sealed class CommandPaletteE2ETests {
 
         public IShortcutService Shortcuts { get; }
 
-        public FrontComposerCommandPaletteState State => _state;
+        public FrontComposerCommandPaletteState State { get; private set; } = new(
+            IsOpen: false,
+            Query: string.Empty,
+            Results: ImmutableArray<PaletteResult>.Empty,
+            RecentRouteUrls: ImmutableArray<string>.Empty,
+            SelectedIndex: 0,
+            LoadState: PaletteLoadState.Idle);
 
 #pragma warning disable CS0067 // Required by IDispatcher; harness fires reducers + effects directly.
         public event EventHandler<Fluxor.ActionDispatchedEventArgs>? ActionDispatched;
@@ -288,7 +286,7 @@ public sealed class CommandPaletteE2ETests {
                 sp.GetRequiredService<IShortcutService>());
 
             // Wire the IState proxy so effect-side reads always observe the live captured state.
-            paletteState.Value.Returns(_ => harness._state);
+            paletteState.Value.Returns(_ => harness.State);
 
             return harness;
         }
@@ -340,35 +338,31 @@ public sealed class CommandPaletteE2ETests {
             }
         }
 
-        private void ApplyReducer(object action) {
-            _state = action switch {
-                PaletteOpenedAction a => CommandPaletteReducers.ReducePaletteOpened(_state, a),
-                PaletteClosedAction a => CommandPaletteReducers.ReducePaletteClosed(_state, a),
-                PaletteQueryChangedAction a => CommandPaletteReducers.ReducePaletteQueryChanged(_state, a),
-                PaletteResultsComputedAction a => CommandPaletteReducers.ReducePaletteResultsComputed(_state, a),
-                PaletteSelectionMovedAction a => CommandPaletteReducers.ReducePaletteSelectionMoved(_state, a),
-                PaletteResultActivatedAction a => CommandPaletteReducers.ReducePaletteResultActivated(_state, a),
-                RecentRouteVisitedAction a => CommandPaletteReducers.ReduceRecentRouteVisited(_state, a),
-                PaletteHydratedAction a => CommandPaletteReducers.ReducePaletteHydrated(_state, a),
-                PaletteHydratingAction a => CommandPaletteReducers.ReducePaletteHydrating(_state, a),
-                PaletteHydratedCompletedAction a => CommandPaletteReducers.ReducePaletteHydratedCompleted(_state, a),
-                PaletteScopeChangedAction a => CommandPaletteReducers.ReducePaletteScopeChanged(_state, a),
-                _ => _state,
-            };
-        }
+        private void ApplyReducer(object action) => State = action switch {
+            PaletteOpenedAction a => CommandPaletteReducers.ReducePaletteOpened(State, a),
+            PaletteClosedAction a => CommandPaletteReducers.ReducePaletteClosed(State, a),
+            PaletteQueryChangedAction a => CommandPaletteReducers.ReducePaletteQueryChanged(State, a),
+            PaletteResultsComputedAction a => CommandPaletteReducers.ReducePaletteResultsComputed(State, a),
+            PaletteSelectionMovedAction a => CommandPaletteReducers.ReducePaletteSelectionMoved(State, a),
+            PaletteResultActivatedAction a => CommandPaletteReducers.ReducePaletteResultActivated(State, a),
+            RecentRouteVisitedAction a => CommandPaletteReducers.ReduceRecentRouteVisited(State, a),
+            PaletteHydratedAction a => CommandPaletteReducers.ReducePaletteHydrated(State, a),
+            PaletteHydratingAction a => CommandPaletteReducers.ReducePaletteHydrating(State, a),
+            PaletteHydratedCompletedAction a => CommandPaletteReducers.ReducePaletteHydratedCompleted(State, a),
+            PaletteScopeChangedAction a => CommandPaletteReducers.ReducePaletteScopeChanged(State, a),
+            _ => State,
+        };
 
-        private Task InvokeEffect(object action) {
-            return action switch {
-                PaletteOpenedAction a => _effects.HandlePaletteOpened(a, this),
-                PaletteClosedAction a => _effects.HandlePaletteClosed(a, this),
-                PaletteQueryChangedAction a => _effects.HandlePaletteQueryChanged(a, this),
-                PaletteResultActivatedAction a => _effects.HandlePaletteResultActivated(a, this),
-                RecentRouteVisitedAction a => _effects.HandleRecentRouteVisited(a, this),
-                AppInitializedAction a => _effects.HandleAppInitialized(a, this),
-                PaletteScopeChangedAction a => _effects.HandlePaletteScopeChanged(a, this),
-                _ => Task.CompletedTask,
-            };
-        }
+        private Task InvokeEffect(object action) => action switch {
+            PaletteOpenedAction a => _effects.HandlePaletteOpened(a, this),
+            PaletteClosedAction a => _effects.HandlePaletteClosed(a, this),
+            PaletteQueryChangedAction a => _effects.HandlePaletteQueryChanged(a, this),
+            PaletteResultActivatedAction a => _effects.HandlePaletteResultActivated(a, this),
+            RecentRouteVisitedAction a => _effects.HandleRecentRouteVisited(a, this),
+            AppInitializedAction a => _effects.HandleAppInitialized(a, this),
+            PaletteScopeChangedAction a => _effects.HandlePaletteScopeChanged(a, this),
+            _ => Task.CompletedTask,
+        };
 
         public async ValueTask DisposeAsync() {
             await SettleAsync();

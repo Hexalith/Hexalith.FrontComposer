@@ -10,8 +10,7 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
 /// which falls back to <see langword="true"/> when the registry does not implement this companion
 /// interface — preserving the pre-3-4 behaviour.
 /// </remarks>
-public interface IFrontComposerFullPageRouteRegistry
-{
+public interface IFrontComposerFullPageRouteRegistry {
     /// <summary>
     /// Returns whether a generated FullPage route exists for the given command type.
     /// </summary>

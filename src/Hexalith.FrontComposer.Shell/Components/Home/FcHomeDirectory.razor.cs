@@ -11,7 +11,6 @@ using Hexalith.FrontComposer.Shell.State.CommandPalette;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Localization;
 
 namespace Hexalith.FrontComposer.Shell.Components.Home;

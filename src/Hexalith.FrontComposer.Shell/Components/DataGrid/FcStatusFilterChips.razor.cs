@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Attributes;

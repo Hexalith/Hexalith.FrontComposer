@@ -1,5 +1,3 @@
-using System;
-
 namespace Hexalith.FrontComposer.Contracts.Communication;
 
 /// <summary>
@@ -20,9 +18,7 @@ public class CommandValidationException : Exception {
     /// </summary>
     /// <param name="problem">Parsed ProblemDetails (validation errors + plain-text title/detail).</param>
     public CommandValidationException(ProblemDetailsPayload problem)
-        : base(problem?.Title ?? "Command validation failed.") {
-        Problem = problem ?? throw new ArgumentNullException(nameof(problem));
-    }
+        : base(problem?.Title ?? "Command validation failed.") => Problem = problem ?? throw new ArgumentNullException(nameof(problem));
 
     /// <summary>Gets the parsed ProblemDetails payload (plain text + validation map).</summary>
     public ProblemDetailsPayload Problem { get; }

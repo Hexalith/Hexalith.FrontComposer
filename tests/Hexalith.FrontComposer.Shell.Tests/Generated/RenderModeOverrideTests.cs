@@ -30,9 +30,7 @@ public sealed class RenderModeOverrideTests : CommandRendererTestBase {
 
         IRenderedComponent<TwoFieldCompactCommandRenderer> cut = Render<TwoFieldCompactCommandRenderer>();
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("fc-expand-in-row", Case.Insensitive);
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("fc-expand-in-row", Case.Insensitive));
     }
 
     [Fact]

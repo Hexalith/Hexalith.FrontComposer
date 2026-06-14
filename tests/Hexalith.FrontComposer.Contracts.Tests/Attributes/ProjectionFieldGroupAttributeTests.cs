@@ -18,9 +18,9 @@ public sealed class ProjectionFieldGroupAttributeTests {
 
     [Fact]
     public void Constructor_RejectsNullOrWhitespace() {
-        Should.Throw<ArgumentException>(() => new ProjectionFieldGroupAttribute(null!));
-        Should.Throw<ArgumentException>(() => new ProjectionFieldGroupAttribute(""));
-        Should.Throw<ArgumentException>(() => new ProjectionFieldGroupAttribute("   "));
+        _ = Should.Throw<ArgumentException>(() => new ProjectionFieldGroupAttribute(null!));
+        _ = Should.Throw<ArgumentException>(() => new ProjectionFieldGroupAttribute(""));
+        _ = Should.Throw<ArgumentException>(() => new ProjectionFieldGroupAttribute("   "));
     }
 
     [Fact]
@@ -30,7 +30,7 @@ public sealed class ProjectionFieldGroupAttributeTests {
             .Cast<AttributeUsageAttribute>()
             .SingleOrDefault();
 
-        usage.ShouldNotBeNull();
+        _ = usage.ShouldNotBeNull();
         usage.ValidOn.ShouldBe(AttributeTargets.Property);
         usage.Inherited.ShouldBeFalse();
         usage.AllowMultiple.ShouldBeFalse();

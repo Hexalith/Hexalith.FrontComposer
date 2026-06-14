@@ -2,19 +2,15 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Reflection;
 
-using Hexalith.FrontComposer.Testing;
-
 using Shouldly;
 
 using Xunit;
 
 namespace Hexalith.FrontComposer.Testing.Tests;
 
-public sealed class PackageBoundaryTests
-{
+public sealed class PackageBoundaryTests {
     [Fact]
-    public void PublicApi_ExportedTypes_MatchIntentionalBaseline()
-    {
+    public void PublicApi_ExportedTypes_MatchIntentionalBaseline() {
         string root = FindRepoRoot();
         string baselinePath = Path.Combine(root, "src", "Hexalith.FrontComposer.Testing", "PublicAPI.Shipped.txt");
         string[] expected = File.ReadAllLines(baselinePath)
@@ -30,11 +26,10 @@ public sealed class PackageBoundaryTests
     }
 
     [Fact]
-    public async Task DotnetPack_TestingPackage_DoesNotLeakRepoLocalArtifactsOrInternalTestAssemblies()
-    {
+    public async Task DotnetPack_TestingPackage_DoesNotLeakRepoLocalArtifactsOrInternalTestAssemblies() {
         string root = FindRepoRoot();
         string output = Path.Combine(Path.GetTempPath(), "fc-testing-pack-" + Guid.NewGuid().ToString("N"));
-        Directory.CreateDirectory(output);
+        _ = Directory.CreateDirectory(output);
 
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-c", "Release", "-o", output, "--no-restore", "-m:1", "/nr:false").ConfigureAwait(true);
 
@@ -62,15 +57,14 @@ public sealed class PackageBoundaryTests
     }
 
     [Fact]
-    public async Task CleanTemporaryConsumer_RestoresFromPackedNupkgs_WithoutRepoRelativeProjectReferences()
-    {
+    public async Task CleanTemporaryConsumer_RestoresFromPackedNupkgs_WithoutRepoRelativeProjectReferences() {
         string root = FindRepoRoot();
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-testing-clean-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-testing-consumer-" + Guid.NewGuid().ToString("N"));
         string packageVersion = "0.2.0-review." + Guid.NewGuid().ToString("N")[..8];
         string fallbackPackages = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
-        Directory.CreateDirectory(packageOutput);
-        Directory.CreateDirectory(consumer);
+        _ = Directory.CreateDirectory(packageOutput);
+        _ = Directory.CreateDirectory(consumer);
 
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj", "-c", "Release", "-o", packageOutput, "--no-restore", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj", "-c", "Release", "-o", packageOutput, "--no-restore", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
@@ -137,38 +131,31 @@ public sealed class ConsumerSmokeTests
         await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-m:1", "/nr:false").ConfigureAwait(true);
     }
 
-    private static string ReadNuspec(ZipArchive archive)
-    {
+    private static string ReadNuspec(ZipArchive archive) {
         ZipArchiveEntry entry = archive.Entries.Single(e => e.FullName.EndsWith(".nuspec", StringComparison.Ordinal));
         using Stream stream = entry.Open();
         using StreamReader reader = new(stream);
         return reader.ReadToEnd();
     }
 
-    private static string FormatTypeName(Type type)
-    {
-        if (type.IsGenericParameter)
-        {
+    private static string FormatTypeName(Type type) {
+        if (type.IsGenericParameter) {
             return type.Name;
         }
 
-        if (type.IsArray)
-        {
+        if (type.IsArray) {
             return FormatTypeName(type.GetElementType()!) + "[]";
         }
 
-        if (type.IsByRef)
-        {
+        if (type.IsByRef) {
             return FormatTypeName(type.GetElementType()!);
         }
 
-        if (type == typeof(void))
-        {
+        if (type == typeof(void)) {
             return "void";
         }
 
-        if (!type.IsGenericType)
-        {
+        if (!type.IsGenericType) {
             return type.FullName!;
         }
 
@@ -179,37 +166,31 @@ public sealed class ConsumerSmokeTests
         return $"{genericName}<{args}>";
     }
 
-    private static IEnumerable<string> EnumeratePublicApi(Assembly assembly)
-    {
+    private static IEnumerable<string> EnumeratePublicApi(Assembly assembly) {
         foreach (Type type in assembly
             .GetExportedTypes()
             .Where(type => type.Namespace == "Hexalith.FrontComposer.Testing")
-            .OrderBy(FormatTypeName, StringComparer.Ordinal))
-        {
+            .OrderBy(FormatTypeName, StringComparer.Ordinal)) {
             string typeName = FormatTypeName(type);
             yield return typeName;
 
-            foreach (ConstructorInfo constructor in type.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-            {
+            foreach (ConstructorInfo constructor in type.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)) {
                 yield return $"{typeName}.#ctor({FormatParameters(constructor)})";
             }
 
-            foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
-            {
+            foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)) {
                 MethodInfo? getter = property.GetMethod;
                 MethodInfo? setter = property.SetMethod;
                 string access = $"{(getter is null ? "-" : "get")}/{(setter is null ? "-" : "set")}";
                 yield return $"{typeName}.{property.Name}:{FormatTypeName(property.PropertyType)}:{access}";
             }
 
-            foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
-            {
+            foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)) {
                 yield return $"{typeName}.{field.Name}:{FormatTypeName(field.FieldType)}";
             }
 
             foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
-                .Where(method => !method.IsSpecialName))
-            {
+                .Where(method => !method.IsSpecialName)) {
                 string genericArgs = method.IsGenericMethodDefinition
                     ? $"<{string.Join(",", method.GetGenericArguments().Select(arg => arg.Name))}>"
                     : string.Empty;
@@ -221,16 +202,13 @@ public sealed class ConsumerSmokeTests
     private static string FormatParameters(MethodBase method)
         => string.Join(",", method.GetParameters().Select(parameter => FormatTypeName(parameter.ParameterType)));
 
-    private static async Task RunDotnetAsync(string workingDirectory, CancellationToken cancellationToken, params string[] args)
-    {
-        ProcessStartInfo startInfo = new("dotnet")
-        {
+    private static async Task RunDotnetAsync(string workingDirectory, CancellationToken cancellationToken, params string[] args) {
+        ProcessStartInfo startInfo = new("dotnet") {
             WorkingDirectory = workingDirectory,
             RedirectStandardError = true,
             RedirectStandardOutput = true,
         };
-        foreach (string arg in args)
-        {
+        foreach (string arg in args) {
             startInfo.ArgumentList.Add(arg);
         }
 
@@ -240,20 +218,16 @@ public sealed class ConsumerSmokeTests
         string stderr = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
         await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
-        if (process.ExitCode != 0)
-        {
+        if (process.ExitCode != 0) {
             throw new InvalidOperationException(
                 $"dotnet {string.Join(' ', args)} failed with exit code {process.ExitCode}.{Environment.NewLine}{stdout}{Environment.NewLine}{stderr}");
         }
     }
 
-    private static string FindRepoRoot()
-    {
+    private static string FindRepoRoot() {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx")))
-            {
+        while (directory is not null) {
+            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx"))) {
                 return directory.FullName;
             }
 

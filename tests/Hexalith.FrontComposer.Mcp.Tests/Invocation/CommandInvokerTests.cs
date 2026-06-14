@@ -10,7 +10,6 @@ using Hexalith.FrontComposer.Mcp.Invocation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 using Shouldly;
 
@@ -22,11 +21,11 @@ public sealed class CommandInvokerTests {
         RecordingCommandService service = new();
         CountingUlidFactory ulids = new();
         ServiceProvider provider = Services(service, ulids).BuildServiceProvider();
-        var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
         Dictionary<string, JsonElement> args = Args("""{"Amount":42}""");
 
         using Activity activity = new("mcp-command-test");
-        activity.Start();
+        _ = activity.Start();
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -34,8 +33,8 @@ public sealed class CommandInvokerTests {
             TestContext.Current.CancellationToken);
 
         result.IsError.ShouldBeFalse(result.Category.ToString());
-        service.Dispatched.ShouldBeOfType<PayInvoiceCommand>();
-        PayInvoiceCommand command = (PayInvoiceCommand)service.Dispatched!;
+        _ = service.Dispatched.ShouldBeOfType<PayInvoiceCommand>();
+        var command = (PayInvoiceCommand)service.Dispatched!;
         command.Amount.ShouldBe(42);
         command.TenantId.ShouldBe("tenant-a");
         command.UserId.ShouldBe("agent-a");
@@ -56,7 +55,7 @@ public sealed class CommandInvokerTests {
         RecordingCommandService service = new();
         CountingUlidFactory ulids = new();
         ServiceProvider provider = Services(service, ulids).BuildServiceProvider();
-        var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -74,7 +73,7 @@ public sealed class CommandInvokerTests {
     public async Task InvokeAsync_MissingUlidFactory_FailsClosedBeforeDispatch() {
         RecordingCommandService service = new();
         ServiceProvider provider = Services(service, ulidFactory: null).BuildServiceProvider();
-        var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -90,13 +89,13 @@ public sealed class CommandInvokerTests {
     public async Task InvokeAsync_WithLifecycleTracker_AcknowledgementCarriesInjectedCommandHandles() {
         RecordingCommandService service = new();
         CountingUlidFactory ulids = new();
-        ServiceCollection services = (ServiceCollection)Services(service, ulids);
+        var services = (ServiceCollection)Services(service, ulids);
         CapturingInvokerLogger logger = new();
-        services.AddSingleton<ILogger<FrontComposerMcpCommandInvoker>>(logger);
-        services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
-        services.AddSingleton<FrontComposerMcpLifecycleTracker>();
+        _ = services.AddSingleton<ILogger<FrontComposerMcpCommandInvoker>>(logger);
+        _ = services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
+        _ = services.AddSingleton<FrontComposerMcpLifecycleTracker>();
         ServiceProvider provider = services.BuildServiceProvider();
-        var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -115,18 +114,18 @@ public sealed class CommandInvokerTests {
 
     private static IServiceCollection Services(ICommandService commandService, IUlidFactory? ulidFactory) {
         var services = new ServiceCollection();
-        services.AddSingleton(commandService);
+        _ = services.AddSingleton(commandService);
         if (ulidFactory is not null) {
-            services.AddSingleton(ulidFactory);
+            _ = services.AddSingleton(ulidFactory);
         }
 
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
         return services;
     }
 
@@ -262,9 +261,7 @@ public sealed class CommandInvokerTests {
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter) {
-            LastException = exception;
-        }
+            Func<TState, Exception?, string> formatter) => LastException = exception;
     }
 
     private sealed class CountingUlidFactory : IUlidFactory {

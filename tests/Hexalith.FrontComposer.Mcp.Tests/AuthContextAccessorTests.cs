@@ -18,50 +18,50 @@ namespace Hexalith.FrontComposer.Mcp.Tests;
 public sealed class AuthContextAccessorTests {
     [Fact]
     public void NoAuth_NoApiKey_FailsClosed_AuthFailed() {
-        var sut = BuildAccessor(out _, configure: null);
-        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => sut.GetContext());
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out _, configure: null);
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
     }
 
     [Fact]
     public void EmptyApiKeyHeader_FailsClosed() {
-        var sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = string.Empty;
 
-        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => sut.GetContext());
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
     }
 
     [Fact]
     public void WhitespaceApiKeyHeader_FailsClosed() {
-        var sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = "   ";
 
-        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => sut.GetContext());
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
     }
 
     [Fact]
     public void MultiValuedApiKeyHeader_FailsClosed() {
-        var sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = new StringValues(["valid-key", "extra"]);
 
-        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => sut.GetContext());
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
     }
 
     [Fact]
     public void UnknownApiKey_FailsClosed() {
-        var sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = "wrong-key";
 
-        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => sut.GetContext());
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
     }
 
     [Fact]
     public void ValidApiKey_ResolvesContext() {
-        var sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = "valid-key";
 
         FrontComposerMcpAgentContext context = sut.GetContext();
@@ -73,7 +73,7 @@ public sealed class AuthContextAccessorTests {
     public void ApiKey_TakesPrecedence_OverIdentityClaims() {
         // When both API key and authenticated claims are present, the API key wins. This avoids
         // privilege ambiguity if an attacker leaks both an API key and a stale session token.
-        var sut = BuildAccessor(
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(
             out HttpContext http,
             configure: o => o.ApiKeys["valid-key"] = new("tenant-from-key", "agent-from-key"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = "valid-key";
@@ -86,22 +86,22 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void AuthenticatedClaims_MissingTenant_FailsClosed_TenantMissing() {
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "agent-a")], "jwt"));
 
-        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => sut.GetContext());
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.TenantMissing);
     }
 
     [Fact]
     public void AuthenticatedClaims_WhitespaceTenant_FailsClosed_TenantMissing() {
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.User = new ClaimsPrincipal(new ClaimsIdentity([
             new Claim("TenantId", "   "),
             new Claim(ClaimTypes.NameIdentifier, "agent-a"),
         ], "jwt"));
 
-        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => sut.GetContext());
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.TenantMissing);
     }
 
@@ -109,7 +109,7 @@ public sealed class AuthContextAccessorTests {
     public void AuthenticatedClaims_NameIdentifierUri_Resolves() {
         // P-2 — the default claim list must resolve a real OIDC/JWT principal whose user id is
         // mapped to the WS-* nameidentifier URI.
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.User = AuthenticatedUser(tenant: "tenant-a", user: "agent-a");
 
         FrontComposerMcpAgentContext context = sut.GetContext();
@@ -121,7 +121,7 @@ public sealed class AuthContextAccessorTests {
     public void AuthenticatedClaims_PreservesIdpRoles_ForFutureGate() {
         // P-6 — Story 8-2 will read role/group claims from context.Principal; the synthetic
         // principal must carry through every claim other than TenantId/UserId duplicates.
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.User = new ClaimsPrincipal(new ClaimsIdentity([
             new Claim("TenantId", "tenant-a"),
             new Claim(ClaimTypes.NameIdentifier, "agent-a"),
@@ -142,10 +142,10 @@ public sealed class AuthContextAccessorTests {
     public void SpoofedTenantHeader_DoesNotInfluenceAuthDecision() {
         // Tenant only flows from API-key identity or authenticated claims; arbitrary HTTP headers
         // must never resolve to a tenant context.
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.Request.Headers["X-Tenant-Id"] = "attacker-tenant";
 
-        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => sut.GetContext());
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
     }
 
@@ -154,10 +154,10 @@ public sealed class AuthContextAccessorTests {
         // C3 (chunk-2 re-review): parser enforces 64-char lowercase hex matching the server-side
         // Sha256Hex emission. Base64 was the prior wire form but never matched the server's hex
         // values; switching to hex makes the byte-equality short-circuit reachable.
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         StringBuilder hex = new(64);
         for (int i = 0; i < 32; i++) {
-            hex.Append(((byte)(i + 1)).ToString("x2", System.Globalization.CultureInfo.InvariantCulture));
+            _ = hex.Append(((byte)(i + 1)).ToString("x2", System.Globalization.CultureInfo.InvariantCulture));
         }
 
         string fingerprint = hex.ToString();
@@ -166,7 +166,7 @@ public sealed class AuthContextAccessorTests {
 
         SchemaFingerprint? hint = sut.ClientFingerprintHint;
 
-        hint.ShouldNotBeNull();
+        _ = hint.ShouldNotBeNull();
         hint.AlgorithmId.ShouldBe(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1);
         hint.Value.ShouldBe(fingerprint);
     }
@@ -175,21 +175,21 @@ public sealed class AuthContextAccessorTests {
     public void ClientFingerprintHint_AcceptsSourceToolsBlobAlgorithm() {
         // Story 5.5: generated descriptors carry SourceTools-emitted fingerprints, so the HTTP
         // trust boundary must admit the same v1 algorithm as the negotiator.
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         string fingerprint = new('c', 64);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
             SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1 + ":" + fingerprint;
 
         SchemaFingerprint? hint = sut.ClientFingerprintHint;
 
-        hint.ShouldNotBeNull();
+        _ = hint.ShouldNotBeNull();
         hint.AlgorithmId.ShouldBe(SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
         hint.Value.ShouldBe(fingerprint);
     }
 
     [Fact]
     public void ClientFingerprintHint_CachesSuccessfulParse_ForRequestLifetime() {
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         string fingerprint = new('a', 64);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
             SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + fingerprint;
@@ -215,7 +215,7 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void ClientFingerprintHint_CachesMalformedFailure_ForRequestLifetime() {
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] = "not-a-valid-fingerprint";
 
         Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint)
@@ -230,7 +230,7 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void ClientFingerprintHint_MultiValueHeader_FailsClosed() {
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] = new StringValues([
             SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('a', 64),
             SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('b', 64),
@@ -243,7 +243,7 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void ClientFingerprintHint_EmptyHeaderValue_ReturnsNull() {
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] = string.Empty;
 
         sut.ClientFingerprintHint.ShouldBeNull();
@@ -260,7 +260,7 @@ public sealed class AuthContextAccessorTests {
     [Fact]
     public void ClientFingerprintHint_RejectsShortFingerprint() {
         // C3 (chunk-2 re-review): non-64-char hex fingerprints fail-closed.
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         const string tooShort = "abc123";
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
             SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + tooShort;
@@ -273,7 +273,7 @@ public sealed class AuthContextAccessorTests {
     public void ClientFingerprintHint_RejectsUnsupportedAlgorithm() {
         // 8-6a re-review: algorithm allow-list at the trust boundary blocks arbitrary
         // algorithm strings from reaching the negotiator and structured logs.
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         string fingerprint = new('0', 64);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
             "frontcomposer.schema.attacker-controlled.v1:" + fingerprint;
@@ -287,7 +287,7 @@ public sealed class AuthContextAccessorTests {
     [InlineData("frontcomposer.schema.sha256.canonical-json.v1:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:tail")]
     [InlineData("frontcomposer.schema.sha256.canonical-json.v1:gggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggggg")]
     public void ClientFingerprintHint_InvalidWireForms_FailClosed(string headerValue) {
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] = headerValue;
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
@@ -298,7 +298,7 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void ClientFingerprintHint_MalformedHeader_FailsClosed() {
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] = "not-a-valid-fingerprint";
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
@@ -312,7 +312,7 @@ public sealed class AuthContextAccessorTests {
         // now specifically targets the 256-char length cap — a regression that accepted long
         // values fails on length alone, not on the case-sensitivity guard. The companion test
         // `ClientFingerprintHint_RejectsUppercaseHex` pins the case-sensitivity guard separately.
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
             SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('a', 600);
 
@@ -327,7 +327,7 @@ public sealed class AuthContextAccessorTests {
         // C3 chunk-2 patch). Pin the case-sensitivity guard so a regression to case-insensitive
         // matching fails this test, instead of silently slipping past the prior oversized-header
         // test that conflated length+case rejections.
-        var sut = BuildAccessor(out HttpContext http, configure: null);
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
             SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('A', 64);
 
@@ -339,10 +339,10 @@ public sealed class AuthContextAccessorTests {
     [Fact]
     public void EmptyStringApiKey_InOptions_NeverMatches() {
         // Misconfiguration guard — registering ApiKeys[""] = ... must not authenticate empty headers.
-        var sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys[""] = new("tenant-bad", "agent-bad"));
+        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys[""] = new("tenant-bad", "agent-bad"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = string.Empty;
 
-        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => sut.GetContext());
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
     }
 

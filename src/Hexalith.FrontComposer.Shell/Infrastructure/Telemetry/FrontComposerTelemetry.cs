@@ -127,7 +127,7 @@ internal static class FrontComposerTelemetry {
         }
 
         SetTag(activity, FailureCategoryTag, bounded);
-        activity?.SetStatus(ActivityStatusCode.Error, bounded);
+        _ = (activity?.SetStatus(ActivityStatusCode.Error, bounded));
     }
 
     public static void SetHttpStatus(Activity? activity, int statusCode)
@@ -176,7 +176,7 @@ internal static class FrontComposerTelemetry {
                 SetTag(activity, key, text);
             }
             else {
-                activity.SetTag(key, value);
+                _ = activity.SetTag(key, value);
             }
         }
 
@@ -188,7 +188,7 @@ internal static class FrontComposerTelemetry {
             return;
         }
 
-        activity.SetTag(key, value);
+        _ = activity.SetTag(key, value);
     }
 
     /// <summary>

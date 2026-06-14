@@ -15,7 +15,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
 public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase {
     [Fact]
     public void Rejection_renders_domain_language_title_when_provided() {
-        var (cut, push) = RenderWrapperWithLiveService(
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService(
             rejectionMessage: "Inventory insufficient. Order returned to Pending.",
             rejectionTitle: "Approval failed");
 
@@ -27,7 +27,7 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
 
     [Fact]
     public void Rejection_falls_back_to_generic_title_when_no_title_provided() {
-        var (cut, push) = RenderWrapperWithLiveService(rejectionMessage: "Domain rule X violated.");
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService(rejectionMessage: "Domain rule X violated.");
 
         push(RejectedNow());
 
@@ -36,7 +36,7 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
 
     [Fact]
     public void Rejection_body_is_plain_text_not_markup() {
-        var (cut, push) = RenderWrapperWithLiveService(rejectionMessage: "<script>alert('xss')</script>");
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService(rejectionMessage: "<script>alert('xss')</script>");
 
         push(RejectedNow());
 
@@ -51,7 +51,7 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
             ReasonCategory: "Inventory",
             SuggestedAction: "Lower quantity",
             DocsCode: "FC-CMD-409");
-        var (cut, push) = RenderWrapperWithLiveService(
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService(
             rejectionMessage: "Rejected.",
             rejectionDetails: details);
 
@@ -70,13 +70,13 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
 
     [Fact]
     public void Rejection_typed_fields_use_fallback_text_when_values_missing() {
-        CommandRejectionDetails details = CommandRejectionDetails.FromOptional(
+        var details = CommandRejectionDetails.FromOptional(
             errorCode: null,
             reasonCategory: null,
             suggestedAction: null,
             docsCode: null,
             fallbackSuggestedAction: null);
-        var (cut, push) = RenderWrapperWithLiveService(
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService(
             rejectionMessage: "Rejected.",
             rejectionDetails: details);
 
@@ -90,7 +90,7 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
 
     [Fact]
     public async Task Rejection_bar_has_no_auto_dismiss_regression() {
-        var (cut, push) = RenderWrapperWithLiveService(rejectionMessage: "Rejected.");
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService(rejectionMessage: "Rejected.");
 
         push(RejectedNow());
         cut.Markup.ShouldContain("fc-rejected");
@@ -103,7 +103,7 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
 
     [Fact]
     public void Rejection_fallback_copy_when_message_null() {
-        var (cut, push) = RenderWrapperWithLiveService();
+        (IRenderedComponent<FcLifecycleWrapper>? cut, Action<CommandLifecycleTransition>? push) = RenderWrapperWithLiveService();
 
         push(RejectedNow());
 

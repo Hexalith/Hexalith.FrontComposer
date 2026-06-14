@@ -224,11 +224,7 @@ public sealed class FrontComposerMcpCommandInvoker(
     }
 
     private static object CreateInstanceOrThrow(Type commandType) {
-        ConstructorInfo? ctor = commandType.GetConstructor(Type.EmptyTypes);
-        if (ctor is null) {
-            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
-        }
-
+        ConstructorInfo? ctor = commandType.GetConstructor(Type.EmptyTypes) ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
         return ctor.Invoke(null);
     }
 
@@ -240,7 +236,7 @@ public sealed class FrontComposerMcpCommandInvoker(
         }
 
         HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
-        HashSet<string> allowed = descriptor.Parameters
+        var allowed = descriptor.Parameters
             .Where(p => !p.IsUnsupported)
             .Select(p => p.Name)
             .ToHashSet(StringComparer.Ordinal);
@@ -293,7 +289,7 @@ public sealed class FrontComposerMcpCommandInvoker(
     }
 
     private Type ResolveType(string typeName) {
-        Type? direct = Type.GetType(typeName);
+        var direct = Type.GetType(typeName);
         if (direct is not null) {
             return direct;
         }
@@ -456,12 +452,7 @@ public sealed class FrontComposerMcpCommandInvoker(
 
         for (int i = 0; i < value.Length; i++) {
             char ch = value[i];
-            bool valid = (ch >= '0' && ch <= '9')
-                || (ch >= 'A' && ch <= 'H')
-                || (ch >= 'J' && ch <= 'K')
-                || (ch >= 'M' && ch <= 'N')
-                || (ch >= 'P' && ch <= 'T')
-                || (ch >= 'V' && ch <= 'Z');
+            bool valid = ch is (>= '0' and <= '9') or (>= 'A' and <= 'H') or (>= 'J' and <= 'K') or (>= 'M' and <= 'N') or (>= 'P' and <= 'T') or (>= 'V' and <= 'Z');
             if (!valid) {
                 return false;
             }

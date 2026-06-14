@@ -12,8 +12,7 @@ namespace Hexalith.FrontComposer.Contracts.Conformance;
 /// hardcoding the obj-tree path. <see cref="Version"/> bumps whenever the layout changes; any
 /// bump invalidates IDE-parity evidence manifests and triggers Story 9-3 revalidation.
 /// </remarks>
-public static class GeneratedOutputPathContract
-{
+public static class GeneratedOutputPathContract {
     /// <summary>The semantic version of the generated-output layout. Bumping invalidates evidence manifests.</summary>
     public const string Version = "v1";
 
@@ -47,8 +46,7 @@ public static class GeneratedOutputPathContract
     /// path-traversal segments, NUL/control characters, NTFS alternate-data-stream colons, or Windows reserved
     /// device names. Caller validates structure; this method validates safety.
     /// </param>
-    public static string BuildProjectRelativePath(string configuration, string targetFramework, string generatedFileName)
-    {
+    public static string BuildProjectRelativePath(string configuration, string targetFramework, string generatedFileName) {
         ValidateSegment(configuration, nameof(configuration));
         ValidateSegment(targetFramework, nameof(targetFramework));
         ValidateFilename(generatedFileName, nameof(generatedFileName));
@@ -63,57 +61,46 @@ public static class GeneratedOutputPathContract
             generatedFileName);
     }
 
-    private static void ValidateSegment(string value, string parameterName)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
+    private static void ValidateSegment(string value, string parameterName) {
+        if (string.IsNullOrWhiteSpace(value)) {
             throw new ArgumentException($"{parameterName} is required.", parameterName);
         }
 
         if (value.IndexOfAny(_forbiddenFilenameChars) >= 0
             || value.Equals(".", StringComparison.Ordinal)
-            || value.Equals("..", StringComparison.Ordinal))
-        {
+            || value.Equals("..", StringComparison.Ordinal)) {
             throw new ArgumentException($"{parameterName} must not contain path separators, control characters, or traversal segments.", parameterName);
         }
     }
 
-    private static void ValidateFilename(string value, string parameterName)
-    {
-        if (string.IsNullOrWhiteSpace(value))
-        {
+    private static void ValidateFilename(string value, string parameterName) {
+        if (string.IsNullOrWhiteSpace(value)) {
             throw new ArgumentException($"{parameterName} is required.", parameterName);
         }
 
-        if (value.IndexOfAny(_forbiddenFilenameChars) >= 0)
-        {
+        if (value.IndexOfAny(_forbiddenFilenameChars) >= 0) {
             throw new ArgumentException($"{parameterName} must not contain path separators, NUL, NTFS ADS colons, or wildcard characters.", parameterName);
         }
 
-        if (value.Contains(".."))
-        {
+        if (value.Contains("..")) {
             throw new ArgumentException($"{parameterName} must not contain traversal segments.", parameterName);
         }
 
-        for (int i = 0; i < value.Length; i++)
-        {
-            if (char.IsControl(value, i))
-            {
+        for (int i = 0; i < value.Length; i++) {
+            if (char.IsControl(value, i)) {
                 throw new ArgumentException($"{parameterName} must not contain control characters.", parameterName);
             }
         }
 
         string baseName = value;
         int dot = value.IndexOf('.');
-        if (dot > 0)
-        {
+
+        if (dot > 0) {
             baseName = value.Substring(0, dot);
         }
 
-        for (int i = 0; i < _windowsReservedDeviceNames.Length; i++)
-        {
-            if (baseName.Equals(_windowsReservedDeviceNames[i], StringComparison.OrdinalIgnoreCase))
-            {
+        for (int i = 0; i < _windowsReservedDeviceNames.Length; i++) {
+            if (baseName.Equals(_windowsReservedDeviceNames[i], StringComparison.OrdinalIgnoreCase)) {
                 throw new ArgumentException($"{parameterName} must not begin with a Windows reserved device name ('{baseName}').", parameterName);
             }
         }

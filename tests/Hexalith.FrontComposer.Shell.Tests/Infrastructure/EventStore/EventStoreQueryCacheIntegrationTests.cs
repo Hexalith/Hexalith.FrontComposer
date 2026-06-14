@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Net;
 using System.Text;
 
@@ -13,8 +12,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
@@ -32,13 +29,11 @@ public class EventStoreQueryCacheIntegrationTests {
     private readonly InMemoryStorageService _storage = new();
     private readonly IETagCache _cache;
 
-    public EventStoreQueryCacheIntegrationTests() {
-        _cache = new ETagCacheService(
+    public EventStoreQueryCacheIntegrationTests() => _cache = new ETagCacheService(
             _storage,
             new TestOptionsMonitor(new FcShellOptions { MaxETagCacheEntries = 50 }),
             TimeProvider.System,
             NullLogger<ETagCacheService>.Instance);
-    }
 
     [Fact]
     public async Task QueryAsync_200_WritesCacheEntryAndReturnsItems() {
@@ -378,9 +373,7 @@ public class EventStoreQueryCacheIntegrationTests {
         string? filter = null,
         string? searchQuery = null,
         string? sortColumn = null,
-        int cachePayloadVersion = 1) {
-#pragma warning disable CS0618, HFC0001 // Legacy Filter participates in Story 5-2 cache-safety tests.
-        return new QueryRequest(
+        int cachePayloadVersion = 1) => new(
             ProjectionType: ProjectionType,
             TenantId: Tenant,
             Filter: filter,
@@ -392,8 +385,6 @@ public class EventStoreQueryCacheIntegrationTests {
             SortColumn: sortColumn,
             CacheDiscriminator: cacheDiscriminator,
             CachePayloadVersion: cachePayloadVersion);
-#pragma warning restore CS0618, HFC0001
-    }
 
     private static string BuildKey(int skip)
         => $"{Tenant}:{User}:etag:projection-page:{ProjectionType}:s{skip}-t25";
@@ -425,7 +416,7 @@ public class EventStoreQueryCacheIntegrationTests {
     }
 
     private sealed class ScriptedHandler : HttpMessageHandler {
-        public List<System.Func<HttpRequestMessage, HttpResponseMessage>> Script { get; } = new();
+        public List<System.Func<HttpRequestMessage, HttpResponseMessage>> Script { get; } = [];
         public int RequestCount { get; private set; }
 
         protected override System.Threading.Tasks.Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, System.Threading.CancellationToken cancellationToken) {

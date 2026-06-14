@@ -1,10 +1,7 @@
 #pragma warning disable CA2007
-using System;
 using Bunit;
 
 using Fluxor;
-
-using Hexalith.FrontComposer.Shell.Tests;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,16 +16,13 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// <c>RoleSpecificProjectionApprovalTests</c> and the component aria-label by <c>FcStatusBadgeTests</c>;
 /// this closes the runtime-render wiring between the two halves.
 /// </summary>
-public sealed class BadgeProjectionRenderTests : GeneratedComponentTestBase
-{
+public sealed class BadgeProjectionRenderTests : GeneratedComponentTestBase {
     public BadgeProjectionRenderTests()
-        : base(typeof(BadgeProjection).Assembly)
-    {
+        : base(typeof(BadgeProjection).Assembly) {
     }
 
     [Fact]
-    public async Task BadgeColumn_RendersFcStatusBadge_WithAccessibleColumnHeaderAriaLabel()
-    {
+    public async Task BadgeColumn_RendersFcStatusBadge_WithAccessibleColumnHeaderAriaLabel() {
         using CultureScope _ = new("en");
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
@@ -42,8 +36,7 @@ public sealed class BadgeProjectionRenderTests : GeneratedComponentTestBase
 
         IRenderedComponent<BadgeProjectionView> cut = Render<BadgeProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             cut.Markup.ShouldContain("data-testid=\"fc-status-badge\"");
             cut.Markup.ShouldContain("aria-label=\"Status: Pending\"");
             cut.Markup.ShouldContain("aria-label=\"Status: Approved\"");

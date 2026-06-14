@@ -25,12 +25,10 @@ namespace Hexalith.FrontComposer.Shell.Tests.Extensions;
 /// ADR-030 scoped-lifetime discipline stays enforced. These tests lock the registrations + lifetimes
 /// listed in AC1 so they cannot silently regress.
 /// </summary>
-public sealed class FrontComposerServiceGraphTests
-{
+public sealed class FrontComposerServiceGraphTests {
     [Fact]
-    public void Quickstart_RegistersStubCommandPathAndCoreServices_WithCorrectLifetimes()
-    {
-        ServiceCollection services = new();
+    public void Quickstart_RegistersStubCommandPathAndCoreServices_WithCorrectLifetimes() {
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposerQuickstart();
         services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
 
@@ -73,15 +71,13 @@ public sealed class FrontComposerServiceGraphTests
     }
 
     [Fact]
-    public void ThreeCallGraph_ResolvesEndToEndUnderScopeValidation()
-    {
+    public void ThreeCallGraph_ResolvesEndToEndUnderScopeValidation() {
         // The full AC1 ordering: Quickstart → Domain → EventStore. EventStore swaps the stub command
         // path for the real client; the rest of the graph must still resolve cleanly.
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposerQuickstart();
         _ = services.AddHexalithDomain<CounterDomain>();
-        _ = services.AddHexalithEventStore(o =>
-        {
+        _ = services.AddHexalithEventStore(o => {
             o.BaseAddress = new Uri("http://localhost:9/");
             o.RequireAccessToken = false;
         });

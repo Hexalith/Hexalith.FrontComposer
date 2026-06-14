@@ -1,6 +1,6 @@
 using Hexalith.FrontComposer.Contracts;
-using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
@@ -121,12 +121,10 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             opts.TimeoutActionThresholdMs,
             isDisconnected: () => ProjectionConnectionState.Current.IsDisconnected);
         _timer.OnPhaseChanged += OnPhaseChangedFromTimer;
-        _optionsChangeRegistration = ShellOptions.OnChange((newOpts, _) => {
-            _timer?.UpdateThresholds(
+        _optionsChangeRegistration = ShellOptions.OnChange((newOpts, _) => _timer?.UpdateThresholds(
                 newOpts.SyncPulseThresholdMs,
                 newOpts.StillSyncingThresholdMs,
-                newOpts.TimeoutActionThresholdMs);
-        });
+                newOpts.TimeoutActionThresholdMs));
 
         _subscription = LifecycleService.Subscribe(correlationId, OnTransitionFromService);
         _projectionConnectionRegistration = ProjectionConnectionState.Subscribe(OnProjectionConnectionChanged);
@@ -184,7 +182,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     private void ApplyTransition(CommandLifecycleTransition transition) {
         LifecycleTimerPhase phase = _timer?.CurrentPhase ?? LifecycleTimerPhase.NoPulse;
-        LifecycleUiState next = LifecycleUiState.From(transition, phase, RejectionMessage, RejectionTitle, RejectionDetails);
+        var next = LifecycleUiState.From(transition, phase, RejectionMessage, RejectionTitle, RejectionDetails);
 
         switch (transition.NewState) {
             case CommandLifecycleState.Acknowledged:

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 using Hexalith.FrontComposer.Contracts.Communication;
 
 using Shouldly;
@@ -17,7 +15,7 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Communication;
 public class Story52ResponseSurfaceTests {
     [Fact]
     public void QueryResult_NotModified_HasEmptyItems_ZeroCount_AndIsNotModifiedFlag() {
-        QueryResult<string> result = QueryResult<string>.NotModified("\"v1\"");
+        var result = QueryResult<string>.NotModified("\"v1\"");
 
         result.IsNotModified.ShouldBeTrue();
         result.ETag.ShouldBe("\"v1\"");
@@ -27,7 +25,7 @@ public class Story52ResponseSurfaceTests {
 
     [Fact]
     public void QueryResult_NotModifiedFromCache_PreservesItems_AndKeepsIsNotModifiedFlag() {
-        QueryResult<string> result = QueryResult<string>.NotModifiedFromCache(["a", "b"], totalCount: 42, etag: "\"v2\"");
+        var result = QueryResult<string>.NotModifiedFromCache(["a", "b"], totalCount: 42, etag: "\"v2\"");
 
         result.IsNotModified.ShouldBeTrue();
         result.ETag.ShouldBe("\"v2\"");
@@ -119,7 +117,7 @@ public class Story52ResponseSurfaceTests {
 
     [Fact]
     public void CommandRejectionDetails_FromOptional_UsesSafeFallbackText() {
-        CommandRejectionDetails details = CommandRejectionDetails.FromOptional(
+        var details = CommandRejectionDetails.FromOptional(
             errorCode: null,
             reasonCategory: "",
             suggestedAction: " ",

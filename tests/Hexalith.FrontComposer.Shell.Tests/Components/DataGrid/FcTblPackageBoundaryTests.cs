@@ -6,11 +6,9 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 
-public sealed class FcTblPackageBoundaryTests
-{
+public sealed class FcTblPackageBoundaryTests {
     [Fact]
-    public void FcTbl_PublicApi_MatchesIntentionalBaseline()
-    {
+    public void FcTbl_PublicApi_MatchesIntentionalBaseline() {
         string root = FindRepoRoot();
         string baselinePath = Path.Combine(root, "src", "Hexalith.FrontComposer.Shell", "PublicAPI.FcTbl.Shipped.txt");
         string[] expected = File.ReadAllLines(baselinePath)
@@ -25,30 +23,24 @@ public sealed class FcTblPackageBoundaryTests
         actual.ShouldBe(expected);
     }
 
-    private static string FormatTypeName(Type type)
-    {
-        if (type.IsGenericParameter)
-        {
+    private static string FormatTypeName(Type type) {
+        if (type.IsGenericParameter) {
             return type.Name;
         }
 
-        if (type.IsArray)
-        {
+        if (type.IsArray) {
             return FormatTypeName(type.GetElementType()!) + "[]";
         }
 
-        if (type.IsByRef)
-        {
+        if (type.IsByRef) {
             return FormatTypeName(type.GetElementType()!);
         }
 
-        if (type == typeof(void))
-        {
+        if (type == typeof(void)) {
             return "void";
         }
 
-        if (!type.IsGenericType)
-        {
+        if (!type.IsGenericType) {
             return type.FullName!;
         }
 
@@ -59,37 +51,31 @@ public sealed class FcTblPackageBoundaryTests
         return $"{genericName}<{args}>";
     }
 
-    private static IEnumerable<string> EnumeratePublicApi(Assembly assembly)
-    {
+    private static IEnumerable<string> EnumeratePublicApi(Assembly assembly) {
         foreach (Type type in assembly
             .GetExportedTypes()
             .Where(type => type.Namespace == "Hexalith.FrontComposer.Shell.Components.DataGrid")
-            .OrderBy(FormatTypeName, StringComparer.Ordinal))
-        {
+            .OrderBy(FormatTypeName, StringComparer.Ordinal)) {
             string typeName = FormatTypeName(type);
             yield return typeName;
 
-            foreach (ConstructorInfo constructor in type.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
-            {
+            foreach (ConstructorInfo constructor in type.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly)) {
                 yield return $"{typeName}.#ctor({FormatParameters(constructor)})";
             }
 
-            foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
-            {
+            foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)) {
                 MethodInfo? getter = property.GetMethod;
                 MethodInfo? setter = property.SetMethod;
                 string access = $"{(getter is null ? "-" : "get")}/{(setter is null ? "-" : "set")}";
                 yield return $"{typeName}.{property.Name}:{FormatTypeName(property.PropertyType)}:{access}";
             }
 
-            foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
-            {
+            foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)) {
                 yield return $"{typeName}.{field.Name}:{FormatTypeName(field.FieldType)}";
             }
 
             foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
-                .Where(method => !method.IsSpecialName))
-            {
+                .Where(method => !method.IsSpecialName)) {
                 string genericArgs = method.IsGenericMethodDefinition
                     ? $"<{string.Join(",", method.GetGenericArguments().Select(arg => arg.Name))}>"
                     : string.Empty;
@@ -101,13 +87,10 @@ public sealed class FcTblPackageBoundaryTests
     private static string FormatParameters(MethodBase method)
         => string.Join(",", method.GetParameters().Select(parameter => FormatTypeName(parameter.ParameterType)));
 
-    private static string FindRepoRoot()
-    {
+    private static string FindRepoRoot() {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
-        while (directory is not null)
-        {
-            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx")))
-            {
+        while (directory is not null) {
+            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx"))) {
                 return directory.FullName;
             }
 

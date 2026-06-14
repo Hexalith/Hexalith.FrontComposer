@@ -17,7 +17,7 @@ public sealed class IActionQueueCountReaderContractTests {
         Type interfaceType = typeof(IActionQueueCountReader);
 
         System.Reflection.MethodInfo? method = interfaceType.GetMethod("GetCountAsync");
-        method.ShouldNotBeNull();
+        _ = method.ShouldNotBeNull();
         method!.ReturnType.ShouldBe(typeof(ValueTask<int>));
 
         System.Reflection.ParameterInfo[] parameters = method.GetParameters();

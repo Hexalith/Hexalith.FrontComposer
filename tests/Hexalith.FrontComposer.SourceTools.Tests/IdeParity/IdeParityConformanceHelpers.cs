@@ -3,12 +3,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 
-using Hexalith.FrontComposer.Contracts.Conformance;
+namespace Hexalith.FrontComposer.SourceTools.Tests.IdeParity;
 
-namespace Hexalith.FrontComposer.SourceTools.Conformance;
-
-internal static class IdeParityEvidencePath
-{
+internal static class IdeParityEvidencePath {
     private static readonly Regex _schemePrefix = new("^[A-Za-z][A-Za-z0-9+.\\-]*:", RegexOptions.Compiled);
 
     private static readonly char[] _bidiAndZeroWidth =
@@ -22,38 +19,32 @@ internal static class IdeParityEvidencePath
         string repositoryRoot,
         string candidate,
         bool caseSensitive,
-        out string normalized)
-    {
+        out string normalized) {
         normalized = string.Empty;
 
-        if (string.IsNullOrWhiteSpace(repositoryRoot) || string.IsNullOrWhiteSpace(candidate))
-        {
+        if (string.IsNullOrWhiteSpace(repositoryRoot) || string.IsNullOrWhiteSpace(candidate)) {
             return false;
         }
 
         string trimmed = candidate.Trim().Normalize(NormalizationForm.FormC);
-        if (trimmed.IndexOfAny(_bidiAndZeroWidth) >= 0)
-        {
+        if (trimmed.IndexOfAny(_bidiAndZeroWidth) >= 0) {
             return false;
         }
 
         if (_schemePrefix.IsMatch(trimmed)
             || trimmed.Contains("://", StringComparison.Ordinal)
             || Path.IsPathRooted(trimmed)
-            || trimmed.Any(char.IsControl))
-        {
+            || trimmed.Any(char.IsControl)) {
             return false;
         }
 
         string slashNormalized = trimmed.Replace('\\', '/');
 
-        if (slashNormalized.StartsWith("//", StringComparison.Ordinal))
-        {
+        if (slashNormalized.StartsWith("//", StringComparison.Ordinal)) {
             return false;
         }
 
-        if (slashNormalized.Split('/').Any(segment => segment == ".."))
-        {
+        if (slashNormalized.Split('/').Any(segment => segment == "..")) {
             return false;
         }
 
@@ -62,8 +53,7 @@ internal static class IdeParityEvidencePath
             Path.GetFullPath(Path.Combine(fullRoot, slashNormalized.Replace('/', Path.DirectorySeparatorChar))));
 
         StringComparison comparison = caseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase;
-        if (!candidateFullPath.StartsWith(fullRoot, comparison))
-        {
+        if (!candidateFullPath.StartsWith(fullRoot, comparison)) {
             return false;
         }
 
@@ -82,41 +72,33 @@ internal static class IdeParityEvidencePath
             ? path
             : path + Path.DirectorySeparatorChar;
 
-    private static string ResolveLinkTarget(string path)
-    {
-        try
-        {
-            for (int hops = 0; hops < 16; hops++)
-            {
+    private static string ResolveLinkTarget(string path) {
+        try {
+            for (int hops = 0; hops < 16; hops++) {
                 FileSystemInfo? info = Directory.Exists(path)
                     ? new DirectoryInfo(path)
                     : File.Exists(path) ? (FileSystemInfo)new FileInfo(path) : null;
 
                 FileSystemInfo? resolved = info?.ResolveLinkTarget(returnFinalTarget: true);
-                if (resolved is null)
-                {
+                if (resolved is null) {
                     return path;
                 }
 
                 path = Path.GetFullPath(resolved.FullName);
             }
         }
-        catch (IOException)
-        {
+        catch (IOException) {
         }
-        catch (UnauthorizedAccessException)
-        {
+        catch (UnauthorizedAccessException) {
         }
-        catch (NotSupportedException)
-        {
+        catch (NotSupportedException) {
         }
 
         return path;
     }
 }
 
-internal enum IdeParityReportFormat
-{
+internal enum IdeParityReportFormat {
     Markdown,
     Json,
     Csv,
@@ -124,8 +106,7 @@ internal enum IdeParityReportFormat
     IssueBody,
 }
 
-internal static class IdeParityReportSanitizer
-{
+internal static class IdeParityReportSanitizer {
     private static readonly Regex _controlCharacters = new("[\\x00-\\x08\\x0B\\x0C\\x0E-\\x1F\\x7F]", RegexOptions.Compiled);
     private static readonly Regex _osc8Hyperlink = new("\\u001B\\]8;[^\\u001B\\u0007]*(?:\\u0007|\\u001B\\\\)", RegexOptions.Compiled);
     private static readonly Regex _secretLikeValues = new(
@@ -146,10 +127,8 @@ internal static class IdeParityReportSanitizer
         "(?<![A-Za-z0-9_])/(?:etc|opt|srv)/[^\\s\\)\\]\\}\\\"']+",
         RegexOptions.Compiled);
 
-    public static string Sanitize(string value, IdeParityReportFormat format, int maxLength = 4096)
-    {
-        if (maxLength <= 0)
-        {
+    public static string Sanitize(string value, IdeParityReportFormat format, int maxLength = 4096) {
+        if (maxLength <= 0) {
             throw new ArgumentOutOfRangeException(nameof(maxLength), "Max length must be positive.");
         }
 
@@ -165,8 +144,7 @@ internal static class IdeParityReportSanitizer
         sanitized = _secretLikeValues.Replace(sanitized, "[redacted-secret]");
         sanitized = _machineName.Replace(sanitized, "machine=[redacted-machine]");
 
-        sanitized = format switch
-        {
+        sanitized = format switch {
             IdeParityReportFormat.Markdown or IdeParityReportFormat.IssueBody => EscapeMarkdownTableCells(sanitized),
             IdeParityReportFormat.Json => sanitized.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("\"", "\\\"", StringComparison.Ordinal),
             IdeParityReportFormat.Csv => EscapeCsv(sanitized),
@@ -174,11 +152,9 @@ internal static class IdeParityReportSanitizer
             _ => sanitized,
         };
 
-        if (sanitized.Length > maxLength)
-        {
+        if (sanitized.Length > maxLength) {
             int safeCut = maxLength;
-            if (safeCut > 0 && char.IsHighSurrogate(sanitized[safeCut - 1]))
-            {
+            if (safeCut > 0 && char.IsHighSurrogate(sanitized[safeCut - 1])) {
                 safeCut--;
             }
 
@@ -188,40 +164,24 @@ internal static class IdeParityReportSanitizer
         return sanitized;
     }
 
-    private static string EscapeMarkdownTableCells(string value)
-    {
+    private static string EscapeMarkdownTableCells(string value) {
         StringBuilder builder = new(value.Length + 16);
-        foreach (char c in value)
-        {
-            switch (c)
-            {
-                case '|':
-                    _ = builder.Append("\\|");
-                    break;
-                case '<':
-                    _ = builder.Append("&lt;");
-                    break;
-                case '>':
-                    _ = builder.Append("&gt;");
-                    break;
-                case '\r':
-                case '\n':
-                    _ = builder.Append(' ');
-                    break;
-                default:
-                    _ = builder.Append(c);
-                    break;
-            }
+        foreach (char c in value) {
+            _ = c switch {
+                '|' => builder.Append("\\|"),
+                '<' => builder.Append("&lt;"),
+                '>' => builder.Append("&gt;"),
+                '\r' or '\n' => builder.Append(' '),
+                _ => builder.Append(c),
+            };
         }
 
         return builder.ToString();
     }
 
-    private static string EscapeCsv(string value)
-    {
+    private static string EscapeCsv(string value) {
         string escaped = value.Replace("\"", "\"\"", StringComparison.Ordinal);
-        if (escaped.Length > 0 && IsCsvFormulaTrigger(escaped[0]))
-        {
+        if (escaped.Length > 0 && IsCsvFormulaTrigger(escaped[0])) {
             escaped = "'" + escaped;
         }
 
@@ -264,22 +224,19 @@ internal sealed record IdeParityRevalidationIssue(
     bool DryRun,
     bool IsBlocking);
 
-internal interface IGithubAvailabilityProbe
-{
+internal interface IGithubAvailabilityProbe {
     bool IsAuthenticated();
 
     bool LabelsAccessible(IReadOnlyList<string> labels);
 }
 
-internal static class IdeParityVersionRevalidator
-{
+internal static class IdeParityVersionRevalidator {
     private static readonly IReadOnlyList<string> _requiredLabels = ["ide-parity", "conformance-revalidation"];
 
     public static IdeParityRevalidationIssue CreateDryRunIssue(
         IdeParityVersionPin supported,
         IdeParityDetectedVersion detected,
-        bool githubAvailable)
-    {
+        bool githubAvailable) {
         ArgumentNullException.ThrowIfNull(supported);
         ArgumentNullException.ThrowIfNull(detected);
         ArgumentNullException.ThrowIfNull(detected.MatrixRows);
@@ -304,8 +261,7 @@ internal static class IdeParityVersionRevalidator
         _ = body.AppendLine($"- expected behavior: {IdeParityReportSanitizer.Sanitize(detected.ExpectedBehavior, IdeParityReportFormat.IssueBody)}");
         _ = body.AppendLine($"- observed behavior: {IdeParityReportSanitizer.Sanitize(detected.ObservedBehavior, IdeParityReportFormat.IssueBody)}");
         _ = body.AppendLine($"- required evidence: refresh matrix rows {string.Join(", ", detected.MatrixRows.Select(row => IdeParityReportSanitizer.Sanitize(row, IdeParityReportFormat.IssueBody)))}");
-        if (!githubAvailable)
-        {
+        if (!githubAvailable) {
             _ = body.AppendLine("- fallback: GitHub issue creation unavailable; this dry-run artifact blocks the release checklist.");
         }
 
@@ -320,25 +276,21 @@ internal static class IdeParityVersionRevalidator
     public static IdeParityRevalidationIssue Resolve(
         IdeParityVersionPin supported,
         IdeParityDetectedVersion detected,
-        IGithubAvailabilityProbe? probe)
-    {
+        IGithubAvailabilityProbe? probe) {
         bool githubAvailable = probe is not null
             && probe.IsAuthenticated()
             && probe.LabelsAccessible(_requiredLabels);
         return CreateDryRunIssue(supported, detected, githubAvailable);
     }
 
-    public static int CompareVersions(string left, string right)
-    {
+    public static int CompareVersions(string left, string right) {
         int[] leftParts = ParseVersionParts(left);
         int[] rightParts = ParseVersionParts(right);
         int length = Math.Max(leftParts.Length, rightParts.Length);
-        for (int i = 0; i < length; i++)
-        {
+        for (int i = 0; i < length; i++) {
             int l = i < leftParts.Length ? leftParts[i] : 0;
             int r = i < rightParts.Length ? rightParts[i] : 0;
-            if (l != r)
-            {
+            if (l != r) {
                 return l.CompareTo(r);
             }
         }
@@ -346,34 +298,28 @@ internal static class IdeParityVersionRevalidator
         return 0;
     }
 
-    private static int[] ParseVersionParts(string? version)
-    {
-        if (string.IsNullOrWhiteSpace(version))
-        {
+    private static int[] ParseVersionParts(string? version) {
+        if (string.IsNullOrWhiteSpace(version)) {
             throw new ArgumentException("Version is required.", nameof(version));
         }
 
         string[] segments = version!.Split('.', StringSplitOptions.RemoveEmptyEntries);
         int[] parts = new int[segments.Length];
-        for (int i = 0; i < segments.Length; i++)
-        {
+        for (int i = 0; i < segments.Length; i++) {
             string raw = segments[i];
             int digitEnd = 0;
-            while (digitEnd < raw.Length && char.IsDigit(raw, digitEnd))
-            {
+            while (digitEnd < raw.Length && char.IsDigit(raw, digitEnd)) {
                 digitEnd++;
             }
 
-            if (digitEnd == 0)
-            {
+            if (digitEnd == 0) {
                 throw new ArgumentException(
                     $"Version segment '{raw}' must start with a digit.",
                     nameof(version));
             }
 
-            string digits = raw.Substring(0, digitEnd);
-            if (!int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out int value))
-            {
+            string digits = raw[..digitEnd];
+            if (!int.TryParse(digits, NumberStyles.None, CultureInfo.InvariantCulture, out int value)) {
                 throw new ArgumentException(
                     $"Version segment '{raw}' overflows Int32.",
                     nameof(version));

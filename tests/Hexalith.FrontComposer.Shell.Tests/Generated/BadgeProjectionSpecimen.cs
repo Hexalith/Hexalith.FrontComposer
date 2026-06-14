@@ -6,16 +6,14 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// Story 2-3 AC3 specimen — bounded context for the badge end-to-end render pin.
 /// </summary>
 [BoundedContext("Badge")]
-public sealed class BadgeDomain
-{
+public sealed class BadgeDomain {
 }
 
 /// <summary>
 /// Story 2-3 AC3 specimen — review state whose members carry <see cref="ProjectionBadgeAttribute"/>
 /// slot annotations, driving the generated grid badge column under test.
 /// </summary>
-public enum ReviewState
-{
+public enum ReviewState {
     /// <summary>Pending review — warning slot.</summary>
     [ProjectionBadge(BadgeSlot.Warning)]
     Pending,
@@ -31,8 +29,7 @@ public enum ReviewState
 /// </summary>
 [Projection]
 [BoundedContext("Badge")]
-public partial class BadgeProjection
-{
+public partial class BadgeProjection {
     /// <summary>Gets or sets the display name.</summary>
     public string? Name { get; set; }
 

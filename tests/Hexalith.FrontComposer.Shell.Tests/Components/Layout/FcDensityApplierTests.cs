@@ -20,18 +20,13 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// D10 (headless component, IStateSelection projection of <c>EffectiveDensity</c>,
 /// fire-and-forget <c>setDensity</c>); ADR-041 (single-source-of-truth for the body attribute).
 /// </summary>
-public sealed class FcDensityApplierTests : LayoutComponentTestBase
-{
+public sealed class FcDensityApplierTests : LayoutComponentTestBase {
     private const string ModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-density.js";
 
-    public FcDensityApplierTests()
-    {
-        EnsureStoreInitialized();
-    }
+    public FcDensityApplierTests() => EnsureStoreInitialized();
 
     [Fact]
-    public void InvokesSetDensityOnInitialRender()
-    {
+    public void InvokesSetDensityOnInitialRender() {
         BunitJSModuleInterop module = JSInterop.SetupModule(ModulePath);
         _ = module.SetupVoid("setDensity", _ => true).SetVoidResult();
 
@@ -47,8 +42,7 @@ public sealed class FcDensityApplierTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public async Task InvokesSetDensityOnStateChange()
-    {
+    public async Task InvokesSetDensityOnStateChange() {
         BunitJSModuleInterop module = JSInterop.SetupModule(ModulePath);
         _ = module.SetupVoid("setDensity", _ => true).SetVoidResult();
 
@@ -59,16 +53,14 @@ public sealed class FcDensityApplierTests : LayoutComponentTestBase
         dispatcher.Dispatch(new UserPreferenceChangedAction("c1", DensityLevel.Compact, DensityLevel.Compact));
 
         await Task.Yield();
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             int setDensityCalls = module.Invocations.Count(i => i.Identifier == "setDensity");
             setDensityCalls.ShouldBeGreaterThan(1, "setDensity must be invoked again on state change.");
         });
     }
 
     [Fact]
-    public async Task DisposesCleanly()
-    {
+    public async Task DisposesCleanly() {
         BunitJSModuleInterop module = JSInterop.SetupModule(ModulePath);
         _ = module.SetupVoid("setDensity", _ => true).SetVoidResult();
 

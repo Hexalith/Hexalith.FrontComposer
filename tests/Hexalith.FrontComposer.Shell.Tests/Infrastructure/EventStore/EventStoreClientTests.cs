@@ -14,8 +14,6 @@ using Microsoft.Extensions.Options;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 public sealed class EventStoreClientTests {
@@ -47,7 +45,7 @@ public sealed class EventStoreClientTests {
         handler.Requests.Single().Headers.Authorization!.Scheme.ShouldBe("Bearer");
         handler.ObservedToken.CanBeCanceled.ShouldBeTrue();
         string body = handler.Bodies.Single();
-        using JsonDocument document = JsonDocument.Parse(body);
+        using var document = JsonDocument.Parse(body);
         document.RootElement.GetProperty("messageId").GetString().ShouldBe("01HVTESTULID");
         document.RootElement.GetProperty("tenant").GetString().ShouldBe("acme");
         document.RootElement.GetProperty("domain").GetString().ShouldBe("orders");
@@ -293,7 +291,7 @@ public sealed class EventStoreClientTests {
 
         _ = await sut.DispatchAsync(new ShipOrderCommand { TenantId = "Acme_Corp" }, TestContext.Current.CancellationToken);
 
-        using JsonDocument document = JsonDocument.Parse(handler.Bodies.Single());
+        using var document = JsonDocument.Parse(handler.Bodies.Single());
         document.RootElement.GetProperty("tenant").GetString().ShouldBe("Acme_Corp");
     }
 
@@ -492,11 +490,9 @@ public sealed class EventStoreClientTests {
     }
 
     private sealed class CountingUlidFactory : IUlidFactory {
-        private int _count;
+        public int Count { get; private set; }
 
-        public int Count => _count;
-
-        public string NewUlid() => $"01HVTESTULID{++_count:D14}";
+        public string NewUlid() => $"01HVTESTULID{++Count:D14}";
     }
 
     private sealed class TestUserContextAccessor(string? tenantId, string? userId) : IUserContextAccessor {

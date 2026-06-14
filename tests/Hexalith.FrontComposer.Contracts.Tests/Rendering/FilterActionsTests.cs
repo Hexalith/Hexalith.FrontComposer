@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 
@@ -19,22 +14,22 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Rendering;
 public sealed class FilterActionsTests {
     [Fact]
     public void ColumnFilterChangedAction_ThrowsOnEmptyViewKey() {
-        Should.Throw<ArgumentException>(() => new ColumnFilterChangedAction(string.Empty, "Status", "value"));
-        Should.Throw<ArgumentException>(() => new ColumnFilterChangedAction("   ", "Status", "value"));
-        Should.Throw<ArgumentException>(() => new ColumnFilterChangedAction("bc:Proj", string.Empty, "value"));
+        _ = Should.Throw<ArgumentException>(() => new ColumnFilterChangedAction(string.Empty, "Status", "value"));
+        _ = Should.Throw<ArgumentException>(() => new ColumnFilterChangedAction("   ", "Status", "value"));
+        _ = Should.Throw<ArgumentException>(() => new ColumnFilterChangedAction("bc:Proj", string.Empty, "value"));
     }
 
     [Fact]
     public void StatusFilterToggledAction_ThrowsOnEmptyInputs() {
-        Should.Throw<ArgumentException>(() => new StatusFilterToggledAction(string.Empty, "Success"));
-        Should.Throw<ArgumentException>(() => new StatusFilterToggledAction("bc:Proj", " "));
+        _ = Should.Throw<ArgumentException>(() => new StatusFilterToggledAction(string.Empty, "Success"));
+        _ = Should.Throw<ArgumentException>(() => new StatusFilterToggledAction("bc:Proj", " "));
     }
 
     [Fact]
     public void GlobalSearchChangedAction_PermitsNullQuery_ButRejectsEmptyViewKey() {
-        Should.NotThrow(() => new GlobalSearchChangedAction("bc:Proj", null));
-        Should.NotThrow(() => new GlobalSearchChangedAction("bc:Proj", "acme"));
-        Should.Throw<ArgumentException>(() => new GlobalSearchChangedAction(string.Empty, "q"));
+        _ = Should.NotThrow(() => new GlobalSearchChangedAction("bc:Proj", null));
+        _ = Should.NotThrow(() => new GlobalSearchChangedAction("bc:Proj", "acme"));
+        _ = Should.Throw<ArgumentException>(() => new GlobalSearchChangedAction(string.Empty, "q"));
     }
 
     [Fact]
@@ -46,8 +41,8 @@ public sealed class FilterActionsTests {
 
     [Fact]
     public void FiltersResetAction_ThrowsOnEmptyViewKey() {
-        Should.Throw<ArgumentException>(() => new FiltersResetAction(""));
-        Should.Throw<ArgumentException>(() => new FiltersResetAction(" "));
+        _ = Should.Throw<ArgumentException>(() => new FiltersResetAction(""));
+        _ = Should.Throw<ArgumentException>(() => new FiltersResetAction(" "));
     }
 
     [Fact]

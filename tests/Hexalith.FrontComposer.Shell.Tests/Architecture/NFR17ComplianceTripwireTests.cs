@@ -16,8 +16,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Architecture;
 /// story 3-6 Dev Notes AND the <see cref="AllowedArgumentPatterns"/> set below. The set is
 /// intentionally small so additions require an explicit review.
 /// </remarks>
-public sealed class NFR17ComplianceTripwireTests
-{
+public sealed class NFR17ComplianceTripwireTests {
     /// <summary>
     /// Whitelisted argument-expressions passed to <c>SetAsync(key, arg)</c>. Each entry maps to a
     /// known NFR17-compliant persisted type documented in the story's NFR17 compliance matrix.
@@ -48,19 +47,15 @@ public sealed class NFR17ComplianceTripwireTests
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     [Fact]
-    public void BlobDoesNotCarryEntityData()
-    {
+    public void BlobDoesNotCarryEntityData() {
         string stateFolder = LocateStateFolder();
         List<(string file, string argExpr)> violations = [];
 
-        foreach (string csFile in Directory.EnumerateFiles(stateFolder, "*.cs", SearchOption.AllDirectories))
-        {
+        foreach (string csFile in Directory.EnumerateFiles(stateFolder, "*.cs", SearchOption.AllDirectories)) {
             string content = File.ReadAllText(csFile);
-            foreach (Match match in SetAsyncCall.Matches(content))
-            {
+            foreach (Match match in SetAsyncCall.Matches(content)) {
                 string arg = match.Groups["arg"].Value.Trim();
-                if (!AllowedArgumentPatterns.Contains(arg))
-                {
+                if (!AllowedArgumentPatterns.Contains(arg)) {
                     violations.Add((csFile, arg));
                 }
             }
@@ -75,8 +70,7 @@ public sealed class NFR17ComplianceTripwireTests
     }
 
     [Fact]
-    public void SetAsyncCallSiteCount_MatchesExpected()
-    {
+    public void SetAsyncCallSiteCount_MatchesExpected() {
         // A second tripwire: the number of SetAsync call sites should not grow silently. If a PR
         // adds a new call site, this count must be bumped AND the argument pattern whitelisted.
         // Story 5-2 — ETagCacheService.SetAsync adds 1 new call site (server-derived ETag entry).
@@ -90,20 +84,16 @@ public sealed class NFR17ComplianceTripwireTests
             + "Bump the expected count AND update the NFR17 compliance matrix + AllowedArgumentPatterns.");
     }
 
-    private static string LocateStateFolder()
-    {
+    private static string LocateStateFolder() {
         string current = AppContext.BaseDirectory;
-        for (int i = 0; i < 10; i++)
-        {
+        for (int i = 0; i < 10; i++) {
             string candidate = Path.Combine(current, "src", "Hexalith.FrontComposer.Shell", "State");
-            if (Directory.Exists(candidate))
-            {
+            if (Directory.Exists(candidate)) {
                 return candidate;
             }
 
             DirectoryInfo? parent = Directory.GetParent(current);
-            if (parent is null)
-            {
+            if (parent is null) {
                 break;
             }
 

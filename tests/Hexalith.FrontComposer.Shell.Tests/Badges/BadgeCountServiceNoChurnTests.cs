@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-
 using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Shell.Badges;
 
@@ -9,8 +5,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Badges;
 
@@ -29,8 +23,8 @@ public class BadgeCountServiceNoChurnTests {
         using ServiceProvider provider = services.BuildServiceProvider();
         using BadgeCountService sut = new(catalog, reader, provider, NullLogger<BadgeCountService>.Instance, TimeProvider.System);
 
-        List<BadgeCountChangedArgs> emissions = new();
-        using System.IDisposable subscription = sut.CountChanged.Subscribe(args => emissions.Add(args));
+        List<BadgeCountChangedArgs> emissions = [];
+        using System.IDisposable subscription = sut.CountChanged.Subscribe(emissions.Add);
 
         // Initial fan-out — emits once with count=3.
         await sut.InitializeAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
@@ -52,8 +46,8 @@ public class BadgeCountServiceNoChurnTests {
         using ServiceProvider provider = services.BuildServiceProvider();
         using BadgeCountService sut = new(catalog, reader, provider, NullLogger<BadgeCountService>.Instance, TimeProvider.System);
 
-        List<BadgeCountChangedArgs> emissions = new();
-        using System.IDisposable subscription = sut.CountChanged.Subscribe(args => emissions.Add(args));
+        List<BadgeCountChangedArgs> emissions = [];
+        using System.IDisposable subscription = sut.CountChanged.Subscribe(emissions.Add);
 
         await sut.InitializeAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
         reader.Count = 7;

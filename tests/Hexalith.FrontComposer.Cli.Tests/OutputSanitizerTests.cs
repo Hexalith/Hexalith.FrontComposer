@@ -1,13 +1,12 @@
 using Shouldly;
+
 using Xunit;
 
 namespace Hexalith.FrontComposer.Cli.Tests;
 
-public sealed class OutputSanitizerTests
-{
+public sealed class OutputSanitizerTests {
     [Fact]
-    public void Sanitize_BoundsControlCharactersAnsiAndLongValues()
-    {
+    public void Sanitize_BoundsControlCharactersAnsiAndLongValues() {
         string unsafeValue = "tenant\u001b[31m\r\n{\"token\":\"secret\"}" + new string('x', 500);
 
         string safe = OutputSanitizer.Sanitize(unsafeValue, 40);

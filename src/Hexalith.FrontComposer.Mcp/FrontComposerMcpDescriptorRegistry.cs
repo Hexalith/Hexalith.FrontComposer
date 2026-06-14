@@ -13,8 +13,6 @@ namespace Hexalith.FrontComposer.Mcp;
 public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescriptorEpochProvider {
     private readonly IReadOnlyDictionary<string, McpCommandDescriptor> _commands;
     private readonly IReadOnlyDictionary<string, McpResourceDescriptor> _resources;
-    private readonly IReadOnlyList<McpCommandDescriptor> _orderedCommands;
-    private readonly IReadOnlyList<McpResourceDescriptor> _orderedResources;
     private readonly IReadOnlyDictionary<string, string> _normalizedNames;
     private readonly IReadOnlyList<FrontComposerRenderContract> _renderContracts;
 
@@ -47,10 +45,10 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
         ValidateAggregateIntegrity(manifests, corpusFingerprints);
         _commands = BuildCommandMap(manifests);
         _resources = BuildResourceMap(manifests);
-        _orderedCommands = [.. _commands.Values.OrderBy(c => c.ProtocolName, StringComparer.Ordinal)];
-        _orderedResources = [.. _resources.Values.OrderBy(r => r.ProtocolUri, StringComparer.Ordinal)];
-        _normalizedNames = BuildNormalizedNameMap(_orderedCommands);
-        _renderContracts = BuildRenderContracts(_orderedResources, options.Value);
+        Commands = [.. _commands.Values.OrderBy(c => c.ProtocolName, StringComparer.Ordinal)];
+        Resources = [.. _resources.Values.OrderBy(r => r.ProtocolUri, StringComparer.Ordinal)];
+        _normalizedNames = BuildNormalizedNameMap(Commands);
+        _renderContracts = BuildRenderContracts(Resources, options.Value);
     }
 
     // DN-3: the in-memory manifest registry is immutable for the lifetime of the host (manifests
@@ -62,9 +60,9 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
     public McpDescriptorEpochs GetEpochs()
         => new(DescriptorEpoch: 1, CatalogEpoch: 1);
 
-    public IReadOnlyList<McpCommandDescriptor> Commands => _orderedCommands;
+    public IReadOnlyList<McpCommandDescriptor> Commands { get; }
 
-    public IReadOnlyList<McpResourceDescriptor> Resources => _orderedResources;
+    public IReadOnlyList<McpResourceDescriptor> Resources { get; }
 
     public IReadOnlyList<FrontComposerRenderContract> GetRenderContracts() => _renderContracts;
 

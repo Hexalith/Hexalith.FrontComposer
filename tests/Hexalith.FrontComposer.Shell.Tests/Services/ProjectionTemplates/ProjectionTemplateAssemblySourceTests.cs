@@ -1,13 +1,9 @@
-using System.Collections.Generic;
 using System.Reflection;
 
-using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Services.ProjectionTemplates;
 
@@ -27,22 +23,18 @@ public sealed class ProjectionTemplateAssemblySourceTests {
     }
 
     [Fact]
-    public void ResolveDescriptors_NullAssembly_Throws() {
-        Should.Throw<ArgumentNullException>(() =>
+    public void ResolveDescriptors_NullAssembly_Throws() => Should.Throw<ArgumentNullException>(() =>
             ProjectionTemplateAssemblySource.ResolveDescriptors(null!));
-    }
 
     [Fact]
-    public void Constructor_NullDescriptors_Throws() {
-        Should.Throw<ArgumentNullException>(() =>
+    public void Constructor_NullDescriptors_Throws() => Should.Throw<ArgumentNullException>(() =>
             new ProjectionTemplateAssemblySource(null!));
-    }
 
     [Fact]
     public void Constructor_StoresDescriptorList() {
         ProjectionTemplateDescriptor descriptor = new(
             typeof(string),
-            (ProjectionRole?)null,
+            null,
             typeof(int),
             ProjectionTemplateContractVersion.Current);
         ProjectionTemplateAssemblySource source = new([descriptor]);

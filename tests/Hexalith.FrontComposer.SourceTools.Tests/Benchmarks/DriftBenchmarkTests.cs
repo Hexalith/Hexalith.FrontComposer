@@ -5,7 +5,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
 
@@ -41,7 +40,7 @@ public sealed class DriftBenchmarkTests {
         // Measured: cache-hit path = re-run with identical inputs.
         double[] cacheHitMs = new double[MeasuredIterations];
         for (int i = 0; i < MeasuredIterations; i++) {
-            Stopwatch sw = Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
             primed = primed.RunGenerators(compilation, TestContext.Current.CancellationToken);
             sw.Stop();
             cacheHitMs[i] = sw.Elapsed.TotalMilliseconds;
@@ -80,7 +79,7 @@ public sealed class DriftBenchmarkTests {
         for (int i = 0; i < MeasuredIterations; i++) {
             // Cache-miss path = mutate ONE projection per iteration to trigger re-comparison.
             CSharpCompilation mutated = MutateOneDeclaration(baseCompilation, iteration: i);
-            Stopwatch sw = Stopwatch.StartNew();
+            var sw = Stopwatch.StartNew();
             primed = primed.RunGenerators(mutated, TestContext.Current.CancellationToken);
             sw.Stop();
             cacheMissMs[i] = sw.Elapsed.TotalMilliseconds;
@@ -103,21 +102,21 @@ public sealed class DriftBenchmarkTests {
 
     private static (CSharpCompilation compilation, AdditionalText baseline) BuildBoundedFixture(int declarationCount) {
         StringBuilder source = new();
-        source.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
-        source.AppendLine("namespace TestDomain;");
+        _ = source.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
+        _ = source.AppendLine("namespace TestDomain;");
         StringBuilder baselineSb = new();
-        baselineSb.AppendLine("{ \"schemaVersion\": \"frontcomposer.generated-ui-baseline.v1\", \"algorithm\": \"frontcomposer-structural-v1\", \"contracts\": [");
+        _ = baselineSb.AppendLine("{ \"schemaVersion\": \"frontcomposer.generated-ui-baseline.v1\", \"algorithm\": \"frontcomposer-structural-v1\", \"contracts\": [");
 
         for (int i = 0; i < declarationCount; i++) {
-            source.AppendFormat(System.Globalization.CultureInfo.InvariantCulture,
+            _ = source.AppendFormat(System.Globalization.CultureInfo.InvariantCulture,
                 "[BoundedContext(\"Orders\")] [Projection] public partial class P{0:D2} {{ public string Id {{ get; set; }} = string.Empty; public int Priority {{ get; set; }} }}{1}",
                 i, Environment.NewLine);
-            baselineSb.AppendFormat(System.Globalization.CultureInfo.InvariantCulture,
+            _ = baselineSb.AppendFormat(System.Globalization.CultureInfo.InvariantCulture,
                 "{0}{{ \"family\": \"projection\", \"type\": \"TestDomain.P{1:D2}\", \"boundedContext\": \"Orders\", \"properties\": [{{ \"name\": \"Id\", \"category\": \"String\", \"nullable\": false }}, {{ \"name\": \"Priority\", \"category\": \"Int32\", \"nullable\": false }}] }}",
                 i == 0 ? string.Empty : ",\n", i);
         }
-        baselineSb.AppendLine();
-        baselineSb.AppendLine("] }");
+        _ = baselineSb.AppendLine();
+        _ = baselineSb.AppendLine("] }");
 
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source.ToString());
         AdditionalText baseline = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", baselineSb.ToString());

@@ -4,7 +4,6 @@ using System.Reflection;
 using Bunit;
 
 using Fluxor;
-using Fluxor.DependencyInjection;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -22,8 +21,7 @@ namespace Hexalith.FrontComposer.Testing;
 /// Composable handle for the services and fakes registered by <see cref="FrontComposerTestHostServiceCollectionExtensions"/>.
 /// </summary>
 public sealed class FrontComposerTestHostBuilder
-    : IDisposable
-{
+    : IDisposable {
     private readonly IDisposable _cultureScope;
     private bool _disposed;
 
@@ -36,8 +34,7 @@ public sealed class FrontComposerTestHostBuilder
         TestProjectionPageLoader pageLoader,
         TestFaultInjectionProvider faultProvider,
         IDisposable cultureScope,
-        bool storeInitialized)
-    {
+        bool storeInitialized) {
         Context = context;
         Options = options;
         UserContext = userContext;
@@ -78,11 +75,9 @@ public sealed class FrontComposerTestHostBuilder
     /// <typeparam name="TMarker">A marker type from the generated domain assembly.</typeparam>
     /// <returns>The same builder for chaining.</returns>
     public FrontComposerTestHostBuilder AddDomainAssembly<TMarker>()
-        where TMarker : class
-    {
+        where TMarker : class {
         Assembly assembly = typeof(TMarker).Assembly;
-        if (!Options.DomainAssemblies.Contains(assembly))
-        {
+        if (!Options.DomainAssemblies.Contains(assembly)) {
             Options.DomainAssemblies.Add(assembly);
             _ = Context.Services.AddFluxor(o => o.ScanAssemblies(assembly));
             _ = Context.Services.AddHexalithDomain<TMarker>();
@@ -96,8 +91,7 @@ public sealed class FrontComposerTestHostBuilder
     /// </summary>
     /// <param name="sourceToolsAssembly">Optional SourceTools assembly when a test host uses generator-driver helpers.</param>
     /// <exception cref="InvalidOperationException">Thrown when package versions are incompatible.</exception>
-    public void ValidateVersionAlignment(Assembly? sourceToolsAssembly = null)
-    {
+    public void ValidateVersionAlignment(Assembly? sourceToolsAssembly = null) {
         Assembly testing = GetType().Assembly;
         Assembly contracts = typeof(IUserContextAccessor).Assembly;
         Assembly shell = typeof(IProjectionPageLoader).Assembly;
@@ -112,16 +106,14 @@ public sealed class FrontComposerTestHostBuilder
             .Select(x => $"{x.Assembly.GetName().Name} {x.Assembly.GetName().Version} expected {expected.Major}.{expected.Minor}.x")
             .ToArray();
 
-        if (mismatches.Length > 0)
-        {
+        if (mismatches.Length > 0) {
             throw new InvalidOperationException(
                 "FrontComposer test host package versions must align before rendering. " +
                 string.Join("; ", mismatches));
         }
     }
 
-    internal static IDisposable ApplyCulture(CultureInfo culture)
-    {
+    internal static IDisposable ApplyCulture(CultureInfo culture) {
         CultureInfo originalCulture = CultureInfo.CurrentCulture;
         CultureInfo originalUICulture = CultureInfo.CurrentUICulture;
         CultureInfo.CurrentCulture = culture;
@@ -129,8 +121,7 @@ public sealed class FrontComposerTestHostBuilder
         return new CultureScope(originalCulture, originalUICulture);
     }
 
-    private static (int Major, int Minor) MajorMinor(Assembly assembly)
-    {
+    private static (int Major, int Minor) MajorMinor(Assembly assembly) {
         Version version = assembly.GetName().Version ?? new Version(0, 0);
         return (version.Major, version.Minor);
     }
@@ -138,10 +129,8 @@ public sealed class FrontComposerTestHostBuilder
     /// <summary>
     /// Restores culture settings applied by the test host.
     /// </summary>
-    public void Dispose()
-    {
-        if (_disposed)
-        {
+    public void Dispose() {
+        if (_disposed) {
             return;
         }
 
@@ -149,10 +138,8 @@ public sealed class FrontComposerTestHostBuilder
         _disposed = true;
     }
 
-    private sealed class CultureScope(CultureInfo originalCulture, CultureInfo originalUICulture) : IDisposable
-    {
-        public void Dispose()
-        {
+    private sealed class CultureScope(CultureInfo originalCulture, CultureInfo originalUICulture) : IDisposable {
+        public void Dispose() {
             CultureInfo.CurrentCulture = originalCulture;
             CultureInfo.CurrentUICulture = originalUICulture;
         }
@@ -162,8 +149,7 @@ public sealed class FrontComposerTestHostBuilder
 /// <summary>
 /// Service-collection extensions for the adopter-facing FrontComposer test host.
 /// </summary>
-public static class FrontComposerTestHostServiceCollectionExtensions
-{
+public static class FrontComposerTestHostServiceCollectionExtensions {
     /// <summary>
     /// Registers FrontComposer Shell defaults plus deterministic test fakes in a bUnit context.
     /// </summary>
@@ -174,8 +160,7 @@ public static class FrontComposerTestHostServiceCollectionExtensions
     public static FrontComposerTestHostBuilder AddFrontComposerTestHost(
         this IServiceCollection services,
         BunitContext context,
-        Action<FrontComposerTestOptions>? configure = null)
-    {
+        Action<FrontComposerTestOptions>? configure = null) {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(context);
 
@@ -185,8 +170,7 @@ public static class FrontComposerTestHostServiceCollectionExtensions
         context.JSInterop.Mode = options.JSInteropMode;
         IDisposable cultureScope = FrontComposerTestHostBuilder.ApplyCulture(options.Culture);
 
-        FrontComposerTestUserContextAccessor userContext = new()
-        {
+        FrontComposerTestUserContextAccessor userContext = new() {
             TenantId = options.TestTenantId,
             UserId = options.TestUserId,
         };
@@ -198,31 +182,28 @@ public static class FrontComposerTestHostServiceCollectionExtensions
 
         _ = services.AddLocalization();
         _ = services.AddFluentUIComponents();
-        _ = services.AddHexalithFrontComposer(o =>
-        {
-            foreach (Assembly assembly in options.DomainAssemblies)
-            {
+        _ = services.AddHexalithFrontComposer(o => {
+            foreach (Assembly assembly in options.DomainAssemblies) {
                 _ = o.ScanAssemblies(assembly);
             }
         });
 
-        services.Replace(ServiceDescriptor.Scoped(_ => userContext));
-        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
-        services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => userContext));
-        services.Replace(ServiceDescriptor.Scoped<ICommandPageContext>(_ => commandPageContext));
-        services.Replace(ServiceDescriptor.Scoped<ICommandServiceWithLifecycle>(_ => commandService));
-        services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
-        services.Replace(ServiceDescriptor.Scoped<IQueryService>(_ => queryService));
-        services.Replace(ServiceDescriptor.Scoped<IProjectionPageLoader>(_ => pageLoader));
-        services.Replace(ServiceDescriptor.Scoped(_ => commandService));
-        services.Replace(ServiceDescriptor.Scoped(_ => queryService));
-        services.Replace(ServiceDescriptor.Scoped(_ => pageLoader));
-        services.Replace(ServiceDescriptor.Singleton(options.TimeProvider));
-        services.AddSingleton(faultProvider);
+        _ = services.Replace(ServiceDescriptor.Scoped(_ => userContext));
+        _ = services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
+        _ = services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => userContext));
+        _ = services.Replace(ServiceDescriptor.Scoped<ICommandPageContext>(_ => commandPageContext));
+        _ = services.Replace(ServiceDescriptor.Scoped<ICommandServiceWithLifecycle>(_ => commandService));
+        _ = services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
+        _ = services.Replace(ServiceDescriptor.Scoped<IQueryService>(_ => queryService));
+        _ = services.Replace(ServiceDescriptor.Scoped<IProjectionPageLoader>(_ => pageLoader));
+        _ = services.Replace(ServiceDescriptor.Scoped(_ => commandService));
+        _ = services.Replace(ServiceDescriptor.Scoped(_ => queryService));
+        _ = services.Replace(ServiceDescriptor.Scoped(_ => pageLoader));
+        _ = services.Replace(ServiceDescriptor.Singleton(options.TimeProvider));
+        _ = services.AddSingleton(faultProvider);
 
         bool storeInitialized = false;
-        if (options.StoreInitialization == StoreInitializationMode.DuringHostSetup)
-        {
+        if (options.StoreInitialization == StoreInitializationMode.DuringHostSetup) {
             context.Services.GetRequiredService<IStore>().InitializeAsync().GetAwaiter().GetResult();
             storeInitialized = true;
         }
@@ -240,8 +221,7 @@ public static class FrontComposerTestHostServiceCollectionExtensions
     }
 
     private sealed class TestCommandPageContext(string commandName, string boundedContext, string? returnPath)
-        : ICommandPageContext
-    {
+        : ICommandPageContext {
         public string CommandName { get; set; } = commandName;
 
         public string BoundedContext { get; set; } = boundedContext;

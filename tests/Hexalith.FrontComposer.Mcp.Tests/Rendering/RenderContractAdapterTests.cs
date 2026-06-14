@@ -1,14 +1,12 @@
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Schema;
-using Hexalith.FrontComposer.Mcp.Invocation;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Rendering;
 
@@ -58,9 +56,9 @@ public sealed class RenderContractAdapterTests {
 
     private static FrontComposerMcpDescriptorRegistry BuildRegistry(McpResourceDescriptor resource) {
         ServiceCollection services = [];
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(new McpManifest("frontcomposer.mcp.v1", [], [resource])));
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(new McpManifest("frontcomposer.mcp.v1", [], [resource])));
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         return services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>();
     }
 
@@ -86,7 +84,7 @@ public sealed class RenderContractAdapterTests {
         // Expected accessor shape: registry.GetRenderContracts() or a sibling provider.
         System.Reflection.MethodInfo? accessor = registry.GetType()
             .GetMethod("GetRenderContracts", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
-        accessor.ShouldNotBeNull(
+        _ = accessor.ShouldNotBeNull(
             "AC14 / T7 require a public registry accessor for render contracts. Implement T7 before unskipping.");
 
         object? result = accessor!.Invoke(registry, []);

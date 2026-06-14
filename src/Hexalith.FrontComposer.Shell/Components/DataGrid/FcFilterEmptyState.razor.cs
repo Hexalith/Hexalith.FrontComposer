@@ -38,10 +38,8 @@ public partial class FcFilterEmptyState : ComponentBase {
     private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
 
     /// <inheritdoc />
-    protected override void OnParametersSet() {
-        _message = Localizer[
+    protected override void OnParametersSet() => _message = Localizer[
             "EmptyFilteredStateTemplate",
             EntityPlural,
             TotalCount.ToString(CultureInfo.CurrentUICulture)].Value;
-    }
 }

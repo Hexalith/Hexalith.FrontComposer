@@ -12,11 +12,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// Unit tests for <see cref="FrontComposerDensityFeature"/> — Story 3-3 D2 rewindow:
 /// initial state is <c>(UserPreference: null, EffectiveDensity: Comfortable)</c>.
 /// </summary>
-public class DensityFeatureTests
-{
+public class DensityFeatureTests {
     [Fact]
-    public void GetInitialState_ReturnsNullPreferenceAndComfortableEffective()
-    {
+    public void GetInitialState_ReturnsNullPreferenceAndComfortableEffective() {
         TestableFrontComposerDensityFeature feature = new();
 
         FrontComposerDensityState state = feature.ExposeInitialState();
@@ -26,8 +24,7 @@ public class DensityFeatureTests
         feature.GetName().ShouldBe("FrontComposerDensity");
     }
 
-    private sealed class TestableFrontComposerDensityFeature : FrontComposerDensityFeature
-    {
+    private sealed class TestableFrontComposerDensityFeature : FrontComposerDensityFeature {
         public FrontComposerDensityState ExposeInitialState() => GetInitialState();
     }
 }

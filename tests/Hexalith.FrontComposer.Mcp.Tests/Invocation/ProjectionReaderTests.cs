@@ -15,7 +15,7 @@ public sealed class ProjectionReaderTests {
     public async Task ReadAsync_RoutesToQueryService_WithTenantContext_AndMarkdown() {
         RecordingQueryService query = new();
         ServiceProvider provider = Services(query).BuildServiceProvider();
-        var reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
+        FrontComposerMcpProjectionReader reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
 
         FrontComposerMcpResult result = await reader.ReadAsync("frontcomposer://Billing/projections/InvoiceProjection", TestContext.Current.CancellationToken);
 
@@ -29,15 +29,15 @@ public sealed class ProjectionReaderTests {
     [Fact]
     public async Task ReadAsync_EmptyProjection_UsesVisibleCatalogForCtaSuggestions() {
         ServiceCollection services = [];
-        services.AddLogging();
-        services.AddSingleton<IQueryService>(new EmptyQueryService());
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(ManifestWithCreateCommand()));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
-        services.AddScoped<FrontComposerMcpToolAdmissionService>();
-        services.AddScoped<FrontComposerMcpProjectionReader>();
+        _ = services.AddLogging();
+        _ = services.AddSingleton<IQueryService>(new EmptyQueryService());
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(ManifestWithCreateCommand()));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
+        _ = services.AddScoped<FrontComposerMcpToolAdmissionService>();
+        _ = services.AddScoped<FrontComposerMcpProjectionReader>();
         ServiceProvider provider = services.BuildServiceProvider();
         FrontComposerMcpProjectionReader reader = provider.GetRequiredService<FrontComposerMcpProjectionReader>();
 
@@ -53,12 +53,12 @@ public sealed class ProjectionReaderTests {
 
     private static IServiceCollection Services(IQueryService queryService) {
         var services = new ServiceCollection();
-        services.AddSingleton(queryService);
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
-        services.AddScoped<FrontComposerMcpProjectionReader>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton(queryService);
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
+        _ = services.AddScoped<FrontComposerMcpProjectionReader>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         return services;
     }
 

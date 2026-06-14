@@ -21,7 +21,7 @@ public sealed class Story21Story22ContractTests : CommandRendererTestBase {
         IRenderedComponent<TwoFieldCompactCommandForm> defaults = Render<TwoFieldCompactCommandForm>();
         IRenderedComponent<TwoFieldCompactCommandForm> explicitDefaults = Render<TwoFieldCompactCommandForm>(parameters => parameters
             .Add(p => p.DerivableFieldsHidden, false)
-            .Add(p => p.ShowFieldsOnly, (string[]?)null));
+            .Add(p => p.ShowFieldsOnly, null));
 
         string normalizedDefaults = NormalizeMarkup(defaults.Markup);
         string normalizedExplicit = NormalizeMarkup(explicitDefaults.Markup);

@@ -2,7 +2,6 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
-using Hexalith.FrontComposer.Contracts.Storage;
 
 using Microsoft.Extensions.Logging;
 
@@ -66,7 +65,7 @@ public sealed class ScopeReadinessGate : IScopeReadinessGate {
         string? tenant = _userContextAccessor.TenantId;
         string? user = _userContextAccessor.UserId;
         if (string.IsNullOrWhiteSpace(tenant) || string.IsNullOrWhiteSpace(user)) {
-            Interlocked.Exchange(ref _lastObservedScopeReady, 0);
+            _ = Interlocked.Exchange(ref _lastObservedScopeReady, 0);
             return Task.CompletedTask;
         }
 

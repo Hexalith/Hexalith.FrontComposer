@@ -486,13 +486,11 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
         public IDisposable Subscribe(Action<ProjectionConnectionSnapshot> handler, bool replay = true)
             => new Registration();
 
-        public void Apply(ProjectionConnectionTransition transition) {
-            Current = new ProjectionConnectionSnapshot(
+        public void Apply(ProjectionConnectionTransition transition) => Current = new ProjectionConnectionSnapshot(
                 transition.Status,
                 DateTimeOffset.UtcNow,
                 transition.ReconnectAttempt,
                 transition.FailureCategory);
-        }
     }
 
     private sealed class Registration : IDisposable {

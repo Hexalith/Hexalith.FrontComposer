@@ -107,17 +107,15 @@ public sealed class PendingCommandPollingDriverTests {
     }
 
     private sealed class TestProjectionConnectionState : IProjectionConnectionState {
-        private readonly ProjectionConnectionSnapshot _current = new(
+        public ProjectionConnectionSnapshot Current { get; } = new(
             ProjectionConnectionStatus.Connected,
             DateTimeOffset.UtcNow,
             ReconnectAttempt: 0,
             LastFailureCategory: null);
 
-        public ProjectionConnectionSnapshot Current => _current;
-
         public IDisposable Subscribe(Action<ProjectionConnectionSnapshot> handler, bool replay = true) {
             if (replay) {
-                handler(_current);
+                handler(Current);
             }
 
             return new Registration();

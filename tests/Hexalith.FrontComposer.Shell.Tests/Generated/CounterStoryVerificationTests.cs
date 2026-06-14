@@ -4,9 +4,9 @@ using System.Text.RegularExpressions;
 using Bunit;
 
 using Counter.Domain;
+using Counter.Web.Components.Pages;
 using Counter.Web.Components.Replacements;
 using Counter.Web.Components.Slots;
-using Counter.Web.Components.Pages;
 
 using Fluxor;
 
@@ -32,8 +32,7 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
-public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
-{
+public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
     // GC-P5 — pin TimeProvider to a deterministic instant well outside the [RelativeTime]
     // 7-day window relative to LastUpdated = 2026-04-14 so the formatter falls back to absolute
     // date format ("04/14/2026") regardless of the wall clock when the test runs.
@@ -41,28 +40,24 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     private static readonly DateTimeOffset s_lastUpdated = new(2026, 4, 14, 0, 0, 0, TimeSpan.Zero);
 
     public CounterStoryVerificationTests()
-        : base(typeof(CounterProjection).Assembly, typeof(StatusProjection).Assembly)
-    {
+        : base(typeof(CounterProjection).Assembly, typeof(StatusProjection).Assembly) {
     }
 
     [Fact]
-    public async Task CounterPage_EmptyState_RendersStoryMessage()
-    {
+    public async Task CounterPage_EmptyState_RendersStoryMessage() {
         await InitializeStoreAsync();
 
         IRenderedComponent<CounterPage> cut = Render<CounterPage>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             cut.Markup.ShouldContain("No counter data yet. Send your first Increment Counter command.");
             cut.Markup.ShouldContain("Increment Counter");
         });
     }
 
     [Fact]
-    public async Task CounterProjectionState_LoadActions_UpdateFluxorStateAndRegistryManifest()
-    {
-        ServiceCollection services = new();
+    public async Task CounterProjectionState_LoadActions_UpdateFluxorStateAndRegistryManifest() {
+        ServiceCollection services = [];
         _ = services.AddFluentUIComponents();
         services.Replace(ServiceDescriptor.Scoped<IThemeService>(_ => Substitute.For<IThemeService>()));
         _ = services.AddHexalithFrontComposer(o => o.ScanAssemblies(typeof(CounterProjection).Assembly));
@@ -102,8 +97,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_LoadedState_RendersColumnsAndFormatting()
-    {
+    public async Task CounterProjectionView_LoadedState_RendersColumnsAndFormatting() {
         UseFakeTime(s_fixedNow);
 
         await InitializeStoreAsync();
@@ -124,8 +118,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
             // Story 4-4 — Story 4.4's new envelope (data-fc-datagrid="...Counter..." attribute) introduces an
             // earlier "Count" substring inside the host div's data-* attribute. Anchor the column-header search
@@ -147,8 +140,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_SelectedTemplate_RendersInsideGridEnvelopeAndUsesFieldRenderer()
-    {
+    public async Task CounterProjectionView_SelectedTemplate_RendersInsideGridEnvelopeAndUsesFieldRenderer() {
         UseFakeTime(s_fixedNow);
 
         Services.AddSingleton(new ProjectionTemplateAssemblySource(
@@ -178,8 +170,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
             markup.ShouldContain("data-fc-datagrid");
             markup.ShouldContain("fc-selected-template");
@@ -190,8 +181,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_Level3Slot_ReplacesOneFieldAndLeavesAdjacentFieldsGenerated()
-    {
+    public async Task CounterProjectionView_Level3Slot_ReplacesOneFieldAndLeavesAdjacentFieldsGenerated() {
         UseFakeTime(s_fixedNow);
 
         // GC-P4 — typed <TComponent> overload catches component-type mismatches at compile time.
@@ -215,8 +205,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
 
             // Slot replaces Count cell content.
@@ -246,8 +235,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_Level3Slot_InvalidComponent_LogsHfc1039_AndRendersGeneratedDefault()
-    {
+    public async Task CounterProjectionView_Level3Slot_InvalidComponent_LogsHfc1039_AndRendersGeneratedDefault() {
         // GC-P1 / AC15 — invalid-registration test fixture. Component lacks a Context parameter,
         // so IsCompatibleComponent rejects it and HFC1039 is logged. Resolve returns null and
         // FcFieldSlotHost falls back to RenderDefault, so the cell still shows the generated
@@ -279,8 +267,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
 
             // Slot was REJECTED — no slot markup visible.
@@ -304,8 +291,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_Level2TemplateAndLevel3Slot_TemplateFieldRendererResolvesSlot()
-    {
+    public async Task CounterProjectionView_Level2TemplateAndLevel3Slot_TemplateFieldRendererResolvesSlot() {
         // GC-P2 / AC10 / T6 spec line 122 — "tests proving a Level 2 template still renders a
         // Level 3 slot for one field and default generated delegates for adjacent fields".
         UseFakeTime(s_fixedNow);
@@ -339,8 +325,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
 
             // Level 2 template owns the body — selected-template marker present, no FluentDataGrid.
@@ -356,8 +341,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_Level4Replacement_WinsWhenLevel2TemplateAlsoRegistered()
-    {
+    public async Task CounterProjectionView_Level4Replacement_WinsWhenLevel2TemplateAlsoRegistered() {
         UseFakeTime(s_fixedNow);
 
         Services.AddSingleton(new ProjectionTemplateAssemblySource(
@@ -388,8 +372,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
 
             markup.ShouldContain("data-fc-datagrid");
@@ -400,8 +383,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_Level4Replacement_RendersInsideFrameworkEnvelope_AndUsesSafeFieldDelegates()
-    {
+    public async Task CounterProjectionView_Level4Replacement_RendersInsideFrameworkEnvelope_AndUsesSafeFieldDelegates() {
         UseFakeTime(s_fixedNow);
 
         Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
@@ -425,8 +407,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
 
             // Framework-owned envelope remains outside the replacement.
@@ -445,8 +426,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_Level4InvalidComponent_LogsHfc1043_AndRendersGeneratedDefault()
-    {
+    public async Task CounterProjectionView_Level4InvalidComponent_LogsHfc1043_AndRendersGeneratedDefault() {
         UseFakeTime(s_fixedNow);
 
         ListLogger<ProjectionViewOverrideRegistry> capturedLogger = new();
@@ -471,8 +451,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
             markup.ShouldContain("fluent-data-grid");
             markup.ShouldContain("1,234");
@@ -490,8 +469,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task StatusProjectionView_NullAndBooleanValues_RenderSnapshot()
-    {
+    public async Task StatusProjectionView_NullAndBooleanValues_RenderSnapshot() {
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
 
@@ -505,8 +483,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
         IRenderedComponent<StatusProjectionView> cut = Render<StatusProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             cut.Markup.ShouldContain("Yes");
             cut.Markup.ShouldContain("No");
             cut.Markup.ShouldContain("—");
@@ -515,14 +492,12 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
         _ = await Verify(NormalizeGridMarkup(cut.Markup));
     }
 
-    private void UseFakeTime(DateTimeOffset utcNow)
-    {
+    private void UseFakeTime(DateTimeOffset utcNow) {
         FakeTimeProvider fake = new(utcNow);
         Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(fake));
     }
 
-    private static string NormalizeGridMarkup(string markup)
-    {
+    private static string NormalizeGridMarkup(string markup) {
         string normalized = Regex.Replace(markup, "\\s+id=\"[^\"]+\"", string.Empty);
         normalized = Regex.Replace(normalized, "\\s+blazor:[^=]+=\"[^\"]*\"", string.Empty);
         // Story 4-6 review fix: per-instance Guid suffix on _expandPanelId (added to prevent
@@ -534,33 +509,28 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
         return normalized.Replace("\r\n", "\n");
     }
 
-    private sealed class CultureScope : IDisposable
-    {
+    private sealed class CultureScope : IDisposable {
         private readonly CultureInfo _originalCulture;
         private readonly CultureInfo _originalUICulture;
 
-        public CultureScope(CultureInfo culture)
-        {
+        public CultureScope(CultureInfo culture) {
             _originalCulture = CultureInfo.CurrentCulture;
             _originalUICulture = CultureInfo.CurrentUICulture;
             CultureInfo.CurrentCulture = culture;
             CultureInfo.CurrentUICulture = culture;
         }
 
-        public void Dispose()
-        {
+        public void Dispose() {
             CultureInfo.CurrentCulture = _originalCulture;
             CultureInfo.CurrentUICulture = _originalUICulture;
         }
     }
 
-    private sealed class SelectedCounterTemplate : ComponentBase
-    {
+    private sealed class SelectedCounterTemplate : ComponentBase {
         [Parameter]
         public ProjectionTemplateContext<CounterProjection> Context { get; set; } = default!;
 
-        protected override void BuildRenderTree(RenderTreeBuilder builder)
-        {
+        protected override void BuildRenderTree(RenderTreeBuilder builder) {
             CounterProjection row = Context.Items[0];
             builder.OpenElement(0, "div");
             builder.AddAttribute(1, "class", "fc-selected-template");
@@ -572,10 +542,8 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
     // GC-P1 — invalid Level 3 slot fixture: lacks the required [Parameter] Context property.
     // Triggers IsCompatibleComponent rejection → HFC1039 → fail-soft to default rendering.
-    private sealed class InvalidSlotMissingContext : ComponentBase
-    {
-        protected override void BuildRenderTree(RenderTreeBuilder builder)
-        {
+    private sealed class InvalidSlotMissingContext : ComponentBase {
+        protected override void BuildRenderTree(RenderTreeBuilder builder) {
             builder.OpenElement(0, "span");
             builder.AddAttribute(1, "class", "invalid-slot-marker");
             builder.AddContent(2, "INVALID-SLOT-RENDERED");
@@ -583,18 +551,15 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
         }
     }
 
-    private sealed class InvalidViewMissingContext : ComponentBase
-    {
-        protected override void BuildRenderTree(RenderTreeBuilder builder)
-        {
+    private sealed class InvalidViewMissingContext : ComponentBase {
+        protected override void BuildRenderTree(RenderTreeBuilder builder) {
             builder.OpenElement(0, "span");
             builder.AddContent(1, "INVALID-VIEW-RENDERED");
             builder.CloseElement();
         }
     }
 
-    private sealed class ListLogger<T> : ILogger<T>
-    {
+    private sealed class ListLogger<T> : ILogger<T> {
         public List<(LogLevel Level, string Message)> Entries { get; } = [];
 
         public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
@@ -609,12 +574,10 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
             Func<TState, Exception?, string> formatter)
             => Entries.Add((logLevel, formatter(state, exception)));
 
-        private sealed class NullScope : IDisposable
-        {
+        private sealed class NullScope : IDisposable {
             public static readonly NullScope Instance = new();
 
-            public void Dispose()
-            {
+            public void Dispose() {
             }
         }
     }

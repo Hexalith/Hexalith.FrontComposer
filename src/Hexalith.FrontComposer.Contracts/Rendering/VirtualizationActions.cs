@@ -1,6 +1,4 @@
 using System.Collections.Immutable;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace Hexalith.FrontComposer.Contracts.Rendering;
 
@@ -12,9 +10,6 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// <c>IQueryService.QueryAsync</c>; the provider callback awaits that TCS.
 /// </summary>
 public sealed record LoadPageAction {
-    private readonly string _viewKey = string.Empty;
-    private readonly int _skip;
-    private readonly int _take;
 
     /// <summary>Initializes a new instance of the <see cref="LoadPageAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key (<c>{boundedContext}:{projectionTypeFqn}</c>).</param>
@@ -52,37 +47,37 @@ public sealed record LoadPageAction {
 
     /// <summary>Gets the stable per-view key.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the non-negative skip offset.</summary>
     public int Skip {
-        get => _skip;
+        get;
         init {
             if (value < 0) {
                 throw new System.ArgumentOutOfRangeException(nameof(value), value, "Skip must be non-negative.");
             }
 
-            _skip = value;
+            field = value;
         }
     }
 
     /// <summary>Gets the positive page size.</summary>
     public int Take {
-        get => _take;
+        get;
         init {
             if (value <= 0) {
                 throw new System.ArgumentOutOfRangeException(nameof(value), value, "Take must be strictly positive.");
             }
 
-            _take = value;
+            field = value;
         }
     }
 
@@ -115,8 +110,6 @@ public sealed record LoadPageAction {
 /// and resolves the matching TCS via <c>TrySetResult</c>.
 /// </summary>
 public sealed record LoadPageSucceededAction {
-    private readonly string _viewKey = string.Empty;
-    private readonly int _skip;
 
     /// <summary>Initializes a new instance of the <see cref="LoadPageSucceededAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key.</param>
@@ -151,25 +144,25 @@ public sealed record LoadPageSucceededAction {
 
     /// <summary>Gets the stable per-view key.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the skip offset matching the triggering <see cref="LoadPageAction"/>.</summary>
     public int Skip {
-        get => _skip;
+        get;
         init {
             if (value < 0) {
                 throw new System.ArgumentOutOfRangeException(nameof(value), value, "Skip must be non-negative.");
             }
 
-            _skip = value;
+            field = value;
         }
     }
 
@@ -195,8 +188,6 @@ public sealed record LoadPageSucceededAction {
 /// success transition, no badge animation, and no success toast.
 /// </summary>
 public sealed record LoadPageNotModifiedAction {
-    private readonly string _viewKey = string.Empty;
-    private readonly int _skip;
 
     /// <summary>Initializes a new instance of the <see cref="LoadPageNotModifiedAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key.</param>
@@ -219,25 +210,25 @@ public sealed record LoadPageNotModifiedAction {
 
     /// <summary>Gets the stable per-view key.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the non-negative skip offset.</summary>
     public int Skip {
-        get => _skip;
+        get;
         init {
             if (value < 0) {
                 throw new System.ArgumentOutOfRangeException(nameof(value), value, "Skip must be non-negative.");
             }
 
-            _skip = value;
+            field = value;
         }
     }
 
@@ -254,9 +245,6 @@ public sealed record LoadPageNotModifiedAction {
 /// <c>TrySetException</c> and removes the entry.
 /// </summary>
 public sealed record LoadPageFailedAction {
-    private readonly string _viewKey = string.Empty;
-    private readonly int _skip;
-    private readonly string _errorMessage = string.Empty;
 
     /// <summary>Initializes a new instance of the <see cref="LoadPageFailedAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key.</param>
@@ -273,39 +261,39 @@ public sealed record LoadPageFailedAction {
 
     /// <summary>Gets the stable per-view key.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the non-negative skip offset.</summary>
     public int Skip {
-        get => _skip;
+        get;
         init {
             if (value < 0) {
                 throw new System.ArgumentOutOfRangeException(nameof(value), value, "Skip must be non-negative.");
             }
 
-            _skip = value;
+            field = value;
         }
     }
 
     /// <summary>Gets the human-readable error message.</summary>
     public string ErrorMessage {
-        get => _errorMessage;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("Error message cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _errorMessage = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the originating TCS, used to reject stale terminal actions for superseded same-page requests.</summary>
     public TaskCompletionSource<object>? Completion { get; init; }
@@ -317,8 +305,6 @@ public sealed record LoadPageFailedAction {
 /// Reducer resolves the matching TCS via <c>TrySetCanceled</c> and removes the entry.
 /// </summary>
 public sealed record LoadPageCancelledAction {
-    private readonly string _viewKey = string.Empty;
-    private readonly int _skip;
 
     /// <summary>Initializes a new instance of the <see cref="LoadPageCancelledAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key.</param>
@@ -333,25 +319,25 @@ public sealed record LoadPageCancelledAction {
 
     /// <summary>Gets the stable per-view key.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the non-negative skip offset.</summary>
     public int Skip {
-        get => _skip;
+        get;
         init {
             if (value < 0) {
                 throw new System.ArgumentOutOfRangeException(nameof(value), value, "Skip must be non-negative.");
             }
 
-            _skip = value;
+            field = value;
         }
     }
 
@@ -365,26 +351,23 @@ public sealed record LoadPageCancelledAction {
 /// <c>TrySetCanceled</c> and removing each — preventing orphan TCS entries across route changes.
 /// </summary>
 public sealed record ClearPendingPagesAction {
-    private readonly string _viewKey = string.Empty;
 
     /// <summary>Initializes a new instance of the <see cref="ClearPendingPagesAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key whose pending TCS entries should be swept.</param>
     /// <exception cref="System.ArgumentException">Thrown when <paramref name="viewKey"/> is null, empty, or whitespace.</exception>
-    public ClearPendingPagesAction(string viewKey) {
-        ViewKey = viewKey;
-    }
+    public ClearPendingPagesAction(string viewKey) => ViewKey = viewKey;
 
     /// <summary>Gets the stable per-view key.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 }
 
 /// <summary>
@@ -394,8 +377,6 @@ public sealed record ClearPendingPagesAction {
 /// <see cref="CaptureGridStateAction"/> separately.
 /// </summary>
 public sealed record ColumnVisibilityChangedAction {
-    private readonly string _viewKey = string.Empty;
-    private readonly string _columnKey = string.Empty;
 
     /// <summary>Initializes a new instance of the <see cref="ColumnVisibilityChangedAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key.</param>
@@ -410,15 +391,15 @@ public sealed record ColumnVisibilityChangedAction {
 
     /// <summary>Gets the stable per-view key.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the declared column key.</summary>
     /// <remarks>
@@ -427,7 +408,7 @@ public sealed record ColumnVisibilityChangedAction {
     /// prevent reserved-key spoofing via direct action dispatch.
     /// </remarks>
     public string ColumnKey {
-        get => _columnKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("Column key cannot be null, empty, or whitespace.", nameof(value));
@@ -439,9 +420,9 @@ public sealed record ColumnVisibilityChangedAction {
                     nameof(value));
             }
 
-            _columnKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets a value indicating whether the column should be visible after this action.</summary>
     public bool IsVisible { get; init; }
@@ -453,26 +434,23 @@ public sealed record ColumnVisibilityChangedAction {
 /// effect chains <see cref="CaptureGridStateAction"/>.
 /// </summary>
 public sealed record ResetColumnVisibilityAction {
-    private readonly string _viewKey = string.Empty;
 
     /// <summary>Initializes a new instance of the <see cref="ResetColumnVisibilityAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key.</param>
     /// <exception cref="System.ArgumentException">Thrown when <paramref name="viewKey"/> is null, empty, or whitespace.</exception>
-    public ResetColumnVisibilityAction(string viewKey) {
-        ViewKey = viewKey;
-    }
+    public ResetColumnVisibilityAction(string viewKey) => ViewKey = viewKey;
 
     /// <summary>Gets the stable per-view key.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 }
 
 /// <summary>
@@ -482,8 +460,6 @@ public sealed record ResetColumnVisibilityAction {
 /// <see cref="CaptureGridStateAction"/>.
 /// </summary>
 public sealed record ScrollCapturedAction {
-    private readonly string _viewKey = string.Empty;
-    private readonly double _scrollTop;
 
     /// <summary>Initializes a new instance of the <see cref="ScrollCapturedAction"/> record.</summary>
     /// <param name="viewKey">Stable per-view key.</param>
@@ -497,25 +473,25 @@ public sealed record ScrollCapturedAction {
 
     /// <summary>Gets the stable per-view key.</summary>
     public string ViewKey {
-        get => _viewKey;
+        get;
         init {
             if (string.IsNullOrWhiteSpace(value)) {
                 throw new System.ArgumentException("View key cannot be null, empty, or whitespace.", nameof(value));
             }
 
-            _viewKey = value;
+            field = value;
         }
-    }
+    } = string.Empty;
 
     /// <summary>Gets the captured scroll offset.</summary>
     public double ScrollTop {
-        get => _scrollTop;
+        get;
         init {
             if (double.IsNaN(value) || double.IsInfinity(value) || value < 0) {
                 throw new System.ArgumentOutOfRangeException(nameof(value), value, "ScrollTop must be a non-negative finite value.");
             }
 
-            _scrollTop = value;
+            field = value;
         }
     }
 }

@@ -1,13 +1,11 @@
 namespace Hexalith.FrontComposer.Cli;
 
-public static class CliApplication
-{
+public static class CliApplication {
     public static async Task<int> RunAsync(
         IReadOnlyList<string> args,
         TextWriter output,
         TextWriter error,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(args);
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(error);
@@ -42,14 +40,12 @@ public static class CliApplication
 
     private static bool IsHelp(string value) => value is "--help" or "-h" or "help";
 
-    private static int Invalid(TextWriter error, string message)
-    {
+    private static int Invalid(TextWriter error, string message) {
         error.WriteLine(message);
         return ExitCodes.InvalidArguments;
     }
 
-    private static void WriteHelp(TextWriter output)
-    {
+    private static void WriteHelp(TextWriter output) {
         output.WriteLine("Hexalith FrontComposer CLI");
         output.WriteLine();
         output.WriteLine("Usage:");

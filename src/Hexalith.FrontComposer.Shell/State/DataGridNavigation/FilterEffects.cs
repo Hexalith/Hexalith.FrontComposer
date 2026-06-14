@@ -1,8 +1,4 @@
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
-using System.Linq;
-using System.Threading.Tasks;
 
 using Fluxor;
 
@@ -86,7 +82,7 @@ public sealed class FilterEffects {
         GridViewSnapshot current = GetOrEmptySnapshot(action.ViewKey);
         HashSet<string> slots = ParseStatusCsv(current.Filters);
         if (!slots.Add(action.SlotName)) {
-            slots.Remove(action.SlotName);
+            _ = slots.Remove(action.SlotName);
         }
 
         IImmutableDictionary<string, string> filters = slots.Count == 0

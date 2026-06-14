@@ -39,9 +39,7 @@ public class CommandDensityTests {
     [InlineData(2, CommandDensity.CompactInline)]
     [InlineData(4, CommandDensity.CompactInline)]
     [InlineData(5, CommandDensity.FullPage)]
-    public void ComputeDensity_Boundaries_MatchSpecification(int nonDerivableCount, CommandDensity expected) {
-        CommandModel.ComputeDensity(nonDerivableCount).ShouldBe(expected);
-    }
+    public void ComputeDensity_Boundaries_MatchSpecification(int nonDerivableCount, CommandDensity expected) => CommandModel.ComputeDensity(nonDerivableCount).ShouldBe(expected);
 
     [Fact]
     public void Density_BoundarySnapshot_AtZeroOneTwoFourFive() {
@@ -69,7 +67,7 @@ public class CommandDensityTests {
         var zero = new EquatableArray<PropertyModel>(ImmutableArray<PropertyModel>.Empty);
 
         // Simulate two shapes — one with 0 non-derivables (Inline), one with 5 (FullPage).
-        PropertyModel p(string n) => new(n, "string", false, false, null, new EquatableArray<BadgeMappingEntry>(ImmutableArray<BadgeMappingEntry>.Empty));
+        static PropertyModel p(string n) => new(n, "string", false, false, null, new EquatableArray<BadgeMappingEntry>(ImmutableArray<BadgeMappingEntry>.Empty));
         var fiveProps = new EquatableArray<PropertyModel>(ImmutableArray.Create(p("A"), p("B"), p("C"), p("D"), p("E")));
 
         var inline = new CommandModel("X", "N", null, null, null, fiveProps, zero, zero);
@@ -178,21 +176,21 @@ public class CommandDensityTests {
 
     private static string BuildCommandSource(string typeName, int nonDerivableCount, int derivedFromCount = 0) {
         StringBuilder sb = new();
-        sb.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
-        sb.AppendLine("namespace TestDomain;");
-        sb.AppendLine("[Command]");
-        sb.Append("public class ").AppendLine(typeName).AppendLine(" {");
-        sb.AppendLine("    public string MessageId { get; set; } = string.Empty;");
+        _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
+        _ = sb.AppendLine("namespace TestDomain;");
+        _ = sb.AppendLine("[Command]");
+        _ = sb.Append("public class ").AppendLine(typeName).AppendLine(" {");
+        _ = sb.AppendLine("    public string MessageId { get; set; } = string.Empty;");
         for (int i = 0; i < nonDerivableCount; i++) {
-            sb.Append("    public string Field").Append(i).AppendLine(" { get; set; } = string.Empty;");
+            _ = sb.Append("    public string Field").Append(i).AppendLine(" { get; set; } = string.Empty;");
         }
 
         for (int i = 0; i < derivedFromCount; i++) {
-            sb.AppendLine("    [DerivedFrom(DerivedFromSource.Context)]");
-            sb.Append("    public string Derived").Append(i).AppendLine(" { get; set; } = string.Empty;");
+            _ = sb.AppendLine("    [DerivedFrom(DerivedFromSource.Context)]");
+            _ = sb.Append("    public string Derived").Append(i).AppendLine(" { get; set; } = string.Empty;");
         }
 
-        sb.AppendLine("}");
+        _ = sb.AppendLine("}");
         return sb.ToString();
     }
 }

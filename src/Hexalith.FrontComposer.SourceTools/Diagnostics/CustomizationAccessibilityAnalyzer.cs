@@ -107,7 +107,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
         }
 
         if (method.TypeArguments[method.TypeArguments.Length - 1] is INamedTypeSymbol componentType) {
-            referencedComponents.TryAdd(componentType, 0);
+            _ = referencedComponents.TryAdd(componentType, 0);
         }
     }
 
@@ -119,12 +119,12 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
     };
 
     private static void AnalyzeProjectionTemplateType(SymbolAnalysisContext context) {
-        INamedTypeSymbol type = (INamedTypeSymbol)context.Symbol;
+        var type = (INamedTypeSymbol)context.Symbol;
         if (!HasProjectionTemplateAttribute(type)) {
             return;
         }
 
-        AnalyzeType(type, context.CancellationToken, diagnostic => context.ReportDiagnostic(diagnostic));
+        AnalyzeType(type, context.CancellationToken, context.ReportDiagnostic);
     }
 
     private static void AnalyzeRegisteredTypes(
@@ -135,7 +135,7 @@ public sealed class CustomizationAccessibilityAnalyzer : DiagnosticAnalyzer {
                 continue;
             }
 
-            AnalyzeType(type, context.CancellationToken, diagnostic => context.ReportDiagnostic(diagnostic));
+            AnalyzeType(type, context.CancellationToken, context.ReportDiagnostic);
         }
     }
 

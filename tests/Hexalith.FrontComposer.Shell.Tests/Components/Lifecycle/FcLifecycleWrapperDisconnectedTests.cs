@@ -54,8 +54,6 @@ public sealed class FcLifecycleWrapperDisconnectedTests : LifecycleWrapperTestBa
 
         state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
 
-        cut.WaitForAssertion(() => {
-            cut.Markup.ShouldNotContain("Submission confirmed");
-        });
+        cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("Submission confirmed"));
     }
 }

@@ -1,12 +1,11 @@
-using System.Globalization;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -27,7 +26,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Rendering;
 /// </remarks>
 public partial class FcProjectionEmptyPlaceholder : ComponentBase {
     private EmptyStateCta? _resolvedCta;
-    private string? _resolvedSecondaryText;
+
     // P-2: memoization keys for the resolver call. OnParametersSet runs on every parent re-render;
     // skipping the registry walk when (ProjectionType, CtaCommandName) are unchanged keeps the
     // empty-state cheap on dense pages.
@@ -105,7 +104,7 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
         }
     }
 
-    private string? ResolvedSecondaryText => _resolvedSecondaryText;
+    private string? ResolvedSecondaryText { get; set; }
 
     [UnconditionalSuppressMessage(
         "Trimming",
@@ -125,7 +124,7 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
             return sameAssembly;
         }
 
-        Type? resolved = Type.GetType(commandFqn, throwOnError: false);
+        var resolved = Type.GetType(commandFqn, throwOnError: false);
         if (resolved is not null) {
             return resolved;
         }
@@ -181,7 +180,7 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
         bool secondaryInputsUnchanged = ReferenceEquals(_lastSecondaryTextProjectionType, ProjectionType)
             && string.Equals(_lastSecondaryTextParameter, SecondaryText, StringComparison.Ordinal);
         if (!secondaryInputsUnchanged) {
-            _resolvedSecondaryText = ResolveSecondaryText();
+            ResolvedSecondaryText = ResolveSecondaryText();
             _lastSecondaryTextProjectionType = ProjectionType;
             _lastSecondaryTextParameter = SecondaryText;
         }
@@ -235,7 +234,7 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
     private static string HumanizeAndStripProjectionSuffix(string typeName) {
         const string projectionSuffix = "Projection";
         string baseName = typeName.EndsWith(projectionSuffix, StringComparison.Ordinal)
-            ? typeName.Substring(0, typeName.Length - projectionSuffix.Length)
+            ? typeName[..^projectionSuffix.Length]
             : typeName;
 
         // Simple CamelCase → "Camel Case" humanizer (pluralization rules are trivial for v1).

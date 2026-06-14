@@ -10,7 +10,6 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
-using Hexalith.FrontComposer.Shell.Routing;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State;
@@ -28,16 +27,13 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.CommandPalette;
 
-public class CommandPaletteEffectsTests
-{
+public class CommandPaletteEffectsTests {
     private const string TestTenant = "tenant-a";
     private const string TestUser = "user-1";
 
     [Fact]
-    public async Task ResolveShortcutAliasQuery_AliasesMapToCanonicalShortcuts()
-    {
-        foreach (string alias in new[] { "?", "help", "keys", "kb", "shortcut", "shortcuts", "Help", "KB" })
-        {
+    public async Task ResolveShortcutAliasQuery_AliasesMapToCanonicalShortcuts() {
+        foreach (string alias in new[] { "?", "help", "keys", "kb", "shortcut", "shortcuts", "Help", "KB" }) {
             CommandPaletteEffects.ResolveShortcutAliasQuery(alias).ShouldBe("shortcuts");
         }
 
@@ -46,8 +42,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task DebounceCancelsEarlierKeystroke()
-    {
+    public async Task DebounceCancelsEarlierKeystroke() {
         CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out _);
 
         Task first = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "co"), dispatcher);
@@ -61,8 +56,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteClosed_CancelsInFlightQuery()
-    {
+    public async Task HandlePaletteClosed_CancelsInFlightQuery() {
         CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out _);
 
         Task query = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "cou"), dispatcher);
@@ -75,11 +69,10 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task ShortcutsQuery_BypassesScorer_AndReturnsRegistrations()
-    {
+    public async Task ShortcutsQuery_BypassesScorer_AndReturnsRegistrations() {
         CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider sp);
 
-        ShortcutService shortcuts = (ShortcutService)sp.GetRequiredService<IShortcutService>();
+        var shortcuts = (ShortcutService)sp.GetRequiredService<IShortcutService>();
         shortcuts.Register("ctrl+k", "PaletteShortcutDescription", () => Task.CompletedTask);
         shortcuts.Register("g h", "HomeShortcutDescription", () => Task.CompletedTask);
 
@@ -104,10 +97,9 @@ public class CommandPaletteEffectsTests
     [InlineData("keys")]
     [InlineData("kb")]
     [InlineData("shortcut")]
-    public async Task ShortcutAliases_AllProduceShortcutResults(string alias)
-    {
+    public async Task ShortcutAliases_AllProduceShortcutResults(string alias) {
         CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider sp);
-        ShortcutService shortcuts = (ShortcutService)sp.GetRequiredService<IShortcutService>();
+        var shortcuts = (ShortcutService)sp.GetRequiredService<IShortcutService>();
         shortcuts.Register("ctrl+k", "PaletteShortcutDescription", () => Task.CompletedTask);
 
         Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", alias), dispatcher);
@@ -120,8 +112,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task ContextualBonus_AppliesToMatchingBoundedContext()
-    {
+    public async Task ContextualBonus_AppliesToMatchingBoundedContext() {
         CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider sp,
             currentContext: "Counter",
             manifests: [
@@ -133,11 +124,10 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
-        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a => HasContextualBonus(a)));
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(HasContextualBonus));
     }
 
-    private static bool HasContextualBonus(PaletteResultsComputedAction action)
-    {
+    private static bool HasContextualBonus(PaletteResultsComputedAction action) {
         PaletteResult? counterRow = action.Results.FirstOrDefault(r => r.BoundedContext == "Counter");
         PaletteResult? commerceRow = action.Results.FirstOrDefault(r => r.BoundedContext == "Commerce");
         return counterRow is not null
@@ -146,8 +136,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task NoContextualBonus_WhenNavigationContextIsNull()
-    {
+    public async Task NoContextualBonus_WhenNavigationContextIsNull() {
         CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider sp,
             currentContext: null,
             manifests: [new DomainManifest("Counter", "Counter", ["Counter.CounterProjection"], [])]);
@@ -161,8 +150,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task SyntheticKeyboardShortcutsCommandEntry_AppearsInDefaultOpen()
-    {
+    public async Task SyntheticKeyboardShortcutsCommandEntry_AppearsInDefaultOpen() {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _);
 
         await sut.HandlePaletteOpened(new PaletteOpenedAction("c1"), dispatcher);
@@ -181,8 +169,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HydrateDoesNotRePersist()
-    {
+    public async Task HydrateDoesNotRePersist() {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider sp);
         IStorageService storage = sp.GetRequiredService<IStorageService>();
 
@@ -200,8 +187,7 @@ public class CommandPaletteEffectsTests
     [InlineData("//evil.example/pwn")]                  // protocol-relative URL
     [InlineData("https://attacker.example/")]           // explicit external scheme
     [InlineData("javascript:alert(1)")]                 // javascript scheme
-    public async Task HandleAppInitialized_FiltersTamperedUrls_BeforeDispatchingHydrate(string tampered)
-    {
+    public async Task HandleAppInitialized_FiltersTamperedUrls_BeforeDispatchingHydrate(string tampered) {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider sp);
         IStorageService storage = sp.GetRequiredService<IStorageService>();
         storage.GetAsync<string[]>(Arg.Any<string>()).Returns(["/safe/route", tampered]);
@@ -215,8 +201,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandleAppInitialized_AllTamperedUrls_DispatchesNoHydrateAction()
-    {
+    public async Task HandleAppInitialized_AllTamperedUrls_DispatchesNoHydrateAction() {
         // When 100 % of the stored payload fails the IsInternalRoute filter, no PaletteHydratedAction
         // dispatches at all — the reducer would have nothing to assign, and `PaletteHydratedCompletedAction`
         // closes the hydration state.
@@ -231,8 +216,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteResultActivated_SyntheticEntry_RefillsPaletteWithoutClosing()
-    {
+    public async Task HandlePaletteResultActivated_SyntheticEntry_RefillsPaletteWithoutClosing() {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
             paletteResults: [new PaletteResult(PaletteResultCategory.Command, "Keyboard Shortcuts", "", null, CommandPaletteEffects.KeyboardShortcutsSentinel, 1000, false)]);
 
@@ -243,8 +227,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteResultActivated_Command_NavigatesToKebabRoute()
-    {
+    public async Task HandlePaletteResultActivated_Command_NavigatesToKebabRoute() {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
             paletteResults: [new PaletteResult(PaletteResultCategory.Command, "SubmitOrder", "Commerce", null, "Commerce.SubmitOrderCommand", 100, false)]);
 
@@ -255,8 +238,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteResultActivated_InformationalShortcut_DoesNotCloseOrNavigate()
-    {
+    public async Task HandlePaletteResultActivated_InformationalShortcut_DoesNotCloseOrNavigate() {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
             paletteResults: [new PaletteResult(PaletteResultCategory.Shortcut, "Ctrl+K", "", null, null, 0, false, null, "PaletteShortcutDescription")]);
 
@@ -272,8 +254,7 @@ public class CommandPaletteEffectsTests
     // covers the with-route path so the `result.Category != Shortcut` recent-route guard cannot
     // silently regress.
     [Fact]
-    public async Task HandlePaletteResultActivated_ShortcutRowWithRouteUrl_NavigatesAndClosesAndDoesNotPersistRecent()
-    {
+    public async Task HandlePaletteResultActivated_ShortcutRowWithRouteUrl_NavigatesAndClosesAndDoesNotPersistRecent() {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
             paletteResults: [new PaletteResult(PaletteResultCategory.Shortcut, "g h", "", "/", null, 0, false, null, "HomeShortcutDescription")]);
 
@@ -284,8 +265,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteQueryChanged_BlankQueryRestoresDefaultResults()
-    {
+    public async Task HandlePaletteQueryChanged_BlankQueryRestoresDefaultResults() {
         CommandPaletteEffects sut = BuildEffects(
             out FakeTimeProvider time,
             out IDispatcher dispatcher,
@@ -304,8 +284,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteQueryChanged_ProjectionRoutesUseNavigationConvention()
-    {
+    public async Task HandlePaletteQueryChanged_ProjectionRoutesUseNavigationConvention() {
         CommandPaletteEffects sut = BuildEffects(
             out FakeTimeProvider time,
             out IDispatcher dispatcher,
@@ -321,8 +300,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteQueryChanged_FiltersNegativeScores()
-    {
+    public async Task HandlePaletteQueryChanged_FiltersNegativeScores() {
         CommandPaletteEffects sut = BuildEffects(
             out FakeTimeProvider time,
             out IDispatcher dispatcher,
@@ -337,8 +315,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteQueryChanged_TrimsNonAliasWhitespaceBeforeScoring()
-    {
+    public async Task HandlePaletteQueryChanged_TrimsNonAliasWhitespaceBeforeScoring() {
         CommandPaletteEffects sut = BuildEffects(
             out FakeTimeProvider time,
             out IDispatcher dispatcher,
@@ -354,8 +331,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteQueryChanged_FiltersUnreachableCommands_ViaHasFullPageRoute()
-    {
+    public async Task HandlePaletteQueryChanged_FiltersUnreachableCommands_ViaHasFullPageRoute() {
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry>();
         registry.GetManifests().Returns([
             new DomainManifest("Counter", "Counter", [], ["Counter.UnreachableCommand"]),
@@ -374,8 +350,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteQueryChanged_FiltersDeniedProtectedCommands()
-    {
+    public async Task HandlePaletteQueryChanged_FiltersDeniedProtectedCommands() {
         string commandTypeName = typeof(PaletteProtectedCommand).FullName!;
         ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
         evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
@@ -418,8 +393,7 @@ public class CommandPaletteEffectsTests
     // essence (which is EXCLUDED from the default blocking lane) so AC2's "live registry search
     // surfaces matching projections" gets default-lane coverage.
     [Fact]
-    public async Task HandlePaletteQueryChanged_MultiManifest_SurfacesMatchingProjectionsRanked()
-    {
+    public async Task HandlePaletteQueryChanged_MultiManifest_SurfacesMatchingProjectionsRanked() {
         CommandPaletteEffects sut = BuildEffects(
             out FakeTimeProvider time,
             out IDispatcher dispatcher,
@@ -445,8 +419,7 @@ public class CommandPaletteEffectsTests
     }
 
     [Fact]
-    public async Task HandlePaletteQueryChanged_NonMatchingQuery_SurfacesEmptyState()
-    {
+    public async Task HandlePaletteQueryChanged_NonMatchingQuery_SurfacesEmptyState() {
         CommandPaletteEffects sut = BuildEffects(
             out FakeTimeProvider time,
             out IDispatcher dispatcher,
@@ -460,12 +433,9 @@ public class CommandPaletteEffectsTests
         dispatcher.Received(1).Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a => a.Results.IsEmpty));
     }
 
-    private static bool IsRankedByScoreDescending(PaletteResultsComputedAction action)
-    {
-        for (int i = 1; i < action.Results.Length; i++)
-        {
-            if (action.Results[i - 1].Score < action.Results[i].Score)
-            {
+    private static bool IsRankedByScoreDescending(PaletteResultsComputedAction action) {
+        for (int i = 1; i < action.Results.Length; i++) {
+            if (action.Results[i - 1].Score < action.Results[i].Score) {
                 return false;
             }
         }
@@ -482,8 +452,7 @@ public class CommandPaletteEffectsTests
         IReadOnlyList<PaletteResult>? paletteResults = null,
         IReadOnlyList<string>? recentRoutes = null,
         string? currentContext = null,
-        ICommandAuthorizationEvaluator? authorizationEvaluator = null)
-    {
+        ICommandAuthorizationEvaluator? authorizationEvaluator = null) {
         time = new FakeTimeProvider();
         dispatcher = Substitute.For<IDispatcher>();
 
@@ -509,8 +478,7 @@ public class CommandPaletteEffectsTests
         ulids.NewUlid().Returns(_ => Guid.NewGuid().ToString("N"));
         services.AddSingleton(ulids);
 
-        if (authorizationEvaluator is not null)
-        {
+        if (authorizationEvaluator is not null) {
             services.AddSingleton(authorizationEvaluator);
         }
 
@@ -551,16 +519,14 @@ public class CommandPaletteEffectsTests
             serviceProvider);
     }
 
-    private static IFrontComposerRegistry CreateRegistry(IReadOnlyList<DomainManifest>? manifests)
-    {
+    private static IFrontComposerRegistry CreateRegistry(IReadOnlyList<DomainManifest>? manifests) {
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry>();
         registry.GetManifests().Returns(manifests ?? []);
         ((IFrontComposerFullPageRouteRegistry)registry).HasFullPageRoute(Arg.Any<string>()).Returns(true);
         return registry;
     }
 
-    private sealed class TestNavigationManager : NavigationManager
-    {
+    private sealed class TestNavigationManager : NavigationManager {
         public TestNavigationManager() => Initialize("https://localhost/", "https://localhost/");
 
         protected override void NavigateToCore(string uri, bool forceLoad) { }

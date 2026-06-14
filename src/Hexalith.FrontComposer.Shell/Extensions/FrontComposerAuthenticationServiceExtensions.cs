@@ -6,9 +6,6 @@ using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
-using Microsoft.AspNetCore.Authentication.OAuth;
-using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
@@ -57,7 +54,7 @@ public static class FrontComposerAuthenticationServiceExtensions {
             .Configure(o => CopyConfiguration(setup, o))
             .ValidateOnStart();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FrontComposerAuthenticationOptions>, FrontComposerAuthenticationOptionsValidator>());
-        services.AddHttpContextAccessor();
+        _ = services.AddHttpContextAccessor();
 
         AddAuthenticationHandlers(services, setup);
 
@@ -65,8 +62,8 @@ public static class FrontComposerAuthenticationServiceExtensions {
         // validator already rejected the no-provider case, but defensive guarding keeps
         // future code paths from silently replacing seams when validation is bypassed.
         if (setup.SelectedProviderKind != FrontComposerAuthenticationProviderKind.None) {
-            services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor, ClaimsPrincipalUserContextAccessor>());
-            services.Replace(ServiceDescriptor.Scoped<IAuthRedirector, FrontComposerAuthRedirector>());
+            _ = services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor, ClaimsPrincipalUserContextAccessor>());
+            _ = services.Replace(ServiceDescriptor.Scoped<IAuthRedirector, FrontComposerAuthRedirector>());
             services.TryAddSingleton<FrontComposerAccessTokenProvider>();
 
             // P32 (DN2) — always replace `EventStoreOptions.AccessTokenProvider` and log when an
@@ -109,23 +106,23 @@ public static class FrontComposerAuthenticationServiceExtensions {
         // Use RequestDelegate explicitly so the typed `MapGet(IEndpointRouteBuilder, string,
         // RequestDelegate)` overload is selected (avoids the trimming-unfriendly minimal-API
         // route handler reflection path).
-        RequestDelegate challenge = async context => {
+        async Task challenge(HttpContext context) {
             string? returnUrl = context.Request.Query["returnUrl"];
             string sanitized = FrontComposerReturnUrl.Sanitize(returnUrl);
             await context.ChallengeAsync(
                 options.SelectedChallengeScheme(),
                 new AuthenticationProperties { RedirectUri = sanitized })
                 .ConfigureAwait(false);
-        };
+        }
 
-        RequestDelegate signOut = async context => {
+        async Task signOut(HttpContext context) {
             string? returnUrl = context.Request.Query["returnUrl"];
             string sanitized = FrontComposerReturnUrl.Sanitize(returnUrl);
             await context.SignOutAsync(
                 GetSignInScheme(options),
                 new AuthenticationProperties { RedirectUri = sanitized })
                 .ConfigureAwait(false);
-        };
+        }
 
         _ = endpoints.MapGet(options.Redirect.LoginPath, challenge);
         _ = endpoints.MapGet(options.Redirect.LogoutPath, signOut);

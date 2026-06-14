@@ -24,10 +24,9 @@ public class ProjectionRoleEnumTests {
     }
 
     [Fact]
-    public void DashboardIsStillPartOfEnum() {
+    public void DashboardIsStillPartOfEnum() =>
         // Story 4-1 D16 / AC10 — Dashboard is reserved, not broken. Transform emits
         // HFC1023 Information; render falls back to Default. A future Story 6-3 upgrade
         // activates full Dashboard rendering without changing the enum shape.
         Enum.IsDefined(typeof(ProjectionRole), ProjectionRole.Dashboard).ShouldBeTrue();
-    }
 }

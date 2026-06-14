@@ -5,7 +5,6 @@ using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
 using Hexalith.FrontComposer.Contracts.Conformance;
-using Hexalith.FrontComposer.SourceTools.Conformance;
 
 using Shouldly;
 
@@ -13,14 +12,12 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.IdeParity;
 
 [Trait("MatrixRowId", "IDE-MUST-001")]
 [Trait("MatrixRowId", "IDE-VERSION-001")]
-public sealed class IdeParityMatrixContractTests
-{
+public sealed class IdeParityMatrixContractTests {
     private static readonly Regex _commitShaPattern = new("^[0-9a-f]{40}$", RegexOptions.Compiled);
     private static readonly Regex _artifactHashPattern = new("^sha256:[0-9a-f]{64}$", RegexOptions.Compiled);
 
     [Fact]
-    public void MatrixJson_HasFailClosedSchemaForEveryRow()
-    {
+    public void MatrixJson_HasFailClosedSchemaForEveryRow() {
         using JsonDocument matrix = LoadMatrix();
         JsonElement root = matrix.RootElement;
         ValidateMatrixDocument(root).ShouldBeEmpty("IDE parity matrix JSON must reject unknown fields with a named category.");
@@ -39,8 +36,7 @@ public sealed class IdeParityMatrixContractTests
         HashSet<string> allowedTiers = ["Must", "Should", "Out-of-scope"];
         HashSet<string> allowedEvidenceTypes = ["ci-automated", "manual-release", "scheduled-manual", "out-of-scope"];
 
-        foreach (JsonElement row in rows)
-        {
+        foreach (JsonElement row in rows) {
             string rowId = RequiredString(row, "rowId");
             rowId.ShouldNotBeNullOrWhiteSpace("rowId must not be empty.");
             rowIds.Add(rowId).ShouldBeTrue($"Duplicate matrix row ID '{rowId}' must fail closed.");
@@ -64,8 +60,7 @@ public sealed class IdeParityMatrixContractTests
 
             string tier = RequiredString(row, "tier");
             string evidenceType = RequiredString(row, "evidenceType");
-            if (tier == "Out-of-scope" || evidenceType == "out-of-scope")
-            {
+            if (tier == "Out-of-scope" || evidenceType == "out-of-scope") {
                 row.TryGetProperty("evidenceArtifact", out _).ShouldBeFalse(
                     $"Out-of-scope row '{rowId}' must not advertise an evidenceArtifact path; the schema fails closed for unresolved evidence references.");
                 continue;
@@ -86,8 +81,7 @@ public sealed class IdeParityMatrixContractTests
     }
 
     [Fact]
-    public void MatrixMarkdown_IsAuthoritativeAndNamesRequiredLimitations()
-    {
+    public void MatrixMarkdown_IsAuthoritativeAndNamesRequiredLimitations() {
         string markdown = File.ReadAllText(Path.Combine(IdeParityRepositoryRoot.Value, "docs", "ide-parity-matrix.md"));
 
         markdown.ShouldContain("authoritative parity contract");
@@ -104,12 +98,11 @@ public sealed class IdeParityMatrixContractTests
     }
 
     [Fact]
-    public void EvidenceManifests_AreBoundToRowsCommitFixtureHashAndSafePaths()
-    {
+    public void EvidenceManifests_AreBoundToRowsCommitFixtureHashAndSafePaths() {
         using JsonDocument matrix = LoadMatrix();
         string fixtureHash = IdeParityConformanceUtilityTests.ComputeIdeParityCounterFixtureHash();
 
-        Dictionary<string, string> evidenceByRow = matrix.RootElement
+        var evidenceByRow = matrix.RootElement
             .GetProperty("rows")
             .EnumerateArray()
             .Where(row => row.GetProperty("evidenceType").GetString() != "out-of-scope")
@@ -118,8 +111,7 @@ public sealed class IdeParityMatrixContractTests
                 row => row.GetProperty("evidenceArtifact").GetString()!,
                 StringComparer.Ordinal);
 
-        foreach ((string rowId, string artifactPath) in evidenceByRow)
-        {
+        foreach ((string rowId, string artifactPath) in evidenceByRow) {
             artifactPath.Contains('\\', StringComparison.Ordinal).ShouldBeFalse(
                 $"evidenceArtifact for '{rowId}' must use forward slashes.");
             IdeParityEvidencePath
@@ -160,24 +152,23 @@ public sealed class IdeParityMatrixContractTests
     }
 
     [Fact]
-    public void StrictJsonValidation_RejectsDuplicateKeysUnknownFieldsAndTrailingCommas()
-    {
+    public void StrictJsonValidation_RejectsDuplicateKeysUnknownFieldsAndTrailingCommas() {
         Should.Throw<JsonException>(() => AssertNoDuplicateJsonProperties("""{ "metadata": {}, "metadata": {}, "rows": [] }"""))
             .Message.ShouldContain("Duplicate JSON property");
 
         JsonObject matrix = JsonNode.Parse(File.ReadAllText(Path.Combine(IdeParityRepositoryRoot.Value, "docs", "ide-parity-matrix.json")))!.AsObject();
         matrix["unexpected"] = "tampered";
-        using JsonDocument tamperedMatrix = JsonDocument.Parse(matrix.ToJsonString());
+        using var tamperedMatrix = JsonDocument.Parse(matrix.ToJsonString());
         ValidateMatrixDocument(tamperedMatrix.RootElement).ShouldContain("matrix-unknown-property:unexpected");
 
         JsonObject manifest = JsonNode.Parse(File.ReadAllText(Path.Combine(IdeParityRepositoryRoot.Value, "artifacts", "ide-parity", "evidence", "IDE-MUST-001.json")))!.AsObject();
         manifest["unexpected"] = "tampered";
-        using JsonDocument tamperedManifest = JsonDocument.Parse(manifest.ToJsonString());
+        using var tamperedManifest = JsonDocument.Parse(manifest.ToJsonString());
         ValidateEvidenceManifest(tamperedManifest.RootElement).ShouldContain("evidence-unknown-property:unexpected");
 
         JsonArray rows = matrix["rows"]!.AsArray();
         rows[0]!["evidenceArtifact"] = "artifacts/ide-parity/../diagnostic-registry.json";
-        using JsonDocument traversalMatrix = JsonDocument.Parse(matrix.ToJsonString());
+        using var traversalMatrix = JsonDocument.Parse(matrix.ToJsonString());
         ValidateMatrixDocument(traversalMatrix.RootElement).ShouldContain("matrix-evidence-artifact-unsafe:IDE-MUST-001");
 
         Should.Throw<JsonException>(() => LoadStrictJsonDocumentFromString("""{ "rows": [], }"""))
@@ -185,8 +176,7 @@ public sealed class IdeParityMatrixContractTests
     }
 
     [Fact]
-    public void ProductionSource_ForbidsUnconditionalDebuggerLaunch()
-    {
+    public void ProductionSource_ForbidsUnconditionalDebuggerLaunch() {
         string[] matches = Directory.EnumerateFiles(Path.Combine(IdeParityRepositoryRoot.Value, "src"), "*.cs", SearchOption.AllDirectories)
             .Where(path => !path.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
                 && !path.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal))
@@ -204,20 +194,16 @@ public sealed class IdeParityMatrixContractTests
     private static JsonDocument LoadStrictJsonDocument(string path)
         => LoadStrictJsonDocumentFromString(File.ReadAllText(path));
 
-    private static JsonDocument LoadStrictJsonDocumentFromString(string json)
-    {
+    private static JsonDocument LoadStrictJsonDocumentFromString(string json) {
         AssertNoDuplicateJsonProperties(json);
         return JsonDocument.Parse(json);
     }
 
-    private static void AssertNoDuplicateJsonProperties(string json)
-    {
+    private static void AssertNoDuplicateJsonProperties(string json) {
         Utf8JsonReader reader = new(Encoding.UTF8.GetBytes(json));
         Stack<HashSet<string>> scopes = new();
-        while (reader.Read())
-        {
-            switch (reader.TokenType)
-            {
+        while (reader.Read()) {
+            switch (reader.TokenType) {
                 case JsonTokenType.StartObject:
                     scopes.Push(new HashSet<string>(StringComparer.Ordinal));
                     break;
@@ -226,8 +212,7 @@ public sealed class IdeParityMatrixContractTests
                     break;
                 case JsonTokenType.PropertyName:
                     string propertyName = reader.GetString()!;
-                    if (scopes.Count > 0 && !scopes.Peek().Add(propertyName))
-                    {
+                    if (scopes.Count > 0 && !scopes.Peek().Add(propertyName)) {
                         throw new JsonException($"Duplicate JSON property '{propertyName}' is not allowed in IDE parity manifests.");
                     }
 
@@ -236,19 +221,15 @@ public sealed class IdeParityMatrixContractTests
         }
     }
 
-    private static IEnumerable<string> ValidateMatrixDocument(JsonElement root)
-    {
+    private static IEnumerable<string> ValidateMatrixDocument(JsonElement root) {
         HashSet<string> rootAllowed = ["metadata", "manifestSchema", "rows"];
-        foreach (JsonProperty property in root.EnumerateObject())
-        {
-            if (!rootAllowed.Contains(property.Name))
-            {
+        foreach (JsonProperty property in root.EnumerateObject()) {
+            if (!rootAllowed.Contains(property.Name)) {
                 yield return "matrix-unknown-property:" + property.Name;
             }
         }
 
-        if (root.TryGetProperty("metadata", out JsonElement metadata))
-        {
+        if (root.TryGetProperty("metadata", out JsonElement metadata)) {
             HashSet<string> metadataAllowed = [
                 "schemaVersion",
                 "matrixName",
@@ -264,29 +245,23 @@ public sealed class IdeParityMatrixContractTests
                 "fixturePath",
                 "fixtureContentHashScope",
             ];
-            foreach (JsonProperty property in metadata.EnumerateObject())
-            {
-                if (!metadataAllowed.Contains(property.Name))
-                {
+            foreach (JsonProperty property in metadata.EnumerateObject()) {
+                if (!metadataAllowed.Contains(property.Name)) {
                     yield return "matrix-metadata-unknown-property:" + property.Name;
                 }
             }
         }
 
-        if (root.TryGetProperty("manifestSchema", out JsonElement manifestSchema))
-        {
+        if (root.TryGetProperty("manifestSchema", out JsonElement manifestSchema)) {
             HashSet<string> manifestSchemaAllowed = ["requiredFields", "artifactRoot"];
-            foreach (JsonProperty property in manifestSchema.EnumerateObject())
-            {
-                if (!manifestSchemaAllowed.Contains(property.Name))
-                {
+            foreach (JsonProperty property in manifestSchema.EnumerateObject()) {
+                if (!manifestSchemaAllowed.Contains(property.Name)) {
                     yield return "matrix-manifest-schema-unknown-property:" + property.Name;
                 }
             }
         }
 
-        if (!root.TryGetProperty("rows", out JsonElement rows) || rows.ValueKind != JsonValueKind.Array)
-        {
+        if (!root.TryGetProperty("rows", out JsonElement rows) || rows.ValueKind != JsonValueKind.Array) {
             yield return "matrix-missing-rows";
             yield break;
         }
@@ -309,18 +284,14 @@ public sealed class IdeParityMatrixContractTests
         ];
         HashSet<string> ideAllowed = ["visualStudio", "rider", "vsCodeDevKit"];
         HashSet<string> ideDetailAllowed = ["version", "platform", "status"];
-        foreach (JsonElement row in rows.EnumerateArray())
-        {
-            foreach (JsonProperty property in row.EnumerateObject())
-            {
-                if (!rowAllowed.Contains(property.Name))
-                {
+        foreach (JsonElement row in rows.EnumerateArray()) {
+            foreach (JsonProperty property in row.EnumerateObject()) {
+                if (!rowAllowed.Contains(property.Name)) {
                     yield return "matrix-row-unknown-property:" + property.Name;
                 }
             }
 
-            if (!row.TryGetProperty("ideEvidence", out JsonElement ideEvidence))
-            {
+            if (!row.TryGetProperty("ideEvidence", out JsonElement ideEvidence)) {
                 continue;
             }
 
@@ -329,23 +300,18 @@ public sealed class IdeParityMatrixContractTests
                 : "unknown";
             if (row.TryGetProperty("evidenceArtifact", out JsonElement evidenceArtifact)
                 && evidenceArtifact.ValueKind == JsonValueKind.String
-                && !IsSafeEvidenceArtifactPath(evidenceArtifact.GetString() ?? string.Empty))
-            {
+                && !IsSafeEvidenceArtifactPath(evidenceArtifact.GetString() ?? string.Empty)) {
                 yield return "matrix-evidence-artifact-unsafe:" + rowId;
             }
 
-            foreach (JsonProperty ide in ideEvidence.EnumerateObject())
-            {
-                if (!ideAllowed.Contains(ide.Name))
-                {
+            foreach (JsonProperty ide in ideEvidence.EnumerateObject()) {
+                if (!ideAllowed.Contains(ide.Name)) {
                     yield return "matrix-ide-unknown-property:" + ide.Name;
                     continue;
                 }
 
-                foreach (JsonProperty detail in ide.Value.EnumerateObject())
-                {
-                    if (!ideDetailAllowed.Contains(detail.Name))
-                    {
+                foreach (JsonProperty detail in ide.Value.EnumerateObject()) {
+                    if (!ideDetailAllowed.Contains(detail.Name)) {
                         yield return "matrix-ide-detail-unknown-property:" + detail.Name;
                     }
                 }
@@ -353,8 +319,7 @@ public sealed class IdeParityMatrixContractTests
         }
     }
 
-    private static IEnumerable<string> ValidateEvidenceManifest(JsonElement root)
-    {
+    private static IEnumerable<string> ValidateEvidenceManifest(JsonElement root) {
         HashSet<string> allowed = [
             "rowId",
             "fixtureName",
@@ -371,21 +336,16 @@ public sealed class IdeParityMatrixContractTests
             "revalidationTrigger",
             "sanitizedArtifact",
         ];
-        foreach (JsonProperty property in root.EnumerateObject())
-        {
-            if (!allowed.Contains(property.Name))
-            {
+        foreach (JsonProperty property in root.EnumerateObject()) {
+            if (!allowed.Contains(property.Name)) {
                 yield return "evidence-unknown-property:" + property.Name;
             }
         }
 
-        if (root.TryGetProperty("ideVersions", out JsonElement ideVersions))
-        {
+        if (root.TryGetProperty("ideVersions", out JsonElement ideVersions)) {
             HashSet<string> versionAllowed = ["visualStudio", "rider", "vsCodeDevKit", "dotnetSdk"];
-            foreach (JsonProperty version in ideVersions.EnumerateObject())
-            {
-                if (!versionAllowed.Contains(version.Name))
-                {
+            foreach (JsonProperty version in ideVersions.EnumerateObject()) {
+                if (!versionAllowed.Contains(version.Name)) {
                     yield return "evidence-ide-version-unknown-property:" + version.Name;
                 }
             }
@@ -397,8 +357,7 @@ public sealed class IdeParityMatrixContractTests
             && IdeParityEvidencePath.TryNormalizeProjectRelativePath(IdeParityRepositoryRoot.Value, path, caseSensitive: false, out string normalized)
             && string.Equals(normalized, path, StringComparison.Ordinal);
 
-    private static string RequiredString(JsonElement element, string propertyName)
-    {
+    private static string RequiredString(JsonElement element, string propertyName) {
         element.TryGetProperty(propertyName, out JsonElement property).ShouldBeTrue($"Missing '{propertyName}'.");
         property.ValueKind.ShouldBe(JsonValueKind.String);
         return property.GetString()!;

@@ -3,8 +3,7 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
 /// <summary>
 /// Backward-compatible helpers for <see cref="IFrontComposerRegistry"/>.
 /// </summary>
-public static class FrontComposerRegistryExtensions
-{
+public static class FrontComposerRegistryExtensions {
     /// <summary>
     /// Adds a declarative navigation entry so the shell can render the domain menu in the global left
     /// navigation automatically.
@@ -16,20 +15,16 @@ public static class FrontComposerRegistryExtensions
     /// </remarks>
     /// <param name="registry">The registry to add the entry to.</param>
     /// <param name="entry">The navigation entry to register.</param>
-    public static void AddNavEntry(this IFrontComposerRegistry registry, FrontComposerNavEntry entry)
-    {
-        if (registry is null)
-        {
+    public static void AddNavEntry(this IFrontComposerRegistry registry, FrontComposerNavEntry entry) {
+        if (registry is null) {
             throw new ArgumentNullException(nameof(registry));
         }
 
-        if (entry is null)
-        {
+        if (entry is null) {
             throw new ArgumentNullException(nameof(entry));
         }
 
-        if (registry is IFrontComposerNavEntryRegistry navAware)
-        {
+        if (registry is IFrontComposerNavEntryRegistry navAware) {
             navAware.AddNavEntry(entry);
         }
     }
@@ -45,10 +40,8 @@ public static class FrontComposerRegistryExtensions
     /// </remarks>
     /// <param name="registry">The registry to query.</param>
     /// <returns>The registered navigation entries, or an empty list when none are collected.</returns>
-    public static IReadOnlyList<FrontComposerNavEntry> GetNavEntries(this IFrontComposerRegistry registry)
-    {
-        if (registry is null)
-        {
+    public static IReadOnlyList<FrontComposerNavEntry> GetNavEntries(this IFrontComposerRegistry registry) {
+        if (registry is null) {
             throw new ArgumentNullException(nameof(registry));
         }
 
@@ -73,16 +66,12 @@ public static class FrontComposerRegistryExtensions
     /// <param name="registry">The registry to query.</param>
     /// <param name="commandTypeName">The fully qualified command type name (e.g., <c>Counter.Domain.IncrementCommand</c>).</param>
     /// <returns><see langword="true"/> when a FullPage route exists; <see langword="false"/> when the command is unreachable.</returns>
-    public static bool HasFullPageRoute(this IFrontComposerRegistry registry, string commandTypeName)
-    {
-        if (registry is null)
-        {
+    public static bool HasFullPageRoute(this IFrontComposerRegistry registry, string commandTypeName) {
+        if (registry is null) {
             throw new ArgumentNullException(nameof(registry));
         }
 
-        return registry is IFrontComposerFullPageRouteRegistry routeAware
-            ? routeAware.HasFullPageRoute(commandTypeName)
-            : true;
+        return registry is not IFrontComposerFullPageRouteRegistry routeAware || routeAware.HasFullPageRoute(commandTypeName);
     }
 
     /// <summary>
@@ -98,15 +87,11 @@ public static class FrontComposerRegistryExtensions
     /// <param name="registry">The registry to query.</param>
     /// <param name="commandTypeName">The fully qualified command type name.</param>
     /// <returns><see langword="true"/> when the command is writable; <see langword="false"/> for query/read-only commands.</returns>
-    public static bool IsCommandWritable(this IFrontComposerRegistry registry, string commandTypeName)
-    {
-        if (registry is null)
-        {
+    public static bool IsCommandWritable(this IFrontComposerRegistry registry, string commandTypeName) {
+        if (registry is null) {
             throw new ArgumentNullException(nameof(registry));
         }
 
-        return registry is IFrontComposerCommandWriteAccessRegistry writeAware
-            ? writeAware.IsCommandWritable(commandTypeName)
-            : true;
+        return registry is not IFrontComposerCommandWriteAccessRegistry writeAware || writeAware.IsCommandWritable(commandTypeName);
     }
 }

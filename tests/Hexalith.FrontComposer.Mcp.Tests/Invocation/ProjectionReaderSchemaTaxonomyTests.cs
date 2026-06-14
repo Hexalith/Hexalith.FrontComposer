@@ -1,10 +1,7 @@
 using System.Reflection;
 using System.Text.Json.Nodes;
 
-using Hexalith.FrontComposer.Mcp;
-
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 
@@ -30,7 +27,7 @@ public sealed class ProjectionReaderSchemaTaxonomyTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(category);
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe(expectedAgentCategory);
         result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe(expectedDocsCode);
         result.StructuredContent!["retryable"]!.GetValue<bool>().ShouldBe(expectedRetryable);
@@ -102,10 +99,10 @@ public sealed class ProjectionReaderSchemaTaxonomyTests {
         // ToResult shape is the contract under test.
         Type? mapper = typeof(FrontComposerMcpResult).Assembly
             .GetType("Hexalith.FrontComposer.Mcp.Invocation.FrontComposerMcpProjectionFailureMapper", throwOnError: false);
-        mapper.ShouldNotBeNull("FrontComposerMcpProjectionFailureMapper not found — has the namespace moved?");
+        _ = mapper.ShouldNotBeNull("FrontComposerMcpProjectionFailureMapper not found — has the namespace moved?");
 
         MethodInfo? toResult = mapper!.GetMethod("ToResult", BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic);
-        toResult.ShouldNotBeNull("ToResult(FrontComposerMcpFailureCategory) method not found.");
+        _ = toResult.ShouldNotBeNull("ToResult(FrontComposerMcpFailureCategory) method not found.");
 
         return (FrontComposerMcpResult)toResult!.Invoke(null, [category])!;
     }

@@ -12,7 +12,7 @@ public sealed class ProjectionViewOverrideDescriptorSource {
     public ProjectionViewOverrideDescriptorSource(IReadOnlyList<ProjectionViewOverrideDescriptor> descriptors) {
         ArgumentNullException.ThrowIfNull(descriptors);
 
-        ProjectionViewOverrideDescriptor[] copy = new ProjectionViewOverrideDescriptor[descriptors.Count];
+        var copy = new ProjectionViewOverrideDescriptor[descriptors.Count];
         for (int i = 0; i < descriptors.Count; i++) {
             copy[i] = descriptors[i]
                 ?? throw new ArgumentException($"Descriptor at index {i} must not be null.", nameof(descriptors));

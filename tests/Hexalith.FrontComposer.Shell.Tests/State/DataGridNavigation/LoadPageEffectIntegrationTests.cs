@@ -1,17 +1,14 @@
 #pragma warning disable CA2007
 #pragma warning disable xUnit1051
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Fluxor;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
-using Hexalith.FrontComposer.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
@@ -135,7 +132,7 @@ public sealed class LoadPageEffectIntegrationTests {
 
         // Store state shows the TCS is registered, so the defensive finally does NOT fire
         // (since the primary catch block already dispatched the terminal action).
-        LoadedPageState stateAfter = new LoadedPageState { PendingCompletionsByKey = ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>>.Empty };
+        var stateAfter = new LoadedPageState { PendingCompletionsByKey = ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>>.Empty };
         LoadPageEffects sut = MakeSut(loader, stateAfter);
         RecordingDispatcher dispatcher = new();
         TaskCompletionSource<object> tcs = new();

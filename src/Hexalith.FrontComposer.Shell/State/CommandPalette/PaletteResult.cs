@@ -4,8 +4,7 @@ namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
 /// Categorisation for a single <see cref="PaletteResult"/> row (Story 3-4 D14).
 /// Ordinal-stable enum values — append-only per the cross-story contract table.
 /// </summary>
-public enum PaletteResultCategory
-{
+public enum PaletteResultCategory {
     /// <summary>Projection result (sourced from <see cref="Contracts.Registration.IFrontComposerRegistry"/>).</summary>
     Projection = 0,
 
@@ -23,8 +22,7 @@ public enum PaletteResultCategory
 /// Load-state hint for the palette dialog. Drives the "Searching…" / "Ready" copy in the result
 /// list (Story 3-4 D6 / D8).
 /// </summary>
-public enum PaletteLoadState
-{
+public enum PaletteLoadState {
     /// <summary>No active query (first paint, or after close).</summary>
     Idle = 0,
 

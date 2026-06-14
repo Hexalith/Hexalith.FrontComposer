@@ -91,11 +91,7 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
             }
 
-            FrontComposerMcpApiKeyIdentity? matched = MatchApiKey(candidate, options.Value.ApiKeys);
-            if (matched is null) {
-                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
-            }
-
+            FrontComposerMcpApiKeyIdentity? matched = MatchApiKey(candidate, options.Value.ApiKeys) ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
             return Create(matched.TenantId, matched.UserId, claimsSource: null);
         }
 
@@ -158,8 +154,8 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
 
     private static bool IsLowercaseSha256Hex(string value) {
         foreach (char c in value) {
-            bool isDigit = c >= '0' && c <= '9';
-            bool isLowerHex = c >= 'a' && c <= 'f';
+            bool isDigit = c is >= '0' and <= '9';
+            bool isLowerHex = c is >= 'a' and <= 'f';
             if (!isDigit && !isLowerHex) {
                 return false;
             }

@@ -1,11 +1,10 @@
-using System.Reflection;
 using System.Collections.Immutable;
+using System.Reflection;
 
 using Hexalith.FrontComposer.SourceTools.Drift;
 using Hexalith.FrontComposer.SourceTools.Parsing;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison;
 
@@ -24,7 +23,7 @@ public sealed class DriftComparisonServiceTests {
     public void Service_TypeIsInternal_AndExposesCompareMethodOnDomainAndBaseline() {
         Type? service = TryFindServiceType();
 
-        service.ShouldNotBeNull("AC1 / T3: planned `DriftComparisonService` must exist as an internal pure service.");
+        _ = service.ShouldNotBeNull("AC1 / T3: planned `DriftComparisonService` must exist as an internal pure service.");
         service!.IsPublic.ShouldBeFalse("AC17 forbids public comparison API in 9-1.");
 
         // Story 9-1 review CB-1: pin the lookup to the canonical 2-arg overload by exact
@@ -39,7 +38,7 @@ public sealed class DriftComparisonServiceTests {
             binder: null,
             types: [typeof(DriftCurrentSnapshot), typeof(DriftBaselineSet)],
             modifiers: null);
-        compare.ShouldNotBeNull("Service must expose Compare(DriftCurrentSnapshot, DriftBaselineSet).");
+        _ = compare.ShouldNotBeNull("Service must expose Compare(DriftCurrentSnapshot, DriftBaselineSet).");
         ParameterInfo[] parameters = compare!.GetParameters();
         parameters[0].ParameterType.ShouldBe(typeof(DriftCurrentSnapshot));
         parameters[1].ParameterType.ShouldBe(typeof(DriftBaselineSet));
@@ -48,7 +47,7 @@ public sealed class DriftComparisonServiceTests {
     [Fact()]
     public void Result_IsDeterministicForIdenticalInputs() {
         // Same domain + same baseline ⇒ comparison results compare equal (value-based, ordered).
-        InvocationProbe probe = InvocationProbe.CreateOrSkip();
+        var probe = InvocationProbe.CreateOrSkip();
         DriftComparisonResult first = probe.Compare(probe.SampleDomain, probe.SampleBaseline);
         DriftComparisonResult second = probe.Compare(probe.SampleDomain, probe.SampleBaseline);
 
@@ -72,7 +71,7 @@ public sealed class DriftComparisonServiceTests {
         // order in the snapshot.
         // Story 9-1 review CB-2: actually permute. The earlier helpers returned the same
         // instance regardless of `reverse:`, so the test was a tautology.
-        InvocationProbe probe = InvocationProbe.CreateOrSkip(twoContracts: true);
+        var probe = InvocationProbe.CreateOrSkip(twoContracts: true);
         DriftComparisonResult forward = probe.Compare(probe.SampleDomain, probe.SampleBaseline);
         DriftComparisonResult reverse = probe.Compare(probe.ReversedDomain, probe.SampleBaseline);
 
@@ -84,7 +83,7 @@ public sealed class DriftComparisonServiceTests {
         // T2: when multiple AdditionalText baseline files are provided, ordinal-sorted path
         // normalization must produce identical drift facts regardless of enumeration order.
         // Story 9-1 review CB-2: actually permute the baseline contract array.
-        InvocationProbe probe = InvocationProbe.CreateOrSkip(twoContracts: true);
+        var probe = InvocationProbe.CreateOrSkip(twoContracts: true);
         DriftComparisonResult forward = probe.Compare(probe.SampleDomain, probe.SampleBaseline);
         DriftComparisonResult reverse = probe.Compare(probe.SampleDomain, probe.ReversedBaseline);
 
@@ -104,7 +103,7 @@ public sealed class DriftComparisonServiceTests {
         Assembly sourceTools = typeof(DomainModel).Assembly;
         return sourceTools.GetTypes().FirstOrDefault(t =>
             t.Name == "DriftComparisonService"
-            || (t.Name.EndsWith("DriftComparisonService", StringComparison.Ordinal)));
+            || t.Name.EndsWith("DriftComparisonService", StringComparison.Ordinal));
     }
 
     internal sealed class InvocationProbe {
@@ -147,7 +146,8 @@ public sealed class DriftComparisonServiceTests {
                 currentReversed = ImmutableArray.Create(shipContract, orderContract);
                 baselineContracts = ImmutableArray.Create(orderBaseline, shipBaseline);
                 baselineReversed = ImmutableArray.Create(shipBaseline, orderBaseline);
-            } else {
+            }
+            else {
                 currentContracts = ImmutableArray.Create(orderContract);
                 currentReversed = currentContracts;
                 baselineContracts = ImmutableArray.Create(orderBaseline);

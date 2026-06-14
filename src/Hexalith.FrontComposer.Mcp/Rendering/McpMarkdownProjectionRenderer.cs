@@ -75,8 +75,8 @@ public static class McpMarkdownProjectionRenderer {
         var sb = new StringBuilder(capacity: Math.Min(4096, Math.Max(256, options.MaxProjectionMarkdownCharacters)));
         // P-17: redact title — descriptor titles flow into agent-visible Markdown and may carry
         // operator-supplied text that has not been scrubbed elsewhere.
-        sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
-        sb.AppendLine();
+        _ = sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
+        _ = sb.AppendLine();
 
         if (items.Count == 0) {
             AppendEmptyState(sb, descriptor, suggestions, options);
@@ -84,17 +84,17 @@ public static class McpMarkdownProjectionRenderer {
             return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
         }
 
-        sb.Append("- Total: ").AppendLine(totalCount.ToString(CultureInfo.InvariantCulture));
-        sb.Append("- Role: ").AppendLine(EscapeMarkdownText(role));
-        sb.AppendLine();
+        _ = sb.Append("- Total: ").AppendLine(totalCount.ToString(CultureInfo.InvariantCulture));
+        _ = sb.Append("- Role: ").AppendLine(EscapeMarkdownText(role));
+        _ = sb.AppendLine();
 
         if (fields.Count == 0) {
             AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
             return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
         }
 
-        sb.Append("| ").Append(string.Join(" | ", fields.Select(f => EscapeMarkdownText(f.Title)))).AppendLine(" |");
-        sb.Append("| ").Append(string.Join(" | ", fields.Select(_ => "---"))).AppendLine(" |");
+        _ = sb.Append("| ").Append(string.Join(" | ", fields.Select(f => EscapeMarkdownText(f.Title)))).AppendLine(" |");
+        _ = sb.Append("| ").Append(string.Join(" | ", fields.Select(_ => "---"))).AppendLine(" |");
 
         int rendered = 0;
         int maxRows = Math.Max(1, options.MaxRowsPerResource);
@@ -104,16 +104,16 @@ public static class McpMarkdownProjectionRenderer {
                 break;
             }
 
-            sb.Append("| ");
-            sb.Append(string.Join(" | ", fields.Select(f => FormatCell(ReadPropertyValue(item, f.Name), f, options))));
-            sb.AppendLine(" |");
+            _ = sb.Append("| ");
+            _ = sb.Append(string.Join(" | ", fields.Select(f => FormatCell(ReadPropertyValue(item, f.Name), f, options))));
+            _ = sb.AppendLine(" |");
             rendered++;
         }
 
         bool isTruncated = requestIsTruncated || items.Count > rendered;
         if (isTruncated) {
-            sb.AppendLine();
-            sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
+            _ = sb.AppendLine();
+            _ = sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
         }
 
         // P-13: tell BoundDocument the marker was already emitted to avoid double-emit when the
@@ -131,9 +131,9 @@ public static class McpMarkdownProjectionRenderer {
         FrontComposerMcpOptions options,
         CancellationToken cancellationToken) {
         var sb = new StringBuilder(capacity: 1024);
-        sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
-        sb.AppendLine();
-        sb.Append("- Total: ").AppendLine(totalCount.ToString(CultureInfo.InvariantCulture));
+        _ = sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
+        _ = sb.AppendLine();
+        _ = sb.Append("- Total: ").AppendLine(totalCount.ToString(CultureInfo.InvariantCulture));
 
         if (items.Count == 0) {
             AppendEmptyState(sb, descriptor, suggestions, options);
@@ -193,7 +193,7 @@ public static class McpMarkdownProjectionRenderer {
 
         int cap = Math.Max(1, options.MaxProjectionStatusGroups);
         foreach (StatusGroup group in ordered.Take(cap)) {
-            sb.Append("- ")
+            _ = sb.Append("- ")
                 .Append(EscapeMarkdownText(group.Slot))
                 .Append(": ")
                 .Append(group.Count.ToString(CultureInfo.InvariantCulture))
@@ -203,7 +203,7 @@ public static class McpMarkdownProjectionRenderer {
 
         bool isTruncated = requestIsTruncated || ordered.Length > cap;
         if (isTruncated) {
-            sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
+            _ = sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
         }
 
         return BoundDocument(sb, options, markerAlreadyEmitted: isTruncated);
@@ -233,8 +233,8 @@ public static class McpMarkdownProjectionRenderer {
         // R2-P1: Timeline title flows the same operator-supplied descriptor text as Table /
         // StatusOverview; redact before escaping so secrets pasted into Title cannot leak via
         // the timeline strategy.
-        sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
-        sb.AppendLine();
+        _ = sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
+        _ = sb.AppendLine();
 
         if (items.Count == 0) {
             AppendEmptyState(sb, descriptor, suggestions, options);
@@ -273,18 +273,18 @@ public static class McpMarkdownProjectionRenderer {
             string status = statusField is null ? string.Empty : FormatCell(ReadPropertyValue(entry.Item, statusField.Name), statusField, options);
             string title = titleField is null ? string.Empty : FormatCell(ReadPropertyValue(entry.Item, titleField.Name), titleField, options);
 
-            sb.Append("- ").Append(EscapeMarkdownText(timestamp)).Append(" - ");
+            _ = sb.Append("- ").Append(EscapeMarkdownText(timestamp)).Append(" - ");
             if (!string.IsNullOrWhiteSpace(status)) {
-                sb.Append(status).Append(". ");
+                _ = sb.Append(status).Append(". ");
             }
 
-            sb.AppendLine(title);
+            _ = sb.AppendLine(title);
         }
 
         bool isTruncated = requestIsTruncated || items.Count > entries.Length;
         if (isTruncated) {
-            sb.AppendLine();
-            sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
+            _ = sb.AppendLine();
+            _ = sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
         }
 
         return BoundDocument(sb, options, markerAlreadyEmitted: isTruncated);
@@ -295,8 +295,8 @@ public static class McpMarkdownProjectionRenderer {
             return;
         }
 
-        sb.AppendLine();
-        sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
+        _ = sb.AppendLine();
+        _ = sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
     }
 
     private static object? ReadPropertyValue(object item, string name) {
@@ -315,7 +315,7 @@ public static class McpMarkdownProjectionRenderer {
         string plural = string.IsNullOrWhiteSpace(descriptor.EntityPluralLabel)
             ? descriptor.Title
             : descriptor.EntityPluralLabel!;
-        sb.Append("No ").Append(EscapeMarkdownText(RedactSensitiveText(plural).ToLowerInvariant())).AppendLine(" found.");
+        _ = sb.Append("No ").Append(EscapeMarkdownText(RedactSensitiveText(plural).ToLowerInvariant())).AppendLine(" found.");
 
         IReadOnlyList<string> safeSuggestions = suggestions ?? [];
         int max = Math.Max(0, options.MaxProjectionSuggestions);
@@ -325,7 +325,7 @@ public static class McpMarkdownProjectionRenderer {
 
         // Drop link-shaped suggestions before emit per the Inert Untrusted Text Contract:
         // "Empty-state suggestions use visible descriptor labels only, max 5, no links".
-        sb.AppendLine();
+        _ = sb.AppendLine();
         int emitted = 0;
         foreach (string suggestion in safeSuggestions) {
             if (emitted >= max) {
@@ -336,7 +336,7 @@ public static class McpMarkdownProjectionRenderer {
                 continue;
             }
 
-            sb.Append("- ").AppendLine(EscapeMarkdownText(RedactSensitiveText(suggestion)));
+            _ = sb.Append("- ").AppendLine(EscapeMarkdownText(RedactSensitiveText(suggestion)));
             emitted++;
         }
     }
@@ -517,10 +517,10 @@ public static class McpMarkdownProjectionRenderer {
             // a letter/digit; this preserves "OnHold" → "On Hold" while leaving surrogate pairs
             // intact and avoiding spurious spaces after whitespace/punctuation.
             if (i > 0 && prevIsLetterOrDigit && isValidRune && Rune.IsUpper(rune)) {
-                sb.Append(' ');
+                _ = sb.Append(' ');
             }
 
-            sb.Append(value, i, width);
+            _ = sb.Append(value, i, width);
             prevIsLetterOrDigit = isValidRune && Rune.IsLetterOrDigit(rune);
             i += width;
         }
@@ -668,55 +668,55 @@ public static class McpMarkdownProjectionRenderer {
         foreach (char c in value) {
             switch (c) {
                 case '\\':
-                    sb.Append("\\\\");
+                    _ = sb.Append("\\\\");
                     break;
                 case '|':
-                    sb.Append("\\|");
+                    _ = sb.Append("\\|");
                     break;
                 case '`':
-                    sb.Append("\\`");
+                    _ = sb.Append("\\`");
                     break;
                 case '*':
-                    sb.Append("\\*");
+                    _ = sb.Append("\\*");
                     break;
                 case '_':
-                    sb.Append("\\_");
+                    _ = sb.Append("\\_");
                     break;
                 case '[':
-                    sb.Append("\\[");
+                    _ = sb.Append("\\[");
                     break;
                 case ']':
-                    sb.Append("\\]");
+                    _ = sb.Append("\\]");
                     break;
                 case '(':
-                    sb.Append("\\(");
+                    _ = sb.Append("\\(");
                     break;
                 case ')':
-                    sb.Append("\\)");
+                    _ = sb.Append("\\)");
                     break;
                 case '<':
-                    sb.Append("\\<");
+                    _ = sb.Append("\\<");
                     break;
                 case '>':
-                    sb.Append("\\>");
+                    _ = sb.Append("\\>");
                     break;
                 case '#':
-                    sb.Append("\\#");
+                    _ = sb.Append("\\#");
                     break;
                 case '!':
-                    sb.Append("\\!");
+                    _ = sb.Append("\\!");
                     break;
                 case '\r':
                 case '\n':
                 case '\t':
-                    sb.Append(' ');
+                    _ = sb.Append(' ');
                     break;
                 default:
                     if (char.IsControl(c) || c == '\uFEFF') {
-                        sb.Append(' ');
+                        _ = sb.Append(' ');
                     }
                     else {
-                        sb.Append(c);
+                        _ = sb.Append(c);
                     }
 
                     break;

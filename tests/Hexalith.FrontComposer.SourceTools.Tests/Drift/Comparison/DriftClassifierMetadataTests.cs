@@ -2,7 +2,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
-using Xunit;
 
 using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
 
@@ -17,11 +16,11 @@ public sealed class DriftClassifierMetadataTests {
     private const string SkipReason = "RED-PHASE: T3 — metadata drift classifier not yet introduced.";
 
     [Theory()]
-    [InlineData("Display.Name",                   "[System.ComponentModel.DataAnnotations.Display(Name=\"OldLabel\")]", "[System.ComponentModel.DataAnnotations.Display(Name=\"NewLabel\")]")]
-    [InlineData("Display.GroupName",              "[System.ComponentModel.DataAnnotations.Display(GroupName=\"GroupA\")]", "[System.ComponentModel.DataAnnotations.Display(GroupName=\"GroupB\")]")]
-    [InlineData("Description",                    "[System.ComponentModel.Description(\"Old\")]",                          "[System.ComponentModel.Description(\"New\")]")]
-    [InlineData("ColumnPriority",                 "[ColumnPriority(1)]",                                                   "[ColumnPriority(7)]")]
-    [InlineData("ProjectionFieldGroup",           "[ProjectionFieldGroup(\"Schedule\")]",                                  "[ProjectionFieldGroup(\"Logistics\")]")]
+    [InlineData("Display.Name", "[System.ComponentModel.DataAnnotations.Display(Name=\"OldLabel\")]", "[System.ComponentModel.DataAnnotations.Display(Name=\"NewLabel\")]")]
+    [InlineData("Display.GroupName", "[System.ComponentModel.DataAnnotations.Display(GroupName=\"GroupA\")]", "[System.ComponentModel.DataAnnotations.Display(GroupName=\"GroupB\")]")]
+    [InlineData("Description", "[System.ComponentModel.Description(\"Old\")]", "[System.ComponentModel.Description(\"New\")]")]
+    [InlineData("ColumnPriority", "[ColumnPriority(1)]", "[ColumnPriority(7)]")]
+    [InlineData("ProjectionFieldGroup", "[ProjectionFieldGroup(\"Schedule\")]", "[ProjectionFieldGroup(\"Logistics\")]")]
     public void DisplayMetadataChange_EmitsAtMostOneDiagnosticPerDeclarationPerCategory(string category, string oldAttr, string newAttr) {
         string source = $$"""
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -50,7 +49,7 @@ public sealed class DriftClassifierMetadataTests {
                             && d.GetMessage().Contains(category, StringComparison.OrdinalIgnoreCase))
             .ShouldBe(1, $"AC7 caps category '{category}' to ≤1 diagnostic per declaration.");
         // Ensure baseline parameter referenced (avoid IDE0060 false positive for the dev later).
-        oldAttr.ShouldNotBeNull();
+        _ = oldAttr.ShouldNotBeNull();
     }
 
     [Fact()]

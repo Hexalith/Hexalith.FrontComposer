@@ -103,7 +103,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             lane.ViewKey,
             static (_, l) => new LaneEntry(l),
             static (_, existing, _) => {
-                Interlocked.Increment(ref existing.RefCount);
+                _ = Interlocked.Increment(ref existing.RefCount);
                 return existing;
             },
             lane);

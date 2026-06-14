@@ -23,9 +23,7 @@ public sealed class ExpandInRowJSModule : IExpandInRowJSModule, IAsyncDisposable
     private readonly object _importGate = new();
     private Task<IJSObjectReference>? _moduleTask;
 
-    public ExpandInRowJSModule(IJSRuntime js) {
-        _js = js ?? throw new ArgumentNullException(nameof(js));
-    }
+    public ExpandInRowJSModule(IJSRuntime js) => _js = js ?? throw new ArgumentNullException(nameof(js));
 
     /// <inheritdoc/>
     public async Task InitializeAsync(ElementReference element) {

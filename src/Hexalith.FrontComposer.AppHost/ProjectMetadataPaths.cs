@@ -1,4 +1,4 @@
-namespace Projects;
+namespace Hexalith.FrontComposer.AppHost;
 
 /// <summary>
 /// Resolves cross-repository project paths for the AppHost's <see cref="IProjectMetadata"/> locators.

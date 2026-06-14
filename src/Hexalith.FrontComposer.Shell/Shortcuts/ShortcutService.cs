@@ -24,8 +24,7 @@ namespace Hexalith.FrontComposer.Shell.Shortcuts;
 /// (<c>FakeTimeProvider</c> per D22) instead of sleeping.
 /// </para>
 /// </remarks>
-public sealed class ShortcutService : IShortcutService, IDisposable
-{
+public sealed class ShortcutService : IShortcutService, IDisposable {
     private const int ChordTimeoutMilliseconds = 1500;
 
     private readonly ConcurrentDictionary<string, ShortcutEntry> _entries = new(StringComparer.Ordinal);
@@ -43,8 +42,7 @@ public sealed class ShortcutService : IShortcutService, IDisposable
     /// </summary>
     /// <param name="timeProvider">Time source used by the chord-timeout timer (D22). When <see langword="null"/> falls back to <see cref="TimeProvider.System"/>.</param>
     /// <param name="logger">Logger for HFC2108 (conflict) + HFC2109 (handler-fault) diagnostics.</param>
-    public ShortcutService(TimeProvider? timeProvider, ILogger<ShortcutService> logger)
-    {
+    public ShortcutService(TimeProvider? timeProvider, ILogger<ShortcutService> logger) {
         ArgumentNullException.ThrowIfNull(logger);
         _timeProvider = timeProvider ?? TimeProvider.System;
         _logger = logger;
@@ -57,13 +55,11 @@ public sealed class ShortcutService : IShortcutService, IDisposable
         Func<Task> handler,
         string? routeUrl = null,
         [CallerFilePath] string callSiteFile = "",
-        [CallerLineNumber] int callSiteLine = 0)
-    {
+        [CallerLineNumber] int callSiteLine = 0) {
         ArgumentException.ThrowIfNullOrWhiteSpace(binding);
         ArgumentException.ThrowIfNullOrWhiteSpace(descriptionKey);
         ArgumentNullException.ThrowIfNull(handler);
-        if (routeUrl is not null && string.IsNullOrWhiteSpace(routeUrl))
-        {
+        if (routeUrl is not null && string.IsNullOrWhiteSpace(routeUrl)) {
             throw new ArgumentException("Route URL must be null or non-empty.", nameof(routeUrl));
         }
 
@@ -80,15 +76,13 @@ public sealed class ShortcutService : IShortcutService, IDisposable
         _ = _entries.AddOrUpdate(
             normalised,
             addValueFactory: static (_, newEntry) => newEntry,
-            updateValueFactory: (_, existing, newEntry) =>
-            {
+            updateValueFactory: (_, existing, newEntry) => {
                 previous = existing;
                 return newEntry;
             },
             factoryArgument: entry);
 
-        if (previous is not null)
-        {
+        if (previous is not null) {
             _logger.LogInformation(
                 "{DiagnosticId}: Duplicate shortcut registration replaced. Binding={Binding} PreviousDescriptionKey={PreviousDescriptionKey} NewDescriptionKey={NewDescriptionKey} PreviousCallSiteFile={PreviousCallSiteFile} PreviousCallSiteLine={PreviousCallSiteLine} NewCallSiteFile={NewCallSiteFile} NewCallSiteLine={NewCallSiteLine}",
                 FcDiagnosticIds.HFC2108_ShortcutConflict,
@@ -111,61 +105,51 @@ public sealed class ShortcutService : IShortcutService, IDisposable
             .Select(static e => new ShortcutRegistration(e.Binding, e.DescriptionKey, e.NormalisedLabel, e.RouteUrl))];
 
     /// <inheritdoc />
-    public async Task<bool> TryInvokeAsync(KeyboardEventArgs e)
-    {
+    public async Task<bool> TryInvokeAsync(KeyboardEventArgs e) {
         ArgumentNullException.ThrowIfNull(e);
 
         // Post-dispose calls are benign (cleared _entries would miss every lookup), but explicitly
         // guarding keeps the chord-timer allocation path from racing circuit teardown. The
         // authoritative check also happens inside `_chordSync` below before any timer allocation.
-        if (Volatile.Read(ref _disposed) == 1)
-        {
+        if (Volatile.Read(ref _disposed) == 1) {
             return false;
         }
 
         // Skip auto-repeat keystrokes — holding a chord-prefix letter like `g` would otherwise
         // allocate a fresh chord timer per tick, bump the generation, and reset pending state
         // unpredictably. The first press establishes the pending key; subsequent repeats no-op.
-        if (e.Repeat)
-        {
+        if (e.Repeat) {
             return false;
         }
 
-        if (!ShortcutBinding.TryFromKeyboardEvent(e, out string binding))
-        {
+        if (!ShortcutBinding.TryFromKeyboardEvent(e, out string binding)) {
             return false;
         }
 
         // Fast-path: modifier-bearing combos NEVER form chord continuations (D4 sub-decision d).
         bool hasModifier = e.CtrlKey || e.ShiftKey || e.AltKey || e.MetaKey;
-        if (hasModifier)
-        {
+        if (hasModifier) {
             ClearPending();
             return await TryInvokeBindingAsync(binding).ConfigureAwait(false);
         }
 
         // Bare-letter path: chord FSM.
         string? completed = null;
-        lock (_chordSync)
-        {
+        lock (_chordSync) {
             // Re-check disposed inside the lock — circuit-teardown that flips `_disposed` between
             // the early guard and here must not be able to allocate a timer on a cleared service.
-            if (_disposed == 1)
-            {
+            if (_disposed == 1) {
                 return false;
             }
 
-            if (_pendingFirstKey is { } pending)
-            {
+            if (_pendingFirstKey is { } pending) {
                 string composite = $"{pending} {binding}";
-                if (_entries.ContainsKey(composite))
-                {
+                if (_entries.ContainsKey(composite)) {
                     completed = composite;
                     DisposeTimerLocked();
                     _pendingFirstKey = null;
                 }
-                else
-                {
+                else {
                     DisposeTimerLocked();
                     _pendingFirstKey = null;
 
@@ -175,20 +159,16 @@ public sealed class ShortcutService : IShortcutService, IDisposable
                 }
             }
 
-            if (completed is null && IsChordPrefix(binding))
-            {
+            if (completed is null && IsChordPrefix(binding)) {
                 long generation = ++_pendingGeneration;
                 _pendingFirstKey = binding;
                 DisposeTimerLocked();
                 _chordTimer = _timeProvider.CreateTimer(
-                    static state =>
-                    {
-                        ChordTimerState timerState = (ChordTimerState)state!;
+                    static state => {
+                        var timerState = (ChordTimerState)state!;
                         ShortcutService self = timerState.Owner;
-                        lock (self._chordSync)
-                        {
-                            if (timerState.Generation != self._pendingGeneration)
-                            {
+                        lock (self._chordSync) {
+                            if (timerState.Generation != self._pendingGeneration) {
                                 return;
                             }
 
@@ -202,8 +182,7 @@ public sealed class ShortcutService : IShortcutService, IDisposable
             }
         }
 
-        if (completed is not null)
-        {
+        if (completed is not null) {
             return await TryInvokeBindingAsync(completed).ConfigureAwait(false);
         }
 
@@ -211,17 +190,14 @@ public sealed class ShortcutService : IShortcutService, IDisposable
     }
 
     /// <inheritdoc />
-    public void Dispose()
-    {
+    public void Dispose() {
         // Atomic — two concurrent Dispose calls (e.g., circuit teardown interleaved with
         // IAsyncDisposable cascades) cannot both observe zero and double-run the clear path.
-        if (Interlocked.Exchange(ref _disposed, 1) == 1)
-        {
+        if (Interlocked.Exchange(ref _disposed, 1) == 1) {
             return;
         }
 
-        lock (_chordSync)
-        {
+        lock (_chordSync) {
             DisposeTimerLocked();
             _pendingFirstKey = null;
         }
@@ -229,18 +205,14 @@ public sealed class ShortcutService : IShortcutService, IDisposable
         _entries.Clear();
     }
 
-    private async Task<bool> TryInvokeBindingAsync(string binding)
-    {
-        if (!_entries.TryGetValue(binding, out ShortcutEntry? entry))
-        {
+    private async Task<bool> TryInvokeBindingAsync(string binding) {
+        if (!_entries.TryGetValue(binding, out ShortcutEntry? entry)) {
             return false;
         }
 
-        try
-        {
+        try {
             Task? handlerTask = entry.Handler();
-            if (handlerTask is null)
-            {
+            if (handlerTask is null) {
                 // Contract: Func<Task> should not return null, but guard to prevent an NRE from
                 // bypassing the HFC2109 handler-fault path. Treat as "handler completed synchronously".
                 return true;
@@ -249,8 +221,7 @@ public sealed class ShortcutService : IShortcutService, IDisposable
             await handlerTask.ConfigureAwait(false);
             return true;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(
                 ex,
                 "{DiagnosticId}: Registered shortcut handler threw. Binding={Binding} DescriptionKey={DescriptionKey} ExceptionType={ExceptionType} ExceptionMessage={ExceptionMessage}",
@@ -263,13 +234,10 @@ public sealed class ShortcutService : IShortcutService, IDisposable
         }
     }
 
-    private bool IsChordPrefix(string binding)
-    {
+    private bool IsChordPrefix(string binding) {
         string prefix = binding + " ";
-        foreach (string key in _entries.Keys)
-        {
-            if (key.StartsWith(prefix, StringComparison.Ordinal))
-            {
+        foreach (string key in _entries.Keys) {
+            if (key.StartsWith(prefix, StringComparison.Ordinal)) {
                 return true;
             }
         }
@@ -277,41 +245,33 @@ public sealed class ShortcutService : IShortcutService, IDisposable
         return false;
     }
 
-    private void ClearPending()
-    {
-        lock (_chordSync)
-        {
+    private void ClearPending() {
+        lock (_chordSync) {
             _pendingFirstKey = null;
             DisposeTimerLocked();
         }
     }
 
-    private void DisposeTimerLocked()
-    {
+    private void DisposeTimerLocked() {
         ITimer? timer = _chordTimer;
-        if (timer is null)
-        {
+        if (timer is null) {
             return;
         }
 
         _chordTimer = null;
-        try
-        {
+        try {
             timer.Dispose();
         }
-        catch (ObjectDisposedException)
-        {
+        catch (ObjectDisposedException) {
             // Already disposed by a racing callback — safe to ignore.
         }
     }
 
-    private void RemoveIfMatches(ShortcutEntry entry)
-    {
+    private void RemoveIfMatches(ShortcutEntry entry) {
         // Only remove the binding slot if the live entry is the one being disposed — a replacement
         // registration must survive disposal of the original (D3 sub-decision: dispose targets the
         // original entry, not the slot).
-        if (_entries.TryGetValue(entry.Binding, out ShortcutEntry? current) && ReferenceEquals(current, entry))
-        {
+        if (_entries.TryGetValue(entry.Binding, out ShortcutEntry? current) && ReferenceEquals(current, entry)) {
             _ = _entries.TryRemove(entry.Binding, out _);
         }
     }
@@ -327,14 +287,11 @@ public sealed class ShortcutService : IShortcutService, IDisposable
 
     private sealed record ChordTimerState(ShortcutService Owner, long Generation);
 
-    private sealed class RegistrationDisposable(ShortcutService owner, ShortcutEntry entry) : IDisposable
-    {
+    private sealed class RegistrationDisposable(ShortcutService owner, ShortcutEntry entry) : IDisposable {
         private int _disposed;
 
-        public void Dispose()
-        {
-            if (Interlocked.Exchange(ref _disposed, 1) == 0)
-            {
+        public void Dispose() {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0) {
                 owner.RemoveIfMatches(entry);
             }
         }

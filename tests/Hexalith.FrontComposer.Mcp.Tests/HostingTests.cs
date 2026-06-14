@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Mcp.Skills;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+
 using ModelContextProtocol.Protocol;
 using ModelContextProtocol.Server;
 
@@ -16,10 +17,10 @@ public sealed class HostingTests {
     public void AddFrontComposerMcp_RegistersManifestDescriptors() {
         McpManifest manifest = CreateManifest("billing.invoice.create");
         var services = new ServiceCollection();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
 
-        services.AddFrontComposerMcp(options => options.Manifests.Add(manifest));
+        _ = services.AddFrontComposerMcp(options => options.Manifests.Add(manifest));
 
         using ServiceProvider provider = services.BuildServiceProvider();
         FrontComposerMcpDescriptorRegistry registry = provider.GetRequiredService<FrontComposerMcpDescriptorRegistry>();
@@ -31,10 +32,10 @@ public sealed class HostingTests {
     public void AddFrontComposerMcp_RegistersProjectionAndSkillResourcesWithSdkCollection() {
         McpManifest manifest = CreateManifest("billing.invoice.create", DescriptorUri: "frontcomposer://Billing/projections/InvoiceProjection");
         var services = new ServiceCollection();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
 
-        services.AddFrontComposerMcp(options => options.Manifests.Add(manifest));
+        _ = services.AddFrontComposerMcp(options => options.Manifests.Add(manifest));
 
         using ServiceProvider provider = services.BuildServiceProvider();
         McpServerOptions options = provider.GetRequiredService<IOptions<McpServerOptions>>().Value;
@@ -48,8 +49,8 @@ public sealed class HostingTests {
     [Fact]
     public void AddFrontComposerMcp_RejectsDuplicateCommandNames() {
         var services = new ServiceCollection();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
 
         Should.Throw<FrontComposerMcpException>(() => services.AddFrontComposerMcp(options => {
             options.Manifests.Add(CreateManifest("billing.invoice.create"));
@@ -63,8 +64,8 @@ public sealed class HostingTests {
     [InlineData("frontcomposer://skills/not-yet-a-corpus-resource")]
     public void AddFrontComposerMcp_RejectsProjectionResourcesUnderReservedSkillUriPrefix(string descriptorUri) {
         var services = new ServiceCollection();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
 
         InvalidOperationException ex = Should.Throw<InvalidOperationException>(() =>
             services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest(
@@ -94,7 +95,7 @@ public sealed class HostingTests {
     [Fact]
     public void AddFrontComposerMcp_FailsClosed_WhenResourceVisibilityGateNotRegistered() {
         var services = new ServiceCollection();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
 
         InvalidOperationException ex = Should.Throw<InvalidOperationException>(() => services.AddFrontComposerMcp(options =>
             options.Manifests.Add(CreateManifest("billing.invoice.create"))));
@@ -109,10 +110,10 @@ public sealed class HostingTests {
     [Fact]
     public void AddFrontComposerMcp_PreservesExplicitSampleDevAllowAllGateRegistrations() {
         var services = new ServiceCollection();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
 
-        services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest("billing.invoice.create")));
+        _ = services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest("billing.invoice.create")));
 
         ServiceDescriptor tenantGate = services.Single(d => d.ServiceType == typeof(IFrontComposerMcpTenantToolGate));
         tenantGate.ImplementationType.ShouldBe(typeof(AllowAllMcpTenantToolGate));
@@ -123,8 +124,8 @@ public sealed class HostingTests {
     [Fact]
     public void AddFrontComposerMcp_ValidatesProjectionMarkdownBounds() {
         var services = new ServiceCollection();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         OptionsValidationException ex = Should.Throw<OptionsValidationException>(() => services.AddFrontComposerMcp(options => {
             options.Manifests.Add(CreateManifest("billing.invoice.create"));
             options.MaxProjectionCellCharacters = 0;

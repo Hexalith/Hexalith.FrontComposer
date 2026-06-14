@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 using Hexalith.FrontComposer.Contracts.Communication;
 
 using Shouldly;
@@ -29,9 +26,9 @@ public sealed class QueryRequestTests {
         request.EntityId.ShouldBeNull();
         request.ProjectionActorType.ShouldBeNull();
         request.ETags.ShouldBeNull();
-#pragma warning disable CS0618, HFC0001 // Legacy property
+#pragma warning disable HFC0001 // Legacy Filter is intentionally exercised until removal in v0.4.
         request.Filter.ShouldBeNull();
-#pragma warning restore CS0618, HFC0001
+#pragma warning restore HFC0001
     }
 
     [Fact]
@@ -54,7 +51,7 @@ public sealed class QueryRequestTests {
             ProjectionActorType: "OrdersProjectionActor",
             ETags: ["\"etag-1\""]);
 
-        request.ColumnFilters.ShouldNotBeNull();
+        _ = request.ColumnFilters.ShouldNotBeNull();
         request.ColumnFilters!["Name"].ShouldBe("acme");
         request.StatusFilters.ShouldBe(["Pending", "Approved"]);
         request.SearchQuery.ShouldBe("foo");

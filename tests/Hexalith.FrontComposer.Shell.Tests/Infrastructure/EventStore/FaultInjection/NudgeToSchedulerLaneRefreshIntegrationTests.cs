@@ -15,8 +15,6 @@ using NSubstitute;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.FaultInjection;
 
 /// <summary>

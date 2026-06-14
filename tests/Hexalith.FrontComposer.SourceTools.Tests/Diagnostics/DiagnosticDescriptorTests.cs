@@ -1,5 +1,3 @@
-using System.Text.RegularExpressions;
-
 using Hexalith.FrontComposer.SourceTools.Diagnostics;
 
 using Microsoft.CodeAnalysis;

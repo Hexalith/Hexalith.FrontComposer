@@ -1,6 +1,5 @@
 using System.Collections.Frozen;
 using System.Globalization;
-using System.IO;
 using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
@@ -362,14 +361,14 @@ public static partial class SkillCorpusParser {
             if (line.StartsWith("```", StringComparison.Ordinal)) {
                 insideFence = !insideFence;
                 if (active is not null) {
-                    current.AppendLine(rawLine);
+                    _ = current.AppendLine(rawLine);
                 }
                 continue;
             }
 
             if (insideFence) {
                 if (active is not null) {
-                    current.AppendLine(rawLine);
+                    _ = current.AppendLine(rawLine);
                 }
                 continue;
             }
@@ -407,7 +406,7 @@ public static partial class SkillCorpusParser {
                 }
 
                 active = kind;
-                current.Clear();
+                _ = current.Clear();
                 continue;
             }
 
@@ -425,12 +424,12 @@ public static partial class SkillCorpusParser {
                 }
 
                 active = null;
-                current.Clear();
+                _ = current.Clear();
                 continue;
             }
 
             if (active is not null) {
-                current.AppendLine(rawLine);
+                _ = current.AppendLine(rawLine);
             }
         }
 
@@ -604,15 +603,11 @@ public static class SkillCorpusLoader {
     }
 
     private static string ReadResource(Assembly assembly, string resourceName) {
-        using Stream? stream = assembly.GetManifestResourceStream(resourceName);
-        if (stream is null) {
-            // The resource name was just enumerated from the same assembly; a missing stream
-            // means the assembly is corrupt. Surfacing that as a hard failure beats silently
-            // emitting an empty source that would be rejected with a misleading "missing front
-            // matter" diagnostic.
-            throw new InvalidOperationException($"Embedded skill resource '{resourceName}' is missing.");
-        }
-
+        // The resource name was just enumerated from the same assembly; a missing stream
+        // means the assembly is corrupt. Surfacing that as a hard failure beats silently
+        // emitting an empty source that would be rejected with a misleading "missing front
+        // matter" diagnostic.
+        using Stream? stream = assembly.GetManifestResourceStream(resourceName) ?? throw new InvalidOperationException($"Embedded skill resource '{resourceName}' is missing.");
         using var reader = new StreamReader(stream, Encoding.UTF8);
         return reader.ReadToEnd();
     }
@@ -709,13 +704,13 @@ public static class SkillCorpusSnippetValidator {
         HashSet<string> vocabularyFull = new(StringComparer.Ordinal);
         foreach (Assembly assembly in assemblies) {
             foreach (Type type in assembly.GetExportedTypes()) {
-                vocabularySimple.Add(type.Name);
+                _ = vocabularySimple.Add(type.Name);
                 if (type.Name.EndsWith("Attribute", StringComparison.Ordinal)) {
-                    vocabularySimple.Add(type.Name[..^"Attribute".Length]);
+                    _ = vocabularySimple.Add(type.Name[..^"Attribute".Length]);
                 }
 
                 if (!string.IsNullOrEmpty(type.FullName)) {
-                    vocabularyFull.Add(type.FullName);
+                    _ = vocabularyFull.Add(type.FullName);
                 }
             }
         }
@@ -723,7 +718,7 @@ public static class SkillCorpusSnippetValidator {
         // C# language built-ins and common keywords that the parser will hand us as identifiers
         // depending on syntax tree shape. Treat them as already-known.
         foreach (string builtin in BuiltinKnownIdentifiers) {
-            vocabularySimple.Add(builtin);
+            _ = vocabularySimple.Add(builtin);
         }
 
         List<SkillCorpusDiagnostic> diagnostics = [.. snapshot.Diagnostics];
@@ -745,7 +740,7 @@ public static class SkillCorpusSnippetValidator {
             if (trimmed.StartsWith("```", StringComparison.Ordinal)) {
                 if (inside) {
                     yield return current.ToString();
-                    current.Clear();
+                    _ = current.Clear();
                     inside = false;
                 }
                 else if (trimmed.StartsWith("```csharp", StringComparison.OrdinalIgnoreCase)
@@ -757,7 +752,7 @@ public static class SkillCorpusSnippetValidator {
             }
 
             if (inside) {
-                current.AppendLine(raw);
+                _ = current.AppendLine(raw);
             }
         }
     }
@@ -910,37 +905,37 @@ public static class SkillCorpusAggregateManifestBuilder {
         ArgumentNullException.ThrowIfNull(manifest);
 
         StringBuilder sb = new();
-        sb.AppendLine("# FrontComposer Skill Corpus Manifest");
-        sb.AppendLine();
-        sb.AppendLine($"- manifestSchemaVersion: `{manifest.ManifestSchemaVersion}`");
-        sb.AppendLine($"- corpusVersion: `{manifest.CorpusVersion}`");
-        sb.AppendLine($"- resourceCount: `{manifest.Resources.Count}`");
-        sb.AppendLine();
-        sb.AppendLine("## Resources");
-        sb.AppendLine();
+        _ = sb.AppendLine("# FrontComposer Skill Corpus Manifest");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine($"- manifestSchemaVersion: `{manifest.ManifestSchemaVersion}`");
+        _ = sb.AppendLine($"- corpusVersion: `{manifest.CorpusVersion}`");
+        _ = sb.AppendLine($"- resourceCount: `{manifest.Resources.Count}`");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("## Resources");
+        _ = sb.AppendLine();
         foreach (SkillCorpusManifestEntry entry in manifest.Resources) {
-            sb.AppendLine($"### `{entry.ResourceUri}`");
-            sb.AppendLine();
-            sb.AppendLine($"- id: `{entry.Id}`");
-            sb.AppendLine($"- sourceDoc: `{entry.SourceDoc}`");
-            sb.AppendLine($"- version: `{entry.Version}`");
+            _ = sb.AppendLine($"### `{entry.ResourceUri}`");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine($"- id: `{entry.Id}`");
+            _ = sb.AppendLine($"- sourceDoc: `{entry.SourceDoc}`");
+            _ = sb.AppendLine($"- version: `{entry.Version}`");
             if (!string.IsNullOrWhiteSpace(entry.OwningStory)) {
-                sb.AppendLine($"- owningStory: `{entry.OwningStory}`");
+                _ = sb.AppendLine($"- owningStory: `{entry.OwningStory}`");
             }
 
             if (!string.IsNullOrWhiteSpace(entry.MigrationOwner)) {
-                sb.AppendLine($"- migrationOwner: `{entry.MigrationOwner}`");
+                _ = sb.AppendLine($"- migrationOwner: `{entry.MigrationOwner}`");
             }
 
             if (entry.PublicApiReferences.Count > 0) {
-                sb.AppendLine($"- publicApiReferences: {string.Join(", ", entry.PublicApiReferences.Select(v => $"`{v}`"))}");
+                _ = sb.AppendLine($"- publicApiReferences: {string.Join(", ", entry.PublicApiReferences.Select(v => $"`{v}`"))}");
             }
 
             if (entry.SamplePaths.Count > 0) {
-                sb.AppendLine($"- samplePaths: {string.Join(", ", entry.SamplePaths.Select(v => $"`{v}`"))}");
+                _ = sb.AppendLine($"- samplePaths: {string.Join(", ", entry.SamplePaths.Select(v => $"`{v}`"))}");
             }
 
-            sb.AppendLine();
+            _ = sb.AppendLine();
         }
 
         return sb.ToString();
@@ -964,7 +959,6 @@ public sealed class FrontComposerSkillResourceProvider {
     private readonly IReadOnlyList<SkillCorpusResource> _resources;
     private readonly FrozenDictionary<string, SkillCorpusResource> _byUri;
     private readonly SkillResourceReadOptions _readOptions;
-    private readonly SkillCorpusAggregateManifest _aggregate;
     private readonly string _aggregateMarkdown;
 
     public FrontComposerSkillResourceProvider(SkillCorpusSnapshot snapshot)
@@ -985,8 +979,8 @@ public sealed class FrontComposerSkillResourceProvider {
         // P-37: URIs are canonicalized to lowercase at parse time, so all lookups use Ordinal.
         _byUri = snapshot.Resources.ToFrozenDictionary(r => r.ResourceUri, StringComparer.Ordinal);
         _readOptions = readOptions;
-        _aggregate = SkillCorpusAggregateManifestBuilder.Build(snapshot);
-        _aggregateMarkdown = SkillCorpusAggregateManifestBuilder.Render(_aggregate);
+        AggregateManifest = SkillCorpusAggregateManifestBuilder.Build(snapshot);
+        _aggregateMarkdown = SkillCorpusAggregateManifestBuilder.Render(AggregateManifest);
     }
 
     public IReadOnlyList<SkillResourceDescriptor> ListResources() {
@@ -995,7 +989,7 @@ public sealed class FrontComposerSkillResourceProvider {
         return descriptors;
     }
 
-    public SkillCorpusAggregateManifest AggregateManifest => _aggregate;
+    public SkillCorpusAggregateManifest AggregateManifest { get; }
 
     public SkillResourceReadResult Read(string uri, CancellationToken cancellationToken) {
         ArgumentNullException.ThrowIfNull(uri);
@@ -1040,10 +1034,10 @@ public sealed class FrontComposerSkillResourceProvider {
         get {
             HashSet<string> set = new(StringComparer.Ordinal);
             foreach (SkillCorpusResource r in _resources) {
-                set.Add(r.ResourceUri);
+                _ = set.Add(r.ResourceUri);
             }
 
-            set.Add(SkillCorpusAggregateManifestBuilder.ManifestResourceUri);
+            _ = set.Add(SkillCorpusAggregateManifestBuilder.ManifestResourceUri);
             return set;
         }
     }
@@ -1070,25 +1064,23 @@ public sealed class FrontComposerSkillResourceProvider {
 
 public sealed class InvalidSkillCorpusException : Exception {
     public InvalidSkillCorpusException(IReadOnlyList<SkillCorpusDiagnostic> diagnostics)
-        : base(BuildMessage(diagnostics)) {
-        Diagnostics = diagnostics;
-    }
+        : base(BuildMessage(diagnostics)) => Diagnostics = diagnostics;
 
     public IReadOnlyList<SkillCorpusDiagnostic> Diagnostics { get; }
 
     private static string BuildMessage(IReadOnlyList<SkillCorpusDiagnostic> diagnostics) {
         ArgumentNullException.ThrowIfNull(diagnostics);
         StringBuilder sb = new();
-        sb.Append("Skill corpus failed validation at startup. ");
-        sb.Append(diagnostics.Count.ToString(CultureInfo.InvariantCulture));
-        sb.AppendLine(" diagnostic(s):");
+        _ = sb.Append("Skill corpus failed validation at startup. ");
+        _ = sb.Append(diagnostics.Count.ToString(CultureInfo.InvariantCulture));
+        _ = sb.AppendLine(" diagnostic(s):");
         foreach (SkillCorpusDiagnostic d in diagnostics) {
-            sb.Append("- [");
-            sb.Append(d.Category);
-            sb.Append("] ");
-            sb.Append(d.Source);
-            sb.Append(": ");
-            sb.AppendLine(d.Message);
+            _ = sb.Append("- [");
+            _ = sb.Append(d.Category);
+            _ = sb.Append("] ");
+            _ = sb.Append(d.Source);
+            _ = sb.Append(": ");
+            _ = sb.AppendLine(d.Message);
         }
 
         return sb.ToString();
@@ -1396,7 +1388,7 @@ public sealed record SkillBenchmarkPromptSet(
         string resourceName = candidates[0];
         using Stream stream = assembly.GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException("Embedded benchmark prompt set is missing.");
-        var dto = JsonSerializer.Deserialize(stream, SkillBenchmarkJsonContext.Default.SkillBenchmarkPromptSetDto)
+        SkillBenchmarkPromptSetDto dto = JsonSerializer.Deserialize(stream, SkillBenchmarkJsonContext.Default.SkillBenchmarkPromptSetDto)
             ?? throw new InvalidOperationException("Embedded benchmark prompt set is invalid.");
 
         return new SkillBenchmarkPromptSet(
@@ -1639,8 +1631,7 @@ public static class SkillBenchmarkBaselinePolicy {
     public static SkillBenchmarkBaselineWriteDecision DecideWrite(
         bool trustedContext,
         bool approvedMarkerPresent,
-        SkillBenchmarkGateResult candidate)
-    {
+        SkillBenchmarkGateResult candidate) {
         ArgumentNullException.ThrowIfNull(candidate);
 
         return trustedContext
@@ -1991,7 +1982,7 @@ public static class SkillCorpusReleaseGuard {
                     "No skill corpus baseline configured — skipping breaking-change comparison.")]);
         }
 
-        Dictionary<string, SkillCorpusResource> baselineByUri = baseline.Resources.ToDictionary(r => r.ResourceUri, StringComparer.Ordinal);
+        var baselineByUri = baseline.Resources.ToDictionary(r => r.ResourceUri, StringComparer.Ordinal);
         List<SkillCorpusDiagnostic> diagnostics = [];
 
         foreach (SkillCorpusResource currentResource in current.Resources) {

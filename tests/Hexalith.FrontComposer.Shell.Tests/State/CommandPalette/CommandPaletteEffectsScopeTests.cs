@@ -5,14 +5,12 @@ using System.Collections.Immutable;
 
 using Fluxor;
 
-using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Shortcuts;
-using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
@@ -21,8 +19,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
-
-using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.CommandPalette;
 

@@ -24,18 +24,15 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// Component, reducer, and emitter tests already pin the isolated pieces; these tests render the
 /// generated Counter grid and exercise the click/filter flow end-to-end in bUnit.
 /// </summary>
-public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
-{
+public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
     private static readonly DateTimeOffset s_lastUpdated = new(2026, 4, 14, 0, 0, 0, TimeSpan.Zero);
 
     public ExpandInRowGeneratedGridTests()
-        : base(typeof(CounterProjection).Assembly)
-    {
+        : base(typeof(CounterProjection).Assembly) {
     }
 
     [Fact]
-    public async Task CounterProjectionView_ExpandTrigger_PopulatesAlwaysPresentRegion()
-    {
+    public async Task CounterProjectionView_ExpandTrigger_PopulatesAlwaysPresentRegion() {
         SetupExpandInRowModule();
         using CultureScope cultureScope = new("en");
         await InitializeStoreAsync();
@@ -51,8 +48,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             IElement region = cut.Find(".fc-expand-in-row-detail");
             region.GetAttribute("role").ShouldBe("region");
             region.GetAttribute("aria-label").ShouldBe("Details for ");
@@ -70,8 +66,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
         ExpandRowAction expandAction = await WaitForExpandActionAsync(cut, dispatchedActions, "counter-1");
         await cut.InvokeAsync(() => RestoreExpandedRowState(expandAction));
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             IElement region = cut.Find(".fc-expand-in-row-detail");
             region.GetAttribute("role").ShouldBe("region");
             region.GetAttribute("aria-label").ShouldBe("Details for counter-1");
@@ -83,8 +78,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_FilterHidesExpandedRow_RendersBannerAndSuppressedAnnouncement()
-    {
+    public async Task CounterProjectionView_FilterHidesExpandedRow_RendersBannerAndSuppressedAnnouncement() {
         SetupExpandInRowModule();
         using CultureScope cultureScope = new("en");
         await InitializeStoreAsync();
@@ -112,8 +106,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
                 Counter("counter-2", 2),
             ])));
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             IElement banner = cut.Find("[data-testid='fc-expanded-row-hidden-banner']");
             banner.GetAttribute("role").ShouldBe("status");
             banner.GetAttribute("aria-live").ShouldBe("polite");
@@ -134,8 +127,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_CollapseTrigger_EmptiesRegionAndResetsAria()
-    {
+    public async Task CounterProjectionView_CollapseTrigger_EmptiesRegionAndResetsAria() {
         SetupExpandInRowModule();
         using CultureScope cultureScope = new("en");
         await InitializeStoreAsync();
@@ -163,8 +155,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
         await WaitForCollapseActionAsync(cut, dispatchedActions, expandAction.ViewKey);
         await cut.InvokeAsync(RestoreCollapsedRowState);
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             IElement region = cut.Find(".fc-expand-in-row-detail");
             region.GetAttribute("role").ShouldBe("region");
             region.GetAttribute("aria-label").ShouldBe("Details for ");
@@ -177,8 +168,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_ExpandingSecondRow_ReplacesFirstExpansion()
-    {
+    public async Task CounterProjectionView_ExpandingSecondRow_ReplacesFirstExpansion() {
         SetupExpandInRowModule();
         using CultureScope cultureScope = new("en");
         await InitializeStoreAsync();
@@ -209,8 +199,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
         secondExpand.ViewKey.ShouldBe(firstExpand.ViewKey);
         await cut.InvokeAsync(() => RestoreExpandedRowState(secondExpand));
 
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             IElement region = cut.Find(".fc-expand-in-row-detail");
             region.GetAttribute("aria-label").ShouldBe("Details for counter-2");
             region.TextContent.ShouldContain("counter-2");
@@ -221,8 +210,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
     }
 
     [Fact]
-    public async Task CounterProjectionView_ExpandedRow_HasNoBlockingAxeContractViolations()
-    {
+    public async Task CounterProjectionView_ExpandedRow_HasNoBlockingAxeContractViolations() {
         SetupExpandInRowModule();
         using CultureScope cultureScope = new("en");
         await InitializeStoreAsync();
@@ -246,8 +234,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
         // In-process axe proxy over the EXPANDED generated grid (AC3). Real axe.run() DOM walking is
         // the CI-only Playwright lane; bUnit cannot drive the FluentUI v5 shadow DOM, so we assert the
         // ARIA contract the blocking axe rules enforce on the expand surface.
-        await cut.WaitForAssertionAsync(() =>
-        {
+        await cut.WaitForAssertionAsync(() => {
             IElement region = cut.Find(".fc-expand-in-row-detail");
             // axe `region` — the detail landmark carries role=region + a discernible accessible name.
             region.GetAttribute("role").ShouldBe("region");
@@ -277,11 +264,9 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
                 .Any(action => string.Equals(action.ViewKey, viewKey, StringComparison.Ordinal))
                 .ShouldBeTrue("generated collapse trigger must dispatch CollapseRowAction before the test empties reducer state"));
 
-    private void RestoreCollapsedRowState()
-    {
+    private void RestoreCollapsedRowState() {
         IFeature feature = Services.GetRequiredService<ExpandedRowFeature>();
-        feature.RestoreState(new ExpandedRowState
-        {
+        feature.RestoreState(new ExpandedRowState {
             ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty,
         });
     }
@@ -289,8 +274,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
     private static async Task<ExpandRowAction> WaitForExpandActionAsync(
         IRenderedComponent<CounterProjectionView> cut,
         List<object> dispatchedActions,
-        string id)
-    {
+        string id) {
         await cut.WaitForAssertionAsync(() =>
             dispatchedActions
                 .OfType<ExpandRowAction>()
@@ -302,26 +286,22 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
             .Single(action => string.Equals(action.ItemKey?.ToString(), id, StringComparison.Ordinal));
     }
 
-    private void RestoreExpandedRowState(ExpandRowAction action)
-    {
+    private void RestoreExpandedRowState(ExpandRowAction action) {
         IFeature feature = Services.GetRequiredService<ExpandedRowFeature>();
-        feature.RestoreState(new ExpandedRowState
-        {
+        feature.RestoreState(new ExpandedRowState {
             ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty.SetItem(
                 action.ViewKey,
                 new ExpandedRowEntry(action.ItemKey, s_lastUpdated)),
         });
     }
 
-    private void SetupExpandInRowModule()
-    {
+    private void SetupExpandInRowModule() {
         BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js");
         module.SetupVoid("initializeExpandInRow", _ => true);
     }
 
     private static CounterProjection Counter(string id, int count)
-        => new()
-        {
+        => new() {
             Id = id,
             Count = count,
             LastUpdated = s_lastUpdated,
@@ -337,13 +317,11 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
         => cut.Nodes.QuerySelectorAll("fluent-button.fc-expand-button")
             .Single(button => string.Equals(button.GetAttribute("aria-label"), ariaLabel, StringComparison.Ordinal));
 
-    private sealed class CultureScope : IDisposable
-    {
+    private sealed class CultureScope : IDisposable {
         private readonly CultureInfo _originalCulture;
         private readonly CultureInfo _originalUICulture;
 
-        public CultureScope(string cultureName)
-        {
+        public CultureScope(string cultureName) {
             CultureInfo culture = new(cultureName);
             _originalCulture = CultureInfo.CurrentCulture;
             _originalUICulture = CultureInfo.CurrentUICulture;
@@ -351,8 +329,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase
             CultureInfo.CurrentUICulture = culture;
         }
 
-        public void Dispose()
-        {
+        public void Dispose() {
             CultureInfo.CurrentCulture = _originalCulture;
             CultureInfo.CurrentUICulture = _originalUICulture;
         }

@@ -76,11 +76,7 @@ public sealed class FrontComposerMcpProjectionReader(
                 ProjectionType: snapshot.Descriptor.ProjectionTypeName,
                 TenantId: context.TenantId,
                 Take: take);
-            MethodInfo? method = typeof(IQueryService).GetMethod(nameof(IQueryService.QueryAsync));
-            if (method is null) {
-                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
-            }
-
+            MethodInfo? method = typeof(IQueryService).GetMethod(nameof(IQueryService.QueryAsync)) ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
             object? resultTask;
             try {
                 resultTask = method.MakeGenericMethod(projectionType).Invoke(queryService, [request, cancellationToken]);
@@ -160,7 +156,7 @@ public sealed class FrontComposerMcpProjectionReader(
         // P-20: keep the snapshot to the safe immutable subset needed for query/render
         // handoff. Mutable registry handles and service instances never cross the admission
         // boundary; field metadata is copied with collection values detached below.
-        FrontComposerMcpProjectionDescriptorSnapshot descriptorSnapshot =
+        var descriptorSnapshot =
             FrontComposerMcpProjectionDescriptorSnapshot.FromDescriptor(descriptor);
         return new FrontComposerMcpProjectionReadSnapshot(
             ProjectionKey: descriptorSnapshot.Name,
@@ -331,7 +327,7 @@ public sealed class FrontComposerMcpProjectionReader(
 
     private Type ResolveType(string typeName) {
         // See FrontComposerMcpCommandInvoker.ResolveType for the bounded-then-fallback rationale.
-        Type? direct = Type.GetType(typeName);
+        var direct = Type.GetType(typeName);
         if (direct is not null) {
             return direct;
         }

@@ -22,13 +22,12 @@ using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
-using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
+using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 using Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
-using Hexalith.FrontComposer.Shell.Services.Validation;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
@@ -40,15 +39,13 @@ using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
-using Microsoft.Extensions.Logging;
-
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.Extensions;
@@ -56,8 +53,7 @@ namespace Hexalith.FrontComposer.Shell.Extensions;
 /// <summary>
 /// Extension methods for registering FrontComposer Shell services.
 /// </summary>
-public static class ServiceCollectionExtensions
-{
+public static class ServiceCollectionExtensions {
 
     /// <summary>
     /// Discovers and registers generated domain registration classes from the assembly containing <typeparamref name="T"/>.
@@ -70,8 +66,7 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     [RequiresUnreferencedCode("Domain discovery uses reflection to scan assembly types at runtime.")]
     public static IServiceCollection AddHexalithDomain<T>(this IServiceCollection services)
-        where T : class
-    {
+        where T : class {
         // Story 1.1 AC2 — append the Domain ordering marker and register the validation gate
         // (idempotent). See AddHexalithFrontComposer for the full guard rationale.
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IFrontComposerBootstrapMarker, DomainBootstrapMarker>());
@@ -81,24 +76,20 @@ public static class ServiceCollectionExtensions
         BoundedContextAttribute? markerContext = typeof(T).GetCustomAttribute<BoundedContextAttribute>();
         var commandGroups = new Dictionary<string, CommandGroup>(StringComparer.Ordinal);
 
-        foreach (Type type in domainAssembly.GetExportedTypes())
-        {
+        foreach (Type type in domainAssembly.GetExportedTypes()) {
             if (type.Name.EndsWith("LastUsedSubscriber", StringComparison.Ordinal)
-                && typeof(IDisposable).IsAssignableFrom(type))
-            {
+                && typeof(IDisposable).IsAssignableFrom(type)) {
                 services.TryAdd(ServiceDescriptor.Scoped(type, type));
             }
 
             // Story 2-3 Decision D5 — auto-register per-command {Command}LifecycleBridge types discovered
             // in the domain assembly so LifecycleBridgeRegistry.Ensure<T>() can resolve them via DI.
             if (type.Name.EndsWith("LifecycleBridge", StringComparison.Ordinal)
-                && typeof(IDisposable).IsAssignableFrom(type))
-            {
+                && typeof(IDisposable).IsAssignableFrom(type)) {
                 services.TryAdd(ServiceDescriptor.Scoped(type, type));
             }
 
-            if (!type.Name.EndsWith("Registration", StringComparison.Ordinal))
-            {
+            if (!type.Name.EndsWith("Registration", StringComparison.Ordinal)) {
                 CollectCommandRegistration(type, markerContext, commandGroups);
                 continue;
             }
@@ -111,12 +102,10 @@ public static class ServiceCollectionExtensions
                 [typeof(IFrontComposerRegistry)],
                 null);
 
-            if (hasManifest && registerMethod is not null)
-            {
+            if (hasManifest && registerMethod is not null) {
                 _ = services.AddSingleton(new DomainRegistrationAction(registerMethod));
             }
-            else if (hasManifest || registerMethod is not null)
-            {
+            else if (hasManifest || registerMethod is not null) {
                 _ = services.AddSingleton(new DomainRegistrationWarning(
                     type.FullName ?? type.Name,
                     hasManifest,
@@ -126,8 +115,7 @@ public static class ServiceCollectionExtensions
             CollectCommandRegistration(type, markerContext, commandGroups);
         }
 
-        foreach ((string boundedContext, CommandGroup group) in commandGroups)
-        {
+        foreach ((string boundedContext, CommandGroup group) in commandGroups) {
             DomainManifest manifest = new(
                 group.DisplayName ?? boundedContext,
                 boundedContext,
@@ -169,8 +157,7 @@ public static class ServiceCollectionExtensions
         Justification = "Story 2-4 FcShellOptions is a single concrete type with preserved properties; DataAnnotations validation stays trim-safe.")]
     public static IServiceCollection AddHexalithFrontComposer(
         this IServiceCollection services,
-        Action<FluxorOptions>? configureFluxor = null)
-    {
+        Action<FluxorOptions>? configureFluxor = null) {
         _ = services.AddLogging();
 
         // Story 1.1 AC2 — bootstrap fail-fast guard. Append the foundational ordering marker and
@@ -190,8 +177,7 @@ public static class ServiceCollectionExtensions
         // we make the framework hard-require authorization services so the fail-closed behaviour
         // is structural rather than dependent on adopter wiring discipline.
         _ = services.AddAuthorizationCore();
-        _ = services.AddFluxor(o =>
-        {
+        _ = services.AddFluxor(o => {
             _ = o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly);
             configureFluxor?.Invoke(o);
         });
@@ -203,7 +189,7 @@ public static class ServiceCollectionExtensions
         // Breaking lifetime change — ships as v0.2.0-preview. Adopters with Singleton captures
         // must migrate to Scoped or capture IServiceScopeFactory; Counter.Web enables
         // ValidateScopes = true on its host builder so future regressions fail at boot.
-        services.RemoveAll<IStorageService>();
+        _ = services.RemoveAll<IStorageService>();
         _ = services.AddScoped<IStorageService, LocalStorageService>();
         _ = services.AddSingleton<IFrontComposerRegistry, FrontComposerRegistry>();
         // P-27 (DN1-c): EmptyStateCtaResolver throws at construction if the registered
@@ -289,8 +275,7 @@ public static class ServiceCollectionExtensions
         ServiceDescriptor? offendingPopoverRegistry = services.FirstOrDefault(
             d => d.ServiceType == typeof(Hexalith.FrontComposer.Contracts.Rendering.InlinePopoverRegistry)
                 && d.Lifetime != ServiceLifetime.Scoped);
-        if (offendingPopoverRegistry is not null)
-        {
+        if (offendingPopoverRegistry is not null) {
             throw new InvalidOperationException(
                 $"InlinePopoverRegistry must be registered as Scoped (found: {offendingPopoverRegistry.Lifetime}). "
                 + "Singleton or Transient registration would cross-leak popovers between user circuits.");
@@ -315,12 +300,9 @@ public static class ServiceCollectionExtensions
         // Story 3-5 D1 / D2 / D3 — badge count producer seam. Consumed via nullable DI by
         // Story 3-4's FcPaletteResultList (activates automatically when this registration lands)
         // and by Story 3-5's FcHomeDirectory + FrontComposerNavigation via Fluxor state.
-        services.TryAddSingleton<IActionQueueProjectionCatalog>(sp =>
-#pragma warning disable IL2026 // RequiresUnreferencedCode — Reflection catalog documented as AOT-incompatible (G22 / Story 9-1 analyzer).
-            new ReflectionActionQueueProjectionCatalog(
+        services.TryAddSingleton<IActionQueueProjectionCatalog>(sp => new ReflectionActionQueueProjectionCatalog(
                 AppDomain.CurrentDomain.GetAssemblies(),
                 sp.GetRequiredService<ILogger<ReflectionActionQueueProjectionCatalog>>()));
-#pragma warning restore IL2026
         services.TryAddScoped<IActionQueueCountReader, NullActionQueueCountReader>();
         _ = services.AddScoped<IBadgeCountService, BadgeCountService>();
 
@@ -453,13 +435,11 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddHexalithShellLocalization(
         this IServiceCollection services,
-        Action<RequestLocalizationOptions>? configure = null)
-    {
+        Action<RequestLocalizationOptions>? configure = null) {
         ArgumentNullException.ThrowIfNull(services);
         services.TryAddEnumerable(
             ServiceDescriptor.Singleton<IConfigureOptions<RequestLocalizationOptions>, ShellRequestLocalizationOptionsSetup>());
-        if (configure is not null)
-        {
+        if (configure is not null) {
             _ = services.Configure(configure);
         }
 
@@ -493,8 +473,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddHexalithFrontComposerQuickstart(
         this IServiceCollection services,
         Action<FluxorOptions>? configureFluxor = null,
-        Action<RequestLocalizationOptions>? configureLocalization = null)
-    {
+        Action<RequestLocalizationOptions>? configureLocalization = null) {
         ArgumentNullException.ThrowIfNull(services);
         // AddLocalization is idempotent (TryAdd under the hood), so chaining it here never collides
         // with an adopter's own call.
@@ -535,14 +514,12 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     [RequiresUnreferencedCode("Reads the generated __FrontComposerProjectionTemplatesRegistration type via reflection.")]
     public static IServiceCollection AddHexalithProjectionTemplates<TMarker>(this IServiceCollection services)
-        where TMarker : class
-    {
+        where TMarker : class {
         ArgumentNullException.ThrowIfNull(services);
 
         IReadOnlyList<ProjectionTemplateDescriptor> descriptors =
             ProjectionTemplateAssemblySource.ResolveDescriptors(typeof(TMarker).Assembly);
-        if (descriptors.Count == 0)
-        {
+        if (descriptors.Count == 0) {
             return services;
         }
 
@@ -559,13 +536,11 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddHexalithProjectionTemplates(
         this IServiceCollection services,
-        IReadOnlyList<ProjectionTemplateDescriptor> descriptors)
-    {
+        IReadOnlyList<ProjectionTemplateDescriptor> descriptors) {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(descriptors);
 
-        if (descriptors.Count == 0)
-        {
+        if (descriptors.Count == 0) {
             return services;
         }
 
@@ -581,11 +556,10 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddDerivedValueProvider<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(
         this IServiceCollection services,
         ServiceLifetime lifetime = ServiceLifetime.Scoped)
-        where T : class, IDerivedValueProvider
-    {
+        where T : class, IDerivedValueProvider {
         ArgumentNullException.ThrowIfNull(services);
 
-        ServiceDescriptor descriptor = ServiceDescriptor.Describe(typeof(IDerivedValueProvider), typeof(T), lifetime);
+        var descriptor = ServiceDescriptor.Describe(typeof(IDerivedValueProvider), typeof(T), lifetime);
 
         // Prepend so custom providers come first in enumeration order.
         services.Insert(0, descriptor);
@@ -595,39 +569,32 @@ public static class ServiceCollectionExtensions
     private static void CollectCommandRegistration(
         Type type,
         BoundedContextAttribute? markerContext,
-        Dictionary<string, CommandGroup> commandGroups)
-    {
-        if (type.GetCustomAttribute<CommandAttribute>() is null)
-        {
+        Dictionary<string, CommandGroup> commandGroups) {
+        if (type.GetCustomAttribute<CommandAttribute>() is null) {
             return;
         }
 
         BoundedContextAttribute? commandContext = type.GetCustomAttribute<BoundedContextAttribute>();
         string? boundedContext = commandContext?.Name ?? markerContext?.Name;
-        if (string.IsNullOrWhiteSpace(boundedContext))
-        {
+        if (string.IsNullOrWhiteSpace(boundedContext)) {
             return;
         }
 
-        if (!commandGroups.TryGetValue(boundedContext, out CommandGroup? group))
-        {
+        if (!commandGroups.TryGetValue(boundedContext, out CommandGroup? group)) {
             group = new CommandGroup(commandContext?.DisplayLabel ?? markerContext?.DisplayLabel);
             commandGroups[boundedContext] = group;
         }
 
         string commandTypeName = type.FullName ?? type.Name;
-        if (!group.Commands.Contains(commandTypeName))
-        {
+        if (!group.Commands.Contains(commandTypeName)) {
             group.Commands.Add(commandTypeName);
         }
     }
 
     private static bool HasStaticManifestMember(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type type)
-    {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type type) {
         PropertyInfo? prop = type.GetProperty("Manifest", BindingFlags.Public | BindingFlags.Static);
-        if (prop is not null && prop.PropertyType == typeof(DomainManifest))
-        {
+        if (prop is not null && prop.PropertyType == typeof(DomainManifest)) {
             return true;
         }
 
@@ -635,8 +602,7 @@ public static class ServiceCollectionExtensions
         return field is not null && field.FieldType == typeof(DomainManifest);
     }
 
-    private sealed class CommandGroup
-    {
+    private sealed class CommandGroup {
 
         public CommandGroup(string? displayName) => DisplayName = displayName;
 
@@ -645,11 +611,9 @@ public static class ServiceCollectionExtensions
     }
 
     private sealed class ShellRequestLocalizationOptionsSetup(IOptions<FcShellOptions> shellOptions)
-        : IConfigureOptions<RequestLocalizationOptions>
-    {
+        : IConfigureOptions<RequestLocalizationOptions> {
 
-        public void Configure(RequestLocalizationOptions options)
-        {
+        public void Configure(RequestLocalizationOptions options) {
             ArgumentNullException.ThrowIfNull(options);
 
             FcShellOptions shell = shellOptions.Value;

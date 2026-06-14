@@ -1,8 +1,6 @@
-using System.Collections.Generic;
 using Bunit;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
-using Hexalith.FrontComposer.Shell.Tests;
 using Hexalith.FrontComposer.Shell.Components.DataGrid;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -16,18 +14,15 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// filter-summary gap (no dedicated test file existed at baseline 8036c3c). Culture pinned to
 /// <c>en</c> for resource-key stability.
 /// </summary>
-public sealed class FcFilterSummaryTests : BunitContext
-{
-    public FcFilterSummaryTests()
-    {
+public sealed class FcFilterSummaryTests : BunitContext {
+    public FcFilterSummaryTests() {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddLogging();
         _ = Services.AddLocalization();
     }
 
     [Fact]
-    public void RendersStatusRegionAndTestId_WithShowingPrefix_WhenAnyFilterActive()
-    {
+    public void RendersStatusRegionAndTestId_WithShowingPrefix_WhenAnyFilterActive() {
         using CultureScope _ = new("en");
         Dictionary<string, string> filters = new() { ["Name"] = "Acme" };
 
@@ -44,11 +39,9 @@ public sealed class FcFilterSummaryTests : BunitContext
     }
 
     [Fact]
-    public void EmitsOneClausePerActiveStatusColumnSearchAndSort()
-    {
+    public void EmitsOneClausePerActiveStatusColumnSearchAndSort() {
         using CultureScope _ = new("en");
-        Dictionary<string, string> filters = new()
-        {
+        Dictionary<string, string> filters = new() {
             ["Name"] = "Acme",
             [ReservedFilterKeys.StatusKey] = "Success",
             [ReservedFilterKeys.SearchKey] = "abc",
@@ -73,11 +66,9 @@ public sealed class FcFilterSummaryTests : BunitContext
     }
 
     [Fact]
-    public void ExcludesReservedPrefixedKeysFromColumnClauses()
-    {
+    public void ExcludesReservedPrefixedKeysFromColumnClauses() {
         using CultureScope _ = new("en");
-        Dictionary<string, string> filters = new()
-        {
+        Dictionary<string, string> filters = new() {
             [ReservedFilterKeys.StatusKey] = "Success",
         };
 
@@ -94,12 +85,11 @@ public sealed class FcFilterSummaryTests : BunitContext
     }
 
     [Fact]
-    public void VisibleForSortOnly_WithDescendingDirection_WhenNoFiltersActive()
-    {
+    public void VisibleForSortOnly_WithDescendingDirection_WhenNoFiltersActive() {
         // A non-default sort with no column/status/search filters still surfaces the summary, and the
         // descending direction renders its own clause text (complements the ascending+filters case).
         using CultureScope _ = new("en");
-        Dictionary<string, string> filters = new();
+        Dictionary<string, string> filters = [];
 
         IRenderedComponent<FcFilterSummary> cut = Render<FcFilterSummary>(parameters => parameters
             .Add(s => s.ViewKey, "acme:Orders")
@@ -115,10 +105,9 @@ public sealed class FcFilterSummaryTests : BunitContext
     }
 
     [Fact]
-    public void HiddenWhenNoFilterOrSortActive()
-    {
+    public void HiddenWhenNoFilterOrSortActive() {
         using CultureScope _ = new("en");
-        Dictionary<string, string> filters = new();
+        Dictionary<string, string> filters = [];
 
         IRenderedComponent<FcFilterSummary> cut = Render<FcFilterSummary>(parameters => parameters
             .Add(s => s.ViewKey, "acme:Orders")

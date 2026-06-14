@@ -14,9 +14,7 @@ namespace Hexalith.FrontComposer.Contracts.Schema;
 /// </summary>
 public sealed class SchemaMaterialValidationException : InvalidOperationException {
     public SchemaMaterialValidationException(SchemaMaterialValidationResult validation)
-        : base(validation?.MessageKey ?? "schema.material.invalid") {
-        Validation = validation ?? throw new ArgumentNullException(nameof(validation));
-    }
+        : base(validation?.MessageKey ?? "schema.material.invalid") => Validation = validation ?? throw new ArgumentNullException(nameof(validation));
 
     public SchemaMaterialValidationResult Validation { get; }
 }
@@ -299,14 +297,14 @@ public static class CanonicalSchemaMaterial {
                 case '‍': // zero-width joiner
                     continue;
                 case '\r':
-                    sb.Append('\n');
+                    _ = sb.Append('\n');
                     continue;
                 case '\u2028': // line separator
                 case '\u2029': // paragraph separator
-                    sb.Append('\n');
+                    _ = sb.Append('\n');
                     continue;
                 default:
-                    sb.Append(c);
+                    _ = sb.Append(c);
                     continue;
             }
         }
@@ -329,7 +327,7 @@ public static class CanonicalSchemaMaterial {
     }
 
     private static string Sha256Hex(string value) {
-        using SHA256 sha = SHA256.Create();
+        using var sha = SHA256.Create();
         byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(value));
         char[] chars = new char[bytes.Length * 2];
         const string Hex = "0123456789abcdef";

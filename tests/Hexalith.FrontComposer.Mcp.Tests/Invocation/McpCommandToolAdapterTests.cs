@@ -180,8 +180,8 @@ public sealed class McpCommandToolAdapterTests {
         await using ServiceProvider provider = BuildMcpHandlerServices(
             new LifecycleAwareCommandService(),
             configureServices: services => {
-                services.AddSingleton<IFrontComposerMcpTenantToolGate>(new ThrowingTenantToolGate());
-                services.AddSingleton<ILogger<FrontComposerMcpToolAdmissionService>>(logger);
+                _ = services.AddSingleton<IFrontComposerMcpTenantToolGate>(new ThrowingTenantToolGate());
+                _ = services.AddSingleton<ILogger<FrontComposerMcpToolAdmissionService>>(logger);
             });
         using IServiceScope scope = provider.CreateScope();
 
@@ -274,7 +274,7 @@ public sealed class McpCommandToolAdapterTests {
         await using ServiceProvider provider = BuildMcpHandlerServices(dispatcher, accessor);
         using IServiceScope scope = provider.CreateScope();
 
-        await InvokeCallToolHandlerAsync(
+        _ = await InvokeCallToolHandlerAsync(
             CallRequest(scope.ServiceProvider, "Billing.PayInvoiceCommand.Execute", Args("""{"Amount":42}""")),
             TestContext.Current.CancellationToken);
 
@@ -300,7 +300,7 @@ public sealed class McpCommandToolAdapterTests {
         await using ServiceProvider provider = BuildMcpHandlerServices(dispatcher);
         using IServiceScope scope = provider.CreateScope();
 
-        await InvokeCallToolHandlerAsync(
+        _ = await InvokeCallToolHandlerAsync(
             CallRequest(scope.ServiceProvider, "Billing.PayInvoiceCommand.Execute", Args("""{"Amount":42}""")),
             TestContext.Current.CancellationToken);
 
@@ -328,16 +328,16 @@ public sealed class McpCommandToolAdapterTests {
 
     private static ServiceProvider BuildServices(ICommandService dispatcher, IUlidFactory ulids) {
         ServiceCollection services = [];
-        services.AddSingleton(dispatcher);
-        services.AddSingleton(ulids);
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        services.AddSingleton<IFrontComposerMcpAgentContextAccessor, StaticAgentContextAccessor>();
-        services.AddSingleton<FrontComposerMcpCommandInvoker>();
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.AddSingleton(dispatcher);
+        _ = services.AddSingleton(ulids);
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpAgentContextAccessor, StaticAgentContextAccessor>();
+        _ = services.AddSingleton<FrontComposerMcpCommandInvoker>();
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         return services.BuildServiceProvider();
     }
 
@@ -346,20 +346,20 @@ public sealed class McpCommandToolAdapterTests {
         MutableAgentContextAccessor? accessor = null,
         Action<IServiceCollection>? configureServices = null) {
         ServiceCollection services = [];
-        services.AddSingleton<ICommandService>(dispatcher);
-        services.AddSingleton<IQueryService, NoopQueryService>();
-        services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
-        services.AddSingleton<IUlidFactory, CountingUlidFactory>();
-        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        services.AddSingleton<IFrontComposerMcpAgentContextAccessor>(accessor ?? new MutableAgentContextAccessor());
-        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
-        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        services.AddScoped<FrontComposerMcpToolAdmissionService>();
-        services.AddScoped<IFrontComposerMcpVisibleToolCatalogProvider>(sp => sp.GetRequiredService<FrontComposerMcpToolAdmissionService>());
-        services.AddScoped<FrontComposerMcpCommandInvoker>();
-        services.AddScoped<FrontComposerMcpLifecycleTracker>();
+        _ = services.AddSingleton<ICommandService>(dispatcher);
+        _ = services.AddSingleton<IQueryService, NoopQueryService>();
+        _ = services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
+        _ = services.AddSingleton<IUlidFactory, CountingUlidFactory>();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton<IFrontComposerMcpAgentContextAccessor>(accessor ?? new MutableAgentContextAccessor());
+        _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = services.AddScoped<FrontComposerMcpToolAdmissionService>();
+        _ = services.AddScoped<IFrontComposerMcpVisibleToolCatalogProvider>(sp => sp.GetRequiredService<FrontComposerMcpToolAdmissionService>());
+        _ = services.AddScoped<FrontComposerMcpCommandInvoker>();
+        _ = services.AddScoped<FrontComposerMcpLifecycleTracker>();
         configureServices?.Invoke(services);
         return services.BuildServiceProvider();
     }
@@ -661,9 +661,7 @@ public sealed class McpCommandToolAdapterTests {
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter) {
-            Entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
-        }
+            Func<TState, Exception?, string> formatter) => Entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
     }
 
     private sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);

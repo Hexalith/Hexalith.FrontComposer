@@ -1,23 +1,22 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Hexalith.FrontComposer.Cli;
 
-internal static class InspectCommand
-{
-    public static async Task<int> RunAsync(CommandOptions options, TextWriter output, TextWriter error, CancellationToken cancellationToken)
-    {
+internal static class InspectCommand {
+    public static async Task<int> RunAsync(CommandOptions options, TextWriter output, TextWriter error, CancellationToken cancellationToken) {
         string format = options.Get("format", "text");
         if (format is not ("text" or "json")) {
             await error.WriteLineAsync("--format must be 'text' or 'json'.").ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
         }
 
-        ProjectSelection project = ProjectSelection.Resolve(options, Environment.CurrentDirectory);
+        var project = ProjectSelection.Resolve(options, Environment.CurrentDirectory);
         if (!project.Success) {
             await error.WriteLineAsync(project.Error).ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
@@ -100,8 +99,7 @@ internal static class InspectCommand
             _ => -1,
         };
 
-    private static void RenderText(InspectReport report, TextWriter output)
-    {
+    private static void RenderText(InspectReport report, TextWriter output) {
         output.WriteLine($"Project: {OutputSanitizer.Sanitize(report.ProjectName)}");
         output.WriteLine($"Configuration: {OutputSanitizer.Sanitize(report.Configuration)}");
         output.WriteLine($"Framework: {OutputSanitizer.Sanitize(report.Framework)}");
@@ -123,8 +121,7 @@ internal sealed record InspectReport(
     string Configuration,
     string Framework,
     IReadOnlyList<GeneratedFileInfo> Files,
-    IReadOnlyList<InspectDiagnostic> Diagnostics)
-{
+    IReadOnlyList<InspectDiagnostic> Diagnostics) {
     public InspectSummary Summary => InspectSummary.From(Files, Diagnostics);
 }
 
@@ -135,8 +132,7 @@ internal sealed record InspectSummary(
     int Registrations,
     int McpManifestEntries,
     int Warnings,
-    int Errors)
-{
+    int Errors) {
     public static InspectSummary From(IReadOnlyList<GeneratedFileInfo> files, IReadOnlyList<InspectDiagnostic> diagnostics)
         => new(
             files.Count,
@@ -154,8 +150,7 @@ internal sealed record GeneratedFileInfo(
     GeneratedSourceFamily Family,
     string? RelatedType);
 
-internal enum GeneratedSourceFamily
-{
+internal enum GeneratedSourceFamily {
     ProjectionRazor,
     FluxorFeature,
     FluxorActions,
@@ -182,15 +177,13 @@ internal sealed record InspectDiagnostic(
     string Fix,
     string DocsLink);
 
-internal sealed record InspectLoadResult(bool Success, InspectReport? Report, string Error, int ExitCode)
-{
+internal sealed record InspectLoadResult(bool Success, InspectReport? Report, string Error, int ExitCode) {
     public static InspectLoadResult Ok(InspectReport report) => new(true, report, string.Empty, ExitCodes.Success);
 
     public static InspectLoadResult Fail(string error, int exitCode) => new(false, null, error, exitCode);
 }
 
-internal static class GeneratedOutputLoader
-{
+internal static class GeneratedOutputLoader {
     private const string GeneratedRoot = "generated";
     private const string FrontComposerGeneratedRoot = "HexalithFrontComposer";
 
@@ -201,8 +194,7 @@ internal static class GeneratedOutputLoader
         bool build,
         bool absolutePaths,
         TextWriter error,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         string projectFullPath = Path.GetFullPath(projectPath);
         string projectDirectory = Path.GetDirectoryName(projectFullPath)!;
 
@@ -250,7 +242,7 @@ internal static class GeneratedOutputLoader
                 ExitCodes.GeneratedOutputUnavailable);
         }
 
-        List<InspectDiagnostic> diagnostics = DiagnosticFileReader.Read(projectDirectory, generatedDirectory)
+        var diagnostics = DiagnosticFileReader.Read(projectDirectory, generatedDirectory)
             .OrderBy(x => x.Id, StringComparer.Ordinal)
             .ThenBy(x => x.RelativePath ?? string.Empty, StringComparer.Ordinal)
             .ToList();
@@ -272,8 +264,7 @@ internal static class GeneratedOutputLoader
         string configuration,
         string? framework,
         TextWriter error,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         ProcessStartInfo start = new("dotnet") {
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -313,8 +304,7 @@ internal static class GeneratedOutputLoader
         }
     }
 
-    internal static IReadOnlyList<string> CreateBuildArguments(string projectPath, string configuration, string? framework)
-    {
+    internal static IReadOnlyList<string> CreateBuildArguments(string projectPath, string configuration, string? framework) {
         List<string> args = ["build", projectPath, "--configuration", configuration];
         if (!string.IsNullOrWhiteSpace(framework)) {
             args.Add("--framework");
@@ -335,8 +325,7 @@ internal static class GeneratedOutputLoader
             GeneratedRoot,
             FrontComposerGeneratedRoot);
 
-    private static FrameworkSelection SelectFramework(string projectDirectory, string configuration, string? framework)
-    {
+    private static FrameworkSelection SelectFramework(string projectDirectory, string configuration, string? framework) {
         string configurationDirectory = Path.Combine(projectDirectory, "obj", configuration);
         if (!Directory.Exists(configurationDirectory)) {
             return FrameworkSelection.Fail(
@@ -378,8 +367,7 @@ internal static class GeneratedOutputLoader
             .Where(name => !string.IsNullOrWhiteSpace(name))
             .Order(StringComparer.Ordinal)!;
 
-    private static bool ProjectLooksFrontComposerAnnotated(string projectDirectory)
-    {
+    private static bool ProjectLooksFrontComposerAnnotated(string projectDirectory) {
         try {
             return Directory.EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
                 .Where(path => !PathUtilities.HasExcludedSegment(projectDirectory, path))
@@ -391,8 +379,7 @@ internal static class GeneratedOutputLoader
         }
     }
 
-    private static bool ContainsFrontComposerAttribute(string path)
-    {
+    private static bool ContainsFrontComposerAttribute(string path) {
         try {
             SyntaxTree tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path));
             return tree.GetRoot().DescendantNodes().OfType<AttributeSyntax>().Any(attribute => {
@@ -414,8 +401,7 @@ internal static class GeneratedOutputLoader
 
     private static readonly char[] InvalidFrameworkChars = ['/', '\\', ':', ';', '*', '?', '<', '>', '|', '"', '\'', '\0'];
 
-    private static bool IsValidFrameworkName(string framework)
-    {
+    private static bool IsValidFrameworkName(string framework) {
         if (string.IsNullOrWhiteSpace(framework) || framework.Length > 80 || framework != framework.Trim()) {
             return false;
         }
@@ -434,15 +420,13 @@ internal static class GeneratedOutputLoader
     }
 }
 
-internal sealed record FrameworkSelection(bool Success, string? Framework, string? GeneratedDirectory, string Error, int ExitCode)
-{
+internal sealed record FrameworkSelection(bool Success, string? Framework, string? GeneratedDirectory, string Error, int ExitCode) {
     public static FrameworkSelection Ok(string framework, string generatedDirectory) => new(true, framework, generatedDirectory, string.Empty, ExitCodes.Success);
 
     public static FrameworkSelection Fail(string error, int exitCode) => new(false, null, null, error, exitCode);
 }
 
-internal static class GeneratedFileClassifier
-{
+internal static class GeneratedFileClassifier {
     private static readonly (string Suffix, GeneratedSourceFamily Family)[] Suffixes = [
         (".CommandForm.g.razor.cs", GeneratedSourceFamily.CommandForm),
         ("CommandForm.g.razor.cs", GeneratedSourceFamily.CommandForm),
@@ -459,8 +443,7 @@ internal static class GeneratedFileClassifier
         (".g.razor.cs", GeneratedSourceFamily.ProjectionRazor),
     ];
 
-    public static GeneratedFileInfo Classify(string projectDirectory, string path, bool absolutePaths = false)
-    {
+    public static GeneratedFileInfo Classify(string projectDirectory, string path, bool absolutePaths = false) {
         string fileName = Path.GetFileName(path);
         if (fileName == "FrontComposerMcpManifest.g.cs") {
             return New(path, projectDirectory, fileName, GeneratedSourceFamily.McpManifest, null, absolutePaths);
@@ -489,10 +472,8 @@ internal static class GeneratedFileClassifier
         => new(absolutePaths ? Path.GetFullPath(path) : PathUtilities.ToProjectRelative(projectDirectory, path), fileName, family, relatedType);
 }
 
-internal static class TypeMatcher
-{
-    public static TypeMatchResult Filter(InspectReport report, string requestedType)
-    {
+internal static class TypeMatcher {
+    public static TypeMatchResult Filter(InspectReport report, string requestedType) {
         string sanitized = OutputSanitizer.Sanitize(requestedType);
         string[] known = report.Files
             .Select(x => x.RelatedType)
@@ -522,22 +503,20 @@ internal static class TypeMatcher
 
         string match = matches[0];
         InspectReport filtered = report with {
-            Files = report.Files.Where(x => x.RelatedType == match || x.RelatedType is null && x.Family is GeneratedSourceFamily.McpManifest or GeneratedSourceFamily.TemplateManifest).ToArray(),
+            Files = report.Files.Where(x => x.RelatedType == match || (x.RelatedType is null && x.Family is GeneratedSourceFamily.McpManifest or GeneratedSourceFamily.TemplateManifest)).ToArray(),
             Diagnostics = report.Diagnostics.Where(x => x.RelatedType == match || x.RelatedType is null).ToArray(),
         };
         return TypeMatchResult.Ok(filtered);
     }
 
-    private static string SimpleName(string metadataName)
-    {
+    private static string SimpleName(string metadataName) {
         int index = metadataName.LastIndexOf('.');
         return index < 0 ? metadataName : metadataName[(index + 1)..];
     }
 
     private const int MaxDistanceInputLength = 256;
 
-    private static int Distance(string left, string right)
-    {
+    private static int Distance(string left, string right) {
         // Bound closest-type suggestions so hostile generated metadata names cannot force
         // quadratic work across unbounded strings. The output remains a hint, not an exact scorer.
         ReadOnlySpan<char> l = left.AsSpan(0, Math.Min(left.Length, MaxDistanceInputLength));
@@ -564,23 +543,20 @@ internal static class TypeMatcher
     }
 }
 
-internal sealed record TypeMatchResult(bool Success, InspectReport? Report, string Error, int ExitCode)
-{
+internal sealed record TypeMatchResult(bool Success, InspectReport? Report, string Error, int ExitCode) {
     public static TypeMatchResult Ok(InspectReport report) => new(true, report, string.Empty, ExitCodes.Success);
 
     public static TypeMatchResult Fail(string error, int exitCode) => new(false, null, error, exitCode);
 }
 
-internal static class DiagnosticFileReader
-{
-    public static IEnumerable<InspectDiagnostic> Read(string projectDirectory, string generatedDirectory)
-    {
+internal static class DiagnosticFileReader {
+    public static IEnumerable<InspectDiagnostic> Read(string projectDirectory, string generatedDirectory) {
         List<InspectDiagnostic> result = [];
         foreach (string path in Directory.EnumerateFiles(generatedDirectory, "*.diagnostics.json", SearchOption.TopDirectoryOnly)
                      .Order(StringComparer.Ordinal)) {
             try {
                 using FileStream stream = File.OpenRead(path);
-                using JsonDocument document = JsonDocument.Parse(stream);
+                using var document = JsonDocument.Parse(stream);
                 JsonElement root = document.RootElement;
                 IEnumerable<JsonElement> entries = root.ValueKind == JsonValueKind.Array
                     ? root.EnumerateArray()
@@ -637,8 +613,7 @@ internal static class DiagnosticFileReader
             ? value.GetString() ?? string.Empty
             : string.Empty;
 
-    private static string NormalizePath(string path, string projectDirectory)
-    {
+    private static string NormalizePath(string path, string projectDirectory) {
         if (string.IsNullOrWhiteSpace(path)) {
             return string.Empty;
         }
@@ -666,8 +641,7 @@ internal static class DiagnosticFileReader
     }
 }
 
-internal static class InspectJson
-{
+internal static class InspectJson {
     public static object From(InspectReport report)
         => new {
             schemaVersion = "frontcomposer.cli.inspect.v1",

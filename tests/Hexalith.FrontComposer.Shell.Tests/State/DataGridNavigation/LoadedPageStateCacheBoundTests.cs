@@ -1,8 +1,4 @@
-#pragma warning disable CA2007
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -40,7 +36,7 @@ public sealed class LoadedPageStateCacheBoundTests {
     public void BoundAtN_HappyPath_20DistinctWrites_NoEviction() {
         CapturingLogger logger = new();
         LoadedPageReducers reducers = MakeReducers(maxCachedPages: 100, logger);
-        LoadedPageState state = new LoadedPageState();
+        var state = new LoadedPageState();
 
         List<TaskCompletionSource<object>> tcss = [];
         for (int i = 0; i < 20; i++) {
@@ -63,7 +59,7 @@ public sealed class LoadedPageStateCacheBoundTests {
     public void EvictionOnOverflow_FifoViaPageInsertionOrder_WithInformationLog() {
         CapturingLogger logger = new();
         LoadedPageReducers reducers = MakeReducers(maxCachedPages: 5, logger);
-        LoadedPageState state = new LoadedPageState();
+        var state = new LoadedPageState();
 
         int[] skips = [0, 20, 40, 60, 80, 100, 120, 140];
         foreach (int skip in skips) {
@@ -91,7 +87,7 @@ public sealed class LoadedPageStateCacheBoundTests {
     public void EvictedWhileVisible_DoesNotDisturbStateShape() {
         CapturingLogger logger = new();
         LoadedPageReducers reducers = MakeReducers(maxCachedPages: 3, logger);
-        LoadedPageState state = new LoadedPageState();
+        var state = new LoadedPageState();
 
         foreach (int skip in new[] { 0, 20, 40 }) {
             TaskCompletionSource<object> tcs = new();

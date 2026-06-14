@@ -7,8 +7,6 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
-using Hexalith.FrontComposer.Contracts.Rendering;
-using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
@@ -335,9 +333,7 @@ public sealed class CommandRendererWrapperIntegrationTests : CommandRendererTest
         public TaskCompletionSource AllowAcknowledge { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
 
         public async Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
-            where TCommand : class {
-            return await DispatchAsync(command, onLifecycleChange: null, cancellationToken).ConfigureAwait(false);
-        }
+            where TCommand : class => await DispatchAsync(command, onLifecycleChange: null, cancellationToken).ConfigureAwait(false);
 
         public async Task<CommandResult> DispatchAsync<TCommand>(
             TCommand command,

@@ -21,7 +21,6 @@ namespace Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
     private readonly ConcurrentDictionary<RegistryKey, RegistryEntry> _entries = new();
     private readonly ILogger<ProjectionSlotRegistry> _logger;
-    private readonly IReadOnlyCollection<ProjectionSlotDescriptor> _descriptorsSnapshot;
     private readonly ICustomizationContractRejectionLog? _rejectionLog;
 
     /// <summary>
@@ -52,11 +51,11 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
             }
         }
 
-        _descriptorsSnapshot = new ReadOnlyCollection<ProjectionSlotDescriptor>(visible);
+        Descriptors = new ReadOnlyCollection<ProjectionSlotDescriptor>(visible);
     }
 
     /// <inheritdoc />
-    public IReadOnlyCollection<ProjectionSlotDescriptor> Descriptors => _descriptorsSnapshot;
+    public IReadOnlyCollection<ProjectionSlotDescriptor> Descriptors { get; }
 
     /// <inheritdoc />
     public ProjectionSlotDescriptor? Resolve(Type projectionType, ProjectionRole? role, string fieldName) {

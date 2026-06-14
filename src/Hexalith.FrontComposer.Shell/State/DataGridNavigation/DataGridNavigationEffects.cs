@@ -7,7 +7,6 @@ using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
-using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.Logging;
@@ -158,7 +157,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
         string viewKey = action.ViewKey;
         CancellationTokenSource cts = new();
         CancellationTokenSource? previous = null;
-        _pending.AddOrUpdate(
+        _ = _pending.AddOrUpdate(
             viewKey,
             cts,
             (_, existing) => {
@@ -178,7 +177,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
         finally {
-            _pending.TryRemove(new KeyValuePair<string, CancellationTokenSource>(viewKey, cts));
+            _ = _pending.TryRemove(new KeyValuePair<string, CancellationTokenSource>(viewKey, cts));
             cts.Dispose();
         }
 
@@ -196,7 +195,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
 
         try {
             string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment, viewKey);
-            GridViewPersistenceBlob blob = GridViewPersistenceBlob.FromSnapshot(snapshot);
+            var blob = GridViewPersistenceBlob.FromSnapshot(snapshot);
             await _storage.SetAsync(key, blob).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
@@ -471,7 +470,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             IReadOnlyList<DomainManifest> manifests = _registry.GetManifests();
             foreach (DomainManifest manifest in manifests) {
                 if (!string.IsNullOrWhiteSpace(manifest.BoundedContext)) {
-                    result.Add(manifest.BoundedContext);
+                    _ = result.Add(manifest.BoundedContext);
                 }
             }
         }
@@ -557,9 +556,5 @@ public sealed class DataGridNavigationEffects : IDisposable {
     }
 
     // Retained for future source-gen migration (D18). Unused until Story 9-x.
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Performance",
-        "CA1823:Avoid unused private fields",
-        Justification = "JsonOptions is reserved for future JsonSerializable source-gen migration (D18).")]
     private static JsonSerializerOptions CurrentJsonOptions() => JsonOptions;
 }

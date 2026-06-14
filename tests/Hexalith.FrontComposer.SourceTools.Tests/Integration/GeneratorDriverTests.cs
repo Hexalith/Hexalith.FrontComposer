@@ -403,31 +403,25 @@ public partial class AllUnsupportedProjection
     }
 
     [Fact]
-    public void RunGenerators_ZeroFieldCommand_EmitsInlineRendererWithoutPage() {
-        VerifyCommandArtifacts(
+    public void RunGenerators_ZeroFieldCommand_EmitsInlineRendererWithoutPage() => VerifyCommandArtifacts(
             CommandTestSources.EmptyCommand,
             "TestDomain.EmptyCommand",
             expectedTreeCount: 9,
             shouldEmitPage: false);
-    }
 
     [Fact]
-    public void RunGenerators_OneFieldCommand_EmitsInlineRendererWithoutPage() {
-        VerifyCommandArtifacts(
+    public void RunGenerators_OneFieldCommand_EmitsInlineRendererWithoutPage() => VerifyCommandArtifacts(
             CommandTestSources.SingleStringFieldCommand,
             "TestDomain.SetNameCommand",
             expectedTreeCount: 9,
             shouldEmitPage: false);
-    }
 
     [Fact]
-    public void RunGenerators_TwoFieldCommand_EmitsCompactRendererWithoutPage() {
-        VerifyCommandArtifacts(
+    public void RunGenerators_TwoFieldCommand_EmitsCompactRendererWithoutPage() => VerifyCommandArtifacts(
             TwoFieldCommandSource,
             "TestDomain.TwoFieldCommand",
             expectedTreeCount: 9,
             shouldEmitPage: false);
-    }
 
     [Theory]
     [InlineData(1, "Inline", false)]
@@ -461,13 +455,11 @@ public partial class AllUnsupportedProjection
     }
 
     [Fact]
-    public void RunGenerators_FiveFieldCommand_EmitsFullPageRendererAndPage() {
-        VerifyCommandArtifacts(
+    public void RunGenerators_FiveFieldCommand_EmitsFullPageRendererAndPage() => VerifyCommandArtifacts(
             CommandTestSources.MultiFieldCommand,
             "TestDomain.PlaceOrderCommand",
             expectedTreeCount: 10,
             shouldEmitPage: true);
-    }
 
     [Fact]
     public void RunGenerators_DerivableFields_DoNotInflateCompactDensityOrEmitEditableInputs() {

@@ -2,8 +2,6 @@ using System.Text.Json;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 
 // ----------------------------------------------------------------------------
@@ -121,7 +119,7 @@ public sealed class Story12_4_RedPhaseDefTests {
         string fixturesPath = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
         string fixtureJson = File.ReadAllText(fixturesPath);
 
-        using JsonDocument fixtureDoc = JsonDocument.Parse(fixtureJson);
+        using var fixtureDoc = JsonDocument.Parse(fixtureJson);
         JsonElement? matchingCase = null;
         foreach (JsonElement caseElement in fixtureDoc.RootElement.GetProperty("cases").EnumerateArray()) {
             if (caseElement.TryGetProperty("name", out JsonElement nameElement)
@@ -163,7 +161,7 @@ public sealed class Story12_4_RedPhaseDefTests {
             ]);
             result.ExitCode.ShouldBe(0, result.Error);
 
-            using JsonDocument resultDoc = JsonDocument.Parse(File.ReadAllText(output));
+            using var resultDoc = JsonDocument.Parse(File.ReadAllText(output));
             JsonElement? compoundResult = null;
             foreach (JsonElement r in resultDoc.RootElement.GetProperty("results").EnumerateArray()) {
                 if (r.TryGetProperty("name", out JsonElement n)
@@ -181,7 +179,8 @@ public sealed class Story12_4_RedPhaseDefTests {
                 "AC24/Def22: classify-fixtures must report blocked for a dry-run that attempts a side effect (proves the classifier enforces the contract, not just that the fixture is correctly authored).");
             compoundResult.Value.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse(
                 "AC24/Def22: classify-fixtures must not authorize publishing for a dry-run that attempts a side effect.");
-        } finally {
+        }
+        finally {
             if (File.Exists(output)) {
                 File.Delete(output);
             }
@@ -267,7 +266,8 @@ public sealed class Story12_4_RedPhaseDefTests {
                 "AC30/Def23: verify-manifest --no-root must fail closed when release_definition_fingerprints is empty. The supplied manifest is otherwise valid; today this exits 0 because the fingerprints check is gated by `root is not None`.");
             (result.Output + result.Error).Contains("release_definition_fingerprints", StringComparison.Ordinal).ShouldBeTrue(
                 "AC30/Def23: the diagnostic must name the missing release_definition_fingerprints contract so operators can act.");
-        } finally {
+        }
+        finally {
             if (File.Exists(unsealedManifest)) {
                 File.Delete(unsealedManifest);
             }
@@ -291,7 +291,7 @@ public sealed class Story12_4_RedPhaseDefTests {
         string fixturesPath = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
         string fixtureJson = File.ReadAllText(fixturesPath);
 
-        using JsonDocument fixtureDoc = JsonDocument.Parse(fixtureJson);
+        using var fixtureDoc = JsonDocument.Parse(fixtureJson);
         JsonElement? matchingCase = null;
         foreach (JsonElement caseElement in fixtureDoc.RootElement.GetProperty("cases").EnumerateArray()) {
             if (caseElement.TryGetProperty("name", out JsonElement nameElement)
@@ -329,7 +329,7 @@ public sealed class Story12_4_RedPhaseDefTests {
             ]);
             result.ExitCode.ShouldBe(0, result.Error);
 
-            using JsonDocument resultDoc = JsonDocument.Parse(File.ReadAllText(output));
+            using var resultDoc = JsonDocument.Parse(File.ReadAllText(output));
             JsonElement emptyPackagesResult = resultDoc.RootElement.GetProperty("results").EnumerateArray()
                 .Single(r => r.GetProperty("name").GetString() == "packages-empty-array");
             emptyPackagesResult.GetProperty("classification").GetString().ShouldBe(
@@ -350,7 +350,8 @@ public sealed class Story12_4_RedPhaseDefTests {
             }
             diagnosticPresent.ShouldBeTrue(
                 "AC12/Def25: the typed `package rows are required` diagnostic must appear in grouped_reasons.blocking for the empty-packages case.");
-        } finally {
+        }
+        finally {
             if (File.Exists(output)) {
                 File.Delete(output);
             }
@@ -368,7 +369,7 @@ public sealed class Story12_4_RedPhaseDefTests {
         string root = CiGovernanceTests.RepositoryRoot();
         string fixturesPath = ReleaseReadinessFixturesPath(root);
 
-        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        using var fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
         JsonElement matchingCase = RequireFixtureCase(
             fixtureDoc.RootElement,
             "fallback-approved-at-equals-expires-at",
@@ -391,7 +392,8 @@ public sealed class Story12_4_RedPhaseDefTests {
             result.GetProperty("classification").GetString().ShouldBe("blocked");
             BlockingReasonsContain(result, "approved_at", "expires_at").ShouldBeTrue(
                 "Def102: the classifier diagnostic must name the approved_at/expires_at boundary.");
-        } finally {
+        }
+        finally {
             DeleteIfExists(output);
         }
     }
@@ -406,7 +408,7 @@ public sealed class Story12_4_RedPhaseDefTests {
         string root = CiGovernanceTests.RepositoryRoot();
         string fixturesPath = ReleaseReadinessFixturesPath(root);
 
-        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        using var fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
         JsonElement matchingCase = RequireFixtureCase(
             fixtureDoc.RootElement,
             "fallback-approved-at-365-day-boundary",
@@ -425,7 +427,8 @@ public sealed class Story12_4_RedPhaseDefTests {
             result.GetProperty("classification").GetString().ShouldBe("blocked");
             BlockingReasonsContain(result, "365").ShouldBeTrue(
                 "Def103: the classifier diagnostic must name the 365-day fallback approval boundary.");
-        } finally {
+        }
+        finally {
             DeleteIfExists(output);
         }
     }
@@ -441,7 +444,7 @@ public sealed class Story12_4_RedPhaseDefTests {
         string root = CiGovernanceTests.RepositoryRoot();
         string fixturesPath = ReleaseReadinessFixturesPath(root);
 
-        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        using var fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
         string[] caseNames = ["partial-publish-state-recovered", "partial-publish-state-full"];
         string[] states = ["recovered", "full"];
         for (int i = 0; i < caseNames.Length; i++) {
@@ -472,7 +475,8 @@ public sealed class Story12_4_RedPhaseDefTests {
                 result.GetProperty("classification").GetString().ShouldBe("blocked");
                 result.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse();
             }
-        } finally {
+        }
+        finally {
             DeleteIfExists(output);
         }
     }
@@ -487,7 +491,7 @@ public sealed class Story12_4_RedPhaseDefTests {
         string root = CiGovernanceTests.RepositoryRoot();
         string fixturesPath = ReleaseReadinessFixturesPath(root);
 
-        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        using var fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
         JsonElement stringTrueApproval = RequireFixtureCase(
             fixtureDoc.RootElement,
             "string-true-approval",
@@ -513,7 +517,8 @@ public sealed class Story12_4_RedPhaseDefTests {
             using JsonDocument resultDoc = ClassifyReleaseReadinessFixtures(root, fixturesPath, output);
             RequireClassifierResult(resultDoc.RootElement, "string-true-approval").GetProperty("classification").GetString().ShouldBe("blocked");
             RequireClassifierResult(resultDoc.RootElement, "concurrent-same-version-string-false").GetProperty("classification").GetString().ShouldBe("blocked");
-        } finally {
+        }
+        finally {
             DeleteIfExists(output);
         }
     }
@@ -529,7 +534,7 @@ public sealed class Story12_4_RedPhaseDefTests {
         string root = CiGovernanceTests.RepositoryRoot();
         string fixturesPath = ReleaseReadinessFixturesPath(root);
 
-        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        using var fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
         JsonElement credentialedUrl = RequireFixtureCase(
             fixtureDoc.RootElement,
             "credentialed-url-leakage",
@@ -562,7 +567,8 @@ public sealed class Story12_4_RedPhaseDefTests {
                 BlockingReasonsContain(result, "unsafe raw evidence").ShouldBeTrue(
                     $"Def106: `{caseName}` must surface the unsafe raw evidence diagnostic.");
             }
-        } finally {
+        }
+        finally {
             DeleteIfExists(output);
         }
     }
@@ -578,7 +584,7 @@ public sealed class Story12_4_RedPhaseDefTests {
         string root = CiGovernanceTests.RepositoryRoot();
         string fixturesPath = ReleaseReadinessFixturesPath(root);
 
-        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        using var fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
         JsonElement matchingCase = RequireFixtureCase(
             fixtureDoc.RootElement,
             "fallback-affected-artifact-mismatch",
@@ -602,7 +608,8 @@ public sealed class Story12_4_RedPhaseDefTests {
             result.GetProperty("classification").GetString().ShouldBe("blocked");
             BlockingReasonsContain(result, "affected_artifact").ShouldBeTrue(
                 "Def107: the classifier diagnostic must name the fallback affected_artifact mismatch.");
-        } finally {
+        }
+        finally {
             DeleteIfExists(output);
         }
     }

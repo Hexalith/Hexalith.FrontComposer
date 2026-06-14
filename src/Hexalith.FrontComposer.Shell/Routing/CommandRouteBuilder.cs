@@ -11,8 +11,7 @@ namespace Hexalith.FrontComposer.Shell.Routing;
 /// routing is a command-routing concern, NOT a keyboard-shortcut concern (D21 post-elicitation
 /// rationale).
 /// </remarks>
-public static class CommandRouteBuilder
-{
+public static class CommandRouteBuilder {
     /// <summary>
     /// Converts a PascalCase identifier into kebab-case (lowercase, hyphen-separated).
     /// </summary>
@@ -24,44 +23,37 @@ public static class CommandRouteBuilder
     /// </remarks>
     /// <param name="pascalCase">The input identifier (e.g., <c>"SubmitOrderCommand"</c>).</param>
     /// <returns>The kebab-cased form (e.g., <c>"submit-order-command"</c>).</returns>
-    public static string KebabCase(string pascalCase)
-    {
+    public static string KebabCase(string pascalCase) {
         ArgumentException.ThrowIfNullOrWhiteSpace(pascalCase);
 
         StringBuilder builder = new(pascalCase.Length + 8);
-        for (int i = 0; i < pascalCase.Length; i++)
-        {
+        for (int i = 0; i < pascalCase.Length; i++) {
             char ch = pascalCase[i];
-            if (ch == '.')
-            {
+            if (ch == '.') {
                 // Drop namespace separators — only the type name segment is the URL slug.
-                builder.Clear();
+                _ = builder.Clear();
                 continue;
             }
 
-            if (char.IsUpper(ch))
-            {
+            if (char.IsUpper(ch)) {
                 bool prevIsLower = i > 0 && char.IsLower(pascalCase[i - 1]);
                 bool prevIsDigit = i > 0 && char.IsDigit(pascalCase[i - 1]);
                 bool prevIsUpper = i > 0 && char.IsUpper(pascalCase[i - 1]);
                 bool nextIsLower = i + 1 < pascalCase.Length && char.IsLower(pascalCase[i + 1]);
                 bool boundary = prevIsLower || prevIsDigit || (prevIsUpper && nextIsLower);
-                if (boundary && builder.Length > 0)
-                {
-                    builder.Append('-');
+                if (boundary && builder.Length > 0) {
+                    _ = builder.Append('-');
                 }
 
-                builder.Append(char.ToLower(ch, CultureInfo.InvariantCulture));
+                _ = builder.Append(char.ToLower(ch, CultureInfo.InvariantCulture));
             }
-            else
-            {
-                builder.Append(char.ToLower(ch, CultureInfo.InvariantCulture));
+            else {
+                _ = builder.Append(char.ToLower(ch, CultureInfo.InvariantCulture));
             }
         }
 
         string kebab = builder.ToString();
-        if (string.IsNullOrWhiteSpace(kebab))
-        {
+        if (string.IsNullOrWhiteSpace(kebab)) {
             throw new ArgumentException($"KebabCase produced an empty slug from '{pascalCase}'.", nameof(pascalCase));
         }
 
@@ -74,8 +66,7 @@ public static class CommandRouteBuilder
     /// <param name="boundedContext">The bounded-context name.</param>
     /// <param name="commandTypeName">The fully qualified command type name.</param>
     /// <returns>A URL of the form <c>/domain/{kebab-bc}/{kebab-cmd}</c>.</returns>
-    public static string BuildRoute(string boundedContext, string commandTypeName)
-    {
+    public static string BuildRoute(string boundedContext, string commandTypeName) {
         ArgumentException.ThrowIfNullOrWhiteSpace(boundedContext);
         ArgumentException.ThrowIfNullOrWhiteSpace(commandTypeName);
         return $"/domain/{KebabCase(boundedContext)}/{KebabCase(commandTypeName)}";
@@ -87,10 +78,8 @@ public static class CommandRouteBuilder
     /// </summary>
     /// <param name="url">Candidate URL string.</param>
     /// <returns><see langword="true"/> when the URL is a safe internal route; <see langword="false"/> otherwise.</returns>
-    public static bool IsInternalRoute(string? url)
-    {
-        if (string.IsNullOrWhiteSpace(url))
-        {
+    public static bool IsInternalRoute(string? url) {
+        if (string.IsNullOrWhiteSpace(url)) {
             return false;
         }
 
@@ -98,8 +87,7 @@ public static class CommandRouteBuilder
         // injection if the URL is later serialised into a Set-Cookie / Location header. Must run
         // BEFORE Uri.UnescapeDataString so an encoded \r\n (e.g. "%0D%0A") is not decoded into a
         // real newline and then passed downstream.
-        if (url.AsSpan().IndexOfAny('\r', '\n', '\t') >= 0)
-        {
+        if (url.AsSpan().IndexOfAny('\r', '\n', '\t') >= 0) {
             return false;
         }
 
@@ -107,36 +95,30 @@ public static class CommandRouteBuilder
         // "/redirect?next=%68ttps://evil.com" (where %68 == 'h') does not slip through the literal
         // substring check below.
         string decoded;
-        try
-        {
+        try {
             decoded = Uri.UnescapeDataString(url);
         }
-        catch (UriFormatException)
-        {
+        catch (UriFormatException) {
             // Malformed percent encoding — treat as untrusted.
             return false;
         }
 
-        if (ContainsEmbeddedScheme(decoded))
-        {
+        if (ContainsEmbeddedScheme(decoded)) {
             return false;
         }
 
         // Re-check control chars on the decoded form as well (belt + braces).
-        if (decoded.AsSpan().IndexOfAny('\r', '\n', '\t') >= 0)
-        {
+        if (decoded.AsSpan().IndexOfAny('\r', '\n', '\t') >= 0) {
             return false;
         }
 
         // Reject Windows-style backslash and absolute URLs (any scheme).
-        if (url.Contains('\\', StringComparison.Ordinal) || decoded.Contains('\\', StringComparison.Ordinal))
-        {
+        if (url.Contains('\\', StringComparison.Ordinal) || decoded.Contains('\\', StringComparison.Ordinal)) {
             return false;
         }
 
         // Must start with a single slash.
-        if (!url.StartsWith('/'))
-        {
+        if (!url.StartsWith('/')) {
             return false;
         }
 

@@ -2,8 +2,8 @@ using System.Text;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Registration;
-using Hexalith.FrontComposer.Shell.Routing;
 using Hexalith.FrontComposer.Shell.Registration;
+using Hexalith.FrontComposer.Shell.Routing;
 
 using Microsoft.Extensions.Logging;
 
@@ -107,7 +107,7 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
         var matches = manifests
             .SelectMany(m => m.Commands
                 .Where(c => CommandMatches(c, explicitCommandName))
-                .Select(c => (BoundedContext: m.BoundedContext, Command: c)))
+                .Select(c => (m.BoundedContext, Command: c)))
             .Where(x => _registry.HasFullPageRoute(x.Command))
             .Where(x => _registry.IsCommandWritable(x.Command))
             .OrderBy(x => x.BoundedContext, StringComparer.Ordinal)
@@ -178,7 +178,7 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
         // matches vs non-matches, and order each partition alphabetically. The verb-prefix
         // partition wins (matches first); within each partition, alphabetical by simple type name.
         var writableReachable = matchingManifests
-            .SelectMany(m => m.Commands.Select(c => (BoundedContext: m.BoundedContext, Command: c)))
+            .SelectMany(m => m.Commands.Select(c => (m.BoundedContext, Command: c)))
             .Where(x => _registry.HasFullPageRoute(x.Command))
             .Where(x => _registry.IsCommandWritable(x.Command))
             .ToList();

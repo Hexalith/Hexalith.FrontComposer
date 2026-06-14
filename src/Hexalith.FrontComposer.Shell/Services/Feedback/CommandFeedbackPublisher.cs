@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace Hexalith.FrontComposer.Shell.Services.Feedback;
 
 /// <summary>
@@ -10,7 +7,7 @@ namespace Hexalith.FrontComposer.Shell.Services.Feedback;
 /// </summary>
 public sealed class CommandFeedbackPublisher : ICommandFeedbackPublisher {
     private readonly object _sync = new();
-    private readonly List<Action<CommandFeedbackWarning>> _handlers = new();
+    private readonly List<Action<CommandFeedbackWarning>> _handlers = [];
 
     /// <inheritdoc />
     public void PublishWarning(CommandFeedbackWarning warning) {

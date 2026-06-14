@@ -16,7 +16,7 @@ public sealed class IActionQueueProjectionCatalogContractTests {
         Type interfaceType = typeof(IActionQueueProjectionCatalog);
 
         System.Reflection.PropertyInfo? property = interfaceType.GetProperty("ActionQueueTypes");
-        property.ShouldNotBeNull();
+        _ = property.ShouldNotBeNull();
         property!.PropertyType.ShouldBe(typeof(IReadOnlyList<Type>));
         property.CanRead.ShouldBeTrue();
         property.CanWrite.ShouldBeFalse();

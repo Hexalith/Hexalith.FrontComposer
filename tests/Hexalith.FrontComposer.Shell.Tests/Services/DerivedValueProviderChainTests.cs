@@ -102,7 +102,7 @@ public class DerivedValueProviderChainTests {
     // 7. LastUsedValueProvider — positive (storage hit)
     [Fact]
     public async Task LastUsed_Positive_StorageHit() {
-        var storage = Substitute.For<IStorageService>();
+        IStorageService storage = Substitute.For<IStorageService>();
         string key = FrontComposerStorageKey.Build("t1", "alice@example.com", typeof(TestCommand).FullName!, "Note");
         storage.GetAsync<object?>(key, Arg.Any<CancellationToken>()).Returns(Task.FromResult<object?>("stored-note"));
         var p = new LastUsedValueProvider(storage, StubUser());
@@ -114,7 +114,7 @@ public class DerivedValueProviderChainTests {
     // 8. LastUsedValueProvider — miss (storage returns null)
     [Fact]
     public async Task LastUsed_Miss_StorageReturnsNull_ReturnsNone() {
-        var storage = Substitute.For<IStorageService>();
+        IStorageService storage = Substitute.For<IStorageService>();
         storage.GetAsync<object?>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<object?>(null));
         var p = new LastUsedValueProvider(storage, StubUser());
         DerivedValueResult r = await p.ResolveAsync(typeof(TestCommand), "Note", null, TestContext.Current.CancellationToken);
@@ -164,7 +164,7 @@ public class DerivedValueProviderChainTests {
     // 13. ExplicitDefault beats LastUsed
     [Fact]
     public async Task ChainOrder_ExplicitDefaultBeatsLastUsed_ForAmount() {
-        var storage = Substitute.For<IStorageService>();
+        IStorageService storage = Substitute.For<IStorageService>();
         storage.GetAsync<object?>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<object?>(777));
         DerivedValueResult result = await ResolveChain("Amount", null,
             new ExplicitDefaultValueProvider(),
@@ -175,7 +175,7 @@ public class DerivedValueProviderChainTests {
     // 14. LastUsed beats ConstructorDefault
     [Fact]
     public async Task ChainOrder_LastUsedBeatsConstructorDefault_ForNote() {
-        var storage = Substitute.For<IStorageService>();
+        IStorageService storage = Substitute.For<IStorageService>();
         storage.GetAsync<object?>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<object?>("stored-note"));
         DerivedValueResult result = await ResolveChain("Note", null,
             new LastUsedValueProvider(storage, StubUser()),
@@ -187,7 +187,7 @@ public class DerivedValueProviderChainTests {
     [Fact]
     public async Task ChainOrder_PrependedCustomProvider_BeatsBuiltins() {
         var custom = new DelegateProvider((_, _) => new DerivedValueResult(true, "custom-wins"));
-        var storage = Substitute.For<IStorageService>();
+        IStorageService storage = Substitute.For<IStorageService>();
         storage.GetAsync<object?>(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns(Task.FromResult<object?>("from-storage"));
         DerivedValueResult result = await ResolveChain("Note", null,
             custom,
@@ -214,7 +214,7 @@ public class DerivedValueProviderChainTests {
     // 17. LastUsed_NullTenantId_RefusesRead_ReturnsHasValueFalse
     [Fact]
     public async Task LastUsed_NullTenantId_RefusesRead_ReturnsNone() {
-        var storage = Substitute.For<IStorageService>();
+        IStorageService storage = Substitute.For<IStorageService>();
         var p = new LastUsedValueProvider(storage, StubUser(tenant: null));
         DerivedValueResult r = await p.ResolveAsync(typeof(TestCommand), "Note", null, TestContext.Current.CancellationToken);
         r.HasValue.ShouldBeFalse();
@@ -224,7 +224,7 @@ public class DerivedValueProviderChainTests {
     // 18. LastUsed_EmptyUserId_RefusesWrite_PublishesDevDiagnosticOncePerCircuit
     [Fact]
     public async Task LastUsed_EmptyUserId_RefusesWrite_PublishesDevDiagnosticOncePerCircuit() {
-        var storage = Substitute.For<IStorageService>();
+        IStorageService storage = Substitute.For<IStorageService>();
         var sink = new InMemoryDiagnosticSink(NullLogger<InMemoryDiagnosticSink>());
         var p = new LastUsedValueProvider(storage, StubUser(user: ""), sink);
 
@@ -238,7 +238,7 @@ public class DerivedValueProviderChainTests {
 
     [Fact]
     public async Task LastUsed_Record_NullValue_RemovesStoredKey() {
-        var storage = Substitute.For<IStorageService>();
+        IStorageService storage = Substitute.For<IStorageService>();
         var p = new LastUsedValueProvider(storage, StubUser());
         CancellationToken ct = TestContext.Current.CancellationToken;
 
@@ -264,7 +264,7 @@ public class DerivedValueProviderChainTests {
         const string propertyName = "SomeProperty";
 
         string key = FrontComposerStorageKey.Build(tenantRaw, userRaw, commandFqn, propertyName);
-        var parts = FrontComposerStorageKey.TryParse(key);
+        (string TenantCanon, string UserCanon, string CommandTypeFqn, string PropertyName)? parts = FrontComposerStorageKey.TryParse(key);
         string expectedTenantCanon = Uri.EscapeDataString(tenantRaw.Trim().Normalize(NormalizationForm.FormC));
         string normalizedUser = userRaw.Trim().Normalize(NormalizationForm.FormC);
         string expectedUserCanon = Uri.EscapeDataString(

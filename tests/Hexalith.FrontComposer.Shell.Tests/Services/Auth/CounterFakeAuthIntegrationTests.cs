@@ -1,12 +1,6 @@
-using Hexalith.FrontComposer.Contracts.Rendering;
-
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 
 using Shouldly;
-
-using Xunit;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Services.Auth;
 

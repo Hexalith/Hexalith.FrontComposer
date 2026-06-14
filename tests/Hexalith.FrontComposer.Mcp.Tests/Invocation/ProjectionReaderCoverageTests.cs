@@ -1,4 +1,3 @@
-using System.Globalization;
 using System.Security.Claims;
 
 using Hexalith.FrontComposer.Contracts.Communication;
@@ -26,7 +25,7 @@ public sealed class ProjectionReaderCoverageTests {
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownResource);
         result.Text.ShouldBe("Projection resource is not available.");
-        result.StructuredContent.ShouldNotBeNull();
+        _ = result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_resource");
         result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe("HFC-MCP-PROJECTION-UNKNOWN-RESOURCE");
     }
@@ -46,13 +45,13 @@ public sealed class ProjectionReaderCoverageTests {
     public async Task SecondProjection_RendersIsoDates_AndEscapesPipeAndBacktick() {
         // AC9 second projection — covers DateTimeOffset rendering and SanitizeCell escape rules.
         ServiceCollection sc = new();
-        sc.AddSingleton<IQueryService>(new EventStreamQueryService());
-        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(EventManifest()));
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton<IQueryService>(new EventStreamQueryService());
+        _ = sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(EventManifest()));
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         ServiceProvider provider = sc.BuildServiceProvider();
-        var reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
+        FrontComposerMcpProjectionReader reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
 
         FrontComposerMcpResult result = await reader.ReadAsync(
             "frontcomposer://Audit/projections/EventStreamProjection",
@@ -92,13 +91,13 @@ public sealed class ProjectionReaderCoverageTests {
         // P-12 — IEnumerable<int> is not IEnumerable<object> via covariance, but the reader
         // must still render value-typed rows. Use a struct projection.
         ServiceCollection sc = new();
-        sc.AddSingleton<IQueryService>(new ValueTypeQueryService());
-        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(MetricManifest()));
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton<IQueryService>(new ValueTypeQueryService());
+        _ = sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(MetricManifest()));
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         ServiceProvider provider = sc.BuildServiceProvider();
-        var reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
+        FrontComposerMcpProjectionReader reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
 
         FrontComposerMcpResult result = await reader.ReadAsync(
             "frontcomposer://Ops/projections/MetricProjection",
@@ -114,11 +113,11 @@ public sealed class ProjectionReaderCoverageTests {
         where T : class, IQueryService, new() {
         queryService = new T();
         ServiceCollection sc = new();
-        sc.AddSingleton<IQueryService>(queryService);
-        sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(EventManifest()));
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton<IQueryService>(queryService);
+        _ = sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(EventManifest()));
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         ServiceProvider provider = sc.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
     }

@@ -92,8 +92,8 @@ public sealed class DiagnosticCatalogTests {
         // every constant whose number falls in the analyzer range (HFC1010-HFC1099) and is
         // NOT explicitly marked "Reserved" in FcDiagnosticIds doc comments has a matching
         // descriptor field. This catches accidental constant deletions.
-        HashSet<string> descriptorIds = DiagnosticDescriptorFields().Select(d => d.Id).ToHashSet(StringComparer.Ordinal);
-        HashSet<string> constantIds = TypeIdConstants(typeof(FcDiagnosticIds)).ToHashSet(StringComparer.Ordinal);
+        var descriptorIds = DiagnosticDescriptorFields().Select(d => d.Id).ToHashSet(StringComparer.Ordinal);
+        var constantIds = TypeIdConstants(typeof(FcDiagnosticIds)).ToHashSet(StringComparer.Ordinal);
 
         // Spot-check: HFC1050-HFC1055 are known analyzer IDs that must be in BOTH.
         foreach (string id in new[] { "HFC1050", "HFC1051", "HFC1052", "HFC1053", "HFC1054", "HFC1055" }) {

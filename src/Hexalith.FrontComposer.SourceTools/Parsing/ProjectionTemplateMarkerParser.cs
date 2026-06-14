@@ -2,7 +2,6 @@ using System.Collections.Immutable;
 using System.Globalization;
 
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Hexalith.FrontComposer.SourceTools.Parsing;
 
@@ -407,7 +406,7 @@ public static class ProjectionTemplateMarkerParser {
     }
 
     private static ContractVersion Unpack(int packed)
-        => new(packed / 1_000_000, (packed / 1_000) % 1_000, packed % 1_000);
+        => new(packed / 1_000_000, packed / 1_000 % 1_000, packed % 1_000);
 
     private static bool TryResolveEnumMemberName(
         IAssemblySymbol assembly,

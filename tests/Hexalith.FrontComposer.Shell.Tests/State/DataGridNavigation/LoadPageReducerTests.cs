@@ -1,7 +1,5 @@
 #pragma warning disable CA2007
 using System.Collections.Immutable;
-using System.Threading;
-using System.Threading.Tasks;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -86,7 +84,7 @@ public sealed class LoadPageReducerTests {
         TaskCompletionSource<object> tcs20 = new();
         TaskCompletionSource<object> tcsOther = new();
 
-        LoadedPageState mid = new LoadedPageState();
+        var mid = new LoadedPageState();
         mid = LoadedPageReducers.ReduceLoadPage(mid, MakeLoadPage(ViewKey, 0, tcs0));
         mid = LoadedPageReducers.ReduceLoadPage(mid, MakeLoadPage(ViewKey, 20, tcs20));
         mid = LoadedPageReducers.ReduceLoadPage(mid, MakeLoadPage("other:Proj", 0, tcsOther));
@@ -127,7 +125,7 @@ public sealed class LoadPageReducerTests {
     public void LaneLatch_DoesNotOscillate_OnSecondaryLoadPageDispatches() {
         TaskCompletionSource<object> first = new();
         TaskCompletionSource<object> second = new();
-        LoadedPageState state = new LoadedPageState();
+        var state = new LoadedPageState();
 
         // First dispatch latches server-side lane.
         state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 0, first));

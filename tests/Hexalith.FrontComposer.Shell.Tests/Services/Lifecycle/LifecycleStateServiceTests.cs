@@ -10,10 +10,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle;
 /// <see cref="LifecycleStateService"/>.
 /// </summary>
 public class LifecycleStateServiceTests {
-    private static LifecycleStateService Create(int cacheCap = 1024) {
-        return new LifecycleStateService(
+    private static LifecycleStateService Create(int cacheCap = 1024) => new(
             Microsoft.Extensions.Options.Options.Create(new LifecycleOptions { MessageIdCacheCapacity = cacheCap }));
-    }
 
     // ----- Task 4.9 — Behavioural (6 tests) ---------------------------------
 
@@ -76,7 +74,7 @@ public class LifecycleStateServiceTests {
         service.Transition("c4", CommandLifecycleState.Submitting);
         using IDisposable _ = service.Subscribe("c4", _ => { });
 
-        Should.NotThrow(() => service.Dispose());
+        Should.NotThrow(service.Dispose);
 
         service.GetActiveCorrelationIds().ShouldBeEmpty();
     }
@@ -215,9 +213,9 @@ public class LifecycleStateServiceTests {
     public void MultipleSubscribers_EachReceiveTerminalExactlyOnce() {
         using LifecycleStateService service = Create();
         int aCount = 0, bCount = 0, cCount = 0;
-        using IDisposable s1 = service.Subscribe("c13", t => { if (t.NewState == CommandLifecycleState.Confirmed) aCount++; });
-        using IDisposable s2 = service.Subscribe("c13", t => { if (t.NewState == CommandLifecycleState.Confirmed) bCount++; });
-        using IDisposable s3 = service.Subscribe("c13", t => { if (t.NewState == CommandLifecycleState.Confirmed) cCount++; });
+        using IDisposable s1 = service.Subscribe("c13", t => { if (t.NewState == CommandLifecycleState.Confirmed) { aCount++; } });
+        using IDisposable s2 = service.Subscribe("c13", t => { if (t.NewState == CommandLifecycleState.Confirmed) { bCount++; } });
+        using IDisposable s3 = service.Subscribe("c13", t => { if (t.NewState == CommandLifecycleState.Confirmed) { cCount++; } });
 
         service.Transition("c13", CommandLifecycleState.Submitting);
         service.Transition("c13", CommandLifecycleState.Acknowledged, "M");

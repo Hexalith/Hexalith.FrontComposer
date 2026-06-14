@@ -204,7 +204,7 @@ public sealed class EventStoreCommandClient(
         => JsonSerializer.SerializeToElement(command, EventStoreRequestContent.JsonOptions);
 
     private static async Task DelayBeforeRetryAsync(FcShellOptions options, CancellationToken cancellationToken) {
-        TimeSpan delay = TimeSpan.FromMilliseconds(options.CommandDispatchRetryDelayMs);
+        var delay = TimeSpan.FromMilliseconds(options.CommandDispatchRetryDelayMs);
         await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
     }
 

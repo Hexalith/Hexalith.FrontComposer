@@ -41,7 +41,7 @@ public sealed class InMemoryDiagnosticSink : IDiagnosticSink {
         bool firstTime;
         lock (_gate) {
             firstTime = _seenCodesThisCircuit.Add(evt.Code);
-            _events.AddFirst(evt);
+            _ = _events.AddFirst(evt);
             while (_events.Count > _capacity) {
                 _events.RemoveLast();
             }

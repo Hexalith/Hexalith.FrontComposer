@@ -1,9 +1,9 @@
+using System.Globalization;
+
 using Counter.Domain;
 using Counter.Specimens.Domain;
 
 using Fluxor;
-
-using System.Globalization;
 
 namespace Counter.Specimens;
 

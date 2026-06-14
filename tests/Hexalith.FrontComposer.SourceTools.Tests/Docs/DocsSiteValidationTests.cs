@@ -16,7 +16,7 @@ public sealed partial class DocsSiteValidationTests {
 
     [Fact]
     public void ToolManifestPinsDocfxVersion() {
-        using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(ProjectRoot(), ".config", "dotnet-tools.json")));
+        using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(ProjectRoot(), ".config", "dotnet-tools.json")));
         string version = manifest.RootElement
             .GetProperty("tools")
             .GetProperty("docfx")
@@ -78,7 +78,7 @@ public sealed partial class DocsSiteValidationTests {
 
     [Fact]
     public void DiagnosticRegistryEntriesHavePublishedPagesWithRequiredSections() {
-        using JsonDocument registry = JsonDocument.Parse(File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "diagnostics", "diagnostic-registry.json")));
+        using var registry = JsonDocument.Parse(File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "diagnostics", "diagnostic-registry.json")));
 
         foreach (JsonElement diagnostic in registry.RootElement.GetProperty("diagnostics").EnumerateArray()) {
             string lifecycle = diagnostic.GetProperty("lifecycle").GetString()!;
@@ -112,8 +112,8 @@ public sealed partial class DocsSiteValidationTests {
         string path = Path.Combine(ProjectRoot(), "docs", "validation", "producer-fingerprints.json");
         File.Exists(path).ShouldBeTrue("Docs validation must compare producer inputs against a checked-in fingerprint baseline.");
 
-        using JsonDocument baseline = JsonDocument.Parse(File.ReadAllText(path));
-        HashSet<string> paths = baseline.RootElement
+        using var baseline = JsonDocument.Parse(File.ReadAllText(path));
+        var paths = baseline.RootElement
             .GetProperty("producers")
             .EnumerateArray()
             .Select(item => item.GetProperty("path").GetString()!)

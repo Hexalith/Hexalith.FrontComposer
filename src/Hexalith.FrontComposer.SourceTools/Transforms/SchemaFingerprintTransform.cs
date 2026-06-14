@@ -232,23 +232,23 @@ public static class SchemaFingerprintTransform {
         // their cells inside FieldLine; static identifiers (family/protocol/family-keys) are
         // author-controlled and do not require escaping.
         var sb = new StringBuilder(1024);
-        sb.Append("root=frontcomposer.schema.contract.v1\n");
-        sb.Append("family=").Append(EscapeDelimited(Normalize(family))).Append('\n');
-        sb.Append("contractId=").Append(EscapeDelimited(Normalize(contractId))).Append('\n');
-        sb.Append("schemaVersion=").Append(EscapeDelimited(Normalize(schemaVersion))).Append('\n');
-        sb.Append("boundedContext=").Append(EscapeDelimited(Normalize(boundedContext))).Append('\n');
-        sb.Append("fqn=").Append(EscapeDelimited(Normalize(fullyQualifiedName))).Append('\n');
-        sb.Append("protocol=").Append(EscapeDelimited(Normalize(protocolIdentifier))).Append('\n');
-        sb.Append("collections=fields:non-structural-sorted:name\n");
+        _ = sb.Append("root=frontcomposer.schema.contract.v1\n");
+        _ = sb.Append("family=").Append(EscapeDelimited(Normalize(family))).Append('\n');
+        _ = sb.Append("contractId=").Append(EscapeDelimited(Normalize(contractId))).Append('\n');
+        _ = sb.Append("schemaVersion=").Append(EscapeDelimited(Normalize(schemaVersion))).Append('\n');
+        _ = sb.Append("boundedContext=").Append(EscapeDelimited(Normalize(boundedContext))).Append('\n');
+        _ = sb.Append("fqn=").Append(EscapeDelimited(Normalize(fullyQualifiedName))).Append('\n');
+        _ = sb.Append("protocol=").Append(EscapeDelimited(Normalize(protocolIdentifier))).Append('\n');
+        _ = sb.Append("collections=fields:non-structural-sorted:name\n");
         foreach (string field in fields.OrderBy(f => f, StringComparer.Ordinal)) {
             // Field lines are pre-escaped per cell inside FieldLine (commands/resources); for
             // hand-authored static field strings (lifecycle/markdown/skill-corpus), the
             // surface here is author-controlled, so newline normalization is sufficient.
-            sb.Append("field=").Append(Normalize(field)).Append('\n');
+            _ = sb.Append("field=").Append(Normalize(field)).Append('\n');
         }
 
         foreach (KeyValuePair<string, string> pair in metadata.OrderBy(p => p.Key, StringComparer.Ordinal)) {
-            sb.Append("metadata.")
+            _ = sb.Append("metadata.")
                 .Append(EscapeDelimited(Normalize(pair.Key)))
                 .Append('=')
                 .Append(EscapeDelimited(Normalize(pair.Value)))
@@ -325,17 +325,14 @@ public static class SchemaFingerprintTransform {
 
         var sb = new StringBuilder(value.Length);
         foreach (char c in value) {
-            switch (c) {
-                case '\\': sb.Append("\\\\"); break;
-                case '=': sb.Append("\\="); break;
-                case '|': sb.Append("\\|"); break;
-                case ':': sb.Append("\\:"); break;
-                case '\n':
-                case '\r':
-                case '\u2028':
-                case '\u2029': sb.Append("\\n"); break;
-                default: sb.Append(c); break;
-            }
+            _ = c switch {
+                '\\' => sb.Append("\\\\"),
+                '=' => sb.Append("\\="),
+                '|' => sb.Append("\\|"),
+                ':' => sb.Append("\\:"),
+                '\n' or '\r' or '\u2028' or '\u2029' => sb.Append("\\n"),
+                _ => sb.Append(c),
+            };
         }
 
         return sb.ToString();
@@ -345,7 +342,7 @@ public static class SchemaFingerprintTransform {
         => string.Join("|", fingerprints.Select(f => EscapeDelimited(f.AlgorithmId) + ":" + EscapeDelimited(f.Value)).OrderBy(v => v, StringComparer.Ordinal));
 
     private static string Sha256Hex(string value) {
-        using SHA256 sha = SHA256.Create();
+        using var sha = SHA256.Create();
         byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(value));
         char[] chars = new char[bytes.Length * 2];
         const string Hex = "0123456789abcdef";

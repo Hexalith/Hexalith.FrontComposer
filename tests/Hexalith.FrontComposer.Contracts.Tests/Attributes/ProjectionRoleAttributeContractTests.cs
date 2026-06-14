@@ -17,12 +17,11 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Attributes;
 /// </summary>
 public class ProjectionRoleAttributeContractTests {
     [Fact]
-    public void AttributeNameMatchesPrdFR4() {
+    public void AttributeNameMatchesPrdFR4() =>
         // ADR-051 / D1 — the attribute name is ProjectionRoleAttribute (not
         // ProjectionRoleHintAttribute as Epic 4 AC drift would suggest). Story 3-5's
         // IActionQueueProjectionCatalog depends on this exact name.
         typeof(ProjectionRoleAttribute).Name.ShouldBe("ProjectionRoleAttribute");
-    }
 
     [Fact]
     public void WhenStatePropertyExistsAsOptional() {
@@ -30,7 +29,7 @@ public class ProjectionRoleAttributeContractTests {
         // a second ctor argument) so pre-4-1 annotations [ProjectionRole(role)] remain
         // source-compatible.
         PropertyInfo? prop = typeof(ProjectionRoleAttribute).GetProperty("WhenState");
-        prop.ShouldNotBeNull();
+        _ = prop.ShouldNotBeNull();
         prop!.PropertyType.ShouldBe(typeof(string));  // string? is still typeof(string) at reflection time.
         prop.CanRead.ShouldBeTrue();
         prop.CanWrite.ShouldBeTrue(); // init-only is writable via reflection

@@ -59,11 +59,9 @@ public static class ETagCacheDiscriminator {
     /// </summary>
     /// <param name="projectionTypeFqn">Fully-qualified projection type name (compile-time identity).</param>
     /// <returns>The safe discriminator, or <see langword="null"/> when the type FQN cannot be allowlisted.</returns>
-    public static string? ForActionQueueCount(string? projectionTypeFqn) {
-        return IsSafeTypeFqn(projectionTypeFqn)
+    public static string? ForActionQueueCount(string? projectionTypeFqn) => IsSafeTypeFqn(projectionTypeFqn)
             ? string.Concat(ActionQueueCountLanePrefix, ":", projectionTypeFqn)
             : null;
-    }
 
     /// <summary>
     /// Validates a discriminator returned by this builder, or supplied externally, against the

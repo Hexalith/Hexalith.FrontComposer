@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Xml.Linq;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -14,10 +15,8 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace Hexalith.FrontComposer.Cli;
 
-internal static class MigrationCommand
-{
-    public static async Task<int> RunAsync(CommandOptions options, TextWriter output, TextWriter error, CancellationToken cancellationToken)
-    {
+internal static class MigrationCommand {
+    public static async Task<int> RunAsync(CommandOptions options, TextWriter output, TextWriter error, CancellationToken cancellationToken) {
         string format = options.Get("format", "text");
         if (format is not ("text" or "json")) {
             await error.WriteLineAsync("--format must be 'text' or 'json'.").ConfigureAwait(false);
@@ -38,7 +37,7 @@ internal static class MigrationCommand
             return ExitCodes.InvalidArguments;
         }
 
-        ProjectSelection project = ProjectSelection.Resolve(options, Environment.CurrentDirectory);
+        var project = ProjectSelection.Resolve(options, Environment.CurrentDirectory);
         if (!project.Success) {
             await error.WriteLineAsync(project.Error).ConfigureAwait(false);
             return ExitCodes.InvalidArguments;
@@ -72,8 +71,7 @@ internal static class MigrationCommand
             : ExitCodes.Success;
     }
 
-    internal static void RenderText(MigrationResult result, TextWriter output)
-    {
+    internal static void RenderText(MigrationResult result, TextWriter output) {
         output.WriteLine(result.Applied ? "Migration apply completed." : "Migration dry-run completed.");
         output.WriteLine($"Changed: {result.Summary.Changed}; Unchanged: {result.Summary.Unchanged}; Skipped: {result.Summary.Skipped}; Failed: {result.Summary.Failed}; Manual-only: {result.Summary.ManualOnly}; Conflicts: {result.Summary.Conflicts}");
         // AC6: text output honors the same per-entry (8,000) and aggregate (64,000) diff budgets as JSON,
@@ -99,8 +97,7 @@ internal static class MigrationCommand
 
 internal sealed record MigrationEdge(string FromVersion, string ToVersion, string DocsLink);
 
-internal static class MigrationCatalog
-{
+internal static class MigrationCatalog {
     private static readonly MigrationEdge[] Edges = BuildEdges([
         new("9.1.0", "9.2.0", "docs/migrations/9.1-to-9.2.md"),
     ]);
@@ -109,8 +106,7 @@ internal static class MigrationCatalog
         => Edges.FirstOrDefault(edge => string.Equals(edge.FromVersion, from, StringComparison.Ordinal)
             && string.Equals(edge.ToVersion, to, StringComparison.Ordinal));
 
-    private static MigrationEdge[] BuildEdges(MigrationEdge[] edges)
-    {
+    private static MigrationEdge[] BuildEdges(MigrationEdge[] edges) {
         IGrouping<(string From, string To), MigrationEdge>[] duplicates = edges
             .GroupBy(edge => (edge.FromVersion, edge.ToVersion))
             .Where(g => g.Count() > 1)
@@ -138,8 +134,7 @@ internal sealed record MigrationPlan(
     string ProjectDirectory,
     MigrationEdge Edge,
     IReadOnlyList<PlannedFileEdit> FileEdits,
-    IReadOnlyList<MigrationEntry> Entries)
-{
+    IReadOnlyList<MigrationEntry> Entries) {
     public MigrationSummary Summary => MigrationSummary.From(Entries);
 }
 
@@ -166,8 +161,7 @@ internal sealed record MigrationEntry(
     string? Diff,
     bool FormattingApplied = false);
 
-internal sealed record MigrationResult(bool Applied, IReadOnlyList<MigrationEntry> Entries, MigrationSummary Summary)
-{
+internal sealed record MigrationResult(bool Applied, IReadOnlyList<MigrationEntry> Entries, MigrationSummary Summary) {
     public static MigrationResult FromPlan(MigrationPlan plan, bool applied)
         => new(applied, plan.Entries, MigrationSummary.From(plan.Entries));
 }
@@ -178,8 +172,7 @@ internal sealed record MigrationSummary(
     int Skipped,
     int Failed,
     int ManualOnly,
-    int Conflicts)
-{
+    int Conflicts) {
     public static MigrationSummary From(IReadOnlyList<MigrationEntry> entries)
         => new(
             entries.Count(x => x.Kind == "safe-fix"),
@@ -190,15 +183,13 @@ internal sealed record MigrationSummary(
             entries.Count(x => x.Kind == "conflict"));
 }
 
-internal static class MigrationPlanner
-{
+internal static class MigrationPlanner {
     private static readonly MetadataReference[] References = [
         MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
         MetadataReference.CreateFromFile(typeof(Enumerable).Assembly.Location),
     ];
 
-    public static async Task<MigrationPlan> PlanAsync(string projectPath, MigrationEdge edge, CancellationToken cancellationToken)
-    {
+    public static async Task<MigrationPlan> PlanAsync(string projectPath, MigrationEdge edge, CancellationToken cancellationToken) {
         ProjectDocumentSet documentSet = ProjectDocumentLoader.Load(projectPath);
         IReadOnlyDictionary<string, ImmutableArray<Diagnostic>> generatedDiagnostics =
             MigrationDiagnosticSidecarReader.Read(documentSet.ProjectDirectory);
@@ -218,8 +209,8 @@ internal static class MigrationPlanner
         }
 
         using AdhocWorkspace workspace = new(host);
-        ProjectId projectId = ProjectId.CreateNewId(debugName: Path.GetFileNameWithoutExtension(projectPath));
-        ProjectInfo projectInfo = ProjectInfo.Create(
+        var projectId = ProjectId.CreateNewId(debugName: Path.GetFileNameWithoutExtension(projectPath));
+        var projectInfo = ProjectInfo.Create(
             projectId,
             VersionStamp.Create(),
             Path.GetFileNameWithoutExtension(projectPath),
@@ -261,7 +252,7 @@ internal static class MigrationPlanner
                 continue;
             }
 
-            DocumentId documentId = DocumentId.CreateNewId(projectId, document.RelativePath);
+            var documentId = DocumentId.CreateNewId(projectId, document.RelativePath);
             solution = solution.AddDocument(documentId, document.RelativePath, SourceText.From(content.Text, content.Encoding), filePath: document.FullPath);
             documentsById.Add(documentId, document with { Content = content });
         }
@@ -423,7 +414,7 @@ internal static class MigrationPlanner
             }
         }
 
-        if (!entries.Any(x => x.Kind == "safe-fix" || x.Kind == "manual-only" || x.Kind == "failed" || x.Kind == "conflict")) {
+        if (!entries.Any(x => x.Kind is "safe-fix" or "manual-only" or "failed" or "conflict")) {
             entries.Add(new MigrationEntry(
                 "HFCM0001",
                 "unchanged",
@@ -452,8 +443,7 @@ internal static class MigrationPlanner
         DocumentId documentId,
         string projectDirectory,
         string approvedPath,
-        CancellationToken cancellationToken)
-    {
+        CancellationToken cancellationToken) {
         ApplyChangesOperation? applyOperation = null;
         foreach (CodeActionOperation operation in operations) {
             if (operation is not ApplyChangesOperation applyChangesOperation) {
@@ -507,8 +497,7 @@ internal static class MigrationPlanner
         return await changedDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    internal static bool HasOverlappingChanges(List<TextChange> changes)
-    {
+    internal static bool HasOverlappingChanges(List<TextChange> changes) {
         TextChange[] sorted = [.. changes.OrderBy(x => x.Span.Start).ThenBy(x => x.Span.Length).ThenBy(x => x.NewText, StringComparer.Ordinal)];
         for (int i = 1; i < sorted.Length; i++) {
             TextSpan previous = sorted[i - 1].Span;
@@ -557,16 +546,13 @@ internal sealed record ProjectDocumentSet(string ProjectDirectory, IReadOnlyList
 
 internal sealed record ProjectDocument(string FullPath, string RelativePath, SourceFileContent? Content = null);
 
-internal static class ProjectDocumentLoader
-{
-    public static bool HasTopLevelImports(string projectPath)
-    {
+internal static class ProjectDocumentLoader {
+    public static bool HasTopLevelImports(string projectPath) {
         XDocument? project = TryLoadProject(projectPath);
         return project?.Root?.Elements().Any(x => string.Equals(x.Name.LocalName, "Import", StringComparison.Ordinal)) == true;
     }
 
-    public static ProjectDocumentSet Load(string projectPath)
-    {
+    public static ProjectDocumentSet Load(string projectPath) {
         string projectFullPath = Path.GetFullPath(projectPath);
         string projectDirectory = Path.GetDirectoryName(projectFullPath)!;
         XDocument? project = TryLoadProject(projectFullPath);
@@ -603,8 +589,7 @@ internal static class ProjectDocumentLoader
                 .ToArray());
     }
 
-    private static XDocument? TryLoadProject(string projectPath)
-    {
+    private static XDocument? TryLoadProject(string projectPath) {
         try {
             return XDocument.Load(projectPath);
         }
@@ -616,8 +601,7 @@ internal static class ProjectDocumentLoader
         }
     }
 
-    private static IEnumerable<ProjectDocument> EnumerateGlob(string projectDirectory, string include, string exclude, string? link)
-    {
+    private static IEnumerable<ProjectDocument> EnumerateGlob(string projectDirectory, string include, string exclude, string? link) {
         string[] excludes = exclude.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         string projectRoot = PathUtilities.Canonical(projectDirectory);
         string projectRootWithSep = projectRoot.EndsWith(Path.DirectorySeparatorChar)
@@ -657,8 +641,7 @@ internal static class ProjectDocumentLoader
         }
     }
 
-    private static IEnumerable<string> Expand(string projectDirectory, string pattern)
-    {
+    private static IEnumerable<string> Expand(string projectDirectory, string pattern) {
         string normalized = pattern.Replace('\\', '/');
         if (!normalized.Contains('*', StringComparison.Ordinal)) {
             string path;
@@ -695,8 +678,7 @@ internal static class ProjectDocumentLoader
         return Directory.Exists(searchRoot) ? Directory.EnumerateFiles(searchRoot, filePattern, search) : [];
     }
 
-    private static bool IsExcluded(string relativePath, string[] excludes)
-    {
+    private static bool IsExcluded(string relativePath, string[] excludes) {
         foreach (string exclude in excludes) {
             string normalized = exclude.Replace('\\', '/').Trim('/');
             if (normalized.EndsWith("/**", StringComparison.Ordinal)) {
@@ -714,12 +696,10 @@ internal static class ProjectDocumentLoader
     }
 }
 
-internal static class SourceFile
-{
+internal static class SourceFile {
     public const long MaxSupportedBytes = 16 * 1024 * 1024;
 
-    public static async Task<SourceFileContent> ReadAsync(string path, CancellationToken cancellationToken)
-    {
+    public static async Task<SourceFileContent> ReadAsync(string path, CancellationToken cancellationToken) {
         FileInfo file = new(path);
         if (file.Exists && file.Length > MaxSupportedBytes) {
             throw new IOException("Source file exceeds the maximum supported migration size of 16 MiB.");
@@ -731,8 +711,7 @@ internal static class SourceFile
         return new SourceFileContent(text, encoding);
     }
 
-    public static async Task WriteAsync(string path, string text, Encoding encoding, CancellationToken cancellationToken)
-    {
+    public static async Task WriteAsync(string path, string text, Encoding encoding, CancellationToken cancellationToken) {
         string directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
         string tempPath = Path.Combine(directory, "." + Path.GetFileName(path) + "." + Guid.NewGuid().ToString("N") + ".tmp");
         try {
@@ -750,8 +729,7 @@ internal static class SourceFile
         }
     }
 
-    private static Encoding DetectEncoding(byte[] bytes)
-    {
+    private static Encoding DetectEncoding(byte[] bytes) {
         if (bytes.Length >= 4 && bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0xFE && bytes[3] == 0xFF) {
             return new UTF32Encoding(bigEndian: true, byteOrderMark: true);
         }
@@ -776,8 +754,7 @@ internal static class SourceFile
         return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     }
 
-    private static byte[] PreambleFree(byte[] bytes, Encoding encoding)
-    {
+    private static byte[] PreambleFree(byte[] bytes, Encoding encoding) {
         byte[] preamble = encoding.GetPreamble();
         return preamble.Length > 0 && bytes.AsSpan().StartsWith(preamble)
             ? bytes[preamble.Length..]
@@ -785,8 +762,7 @@ internal static class SourceFile
     }
 }
 
-internal static class MigrationDiagnostics
-{
+internal static class MigrationDiagnostics {
 #pragma warning disable RS2008 // The CLI reserves migration IDs in SourceTools AnalyzerReleases for Story 9-2 governance.
     public static readonly DiagnosticDescriptor ObsoleteDevOverlay = new(
         "HFCM9001",
@@ -808,10 +784,8 @@ internal static class MigrationDiagnostics
 #pragma warning restore RS2008
 }
 
-internal static class MigrationDiagnosticScanner
-{
-    public static async Task<ImmutableArray<Diagnostic>> ScanAsync(Document document, CancellationToken cancellationToken)
-    {
+internal static class MigrationDiagnosticScanner {
+    public static async Task<ImmutableArray<Diagnostic>> ScanAsync(Document document, CancellationToken cancellationToken) {
         SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         if (root is null) {
             return [];
@@ -833,8 +807,7 @@ internal static class MigrationDiagnosticScanner
         return builder.ToImmutable();
     }
 
-    private static bool IsInsideNameOf(IdentifierNameSyntax identifier)
-    {
+    private static bool IsInsideNameOf(IdentifierNameSyntax identifier) {
         for (SyntaxNode? parent = identifier.Parent; parent is not null; parent = parent.Parent) {
             if (parent is InvocationExpressionSyntax invocation
                 && invocation.Expression is IdentifierNameSyntax target
@@ -847,12 +820,10 @@ internal static class MigrationDiagnosticScanner
     }
 }
 
-internal static class MigrationDiagnosticSidecarReader
-{
+internal static class MigrationDiagnosticSidecarReader {
     public const string SentinelPrefix = "__sidecar__/";
 
-    public static IReadOnlyDictionary<string, ImmutableArray<Diagnostic>> Read(string projectDirectory)
-    {
+    public static IReadOnlyDictionary<string, ImmutableArray<Diagnostic>> Read(string projectDirectory) {
         // D7 (Story 9-2 third pass): manual-migration HFCM9002 sidecars are read here as a
         // **test-only synthetic** contract until Story 9-4 governs the final HFC ID assignment
         // and SourceTools generator emits real adopter sidecars. AC11 fires today only against
@@ -878,7 +849,7 @@ internal static class MigrationDiagnosticSidecarReader
         foreach (string path in sidecarPaths) {
             try {
                 using FileStream stream = File.OpenRead(path);
-                using JsonDocument document = JsonDocument.Parse(stream);
+                using var document = JsonDocument.Parse(stream);
                 JsonElement root = document.RootElement;
                 IEnumerable<JsonElement> entries = root.ValueKind == JsonValueKind.Array
                     ? root.EnumerateArray()
@@ -936,8 +907,7 @@ internal static class MigrationDiagnosticSidecarReader
     private static void AddSentinel(
         Dictionary<string, ImmutableArray<Diagnostic>.Builder> builders,
         string sidecarPath,
-        string projectDirectory)
-    {
+        string projectDirectory) {
         string sentinelKey = NormalizePath(sidecarPath, projectDirectory);
         if (string.IsNullOrWhiteSpace(sentinelKey) || sentinelKey == PathUtilities.RedactedPathSentinel) {
             sentinelKey = OutputSanitizer.Sanitize(Path.GetFileName(sidecarPath), 120);
@@ -953,8 +923,7 @@ internal static class MigrationDiagnosticSidecarReader
         builder.Add(Diagnostic.Create(MigrationDiagnostics.ManualMigration, Location.None));
     }
 
-    private static bool IsGeneratedDiagnosticsSidecar(string path)
-    {
+    private static bool IsGeneratedDiagnosticsSidecar(string path) {
         string normalized = path.Replace('\\', '/');
         return normalized.Contains("/generated/HexalithFrontComposer/", PathUtilities.PathComparison);
     }
@@ -967,8 +936,7 @@ internal static class MigrationDiagnosticSidecarReader
             ? value.GetString() ?? string.Empty
             : string.Empty;
 
-    private static string NormalizePath(string path, string projectDirectory)
-    {
+    private static string NormalizePath(string path, string projectDirectory) {
         if (string.IsNullOrWhiteSpace(path)) {
             return string.Empty;
         }
@@ -994,8 +962,7 @@ internal static class MigrationDiagnosticSidecarReader
     }
 }
 
-internal sealed class FrontComposerMigrationCodeFixProvider : CodeFixProvider
-{
+internal sealed class FrontComposerMigrationCodeFixProvider : CodeFixProvider {
     public const string ObsoleteApi = "AddFrontComposerDebugOverlay";
     public const string ReplacementApi = "AddFrontComposerDevMode";
 
@@ -1003,8 +970,7 @@ internal sealed class FrontComposerMigrationCodeFixProvider : CodeFixProvider
 
     public override FixAllProvider? GetFixAllProvider() => null;
 
-    public override async Task RegisterCodeFixesAsync(CodeFixContext context)
-    {
+    public override async Task RegisterCodeFixesAsync(CodeFixContext context) {
         foreach (Diagnostic diagnostic in context.Diagnostics.Where(x => x.Id == MigrationDiagnostics.ObsoleteDevOverlay.Id)) {
             context.RegisterCodeFix(
                 CodeAction.Create(
@@ -1017,8 +983,7 @@ internal sealed class FrontComposerMigrationCodeFixProvider : CodeFixProvider
         await Task.CompletedTask.ConfigureAwait(false);
     }
 
-    private static async Task<Document> ReplaceAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken)
-    {
+    private static async Task<Document> ReplaceAsync(Document document, Diagnostic diagnostic, CancellationToken cancellationToken) {
         SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         if (root is null) {
             return document;
@@ -1034,10 +999,8 @@ internal sealed class FrontComposerMigrationCodeFixProvider : CodeFixProvider
     }
 }
 
-internal static class MigrationApplier
-{
-    public static async Task<MigrationResult> ApplyAsync(MigrationPlan plan, CancellationToken cancellationToken)
-    {
+internal static class MigrationApplier {
+    public static async Task<MigrationResult> ApplyAsync(MigrationPlan plan, CancellationToken cancellationToken) {
         List<MigrationEntry> entries = [.. plan.Entries.Where(x => x.Kind != "safe-fix")];
         List<MigrationEntry> changed = [];
         HashSet<string> submoduleSnapshot = SubmoduleBoundaryReader.Read(plan.ProjectDirectory);
@@ -1101,10 +1064,8 @@ internal static class MigrationApplier
             null);
 }
 
-internal static class WriteSafetyPolicy
-{
-    public static bool IsAllowed(string projectDirectory, string path, HashSet<string> submoduleRoots)
-    {
+internal static class WriteSafetyPolicy {
+    public static bool IsAllowed(string projectDirectory, string path, HashSet<string> submoduleRoots) {
         string relative = PathUtilities.ToProjectRelative(projectDirectory, path);
         if (relative == PathUtilities.RedactedPathSentinel || PathUtilities.HasExcludedSegment(projectDirectory, path)) {
             return false;
@@ -1114,8 +1075,7 @@ internal static class WriteSafetyPolicy
         return !submoduleRoots.Any(root => IsSameOrUnder(fullPath, root));
     }
 
-    private static bool IsSameOrUnder(string path, string root)
-    {
+    private static bool IsSameOrUnder(string path, string root) {
         string normalizedRoot = PathUtilities.Canonical(root);
         string normalizedPath = PathUtilities.Canonical(path);
         if (string.Equals(normalizedPath, normalizedRoot, PathUtilities.PathComparison)) {
@@ -1130,16 +1090,14 @@ internal static class WriteSafetyPolicy
         => path.EndsWith(Path.DirectorySeparatorChar) ? path : path + Path.DirectorySeparatorChar;
 }
 
-internal static class SubmoduleBoundaryReader
-{
+internal static class SubmoduleBoundaryReader {
     // 64 ancestors covers every realistic checkout depth (Windows MAX_PATH is 260, average path
     // segment length is well above 4 chars, so a 64-deep tree already exceeds Windows path limits).
     // The cap prevents pathological filesystems from spinning forever; the limit is documented so
     // future readers know it is intentional rather than arbitrary.
     private const int MaxAncestorWalk = 64;
 
-    public static HashSet<string> Read(string projectDirectory)
-    {
+    public static HashSet<string> Read(string projectDirectory) {
         HashSet<string> roots = new(PathUtilities.PathComparer);
         string? repositoryRoot = FindRepositoryRoot(projectDirectory);
         if (repositoryRoot is null) {
@@ -1186,14 +1144,13 @@ internal static class SubmoduleBoundaryReader
                 continue;
             }
 
-            roots.Add(PathUtilities.Canonical(Path.Combine(repositoryRoot, relative.Replace('/', Path.DirectorySeparatorChar))));
+            _ = roots.Add(PathUtilities.Canonical(Path.Combine(repositoryRoot, relative.Replace('/', Path.DirectorySeparatorChar))));
         }
 
         return roots;
     }
 
-    private static string UnquoteGitConfigValue(string value)
-    {
+    private static string UnquoteGitConfigValue(string value) {
         if (value.Length >= 2
             && ((value[0] == '"' && value[^1] == '"') || (value[0] == '\'' && value[^1] == '\''))) {
             value = value[1..^1];
@@ -1230,8 +1187,7 @@ internal static class SubmoduleBoundaryReader
         return builder.ToString();
     }
 
-    private static string? FindRepositoryRoot(string start)
-    {
+    private static string? FindRepositoryRoot(string start) {
         DirectoryInfo? directory = new(Path.GetFullPath(start));
         int walked = 0;
         while (directory is not null && walked < MaxAncestorWalk) {
@@ -1248,12 +1204,10 @@ internal static class SubmoduleBoundaryReader
     }
 }
 
-internal static class UnifiedDiff
-{
+internal static class UnifiedDiff {
     private const int ContextLines = 3;
 
-    public static string Create(string relativePath, string original, string updated)
-    {
+    public static string Create(string relativePath, string original, string updated) {
         string[] oldLines = SplitLines(original);
         string[] newLines = SplitLines(updated);
         StringBuilder builder = new();
@@ -1267,19 +1221,19 @@ internal static class UnifiedDiff
             return builder.ToString();
         }
 
-        foreach (var hunk in hunks) {
+        foreach ((int OldStart, int OldCount, int NewStart, int NewCount, List<(char Prefix, string Line)> Lines) in hunks) {
             // Unified-diff convention: emit `0` only when the file is genuinely empty at that side
             // (count==0 AND start==0 — no preceding content). Otherwise emit a 1-based line number.
-            int oldHeaderLine = hunk.OldCount == 0 && hunk.OldStart == 0 ? 0 : hunk.OldStart + 1;
-            int newHeaderLine = hunk.NewCount == 0 && hunk.NewStart == 0 ? 0 : hunk.NewStart + 1;
+            int oldHeaderLine = OldCount == 0 && OldStart == 0 ? 0 : OldStart + 1;
+            int newHeaderLine = NewCount == 0 && NewStart == 0 ? 0 : NewStart + 1;
             _ = builder.Append("@@ -")
                 .Append(oldHeaderLine)
-                .Append(',').Append(hunk.OldCount)
+                .Append(',').Append(OldCount)
                 .Append(" +")
                 .Append(newHeaderLine)
-                .Append(',').Append(hunk.NewCount)
+                .Append(',').Append(NewCount)
                 .Append(" @@\n");
-            foreach ((char prefix, string line) in hunk.Lines) {
+            foreach ((char prefix, string line) in Lines) {
                 // AC27: sanitize each diff line to strip ANSI escapes, control bytes, and DEL while
                 // preserving \r\n\t so the hunk body remains line-structured.
                 _ = builder.Append(prefix).Append(OutputSanitizer.SanitizeMultiLine(line, 1_000)).Append('\n');
@@ -1289,8 +1243,7 @@ internal static class UnifiedDiff
         return builder.ToString();
     }
 
-    private static List<(int OldStart, int OldCount, int NewStart, int NewCount, List<(char, string)> Lines)> ComputeHunks(string[] oldLines, string[] newLines, int context)
-    {
+    private static List<(int OldStart, int OldCount, int NewStart, int NewCount, List<(char, string)> Lines)> ComputeHunks(string[] oldLines, string[] newLines, int context) {
         // Identify diff segments via simple two-pointer walk — emit insert/delete groups with surrounding context.
         List<(char Op, int OldIdx, int NewIdx, string Line)> ops = DiffOps(oldLines, newLines);
         List<(int OldStart, int OldCount, int NewStart, int NewCount, List<(char, string)> Lines)> hunks = [];
@@ -1389,8 +1342,7 @@ internal static class UnifiedDiff
         return hunks;
     }
 
-    private static List<(char Op, int OldIdx, int NewIdx, string Line)> DiffOps(string[] oldLines, string[] newLines)
-    {
+    private static List<(char Op, int OldIdx, int NewIdx, string Line)> DiffOps(string[] oldLines, string[] newLines) {
         // Simple O(N+M) walk anchored on line equality; conservative — emits all old as deletes and all new as inserts
         // when the lines diverge, then re-syncs at the next match. Sufficient for the small migration diffs this CLI
         // produces; not a full Myers diff.
@@ -1456,15 +1408,13 @@ internal static class UnifiedDiff
         => text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
 }
 
-internal static class MigrationJson
-{
+internal static class MigrationJson {
     // Top-level cap on accumulated diff bytes across all entries; once exceeded subsequent diffs
     // are emitted as a `[diff omitted: budget]` placeholder so JSON cannot grow unbounded.
     internal const int MaxAggregateDiffChars = 64_000;
     internal const int MaxPerEntryDiffChars = 8_000;
 
-    public static object From(MigrationResult result)
-    {
+    public static object From(MigrationResult result) {
         int diffBudget = MaxAggregateDiffChars;
         return new {
             schemaVersion = "frontcomposer.cli.migrate.v1",
@@ -1496,8 +1446,7 @@ internal static class MigrationJson
         };
     }
 
-    private static string TakeDiffWithBudget(string? diff, ref int budget)
-    {
+    private static string TakeDiffWithBudget(string? diff, ref int budget) {
         if (string.IsNullOrEmpty(diff)) {
             return string.Empty;
         }

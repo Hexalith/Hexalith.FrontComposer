@@ -4,12 +4,10 @@ namespace Hexalith.FrontComposer.Mcp.Tests;
 
 public sealed class BoundaryTests {
     [Fact]
-    public void ContractsAssembly_DoesNotReference_McpSdk() {
-        typeof(Contracts.Mcp.McpManifest).Assembly
+    public void ContractsAssembly_DoesNotReference_McpSdk() => typeof(Contracts.Mcp.McpManifest).Assembly
             .GetReferencedAssemblies()
             .Select(a => a.Name)
             .ShouldNotContain("ModelContextProtocol");
-    }
 
     [Fact]
     public void ContractsAssembly_DoesNotReference_TransportPackages() {
@@ -28,19 +26,16 @@ public sealed class BoundaryTests {
     }
 
     [Fact]
-    public void SourceToolsAssembly_DoesNotReference_McpSdk() {
-        typeof(SourceTools.FrontComposerGenerator).Assembly
+    public void SourceToolsAssembly_DoesNotReference_McpSdk() => typeof(SourceTools.FrontComposerGenerator).Assembly
             .GetReferencedAssemblies()
             .Select(a => a.Name)
             .ShouldNotContain("ModelContextProtocol");
-    }
 
     [Fact]
-    public void SourceToolsAssembly_DoesNotReference_McpRuntimePackage() {
+    public void SourceToolsAssembly_DoesNotReference_McpRuntimePackage() =>
         // Ensures Source generators stay free of the MCP runtime-host package.
         typeof(SourceTools.FrontComposerGenerator).Assembly
             .GetReferencedAssemblies()
             .Select(a => a.Name)
             .ShouldNotContain("Hexalith.FrontComposer.Mcp");
-    }
 }

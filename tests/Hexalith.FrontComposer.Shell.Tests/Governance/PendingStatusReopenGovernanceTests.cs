@@ -8,8 +8,6 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 
 [Trait("Category", "Governance")]

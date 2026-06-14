@@ -12,20 +12,14 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// the anonymous state and the menu offers Sign in — proving the control renders without a cascading
 /// <c>Task&lt;AuthenticationState&gt;</c>.
 /// </summary>
-public sealed class FcAccountMenuTests : LayoutComponentTestBase
-{
-    public FcAccountMenuTests()
-    {
-        EnsureStoreInitialized();
-    }
+public sealed class FcAccountMenuTests : LayoutComponentTestBase {
+    public FcAccountMenuTests() => EnsureStoreInitialized();
 
     [Fact]
-    public void RendersAnonymousSignInAffordance()
-    {
+    public void RendersAnonymousSignInAffordance() {
         IRenderedComponent<FcAccountMenu> cut = Render<FcAccountMenu>();
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("data-testid=\"fc-account-menu\"");
             cut.Markup.ShouldContain("data-testid=\"fc-account-sign-in\"");
             cut.Markup.ShouldNotContain("data-testid=\"fc-account-sign-out\"");

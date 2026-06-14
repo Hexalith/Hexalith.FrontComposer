@@ -1,5 +1,3 @@
-using Projects;
-
 namespace Hexalith.FrontComposer.AppHost;
 
 /// <summary>Tenants domain service (Hexalith.Tenants submodule).</summary>

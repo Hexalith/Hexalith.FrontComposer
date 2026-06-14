@@ -3,7 +3,6 @@ using System.Globalization;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
@@ -41,7 +40,8 @@ public sealed class SchemaFingerprintDeterminismTests {
             testCultureFingerprint.ShouldBe(
                 invariantFingerprint,
                 $"AC11 cross-culture invariant: fingerprint under {cultureName} must match invariant culture.");
-        } finally {
+        }
+        finally {
             CultureInfo.CurrentCulture = previousCulture;
             CultureInfo.CurrentUICulture = previousUiCulture;
         }

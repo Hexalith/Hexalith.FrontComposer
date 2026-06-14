@@ -2,7 +2,6 @@ using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Schema.Diagnostics;
 
 using Shouldly;
-using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 
@@ -21,7 +20,7 @@ public sealed class SchemaMigrationDeltaTruncationTests {
             new SchemaFieldContract("Anchor", "String", "string", true, false),
         ]);
 
-        SchemaFieldContract[] currentFields = new SchemaFieldContract[30];
+        var currentFields = new SchemaFieldContract[30];
         currentFields[0] = new SchemaFieldContract("Anchor", "String", "string", true, false);
         for (int i = 1; i < 28; i++) {
             currentFields[i] = new SchemaFieldContract("Optional" + i.ToString("D2"), "String", "string", false, true);
@@ -57,7 +56,7 @@ public sealed class SchemaMigrationDeltaTruncationTests {
 
         // Construct enough breaking deltas to force truncation AND trigger the migration-guide
         // marker (baseline.Provenance.RequiresMigrationGuide = false ⇒ marker emitted on Breaking).
-        SchemaFieldContract[] currentFields = new SchemaFieldContract[5];
+        var currentFields = new SchemaFieldContract[5];
         currentFields[0] = new SchemaFieldContract("Anchor", "Int32", "number", true, false); // type changed = Breaking
         for (int i = 1; i < 5; i++) {
             currentFields[i] = new SchemaFieldContract("Required" + i, "String", "string", true, false);
@@ -80,7 +79,7 @@ public sealed class SchemaMigrationDeltaTruncationTests {
             new SchemaFieldContract("Anchor", "String", "string", true, false),
         ]);
 
-        SchemaFieldContract[] currentFields = new SchemaFieldContract[30];
+        var currentFields = new SchemaFieldContract[30];
         currentFields[0] = new SchemaFieldContract("Anchor", "String", "string", true, false);
         for (int i = 1; i < 30; i++) {
             currentFields[i] = new SchemaFieldContract("Optional" + i.ToString("D2"), "String", "string", false, true);

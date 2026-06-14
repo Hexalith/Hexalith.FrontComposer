@@ -7,8 +7,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// end-to-end render pin.
 /// </summary>
 [BoundedContext("WidePriority")]
-public sealed class WidePriorityDomain
-{
+public sealed class WidePriorityDomain {
 }
 
 /// <summary>
@@ -28,8 +27,7 @@ public sealed class WidePriorityDomain
 /// </remarks>
 [Projection]
 [BoundedContext("WidePriority")]
-public partial class WidePriorityProjection
-{
+public partial class WidePriorityProjection {
     /// <summary>Gets or sets the row identity (unannotated — trails the annotated columns).</summary>
     public string Id { get; set; } = string.Empty;
 

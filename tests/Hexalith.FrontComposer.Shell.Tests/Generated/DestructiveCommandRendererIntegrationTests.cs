@@ -87,9 +87,7 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
                 new ServiceCollection()
                     .AddSingleton(Substitute.For<IJSRuntime>())
                     .BuildServiceProvider(),
-                Substitute.For<IFluentLocalizer>()) {
-            _immediateResult = immediateResult;
-        }
+                Substitute.For<IFluentLocalizer>()) => _immediateResult = immediateResult;
 
         public IDialogService Service => this;
 
@@ -113,9 +111,7 @@ public sealed class DestructiveCommandRendererIntegrationTests : CommandRenderer
             return pending.Task;
         }
 
-        public void Complete(DialogResult result) {
-            _pendingResults.Dequeue().SetResult(result);
-        }
+        public void Complete(DialogResult result) => _pendingResults.Dequeue().SetResult(result);
     }
 
     private sealed class RecordingCommandService : ICommandServiceWithLifecycle {

@@ -4,8 +4,6 @@ using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.FaultInjection;
 
 /// <summary>
@@ -163,7 +161,7 @@ public sealed class FaultInjectingProjectionHubConnectionTests {
             connectedAtHandler.Add(sut.IsConnected);
             return Task.CompletedTask;
         });
-        HarnessCheckpoint checkpoint = HarnessCheckpoint.ConnectionState(ProjectionHubConnectionState.Reconnected);
+        var checkpoint = HarnessCheckpoint.ConnectionState(ProjectionHubConnectionState.Reconnected);
         sut.BlockUntil(checkpoint);
 
         Task pending = sut.RaiseStateAsync(HarnessConnectionStates.Reconnected("conn-2"));
@@ -229,7 +227,7 @@ public sealed class FaultInjectingProjectionHubConnectionTests {
             observed.Add((projection, tenant));
             return Task.CompletedTask;
         });
-        HarnessCheckpoint checkpoint = HarnessCheckpoint.Nudge("orders", "acme");
+        var checkpoint = HarnessCheckpoint.Nudge("orders", "acme");
         sut.BlockUntil(checkpoint);
 
         Task pending = sut.PublishNudgeAsync("orders", "acme");

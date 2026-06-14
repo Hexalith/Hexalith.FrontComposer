@@ -1,13 +1,12 @@
 using Shouldly;
+
 using Xunit;
 
 namespace Hexalith.FrontComposer.Cli.Tests;
 
-public sealed class CliHelpTests
-{
+public sealed class CliHelpTests {
     [Fact]
-    public async Task Help_ListsInspectAndMigrateCommands()
-    {
+    public async Task Help_ListsInspectAndMigrateCommands() {
         using StringWriter output = new();
         using StringWriter error = new();
 

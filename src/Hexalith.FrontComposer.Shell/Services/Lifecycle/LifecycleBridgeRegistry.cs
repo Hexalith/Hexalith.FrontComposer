@@ -12,14 +12,12 @@ namespace Hexalith.FrontComposer.Shell.Services.Lifecycle;
 /// </summary>
 public sealed class LifecycleBridgeRegistry : ILifecycleBridgeRegistry, IDisposable {
     private readonly IServiceProvider _services;
-    private readonly HashSet<Type> _registered = new();
-    private readonly List<IDisposable> _instances = new();
+    private readonly HashSet<Type> _registered = [];
+    private readonly List<IDisposable> _instances = [];
     private readonly object _gate = new();
     private bool _disposed;
 
-    public LifecycleBridgeRegistry(IServiceProvider services) {
-        _services = services ?? throw new ArgumentNullException(nameof(services));
-    }
+    public LifecycleBridgeRegistry(IServiceProvider services) => _services = services ?? throw new ArgumentNullException(nameof(services));
 
     /// <summary>
     /// Resolves the per-command bridge from DI on first call; subsequent calls are no-ops. Thread-safe.
@@ -74,7 +72,7 @@ public sealed class LifecycleBridgeRegistry : ILifecycleBridgeRegistry, IDisposa
             }
 
             _disposed = true;
-            toDispose = new List<IDisposable>(_instances);
+            toDispose = [.. _instances];
             _instances.Clear();
             _registered.Clear();
         }

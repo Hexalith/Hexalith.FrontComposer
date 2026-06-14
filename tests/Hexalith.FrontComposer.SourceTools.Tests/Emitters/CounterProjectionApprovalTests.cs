@@ -142,7 +142,7 @@ public sealed class CounterProjectionApprovalTests {
         List<(int LineNumber, string Content)> approvedLines = NormalizeLines(approved);
         IEnumerable<(int LineNumber, string Content)> diffLines = EnumerateDiffLines(regenerated, approvedLines);
 
-        List<string> violations = new();
+        List<string> violations = [];
         foreach ((int lineNumber, string content) in diffLines) {
             if (!ContainsAnyApprovedToken(content)) {
                 violations.Add(

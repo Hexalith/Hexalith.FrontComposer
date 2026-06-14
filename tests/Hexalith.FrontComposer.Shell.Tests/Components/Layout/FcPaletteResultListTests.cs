@@ -1,5 +1,5 @@
+
 // Story 3-4 Task 10.8 (D14 / D16 / ADR-044 — AC3 / AC5 / AC6 / AC7).
-#pragma warning disable CA2007
 using System.Collections.Immutable;
 
 using Bunit;
@@ -15,16 +15,11 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
-public sealed class FcPaletteResultListTests : LayoutComponentTestBase
-{
-    public FcPaletteResultListTests()
-    {
-        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
-    }
+public sealed class FcPaletteResultListTests : LayoutComponentTestBase {
+    public FcPaletteResultListTests() => System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
 
     [Fact]
-    public void RendersAllRegisteredCategoriesWithHeadings()
-    {
+    public void RendersAllRegisteredCategoriesWithHeadings() {
         EnsureStoreInitialized();
         ImmutableArray<PaletteResult> results = [
             new(PaletteResultCategory.Projection, "Counter", "Counter", "/counter/counter", null, 100, false, typeof(CounterProjectionStub)),
@@ -46,8 +41,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void RendersWithoutBadges_WhenBadgeServiceIsNull()
-    {
+    public void RendersWithoutBadges_WhenBadgeServiceIsNull() {
         EnsureStoreInitialized();
         ImmutableArray<PaletteResult> results = [
             new(PaletteResultCategory.Projection, "Counter", "Counter", "/c", null, 100, false, typeof(CounterProjectionStub)),
@@ -63,8 +57,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void RendersBadges_WhenBadgeServiceIsRegistered_AndProjectionMatches()
-    {
+    public void RendersBadges_WhenBadgeServiceIsRegistered_AndProjectionMatches() {
         Services.AddSingleton<IBadgeCountService>(new StubBadgeService((typeof(CounterProjectionStub), 7)));
         EnsureStoreInitialized();
 
@@ -83,8 +76,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void NoBadgePlaceholder_WhenProjectionTypeNotInCounts()
-    {
+    public void NoBadgePlaceholder_WhenProjectionTypeNotInCounts() {
         Services.AddSingleton<IBadgeCountService>(new StubBadgeService());
         EnsureStoreInitialized();
 
@@ -102,8 +94,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void ShortcutRowsCarryAriaDisabledTrue()
-    {
+    public void ShortcutRowsCarryAriaDisabledTrue() {
         EnsureStoreInitialized();
         ImmutableArray<PaletteResult> results = [
             new(PaletteResultCategory.Shortcut, "Ctrl+K", "", null, null, 0, false, null, "PaletteShortcutDescription"),
@@ -119,8 +110,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void SyntheticKeyboardShortcutsEntry_RendersDescriptionHint()
-    {
+    public void SyntheticKeyboardShortcutsEntry_RendersDescriptionHint() {
         EnsureStoreInitialized();
         ImmutableArray<PaletteResult> results = [
             new(PaletteResultCategory.Command, "Keyboard Shortcuts", "", null, CommandPaletteEffects.KeyboardShortcutsSentinel, 1000, false, null, "KeyboardShortcutsCommandDescription"),
@@ -136,8 +126,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void InformationalShortcutRowsDoNotInvokeSelectionCallback()
-    {
+    public void InformationalShortcutRowsDoNotInvokeSelectionCallback() {
         // Pass-5 P2 retracted — bUnit's Click() dispatcher does not recognize Func<Task>
         // lambda handlers (Razor `@onclick="() => HandleOptionClickedAsync(...)"`) as valid
         // onclick wiring; it throws MissingEventHandlerException. Real-browser Blazor DOES
@@ -162,8 +151,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void ShortcutRowWithRouteUrl_DoesNotCarryAriaDisabled()
-    {
+    public void ShortcutRowWithRouteUrl_DoesNotCarryAriaDisabled() {
         // Pass-5 P20 (C1-D2 resolution) — shortcut-with-route rows are activatable per D11;
         // only informational (null RouteUrl) shortcut rows get aria-disabled="true".
         EnsureStoreInitialized();
@@ -188,8 +176,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
     // (CommandPaletteEffectsTests.HandlePaletteResultActivated_Shortcut_NavigatesWhenRouteUrlPresent).
 
     [Fact]
-    public void EmptyResults_RendersNoMatchesText()
-    {
+    public void EmptyResults_RendersNoMatchesText() {
         EnsureStoreInitialized();
         IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
             .Add(c => c.Id, "fc-palette-results")
@@ -201,8 +188,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void ResultsContainer_RendersRoleListbox_WithRoleOptionRows()
-    {
+    public void ResultsContainer_RendersRoleListbox_WithRoleOptionRows() {
         // Story 2.7 Task 1 (AC1) — default-lane pin for the listbox/option ROLE set. Pre-existing pins
         // asserted headings / badges / aria-disabled but never role="listbox" on the container or
         // role="option" on the rows (verified gap).
@@ -223,8 +209,7 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void AriaSelected_AndAriaActiveDescendant_TrackSelectedIndex()
-    {
+    public void AriaSelected_AndAriaActiveDescendant_TrackSelectedIndex() {
         // Story 2.7 Task 1 (AC1) — default-lane pin proving aria-activedescendant + aria-selected
         // track SelectedIndex: the selected <li role="option"> carries the matching id +
         // aria-selected="true", the listbox's aria-activedescendant points at it, and the
@@ -251,10 +236,8 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
         other.GetAttribute("aria-selected").ShouldBeNull();
     }
 
-    private sealed class StubBadgeService : IBadgeCountService
-    {
-        public StubBadgeService(params (Type Type, int Count)[] entries)
-        {
+    private sealed class StubBadgeService : IBadgeCountService {
+        public StubBadgeService(params (Type Type, int Count)[] entries) {
             Counts = entries.ToDictionary(e => e.Type, e => e.Count, EqualityComparer<Type>.Default);
             TotalActionableItems = entries.Sum(e => e.Count);
             CountChanged = new NoOpObservable();
@@ -266,12 +249,10 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
 
         public int TotalActionableItems { get; }
 
-        private sealed class NoOpObservable : IObservable<BadgeCountChangedArgs>
-        {
+        private sealed class NoOpObservable : IObservable<BadgeCountChangedArgs> {
             public IDisposable Subscribe(IObserver<BadgeCountChangedArgs> observer) => new NoOpDisposable();
 
-            private sealed class NoOpDisposable : IDisposable
-            {
+            private sealed class NoOpDisposable : IDisposable {
                 public void Dispose() { }
             }
         }

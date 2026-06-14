@@ -11,7 +11,6 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
-using Hexalith.FrontComposer.Testing;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -22,16 +21,14 @@ using Xunit;
 
 namespace Hexalith.FrontComposer.Testing.Tests;
 
-public sealed class FrontComposerTestHostTests
-{
+public sealed class FrontComposerTestHostTests {
     [Fact]
-    public async Task FrontComposerTestBase_DefaultSetup_RegistersDeterministicServices()
-    {
+    public async Task FrontComposerTestBase_DefaultSetup_RegistersDeterministicServices() {
         using TestHost host = new();
 
         await host.InitializeAsync();
 
-        host.Services.GetRequiredService<IStorageService>().ShouldBeOfType<InMemoryStorageService>();
+        _ = host.Services.GetRequiredService<IStorageService>().ShouldBeOfType<InMemoryStorageService>();
         FrontComposerTestUserContextAccessor user = host.Services.GetRequiredService<FrontComposerTestUserContextAccessor>();
         user.TenantId.ShouldBe("tenant-a");
         user.UserId.ShouldBe("user-a");
@@ -39,20 +36,18 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public void AddFrontComposerTestHost_DefaultSetup_RegistersShellServicesAndHonorsJsInteropMode()
-    {
+    public void AddFrontComposerTestHost_DefaultSetup_RegistersShellServicesAndHonorsJsInteropMode() {
         using BunitContext context = new();
         FixedTimeProvider timeProvider = new(DateTimeOffset.Parse("2026-06-05T10:15:00Z", CultureInfo.InvariantCulture));
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
             context,
-            options =>
-            {
+            options => {
                 options.JSInteropMode = JSRuntimeMode.Strict;
                 options.TimeProvider = timeProvider;
             });
 
         context.JSInterop.Mode.ShouldBe(JSRuntimeMode.Strict);
-        context.Services.GetRequiredService<IStorageService>().ShouldBeOfType<InMemoryStorageService>();
+        _ = context.Services.GetRequiredService<IStorageService>().ShouldBeOfType<InMemoryStorageService>();
         context.Services.GetRequiredService<ICommandService>().ShouldBeSameAs(host.CommandService);
         context.Services.GetRequiredService<ICommandServiceWithLifecycle>().ShouldBeSameAs(host.CommandService);
         context.Services.GetRequiredService<IQueryService>().ShouldBeSameAs(host.QueryService);
@@ -63,8 +58,7 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public void AddDomainAssembly_SameMarkerTwice_RegistersOneAssembly()
-    {
+    public void AddDomainAssembly_SameMarkerTwice_RegistersOneAssembly() {
         using BunitContext context = new();
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
 
@@ -74,8 +68,7 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public void AddFrontComposerTestHost_DuringHostSetup_CompositionInitializesStore()
-    {
+    public void AddFrontComposerTestHost_DuringHostSetup_CompositionInitializesStore() {
         using BunitContext context = new();
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
             context,
@@ -87,20 +80,18 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public async Task AddFrontComposerTestHost_CustomReplacementBeforeStoreInitialization_IsHonored()
-    {
+    public async Task AddFrontComposerTestHost_CustomReplacementBeforeStoreInitialization_IsHonored() {
         await using BunitContext context = new();
         FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
             context,
-            options =>
-            {
+            options => {
                 options.TestTenantId = "tenant-b";
                 options.TestUserId = "user-b";
             });
 
         FrontComposerTestUserContextAccessor replacement = new() { TenantId = "tenant-c", UserId = "user-c" };
-        context.Services.Replace(ServiceDescriptor.Scoped(_ => replacement));
-        context.Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => replacement));
+        _ = context.Services.Replace(ServiceDescriptor.Scoped(_ => replacement));
+        _ = context.Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => replacement));
 
         IStore store = context.Services.GetRequiredService<IStore>();
         await store.InitializeAsync();
@@ -110,12 +101,10 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public async Task TestCommandService_Dispatch_CapturesRedactedEvidenceAndLifecycle()
-    {
+    public async Task TestCommandService_Dispatch_CapturesRedactedEvidenceAndLifecycle() {
         using TestHost host = new();
         ICommandServiceWithLifecycle commandService = host.Services.GetRequiredService<ICommandServiceWithLifecycle>();
-        SensitiveCommand command = new()
-        {
+        SensitiveCommand command = new() {
             Tenant = "tenant-a",
             User = "user-a",
             Token = "secret-token",
@@ -136,8 +125,7 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public async Task TestCommandService_Dispatch_HonorsCancellationBeforeCapturingEvidence()
-    {
+    public async Task TestCommandService_Dispatch_HonorsCancellationBeforeCapturingEvidence() {
         using TestHost host = new();
         using CancellationTokenSource cts = new();
         await cts.CancelAsync().ConfigureAwait(true);
@@ -150,8 +138,7 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public async Task TestCommandService_Dispatch_CapturesDeterministicCommandContext()
-    {
+    public async Task TestCommandService_Dispatch_CapturesDeterministicCommandContext() {
         using TestHost host = new();
         ICommandServiceWithLifecycle commandService = host.Services.GetRequiredService<ICommandServiceWithLifecycle>();
 
@@ -173,8 +160,7 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public async Task TestProjectionPageLoader_ConfiguredPage_ReturnsEvidenceWithoutNetwork()
-    {
+    public async Task TestProjectionPageLoader_ConfiguredPage_ReturnsEvidenceWithoutNetwork() {
         using TestHost host = new();
         TestProjectionPageLoader loader = host.Services.GetRequiredService<TestProjectionPageLoader>();
         loader.SucceedWith(typeof(CounterProjection).FullName!, [new CounterProjection { Id = "counter-1", Count = 7 }]);
@@ -198,8 +184,7 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public async Task TestProjectionPageLoader_NotModifiedPage_CapturesModeAndReusesCachedItems()
-    {
+    public async Task TestProjectionPageLoader_NotModifiedPage_CapturesModeAndReusesCachedItems() {
         using TestHost host = new();
         TestProjectionPageLoader loader = host.Services.GetRequiredService<TestProjectionPageLoader>();
         CounterProjection cached = new() { Id = "counter-cache", Count = 9 };
@@ -226,15 +211,13 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public async Task QueryAndPageLoaderEvidence_MaxEvidenceRecords_IsBounded()
-    {
+    public async Task QueryAndPageLoaderEvidence_MaxEvidenceRecords_IsBounded() {
         await using BunitContext context = new();
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
             context,
             options => options.MaxEvidenceRecords = 2);
 
-        for (int i = 0; i < 5; i++)
-        {
+        for (int i = 0; i < 5; i++) {
             _ = await host.QueryService.QueryAsync<string>(
                 new QueryRequest("String", null),
                 Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
@@ -255,8 +238,7 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public async Task TestQueryService_NotModifiedAndEmptyPaths_CaptureRequestEvidence()
-    {
+    public async Task TestQueryService_NotModifiedAndEmptyPaths_CaptureRequestEvidence() {
         using TestHost host = new();
         TestQueryService query = host.Services.GetRequiredService<TestQueryService>();
         query.NotModifiedWith([new CounterProjection { Id = "counter-cache", Count = 4 }], "\"etag-cache\"");
@@ -285,8 +267,7 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public async Task QueryAndPageLoader_HonorCancellationBeforeCapturingEvidence()
-    {
+    public async Task QueryAndPageLoader_HonorCancellationBeforeCapturingEvidence() {
         using TestHost host = new();
         using CancellationTokenSource cts = new();
         await cts.CancelAsync().ConfigureAwait(true);
@@ -309,14 +290,12 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public void TestFaultInjectionProvider_AllModes_AreDeterministicTimestampedAndBounded()
-    {
+    public void TestFaultInjectionProvider_AllModes_AreDeterministicTimestampedAndBounded() {
         using BunitContext context = new();
         FixedTimeProvider timeProvider = new(DateTimeOffset.Parse("2026-06-05T12:00:00Z", CultureInfo.InvariantCulture));
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
             context,
-            options =>
-            {
+            options => {
                 options.TestTenantId = "tenant-fault";
                 options.TestUserId = "user-fault";
                 options.TimeProvider = timeProvider;
@@ -336,18 +315,15 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public void RedactedEvidenceFormatter_Format_RedactsSensitiveValuesAndTruncatesPayload()
-    {
-        FrontComposerTestOptions options = new()
-        {
+    public void RedactedEvidenceFormatter_Format_RedactsSensitiveValuesAndTruncatesPayload() {
+        FrontComposerTestOptions options = new() {
             TestTenantId = "tenant-secret",
             TestUserId = "user-secret",
             MaxDiagnosticPayloadCharacters = 80,
         };
 
         string payload = RedactedEvidenceFormatter.Format(
-            new
-            {
+            new {
                 TenantId = "tenant-secret",
                 UserId = "user-secret",
                 ApiTOKEN = "visible-token",
@@ -366,13 +342,11 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public void RedactedEvidenceFormatter_Format_RedactsSecretValuesContainingCommas()
-    {
+    public void RedactedEvidenceFormatter_Format_RedactsSecretValuesContainingCommas() {
         FrontComposerTestOptions options = new() { MaxDiagnosticPayloadCharacters = 256 };
 
         string payload = RedactedEvidenceFormatter.Format(
-            new
-            {
+            new {
                 Password = "alpha,bravo,charlie",
                 Token = "one,two,three",
                 Amount = 7,
@@ -389,17 +363,14 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public void FrontComposerTestHost_Dispose_RestoresAppliedCulture()
-    {
+    public void FrontComposerTestHost_Dispose_RestoresAppliedCulture() {
         CultureInfo originalCulture = CultureInfo.CurrentCulture;
         CultureInfo originalUICulture = CultureInfo.CurrentUICulture;
-        try
-        {
+        try {
             using BunitContext context = new();
             using (context.Services.AddFrontComposerTestHost(
                 context,
-                options => options.Culture = CultureInfo.GetCultureInfo("ja-JP")))
-            {
+                options => options.Culture = CultureInfo.GetCultureInfo("ja-JP"))) {
                 CultureInfo.CurrentCulture.Name.ShouldBe("ja-JP");
                 CultureInfo.CurrentUICulture.Name.ShouldBe("ja-JP");
             }
@@ -407,18 +378,15 @@ public sealed class FrontComposerTestHostTests
             CultureInfo.CurrentCulture.ShouldBe(originalCulture);
             CultureInfo.CurrentUICulture.ShouldBe(originalUICulture);
         }
-        finally
-        {
+        finally {
             CultureInfo.CurrentCulture = originalCulture;
             CultureInfo.CurrentUICulture = originalUICulture;
         }
     }
 
     [Fact]
-    public async Task ParallelContexts_DifferentTenants_DoNotShareFakeEvidence()
-    {
-        static async Task<CommandDispatchEvidence> DispatchAsync(string tenant, string user, CancellationToken cancellationToken)
-        {
+    public async Task ParallelContexts_DifferentTenants_DoNotShareFakeEvidence() {
+        static async Task<CommandDispatchEvidence> DispatchAsync(string tenant, string user, CancellationToken cancellationToken) {
             using TestHost host = new(tenant, user);
             ICommandService service = host.Services.GetRequiredService<ICommandService>();
             _ = await service.DispatchAsync(new SensitiveCommand { Tenant = tenant, User = user }, cancellationToken)
@@ -436,12 +404,11 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
-    public async Task CounterProjectionView_WithCompositionHost_RendersDataGridAndViewOverride()
-    {
+    public async Task CounterProjectionView_WithCompositionHost_RendersDataGridAndViewOverride() {
         await using BunitContext context = new();
         FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
         _ = host.AddDomainAssembly<CounterDomain>();
-        context.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
+        _ = context.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
 
         IStore store = context.Services.GetRequiredService<IStore>();
         await store.InitializeAsync();
@@ -452,16 +419,14 @@ public sealed class FrontComposerTestHostTests
 
         IRenderedComponent<CounterProjectionView> cut = context.Render<CounterProjectionView>();
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             GeneratedProjectionAssertions.AssertDataGridEnvelope(cut, "Counter");
             GeneratedProjectionAssertions.AssertCellValues(cut, "counter-full-view-heading", "12");
         });
     }
 
     [Fact]
-    public async Task CounterIncrementCommandRenderer_WithCompositionHost_DispatchesThroughFakeService()
-    {
+    public async Task CounterIncrementCommandRenderer_WithCompositionHost_DispatchesThroughFakeService() {
         await using BunitContext context = new();
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
         _ = host.AddDomainAssembly<CounterDomain>();
@@ -475,28 +440,23 @@ public sealed class FrontComposerTestHostTests
 
         cut.Find("form").Submit();
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             CommandDispatchEvidence evidence = host.CommandService.Evidence.Single();
             evidence.CommandType.ShouldBe(typeof(IncrementCommand).FullName);
             evidence.Status.ShouldBe("Accepted");
         });
     }
 
-    private sealed class TestHost : FrontComposerTestBase
-    {
+    private sealed class TestHost : FrontComposerTestBase {
         public TestHost()
-            : this("tenant-a", "user-a")
-        {
+            : this("tenant-a", "user-a") {
         }
 
         public TestHost(string tenant, string user)
-            : base(options =>
-            {
+            : base(options => {
                 options.TestTenantId = tenant;
                 options.TestUserId = user;
-            })
-        {
+            }) {
         }
 
         public TestCommandService ExposedCommandService => CommandService;
@@ -508,15 +468,13 @@ public sealed class FrontComposerTestHostTests
         public Task InitializeAsync() => InitializeStoreAsync();
     }
 
-    private sealed class FixedTimeProvider(DateTimeOffset timestamp) : TimeProvider
-    {
+    private sealed class FixedTimeProvider(DateTimeOffset timestamp) : TimeProvider {
         public DateTimeOffset Timestamp { get; } = timestamp;
 
         public override DateTimeOffset GetUtcNow() => Timestamp;
     }
 
-    private sealed class SensitiveCommand
-    {
+    private sealed class SensitiveCommand {
         public string? Tenant { get; init; }
 
         public string? User { get; init; }

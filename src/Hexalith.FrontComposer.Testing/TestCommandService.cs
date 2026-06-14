@@ -9,8 +9,7 @@ namespace Hexalith.FrontComposer.Testing;
 /// <summary>
 /// Deterministic fake command service that records immutable evidence and never reaches EventStore.
 /// </summary>
-public sealed class TestCommandService : ICommandServiceWithLifecycle
-{
+public sealed class TestCommandService : ICommandServiceWithLifecycle {
     private readonly ConcurrentQueue<CommandDispatchEvidence> _evidence = new();
     private readonly IUserContextAccessor _userContext;
     private readonly ICommandPageContext _pageContext;
@@ -19,8 +18,7 @@ public sealed class TestCommandService : ICommandServiceWithLifecycle
     internal TestCommandService(
         IUserContextAccessor userContext,
         ICommandPageContext pageContext,
-        FrontComposerTestOptions options)
-    {
+        FrontComposerTestOptions options) {
         _userContext = userContext;
         _pageContext = pageContext;
         _options = options;
@@ -39,8 +37,7 @@ public sealed class TestCommandService : ICommandServiceWithLifecycle
         TCommand command,
         Action<CommandLifecycleState, string?>? onLifecycleChange,
         CancellationToken cancellationToken = default)
-        where TCommand : class
-    {
+        where TCommand : class {
         cancellationToken.ThrowIfCancellationRequested();
 
         string messageId = $"test-message-{Evidence.Count + 1:0000}";
@@ -52,8 +49,7 @@ public sealed class TestCommandService : ICommandServiceWithLifecycle
             CommandLifecycleState.Confirmed,
         ];
 
-        foreach (CommandLifecycleState state in states)
-        {
+        foreach (CommandLifecycleState state in states) {
             onLifecycleChange?.Invoke(state, messageId);
         }
 
@@ -75,18 +71,14 @@ public sealed class TestCommandService : ICommandServiceWithLifecycle
     }
 
     /// <summary>Clears evidence retained by this fake service.</summary>
-    public void Reset()
-    {
-        while (_evidence.TryDequeue(out _))
-        {
+    public void Reset() {
+        while (_evidence.TryDequeue(out _)) {
         }
     }
 
-    private void EnqueueBounded(CommandDispatchEvidence evidence)
-    {
+    private void EnqueueBounded(CommandDispatchEvidence evidence) {
         _evidence.Enqueue(evidence);
-        while (_evidence.Count > _options.MaxEvidenceRecords && _evidence.TryDequeue(out _))
-        {
+        while (_evidence.Count > _options.MaxEvidenceRecords && _evidence.TryDequeue(out _)) {
         }
     }
 }

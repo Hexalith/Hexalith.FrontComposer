@@ -15,14 +15,12 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// and renders its specimen inside a <c>data-fc-density</c> wrapper that overrides
 /// the body-level cascade locally (D14, ADR-041).
 /// </summary>
-public sealed class FcDensityPreviewPanelTests : LayoutComponentTestBase
-{
+public sealed class FcDensityPreviewPanelTests : LayoutComponentTestBase {
     [Theory]
     [InlineData(DensityLevel.Compact, "compact")]
     [InlineData(DensityLevel.Comfortable, "comfortable")]
     [InlineData(DensityLevel.Roomy, "roomy")]
-    public void RendersAtRequestedDensity(DensityLevel level, string expectedAttributeValue)
-    {
+    public void RendersAtRequestedDensity(DensityLevel level, string expectedAttributeValue) {
         IRenderedComponent<FcDensityPreviewPanel> cut = Render<FcDensityPreviewPanel>(p => p
             .Add(c => c.Density, level));
 

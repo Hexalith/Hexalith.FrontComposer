@@ -96,9 +96,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         _notifier = serviceProvider.GetService<IProjectionChangeNotifier>();
         _reconciliationScheduler = serviceProvider.GetService<IProjectionFallbackRefreshScheduler>();
         _userContextAccessor = serviceProvider.GetService<IUserContextAccessor>();
-        if (_notifier is not null) {
-            _notifier.ProjectionChanged += OnProjectionChanged;
-        }
+        _notifier?.ProjectionChanged += OnProjectionChanged;
     }
 
     /// <inheritdoc />
@@ -125,7 +123,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         using CancellationTokenSource timeoutCts = new(
             TimeSpan.FromSeconds(InitialFetchTimeoutSeconds),
             _timeProvider);
-        using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(
+        using var cts = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken,
             _lifetimeCts.Token,
             timeoutCts.Token);
@@ -148,7 +146,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             return;
         }
 
-        Task[] tasks = new Task[types.Count];
+        var tasks = new Task[types.Count];
         for (int i = 0; i < types.Count; i++) {
             RegisterReconciliationLane(types[i]);
             tasks[i] = FetchOneAsync(types[i], cts.Token);
@@ -175,9 +173,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             return;
         }
 
-        if (_notifier is not null) {
-            _notifier.ProjectionChanged -= OnProjectionChanged;
-        }
+        _notifier?.ProjectionChanged -= OnProjectionChanged;
 
         try {
             _lifetimeCts.Cancel();
@@ -204,7 +200,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
                 return;
             }
 
-            UpdateCount(projectionType, count);
+            _ = UpdateCount(projectionType, count);
         }
         catch (OperationCanceledException) {
             // Expected on dispose or 5-second umbrella timeout; no log.
@@ -297,18 +293,6 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             : ProjectionFallbackLaneRefreshOutcome.NotModified;
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Design",
-        "CA1031:Do not catch general exception types",
-        Justification =
-            "D6 / Murat P0: an async-void event handler that escapes any exception kills the Blazor "
-            + "Server circuit. We log and swallow every non-cancellation exception here.")]
-    [System.Diagnostics.CodeAnalysis.SuppressMessage(
-        "Design",
-        "VSTHRD100:Avoid async void methods",
-        Justification =
-            "D6 canonical use-case: event handler for IProjectionChangeNotifier.ProjectionChanged. "
-            + "Alternative `_ = Task.Run(...)` bypasses Blazor's sync context — strictly worse.")]
     [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage(
         "Trimming",
         "IL2057:Unrecognized value passed to the parameter 'typeName' of method 'System.Type.GetType'",
@@ -323,7 +307,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
                 return;
             }
 
-            Type? resolved = Type.GetType(projectionTypeName, throwOnError: false, ignoreCase: false);
+            var resolved = Type.GetType(projectionTypeName, throwOnError: false, ignoreCase: false);
             if (resolved is null) {
                 LogUnresolvedOnce(projectionTypeName);
                 return;
@@ -338,7 +322,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
                 return;
             }
 
-            UpdateCount(resolved, count);
+            _ = UpdateCount(resolved, count);
         }
         catch (OperationCanceledException) {
             // Expected on dispose; no log.

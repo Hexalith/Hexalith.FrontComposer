@@ -18,16 +18,12 @@ public sealed class Level1FormatAttributeTests {
     [InlineData(1)]
     [InlineData(7)]
     [InlineData(30)]
-    public void RelativeTimeAttribute_AcceptsBoundedWindow(int days) {
-        new RelativeTimeAttribute(days).RelativeWindowDays.ShouldBe(days);
-    }
+    public void RelativeTimeAttribute_AcceptsBoundedWindow(int days) => new RelativeTimeAttribute(days).RelativeWindowDays.ShouldBe(days);
 
     [Theory]
     [InlineData(0)]
     [InlineData(366)]
-    public void RelativeTimeAttribute_RejectsOutOfRangeWindow(int days) {
-        Should.Throw<ArgumentOutOfRangeException>(() => new RelativeTimeAttribute(days));
-    }
+    public void RelativeTimeAttribute_RejectsOutOfRangeWindow(int days) => Should.Throw<ArgumentOutOfRangeException>(() => new RelativeTimeAttribute(days));
 
     [Fact]
     public void RelativeTimeAttribute_IsPropertyOnlyAndNotRepeatable() {
@@ -64,9 +60,7 @@ public sealed class Level1FormatAttributeTests {
     [InlineData(-1)]
     [InlineData(int.MinValue)]
     [InlineData(int.MaxValue)]
-    public void ColumnPriorityAttribute_AcceptsAnySignedIntPriority(int priority) {
-        new ColumnPriorityAttribute(priority).Priority.ShouldBe(priority);
-    }
+    public void ColumnPriorityAttribute_AcceptsAnySignedIntPriority(int priority) => new ColumnPriorityAttribute(priority).Priority.ShouldBe(priority);
 
     [Fact]
     public void ColumnPriorityAttribute_IsPropertyOnlyAndNotRepeatable() {

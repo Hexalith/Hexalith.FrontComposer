@@ -39,8 +39,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Architecture;
 ///     pinned separately by <c>DensityNoPerComponentLogicLintTest</c> (ADR-041).</description></item>
 /// </list>
 /// </remarks>
-public sealed class SliceSingleWriterGovernanceTests
-{
+public sealed class SliceSingleWriterGovernanceTests {
     private static readonly Regex SetAsyncCall = new(
         @"(?:storage|_storage)\.SetAsync\s*\(",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
@@ -51,8 +50,7 @@ public sealed class SliceSingleWriterGovernanceTests
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     [Fact]
-    public void ThemePersistence_HasSingleWriter_InThemeEffects()
-    {
+    public void ThemePersistence_HasSingleWriter_InThemeEffects() {
         List<(string file, int count)> writers = SetAsyncCallSites(SliceFolder("Theme"));
 
         int total = writers.Sum(w => w.count);
@@ -67,8 +65,7 @@ public sealed class SliceSingleWriterGovernanceTests
     }
 
     [Fact]
-    public void DensityPersistence_AllWritersLiveIn_DensityEffects()
-    {
+    public void DensityPersistence_AllWritersLiveIn_DensityEffects() {
         List<(string file, int count)> writers = SetAsyncCallSites(SliceFolder("Density"));
 
         int total = writers.Sum(w => w.count);
@@ -86,8 +83,7 @@ public sealed class SliceSingleWriterGovernanceTests
     }
 
     [Fact]
-    public void CurrentTheme_AssignedBy_SingleReducer()
-    {
+    public void CurrentTheme_AssignedBy_SingleReducer() {
         List<(string file, int count)> assigners = AssignmentSites(SliceFolder("Theme"), CurrentThemeAssignment);
 
         int total = assigners.Sum(a => a.count);
@@ -106,16 +102,13 @@ public sealed class SliceSingleWriterGovernanceTests
             .Where(x => x.count > 0)
             .ToList();
 
-    private static List<(string file, int count)> AssignmentSites(string folder, Regex pattern)
-    {
+    private static List<(string file, int count)> AssignmentSites(string folder, Regex pattern) {
         List<(string file, int count)> sites = [];
-        foreach (string f in Directory.EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories))
-        {
+        foreach (string f in Directory.EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories)) {
             int count = File.ReadLines(f)
                 .Where(line => !line.TrimStart().StartsWith("///", StringComparison.Ordinal))
                 .Sum(line => pattern.Matches(line).Count);
-            if (count > 0)
-            {
+            if (count > 0) {
                 sites.Add((Path.GetFileName(f), count));
             }
         }
@@ -128,20 +121,16 @@ public sealed class SliceSingleWriterGovernanceTests
             ? "(none)"
             : string.Join(", ", sites.Select(s => $"{s.file}×{s.count}"));
 
-    private static string SliceFolder(string slice)
-    {
+    private static string SliceFolder(string slice) {
         string current = AppContext.BaseDirectory;
-        for (int i = 0; i < 10; i++)
-        {
+        for (int i = 0; i < 10; i++) {
             string candidate = Path.Combine(current, "src", "Hexalith.FrontComposer.Shell", "State", slice);
-            if (Directory.Exists(candidate))
-            {
+            if (Directory.Exists(candidate)) {
                 return candidate;
             }
 
             DirectoryInfo? parent = Directory.GetParent(current);
-            if (parent is null)
-            {
+            if (parent is null) {
                 break;
             }
 

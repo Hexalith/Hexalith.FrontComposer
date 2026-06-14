@@ -10,8 +10,7 @@ namespace Hexalith.FrontComposer.Testing;
 /// <summary>
 /// Configures the adopter-facing FrontComposer component test host.
 /// </summary>
-public sealed class FrontComposerTestOptions
-{
+public sealed class FrontComposerTestOptions {
     /// <summary>Default tenant id used by fake user context and captured evidence.</summary>
     public string TestTenantId { get; set; } = "test-tenant";
 
@@ -52,8 +51,7 @@ public sealed class FrontComposerTestOptions
 /// <summary>
 /// Controls when the test host initializes the Fluxor store.
 /// </summary>
-public enum StoreInitializationMode
-{
+public enum StoreInitializationMode {
     /// <summary>Call <see cref="FrontComposerTestBase.InitializeStoreAsync"/> explicitly before rendering.</summary>
     OnDemand,
 

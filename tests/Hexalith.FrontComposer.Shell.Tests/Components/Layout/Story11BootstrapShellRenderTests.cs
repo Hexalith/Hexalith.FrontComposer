@@ -23,16 +23,13 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// the global shortcuts registered on first render, and the home empty-state (no domain types) with
 /// the Navigation area omitted so content spans edge-to-edge.
 /// </summary>
-public sealed class Story11BootstrapShellRenderTests : LayoutComponentTestBase
-{
+public sealed class Story11BootstrapShellRenderTests : LayoutComponentTestBase {
     [Fact]
-    public void Shell_RendersFrameworkFrame_SkipLinkProvidersAndStoreInitializer()
-    {
+    public void Shell_RendersFrameworkFrame_SkipLinkProvidersAndStoreInitializer() {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             // AC1 — skip-to-content link targets the main content region.
             _ = cut.Find("a.fc-skip-link[href=\"#fc-main-content\"]");
             // AC1 — Fluent providers + the shell-owned Fluxor StoreInitializer.
@@ -43,16 +40,14 @@ public sealed class Story11BootstrapShellRenderTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void Shell_RegistersGlobalShortcuts_CtrlKAndCtrlComma_AfterFirstRender()
-    {
+    public void Shell_RegistersGlobalShortcuts_CtrlKAndCtrlComma_AfterFirstRender() {
         IShortcutService shortcuts = Services.GetRequiredService<IShortcutService>();
 
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));
 
         // Verify via the IShortcutService surface (deterministic) rather than simulating keypresses.
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             string[] bindings = [.. shortcuts.GetRegistrations().Select(r => r.Binding)];
             bindings.ShouldContain("ctrl+k", "Ctrl+K (palette) must be registered on first render (AC1).");
             bindings.ShouldContain("ctrl+,", "Ctrl+, (settings) must be registered on first render (AC1).");
@@ -60,8 +55,7 @@ public sealed class Story11BootstrapShellRenderTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void Shell_EmptyRegistry_OmitsNavigationArea()
-    {
+    public void Shell_EmptyRegistry_OmitsNavigationArea() {
         // AC3 — with no domain types registered, the Navigation FluentLayoutItem is omitted so
         // content spans edge-to-edge (HasNavigation is false on the empty shell).
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
@@ -71,8 +65,7 @@ public sealed class Story11BootstrapShellRenderTests : LayoutComponentTestBase
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             cut.Markup.ShouldNotContain("data-testid=\"fc-shell-navigation\"", Case.Sensitive);
             Should.Throw<Bunit.Rendering.ComponentNotFoundException>(
                 () => cut.FindComponent<FrontComposerNavigation>(),
@@ -81,8 +74,7 @@ public sealed class Story11BootstrapShellRenderTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void HomeDirectory_EmptyRegistry_RendersEmptyStateWithoutThrowing()
-    {
+    public void HomeDirectory_EmptyRegistry_RendersEmptyStateWithoutThrowing() {
         // AC3 — the home content area shows the empty state when no microservices are registered.
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
         registry.GetManifests().Returns([]);

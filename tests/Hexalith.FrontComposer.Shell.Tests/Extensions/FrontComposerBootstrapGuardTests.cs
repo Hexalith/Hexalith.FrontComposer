@@ -5,7 +5,6 @@ using Hexalith.FrontComposer.Shell.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -19,8 +18,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Extensions;
 /// call, that the ordering markers register in call order through the real entry points, and that
 /// the guard is idempotent against duplicate registration.
 /// </summary>
-public sealed class FrontComposerBootstrapGuardTests
-{
+public sealed class FrontComposerBootstrapGuardTests {
     // ── Validator unit tests (synthesised markers, in DI insertion order) ──────────────────────────
 
     [Fact]
@@ -44,8 +42,7 @@ public sealed class FrontComposerBootstrapGuardTests
             FrontComposerBootstrapStage.EventStore)));
 
     [Fact]
-    public void Validate_EventStoreBeforeQuickstart_ThrowsNamingBothCalls()
-    {
+    public void Validate_EventStoreBeforeQuickstart_ThrowsNamingBothCalls() {
         InvalidOperationException ex = Should.Throw<InvalidOperationException>(
             () => FrontComposerBootstrapValidator.Validate(Markers(
                 FrontComposerBootstrapStage.EventStore,
@@ -57,8 +54,7 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public void Validate_DomainBeforeQuickstart_ThrowsNamingBothCalls()
-    {
+    public void Validate_DomainBeforeQuickstart_ThrowsNamingBothCalls() {
         InvalidOperationException ex = Should.Throw<InvalidOperationException>(
             () => FrontComposerBootstrapValidator.Validate(Markers(
                 FrontComposerBootstrapStage.Domain,
@@ -69,8 +65,7 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public void Validate_EventStoreBeforeDomain_ThrowsNamingBoth()
-    {
+    public void Validate_EventStoreBeforeDomain_ThrowsNamingBoth() {
         InvalidOperationException ex = Should.Throw<InvalidOperationException>(
             () => FrontComposerBootstrapValidator.Validate(Markers(
                 FrontComposerBootstrapStage.Quickstart,
@@ -82,8 +77,7 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public void Validate_MissingQuickstart_OnlyEventStore_ThrowsNamingForgottenQuickstart()
-    {
+    public void Validate_MissingQuickstart_OnlyEventStore_ThrowsNamingForgottenQuickstart() {
         InvalidOperationException ex = Should.Throw<InvalidOperationException>(
             () => FrontComposerBootstrapValidator.Validate(Markers(
                 FrontComposerBootstrapStage.EventStore)));
@@ -94,8 +88,7 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public void Validate_MissingQuickstart_OnlyDomain_ThrowsNamingForgottenQuickstart()
-    {
+    public void Validate_MissingQuickstart_OnlyDomain_ThrowsNamingForgottenQuickstart() {
         InvalidOperationException ex = Should.Throw<InvalidOperationException>(
             () => FrontComposerBootstrapValidator.Validate(Markers(
                 FrontComposerBootstrapStage.Domain)));
@@ -109,8 +102,7 @@ public sealed class FrontComposerBootstrapGuardTests
         => Should.Throw<ArgumentNullException>(() => FrontComposerBootstrapValidator.Validate(null!));
 
     [Fact]
-    public void Validate_NoMarkersAtAll_ThrowsNamingForgottenQuickstart()
-    {
+    public void Validate_NoMarkersAtAll_ThrowsNamingForgottenQuickstart() {
         // Defensive: an empty marker set (no FrontComposer entry point ran) is treated identically to
         // a missing foundational call — name AddHexalithFrontComposerQuickstart() as the fix.
         InvalidOperationException ex = Should.Throw<InvalidOperationException>(
@@ -126,8 +118,7 @@ public sealed class FrontComposerBootstrapGuardTests
     // ── Hosted-gate tests (the IHostedService that runs the validator at host start) ────────────────
 
     [Fact]
-    public async Task Gate_StartAsync_ValidMarkers_DoesNotThrow()
-    {
+    public async Task Gate_StartAsync_ValidMarkers_DoesNotThrow() {
         FrontComposerBootstrapValidationGate gate = new(
             Markers(FrontComposerBootstrapStage.Quickstart, FrontComposerBootstrapStage.Domain),
             NullLogger<FrontComposerBootstrapValidationGate>.Instance);
@@ -136,8 +127,7 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public async Task Gate_StartAsync_MisorderedMarkers_ThrowsNamedInvalidOperationException()
-    {
+    public async Task Gate_StartAsync_MisorderedMarkers_ThrowsNamedInvalidOperationException() {
         FrontComposerBootstrapValidationGate gate = new(
             Markers(FrontComposerBootstrapStage.EventStore, FrontComposerBootstrapStage.Quickstart),
             NullLogger<FrontComposerBootstrapValidationGate>.Instance);
@@ -150,8 +140,7 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public async Task Gate_StartAsync_MisorderedMarkers_LogsErrorWithNamedMessage_BeforeThrowing()
-    {
+    public async Task Gate_StartAsync_MisorderedMarkers_LogsErrorWithNamedMessage_BeforeThrowing() {
         // Task 1 explicitly requires the gate to write the message to the logger AND throw it
         // (mirrors CustomizationContractValidationGate). Pin the log channel so the named diagnostic
         // is not silently dropped before the throw.
@@ -171,8 +160,7 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public async Task Gate_StartAsync_ValidMarkers_LogsNothing()
-    {
+    public async Task Gate_StartAsync_ValidMarkers_LogsNothing() {
         CapturingLogger<FrontComposerBootstrapValidationGate> logger = new();
         FrontComposerBootstrapValidationGate gate = new(
             Markers(FrontComposerBootstrapStage.Quickstart),
@@ -184,8 +172,7 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public async Task Gate_StartAsync_CancelledToken_ThrowsOperationCanceled()
-    {
+    public async Task Gate_StartAsync_CancelledToken_ThrowsOperationCanceled() {
         FrontComposerBootstrapValidationGate gate = new(
             Markers(FrontComposerBootstrapStage.Quickstart),
             NullLogger<FrontComposerBootstrapValidationGate>.Instance);
@@ -197,8 +184,7 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public async Task Gate_StopAsync_DoesNotThrow()
-    {
+    public async Task Gate_StopAsync_DoesNotThrow() {
         FrontComposerBootstrapValidationGate gate = new(
             Markers(FrontComposerBootstrapStage.Quickstart),
             NullLogger<FrontComposerBootstrapValidationGate>.Instance);
@@ -209,8 +195,7 @@ public sealed class FrontComposerBootstrapGuardTests
     // ── Real-entry-point registration tests ─────────────────────────────────────────────────────────
 
     [Fact]
-    public void ThreeCallBootstrap_RegistersMarkersInQuickstartDomainEventStoreOrder()
-    {
+    public void ThreeCallBootstrap_RegistersMarkersInQuickstartDomainEventStoreOrder() {
         ServiceCollection services = BuildThreeCall();
 
         using ServiceProvider provider = services.BuildServiceProvider();
@@ -226,9 +211,8 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public void Quickstart_RegistersSingleQuickstartMarker_AndSingleHostedGate()
-    {
-        ServiceCollection services = new();
+    public void Quickstart_RegistersSingleQuickstartMarker_AndSingleHostedGate() {
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposerQuickstart();
 
         services.Count(d => d.ImplementationType == typeof(QuickstartBootstrapMarker)).ShouldBe(1);
@@ -236,10 +220,9 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public void DuplicateQuickstart_DoesNotDoubleRegisterMarkerOrGate()
-    {
+    public void DuplicateQuickstart_DoesNotDoubleRegisterMarkerOrGate() {
         // Edge case (a): calling Quickstart twice must not double-register or double-throw.
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposerQuickstart();
         _ = services.AddHexalithFrontComposerQuickstart();
 
@@ -252,12 +235,10 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public void MisorderedRealCalls_EventStoreBeforeQuickstart_ValidatorThrowsNamingBoth()
-    {
+    public void MisorderedRealCalls_EventStoreBeforeQuickstart_ValidatorThrowsNamingBoth() {
         // End-to-end ordering detection through the real entry points (markers carry insertion order).
-        ServiceCollection services = new();
-        _ = services.AddHexalithEventStore(o =>
-        {
+        ServiceCollection services = [];
+        _ = services.AddHexalithEventStore(o => {
             o.BaseAddress = new Uri("http://localhost:9/");
             o.RequireAccessToken = false;
         });
@@ -274,15 +255,13 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public void EventStoreAlone_RegistersGate_AndValidatorThrowsNamingForgottenQuickstart()
-    {
+    public void EventStoreAlone_RegistersGate_AndValidatorThrowsNamingForgottenQuickstart() {
         // The headline AC2 "a required one is missing" case through the REAL wiring: a host that wires
         // only AddHexalithEventStore (forgetting AddHexalithFrontComposerQuickstart) must still fail
         // fast. The gate is registered by AddHexalithEventStore so StartAsync can run at host start,
         // and the validator names the forgotten foundational call instead of an opaque DI error.
-        ServiceCollection services = new();
-        _ = services.AddHexalithEventStore(o =>
-        {
+        ServiceCollection services = [];
+        _ = services.AddHexalithEventStore(o => {
             o.BaseAddress = new Uri("http://localhost:9/");
             o.RequireAccessToken = false;
         });
@@ -299,12 +278,11 @@ public sealed class FrontComposerBootstrapGuardTests
     }
 
     [Fact]
-    public void GranularAddHexalithFrontComposer_RegistersQuickstartMarkerAndGate()
-    {
+    public void GranularAddHexalithFrontComposer_RegistersQuickstartMarkerAndGate() {
         // The Quickstart ordering marker lives on the foundational AddHexalithFrontComposer() call, not
         // on the AddHexalithFrontComposerQuickstart() wrapper — so the granular 3-call path is guarded
         // identically. Pin that the foundational call alone produces a valid (non-throwing) bootstrap.
-        ServiceCollection services = new();
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposer();
 
         services.Count(d => d.ImplementationType == typeof(QuickstartBootstrapMarker)).ShouldBe(1);
@@ -315,13 +293,11 @@ public sealed class FrontComposerBootstrapGuardTests
             provider.GetRequiredService<IEnumerable<IFrontComposerBootstrapMarker>>()));
     }
 
-    private static ServiceCollection BuildThreeCall()
-    {
-        ServiceCollection services = new();
+    private static ServiceCollection BuildThreeCall() {
+        ServiceCollection services = [];
         _ = services.AddHexalithFrontComposerQuickstart();
         _ = services.AddHexalithDomain<CounterDomain>();
-        _ = services.AddHexalithEventStore(o =>
-        {
+        _ = services.AddHexalithEventStore(o => {
             o.BaseAddress = new Uri("http://localhost:9/");
             o.RequireAccessToken = false;
         });
@@ -339,8 +315,7 @@ public sealed class FrontComposerBootstrapGuardTests
         })];
 
     /// <summary>Minimal in-memory logger so the gate's "log AND throw" contract can be asserted.</summary>
-    private sealed class CapturingLogger<T> : ILogger<T>
-    {
+    private sealed class CapturingLogger<T> : ILogger<T> {
         public List<Entry> Entries { get; } = [];
 
         public IDisposable? BeginScope<TState>(TState state)

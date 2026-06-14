@@ -1,5 +1,3 @@
-using System;
-
 using Hexalith.FrontComposer.Contracts.Attributes;
 
 using Shouldly;
@@ -24,10 +22,10 @@ public sealed class ColumnPriorityAttributeTests {
 
     [Fact]
     public void AttributeUsage_TargetsPropertiesOnly_NotInherited_SingleUse() {
-        AttributeUsageAttribute? usage = (AttributeUsageAttribute?)Attribute.GetCustomAttribute(
+        var usage = (AttributeUsageAttribute?)Attribute.GetCustomAttribute(
             typeof(ColumnPriorityAttribute), typeof(AttributeUsageAttribute));
 
-        usage.ShouldNotBeNull();
+        _ = usage.ShouldNotBeNull();
         usage!.ValidOn.ShouldBe(AttributeTargets.Property);
         usage.Inherited.ShouldBeFalse();
         usage.AllowMultiple.ShouldBeFalse();

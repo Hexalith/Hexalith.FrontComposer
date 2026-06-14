@@ -3,9 +3,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
 
 using Shouldly;
-using Xunit;
-
-using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Baseline;
 
@@ -66,8 +63,8 @@ public sealed class DriftBaselineMissingDiagnosticTests {
         Diagnostic? invalid = invalidPath.FirstOrDefault(d => d.GetMessage().Contains("baseline", StringComparison.OrdinalIgnoreCase)
                                                            && d.GetMessage().Contains("path", StringComparison.OrdinalIgnoreCase));
 
-        missing.ShouldNotBeNull();
-        invalid.ShouldNotBeNull();
+        _ = missing.ShouldNotBeNull();
+        _ = invalid.ShouldNotBeNull();
         missing!.Id.ShouldNotBe(invalid!.Id, "AC8 — missing-baseline (HFC1058) and invalid-path (HFC1059) MUST carry distinct IDs.");
         missing.Id.ShouldBe("HFC1058", "AC8 — first-run/missing baseline pinned to HFC1058.");
         invalid.Id.ShouldBe("HFC1059", "AC8 — invalid-configured-path pinned to HFC1059.");

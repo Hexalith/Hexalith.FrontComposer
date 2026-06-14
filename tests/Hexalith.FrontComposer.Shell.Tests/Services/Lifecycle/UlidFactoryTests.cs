@@ -34,7 +34,7 @@ public class UlidFactoryTests {
             Thread.Sleep(2);
         }
 
-        List<string> sorted = ulids.OrderBy(x => x, StringComparer.Ordinal).ToList();
+        var sorted = ulids.OrderBy(x => x, StringComparer.Ordinal).ToList();
         ulids.ShouldBe(sorted, "ULIDs generated across 2 ms gaps must sort lexicographically in emission order");
     }
 
@@ -103,7 +103,7 @@ public class UlidFactoryTests {
         }
 
         double expected = sampleSize / 32.0;
-        double chiSquare = highNibbleCounts.Sum(c => ((c - expected) * (c - expected)) / expected);
+        double chiSquare = highNibbleCounts.Sum(c => (c - expected) * (c - expected) / expected);
 
         chiSquare.ShouldBeLessThan(
             60.0,

@@ -1,26 +1,23 @@
 using Bunit;
-using Bunit.TestDoubles;
 
 using Fluxor;
 using Fluxor.Blazor.Web;
 
-using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
-using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Components.Layout;
+using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services.Customization;
-using Hexalith.FrontComposer.Shell.Tests.Services.Diagnostics;
 using Hexalith.FrontComposer.Shell.State.Navigation;
-using Hexalith.FrontComposer.Shell.State.Theme;
+using Hexalith.FrontComposer.Shell.Tests.Services.Diagnostics;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -107,7 +104,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
     [Fact]
     public void Renders_navigation_slot_when_provided() {
-        RenderFragment navigation = builder => builder.AddMarkupContent(0, "<nav>Navigation rail</nav>");
+        static void navigation(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) => builder.AddMarkupContent(0, "<nav>Navigation rail</nav>");
 
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .Add(c => c.Navigation, navigation)
@@ -182,7 +179,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         ]);
         Services.Replace(ServiceDescriptor.Singleton(registry));
 
-        RenderFragment custom = builder => builder.AddMarkupContent(0, "<nav data-testid=\"adopter-nav\">Custom</nav>");
+        static void custom(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) => builder.AddMarkupContent(0, "<nav data-testid=\"adopter-nav\">Custom</nav>");
 
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .Add(c => c.Navigation, custom)
@@ -242,14 +239,12 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));
 
-        cut.WaitForAssertion(() => {
-            _ = cut.FindComponent<FcSettingsButton>();
-        });
+        cut.WaitForAssertion(() => _ = cut.FindComponent<FcSettingsButton>());
     }
 
     [Fact]
     public void AdopterSuppliedHeaderEndWins() {
-        RenderFragment custom = builder => builder.AddMarkupContent(0, "<span data-testid=\"adopter-header-end\">Custom</span>");
+        static void custom(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) => builder.AddMarkupContent(0, "<span data-testid=\"adopter-header-end\">Custom</span>");
 
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .Add(c => c.HeaderEnd, custom)
@@ -335,7 +330,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
     // must suppress BOTH the auto-populated FcPaletteTriggerButton AND FcSettingsButton, not just one.
     [Fact]
     public void AdopterSuppliedHeaderEndSuppressesPaletteTrigger() {
-        RenderFragment custom = builder => builder.AddMarkupContent(0, "<span data-testid=\"adopter-header-end\">Custom</span>");
+        static void custom(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) => builder.AddMarkupContent(0, "<span data-testid=\"adopter-header-end\">Custom</span>");
 
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .Add(c => c.HeaderEnd, custom)

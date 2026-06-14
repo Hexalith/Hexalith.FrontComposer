@@ -9,28 +9,24 @@ namespace Hexalith.FrontComposer.Testing;
 /// <summary>
 /// Optional inheritance-based bUnit base class for generated FrontComposer component tests.
 /// </summary>
-public abstract class FrontComposerTestBase : BunitContext
-{
+public abstract class FrontComposerTestBase : BunitContext {
     private bool _storeInitialized;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FrontComposerTestBase"/> class.
     /// </summary>
     protected FrontComposerTestBase()
-        : this(_ => { })
-    {
+        : this(_ => { }) {
     }
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FrontComposerTestBase"/> class.
     /// </summary>
     /// <param name="configure">Optional host configuration callback.</param>
-    protected FrontComposerTestBase(Action<FrontComposerTestOptions> configure)
-    {
+    protected FrontComposerTestBase(Action<FrontComposerTestOptions> configure) {
         Host = Services.AddFrontComposerTestHost(this, configure);
         _storeInitialized = Host.StoreInitialized;
-        if (Host.Options.StoreInitialization == StoreInitializationMode.DuringHostSetup && !_storeInitialized)
-        {
+        if (Host.Options.StoreInitialization == StoreInitializationMode.DuringHostSetup && !_storeInitialized) {
             InitializeStoreAsync().GetAwaiter().GetResult();
         }
     }
@@ -54,10 +50,8 @@ public abstract class FrontComposerTestBase : BunitContext
     /// Initializes the Fluxor store once. Repeated calls are safe and preserve existing state.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
-    protected async Task InitializeStoreAsync()
-    {
-        if (_storeInitialized)
-        {
+    protected async Task InitializeStoreAsync() {
+        if (_storeInitialized) {
             return;
         }
 
@@ -67,10 +61,8 @@ public abstract class FrontComposerTestBase : BunitContext
     }
 
     /// <inheritdoc />
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
+    protected override void Dispose(bool disposing) {
+        if (disposing) {
             Host.Dispose();
         }
 

@@ -24,7 +24,7 @@ public sealed class EventStoreContractTests {
 
     [Fact]
     public void QueryResult_NotModified_IsExplicitNoChangeState() {
-        QueryResult<string> result = QueryResult<string>.NotModified("\"etag-1\"");
+        var result = QueryResult<string>.NotModified("\"etag-1\"");
 
         result.IsNotModified.ShouldBeTrue();
         result.Items.ShouldBeEmpty();
@@ -35,9 +35,7 @@ public sealed class EventStoreContractTests {
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("orders:tenant")]
-    public void EventStoreValidation_RejectsMissingOrColonRoutingValues(string value) {
-        _ = Should.Throw<ArgumentException>(() => EventStoreValidation.RequireNonColonSegment(value, "value"));
-    }
+    public void EventStoreValidation_RejectsMissingOrColonRoutingValues(string value) => _ = Should.Throw<ArgumentException>(() => EventStoreValidation.RequireNonColonSegment(value, "value"));
 
     [Fact]
     public void EventStoreValidation_RejectsMoreThanTenEtags() {

@@ -137,8 +137,8 @@ public sealed class ToolAdmissionSpecGapTests {
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             out RecordingCommandService service,
             services => {
-                services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => accessor);
-                services.AddSingleton<IFrontComposerMcpTenantToolGate>(new TenantBoundedContextGate(
+                _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => accessor);
+                _ = services.AddSingleton<IFrontComposerMcpTenantToolGate>(new TenantBoundedContextGate(
                     new Dictionary<string, string>(StringComparer.Ordinal) {
                         ["Billing"] = "tenant-a",
                         ["Catalog"] = "tenant-b",
@@ -232,9 +232,9 @@ public sealed class ToolAdmissionSpecGapTests {
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             out _,
             services => {
-                services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ =>
+                _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ =>
                     new StaticAccessor(tenantId: tenantId, userId: "agent-x"));
-                services.AddSingleton<IFrontComposerMcpTenantToolGate>(new TenantBoundedContextGate(
+                _ = services.AddSingleton<IFrontComposerMcpTenantToolGate>(new TenantBoundedContextGate(
                     new Dictionary<string, string>(StringComparer.Ordinal) {
                         ["Billing"] = "tenant-a",
                         ["Catalog"] = "tenant-b",
@@ -250,18 +250,18 @@ public sealed class ToolAdmissionSpecGapTests {
         Action<FrontComposerMcpOptions>? configureOptions = null) {
         service = new RecordingCommandService();
         ServiceCollection sc = new();
-        sc.AddSingleton<ICommandService>(service);
-        sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
-        sc.Configure<FrontComposerMcpOptions>(o => {
+        _ = sc.AddSingleton<ICommandService>(service);
+        _ = sc.AddSingleton<IUlidFactory, FixedUlidFactory>();
+        _ = sc.Configure<FrontComposerMcpOptions>(o => {
             o.Manifests.Add(Manifest());
             configureOptions?.Invoke(o);
         });
-        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
-        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        _ = sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        _ = sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        _ = sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        _ = sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         configureServices?.Invoke(sc);
         ServiceProvider provider = sc.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);

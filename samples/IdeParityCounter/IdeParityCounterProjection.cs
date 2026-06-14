@@ -1,6 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Attributes;
 
-namespace IdeParity.Counter;
+namespace IdeParityCounter;
 
 /// <summary>
 /// Deterministic projection used by the Story 9-3 IDE parity matrix. Generated outputs
@@ -11,8 +11,7 @@ namespace IdeParity.Counter;
 /// </summary>
 [BoundedContext("Counter", DisplayLabel = "Counter")]
 [Projection]
-public partial class IdeParityCounterProjection
-{
+public partial class IdeParityCounterProjection {
     /// <summary>Stable identifier surfaced in generated DataGrid columns.</summary>
     public string Id { get; set; } = string.Empty;
 

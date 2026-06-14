@@ -4,8 +4,6 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Shell.Services.DevMode;
 
-using Microsoft.Extensions.Options;
-
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Services.DevMode;

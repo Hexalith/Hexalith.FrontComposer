@@ -1,5 +1,3 @@
-using Projects;
-
 namespace Hexalith.FrontComposer.AppHost;
 
 /// <summary>EventStore Admin REST API host (root submodule copy).</summary>

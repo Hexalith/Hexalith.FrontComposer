@@ -17,9 +17,7 @@ public sealed class DerivedFromAttribute : Attribute {
     /// Initializes a new instance of the <see cref="DerivedFromAttribute"/> class.
     /// </summary>
     /// <param name="source">The infrastructure source that supplies the property value.</param>
-    public DerivedFromAttribute(DerivedFromSource source) {
-        Source = source;
-    }
+    public DerivedFromAttribute(DerivedFromSource source) => Source = source;
 
     /// <summary>
     /// Gets the infrastructure source that supplies the property value at dispatch time.

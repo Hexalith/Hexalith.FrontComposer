@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Threading.Tasks;
 
 using Fluxor;
 
@@ -42,7 +41,7 @@ public sealed class ScrollPersistenceEffect : IDisposable {
 
         CancellationTokenSource cts = new();
         CancellationTokenSource? previous = null;
-        _pending.AddOrUpdate(
+        _ = _pending.AddOrUpdate(
             action.ViewKey,
             cts,
             (_, existing) => {
@@ -61,7 +60,7 @@ public sealed class ScrollPersistenceEffect : IDisposable {
             return;
         }
         finally {
-            _pending.TryRemove(new KeyValuePair<string, CancellationTokenSource>(action.ViewKey, cts));
+            _ = _pending.TryRemove(new KeyValuePair<string, CancellationTokenSource>(action.ViewKey, cts));
             cts.Dispose();
         }
 

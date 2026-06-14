@@ -8,26 +8,22 @@ namespace Hexalith.FrontComposer.Testing;
 /// </summary>
 /// <typeparam name="TProjection">Projection model type.</typeparam>
 public sealed class ProjectionTestDataBuilder<TProjection>
-    where TProjection : class, new()
-{
+    where TProjection : class, new() {
     private readonly Dictionary<string, object?> _values = new(StringComparer.Ordinal);
 
     /// <summary>Sets a projection property value.</summary>
     public ProjectionTestDataBuilder<TProjection> With<TValue>(
         Expression<Func<TProjection, TValue>> property,
-        TValue value)
-    {
+        TValue value) {
         ArgumentNullException.ThrowIfNull(property);
         _values[GetProperty(property).Name] = value;
         return this;
     }
 
     /// <summary>Builds a projection instance with configured property values.</summary>
-    public TProjection Build()
-    {
+    public TProjection Build() {
         TProjection projection = new();
-        foreach ((string name, object? value) in _values)
-        {
+        foreach ((string name, object? value) in _values) {
             PropertyInfo property = typeof(TProjection).GetProperty(name)
                 ?? throw new InvalidOperationException($"Projection property '{name}' was not found.");
             property.SetValue(projection, value);
@@ -38,8 +34,7 @@ public sealed class ProjectionTestDataBuilder<TProjection>
 
     /// <summary>Builds several projection instances from a sequence of configure callbacks.</summary>
     public static IReadOnlyList<TProjection> BuildMany(params Action<ProjectionTestDataBuilder<TProjection>>[] configure)
-        => configure.Select(action =>
-        {
+        => configure.Select(action => {
             ProjectionTestDataBuilder<TProjection> builder = new();
             action(builder);
             return builder.Build();
@@ -56,26 +51,22 @@ public sealed class ProjectionTestDataBuilder<TProjection>
 /// </summary>
 /// <typeparam name="TCommand">Command model type.</typeparam>
 public sealed class CommandTestDataBuilder<TCommand>
-    where TCommand : class, new()
-{
+    where TCommand : class, new() {
     private readonly Dictionary<string, object?> _values = new(StringComparer.Ordinal);
 
     /// <summary>Sets a command property value.</summary>
     public CommandTestDataBuilder<TCommand> With<TValue>(
         Expression<Func<TCommand, TValue>> property,
-        TValue value)
-    {
+        TValue value) {
         ArgumentNullException.ThrowIfNull(property);
         _values[GetProperty(property).Name] = value;
         return this;
     }
 
     /// <summary>Builds a command instance with configured property values.</summary>
-    public TCommand Build()
-    {
+    public TCommand Build() {
         TCommand command = new();
-        foreach ((string name, object? value) in _values)
-        {
+        foreach ((string name, object? value) in _values) {
             PropertyInfo property = typeof(TCommand).GetProperty(name)
                 ?? throw new InvalidOperationException($"Command property '{name}' was not found.");
             property.SetValue(command, value);

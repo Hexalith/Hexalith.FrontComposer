@@ -15,19 +15,16 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// the null (UserPreferenceCleared) paths are pinned. Mirrors Story 3-2's
 /// <c>NavigationPersistenceSnapshotTests</c> baseline-lock pattern.
 /// </summary>
-public sealed class DensityPersistenceSnapshotTests
-{
+public sealed class DensityPersistenceSnapshotTests {
     [Fact]
-    public Task SerialisedNonNull_LocksSchema()
-    {
+    public Task SerialisedNonNull_LocksSchema() {
         DensityLevel? value = DensityLevel.Roomy;
         string serialised = JsonSerializer.Serialize(value);
         return Verify(serialised);
     }
 
     [Fact]
-    public Task SerialisedNull_LocksSchema()
-    {
+    public Task SerialisedNull_LocksSchema() {
         DensityLevel? value = null;
         string serialised = JsonSerializer.Serialize(value);
         return Verify(serialised);

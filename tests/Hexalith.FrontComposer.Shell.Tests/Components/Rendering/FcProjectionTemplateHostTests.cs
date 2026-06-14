@@ -14,8 +14,6 @@ using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
 
-using Xunit;
-
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Rendering;
 
 /// <summary>

@@ -40,7 +40,6 @@ public sealed class ConstructorDefaultValueProvider : IDerivedValueProvider {
             return Task.FromResult(new DerivedValueResult(true, cached));
         }
 
-#pragma warning disable IL2067 // commandType flows from the generated renderer; trim analysis is delegated to the renderer's call site.
         object? instance = InstanceCache.GetOrAdd(commandType, static t => {
             try {
                 return Activator.CreateInstance(t);
@@ -59,8 +58,6 @@ public sealed class ConstructorDefaultValueProvider : IDerivedValueProvider {
                 return null;
             }
         });
-#pragma warning restore IL2067
-
         if (instance is null) {
             return Task.FromResult(DerivedValueResult.None);
         }

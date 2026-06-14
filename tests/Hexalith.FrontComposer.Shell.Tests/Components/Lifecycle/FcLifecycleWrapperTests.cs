@@ -104,7 +104,7 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
     [Fact]
     public void ActionPrompt_Start_over_button_calls_NavigateTo_forceLoad_true() {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, FakeTimeProvider time) = RenderWrapperWithFakeTime();
-        TestNavigationManager nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
+        var nav = (TestNavigationManager)Services.GetRequiredService<NavigationManager>();
         DateTimeOffset anchor = time.GetUtcNow();
         push(TransitionAt(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing, anchor));
         time.Advance(TimeSpan.FromMilliseconds(10_050));

@@ -14,11 +14,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// <summary>
 /// Story 3-1 theme toggle render and accessibility tests.
 /// </summary>
-public sealed class FcThemeToggleTests : LayoutComponentTestBase
-{
+public sealed class FcThemeToggleTests : LayoutComponentTestBase {
     [Fact]
-    public void Toggle_button_exposes_theme_aria_label()
-    {
+    public void Toggle_button_exposes_theme_aria_label() {
         IRenderedComponent<FcThemeToggle> cut = Render<FcThemeToggle>();
         IStringLocalizer<FcShellResources> localizer = Services.GetRequiredService<IStringLocalizer<FcShellResources>>();
 
@@ -27,8 +25,7 @@ public sealed class FcThemeToggleTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void Current_label_tracks_fluxor_theme_state()
-    {
+    public void Current_label_tracks_fluxor_theme_state() {
         DispatchTheme(ThemeValue.Dark);
 
         IRenderedComponent<FcThemeToggle> cut = Render<FcThemeToggle>();

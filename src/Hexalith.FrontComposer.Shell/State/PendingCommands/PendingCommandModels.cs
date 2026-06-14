@@ -1,5 +1,3 @@
-using Hexalith.FrontComposer.Contracts.Lifecycle;
-
 namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 /// <summary>

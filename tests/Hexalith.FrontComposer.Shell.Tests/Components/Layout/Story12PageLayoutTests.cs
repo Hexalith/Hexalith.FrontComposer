@@ -35,13 +35,13 @@ public sealed class Story12PageLayoutTests : LayoutComponentTestBase {
 
     [Fact]
     public void FrontComposerShell_WithConstrainedPageLayout_RendersConstrainedContentContainer() {
-        RenderFragment constrainedBody = builder => {
+        static void constrainedBody(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) {
             builder.OpenComponent<FcPageLayout>(0);
             builder.AddComponentParameter(1, nameof(FcPageLayout.Mode), FcPageLayoutMode.Constrained);
             builder.AddComponentParameter(2, nameof(FcPageLayout.ChildContent),
                 (RenderFragment)(b => b.AddMarkupContent(0, "<p>Constrained body</p>")));
             builder.CloseComponent();
-        };
+        }
 
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .Add(c => c.ChildContent, constrainedBody));
@@ -183,18 +183,18 @@ public sealed class Story12PageLayoutTests : LayoutComponentTestBase {
             .AddChildContent("<p>Body</p>"));
 
         cut.Markup.Trim().ShouldBe("<p>Body</p>");
-        Should.NotThrow(() => cut.Instance.Dispose());
+        Should.NotThrow(cut.Instance.Dispose);
     }
 
     [Fact]
     public void FrontComposerShell_WithDefaultPageLayout_KeepsFullWidthContentContainer() {
         // A bare <FcPageLayout> (Mode defaults to FullWidth) is a no-op — content stays edge-to-edge.
-        RenderFragment defaultBody = builder => {
+        static void defaultBody(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) {
             builder.OpenComponent<FcPageLayout>(0);
             builder.AddComponentParameter(1, nameof(FcPageLayout.ChildContent),
                 (RenderFragment)(b => b.AddMarkupContent(0, "<p>Default body</p>")));
             builder.CloseComponent();
-        };
+        }
 
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .Add(c => c.ChildContent, defaultBody));
@@ -210,13 +210,13 @@ public sealed class Story12PageLayoutTests : LayoutComponentTestBase {
 
     [Fact]
     public void FrontComposerShell_WhenConstrainedPageRemoved_RestoresFullWidth() {
-        RenderFragment constrainedBody = builder => {
+        static void constrainedBody(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) {
             builder.OpenComponent<FcPageLayout>(0);
             builder.AddComponentParameter(1, nameof(FcPageLayout.Mode), FcPageLayoutMode.Constrained);
             builder.AddComponentParameter(2, nameof(FcPageLayout.ChildContent),
                 (RenderFragment)(b => b.AddMarkupContent(0, "<p>Constrained body</p>")));
             builder.CloseComponent();
-        };
+        }
 
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .Add(c => c.ChildContent, constrainedBody));
@@ -227,7 +227,7 @@ public sealed class Story12PageLayoutTests : LayoutComponentTestBase {
         // Navigating away from the constrained page disposes its FcPageLayout → coordinator resets →
         // the shell re-renders #fc-main-content back to the full-width default.
         cut.Render(p => p
-            .Add(c => c.ChildContent, (RenderFragment)(b => b.AddMarkupContent(0, "<p>Plain body</p>"))));
+            .Add(c => c.ChildContent, b => b.AddMarkupContent(0, "<p>Plain body</p>")));
 
         cut.WaitForAssertion(() => {
             IElement content = cut.Find("#fc-main-content");

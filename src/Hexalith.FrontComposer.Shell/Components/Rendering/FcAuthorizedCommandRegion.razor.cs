@@ -3,7 +3,6 @@ using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hexalith.FrontComposer.Shell.Components.Rendering;
 

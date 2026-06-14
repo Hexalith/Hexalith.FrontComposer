@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Shell.Infrastructure.Storage;
@@ -14,11 +13,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Navigation;
 /// pins the actual wire format (camelCase, null-default omitted) rather than the default
 /// serializer shape.
 /// </summary>
-public sealed class NavigationPersistenceBlobSchemaLockedTests
-{
+public sealed class NavigationPersistenceBlobSchemaLockedTests {
     [Fact]
-    public void LastActiveRouteFieldPresent_AndOmittedWhenNull()
-    {
+    public void LastActiveRouteFieldPresent_AndOmittedWhenNull() {
         NavigationPersistenceBlob blobWithRoute = new(
             SidebarCollapsed: true,
             CollapsedGroups: new Dictionary<string, bool> { ["Counter"] = true },
@@ -32,7 +29,7 @@ public sealed class NavigationPersistenceBlobSchemaLockedTests
 
         NavigationPersistenceBlob blobNullRoute = new(
             SidebarCollapsed: false,
-            CollapsedGroups: new Dictionary<string, bool>(),
+            CollapsedGroups: [],
             LastActiveRoute: null);
 
         string jsonNullRoute = JsonSerializer.Serialize(blobNullRoute, LocalStorageService.SchemaLockJsonOptions);
@@ -42,8 +39,7 @@ public sealed class NavigationPersistenceBlobSchemaLockedTests
     }
 
     [Fact]
-    public void BlobRoundTripsThroughProductionJsonOptions()
-    {
+    public void BlobRoundTripsThroughProductionJsonOptions() {
         NavigationPersistenceBlob original = new(
             SidebarCollapsed: true,
             CollapsedGroups: new Dictionary<string, bool> { ["Counter"] = true, ["Orders"] = false },
@@ -63,8 +59,7 @@ public sealed class NavigationPersistenceBlobSchemaLockedTests
     }
 
     [Fact]
-    public void OlderBlobWithoutLastActiveRouteDeserialisesWithNullField()
-    {
+    public void OlderBlobWithoutLastActiveRouteDeserialisesWithNullField() {
         // Pre-3-6 wire shape — the additive field must be null-tolerant on deserialise.
         const string preThreeSixPayload = "{\"sidebarCollapsed\":true,\"collapsedGroups\":{\"Counter\":true}}";
 

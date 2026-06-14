@@ -27,7 +27,6 @@ namespace Hexalith.FrontComposer.Shell.Components.DataGrid;
 /// </para>
 /// </remarks>
 public partial class FcExpandInRowDetail : ComponentBase {
-    private readonly string _defaultPanelId = $"fc-expand-panel-{Guid.NewGuid():N}";
     private ElementReference _detailRef;
     private bool _previousHasExpanded;
     private bool _previousWasSuppressed;
@@ -71,7 +70,7 @@ public partial class FcExpandInRowDetail : ComponentBase {
     [Parameter]
     public string? PanelId { get; set; }
 
-    private string EffectivePanelId => string.IsNullOrWhiteSpace(PanelId) ? _defaultPanelId : PanelId!;
+    private string EffectivePanelId { get => string.IsNullOrWhiteSpace(PanelId) ? field : PanelId!; } = $"fc-expand-panel-{Guid.NewGuid():N}";
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {

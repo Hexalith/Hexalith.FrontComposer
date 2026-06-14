@@ -1,4 +1,3 @@
-using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
 
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -17,9 +16,7 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Rendering;
 /// </summary>
 public sealed class TypographyConstantsTests {
     [Fact]
-    public void TypographyMappingVersionIsPinned() {
-        ContractsMetadata.TypographyMappingVersion.ShouldBe("3.1.0");
-    }
+    public void TypographyMappingVersionIsPinned() => ContractsMetadata.TypographyMappingVersion.ShouldBe("3.1.0");
 
     [Fact]
     public void TypographyConstantsMatch3_1_0Baseline() {

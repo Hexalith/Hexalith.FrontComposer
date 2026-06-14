@@ -77,35 +77,29 @@ public class RoleSpecificProjectionApprovalTests {
     // ---------- Shared diagnostic expectations (named, minimal asserts kept separate from the snapshot) ----------
 
     [Fact]
-    public void ActionQueueNoEnumProjection_EmitsHfc1022_ForMissingStatusEnum() {
-        _ = ShouldContainSingleDiagnostic(
+    public void ActionQueueNoEnumProjection_EmitsHfc1022_ForMissingStatusEnum() => _ = ShouldContainSingleDiagnostic(
             RunGeneratorDiagnostics(RoleSpecificTestSources.ActionQueueNoEnumProjection),
             "HFC1022",
             DiagnosticSeverity.Warning,
             "ActionQueueNoEnumProjection",
             "requires an enum status property",
             "falls back to the unfiltered item list");
-    }
 
     [Fact]
-    public void WhenStateTypoProjection_EmitsHfc1022_ForUnknownMember() {
-        _ = ShouldContainSingleDiagnostic(
+    public void WhenStateTypoProjection_EmitsHfc1022_ForUnknownMember() => _ = ShouldContainSingleDiagnostic(
             RunGeneratorDiagnostics(RoleSpecificTestSources.WhenStateTypoProjection),
             "HFC1022",
             DiagnosticSeverity.Warning,
             "Pendng",
             "Valid members: Approved, Pending, Submitted");
-    }
 
     [Fact]
-    public void DashboardWrongShapeProjection_EmitsHfc1023_ForDashboardFallback() {
-        _ = ShouldContainSingleDiagnostic(
+    public void DashboardWrongShapeProjection_EmitsHfc1023_ForDashboardFallback() => _ = ShouldContainSingleDiagnostic(
             RunGeneratorDiagnostics(RoleSpecificTestSources.DashboardWrongShapeProjection),
             "HFC1023",
             DiagnosticSeverity.Info,
             "Dashboard projection rendering is deferred to Story 6-3",
             "falls back to Default DataGrid rendering in v1");
-    }
 
     // ---------- Story 2.1 AC2 — positive render/emit invariants (named, separate from the snapshot) ----------
 
@@ -189,14 +183,14 @@ public class RoleSpecificProjectionApprovalTests {
         (string generatedSource, IReadOnlyList<Diagnostic> diagnostics) = RunGenerator(source, generatedFileName, ct);
 
         StringBuilder snapshot = new();
-        snapshot.AppendLine("=== Generated view ===");
-        snapshot.Append(generatedSource);
+        _ = snapshot.AppendLine("=== Generated view ===");
+        _ = snapshot.Append(generatedSource);
         if (!generatedSource.EndsWith('\n')) {
-            snapshot.AppendLine();
+            _ = snapshot.AppendLine();
         }
 
-        snapshot.AppendLine();
-        snapshot.AppendLine("=== Diagnostics (HFC*** only) ===");
+        _ = snapshot.AppendLine();
+        _ = snapshot.AppendLine("=== Diagnostics (HFC*** only) ===");
         IEnumerable<Diagnostic> fcDiagnostics = diagnostics
             .Where(d => d.Id.StartsWith("HFC", StringComparison.Ordinal))
             .OrderBy(d => d.Id, StringComparer.Ordinal)
@@ -205,14 +199,14 @@ public class RoleSpecificProjectionApprovalTests {
         bool any = false;
         foreach (Diagnostic diagnostic in fcDiagnostics) {
             any = true;
-            snapshot.Append(diagnostic.Id);
-            snapshot.Append(' ');
-            snapshot.Append(diagnostic.Severity);
-            snapshot.Append(": ");
-            snapshot.AppendLine(diagnostic.GetMessage());
+            _ = snapshot.Append(diagnostic.Id);
+            _ = snapshot.Append(' ');
+            _ = snapshot.Append(diagnostic.Severity);
+            _ = snapshot.Append(": ");
+            _ = snapshot.AppendLine(diagnostic.GetMessage());
         }
         if (!any) {
-            snapshot.AppendLine("(none)");
+            _ = snapshot.AppendLine("(none)");
         }
 
         return Verify(snapshot.ToString());
@@ -246,7 +240,7 @@ public class RoleSpecificProjectionApprovalTests {
 
         SyntaxTree? razorTree = result.GeneratedTrees
             .FirstOrDefault(t => Path.GetFileName(t.FilePath) == generatedFileName);
-        razorTree.ShouldNotBeNull(
+        _ = razorTree.ShouldNotBeNull(
             $"Expected generator output '{generatedFileName}' but the driver produced: "
             + string.Join(", ", result.GeneratedTrees.Select(t => Path.GetFileName(t.FilePath))));
 

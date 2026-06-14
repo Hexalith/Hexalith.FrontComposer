@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace Hexalith.FrontComposer.Contracts.Communication;
 
 /// <summary>

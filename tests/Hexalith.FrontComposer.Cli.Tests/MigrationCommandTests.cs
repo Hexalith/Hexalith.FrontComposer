@@ -1,26 +1,27 @@
-using System.Text.Json;
 using System.Diagnostics;
 using System.Text;
+using System.Text.Json;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.Text;
+
 using Shouldly;
+
 using Xunit;
 
 namespace Hexalith.FrontComposer.Cli.Tests;
 
-public sealed class MigrationCommandTests
-{
+public sealed class MigrationCommandTests {
     [Fact]
-    public void ProjectSelection_RejectsUnsupportedExplicitProjectFormats()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public void ProjectSelection_RejectsUnsupportedExplicitProjectFormats() {
+        using var fixture = CliFixture.Create();
         string fsProject = Path.Combine(fixture.Root, "Acme.App", "Acme.App.fsproj");
         _ = Directory.CreateDirectory(Path.GetDirectoryName(fsProject)!);
         File.WriteAllText(fsProject, "<Project />");
 
-        ProjectSelection selection = ProjectSelection.Resolve(
+        var selection = ProjectSelection.Resolve(
             CommandOptions.Parse(["--project", fsProject]),
             fixture.Root);
 
@@ -30,13 +31,12 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public void ProjectSelection_RejectsUnsupportedSolutionFormats()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public void ProjectSelection_RejectsUnsupportedSolutionFormats() {
+        using var fixture = CliFixture.Create();
         string slnx = Path.Combine(fixture.Root, "Acme.slnx");
         File.WriteAllText(slnx, "<Solution />");
 
-        ProjectSelection selection = ProjectSelection.Resolve(
+        var selection = ProjectSelection.Resolve(
             CommandOptions.Parse(["--solution", slnx]),
             fixture.Root);
 
@@ -46,9 +46,8 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public void ProjectSelection_ReadsQuotedSolutionProjectPathsDeterministically()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public void ProjectSelection_ReadsQuotedSolutionProjectPathsDeterministically() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         string solution = Path.Combine(fixture.Root, "Acme.sln");
         File.WriteAllText(
@@ -59,7 +58,7 @@ public sealed class MigrationCommandTests
             EndProject
             """");
 
-        ProjectSelection selection = ProjectSelection.Resolve(
+        var selection = ProjectSelection.Resolve(
             CommandOptions.Parse(["--solution", solution]),
             fixture.Root);
 
@@ -68,9 +67,8 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public void ProjectSelection_RejectsUnsupportedSolutionProjectTypes()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public void ProjectSelection_RejectsUnsupportedSolutionProjectTypes() {
+        using var fixture = CliFixture.Create();
         string solution = Path.Combine(fixture.Root, "Acme.sln");
         File.WriteAllText(
             solution,
@@ -80,7 +78,7 @@ public sealed class MigrationCommandTests
             EndProject
             """);
 
-        ProjectSelection selection = ProjectSelection.Resolve(
+        var selection = ProjectSelection.Resolve(
             CommandOptions.Parse(["--solution", solution]),
             fixture.Root);
 
@@ -89,9 +87,8 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public void ProjectSelection_RejectsNonFSharpUnsupportedSolutionProjectTypes()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public void ProjectSelection_RejectsNonFSharpUnsupportedSolutionProjectTypes() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         string solution = Path.Combine(fixture.Root, "Acme.sln");
         File.WriteAllText(
@@ -104,7 +101,7 @@ public sealed class MigrationCommandTests
             EndProject
             """);
 
-        ProjectSelection selection = ProjectSelection.Resolve(
+        var selection = ProjectSelection.Resolve(
             CommandOptions.Parse(["--solution", solution]),
             fixture.Root);
 
@@ -115,9 +112,8 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public void ProjectSelection_RejectsSolutionProjectsOutsideSolutionRoot()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public void ProjectSelection_RejectsSolutionProjectsOutsideSolutionRoot() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         string solutionDirectory = Path.Combine(fixture.Root, "solution");
         _ = Directory.CreateDirectory(solutionDirectory);
@@ -130,7 +126,7 @@ public sealed class MigrationCommandTests
             EndProject
             """);
 
-        ProjectSelection selection = ProjectSelection.Resolve(
+        var selection = ProjectSelection.Resolve(
             CommandOptions.Parse(["--solution", solution]),
             fixture.Root);
 
@@ -141,9 +137,8 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task Migrate_DefaultsToDryRunAndDoesNotWriteSource()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_DefaultsToDryRunAndDoesNotWriteSource() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         string source = fixture.WriteSource(
             "Acme.App",
@@ -167,7 +162,7 @@ public sealed class MigrationCommandTests
         error.ToString().ShouldBeEmpty();
         File.ReadAllText(source).ShouldContain("AddFrontComposerDebugOverlay");
 
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         document.RootElement.GetProperty("schemaVersion").GetString().ShouldBe("frontcomposer.cli.migrate.v1");
         document.RootElement.GetProperty("applied").GetBoolean().ShouldBeFalse();
         JsonElement summary = document.RootElement.GetProperty("summary");
@@ -183,12 +178,11 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task MigrateApply_WritesOnlyImmediatelyPlannedSourceFilesAndIsIdempotent()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task MigrateApply_WritesOnlyImmediatelyPlannedSourceFilesAndIsIdempotent() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         string source = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
-        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Generated.g.cs", "services.AddFrontComposerDebugOverlay();");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Generated.g.cs", "services.AddFrontComposerDebugOverlay();");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -201,7 +195,7 @@ public sealed class MigrationCommandTests
         exitCode.ShouldBe(0, output + error.ToString());
         error.ToString().ShouldBeEmpty();
         File.ReadAllText(source).ShouldContain("AddFrontComposerDevMode");
-        using (JsonDocument firstDocument = JsonDocument.Parse(output.ToString())) {
+        using (var firstDocument = JsonDocument.Parse(output.ToString())) {
             firstDocument.RootElement.GetProperty("applied").GetBoolean().ShouldBeTrue();
         }
 
@@ -215,15 +209,14 @@ public sealed class MigrationCommandTests
 
         secondExitCode.ShouldBe(0);
         secondError.ToString().ShouldBeEmpty();
-        using JsonDocument document = JsonDocument.Parse(secondOutput.ToString());
+        using var document = JsonDocument.Parse(secondOutput.ToString());
         document.RootElement.GetProperty("summary").GetProperty("unchanged").GetInt32().ShouldBe(1);
         document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(0);
     }
 
     [Fact]
-    public async Task Migrate_RefusesExcludedWriteTargetsAndReportsManualOnlyEntries()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_RefusesExcludedWriteTargetsAndReportsManualOnlyEntries() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         File.WriteAllText(
             project,
@@ -238,13 +231,13 @@ public sealed class MigrationCommandTests
               </ItemGroup>
             </Project>
             """);
-        fixture.WriteSource(
+        _ = fixture.WriteSource(
             "Acme.App",
             "Program.cs",
             """
             services.AddFrontComposerDebugOverlay();
             """);
-        fixture.WriteGeneratedDiagnosticSidecar(
+        _ = fixture.WriteGeneratedDiagnosticSidecar(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -261,7 +254,7 @@ public sealed class MigrationCommandTests
               ]
             }
             """);
-        fixture.WriteSource("Acme.App", "bin/Debug/net10.0/Generated.cs", "services.AddFrontComposerDebugOverlay();");
+        _ = fixture.WriteSource("Acme.App", "bin/Debug/net10.0/Generated.cs", "services.AddFrontComposerDebugOverlay();");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -274,7 +267,7 @@ public sealed class MigrationCommandTests
         exitCode.ShouldBe(0, output + error.ToString());
         error.ToString().ShouldBeEmpty();
 
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         JsonElement summary = document.RootElement.GetProperty("summary");
         summary.GetProperty("manualOnly").GetInt32().ShouldBe(1);
         summary.GetProperty("skipped").GetInt32().ShouldBeGreaterThanOrEqualTo(1);
@@ -285,12 +278,11 @@ public sealed class MigrationCommandTests
     [InlineData("C:Program.cs")]
     [InlineData("../Program.cs")]
     [InlineData("file:///Program.cs")]
-    public async Task Migrate_SidecarHostilePathsSurfaceManualOnlySentinel(string sidecarPath)
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_SidecarHostilePathsSurfaceManualOnlySentinel(string sidecarPath) {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
-        fixture.WriteGeneratedDiagnosticSidecar(
+        _ = fixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+        _ = fixture.WriteGeneratedDiagnosticSidecar(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -317,7 +309,7 @@ public sealed class MigrationCommandTests
             CancellationToken.None);
 
         exitCode.ShouldBe(0, output + error.ToString());
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         JsonElement entry = document.RootElement.GetProperty("entries").EnumerateArray().Single();
         entry.GetProperty("kind").GetString().ShouldBe("manual-only");
         entry.GetProperty("path").GetString().ShouldStartWith("__sidecar__/");
@@ -326,9 +318,8 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task SourceFile_ReadAsyncRejectsExcessiveFileSizeBeforeDecoding()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task SourceFile_ReadAsyncRejectsExcessiveFileSizeBeforeDecoding() {
+        using var fixture = CliFixture.Create();
         string largeSource = Path.Combine(fixture.Root, "TooLarge.cs");
         await using (FileStream stream = File.Create(largeSource)) {
             stream.SetLength(SourceFile.MaxSupportedBytes + 1);
@@ -341,22 +332,20 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task SourceFile_ReadAsyncRejectsInvalidUtf8()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task SourceFile_ReadAsyncRejectsInvalidUtf8() {
+        using var fixture = CliFixture.Create();
         string source = Path.Combine(fixture.Root, "InvalidUtf8.cs");
         await File.WriteAllBytesAsync(source, [0x63, 0x6C, 0x61, 0x73, 0x73, 0x20, 0xFF], CancellationToken.None);
 
-        await Should.ThrowAsync<DecoderFallbackException>(
+        _ = await Should.ThrowAsync<DecoderFallbackException>(
             () => SourceFile.ReadAsync(source, CancellationToken.None));
     }
 
     [Fact]
-    public async Task Migrate_DoesNotTreatDiagnosticIdInsideCommentAsManualOnly()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_DoesNotTreatDiagnosticIdInsideCommentAsManualOnly() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay(); // HFCM9002");
+        _ = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay(); // HFCM9002");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -367,17 +356,16 @@ public sealed class MigrationCommandTests
             CancellationToken.None);
 
         exitCode.ShouldBe(0, output + error.ToString());
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         document.RootElement.GetProperty("summary").GetProperty("manualOnly").GetInt32().ShouldBe(0);
         document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
     }
 
     [Fact]
-    public async Task Migrate_DoesNotTreatNameofObsoleteApiAsSafeFix()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_DoesNotTreatNameofObsoleteApiAsSafeFix() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        fixture.WriteSource("Acme.App", "Program.cs", "var api = nameof(AddFrontComposerDebugOverlay);");
+        _ = fixture.WriteSource("Acme.App", "Program.cs", "var api = nameof(AddFrontComposerDebugOverlay);");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -388,15 +376,14 @@ public sealed class MigrationCommandTests
             CancellationToken.None);
 
         exitCode.ShouldBe(0, output + error.ToString());
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(0);
         document.RootElement.GetProperty("summary").GetProperty("unchanged").GetInt32().ShouldBe(1);
     }
 
     [Fact]
-    public async Task MigrateApply_DetectsContentDriftBeforeWriting()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task MigrateApply_DetectsContentDriftBeforeWriting() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         string source = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
         MigrationEdge edge = MigrationCatalog.Resolve("9.1.0", "9.2.0")!;
@@ -412,9 +399,8 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task Migrate_RefusesExplicitSubmoduleDocuments()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_RefusesExplicitSubmoduleDocuments() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         File.WriteAllText(
             Path.Combine(fixture.Root, "Acme.App", ".gitmodules"),
@@ -447,16 +433,15 @@ public sealed class MigrationCommandTests
             CancellationToken.None);
 
         exitCode.ShouldBe(0, output + error.ToString());
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
         File.ReadAllText(submoduleSource).ShouldContain("AddFrontComposerDebugOverlay");
         output.ToString().ShouldNotContain(fixture.Root, Case.Sensitive);
     }
 
     [Fact]
-    public async Task Migrate_ParsesSingleQuotedGitmodulesSubmodulePaths()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_ParsesSingleQuotedGitmodulesSubmodulePaths() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         File.WriteAllText(
             Path.Combine(fixture.Root, "Acme.App", ".gitmodules"),
@@ -490,7 +475,7 @@ public sealed class MigrationCommandTests
 
         exitCode.ShouldBe(0, output + error.ToString());
         File.ReadAllText(submoduleSource).ShouldContain("AddFrontComposerDebugOverlay");
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
     }
 
@@ -501,11 +486,10 @@ public sealed class MigrationCommandTests
     [InlineData(".nuget/packages/Generated.cs")]
     [InlineData("nupkgs/Generated.cs")]
     [InlineData("src/generated/Generated.cs")]
-    public void WriteSafetyPolicy_RefusesExcludedSegments(string relativePath)
-    {
+    public void WriteSafetyPolicy_RefusesExcludedSegments(string relativePath) {
         ArgumentNullException.ThrowIfNull(relativePath);
 
-        using CliFixture fixture = CliFixture.Create();
+        using var fixture = CliFixture.Create();
         string projectDirectory = Path.Combine(fixture.Root, "Acme.App");
         string fullPath = Path.Combine(projectDirectory, relativePath.Replace('/', Path.DirectorySeparatorChar));
         _ = Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
@@ -517,19 +501,18 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task Migrate_LargeFixtureUsesProjectDocumentsAndStaysWithinCiBudget()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_LargeFixtureUsesProjectDocumentsAndStaysWithinCiBudget() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         for (int i = 0; i < 240; i++) {
-            fixture.WriteSource("Acme.App", $"Features/F{i:000}.cs", "namespace Acme.App;");
+            _ = fixture.WriteSource("Acme.App", $"Features/F{i:000}.cs", "namespace Acme.App;");
         }
 
-        fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+        _ = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
 
         using StringWriter output = new();
         using StringWriter error = new();
-        Stopwatch stopwatch = Stopwatch.StartNew();
+        var stopwatch = Stopwatch.StartNew();
         int exitCode = await CliApplication.RunAsync(
             ["migrate", "--project", project, "--from", "9.1.0", "--to", "9.2.0", "--dry-run", "--format", "json"],
             output,
@@ -539,7 +522,7 @@ public sealed class MigrationCommandTests
 
         exitCode.ShouldBe(0, output + error.ToString());
         stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(30));
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
         document.RootElement.GetProperty("entries").EnumerateArray()
             .Select(x => x.GetProperty("path").GetString())
@@ -547,9 +530,8 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task Migrate_UnsupportedVersionEdgeFailsClosedBeforePlanning()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_UnsupportedVersionEdgeFailsClosedBeforePlanning() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         string source = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
 
@@ -568,9 +550,8 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task Migrate_InvalidFormatAndConflictingApplyFlagsFailBeforeWriting()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_InvalidFormatAndConflictingApplyFlagsFailBeforeWriting() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         string source = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
 
@@ -602,11 +583,10 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task Migrate_FailOnFindingsReturnsOneOnlyForActionableFindings()
-    {
-        using CliFixture changedFixture = CliFixture.Create();
+    public async Task Migrate_FailOnFindingsReturnsOneOnlyForActionableFindings() {
+        using var changedFixture = CliFixture.Create();
         string changedProject = changedFixture.WriteProject("Acme.App", "net10.0");
-        changedFixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+        _ = changedFixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
 
         using StringWriter changedOutput = new();
         using StringWriter changedError = new();
@@ -618,10 +598,10 @@ public sealed class MigrationCommandTests
 
         changedExitCode.ShouldBe(ExitCodes.ActionableFindings, changedOutput + changedError.ToString());
 
-        using CliFixture manualOnlyFixture = CliFixture.Create();
+        using var manualOnlyFixture = CliFixture.Create();
         string manualOnlyProject = manualOnlyFixture.WriteProject("Acme.App", "net10.0");
-        manualOnlyFixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
-        manualOnlyFixture.WriteGeneratedDiagnosticSidecar(
+        _ = manualOnlyFixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+        _ = manualOnlyFixture.WriteGeneratedDiagnosticSidecar(
             "Acme.App",
             "Debug",
             "net10.0",
@@ -648,14 +628,13 @@ public sealed class MigrationCommandTests
             CancellationToken.None);
 
         manualOnlyExitCode.ShouldBe(ExitCodes.ActionableFindings, manualOnlyOutput + manualOnlyError.ToString());
-        using (JsonDocument manualOnlyDocument = JsonDocument.Parse(manualOnlyOutput.ToString()))
-        {
+        using (var manualOnlyDocument = JsonDocument.Parse(manualOnlyOutput.ToString())) {
             manualOnlyDocument.RootElement.GetProperty("summary").GetProperty("manualOnly").GetInt32().ShouldBe(1);
         }
 
-        using CliFixture unchangedFixture = CliFixture.Create();
+        using var unchangedFixture = CliFixture.Create();
         string unchangedProject = unchangedFixture.WriteProject("Acme.App", "net10.0");
-        unchangedFixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+        _ = unchangedFixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
 
         using StringWriter unchangedOutput = new();
         using StringWriter unchangedError = new();
@@ -669,9 +648,8 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task Migrate_ProjectWithTopLevelImportWarnsAboutUnevaluatedMsBuildImports()
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_ProjectWithTopLevelImportWarnsAboutUnevaluatedMsBuildImports() {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         File.WriteAllText(
             project,
@@ -686,7 +664,7 @@ public sealed class MigrationCommandTests
               </ItemGroup>
             </Project>
             """);
-        fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+        _ = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
 
         using StringWriter output = new();
         using StringWriter error = new();
@@ -699,7 +677,7 @@ public sealed class MigrationCommandTests
         exitCode.ShouldBe(0, output + error.ToString());
         error.ToString().ShouldContain("<Import>");
         error.ToString().ShouldContain("not evaluated");
-        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        using var document = JsonDocument.Parse(output.ToString());
         document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
     }
 
@@ -707,9 +685,8 @@ public sealed class MigrationCommandTests
     [InlineData("9.2.0", "9.1.0")]
     [InlineData("9.0.0", "9.2.0")]
     [InlineData("9.1.0", "10.0.0")]
-    public async Task Migrate_UnsupportedVersionOrdersAndMissingEdgesFailClosed(string from, string to)
-    {
-        using CliFixture fixture = CliFixture.Create();
+    public async Task Migrate_UnsupportedVersionOrdersAndMissingEdgesFailClosed(string from, string to) {
+        using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
         string source = fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
 
@@ -728,8 +705,7 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public void MigrationPlanner_DetectsOverlappingZeroLengthInsertions()
-    {
+    public void MigrationPlanner_DetectsOverlappingZeroLengthInsertions() {
         List<TextChange> changes = [
             new(new TextSpan(12, 0), "first"),
             new(new TextSpan(12, 0), "second"),
@@ -739,8 +715,7 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public void MigrationJson_CapsPerEntryAndAggregateDiffs()
-    {
+    public void MigrationJson_CapsPerEntryAndAggregateDiffs() {
         string longDiff = new('x', 12_000);
         MigrationEntry[] entries = Enumerable.Range(0, 10)
             .Select(i => new MigrationEntry(
@@ -758,7 +733,7 @@ public sealed class MigrationCommandTests
 
         string json = JsonSerializer.Serialize(MigrationJson.From(result), JsonOptions.Stable);
 
-        using JsonDocument document = JsonDocument.Parse(json);
+        using var document = JsonDocument.Parse(json);
         JsonElement[] jsonEntries = document.RootElement.GetProperty("entries").EnumerateArray().ToArray();
         string firstDiff = jsonEntries[0].GetProperty("diff").GetString()!;
         firstDiff.Length.ShouldBeLessThan(8_100);
@@ -768,8 +743,7 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public void MigrationText_CapsPerEntryAndAggregateDiffs()
-    {
+    public void MigrationText_CapsPerEntryAndAggregateDiffs() {
         string longDiff = new('x', 12_000);
         MigrationEntry[] entries = Enumerable.Range(0, 10)
             .Select(i => new MigrationEntry(
@@ -798,11 +772,10 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task MigrationPlanner_RejectsUnsupportedCodeActionOperations()
-    {
+    public async Task MigrationPlanner_RejectsUnsupportedCodeActionOperations() {
         using AdhocWorkspace workspace = new();
-        ProjectId projectId = ProjectId.CreateNewId();
-        DocumentId documentId = DocumentId.CreateNewId(projectId);
+        var projectId = ProjectId.CreateNewId();
+        var documentId = DocumentId.CreateNewId(projectId);
         string projectDirectory = Path.GetTempPath();
         string approvedPath = Path.Combine(projectDirectory, "Program.cs");
 
@@ -822,11 +795,10 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task FrontComposerMigrationCodeFixProvider_ReplacesObsoleteDevOverlayApi()
-    {
+    public async Task FrontComposerMigrationCodeFixProvider_ReplacesObsoleteDevOverlayApi() {
         using AdhocWorkspace workspace = new();
-        ProjectId projectId = ProjectId.CreateNewId();
-        DocumentId documentId = DocumentId.CreateNewId(projectId);
+        var projectId = ProjectId.CreateNewId();
+        var documentId = DocumentId.CreateNewId(projectId);
         Solution solution = workspace.CurrentSolution
             .AddProject(projectId, "Acme.App", "Acme.App", LanguageNames.CSharp)
             .AddDocument(documentId, "Program.cs", SourceText.From("services.AddFrontComposerDebugOverlay();"));
@@ -845,7 +817,7 @@ public sealed class MigrationCommandTests
 
         await provider.RegisterCodeFixesAsync(context);
         CodeAction action = actions.Single();
-        ApplyChangesOperation operation = (ApplyChangesOperation)(await action.GetOperationsAsync(CancellationToken.None)).Single();
+        var operation = (ApplyChangesOperation)(await action.GetOperationsAsync(CancellationToken.None)).Single();
         Document changedDocument = operation.ChangedSolution.GetDocument(documentId)!;
         string changedText = (await changedDocument.GetTextAsync(CancellationToken.None)).ToString();
 
@@ -854,8 +826,7 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task MigrationPlanner_RejectsCodeActionsThatAddDocuments()
-    {
+    public async Task MigrationPlanner_RejectsCodeActionsThatAddDocuments() {
         // Note: this test exercises the *any-added-document* rejection path
         // (`projectChange.GetAddedDocuments().Any()`); it is not specifically
         // about outside-project additions. See Known Gaps row "T8 code-action
@@ -863,8 +834,8 @@ public sealed class MigrationCommandTests
         // requires a *different* project id and file path outside the
         // approved write set).
         using AdhocWorkspace workspace = new();
-        ProjectId projectId = ProjectId.CreateNewId();
-        DocumentId documentId = DocumentId.CreateNewId(projectId);
+        var projectId = ProjectId.CreateNewId();
+        var documentId = DocumentId.CreateNewId(projectId);
         string projectDirectory = Path.Combine(Path.GetTempPath(), "hfc-approved");
         string approvedPath = Path.Combine(projectDirectory, "Program.cs");
 
@@ -889,17 +860,14 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public void FrontComposerMigrationCodeFixProvider_DoesNotExposeUnsafeFixAll()
-    {
+    public void FrontComposerMigrationCodeFixProvider_DoesNotExposeUnsafeFixAll() {
         FrontComposerMigrationCodeFixProvider provider = new();
 
         provider.GetFixAllProvider().ShouldBeNull();
     }
 
-    private sealed class UnsupportedCodeActionOperation : CodeActionOperation
-    {
-        public override void Apply(Workspace workspace, CancellationToken cancellationToken)
-        {
+    private sealed class UnsupportedCodeActionOperation : CodeActionOperation {
+        public override void Apply(Workspace workspace, CancellationToken cancellationToken) {
         }
     }
 }

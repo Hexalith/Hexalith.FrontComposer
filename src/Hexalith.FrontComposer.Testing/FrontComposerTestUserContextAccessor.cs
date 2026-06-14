@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Testing;
 /// <summary>
 /// Mutable per-test user context accessor used by the default test host.
 /// </summary>
-public sealed class FrontComposerTestUserContextAccessor : IUserContextAccessor
-{
+public sealed class FrontComposerTestUserContextAccessor : IUserContextAccessor {
     /// <inheritdoc />
     public string? TenantId { get; set; }
 

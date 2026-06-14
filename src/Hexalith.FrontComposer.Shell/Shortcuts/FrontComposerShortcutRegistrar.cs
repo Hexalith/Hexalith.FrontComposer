@@ -52,8 +52,7 @@ public sealed class FrontComposerShortcutRegistrar(
     IStringLocalizer<FcShellResources> localizer,
     IUlidFactory ulidFactory,
     DataGridFocusScope dataGridFocusScope,
-    IServiceProvider? services = null)
-{
+    IServiceProvider? services = null) {
     // Uses `int` + `Interlocked.Exchange` so two concurrent first-render paths (hot-reload
     // restart, bUnit teardown race) cannot both observe zero and double-register the defaults
     // (which would then spam HFC2108 conflict logs).
@@ -64,16 +63,13 @@ public sealed class FrontComposerShortcutRegistrar(
     /// no-op (D24 guard).
     /// </summary>
     /// <returns>A completed task — registration is synchronous; the async signature exists so the shell can <c>await</c> alongside other bootstrap work.</returns>
-    public Task RegisterShellDefaultsAsync()
-    {
+    public Task RegisterShellDefaultsAsync() {
         _ = services;
-        if (Interlocked.Exchange(ref _registered, 1) == 1)
-        {
+        if (Interlocked.Exchange(ref _registered, 1) == 1) {
             return Task.CompletedTask;
         }
 
-        try
-        {
+        try {
             _ = shortcuts.Register(
                 "ctrl+k",
                 "PaletteShortcutDescription",
@@ -116,8 +112,7 @@ public sealed class FrontComposerShortcutRegistrar(
             // Defense-in-depth (AC2): #if DEBUG compile-time gate AND IDevModeOverlayController
             // runtime check. Release builds compile this branch out entirely so the dev-mode
             // shortcut symbol is absent from production binaries.
-            if (services?.GetService<IDevModeOverlayController>() is not null)
-            {
+            if (services?.GetService<IDevModeOverlayController>() is not null) {
                 _ = shortcuts.Register(
                     "ctrl+shift+d",
                     "DevModeOverlayShortcutDescription",
@@ -125,8 +120,7 @@ public sealed class FrontComposerShortcutRegistrar(
             }
 #endif
         }
-        catch
-        {
+        catch {
             // If any Register call throws (localizer lookup failure, concurrent-dispose race, etc.)
             // the idempotency flag must roll back so a subsequent OnAfterRenderAsync pass can retry
             // registration. Without this rollback `_registered` stays at 1 permanently and the shell
@@ -146,57 +140,48 @@ public sealed class FrontComposerShortcutRegistrar(
     /// below for failure paths).
     /// </summary>
     /// <returns>A task representing the dialog presentation.</returns>
-    public async Task OpenPaletteAsync()
-    {
-        if (paletteState.Value.IsOpen)
-        {
+    public async Task OpenPaletteAsync() {
+        if (paletteState.Value.IsOpen) {
             return;
         }
 
         // Serialize read-and-open so two near-simultaneous invocations do not both proceed to
         // ShowDialogAsync.
-        if (Interlocked.Exchange(ref _palettePending, 1) == 1)
-        {
+        if (Interlocked.Exchange(ref _palettePending, 1) == 1) {
             return;
         }
 
-        try
-        {
+        try {
             // P5 (2026-04-21 pass-4): moved dispatch inside the try so a synchronous throw from
             // ulidFactory.NewUlid() or dispatcher.Dispatch() is caught by the rollback path below.
             // Previously only the await could throw into the catch; an earlier sync throw would
             // leak state (PaletteOpenedAction dispatched but no compensating close).
             dispatcher.Dispatch(new PaletteOpenedAction(ulidFactory.NewUlid()));
 
-            _ = await dialogService.ShowDialogAsync<FcCommandPalette>(options =>
-            {
+            _ = await dialogService.ShowDialogAsync<FcCommandPalette>(options => {
                 options.Modal = true;
                 options.Width = "600px";
                 options.Header.Title = localizer["CommandPaletteTitle"].Value;
             }).ConfigureAwait(false);
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             // P4 (2026-04-21 pass-4): compensate for ALL exceptions including OperationCanceledException.
             // Earlier code relied on FluentDialog's DisposeAsync to dispatch PaletteClosedAction on
             // OCE, but OCE can be thrown from ShowDialogAsync before DisposeAsync wires up — leaving
             // IsOpen=true with no close. PaletteClosedAction reducers are idempotent (second dispatch
             // is a no-op) so double-dispatch on the dialog-close path is safe per D20.
             _ = ex;
-            try
-            {
+            try {
                 dispatcher.Dispatch(new PaletteClosedAction(ulidFactory.NewUlid()));
             }
-            catch (ObjectDisposedException)
-            {
+            catch (ObjectDisposedException) {
                 // Dispatcher tore down alongside the circuit — ignore and let the original
                 // exception propagate for Blazor's error boundary.
             }
 
             throw;
         }
-        finally
-        {
+        finally {
             _palettePending = 0;
         }
     }
@@ -207,19 +192,15 @@ public sealed class FrontComposerShortcutRegistrar(
     /// Opens the settings dialog via the shared launcher (Story 3-3 D11 / Story 3-4 AC8).
     /// </summary>
     /// <returns>A task representing the dialog presentation.</returns>
-    public async Task OpenSettingsAsync()
-    {
-        _ = await FcSettingsDialogLauncher
+    public async Task OpenSettingsAsync() => _ = await FcSettingsDialogLauncher
             .ShowAsync(dialogService, localizer["SettingsDialogTitle"].Value)
             .ConfigureAwait(false);
-    }
 
     /// <summary>
     /// Navigates to the application home via <see cref="NavigationManager.NavigateTo(string)"/>.
     /// </summary>
     /// <returns>A completed task.</returns>
-    public Task NavigateHomeAsync()
-    {
+    public Task NavigateHomeAsync() {
         navigation.NavigateTo("/");
         return Task.CompletedTask;
     }
@@ -230,17 +211,14 @@ public sealed class FrontComposerShortcutRegistrar(
     /// container so the shortcut stays transparent in non-DataGrid contexts.
     /// </summary>
     /// <returns>A task that resolves when the focus attempt completes.</returns>
-    public async Task FocusFirstColumnFilterAsync()
-    {
+    public async Task FocusFirstColumnFilterAsync() {
         bool inGrid = await dataGridFocusScope.IsFocusWithinDataGridAsync().ConfigureAwait(false);
-        if (!inGrid)
-        {
+        if (!inGrid) {
             return;
         }
 
         string? viewKey = await dataGridFocusScope.GetActiveViewKeyAsync().ConfigureAwait(false);
-        if (string.IsNullOrWhiteSpace(viewKey))
-        {
+        if (string.IsNullOrWhiteSpace(viewKey)) {
             return;
         }
 
@@ -248,8 +226,7 @@ public sealed class FrontComposerShortcutRegistrar(
     }
 
 #if DEBUG
-    private Task ToggleDevModeOverlayAsync()
-    {
+    private Task ToggleDevModeOverlayAsync() {
         services?.GetService<IDevModeOverlayController>()?.Toggle();
         return Task.CompletedTask;
     }

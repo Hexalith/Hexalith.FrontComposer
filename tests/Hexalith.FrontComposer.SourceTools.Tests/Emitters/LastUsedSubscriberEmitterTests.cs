@@ -8,8 +8,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 public class LastUsedSubscriberEmitterTests {
     private static CommandFluxorModel BuildFluxor(
         string typeName = "IncrementCommand",
-        string @namespace = "Counter.Domain") {
-        return new CommandFluxorModel(
+        string @namespace = "Counter.Domain") => new(
             typeName,
             @namespace,
             typeName + "LifecycleState",
@@ -18,7 +17,6 @@ public class LastUsedSubscriberEmitterTests {
             typeName + "Reducers",
             @namespace + "." + typeName,
             @namespace + "." + typeName + "LifecycleState");
-    }
 
     [Fact]
     public void Emit_GeneratesSubscriberPerCommand() {

@@ -7,7 +7,6 @@ using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
