@@ -26,9 +26,7 @@ public sealed class QueryRequestTests {
         request.EntityId.ShouldBeNull();
         request.ProjectionActorType.ShouldBeNull();
         request.ETags.ShouldBeNull();
-#pragma warning disable HFC0001 // Legacy Filter is intentionally exercised until removal in v0.4.
         request.Filter.ShouldBeNull();
-#pragma warning restore HFC0001
     }
 
     [Fact]

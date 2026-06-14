@@ -384,10 +384,7 @@ public sealed class EventStoreQueryClient(
         }
     }
 
-    private static bool HasCacheUnsafeQueryShape(QueryRequest request) =>
-#pragma warning disable HFC0001 // Legacy Filter is honoured for cache-safety until removal in v0.4.
-            !string.IsNullOrWhiteSpace(request.Filter)
-#pragma warning restore HFC0001
+    private static bool HasCacheUnsafeQueryShape(QueryRequest request) => !string.IsNullOrWhiteSpace(request.Filter)
             || (request.ColumnFilters is { Count: > 0 })
             || (request.StatusFilters is { Count: > 0 })
             || !string.IsNullOrWhiteSpace(request.SearchQuery)
@@ -496,9 +493,7 @@ public sealed class EventStoreQueryClient(
         Justification = "EventStore adapter serializes query payload metadata through System.Text.Json web defaults.")]
     private static JsonElement SerializeQueryPayload(QueryRequest request) => JsonSerializer.SerializeToElement(
             new QueryPayload(
-#pragma warning disable HFC0001 // Legacy Filter is serialized for wire compatibility until removal in v0.4.
                 request.Filter,
-#pragma warning restore HFC0001
                 request.Skip,
                 request.Take,
                 request.ColumnFilters,

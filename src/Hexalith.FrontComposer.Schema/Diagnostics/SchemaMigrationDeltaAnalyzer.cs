@@ -274,7 +274,7 @@ public static class SchemaMigrationDeltaAnalyzer {
             cut--;
         }
 
-        return path.Substring(0, cut) + "...";
+        return path[..cut] + "...";
     }
 
     private static SchemaMigrationDeltaResult Result(SchemaCompatibilityDecision decision, IReadOnlyList<SchemaDelta> deltas, bool truncated)

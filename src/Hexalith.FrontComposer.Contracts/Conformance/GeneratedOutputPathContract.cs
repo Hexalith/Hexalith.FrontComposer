@@ -96,7 +96,7 @@ public static class GeneratedOutputPathContract {
         int dot = value.IndexOf('.');
 
         if (dot > 0) {
-            baseName = value.Substring(0, dot);
+            baseName = value[..dot];
         }
 
         for (int i = 0; i < _windowsReservedDeviceNames.Length; i++) {

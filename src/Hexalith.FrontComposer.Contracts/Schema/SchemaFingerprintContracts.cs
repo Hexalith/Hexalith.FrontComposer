@@ -173,7 +173,7 @@ public static class CanonicalSchemaMaterial {
         }
 
         // P-31: strip a leading UTF-8 BOM before we hand bytes to Utf8JsonReader.
-        string normalizedJson = json.Length > 0 && json[0] == '﻿' ? json.Substring(1) : json;
+        string normalizedJson = json.Length > 0 && json[0] == '﻿' ? json[1..] : json;
 
         // P-33: bound payload size before allocating the UTF-8 byte array.
         int byteCount = Encoding.UTF8.GetByteCount(normalizedJson);

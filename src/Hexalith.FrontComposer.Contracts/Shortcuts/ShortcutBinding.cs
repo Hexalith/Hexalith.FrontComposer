@@ -183,7 +183,7 @@ public static class ShortcutBinding {
             }
         }
 
-        string keyToken = parts[parts.Length - 1];
+        string keyToken = parts[^1];
         if (Array.IndexOf(_modifierOrder, keyToken) >= 0) {
             throw new ArgumentException($"Binding must end with a non-modifier key; got '{raw}'.", nameof(raw));
         }
@@ -218,5 +218,5 @@ public static class ShortcutBinding {
     private static string Capitalise(string token)
         => string.IsNullOrEmpty(token)
             ? token
-            : char.ToUpperInvariant(token[0]) + token.Substring(1);
+            : char.ToUpperInvariant(token[0]) + token[1..];
 }
