@@ -15,6 +15,7 @@
 <div class="fc-account-menu" data-testid="fc-account-menu">
     @if (IsAuthenticated)
     {
+        <span class="fc-account-menu__name" data-testid="fc-account-name" title="@SignedInAsText">@UserName</span>
         <FluentAvatar Id="@AvatarId"
                       Name="@UserName"
                       Color="AvatarColor.Colorful"
@@ -22,7 +23,12 @@
                       Style="cursor: pointer;" />
         <FluentMenu Trigger="@AvatarId" aria-label="@Localizer["AccountMenuAriaLabel"].Value">
             <FluentMenuList>
-                <FluentMenuItem Disabled="true" data-testid="fc-account-user">@SignedInAsText</FluentMenuItem>
+                @* Show the (short) name as the item text — the full "Signed in as {name}" sentence is
+                   long and gets clipped when the menu is anchored at the viewport's right edge, so it
+                   stays as the accessible title/tooltip. *@
+                <FluentMenuItem Disabled="true" data-testid="fc-account-user" Title="@SignedInAsText">
+                    <span class="fc-account-menu__menu-user">@UserName</span>
+                </FluentMenuItem>
                 <FluentDivider />
                 <FluentMenuItem OnClick="@(_ => SignOut())" data-testid="fc-account-sign-out">
                     @Localizer["SignOutLabel"].Value

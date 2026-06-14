@@ -40,7 +40,40 @@ public partial class FcAccountMenu : ComponentBase {
 
     private bool IsAuthenticated => _user?.Identity?.IsAuthenticated == true;
 
-    private string UserName => _user?.Identity?.Name ?? string.Empty;
+    private string UserName => ResolveDisplayName();
+
+    // Identity.Name only resolves when the token's NameClaimType matches what the IdP emits, which
+    // the Keycloak `preferred_username` / `name` split (and per-IdP claim naming) routinely defeats —
+    // leaving the avatar initials and menu header blank. Resolve a human-friendly display name from
+    // the common claims in priority order, then fall back to given+family, then Identity.Name.
+    private string ResolveDisplayName() {
+        if (_user is null) {
+            return string.Empty;
+        }
+
+        string? friendly = FirstNonEmptyClaim("name", ClaimTypes.Name, "preferred_username", "nickname", ClaimTypes.Email, "email");
+        if (!string.IsNullOrWhiteSpace(friendly)) {
+            return friendly;
+        }
+
+        string? given = FirstNonEmptyClaim(ClaimTypes.GivenName, "given_name");
+        string? family = FirstNonEmptyClaim(ClaimTypes.Surname, "family_name");
+        string composed = string.Join(' ', new[] { given, family }.Where(part => !string.IsNullOrWhiteSpace(part)));
+        return string.IsNullOrWhiteSpace(composed)
+            ? _user.Identity?.Name ?? string.Empty
+            : composed;
+    }
+
+    private string? FirstNonEmptyClaim(params string[] claimTypes) {
+        foreach (string claimType in claimTypes) {
+            string? value = _user!.FindFirst(claimType)?.Value;
+            if (!string.IsNullOrWhiteSpace(value)) {
+                return value;
+            }
+        }
+
+        return null;
+    }
 
     private string SignedInAsText => string.Format(
         System.Globalization.CultureInfo.CurrentCulture,

@@ -1,0 +1,27 @@
+.fc-account-menu {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.5rem;
+}
+
+/* Connected user's full name, shown to the left of the avatar. The avatar keeps the initials, so
+   the name is supplementary — hide it on narrow viewports where header space is scarce. */
+.fc-account-menu__name {
+    font-size: 0.875rem;
+    font-weight: 500;
+    max-inline-size: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (max-width: 36rem) {
+    .fc-account-menu__name {
+        display: none;
+    }
+}
+
+/* Disabled account header row: the connected user's name, emphasized. */
+.fc-account-menu__menu-user {
+    font-weight: 600;
+}
