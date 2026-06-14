@@ -53,7 +53,7 @@
          AppHosts. There is no stable 13.4.x Keycloak-hosting line, so the ecosystem holds this
          known-good preview for reproducibility. Do NOT bump independently (e.g. to 13.4.2-preview):
          it must move in lockstep with the sibling AppHosts in an owned, submodule-approved story. -->
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.4.0-preview.1.26281.18" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.4.3-preview.1.26305.13" />
   </ItemGroup>
   <ItemGroup Label="MCP">
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
@@ -63,7 +63,7 @@
     <PackageVersion Include="xunit.v3" Version="3.2.2" />
     <PackageVersion Include="xunit.v3.assert" Version="3.2.2" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageVersion Include="bunit" Version="2.8.1-preview" />
+    <PackageVersion Include="bunit" Version="2.8.4-preview" />
     <PackageVersion Include="Shouldly" Version="4.3.0" />
     <PackageVersion Include="NSubstitute" Version="6.0.0-rc.1" />
     <PackageVersion Include="coverlet.collector" Version="10.0.1" />
