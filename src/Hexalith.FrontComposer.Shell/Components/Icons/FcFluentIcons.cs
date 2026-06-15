@@ -14,6 +14,7 @@ public static class FcFluentIcons {
     private const string PlayPath = "<path d=\"M5 3.8c0-.8.9-1.3 1.6-.8l7 4.2a1 1 0 0 1 0 1.7l-7 4.2A1 1 0 0 1 5 12.2V3.8Z\"/>";
     private const string SearchPath = "<path d=\"M8.5 4a4.5 4.5 0 1 0 2.8 8l3.4 3.4a1 1 0 0 0 1.4-1.4l-3.4-3.4A4.5 4.5 0 0 0 8.5 4Zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z\"/>";
     private const string SettingsPath = "<path d=\"M10 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm0-6a1 1 0 0 1 1 1v1.1a6.8 6.8 0 0 1 1.5.6l.8-.8a1 1 0 0 1 1.4 1.4l-.8.8c.3.5.5 1 .6 1.5H16a1 1 0 1 1 0 2h-1.1a6.8 6.8 0 0 1-.6 1.5l.8.8a1 1 0 0 1-1.4 1.4l-.8-.8c-.5.3-1 .5-1.5.6V17a1 1 0 1 1-2 0v-1.1a6.8 6.8 0 0 1-1.5-.6l-.8.8a1 1 0 0 1-1.4-1.4l.8-.8c-.3-.5-.5-1-.6-1.5H4a1 1 0 1 1 0-2h1.1c.1-.5.3-1 .6-1.5l-.8-.8a1 1 0 0 1 1.4-1.4l.8.8c.5-.3 1-.5 1.5-.6V3a1 1 0 0 1 1-1Z\"/>";
+    private const string PeoplePath = "<path d=\"M7 4a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm6 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM7 10c-2.2 0-4 1.3-4 3v.5c0 .83.67 1.5 1.5 1.5h5c.83 0 1.5-.67 1.5-1.5V13c0-1.7-1.8-3-4-3Zm6 0c-.5 0-.98.07-1.43.2.88.74 1.43 1.73 1.43 2.8v.5c0 .54-.14 1.05-.4 1.5H15.5c.83 0 1.5-.67 1.5-1.5V13c0-1.7-1.8-3-4-3Z\"/>";
 
     /// <summary>Creates the default bounded-context rail icon.</summary>
     public static Icon Apps20() => Create("Apps", IconSize.Size20, AppsPath);
@@ -42,6 +43,9 @@ public static class FcFluentIcons {
     /// <summary>Creates the navigation (hamburger) icon used by the desktop sidebar toggle.</summary>
     public static Icon Navigation20() => Create("Navigation", IconSize.Size20, NavigationPath);
 
+    /// <summary>Creates a people / group bounded-context rail icon.</summary>
+    public static Icon People20() => Create("People", IconSize.Size20, PeoplePath);
+
     /// <summary>
     /// Attempts to create a supported FrontComposer icon from the existing
     /// <c>Variant.SizeNN.Name</c> contract.
@@ -55,6 +59,7 @@ public static class FcFluentIcons {
             "Regular.Size20.Search" => Search20(),
             "Regular.Size20.Settings" => Settings20(),
             "Regular.Size20.Navigation" => Navigation20(),
+            "Regular.Size20.People" => People20(),
             "Regular.Size32.DocumentSearch" => DocumentSearch32(),
             "Regular.Size48.DocumentSearch" => DocumentSearch48(),
             _ => null,

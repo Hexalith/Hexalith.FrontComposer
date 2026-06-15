@@ -13,6 +13,7 @@ using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Hexalith.FrontComposer.Shell.Components.Layout;
@@ -41,6 +42,44 @@ public partial class FrontComposerNavigation : FluxorComponent {
     [Inject] private IState<FrontComposerCapabilityDiscoveryState> DiscoveryState { get; set; } = default!;
 
     [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
+
+    [Inject] private IStringLocalizerFactory LocalizerFactory { get; set; } = default!;
+
+    /// <summary>
+    /// Resolves the displayed category title for a manifest to the request culture, falling back to
+    /// the culture-invariant <see cref="DomainManifest.Name"/> when the domain registered no
+    /// localization pointer.
+    /// </summary>
+    /// <param name="manifest">The manifest whose category title is rendered.</param>
+    /// <returns>The localized (or fallback) category title.</returns>
+    internal string LocalizeManifestName(DomainManifest manifest) {
+        ArgumentNullException.ThrowIfNull(manifest);
+        return FcNavLocalization.Resolve(LocalizerFactory, manifest.Resource, manifest.NameKey, manifest.Name);
+    }
+
+    /// <summary>
+    /// Resolves the displayed title for a navigation entry to the request culture, falling back to the
+    /// culture-invariant <see cref="FrontComposerNavEntry.Title"/> when the entry is not localized.
+    /// </summary>
+    /// <param name="entry">The navigation entry whose title is rendered.</param>
+    /// <returns>The localized (or fallback) entry title.</returns>
+    internal string LocalizeEntryTitle(FrontComposerNavEntry entry) {
+        ArgumentNullException.ThrowIfNull(entry);
+        return FcNavLocalization.Resolve(LocalizerFactory, entry.Resource, entry.TitleKey, entry.Title);
+    }
+
+    /// <summary>
+    /// Resolves the disabled-entry reason to the request culture. The reason shares the entry's
+    /// resource type; when the reason is treated as a literal (no resource) it renders verbatim.
+    /// </summary>
+    /// <param name="entry">The disabled navigation entry whose reason is rendered.</param>
+    /// <returns>The localized (or verbatim) disabled reason, or <see langword="null"/> when none.</returns>
+    internal string? LocalizeEntryReason(FrontComposerNavEntry entry) {
+        ArgumentNullException.ThrowIfNull(entry);
+        return string.IsNullOrWhiteSpace(entry.DisabledReason)
+            ? entry.DisabledReason
+            : FcNavLocalization.Resolve(LocalizerFactory, entry.Resource, entry.DisabledReason, entry.DisabledReason);
+    }
 
     /// <summary>
     /// Builds the nav-item <c>Href</c> from the D2 convention:

@@ -36,8 +36,8 @@
            readers announce the bounded-context name once (from the span), not three times. *@
         <FluentButton id="@anchorId" Appearance="@ButtonAppearance.Subtle"
                       OnClick="@(_ => OnRailClicked(manifest.BoundedContext))">
-            <FluentIcon Value="@FcFluentIcons.Apps20()" />
-            <span class="fc-visually-hidden">@manifest.Name</span>
+            <FluentIcon Value="@FrontComposerNavigation.ResolveNavEntryIcon(manifest.Icon)" />
+            <span class="fc-visually-hidden">@LocalizeName(manifest)</span>
             @if (aggregateCount > 0)
             {
                 <FluentBadge Appearance="@BadgeAppearance.Filled"
@@ -55,7 +55,7 @@
                 }
             </FluentButton>
             <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
-                @manifest.Name
+                @LocalizeName(manifest)
             </FluentTooltip>
         }
     </div>

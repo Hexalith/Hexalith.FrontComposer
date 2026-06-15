@@ -27,6 +27,18 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
 /// capability that is not yet reachable) rather than a link.
 /// </param>
 /// <param name="DisabledReason">Optional explanation shown beneath a disabled (<c>Enabled = false</c>) entry.</param>
+/// <param name="TitleKey">
+/// Optional resource key for the displayed label. When set together with <paramref name="Resource"/>,
+/// the shell resolves the visible title (and <see cref="DisabledReason"/>) per the request culture via
+/// <see cref="System.Type"/>-keyed <c>IStringLocalizerFactory</c>; <see cref="Title"/> stays the
+/// culture-invariant fallback used for stable test ids and sort order. The key is a plain string so
+/// domains never reference a Fluent UI or shell type.
+/// </param>
+/// <param name="Resource">
+/// Optional resource marker type (e.g. a domain's <c>*Resources</c> class) whose assembly the shell
+/// feeds to <c>IStringLocalizerFactory.Create(Type)</c> to resolve <paramref name="TitleKey"/>. When
+/// <see langword="null"/> the entry is not localized and <see cref="Title"/> renders verbatim.
+/// </param>
 public sealed record FrontComposerNavEntry(
     string BoundedContext,
     string Title,
@@ -35,4 +47,6 @@ public sealed record FrontComposerNavEntry(
     int Order = 0,
     string? RequiredPolicy = null,
     bool Enabled = true,
-    string? DisabledReason = null);
+    string? DisabledReason = null,
+    string? TitleKey = null,
+    Type? Resource = null);

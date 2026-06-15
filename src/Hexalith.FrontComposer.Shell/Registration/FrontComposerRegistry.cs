@@ -170,21 +170,28 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
 
         DomainManifest existing = _manifests[existingIndex];
         string name = ChooseName(existing.Name, manifest.Name, existing.BoundedContext);
-        _manifests[existingIndex] = new DomainManifest(
-            name,
-            existing.BoundedContext,
-            [.. existing.Projections.Concat(manifest.Projections).Distinct(StringComparer.Ordinal)],
-            [.. existing.Commands.Concat(manifest.Commands).Distinct(StringComparer.Ordinal)],
-            MergeCommandPolicies(existing.CommandPolicies, manifest.CommandPolicies));
+
+        // Preserve the existing manifest's display metadata (Icon / NameKey / Resource) and fall back
+        // to the incoming manifest's when the existing one left them unset, so a later registration can
+        // supply the rail icon or localization pointer without a prior registration clobbering it. A
+        // `with` expression carries every other field (including any future addition) untouched.
+        _manifests[existingIndex] = existing with {
+            Name = name,
+            Projections = [.. existing.Projections.Concat(manifest.Projections).Distinct(StringComparer.Ordinal)],
+            Commands = [.. existing.Commands.Concat(manifest.Commands).Distinct(StringComparer.Ordinal)],
+            CommandPolicies = MergeCommandPolicies(existing.CommandPolicies, manifest.CommandPolicies),
+            Icon = existing.Icon ?? manifest.Icon,
+            NameKey = existing.NameKey ?? manifest.NameKey,
+            Resource = existing.Resource ?? manifest.Resource,
+        };
     }
 
     private static DomainManifest Clone(DomainManifest manifest)
-        => new(
-            manifest.Name,
-            manifest.BoundedContext,
-            [.. manifest.Projections],
-            [.. manifest.Commands],
-            new Dictionary<string, string>(manifest.CommandPolicies, StringComparer.Ordinal));
+        => manifest with {
+            Projections = [.. manifest.Projections],
+            Commands = [.. manifest.Commands],
+            CommandPolicies = new Dictionary<string, string>(manifest.CommandPolicies, StringComparer.Ordinal),
+        };
 
     private IReadOnlyDictionary<string, string> MergeCommandPolicies(
         IReadOnlyDictionary<string, string> existing,

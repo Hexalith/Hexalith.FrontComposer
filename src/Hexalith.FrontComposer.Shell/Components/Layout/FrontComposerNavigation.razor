@@ -37,12 +37,12 @@ else
         @<FluentNavItem Href="@(entry.Enabled ? entry.Href : null)"
                         Disabled="@(!entry.Enabled)"
                         IconRest="@ResolveNavEntryIcon(entry.Icon)"
-                        Tooltip="@(entry.Enabled ? null : entry.DisabledReason)"
+                        Tooltip="@(entry.Enabled ? null : LocalizeEntryReason(entry))"
                         data-testid="@NavEntryTestId(entry)">
-            @entry.Title
+            @LocalizeEntryTitle(entry)
             @if (!entry.Enabled && !string.IsNullOrWhiteSpace(entry.DisabledReason))
             {
-                <span class="fc-nav-entry__reason" data-testid="@($"{NavEntryTestId(entry)}-reason")">@entry.DisabledReason</span>
+                <span class="fc-nav-entry__reason" data-testid="@($"{NavEntryTestId(entry)}-reason")">@LocalizeEntryReason(entry)</span>
             }
         </FluentNavItem>;
 
@@ -76,7 +76,7 @@ else
             bool bcShowsNew = !discovery.SeenCapabilities.Contains(bcCapabilityId) && aggregateCount > 0;
 
             <FluentNavCategory Id="@manifest.BoundedContext"
-                               Title="@manifest.Name"
+                               Title="@LocalizeManifestName(manifest)"
                                Expanded="@(!IsGroupCollapsed(manifest.BoundedContext))"
                                ExpandedChanged="@(value => OnGroupExpandedChanged(manifest.BoundedContext, bcCapabilityId, value))"
                                data-testid="@($"fc-nav-category-{manifest.BoundedContext}")">

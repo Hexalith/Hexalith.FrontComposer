@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
 
 namespace Hexalith.FrontComposer.Shell.Components.Layout;
 
@@ -28,8 +29,19 @@ public partial class FcCollapsedNavRail : FluxorComponent {
 
     [CascadingParameter] private LayoutHamburgerCoordinator? HamburgerCoordinator { get; set; }
 
+    [Inject] private IStringLocalizerFactory LocalizerFactory { get; set; } = default!;
+
     private static int AggregateCount(DomainManifest manifest, ImmutableDictionary<Type, int> counts)
         => FrontComposerNavigation.AggregateBoundedContextCount(manifest, counts);
+
+    /// <summary>
+    /// Resolves the bounded-context display name to the request culture for the rail's accessible
+    /// label and tooltip, falling back to the culture-invariant <see cref="DomainManifest.Name"/>.
+    /// </summary>
+    /// <param name="manifest">The manifest whose rail label is rendered.</param>
+    /// <returns>The localized (or fallback) bounded-context name.</returns>
+    private string LocalizeName(DomainManifest manifest)
+        => FcNavLocalization.Resolve(LocalizerFactory, manifest.Resource, manifest.NameKey, manifest.Name);
 
     private async Task OnRailClicked(string boundedContext) {
         Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(boundedContext)));
