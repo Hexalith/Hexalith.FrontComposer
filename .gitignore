@@ -448,3 +448,8 @@ artifacts/docs/
 
 .claude/.story-automator-active
 .agents/.story-automator-active
+
+# Dapr SQLite name-resolution registry (runtime artifact, shared by all local sidecars)
+nr.db
+nr.db-wal
+nr.db-shm

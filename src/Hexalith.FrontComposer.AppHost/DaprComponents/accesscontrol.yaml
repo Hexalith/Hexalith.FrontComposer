@@ -6,6 +6,19 @@ kind: Configuration
 metadata:
   name: accesscontrol
 spec:
+  # Name resolution: SQLite shared registry (replaces the self-hosted mDNS default).
+  # On Windows, mDNS multicast (UDP 5353) is frequently dropped, so sidecars can't
+  # discover each other's randomly-assigned gRPC ports -> "couldn't find service: <app-id>".
+  # SQLite has every sidecar register into one shared on-disk registry instead. The path is
+  # RELATIVE, so it resolves against each daprd's working directory (the AppHost dir) -> all
+  # sidecars on this host share the SAME nr.db. Committable + CI-friendly; needs no firewall
+  # rule. MUST be identical in every Configuration CRD (see accesscontrol.eventstore-admin.yaml).
+  # Ref: https://docs.dapr.io/reference/components-reference/supported-name-resolution/nr-sqlite/
+  nameResolution:
+    component: "sqlite"
+    version: "v1"
+    configuration:
+      connectionString: "nr.db"
   accessControl:
     defaultAction: allow
     trustDomain: "public"

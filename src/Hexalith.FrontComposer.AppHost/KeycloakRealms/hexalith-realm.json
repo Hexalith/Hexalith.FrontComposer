@@ -79,6 +79,21 @@
             "userinfo.token.claim": "true",
             "aggregate.attrs": "true"
           }
+        },
+        {
+          "name": "global-admin-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "global_admin",
+            "claim.name": "global_admin",
+            "jsonType.label": "boolean",
+            "multivalued": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
         }
       ]
     },
@@ -161,6 +176,21 @@
             "userinfo.token.claim": "true",
             "aggregate.attrs": "true"
           }
+        },
+        {
+          "name": "global-admin-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "global_admin",
+            "claim.name": "global_admin",
+            "jsonType.label": "boolean",
+            "multivalued": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
         }
       ]
     }
@@ -184,7 +214,8 @@
       "attributes": {
         "tenants": ["system", "tenant-a", "tenant-b"],
         "domains": ["global-administrators", "tenants", "orders", "inventory", "counter"],
-        "permissions": ["command:submit", "command:replay", "command:query"]
+        "permissions": ["command:submit", "command:replay", "command:query"],
+        "global_admin": ["true"]
       }
     },
     {

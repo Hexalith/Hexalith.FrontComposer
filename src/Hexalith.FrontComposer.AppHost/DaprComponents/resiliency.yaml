@@ -20,8 +20,10 @@ spec:
         maxInterval: 30s
         maxRetries: 10
     timeouts:
-      daprSidecar:
-        general: 5s
+      # Each timeout is a NAME -> duration-STRING pair. Nesting it as an object
+      # (e.g. daprSidecar: { general: 5s }) makes daprd reject the whole file:
+      # "cannot unmarshal object into ... policies.timeouts of type string".
+      daprSidecar: 5s
       # Pub/sub outbound: prevent hung sidecar->broker calls
       pubsubTimeout: 10s
       # Pub/sub inbound: allow more time for subscriber processing
@@ -57,7 +59,12 @@ spec:
           timeout: subscriberTimeout
       # State store resiliency: retry and circuit breaker for state persistence.
       # Without this target, transient Redis failures would fail without retry.
+      # Component targets require policies nested under outbound/inbound — state
+      # store access is outbound (app -> sidecar -> Redis). Placing the policy
+      # refs directly under the component name is invalid and makes daprd reject
+      # the entire resiliency file ("error unmarshaling JSON").
       statestore:
-        retry: defaultRetry
-        timeout: daprSidecar
-        circuitBreaker: defaultBreaker
+        outbound:
+          retry: defaultRetry
+          timeout: daprSidecar
+          circuitBreaker: defaultBreaker

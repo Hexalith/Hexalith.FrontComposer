@@ -12,6 +12,15 @@ kind: Configuration
 metadata:
   name: accesscontrol-eventstore-admin
 spec:
+  # Name resolution: SQLite shared registry. MUST match the connectionString in
+  # accesscontrol.yaml so the eventstore-admin sidecar joins the SAME registry as every
+  # other sidecar (relative path -> shared nr.db in each daprd's working dir = AppHost dir).
+  # Ref: https://docs.dapr.io/reference/components-reference/supported-name-resolution/nr-sqlite/
+  nameResolution:
+    component: "sqlite"
+    version: "v1"
+    configuration:
+      connectionString: "nr.db"
   accessControl:
     defaultAction: allow  # Local-only allow-by-default; production uses deploy/dapr/accesscontrol.eventstore-admin.yaml
     trustDomain: "public"

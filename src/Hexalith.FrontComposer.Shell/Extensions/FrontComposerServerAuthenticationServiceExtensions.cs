@@ -1,3 +1,6 @@
+using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Services.Auth;
+
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,6 +44,12 @@ public static class FrontComposerServerAuthenticationServiceExtensions {
         _ = services.AddHexalithFrontComposerAuthentication(configure);
         _ = services.AddHexalithFrontComposerServerAuthenticationState();
         _ = services.AddHexalithFrontComposerTokenRelay();
+
+        // Replace the HttpContext-only IUserContextAccessor (registered by
+        // AddHexalithFrontComposerAuthentication) with the circuit-aware variant so interactive Server
+        // components resolve the signed-in user when HttpContext is null. Ordered after the token relay
+        // so its CircuitServicesAccessor dependency is registered.
+        _ = services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor, ServerCircuitUserContextAccessor>());
         return services;
     }
 }
