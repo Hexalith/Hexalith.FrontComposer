@@ -10,3 +10,9 @@
 [submodule "Hexalith.Builds"]
 	path = Hexalith.Builds
 	url = https://github.com/Hexalith/Hexalith.Builds.git
+[submodule "Hexalith.PolymorphicSerializations"]
+	path = Hexalith.PolymorphicSerializations
+	url = https://github.com/Hexalith/Hexalith.PolymorphicSerializations
+[submodule "Hexalith.AI.Tools"]
+	path = Hexalith.AI.Tools
+	url = https://github.com/Hexalith/Hexalith.AI.Tools.git
