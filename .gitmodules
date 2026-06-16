@@ -1,18 +1,24 @@
 [submodule "Hexalith.EventStore"]
 	path = Hexalith.EventStore
 	url = https://github.com/Hexalith/Hexalith.EventStore.git
+	branch = main
 [submodule "Hexalith.Tenants"]
 	path = Hexalith.Tenants
 	url = https://github.com/Hexalith/Hexalith.Tenants.git
+	branch = main
 [submodule "Hexalith.Commons"]
 	path = Hexalith.Commons
 	url = https://github.com/Hexalith/Hexalith.Commons.git
+	branch = main
 [submodule "Hexalith.Builds"]
 	path = Hexalith.Builds
 	url = https://github.com/Hexalith/Hexalith.Builds.git
+	branch = main
 [submodule "Hexalith.PolymorphicSerializations"]
 	path = Hexalith.PolymorphicSerializations
 	url = https://github.com/Hexalith/Hexalith.PolymorphicSerializations
+	branch = main
 [submodule "Hexalith.AI.Tools"]
 	path = Hexalith.AI.Tools
 	url = https://github.com/Hexalith/Hexalith.AI.Tools.git
+	branch = main
