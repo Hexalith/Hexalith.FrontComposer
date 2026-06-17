@@ -94,6 +94,21 @@
             "access.token.claim": "true",
             "userinfo.token.claim": "true"
           }
+        },
+        {
+          "name": "current-tenant-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "current-tenant",
+            "claim.name": "eventstore:current-tenant",
+            "jsonType.label": "String",
+            "multivalued": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
         }
       ]
     },
@@ -191,12 +206,28 @@
             "access.token.claim": "true",
             "userinfo.token.claim": "true"
           }
+        },
+        {
+          "name": "current-tenant-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "current-tenant",
+            "claim.name": "eventstore:current-tenant",
+            "jsonType.label": "String",
+            "multivalued": "false",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
         }
       ]
     }
   ],
   "users": [
     {
+      "id": "fa9abb07-1963-4b66-8447-4e09f6fa8b9c",
       "username": "admin-user",
       "firstName": "Admin",
       "lastName": "User",
@@ -215,10 +246,12 @@
         "tenants": ["system", "tenant-a", "tenant-b"],
         "domains": ["global-administrators", "tenants", "orders", "inventory", "counter"],
         "permissions": ["command:submit", "command:replay", "command:query"],
-        "global_admin": ["true"]
+        "global_admin": ["true"],
+        "current-tenant": ["system"]
       }
     },
     {
+      "id": "04c3594a-8f06-452e-ae9c-85e39bb4e7a5",
       "username": "tenant-a-user",
       "firstName": "Tenant",
       "lastName": "A",
@@ -236,10 +269,12 @@
       "attributes": {
         "tenants": ["tenant-a"],
         "domains": ["tenants", "orders"],
-        "permissions": ["command:submit", "command:query"]
+        "permissions": ["command:submit", "command:query"],
+        "current-tenant": ["tenant-a"]
       }
     },
     {
+      "id": "5bc50bb5-33a7-4646-8abc-f208b7d7aa8a",
       "username": "tenant-b-user",
       "firstName": "Tenant",
       "lastName": "B",
@@ -257,10 +292,12 @@
       "attributes": {
         "tenants": ["tenant-b"],
         "domains": ["tenants", "inventory"],
-        "permissions": ["command:submit"]
+        "permissions": ["command:submit"],
+        "current-tenant": ["tenant-b"]
       }
     },
     {
+      "id": "e2006aae-776e-4eac-b893-a1d45984aac1",
       "username": "readonly-user",
       "firstName": "Read",
       "lastName": "Only",
@@ -278,10 +315,12 @@
       "attributes": {
         "tenants": ["tenant-a"],
         "domains": ["tenants", "orders"],
-        "permissions": ["command:query"]
+        "permissions": ["command:query"],
+        "current-tenant": ["tenant-a"]
       }
     },
     {
+      "id": "0f8a9125-43f1-4f96-a4b3-e62ee6831289",
       "username": "no-tenant-user",
       "firstName": "No",
       "lastName": "Tenant",
