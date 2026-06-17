@@ -128,6 +128,20 @@ _This file contains critical rules and patterns that AI agents must follow when 
   **effects own persistence + JS interop**, reducers stay pure. Slices live under `Shell/State/`
 - **Scoped-lifetime discipline (ADR-030)** for storage/effects/auth/tenant accessors — never capture
   them in singletons
+- **Fluent-only UI (project-wide):** every `.razor` page/component — Shell, samples, **and** domain
+  consumers (Tenants.UI, EventStore Admin.UI) — uses **FrontComposer or Fluent v5 components**, never raw
+  `<button>/<input>/<select>/<textarea>` (Fluent v5 leaves them unstyled and strips NFR6 a11y). Raw `<a>`
+  nav links are allowed. Enforced per surface by `…FluentConformanceTests` Governance guards; documented
+  carve-outs (Shell `FcHomeCard`, `Counter.Specimens` fixtures, Admin.UI `ActivityChart` bar + `Streams`
+  aggregate-id-copy cell) are listed in `architecture.md` §4.1 and each guard's allowlist
+- **Page sections use FluentAccordion (project-wide guideline):** when a page/dialog/panel has **2+
+  sibling titled sections** (heading-introduced content regions), group them in one `FluentAccordion`
+  with one `FluentAccordionItem` per section; first item `Expanded="true"`. NOT sections: page `<h1>`
+  title, breadcrumb, toolbar, nav chrome, and **single-region** pages (one `FluentDataGrid`/form/detail
+  view) — never collapse a page's sole primary content. Grid-/viz-first pages keep the grid/chart
+  always-visible. Generated output already conforms (field groups → accordion items). This is a
+  **guideline enforced by review, not a Governance guard** (unlike the Fluent-only rule). See
+  `architecture.md` §4.2
 - **Icons:** use the custom inline-SVG `FcFluentIcons` factory, **not** a FluentUI icons NuGet
 - **NFR17 tripwire:** a new `IStorageService.SetAsync` call site in `Shell/State/` requires updating
   the tripwire whitelist + the story compliance matrix

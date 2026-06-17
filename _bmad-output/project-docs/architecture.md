@@ -80,6 +80,57 @@ authorization/tenant resolution and is limited to pre-`202 Accepted` transient f
 the same `MessageId` and surfaces retry exhaustion as warning feedback, not as a terminal lifecycle
 state.
 
+### 4.1 UI component policy (project-wide governance)
+
+**Every UI page and component across all FrontComposer surfaces** — the framework Shell, the samples,
+and the domain consumers (`Hexalith.Tenants.UI`, `Hexalith.EventStore.Admin.UI`) — renders through
+**FrontComposer components or Fluent UI Blazor v5**. Raw interactive HTML controls (`<button>`,
+`<input>`, `<select>`, `<textarea>`) are **forbidden**: in Fluent UI v5 the design system only styles
+its own custom elements (`<fluent-button>`, `<fluent-text-input>`, …), so a native control falls back
+to unstyled browser rendering *and* drops the `aria`/`role`/focus affordances Fluent components
+guarantee (NFR6). Raw `<a>` navigation links are permitted. (Generalizes ADR-003 from the Tenants-only
+rule established by the 2026-06-09/06-16 correct-course passes into a project-wide policy — 2026-06-17.)
+
+The rule is enforced per surface by `…FluentConformanceTests` governance guards
+(`[Trait("Category","Governance")]`, blocking lane) that statically scan each surface's `.razor`
+sources for raw interactive controls. **Documented carve-outs** — custom-styled, fully-accessible
+interactive elements where a Fluent control would cause visual regression — are listed below and
+mirrored in each guard's allowlist, so every exception is self-documenting and cannot silently widen:
+
+| Surface | File | Element | Justification |
+|---|---|---|---|
+| Shell | `Components/Home/FcHomeCard.razor` | full-card link button | framework chrome; `role="link"` + custom keyboard activation; scoped `.fc-home-card-button` CSS; hosts `<h2>` + projection `<ul>` a `FluentButton` cannot contain without regression |
+| Counter sample | `Counter.Specimens/FrontComposerTypeSpecimen.razor` | raw-control specimens | the raw controls **are** the a11y/visual specimen fixtures; not a shipped UI page (the guard excludes the `Counter.Specimens` tree entirely) |
+| Admin.UI | `Components/ActivityChart.razor` | clickable bar-chart bar | data-visualization element (height-scaled `<div>`); `aria-label` present; `FluentButton` destroys the bar |
+| Admin.UI | `Pages/Streams.razor` | inline monospace click-to-copy aggregate-ID cell | grid-cell affordance; `aria-label`/`data-testid`/`stopPropagation` present; `FluentButton` breaks the cell layout |
+
+### 4.2 Page-section layout pattern (FluentAccordion) — project-wide guideline
+
+**Every titled page section renders inside a `FluentAccordion` / `FluentAccordionItem`.** A *titled
+page section* is a content region introduced by its own section heading (`<h2>`/`<h3>`, a
+`<header>`/`<section>` carrying a heading, or `Heading=` on a Fluent container) that sits alongside
+one or more **sibling** titled regions. When a page or page-like surface (dialog body, detail panel)
+presents **two or more** sibling titled sections, those sections are grouped under a single
+`FluentAccordion`, one `FluentAccordionItem` per section. The first/primary item defaults
+`Expanded="true"` so primary content is never hidden behind a click (NFR6).
+
+This generalizes a pattern the framework already emits — generated projection detail bodies render
+`[ProjectionFieldGroup]` buckets as `FluentAccordionItem`s (`ProjectionRoleBodyEmitter`), and
+`FcHomeDirectory` collapses zero-urgency contexts into a `FluentAccordion` — into the standard layout
+for hand-authored multi-section pages across all surfaces (Shell, samples, `Hexalith.Tenants.UI`,
+`Hexalith.EventStore.Admin.UI`). Directive 2026-06-17; reinforces ADR-003 + §4.1.
+
+**Not a section (never converted):** the page-level `<h1>` title, breadcrumb, toolbar, and navigation
+chrome; and any page whose primary content is a **single** region — one `FluentDataGrid`, one command
+form, one detail view, or a single titled block. A grid-first or visualization-first page keeps its
+primary grid/chart always-visible; only genuinely supplementary sibling sections may be
+accordion-grouped. Source-generator output already conforms (no emitter change required).
+
+Unlike the §4.1 Fluent-only rule, this is a **design guideline, not a governance-test guard**:
+accordion-appropriateness is contextual (single-section and grid-first pages are legitimate
+exceptions) and cannot be asserted mechanically without false positives. It is enforced by code review
+against this definition, not by a `…FluentConformanceTests` guard.
+
 ## 5. AI-agent surface (MCP)
 
 `Hexalith.FrontComposer.Mcp` is an ASP.NET Core adapter (HTTP streamable MCP) that turns the generated `McpManifest` into a live tool/resource surface:
