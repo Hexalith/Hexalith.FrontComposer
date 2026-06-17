@@ -124,10 +124,10 @@
       "serviceAccountsEnabled": false,
       "fullScopeAllowed": true,
       "redirectUris": [
-        "https://localhost:62445/signin-oidc"
+        "https://localhost:7271/signin-oidc"
       ],
       "webOrigins": [
-        "https://localhost:62445"
+        "https://localhost:7271"
       ],
       "attributes": {
         "post.logout.redirect.uris": "+"

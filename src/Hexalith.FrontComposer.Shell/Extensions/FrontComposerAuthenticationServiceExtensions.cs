@@ -255,6 +255,15 @@ public static class FrontComposerAuthenticationServiceExtensions {
                 oidc.ResponseType = options.OpenIdConnect.ResponseType;
                 oidc.CallbackPath = options.OpenIdConnect.CallbackPath;
                 oidc.SignedOutCallbackPath = options.OpenIdConnect.SignedOutCallbackPath;
+                // P35 — preserve raw token claim names. The FrontComposer claim extractor and the
+                // UseXxx recipes address claims by their original OIDC names (`sub`,
+                // `eventstore:current-tenant`, `tid`, ...). ASP.NET Core's default inbound claim
+                // mapping (MapInboundClaims=true) rewrites short names like `sub` to long URIs
+                // (ClaimTypes.NameIdentifier), so the configured user-claim alias resolves to nothing
+                // → HFC2012 MissingClaim → IUserContextAccessor.UserId is null and self-scoped views
+                // ("My tenants") fail closed as unauthorized. Disabling the map keeps the alias
+                // contract intact; display-name/user-id resolution already probe both forms.
+                oidc.MapInboundClaims = false;
                 // P9 — request access tokens be saved server-side so the framework token relay
                 // can read them via `HttpContext.GetTokenAsync` per outbound operation.
                 oidc.SaveTokens = options.OpenIdConnect.SaveTokens;

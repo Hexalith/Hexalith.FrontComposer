@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -107,6 +108,43 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
         });
 
         configureCalls.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task AddHexalithFrontComposerAuthentication_DisablesInboundClaimMappingForOidc() {
+        // P35 — regression for HFC2012 MissingClaim on `sub`: ASP.NET Core's default inbound claim
+        // mapping renames `sub` to ClaimTypes.NameIdentifier, so the `sub` user-claim alias the
+        // UseXxx recipes configure resolves to nothing and IUserContextAccessor.UserId is null
+        // (self-scoped "My tenants" view fails closed). The OIDC handler must preserve raw claim
+        // names so the alias contract holds.
+        ServiceCollection services = new();
+        _ = services.AddHexalithFrontComposer();
+        _ = services.AddHexalithFrontComposerAuthentication(options => options.UseKeycloak(
+            new Uri("https://keycloak.test/realms/test"),
+            clientId: "client",
+            clientSecret: "secret",
+            tenantClaimType: "eventstore:current-tenant",
+            userClaimType: "sub"));
+
+        await using ServiceProvider provider = services.BuildServiceProvider();
+
+        // Apply the registered configure actions to a fresh options instance rather than resolving
+        // the post-configured handler (which pulls in data protection / the backchannel HttpClient).
+        // A fresh OpenIdConnectOptions starts with MapInboundClaims=true, so a false result proves the
+        // bridge's configure action ran.
+        OpenIdConnectOptions oidc = new();
+        string scheme = provider.GetRequiredService<IOptions<FrontComposerAuthenticationOptions>>()
+            .Value.OpenIdConnect.ChallengeScheme;
+        foreach (IConfigureOptions<OpenIdConnectOptions> configure in provider.GetServices<IConfigureOptions<OpenIdConnectOptions>>()) {
+            if (configure is IConfigureNamedOptions<OpenIdConnectOptions> named) {
+                named.Configure(scheme, oidc);
+            }
+            else {
+                configure.Configure(oidc);
+            }
+        }
+
+        oidc.MapInboundClaims.ShouldBeFalse();
     }
 
     [Fact]
