@@ -1,5 +1,11 @@
 # Agent Instructions
 
+## AI assistant instructions
+
+Before working in this repository, read
+[`hexalith-llm-instructions.md`](./Hexalith.AI.Tools/hexalith-llm-instructions.md)
+(in the `Hexalith.AI.Tools` submodule) and follow it.
+
 ## Git submodules
 
 This repository's submodules reference each other **circularly**
