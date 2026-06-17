@@ -67,6 +67,14 @@ _ = adminUI
 // The Tenants UI is the primary front end — it renders the FrontComposer Shell/Contracts components
 // and talks to the Tenants domain + EventStore gateways.
 IResourceBuilder<ProjectResource> tenantsUI = builder.AddProject<HexalithTenantsUI>("tenants-ui")
+    // Pin the host (proxy) ports to a low, fixed range. The project's launchSettings applicationUrl
+    // uses 62445/62448, which can land inside a Windows WinNAT/Hyper-V reserved port range
+    // (`netsh interface ipv4 show excludedportrange protocol=tcp`). When that happens the DCP proxy
+    // cannot bind the port and the endpoint refuses connections (ERR_CONNECTION_REFUSED) even though
+    // the app is healthy on its internal port. Low fixed ports avoid the high ephemeral reservation
+    // blocks. Overridden here (not in the submodule's launchSettings) to keep the change repo-local.
+    .WithEndpoint("https", e => e.Port = 7271, createIfNotExists: false)
+    .WithEndpoint("http", e => e.Port = 7272, createIfNotExists: false)
     .WithReference(tenants)
     .WithReference(eventStore)
     .WaitFor(tenants)
