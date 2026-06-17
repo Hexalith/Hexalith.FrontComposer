@@ -47,13 +47,13 @@
     <PackageVersion Include="Fluxor.Blazor.Web" Version="6.9.0" />
   </ItemGroup>
   <ItemGroup Label="Aspire">
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.4.3" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.4.5" />
     <!-- Keycloak hosting for the FrontComposer AppHost (OIDC/JWT identity provider).
          Pinned to the exact preview build shared by the Hexalith.Tenants / Hexalith.EventStore
          AppHosts. There is no stable 13.4.x Keycloak-hosting line, so the ecosystem holds this
          known-good preview for reproducibility. Do NOT bump independently (e.g. to 13.4.2-preview):
          it must move in lockstep with the sibling AppHosts in an owned, submodule-approved story. -->
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.4.3-preview.1.26305.13" />
+    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.4.5-preview.1.26316.12" />
   </ItemGroup>
   <ItemGroup Label="MCP">
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
