@@ -28,7 +28,3 @@
 .fc-page-header__metadata {
     color: var(--neutral-foreground-rest);
 }
-
-.fc-page-header__actions {
-    margin-left: auto;
-}
