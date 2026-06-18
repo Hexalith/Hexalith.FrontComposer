@@ -9,7 +9,8 @@
 @* Story 3-5 Task 3 (D8 / D15 / D16 / D17 / AC3 / AC4a / AC4b / AC5 / AC6 / AC7) — home directory.
    Renders one of four states based on (manifest count, hydration, total urgency, seen-set size). *@
 
-<div class="fc-home-directory" role="main" aria-label="@Localizer["AppTitle"].Value" data-testid="fc-home-directory">
+@* The shell's #fc-main-content now owns the single page `main` landmark (role="main"); this page must not declare a second one. *@
+<div class="fc-home-directory" aria-label="@Localizer["AppTitle"].Value" data-testid="fc-home-directory">
     @{
         IReadOnlyList<DomainManifest> manifests = Registry.GetManifests();
         FrontComposerCapabilityDiscoveryState discovery = DiscoveryState.Value;

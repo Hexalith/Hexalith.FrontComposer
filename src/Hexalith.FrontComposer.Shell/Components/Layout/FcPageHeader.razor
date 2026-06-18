@@ -1,0 +1,70 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<PageTitle>@ResolvedPageTitle</PageTitle>
+<HeadContent>
+    <link rel="stylesheet" href="_content/Hexalith.FrontComposer.Shell/css/fc-page-header.css" />
+</HeadContent>
+
+<header class="@CssClass" data-testid="@TestId" @attributes="AdditionalAttributes">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="8px" Class="fc-page-header__content">
+        @if (!string.IsNullOrWhiteSpace(Eyebrow))
+        {
+            <FluentText As="TextTag.Paragraph"
+                        Size="TextSize.Size200"
+                        Weight="TextWeight.Semibold"
+                        Class="fc-page-header__eyebrow"
+                        data-fc-page-header-eyebrow>
+                @Eyebrow
+            </FluentText>
+        }
+
+        <FluentStack Orientation="Orientation.Horizontal"
+                     HorizontalAlignment="HorizontalAlignment.SpaceBetween"
+                     VerticalAlignment="VerticalAlignment.Top"
+                     HorizontalGap="16px"
+                     VerticalGap="8px"
+                     Wrap="true"
+                     Class="fc-page-header__title-row">
+            <h1 id="@HeadingId"
+                class="fc-page-header__heading"
+                tabindex="@HeadingTabIndex"
+                @ref="_headingElement">
+                @Heading
+            </h1>
+
+            @if (Actions is not null)
+            {
+                <FluentStack Orientation="Orientation.Horizontal"
+                             HorizontalGap="8px"
+                             VerticalGap="8px"
+                             Wrap="true"
+                             Class="fc-page-header__actions"
+                             data-fc-page-header-actions>
+                    @Actions
+                </FluentStack>
+            }
+        </FluentStack>
+
+        @if (!string.IsNullOrWhiteSpace(Description))
+        {
+            <FluentText As="TextTag.Paragraph"
+                        Size="TextSize.Size300"
+                        Class="fc-page-header__description"
+                        data-fc-page-header-description>
+                @Description
+            </FluentText>
+        }
+
+        @if (Metadata is not null)
+        {
+            <FluentStack Orientation="Orientation.Vertical"
+                         VerticalGap="4px"
+                         Class="fc-page-header__metadata"
+                         data-fc-page-header-metadata>
+                @Metadata
+            </FluentStack>
+        }
+    </FluentStack>
+</header>

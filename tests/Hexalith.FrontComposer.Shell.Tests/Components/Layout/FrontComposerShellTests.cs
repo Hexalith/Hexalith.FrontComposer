@@ -3,6 +3,7 @@ using Bunit;
 using Fluxor;
 using Fluxor.Blazor.Web;
 
+using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Shortcuts;

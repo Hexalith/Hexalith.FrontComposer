@@ -110,7 +110,7 @@
                 <FcDensityAnnouncer />
                 @* FC-LYT (Story 1.2): id + tabindex stay adjacent (skip-link/focus target + locked test
                    substring); the data-fc-page-layout attr + fc-page-layout class are appended after. *@
-                <div id="fc-main-content" tabindex="-1" data-fc-page-layout="@PageLayoutAttribute" class="@PageLayoutCssClass">
+                <div id="fc-main-content" tabindex="-1" role="main" data-fc-page-layout="@PageLayoutAttribute" class="@PageLayoutCssClass">
                     <FcProjectionConnectionStatus />
                     <FcPendingCommandSummary />
                     @ChildContent

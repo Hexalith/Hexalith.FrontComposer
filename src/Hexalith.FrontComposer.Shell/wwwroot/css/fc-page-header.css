@@ -1,0 +1,34 @@
+.fc-page-header {
+    display: block;
+}
+
+.fc-page-header__content,
+.fc-page-header__title-row {
+    width: 100%;
+}
+
+.fc-page-header__eyebrow,
+.fc-page-header__description,
+.fc-page-header__heading {
+    margin: 0;
+}
+
+.fc-page-header__eyebrow {
+    color: var(--neutral-foreground-hint);
+}
+
+.fc-page-header__heading {
+    color: var(--neutral-foreground-rest);
+    font-size: var(--type-ramp-plus-3-font-size);
+    font-weight: 600;
+    line-height: var(--type-ramp-plus-3-line-height);
+}
+
+.fc-page-header__description,
+.fc-page-header__metadata {
+    color: var(--neutral-foreground-rest);
+}
+
+.fc-page-header__actions {
+    margin-left: auto;
+}
