@@ -123,7 +123,7 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void RendersMainRoleAndSortedByUrgencyAriaDescription() {
+    public void RendersSortedByUrgencyAriaDescription() {
         _registry.GetManifests().Returns([
             new DomainManifest("Counter", "Counter", ["Counter.Domain.CounterProjection"], []),
         ]);
@@ -131,8 +131,11 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
 
         IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
 
+        // The shell's #fc-main-content owns the single page `main` landmark (role="main"); this
+        // page deliberately does NOT declare a second one (duplicate landmark = a11y violation),
+        // so the component rendered in isolation must not emit role="main".
         cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("role=\"main\"");
+            cut.Markup.ShouldNotContain("role=\"main\"");
             cut.Markup.ShouldContain("aria-description=\"Sorted by urgency\"");
         });
     }

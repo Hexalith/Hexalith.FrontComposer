@@ -10,7 +10,10 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <EnablePackageValidation>false</EnablePackageValidation>
-    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <!-- NU5104: this package intentionally ships against bUnit, which is currently published
+         only as a prerelease (2.8.x-preview). A stable Testing package referencing a prerelease
+         dependency is by design, so the stable-with-prerelease warning is suppressed. -->
+    <NoWarn>$(NoWarn);NU5128;NU5104</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

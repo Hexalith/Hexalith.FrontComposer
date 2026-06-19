@@ -43,8 +43,16 @@ public static class ReturnPathValidator {
             return false;
         }
 
-        // Reject any form that the URI parser recognizes as absolute (scheme present).
-        if (Uri.TryCreate(path, UriKind.Absolute, out _)) {
+        // Reject any form that the URI parser recognizes as absolute with a real (web/network)
+        // scheme — http, https, javascript, mailto, file://host, etc.
+        // NOTE: on Unix, Uri.TryCreate("/path", Absolute) SUCCEEDS with an implicit `file` scheme
+        // (a leading-slash path is a valid absolute *file* path there; on Windows it returns false).
+        // A leading-slash relative URL is exactly what the check below requires, so the implicit
+        // `file` scheme must not be treated as "absolute" here — only real schemes are rejected.
+        // Cross-origin `file://host/...` forms are still blocked: they do not start with `/`, so the
+        // leading-slash requirement below rejects them.
+        if (Uri.TryCreate(path, UriKind.Absolute, out Uri? absolute)
+            && !string.Equals(absolute.Scheme, Uri.UriSchemeFile, StringComparison.Ordinal)) {
             return false;
         }
 

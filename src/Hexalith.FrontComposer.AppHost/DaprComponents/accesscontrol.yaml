@@ -19,6 +19,14 @@ spec:
     version: "v1"
     configuration:
       connectionString: "nr.db"
+      timeout: "5s"
+      updateInterval: "10s"
+      busyTimeout: "2s"
+      # Dapr's default SQLite cleanupInterval is 1h. In local multi-sidecar
+      # Aspire runs this can remove active host registrations and terminate
+      # sidecars with "Host registration lost"; keep cleanup outside normal
+      # developer session length.
+      cleanupInterval: "168h"
   accessControl:
     defaultAction: allow
     trustDomain: "public"

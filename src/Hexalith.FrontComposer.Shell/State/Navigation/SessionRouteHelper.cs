@@ -39,7 +39,14 @@ internal static class SessionRouteHelper {
         }
 
         string working = candidate.Trim();
-        if (Uri.TryCreate(working, UriKind.Absolute, out Uri? absolute)) {
+        // NOTE: on Unix, Uri.TryCreate("/path", Absolute) SUCCEEDS with an implicit `file` scheme
+        // (a leading-slash path is a valid absolute *file* path there; on Windows it returns false).
+        // Such a leading-slash candidate is a base-relative route, not a cross-origin absolute URI,
+        // so the implicit `file` scheme must not enter the absolute-URI branch — otherwise a valid
+        // persisted route is dropped on Linux while passing on Windows. Only real (web/network)
+        // schemes are treated as absolute and validated against the base URI here.
+        if (Uri.TryCreate(working, UriKind.Absolute, out Uri? absolute)
+            && !string.Equals(absolute.Scheme, Uri.UriSchemeFile, StringComparison.Ordinal)) {
             if (navigation is null
                 || !Uri.TryCreate(navigation.BaseUri, UriKind.Absolute, out Uri? baseUri)
                 || !baseUri.IsBaseOf(absolute)) {

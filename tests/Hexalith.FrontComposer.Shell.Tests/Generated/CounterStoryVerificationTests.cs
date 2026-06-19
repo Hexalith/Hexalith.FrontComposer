@@ -473,6 +473,10 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
 
+        // Pin culture so the localized aria-labels in the snapshot are deterministic regardless of
+        // the runner's OS locale (matches the sibling Counter snapshot tests).
+        using CultureScope _ = new(CultureInfo.InvariantCulture);
+
         dispatcher.Dispatch(new StatusProjectionLoadedAction(
             Guid.NewGuid().ToString(),
             [
@@ -489,7 +493,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             cut.Markup.ShouldContain("—");
         });
 
-        _ = await Verify(NormalizeGridMarkup(cut.Markup));
+        await Verify(NormalizeGridMarkup(cut.Markup));
     }
 
     private void UseFakeTime(DateTimeOffset utcNow) {
@@ -506,6 +510,11 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         // slot so future emitter additions of any 32-hex sequence (e.g., a content hash) are
         // NOT silently masked.
         normalized = Regex.Replace(normalized, @"fc-expand-panel-([A-Za-z0-9-]+)-[0-9a-f]{32}", "fc-expand-panel-$1-{guid}");
+        // Blazor CSS-isolation scope ids (` b-xxxxxxxxxx`) are an SDK implementation detail: the
+        // hash salt changes across .NET SDK feature-band bumps, so the same unchanged component
+        // emits a different `b-...` token and breaks the snapshot. Scrub the scope token so the
+        // snapshot stays stable across SDK upgrades.
+        normalized = Regex.Replace(normalized, @" b-[0-9a-z]{10}\b", " b-{scope}");
         return normalized.Replace("\r\n", "\n");
     }
 

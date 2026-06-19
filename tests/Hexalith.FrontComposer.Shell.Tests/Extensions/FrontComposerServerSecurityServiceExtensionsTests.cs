@@ -99,9 +99,11 @@ public sealed class FrontComposerServerSecurityServiceExtensionsTests {
         await using ServiceProvider provider = services.BuildServiceProvider();
         using IServiceScope scope = provider.CreateScope();
 
-        // Auth bridge swapped the user-context seam.
+        // Auth bridge swapped the user-context seam: the server security wiring replaces the
+        // HttpContext-only accessor with the circuit-aware ServerCircuitUserContextAccessor so
+        // interactive Server components resolve the signed-in user when HttpContext is null.
         scope.ServiceProvider.GetRequiredService<IUserContextAccessor>()
-            .ShouldBeOfType<ClaimsPrincipalUserContextAccessor>();
+            .ShouldBeOfType<ServerCircuitUserContextAccessor>();
         // Server auth-state provider in place.
         scope.ServiceProvider.GetRequiredService<AuthenticationStateProvider>()
             .ShouldBeOfType<ServerAuthenticationStateProvider>();

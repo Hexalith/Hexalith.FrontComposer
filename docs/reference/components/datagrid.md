@@ -84,7 +84,7 @@ Reserved filter keys remain framework-owned: `__status` for status filters, `__s
 search, and `__hidden` for hidden-column persistence. Column filter keys beginning with `__` are
 rejected.
 
-## Layout
+## Layout (FC-LYT)
 
 Generated grid views render a `data-fc-datagrid` envelope around a table-mode `FluentDataGrid<T>`.
 Wide projections activate `FcColumnPrioritizer` when the generated grid has more than 15 columns;
@@ -96,7 +96,7 @@ Expand-in-row detail is rendered outside the virtualized grid body so the detail
 stable even as rows virtualize. Filter summaries, filter-empty state, slow-query notices, and
 max-item notices are rendered as grid-adjacent status surfaces rather than cells.
 
-## Accessibility
+## Accessibility (FC-A11Y)
 
 - `FcColumnFilterCell`, `FcFilterResetButton`, and `FcStatusFilterChips` expose labelled controls and
   dispatch Fluxor actions instead of mutating grid state directly.
@@ -112,7 +112,7 @@ Adopter overrides of table components are still subject to the override-accessib
 especially [HFC1050](../../diagnostics/HFC1050.md), [HFC1051](../../diagnostics/HFC1051.md), and
 [HFC1053](../../diagnostics/HFC1053.md).
 
-## Localization
+## Localization (FC-L10N)
 
 Framework-owned table chrome resolves through `IStringLocalizer<FcShellResources>`: filter summary
 copy, reset labels, status notices, row-detail labels, and live-region announcements are shell-owned.

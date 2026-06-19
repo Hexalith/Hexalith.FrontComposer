@@ -57,6 +57,14 @@ internal static class IdeParityEvidencePath {
             return false;
         }
 
+        // Under a case-sensitive flag the root-prefix comparison above is not enough: the segments
+        // *below* the root (e.g. `Artifacts/IDE-Parity` vs the real `artifacts/ide-parity`) must also
+        // match the on-disk casing exactly. Path.GetFullPath does not canonicalize case, so without
+        // this walk a wrong-cased path to an existing evidence directory would normalize as valid.
+        if (caseSensitive && !CasingMatchesExistingPath(fullRoot, slashNormalized)) {
+            return false;
+        }
+
         normalized = candidateFullPath[fullRoot.Length..]
             .Replace(Path.DirectorySeparatorChar, '/')
             .Replace(Path.AltDirectorySeparatorChar, '/');
@@ -66,6 +74,52 @@ internal static class IdeParityEvidencePath {
     public static bool DefaultCaseSensitivityForFilesystem()
         => !RuntimeInformation.IsOSPlatform(OSPlatform.Windows)
            && !RuntimeInformation.IsOSPlatform(OSPlatform.OSX);
+
+    // Walks <paramref name="relativeSlashPath"/> segment by segment under <paramref name="fullRoot"/>
+    // and rejects any segment that exists on disk under a DIFFERENT casing than requested. A segment
+    // that does not exist (case-insensitively) ends the walk — there is nothing left to conflict with —
+    // so a not-yet-created leaf file (e.g. the evidence JSON itself) does not fail the check.
+    private static bool CasingMatchesExistingPath(string fullRoot, string relativeSlashPath) {
+        string current = fullRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        foreach (string segment in relativeSlashPath.Split('/', StringSplitOptions.RemoveEmptyEntries)) {
+            if (!Directory.Exists(current)) {
+                return true;
+            }
+
+            bool exactExists = false;
+            bool caseInsensitiveExists = false;
+            try {
+                foreach (string entry in Directory.EnumerateFileSystemEntries(current)) {
+                    string name = Path.GetFileName(entry);
+                    if (string.Equals(name, segment, StringComparison.Ordinal)) {
+                        exactExists = true;
+                        break;
+                    }
+
+                    if (string.Equals(name, segment, StringComparison.OrdinalIgnoreCase)) {
+                        caseInsensitiveExists = true;
+                    }
+                }
+            }
+            catch (IOException) {
+                return true;
+            }
+            catch (UnauthorizedAccessException) {
+                return true;
+            }
+
+            if (exactExists) {
+                current = Path.Combine(current, segment);
+                continue;
+            }
+
+            // A differently-cased entry exists for this segment -> casing mismatch.
+            // No entry at all -> the path does not exist on disk; remaining segments cannot conflict.
+            return !caseInsensitiveExists;
+        }
+
+        return true;
+    }
 
     private static string EnsureTrailingSeparator(string path)
         => path.EndsWith(Path.DirectorySeparatorChar) || path.EndsWith(Path.AltDirectorySeparatorChar)

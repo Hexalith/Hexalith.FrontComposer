@@ -9,6 +9,8 @@ string accessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory,
 string adminServerAccessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.eventstore-admin.yaml");
 string resiliencyConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "resiliency.yaml");
 string stateStoreComponentPath = ResolveDaprConfigPath(builder.AppHostDirectory, "statestore.yaml");
+string? daprPlacementHostAddress = builder.Configuration["Dapr:PlacementHostAddress"];
+string? daprSchedulerHostAddress = builder.Configuration["Dapr:SchedulerHostAddress"];
 
 // Keycloak identity provider for JWT authentication.
 // Enabled by default for local development with real OIDC token testing.
@@ -40,19 +42,31 @@ HexalithEventStoreResources eventStoreResources = builder.AddHexalithEventStore(
     eventStoreDaprConfigPath: accessControlConfigPath,
     adminServerDaprConfigPath: adminServerAccessControlConfigPath,
     resiliencyConfigPath: resiliencyConfigPath,
-    stateStoreComponentPath: stateStoreComponentPath);
+    stateStoreComponentPath: stateStoreComponentPath,
+    daprPlacementHostAddress: daprPlacementHostAddress,
+    daprSchedulerHostAddress: daprSchedulerHostAddress);
 
 // Add the Tenants domain service via the platform domain-module extension: its sidecar shares the
 // EventStore state store + pub/sub.
 IResourceBuilder<ProjectResource> tenants = builder.AddProject<HexalithTenants>("tenants")
-    .AddEventStoreDomainModule(eventStoreResources, "tenants", accessControlConfigPath);
+    .AddEventStoreDomainModule(
+        eventStoreResources,
+        "tenants",
+        accessControlConfigPath,
+        daprPlacementHostAddress: daprPlacementHostAddress,
+        daprSchedulerHostAddress: daprSchedulerHostAddress);
 
 // Tenants sample domain service. EventStore's appsettings register the sample/counter/greeting
 // (and orders/inventory) domains against the "sample" app id; its sidecar shares the EventStore
 // state store + pub/sub. Without it, the EventStore admin operational-index poll to "sample" fails
 // at startup (500) and the whole index build is skipped.
 _ = builder.AddProject<HexalithTenantsSample>("sample")
-    .AddEventStoreDomainModule(eventStoreResources, "sample", accessControlConfigPath);
+    .AddEventStoreDomainModule(
+        eventStoreResources,
+        "sample",
+        accessControlConfigPath,
+        daprPlacementHostAddress: daprPlacementHostAddress,
+        daprSchedulerHostAddress: daprSchedulerHostAddress);
 
 // Wire Admin.UI to Admin.Server + EventStore SignalR (domain-agnostic composition kept in the AppHost).
 EndpointReference adminServerHttps = adminServer.GetEndpoint("https");

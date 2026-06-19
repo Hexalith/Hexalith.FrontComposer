@@ -1,6 +1,12 @@
 {
   "packages": [
     {
+      "project": "src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj",
+      "package_id": "Hexalith.FrontComposer.AppHost",
+      "packable": false,
+      "exception": "Aspire AppHost is an executable orchestration host (OutputType=Exe, IsPackable=false); it is run, not published as a NuGet package."
+    },
+    {
       "project": "src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj",
       "package_id": "Hexalith.FrontComposer.Cli",
       "packable": true,
