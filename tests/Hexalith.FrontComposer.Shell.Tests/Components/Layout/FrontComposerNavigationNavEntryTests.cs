@@ -5,8 +5,11 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
 
@@ -164,4 +167,77 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
             cut.Markup.ShouldContain("href=\"/standalone\"");
         });
     }
+
+    // ── Single-active highlighting (correct-course 2026-06-19) ───────────────────────────────────
+    // Before the fix, FluentNavItem's default NavLinkMatch.Prefix lit BOTH "/tenants" (a prefix of
+    // every sub-route) AND the exact sub-route — two active bars. The shell now gives only the
+    // longest-prefix match (the current route) NavLinkMatch.Prefix and every other item
+    // NavLinkMatch.All, so at most one item is ever active.
+
+    [Fact]
+    public void ActiveHighlight_MostSpecificWins_OnlyTheCurrentRouteIsActive() {
+        _registry.GetManifests().Returns([
+            new DomainManifest("Tenants", "tenants", Projections: [], Commands: []),
+        ]);
+        _navRegistry.GetNavEntries().Returns(TenantsNavEntries());
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/tenants/users");
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            IReadOnlyList<FluentNavItem> active = ActiveItems(cut);
+            active.Count.ShouldBe(1, "exactly one nav item may carry the active (Prefix) match");
+            active[0].Href.ShouldBe("/tenants/users");
+
+            // The container route must no longer prefix-match its sub-routes.
+            cut.FindComponents<FluentNavItem>()
+                .Single(i => i.Instance.Href == "/tenants")
+                .Instance.Match.ShouldBe(NavLinkMatch.All);
+        });
+    }
+
+    [Fact]
+    public void ActiveHighlight_DetailPage_KeepsItsSectionAncestorLit() {
+        _registry.GetManifests().Returns([
+            new DomainManifest("Tenants", "tenants", Projections: [], Commands: []),
+        ]);
+        _navRegistry.GetNavEntries().Returns(TenantsNavEntries());
+
+        // A tenant detail page (/tenants/{id}) is not itself a nav entry.
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/tenants/01HTENANTID");
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            IReadOnlyList<FluentNavItem> active = ActiveItems(cut);
+            active.Count.ShouldBe(1, "a detail page keeps exactly its section ancestor lit");
+            active[0].Href.ShouldBe("/tenants");
+        });
+    }
+
+    [Fact]
+    public void ActiveHighlight_UnrelatedRoute_LeavesNothingActive() {
+        _registry.GetManifests().Returns([
+            new DomainManifest("Tenants", "tenants", Projections: [], Commands: []),
+        ]);
+        _navRegistry.GetNavEntries().Returns(TenantsNavEntries());
+
+        Services.GetRequiredService<NavigationManager>().NavigateTo("/settings");
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => ActiveItems(cut).ShouldBeEmpty());
+    }
+
+    private static FrontComposerNavEntry[] TenantsNavEntries() => [
+        new FrontComposerNavEntry("tenants", "All tenants", "/tenants"),
+        new FrontComposerNavEntry("tenants", "My tenants", "/tenants/my"),
+        new FrontComposerNavEntry("tenants", "User lookup", "/tenants/users"),
+    ];
+
+    private static IReadOnlyList<FluentNavItem> ActiveItems(IRenderedComponent<FrontComposerNavigation> cut)
+        => [.. cut.FindComponents<FluentNavItem>()
+                  .Select(i => i.Instance)
+                  .Where(i => i.Match == NavLinkMatch.Prefix)];
 }

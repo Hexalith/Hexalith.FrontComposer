@@ -13,6 +13,7 @@ using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
@@ -34,8 +35,10 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// route replace the <c>FrontComposerShell.Navigation</c> slot (ADR-035 override path).
 /// </para>
 /// </remarks>
-public partial class FrontComposerNavigation : FluxorComponent {
+public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable {
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
+
+    [Inject] private NavigationManager Navigation { get; set; } = default!;
 
     [Inject] private IState<FrontComposerNavigationState> NavState { get; set; } = default!;
 
@@ -44,6 +47,134 @@ public partial class FrontComposerNavigation : FluxorComponent {
     [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
 
     [Inject] private IStringLocalizerFactory LocalizerFactory { get; set; } = default!;
+
+    /// <summary>
+    /// The single nav href currently treated as active — the registered route that is the longest
+    /// segment-prefix of the current URL. Recomputed each render (and on every navigation, via the
+    /// <see cref="NavigationManager.LocationChanged"/> subscription) so exactly one item highlights.
+    /// </summary>
+    private string? _activeNavHref;
+
+    /// <inheritdoc />
+    protected override void OnInitialized() {
+        base.OnInitialized();
+
+        // Each FluentNavItem self-evaluates its NavLink match, so when the route changes we must
+        // re-render to flip which item carries the Prefix (active) match — otherwise a client-side
+        // navigation would leave the previous Prefix item lit alongside the new one (the original bug).
+        Navigation.LocationChanged += HandleLocationChanged;
+    }
+
+    /// <summary>
+    /// Re-renders on navigation so <see cref="RecomputeActiveNavHref"/> re-runs against the new URL.
+    /// Mirrors the disposed-circuit guard in <c>FrontComposerShell.HandleLocationChanged</c>.
+    /// </summary>
+    /// <param name="sender">The navigation manager raising the event.</param>
+    /// <param name="e">The location-changed payload (unused; the new URL is read from the manager).</param>
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) {
+        try {
+            _ = InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException) {
+            // The circuit/store was torn down between the event firing and dispatch. Detach so a
+            // future event does not re-enter a disposed scope.
+            Navigation.LocationChanged -= HandleLocationChanged;
+        }
+    }
+
+    /// <summary>
+    /// Resolves the active nav href to the registered route that is the longest segment-prefix of the
+    /// current URL, considering the same items the sidebar renders (visible projection routes + enabled
+    /// nav-entry hrefs). The matching item then renders with <see cref="NavLinkMatch.Prefix"/> and every
+    /// other item with <see cref="NavLinkMatch.All"/>, so at most one item is ever active.
+    /// </summary>
+    /// <param name="discovery">The capability-discovery state driving projection visibility.</param>
+    /// <param name="navEntries">The registered navigation entries.</param>
+    private void RecomputeActiveNavHref(
+        FrontComposerCapabilityDiscoveryState discovery,
+        IReadOnlyList<FrontComposerNavEntry> navEntries) {
+        ArgumentNullException.ThrowIfNull(navEntries);
+        List<string> hrefs = [];
+        foreach (DomainManifest manifest in Registry.GetManifests()) {
+            foreach (string projectionFqn in VisibleProjections(manifest, discovery.Counts)) {
+                hrefs.Add(NormalizeHref(BuildRoute(manifest.BoundedContext, projectionFqn)));
+            }
+        }
+
+        foreach (FrontComposerNavEntry entry in navEntries) {
+            if (entry.Enabled && !string.IsNullOrWhiteSpace(entry.Href)) {
+                hrefs.Add(NormalizeHref(entry.Href));
+            }
+        }
+
+        _activeNavHref = LongestNavPrefix(NormalizeHref(Navigation.ToBaseRelativePath(Navigation.Uri)), hrefs);
+    }
+
+    /// <summary>
+    /// Returns the <see cref="NavLinkMatch"/> for a nav item: <see cref="NavLinkMatch.Prefix"/> for the
+    /// single active route, otherwise <see cref="NavLinkMatch.All"/> (an exact, query-stripped match).
+    /// </summary>
+    /// <param name="href">The item's href, or <see langword="null"/> for a disabled (non-link) entry.</param>
+    /// <returns>The match mode the item should use.</returns>
+    private NavLinkMatch MatchFor(string? href)
+        => href is not null && string.Equals(NormalizeHref(href), _activeNavHref, StringComparison.Ordinal)
+            ? NavLinkMatch.Prefix
+            : NavLinkMatch.All;
+
+    /// <summary>
+    /// Canonicalizes a route for comparison: drops the query/fragment, ensures a single leading slash,
+    /// trims a trailing slash, and lowercases (Blazor routing is case-insensitive).
+    /// </summary>
+    /// <param name="href">The raw href or current relative path.</param>
+    /// <returns>The canonical comparison form (always begins with <c>/</c>).</returns>
+    internal static string NormalizeHref(string href) {
+        ArgumentNullException.ThrowIfNull(href);
+        string value = href;
+        int cut = value.IndexOfAny(['?', '#']);
+        if (cut >= 0) {
+            value = value[..cut];
+        }
+
+        if (value.Length == 0 || value[0] != '/') {
+            value = "/" + value;
+        }
+
+        if (value.Length > 1 && value[^1] == '/') {
+            value = value[..^1];
+        }
+
+        return value.ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Returns the candidate href that is the longest segment-prefix of <paramref name="currentPath"/>,
+    /// or <see langword="null"/> when none matches. Inputs are expected to be <see cref="NormalizeHref"/>'d.
+    /// </summary>
+    /// <param name="currentPath">The normalized current path.</param>
+    /// <param name="candidateHrefs">The normalized candidate nav hrefs.</param>
+    /// <returns>The most specific matching href, or <see langword="null"/>.</returns>
+    internal static string? LongestNavPrefix(string currentPath, IReadOnlyList<string> candidateHrefs) {
+        ArgumentNullException.ThrowIfNull(currentPath);
+        ArgumentNullException.ThrowIfNull(candidateHrefs);
+        string? best = null;
+        foreach (string href in candidateHrefs) {
+            bool isPrefix = href.Length == 1 // "/" (root) is a prefix of everything
+                || string.Equals(currentPath, href, StringComparison.Ordinal)
+                || currentPath.StartsWith(href + "/", StringComparison.Ordinal);
+            if (isPrefix && (best is null || href.Length > best.Length)) {
+                best = href;
+            }
+        }
+
+        return best;
+    }
+
+    /// <inheritdoc />
+    public new async ValueTask DisposeAsync() {
+        Navigation.LocationChanged -= HandleLocationChanged;
+        await base.DisposeAsync().ConfigureAwait(false);
+        GC.SuppressFinalize(this);
+    }
 
     /// <summary>
     /// Resolves the displayed category title for a manifest to the request culture, falling back to

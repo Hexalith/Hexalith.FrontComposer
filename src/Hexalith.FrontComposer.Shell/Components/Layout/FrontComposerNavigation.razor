@@ -30,11 +30,13 @@ else
 {
     FrontComposerCapabilityDiscoveryState discovery = DiscoveryState.Value;
     IReadOnlyList<FrontComposerNavEntry> navEntries = Registry.GetNavEntries();
+    RecomputeActiveNavHref(discovery, navEntries);
 
     // Explicit nav entries are rendered as FluentNavItems alongside projection items. Gated entries
     // (RequiredPolicy set) wrap in AuthorizeView; disabled entries render a non-link affordance + reason.
     RenderFragment<FrontComposerNavEntry> navEntryItem = entry =>
         @<FluentNavItem Href="@(entry.Enabled ? entry.Href : null)"
+                        Match="@MatchFor(entry.Enabled ? entry.Href : null)"
                         Disabled="@(!entry.Enabled)"
                         IconRest="@ResolveNavEntryIcon(entry.Icon)"
                         Tooltip="@(entry.Enabled ? null : LocalizeEntryReason(entry))"
@@ -85,8 +87,10 @@ else
                     int count = LookupCount(projectionFqn, discovery.Counts);
                     string projCapabilityId = CapabilityIds.ForProjection(manifest.BoundedContext, projectionFqn);
                     bool projShowsNew = !discovery.SeenCapabilities.Contains(projCapabilityId) && count > 0;
+                    string route = BuildRoute(manifest.BoundedContext, projectionFqn);
 
-                    <FluentNavItem Href="@BuildRoute(manifest.BoundedContext, projectionFqn)"
+                    <FluentNavItem Href="@route"
+                                   Match="@MatchFor(route)"
                                    OnClick="@(_ => HandleNavItemClicked(manifest.BoundedContext, projCapabilityId))">
                         @ProjectionLabel(projectionFqn)
                         @if (count > 0)

@@ -159,6 +159,35 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
         route3.ShouldBe("/counter/counter-view");
     }
 
+    [Theory]
+    [InlineData("/Tenants/Users", "/tenants/users")] // case-insensitive routing → lowercased
+    [InlineData("/tenants/", "/tenants")]             // trailing slash trimmed
+    [InlineData("tenants", "/tenants")]               // leading slash ensured
+    [InlineData("/tenants/users?userId=x", "/tenants/users")] // query stripped
+    [InlineData("/tenants#frag", "/tenants")]         // fragment stripped
+    [InlineData("", "/")]                             // home → root
+    public void NormalizeHref_StripsQueryAndFragment_AndCanonicalizes(string input, string expected)
+        => FrontComposerNavigation.NormalizeHref(input).ShouldBe(expected);
+
+    [Theory]
+    [InlineData("/tenants/users", "/tenants/users")]            // exact leaf wins
+    [InlineData("/tenants/users?userId=abc", "/tenants/users")] // query stripped → leaf still wins
+    [InlineData("/tenants/01HTENANTID", "/tenants")]            // detail page → section ancestor stays lit
+    [InlineData("/tenants", "/tenants")]                        // container exact
+    [InlineData("/tenants/my", "/tenants/my")]                  // sibling leaf
+    [InlineData("/elsewhere", null)]                            // no registered route → nothing active
+    public void LongestNavPrefix_PicksMostSpecificRegisteredRoute(string current, string? expected) {
+        // The Tenants registration: /tenants (container) + /tenants/my + /tenants/users (leaves).
+        IReadOnlyList<string> hrefs = [
+            FrontComposerNavigation.NormalizeHref("/tenants"),
+            FrontComposerNavigation.NormalizeHref("/tenants/my"),
+            FrontComposerNavigation.NormalizeHref("/tenants/users"),
+        ];
+
+        FrontComposerNavigation.LongestNavPrefix(FrontComposerNavigation.NormalizeHref(current), hrefs)
+            .ShouldBe(expected);
+    }
+
     [Fact]
     public void ExpandedStateBindsToCollapsedGroups() {
         _registry.GetManifests().Returns([
