@@ -1,6 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Attributes;
 
-namespace IdeParityCounter;
+namespace IdeParity.Counter;
 
 /// <summary>
 /// Deterministic command used by the Story 9-3 IDE parity matrix. The generated form,
@@ -9,7 +9,8 @@ namespace IdeParityCounter;
 /// </summary>
 [Command]
 [BoundedContext("Counter", DisplayLabel = "Counter")]
-public sealed class ConfigureCounterCommand {
+public sealed class ConfigureCounterCommand
+{
     /// <summary>Required dispatch identifier.</summary>
     public string MessageId { get; set; } = string.Empty;
 
