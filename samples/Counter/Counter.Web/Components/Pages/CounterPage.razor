@@ -10,22 +10,27 @@
 
 <CascadingValue Value="_demoContext">
     <div class="page-container" style="display: flex; flex-direction: column; gap: 24px;">
-        <section class="command-section">
-            <h2>Compact inline (3 fields)</h2>
-            <BatchIncrementCommandRenderer />
-        </section>
-        <section class="inline-section">
-            <h2>Inline + popover (1 field)</h2>
-            <IncrementCommandRenderer />
-        </section>
-        <section class="fullpage-section">
-            <h2>Full-page command (5 fields)</h2>
-            <p role="note" style="padding: 12px; background: var(--neutral-fill-subtle-rest); border-left: 4px solid var(--accent-fill-rest);">
-                Navigation state persistence (scroll, filter, sort across FullPage round-trip) lands in Story 4.3.
-                The current demo proves routing + breadcrumb return only.
-            </p>
-            <a href="/commands/Counter/ConfigureCounterCommand?returnPath=%2Fcounter&amp;projectionTypeFqn=Counter.Domain.CounterProjection">Configure Counter</a>
-        </section>
+        @* §4.2 — the three titled command-density specimen sections are grouped in one
+           FluentAccordion. ExpandMode=Multi with every item Expanded keeps all three densities
+           visible side-by-side (the specimen's purpose + the a11y/visual + command-form e2e gate)
+           while still adding the accordion's collapse affordance. HeadingLevel=2 preserves the
+           prior <h2> heading order under the page <h1>. The .command-section/.inline-section/
+           .fullpage-section classes are kept on the items for the e2e selectors. *@
+        <FluentAccordion ExpandMode="AccordionExpandMode.Multi" HeadingLevel="2">
+            <FluentAccordionItem Class="command-section" Heading="Compact inline (3 fields)" Expanded="true">
+                <BatchIncrementCommandRenderer />
+            </FluentAccordionItem>
+            <FluentAccordionItem Class="inline-section" Heading="Inline + popover (1 field)" Expanded="true">
+                <IncrementCommandRenderer />
+            </FluentAccordionItem>
+            <FluentAccordionItem Class="fullpage-section" Heading="Full-page command (5 fields)" Expanded="true">
+                <p role="note" style="padding: 12px; background: var(--colorNeutralBackground2); border-left: 4px solid var(--colorBrandStroke1);">
+                    Navigation state persistence (scroll, filter, sort across FullPage round-trip) lands in Story 4.3.
+                    The current demo proves routing + breadcrumb return only.
+                </p>
+                <a href="/commands/Counter/ConfigureCounterCommand?returnPath=%2Fcounter&amp;projectionTypeFqn=Counter.Domain.CounterProjection">Configure Counter</a>
+            </FluentAccordionItem>
+        </FluentAccordion>
         <section class="data-section">
             @if (CounterState.Value.IsLoading || CounterState.Value.Items?.Count > 0)
             {

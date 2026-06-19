@@ -15,7 +15,7 @@
     background: var(--colorPaletteYellowBackground1);
     color: var(--colorPaletteYellowForeground1);
     border-radius: 4px;
-    font-size: var(--typeRampBase200FontSize);
+    font-size: var(--fontSizeBase200);
     font-weight: var(--fontWeightSemibold);
 }
 

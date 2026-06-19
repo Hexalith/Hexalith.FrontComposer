@@ -17,36 +17,42 @@
         @Localizer["SettingsDialogTitle"].Value
     </TitleTemplate>
     <ChildContent>
-        <FluentStack Orientation="Orientation.Vertical"
-                     VerticalGap="16px"
-                     Class="fc-settings-body"
-                     data-testid="fc-settings-dialog">
-            <h3 id="fc-density-section">@Localizer["DensitySectionLabel"].Value</h3>
-            <FluentRadioGroup Value="@SelectedDensity"
-                              ValueChanged="@((DensityLevel v) => SelectedDensity = v)"
-                              TValue="DensityLevel"
-                              Name="fc-density-select"
-                              aria-labelledby="fc-density-section">
-                <FluentRadio Value="@DensityLevel.Compact">@Localizer["DensityCompactLabel"].Value</FluentRadio>
-                <FluentRadio Value="@DensityLevel.Comfortable">@Localizer["DensityComfortableLabel"].Value</FluentRadio>
-                <FluentRadio Value="@DensityLevel.Roomy">@Localizer["DensityRoomyLabel"].Value</FluentRadio>
-            </FluentRadioGroup>
-            @if (IsForcedByViewport)
-            {
-                <FluentMessageBar Intent="MessageBarIntent.Info"
-                                  AllowDismiss="false"
-                                  data-testid="fc-settings-forced-note">
-                    @Localizer["DensityForcedByViewportNote"].Value
-                </FluentMessageBar>
-            }
-
-            <h3 id="fc-theme-section">@Localizer["ThemeSectionLabel"].Value</h3>
-            <FcThemeToggle />
-
-            <h3 id="fc-preview-section">@Localizer["DensityPreviewHeading"].Value</h3>
-            <FcDensityPreviewPanel Density="@SelectedDensity"
-                                   ShowForcedViewportBadge="@(IsForcedByViewport && SelectedDensity != DensityLevel.Comfortable)" />
-        </FluentStack>
+        @* §4.2 — the three titled sections (Density / Theme / Preview) are grouped in one
+           FluentAccordion, one FluentAccordionItem per section, with the primary (Density) item
+           Expanded. The dialog body is a plain <div> because the accordion now owns the sectioning,
+           so the prior single-child <FluentStack> wrapper is dropped (§4.3). Id="fc-theme-section"
+           preserves the e2e theme-section anchor; the radio group keeps its accessible name via
+           aria-label now that the heading is owned by the accordion item. *@
+        <div class="fc-settings-body" data-testid="fc-settings-dialog">
+            <FluentAccordion>
+                <FluentAccordionItem Heading="@Localizer["DensitySectionLabel"].Value" Expanded="true">
+                    <FluentRadioGroup Value="@SelectedDensity"
+                                      ValueChanged="@((DensityLevel v) => SelectedDensity = v)"
+                                      TValue="DensityLevel"
+                                      Name="fc-density-select"
+                                      aria-label="@Localizer["DensitySectionLabel"].Value">
+                        <FluentRadio Value="@DensityLevel.Compact">@Localizer["DensityCompactLabel"].Value</FluentRadio>
+                        <FluentRadio Value="@DensityLevel.Comfortable">@Localizer["DensityComfortableLabel"].Value</FluentRadio>
+                        <FluentRadio Value="@DensityLevel.Roomy">@Localizer["DensityRoomyLabel"].Value</FluentRadio>
+                    </FluentRadioGroup>
+                    @if (IsForcedByViewport)
+                    {
+                        <FluentMessageBar Intent="MessageBarIntent.Info"
+                                          AllowDismiss="false"
+                                          data-testid="fc-settings-forced-note">
+                            @Localizer["DensityForcedByViewportNote"].Value
+                        </FluentMessageBar>
+                    }
+                </FluentAccordionItem>
+                <FluentAccordionItem Id="fc-theme-section" Heading="@Localizer["ThemeSectionLabel"].Value">
+                    <FcThemeToggle />
+                </FluentAccordionItem>
+                <FluentAccordionItem Heading="@Localizer["DensityPreviewHeading"].Value">
+                    <FcDensityPreviewPanel Density="@SelectedDensity"
+                                           ShowForcedViewportBadge="@(IsForcedByViewport && SelectedDensity != DensityLevel.Comfortable)" />
+                </FluentAccordionItem>
+            </FluentAccordion>
+        </div>
     </ChildContent>
     <ActionTemplate>
         <div class="fc-settings-footer">

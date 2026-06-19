@@ -164,6 +164,30 @@ accordion-appropriateness is contextual (single-section and grid-first pages are
 exceptions) and cannot be asserted mechanically without false positives. It is enforced by code review
 against this definition, not by a `…FluentConformanceTests` guard.
 
+**First in-repo conversions (correct-course 2026-06-19, deferred-work follow-up pass).**
+
+- **`FcSettingsDialog`** (`.fc-settings-body`) — the three bare `<h3>` sections (Density / Theme /
+  Preview) became one `FluentAccordion`, one `FluentAccordionItem` per section, Density `Expanded="true"`
+  (canonical conversion). The dialog body reverted from the §4.3 single-child `FluentStack` back to a
+  plain `<div>` (the accordion now owns sectioning); the now-dead `.fc-settings-body h3` ramp CSS was
+  removed. a11y/e2e preserved: `Id="fc-theme-section"` keeps the e2e theme anchor, the density radio
+  group keeps its accessible name via `aria-label`, `data-testid="fc-settings-dialog"` retained.
+- **`CounterPage`** (Counter sample) — the three `<h2>` command-density specimen sections grouped into
+  one `FluentAccordion ExpandMode="AccordionExpandMode.Multi"` with every item `Expanded="true"` and
+  `HeadingLevel="2"`. All-expanded Multi is the correct §4.2 application here: the specimen's purpose
+  (and the a11y/visual + command-form e2e gate) is the three densities visible side-by-side, so the
+  accordion adds the collapse affordance without hiding any specimen. The `.command-section` /
+  `.inline-section` / `.fullpage-section` classes ride on the items so the e2e descendant selectors and
+  visibility survive (no e2e spec edits required; the live Playwright run remains the CI gate). The data
+  grid stays an always-visible primary region below the accordion (grid-first, not a section).
+- **`FcHomeDirectory`** — assessed and left unchanged: it already conforms (the urgent cards are the
+  always-visible primary region; only the zero-urgency "other areas" collapse into a `FluentAccordion`).
+  Wrapping the urgent cards in an accordion would *violate* §4.2 by hiding primary content.
+
+Verified: full solution Release build clean (TWAE), `FluentConformanceTests` green, full Shell default
+lane **1905 passed / 0 failed** (`DiffEngine_Disabled=true`), incl. `FcSettingsDialogTests` and
+`CounterStoryVerificationTests`, which render the converted components.
+
 ### 4.3 Layout-component policy (project-wide guideline)
 
 **Hand-authored layout the design system owns is expressed through Fluent v5 layout components, not
@@ -219,6 +243,9 @@ RC-surface caveat.)
 (`.fc-collapsed-rail`), and `FcProjectionLoadingSkeleton` (`.fc-projection-skeleton-row`) — each div's
 flex moved to a `FluentStack`, the now-redundant flex CSS removed (non-layout rules — padding, width,
 borders, the `.razor.css` legacy `--neutral-stroke-rest` in the skeleton header — preserved).
+(`FcSettingsDialog`'s `.fc-settings-body` `FluentStack` was subsequently reverted to a plain `<div>` by
+the §4.2 accordion conversion — the single-child stack was no longer needed once the accordion owned
+the sectioning.)
 
 **Second burn-down (correct-course 2026-06-19, deferred-work pass).** With §4.1's `--design-unit` →
 `--fc-spacing-unit` migration removing the legacy-token blocker, the remaining tracked candidates were
