@@ -14,6 +14,13 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 /// Shell or the Counter sample web app, mirroring the Tenants.UI guard
 /// (<c>Hexalith.Tenants.UI.Tests.DomainUiFluentConformanceTests</c>). Raw <c>&lt;a&gt;</c> navigation links
 /// are permitted. Documented carve-outs are allowlisted below and in architecture.md §4.1.
+/// <para>
+/// A second guard enforces the §4.1 "no theme redefinition" rule: hand-authored styles must express
+/// typography/color/spacing through Fluent 2 design tokens (<c>--colorNeutralForeground*</c>,
+/// <c>--fontSizeBase*</c>, …) or Fluent component parameters, never legacy Fluent v4 / FAST tokens
+/// (<c>--type-ramp-*</c>, <c>--neutral-*</c>, <c>--accent-*</c>, <c>--palette-*</c>, …). Pre-v5 files
+/// still referencing legacy tokens are an allowlisted migration backlog that may only shrink.
+/// </para>
 /// </summary>
 [Trait("Category", "Governance")]
 public sealed class FluentConformanceTests {
@@ -23,6 +30,16 @@ public sealed class FluentConformanceTests {
     // purpose — Razor component tags are PascalCase, raw HTML controls are lowercase.
     private static readonly Regex RawInteractiveControl = new(
         "<(button|input|select|textarea)(\\s|/|>)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // Matches a legacy Fluent v4 / FAST design token (kebab-case CSS custom property). Fluent 2 tokens used
+    // by Fluent UI Blazor v5 are camelCase (--colorNeutralForeground1, --fontSizeBase300, …) and the
+    // project's own bridge variables are --fc-* / --layout-*, so neither is matched. Case-sensitive on
+    // purpose — legacy FAST tokens are always lowercase-kebab.
+    private static readonly Regex LegacyFluentToken = new(
+        "--(type-ramp|neutral-foreground|neutral-fill|neutral-stroke|neutral-layer|accent-fill|"
+        + "accent-foreground|accent-stroke|accent-base|palette-|design-unit|elevation-shadow|corner-radius|"
+        + "focus-stroke|stroke-width|disabled-opacity)[a-z0-9-]*",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     [Fact]
@@ -45,6 +62,37 @@ public sealed class FluentConformanceTests {
         string root = Path.Combine(RepositoryRoot(), "samples", "Counter", "Counter.Web");
 
         AssertNoRawControls(root, carveOuts: []);
+    }
+
+    [Fact]
+    public void Shell_styles_use_no_legacy_fluent_v4_tokens_except_migration_backlog() {
+        string root = Path.Combine(RepositoryRoot(), "src", "Hexalith.FrontComposer.Shell");
+
+        // Migration backlog (architecture.md §4.1): scoped/global styles still referencing Fluent v4 / FAST
+        // design tokens instead of Fluent 2 tokens (--colorNeutralForeground*, --fontSizeBase*, …) or Fluent
+        // component parameters. These pre-v5 files are allowlisted so the guard blocks NEW legacy-token usage
+        // and stops the already-clean files from regressing, while the backlog is burned down. Migrating a
+        // file means deleting its entry here — the stale-entry assertion in AssertNoLegacyTokens enforces that
+        // the list only ever shrinks. Do not add entries: author new styles with Fluent 2 tokens / parameters.
+        string[] migrationBacklog = [
+            "Components/DataGrid/FcNewItemIndicator.razor.css",
+            "Components/DevMode/FcDevModeAnnotation.razor.css",
+            "Components/DevMode/FcDevModeOverlay.razor.css",
+            "Components/DevMode/FcDevModeToggleButton.razor.css",
+            "Components/Diagnostics/FcCustomizationDiagnosticPanel.razor.css",
+            "Components/EventStore/FcPendingCommandSummary.razor.css",
+            "Components/EventStore/FcProjectionConnectionStatus.razor.css",
+            "Components/Home/FcHomeDirectory.razor.css",
+            "Components/Layout/FrontComposerShell.razor",
+            "Components/Layout/FrontComposerShell.razor.css",
+            "Components/Lifecycle/FcLifecycleWrapper.razor.css",
+            "Components/Rendering/FcFieldPlaceholder.razor.css",
+            "Components/Rendering/FcProjectionLoadingSkeleton.razor.css",
+            "wwwroot/css/fc-empty-state.scoped.css",
+            "wwwroot/css/fc-projection.css",
+        ];
+
+        AssertNoLegacyTokens(root, migrationBacklog);
     }
 
     private static void AssertNoRawControls(string root, string[] carveOuts) {
@@ -83,6 +131,56 @@ public sealed class FluentConformanceTests {
             "UI .razor components must use FrontComposer/Fluent v5 components only (no raw <button>/<input>/"
             + "<select>/<textarea>; raw <a> nav links allowed). Carve-outs are allowlisted in architecture.md "
             + $"§4.1. Raw interactive controls found in: {string.Join("; ", offenders)}");
+    }
+
+    private static void AssertNoLegacyTokens(string root, string[] migrationBacklog) {
+        Directory.Exists(root).ShouldBeTrue($"Legacy-token scan root not found: {root}");
+
+        EnumerationOptions options = new() {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            IgnoreInaccessible = true,
+        };
+
+        string[] styleFiles = Directory
+            .EnumerateFiles(root, "*.css", options)
+            .Concat(Directory.EnumerateFiles(root, "*.razor", options))
+            .Where(f => !IsBuildOutput(f))
+            .ToArray();
+
+        // Guard against a broken path silently passing the scan.
+        styleFiles.ShouldNotBeEmpty($"no .css/.razor files found under {root}");
+
+        HashSet<string> allowed = new(migrationBacklog, StringComparer.Ordinal);
+        List<string> offenders = [];
+        List<string> migrated = [];
+
+        foreach (string file in styleFiles) {
+            string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
+            bool usesLegacyToken = LegacyFluentToken.IsMatch(File.ReadAllText(file));
+
+            if (allowed.Contains(relative)) {
+                if (!usesLegacyToken) {
+                    migrated.Add(relative);
+                }
+
+                continue;
+            }
+
+            if (usesLegacyToken) {
+                offenders.Add(relative);
+            }
+        }
+
+        offenders.ShouldBeEmpty(
+            "UI styles must express typography/color/spacing via Fluent 2 tokens (--colorNeutralForeground*, "
+            + "--fontSizeBase*, --lineHeightBase*) or Fluent component parameters — never legacy Fluent v4 / "
+            + "FAST tokens (--type-ramp-*, --neutral-*, --accent-*, --palette-*, …). See architecture.md §4.1. "
+            + $"Legacy tokens found in: {string.Join("; ", offenders)}");
+
+        migrated.ShouldBeEmpty(
+            "These files no longer use legacy Fluent v4 tokens — remove them from the migrationBacklog "
+            + $"allowlist so the backlog only shrinks: {string.Join("; ", migrated)}");
     }
 
     private static bool IsBuildOutput(string file) {

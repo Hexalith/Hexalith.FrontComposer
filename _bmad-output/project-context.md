@@ -134,6 +134,15 @@ _This file contains critical rules and patterns that AI agents must follow when 
   nav links are allowed. Enforced per surface by `…FluentConformanceTests` Governance guards; documented
   carve-outs (Shell `FcHomeCard`, `Counter.Specimens` fixtures, Admin.UI `ActivityChart` bar + `Streams`
   aggregate-id-copy cell) are listed in `architecture.md` §4.1 and each guard's allowlist
+- **No theme redefinition (project-wide):** express typography/color/spacing via **Fluent v5 component
+  params** (`FluentText` `Size`/`Weight`/`Color`, `FluentStack` `Width`/`*Gap`) or **Fluent 2 tokens**
+  (`--colorNeutralForeground*`, `--fontSizeBase*`, `--lineHeightBase*`). Hand-authored CSS must **not**
+  recreate what a Fluent component provides (a heading ramp via `font-size`/`font-weight`/`line-height`, a
+  foreground role via `color:`) nor use **legacy v4/FAST tokens** (`--type-ramp-*`, `--neutral-*`,
+  `--accent-*`, `--palette-*`). Custom CSS only for layout the design system doesn't own (flex/grid, gaps,
+  UA resets) or a Fluent-absent feature (e.g. the focusable route `<h1>` in `FcPageHeader`). Guarded by
+  `FluentConformanceTests.Shell_styles_use_no_legacy_fluent_v4_tokens_except_migration_backlog`
+  (shrink-only migration backlog). See `architecture.md` §4.1
 - **Page sections use FluentAccordion (project-wide guideline):** when a page/dialog/panel has **2+
   sibling titled sections** (heading-introduced content regions), group them in one `FluentAccordion`
   with one `FluentAccordionItem` per section; first item `Expanded="true"`. NOT sections: page `<h1>`

@@ -104,6 +104,36 @@ mirrored in each guard's allowlist, so every exception is self-documenting and c
 | Admin.UI | `Components/ActivityChart.razor` | clickable bar-chart bar | data-visualization element (height-scaled `<div>`); `aria-label` present; `FluentButton` destroys the bar |
 | Admin.UI | `Pages/Streams.razor` | inline monospace click-to-copy aggregate-ID cell | grid-cell affordance; `aria-label`/`data-testid`/`stopPropagation` present; `FluentButton` breaks the cell layout |
 
+**No theme redefinition (project-wide).** Hand-authored styles express typography, color, and spacing
+through **Fluent UI v5 component parameters** (`FluentText` `Size`/`Weight`/`Color`, `FluentStack`
+`Width`/`*Gap`, …) or **Fluent 2 design tokens** (`--colorNeutralForeground*`, `--fontSizeBase*`,
+`--lineHeightBase*`). Hand-authored CSS **must not** recreate what a Fluent component already provides
+(a heading ramp via `font-size`/`font-weight`/`line-height`, a foreground role via `color:`) and **must
+not** use legacy Fluent v4 / FAST tokens (`--type-ramp-*`, `--neutral-foreground-*`, `--neutral-fill-*`,
+`--neutral-stroke-*`, `--neutral-layer-*`, `--accent-*`, `--palette-*`, `--design-unit*`,
+`--elevation-shadow-*`, `--corner-radius`, `--focus-stroke-*`) — these belong to the previous major
+version and do not track the active theme. Custom CSS is allowed only for layout the design system does
+not own (flex/grid, gaps, user-agent resets) or a feature Fluent has no component/token for (e.g. the
+focusable route-level `<h1>` in `FcPageHeader`). (Directive 2026-06-19; extends ADR-003 + this §4.1.)
+
+This is enforced by a second `…FluentConformanceTests` guard,
+`Shell_styles_use_no_legacy_fluent_v4_tokens_except_migration_backlog`, which scans every Shell
+`.css`/`.razor` source (build output excluded) for legacy kebab-case tokens. **Migration backlog** — the
+15 pre-v5 files below are allowlisted, so the guard blocks any *new* legacy-token usage and any
+regression of the ~13 already-clean Shell stylesheets. The allowlist may **only shrink**: migrating a
+file off legacy tokens requires deleting its entry (a stale-entry assertion fails the build otherwise).
+`fc-page-header.css` — whose `--type-ramp-plus-3-*` heading ramp was exactly the recreation this rule
+targets — was the trigger for this clause and has been **removed**: `FcPageHeader` now renders its heading
+via `FluentText` `Size`/`Weight` parameters (correct-course 2026-06-19), the first backlog burn-down.
+
+| Area | Files (relative to `src/Hexalith.FrontComposer.Shell`) |
+|---|---|
+| DataGrid / Rendering | `Components/DataGrid/FcNewItemIndicator.razor.css`, `Components/Rendering/FcFieldPlaceholder.razor.css`, `Components/Rendering/FcProjectionLoadingSkeleton.razor.css` |
+| DevMode | `Components/DevMode/FcDevModeAnnotation.razor.css`, `Components/DevMode/FcDevModeOverlay.razor.css`, `Components/DevMode/FcDevModeToggleButton.razor.css` |
+| EventStore | `Components/EventStore/FcPendingCommandSummary.razor.css`, `Components/EventStore/FcProjectionConnectionStatus.razor.css` |
+| Layout / Home / Lifecycle / Diagnostics | `Components/Layout/FrontComposerShell.razor`, `Components/Layout/FrontComposerShell.razor.css` (dynamic `--accent-base-color`), `Components/Home/FcHomeDirectory.razor.css`, `Components/Lifecycle/FcLifecycleWrapper.razor.css`, `Components/Diagnostics/FcCustomizationDiagnosticPanel.razor.css` |
+| Global CSS | `wwwroot/css/fc-empty-state.scoped.css`, `wwwroot/css/fc-projection.css` |
+
 ### 4.2 Page-section layout pattern (FluentAccordion) — project-wide guideline
 
 **Every titled page section renders inside a `FluentAccordion` / `FluentAccordionItem`.** A *titled
