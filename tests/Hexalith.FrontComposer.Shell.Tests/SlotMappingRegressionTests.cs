@@ -10,7 +10,7 @@ public sealed class SlotMappingRegressionTests {
     public void Binding_table_matches_verified_baseline() {
         string actual = string.Join("\n", [
             "CSS Slots",
-            "--fc-color-accent = var(--accent-base-color)",
+            "--fc-color-accent = var(--fc-accent-base-color)",
             "--fc-color-neutral = var(--colorNeutralForeground1)",
             "--fc-color-success = var(--colorStatusSuccessForeground1)",
             "--fc-color-warning = var(--colorStatusWarningForeground1)",
@@ -31,7 +31,7 @@ public sealed class SlotMappingRegressionTests {
         actual.ShouldBe(baseline);
 
         string css = File.ReadAllText(LocateCss()).Replace("\r\n", "\n");
-        css.ShouldContain("--fc-color-accent: var(--accent-base-color);");
+        css.ShouldContain("--fc-color-accent: var(--fc-accent-base-color);");
         css.ShouldContain("--fc-color-neutral: var(--colorNeutralForeground1);");
         css.ShouldContain("--fc-color-success: var(--colorStatusSuccessForeground1);");
         css.ShouldContain("--fc-color-warning: var(--colorStatusWarningForeground1);");

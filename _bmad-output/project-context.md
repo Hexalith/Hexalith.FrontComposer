@@ -142,7 +142,9 @@ _This file contains critical rules and patterns that AI agents must follow when 
   `--accent-*`, `--palette-*`). Custom CSS only for layout the design system doesn't own (flex/grid, gaps,
   UA resets) or a Fluent-absent feature (e.g. the focusable route `<h1>` in `FcPageHeader`). Guarded by
   `FluentConformanceTests.Shell_styles_use_no_legacy_fluent_v4_tokens_except_migration_backlog`
-  (shrink-only migration backlog). See `architecture.md` §4.1
+  (migration backlog **fully burned down 2026-06-19** — the allowlist is now empty, so the guard blocks
+  **any** legacy token anywhere in the Shell; density-coupled spacing uses `--fc-spacing-unit`, not the
+  undefined legacy `--design-unit`). See `architecture.md` §4.1
 - **Page sections use FluentAccordion (project-wide guideline):** when a page/dialog/panel has **2+
   sibling titled sections** (heading-introduced content regions), group them in one `FluentAccordion`
   with one `FluentAccordionItem` per section; first item `Expanded="true"`. NOT sections: page `<h1>`
@@ -158,9 +160,12 @@ _This file contains critical rules and patterns that AI agents must follow when 
   when replacing an `inline-flex`/fixed-width div, and confirm it splats `data-testid`/`role`/`aria-*`
   (it does on the pinned RC). **Keep a `<div>`** for positioning/overlays, sr-only/`aria-live` regions,
   `role`/semantic-element landmarks (nest the `FluentStack` inside), `auto-fill`/`auto-fit minmax()` card
-  walls (`FluentGrid` can't express them), `@media` direction flips, and gaps bound to the density token
-  system (`--design-unit*`) — converting those would break density or relocate a legacy token into a
-  `.razor` and trip the §4.1 guard. Guideline-by-review (no guard); shrink-only backlog. See
+  walls (`FluentGrid` can't express them), and `@media` direction flips. Density-coupled gaps
+  (`--fc-spacing-unit`) CAN now convert — pass the `calc(var(--fc-spacing-unit, 4px) * N)` as the
+  `FluentStack` `*Gap` **string** param so density scaling survives (as done for `FcHomeDirectory`/
+  `FcDensityPreviewPanel` on 2026-06-19); the legacy undefined `--design-unit` no longer exists. Guideline-by-review (no guard); shrink-only backlog (tracked
+  candidates resolved 2026-06-19: `FcHomeDirectory`/`FcDensityPreviewPanel`/`FcPendingCommandSummary`/
+  `FcCommandPalette` converted; `FcPaletteResultList` option rows kept as a documented exclusion). See
   `architecture.md` §4.3
 - **Icons:** use the custom inline-SVG `FcFluentIcons` factory, **not** a FluentUI icons NuGet
 - **NFR17 tripwire:** a new `IStorageService.SetAsync` call site in `Shell/State/` requires updating

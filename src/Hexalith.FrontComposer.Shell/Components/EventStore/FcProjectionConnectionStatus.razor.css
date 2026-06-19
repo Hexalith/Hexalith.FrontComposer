@@ -1,5 +1,5 @@
 .fc-projection-connection-status {
-    margin-block: var(--design-unit, 0.5rem);
+    margin-block: calc(var(--fc-spacing-unit, 4px) * 2);
 }
 
 /* P35 — bound pulse iterations to keep prolonged disconnect from running an indefinite

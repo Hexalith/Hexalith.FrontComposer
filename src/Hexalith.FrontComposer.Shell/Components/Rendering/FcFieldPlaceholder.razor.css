@@ -1,7 +1,7 @@
 /* Shared styles for auto-generated command forms. */
 
 .fc-field-placeholder {
-    background-color: var(--neutral-fill-rest, #fafafa);
+    background-color: var(--colorNeutralBackground3, #fafafa);
 }
 
 .fc-field-placeholder-dev {

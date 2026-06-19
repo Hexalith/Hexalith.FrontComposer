@@ -8,7 +8,7 @@
              aria-live="polite"
              data-testid="fc-pending-command-summary">
         <div class="fc-pending-command-summary__counts">@SummaryText</div>
-        <div class="fc-pending-command-summary__details">
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="0.375rem" Class="fc-pending-command-summary__details">
             @foreach (PendingCommandEntry entry in VisibleEntries)
             {
                 if (entry.Status == PendingCommandStatus.Rejected)
@@ -28,6 +28,6 @@
             {
                 <div class="fc-pending-command-summary__overflow">@OverflowText</div>
             }
-        </div>
+        </FluentStack>
     </section>
 }

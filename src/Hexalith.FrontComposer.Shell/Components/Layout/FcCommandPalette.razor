@@ -20,20 +20,24 @@
         <div class="fc-palette-root" role="dialog" aria-label="@Localizer["CommandPaletteTitle"].Value"
              data-testid="fc-palette-root" @ref="_paletteRoot" @onkeydown="HandleKeyDownAsync"
              @onkeydown:stopPropagation="true">
-            <FluentTextInput @ref="_searchRef" Value="@_localQuery" ValueChanged="OnQueryChangedAsync"
-                             TextInputType="TextInputType.Search" Placeholder="@Localizer["PaletteSearchPlaceholder"].Value"
-                             role="combobox" aria-haspopup="listbox" aria-expanded="@(PaletteState.Value.Results.IsEmpty ? "false" : "true")" aria-controls="@ResultListId"
-                             aria-activedescendant="@ActiveDescendantId" aria-autocomplete="list" data-testid="fc-palette-search" />
+            @* §4.3 — the dialog landmark (role/@ref/@onkeydown) stays a <div>; its flex column moves
+               to a nested FluentStack. *@
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="calc(var(--fc-spacing-unit, 4px) * 2)">
+                <FluentTextInput @ref="_searchRef" Value="@_localQuery" ValueChanged="OnQueryChangedAsync"
+                                 TextInputType="TextInputType.Search" Placeholder="@Localizer["PaletteSearchPlaceholder"].Value"
+                                 role="combobox" aria-haspopup="listbox" aria-expanded="@(PaletteState.Value.Results.IsEmpty ? "false" : "true")" aria-controls="@ResultListId"
+                                 aria-activedescendant="@ActiveDescendantId" aria-autocomplete="list" data-testid="fc-palette-search" />
 
-            <FcPaletteResultList Id="@ResultListId" Results="@PaletteState.Value.Results"
-                                 SelectedIndex="@PaletteState.Value.SelectedIndex" OnSelectionChanged="OnSelectionClickedAsync" />
+                <FcPaletteResultList Id="@ResultListId" Results="@PaletteState.Value.Results"
+                                     SelectedIndex="@PaletteState.Value.SelectedIndex" OnSelectionChanged="OnSelectionClickedAsync" />
 
-            @* D15 anti-regression — DO NOT refactor to render populated on first tick. AT engines
-               (NVDA, JAWS) announce aria-live changes on DOM mutation, NOT on initial content;
-               rendering populated skips the announce. The two-tick (empty → populated) sequence
-               forces the mutation. Removing this would silently break SR users. *@
-            <div class="fc-sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="fc-palette-live">
-                @_liveRegionText</div>
-            </div>
+                @* D15 anti-regression — DO NOT refactor to render populated on first tick. AT engines
+                   (NVDA, JAWS) announce aria-live changes on DOM mutation, NOT on initial content;
+                   rendering populated skips the announce. The two-tick (empty → populated) sequence
+                   forces the mutation. Removing this would silently break SR users. *@
+                <div class="fc-sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="fc-palette-live">
+                    @_liveRegionText</div>
+            </FluentStack>
+        </div>
         </ChildContent>
     </FluentDialogBody>

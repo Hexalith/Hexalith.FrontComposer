@@ -1,5 +1,5 @@
 CSS Slots
---fc-color-accent = var(--accent-base-color)
+--fc-color-accent = var(--fc-accent-base-color)
 --fc-color-neutral = var(--colorNeutralForeground1)
 --fc-color-success = var(--colorStatusSuccessForeground1)
 --fc-color-warning = var(--colorStatusWarningForeground1)

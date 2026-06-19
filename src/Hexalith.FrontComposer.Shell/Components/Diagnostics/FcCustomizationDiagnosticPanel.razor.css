@@ -5,7 +5,7 @@
 }
 
 .fc-customization-diagnostic:focus-visible {
-    outline: 2px solid var(--focus-stroke-outer, #605e5c);
+    outline: 2px solid var(--colorStrokeFocus2, #605e5c);
     outline-offset: 2px;
 }
 

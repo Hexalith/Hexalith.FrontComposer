@@ -118,21 +118,24 @@ focusable route-level `<h1>` in `FcPageHeader`). (Directive 2026-06-19; extends 
 
 This is enforced by a second `…FluentConformanceTests` guard,
 `Shell_styles_use_no_legacy_fluent_v4_tokens_except_migration_backlog`, which scans every Shell
-`.css`/`.razor` source (build output excluded) for legacy kebab-case tokens. **Migration backlog** — the
-15 pre-v5 files below are allowlisted, so the guard blocks any *new* legacy-token usage and any
-regression of the ~13 already-clean Shell stylesheets. The allowlist may **only shrink**: migrating a
-file off legacy tokens requires deleting its entry (a stale-entry assertion fails the build otherwise).
-`fc-page-header.css` — whose `--type-ramp-plus-3-*` heading ramp was exactly the recreation this rule
-targets — was the trigger for this clause and has been **removed**: `FcPageHeader` now renders its heading
-via `FluentText` `Size`/`Weight` parameters (correct-course 2026-06-19), the first backlog burn-down.
+`.css`/`.razor` source (build output excluded) for legacy kebab-case tokens. **Migration backlog —
+fully burned down (correct-course 2026-06-19).** The allowlist is now **empty**, so the guard blocks
+*any* legacy Fluent v4 / FAST token anywhere in the Shell, with no carve-outs. The list could only ever
+shrink (a stale-entry assertion fails the build the moment an allowlisted file goes clean), and the last
+15 pre-v5 files have all been migrated:
 
-| Area | Files (relative to `src/Hexalith.FrontComposer.Shell`) |
-|---|---|
-| DataGrid / Rendering | `Components/DataGrid/FcNewItemIndicator.razor.css`, `Components/Rendering/FcFieldPlaceholder.razor.css`, `Components/Rendering/FcProjectionLoadingSkeleton.razor.css` |
-| DevMode | `Components/DevMode/FcDevModeAnnotation.razor.css`, `Components/DevMode/FcDevModeOverlay.razor.css`, `Components/DevMode/FcDevModeToggleButton.razor.css` |
-| EventStore | `Components/EventStore/FcPendingCommandSummary.razor.css`, `Components/EventStore/FcProjectionConnectionStatus.razor.css` |
-| Layout / Home / Lifecycle / Diagnostics | `Components/Layout/FrontComposerShell.razor`, `Components/Layout/FrontComposerShell.razor.css` (dynamic `--accent-base-color`), `Components/Home/FcHomeDirectory.razor.css`, `Components/Lifecycle/FcLifecycleWrapper.razor.css`, `Components/Diagnostics/FcCustomizationDiagnosticPanel.razor.css` |
-| Global CSS | `wwwroot/css/fc-empty-state.scoped.css`, `wwwroot/css/fc-projection.css` |
+- **Color / stroke / shadow / radius / type** → Fluent 2 tokens (`--colorNeutralForeground1`,
+  `--colorNeutralBackground{1,2,3}`, `--colorNeutralStroke{1,2}`, `--colorSubtleBackground{,Hover}`,
+  `--colorBrandStroke1`, `--colorBrandBackground`, `--colorStrokeFocus2`, `--colorPaletteRedBorder2`,
+  `--shadow4`/`--shadow8`, `--borderRadiusMedium`, `--fontSizeBase*` + `--lineHeightBase*`, `--fontFamilyBase`).
+- **Density-coupled spacing** (`calc(var(--design-unit) * Npx)`) → `calc(var(--fc-spacing-unit, 4px) * N)`
+  (ADR-041). This also fixed a latent v4→v5 bug: `--design-unit` was never defined under v5, so those
+  gaps/paddings silently collapsed; they now scale with the `data-fc-density` cascade as intended.
+- **`FrontComposerShell`'s dynamic accent var** was renamed `--accent-base-color` → `--fc-accent-base-color`
+  (the `--fc-*` bridge namespace), updating `SlotMappingRegressionTests` + its `.verified.txt` baseline.
+
+The earlier `fc-page-header.css` removal (`--type-ramp-plus-3-*` heading ramp → `FluentText`
+`Size`/`Weight`, correct-course 2026-06-19) was the first burn-down; this pass cleared the remaining 15.
 
 ### 4.2 Page-section layout pattern (FluentAccordion) — project-wide guideline
 
@@ -190,10 +193,12 @@ sections), and like §4.2 it is a code-review guideline, not a governance guard.
   responsive behavior, so these stay CSS grid.
 - **Responsive flow/direction flips via `@media`** (e.g. `flex-direction: column-reverse` at a breakpoint)
   — `FluentStack` has a single static `Orientation`.
-- **Gaps/spacing bound to the density token system** (`var(--design-unit*)`, `--fc-spacing-unit`-driven
-  scaling) where the value must change with density — moving the token onto a `FluentStack` param would
-  hardcode it (breaking density) *or* relocate a legacy `--design-unit*` token into a `.razor`, tripping
-  the §4.1 legacy-token guard. Convert only after the underlying token is migrated to a Fluent 2 token.
+- **Gaps/spacing bound to the density token system** (`--fc-spacing-unit`-driven scaling). These now
+  **convert cleanly**: `FluentStack`'s `HorizontalGap`/`VerticalGap`/`Padding` are `string?`, so pass the
+  `calc(var(--fc-spacing-unit, 4px) * N)` expression verbatim and density scaling survives (proven by
+  `FcHomeDirectory`/`FcDensityPreviewPanel`, 2026-06-19). The earlier blocker — the undefined legacy
+  `--design-unit` token tripping the §4.1 guard — is gone now that §4.1 migrated all spacing to
+  `--fc-spacing-unit`. (Do **not** pass a unitless number for a `calc()`-based gap; pass the full string.)
 - Single-child wrappers with no flex/grid (nothing to delegate).
 
 **Generated output already conforms** (the emitter renders through `FluentStack`/accordion; no emitter
@@ -214,6 +219,28 @@ RC-surface caveat.)
 (`.fc-collapsed-rail`), and `FcProjectionLoadingSkeleton` (`.fc-projection-skeleton-row`) — each div's
 flex moved to a `FluentStack`, the now-redundant flex CSS removed (non-layout rules — padding, width,
 borders, the `.razor.css` legacy `--neutral-stroke-rest` in the skeleton header — preserved).
+
+**Second burn-down (correct-course 2026-06-19, deferred-work pass).** With §4.1's `--design-unit` →
+`--fc-spacing-unit` migration removing the legacy-token blocker, the remaining tracked candidates were
+resolved:
+
+- **`FcHomeDirectory`** (`.fc-home-directory`) — root `<div>` → `FluentStack` `Orientation="Vertical"`;
+  the density-coupled inter-section gap rides as a `VerticalGap="calc(var(--fc-spacing-unit, 4px) * 4)"`
+  string param (gap params are `string?`, so the `calc()` survives and density still scales), page padding
+  kept in CSS, `aria-label`/`data-testid` splatted.
+- **`FcDensityPreviewPanel`** (`.fc-density-preview`) — plain flex column → `FluentStack`; the local
+  `data-fc-density` override splats onto the same element so the inline gap's `--fc-spacing-unit` still
+  resolves per-density.
+- **`FcPendingCommandSummary`** (`.fc-pending-command-summary__details`) — grid-used-as-stack `<div>` →
+  `FluentStack`; the root stays a `<section aria-live>` landmark.
+- **`FcCommandPalette`** (`.fc-palette-root`) — the `role="dialog"` landmark (`@ref`/`@onkeydown`) stays a
+  `<div>`; its flex column moved to a **nested** `FluentStack` per the landmark-nesting rule above.
+- **Kept (legitimate exclusions):** `FcPaletteResultList` `.fc-palette-option` (repeated `role="option"`
+  rows with `flex:1 1 auto` / `margin-left:auto` item rules), positioning wrappers, and `display:block`
+  nav items. The `<header>`/overlay/drawer divs called out earlier remain keep-as-div.
+
+All conversions verified per the RC caveat: Release build clean (TWAE), Governance guard green with the
+now-empty §4.1 allowlist, and the full Shell default lane at **1905 passed / 0 failed**.
 
 ## 5. AI-agent surface (MCP)
 

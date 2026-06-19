@@ -19,7 +19,7 @@
             @Localizer["PreviewOnlyBadgeText"].Value
         </div>
     }
-    <div class="fc-density-preview" data-fc-density="@DensityAttribute" data-testid="fc-density-preview">
+    <FluentStack Orientation="Orientation.Vertical" VerticalGap="calc(var(--fc-spacing-unit) * 2)" Class="fc-density-preview" data-fc-density="@DensityAttribute" data-testid="fc-density-preview">
         <section>
             <FluentDataGrid Items="@_previewRowsQuery"
                             GridTemplateColumns="1fr 2fr 1fr">
@@ -37,7 +37,7 @@
         <section>
             <a class="fc-preview-navitem" href="#" tabindex="-1">Orders</a>
         </section>
-    </div>
+    </FluentStack>
 </div>
 
 @code {

@@ -11,7 +11,7 @@
 
 .fc-projection-skeleton-header {
     padding-bottom: 10px;
-    border-bottom: 1px solid var(--neutral-stroke-rest, #e0e0e0);
+    border-bottom: 1px solid var(--colorNeutralStroke1, #e0e0e0);
     margin-bottom: 6px;
 }
 

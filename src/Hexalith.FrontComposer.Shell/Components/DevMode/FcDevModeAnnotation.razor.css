@@ -10,7 +10,7 @@
 }
 
 .fc-devmode-annotation {
-    outline: 1px dotted var(--accent-fill-rest);
+    outline: 1px dotted var(--colorBrandStroke1);
     outline-offset: 2px;
 }
 
@@ -25,7 +25,7 @@
     min-height: 1rem;
     padding: 0 0.25rem;
     border-radius: 999px;
-    background: var(--neutral-fill-stealth-rest);
+    background: var(--colorSubtleBackground);
     font-size: 0.75rem;
     line-height: 1rem;
 }

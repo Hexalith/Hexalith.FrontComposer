@@ -19,10 +19,10 @@
     font-weight: var(--fontWeightSemibold);
 }
 
+/* Vertical stacking + the density-coupled gap now live on the <FluentStack> wrapper
+   (architecture.md §4.3). The data-fc-density attribute splats onto the same element so the
+   inline gap's var(--fc-spacing-unit) still resolves from the local density override. */
 .fc-density-preview {
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--fc-spacing-unit) * 2);
     padding: calc(var(--fc-spacing-unit) * 3);
     border: 1px solid var(--colorNeutralStroke1);
     border-radius: 4px;

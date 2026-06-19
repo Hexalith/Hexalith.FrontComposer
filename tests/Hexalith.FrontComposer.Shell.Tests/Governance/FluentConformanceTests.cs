@@ -70,27 +70,14 @@ public sealed class FluentConformanceTests {
 
         // Migration backlog (architecture.md §4.1): scoped/global styles still referencing Fluent v4 / FAST
         // design tokens instead of Fluent 2 tokens (--colorNeutralForeground*, --fontSizeBase*, …) or Fluent
-        // component parameters. These pre-v5 files are allowlisted so the guard blocks NEW legacy-token usage
-        // and stops the already-clean files from regressing, while the backlog is burned down. Migrating a
-        // file means deleting its entry here — the stale-entry assertion in AssertNoLegacyTokens enforces that
-        // the list only ever shrinks. Do not add entries: author new styles with Fluent 2 tokens / parameters.
-        string[] migrationBacklog = [
-            "Components/DataGrid/FcNewItemIndicator.razor.css",
-            "Components/DevMode/FcDevModeAnnotation.razor.css",
-            "Components/DevMode/FcDevModeOverlay.razor.css",
-            "Components/DevMode/FcDevModeToggleButton.razor.css",
-            "Components/Diagnostics/FcCustomizationDiagnosticPanel.razor.css",
-            "Components/EventStore/FcPendingCommandSummary.razor.css",
-            "Components/EventStore/FcProjectionConnectionStatus.razor.css",
-            "Components/Home/FcHomeDirectory.razor.css",
-            "Components/Layout/FrontComposerShell.razor",
-            "Components/Layout/FrontComposerShell.razor.css",
-            "Components/Lifecycle/FcLifecycleWrapper.razor.css",
-            "Components/Rendering/FcFieldPlaceholder.razor.css",
-            "Components/Rendering/FcProjectionLoadingSkeleton.razor.css",
-            "wwwroot/css/fc-empty-state.scoped.css",
-            "wwwroot/css/fc-projection.css",
-        ];
+        // component parameters. The allowlist may only shrink: migrating a file off legacy tokens requires
+        // deleting its entry here — the stale-entry assertion in AssertNoLegacyTokens enforces it. The backlog
+        // has now been fully burned down (correct-course 2026-06-19): every pre-v5 Shell stylesheet expresses
+        // typography/color/spacing through Fluent 2 tokens, and density-coupled spacing uses the project's
+        // --fc-spacing-unit (ADR-041) rather than the undefined legacy --design-unit. The list is empty, so the
+        // guard now blocks ANY legacy-token usage anywhere in the Shell. Do not add entries: author new styles
+        // with Fluent 2 tokens / Fluent component parameters.
+        string[] migrationBacklog = [];
 
         AssertNoLegacyTokens(root, migrationBacklog);
     }

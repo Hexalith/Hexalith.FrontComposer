@@ -22,7 +22,7 @@
 /* Highlight the currently-expanded row. CSS variable so adopters can theme without
    patching the Shell. Reduced-motion users get an instant transition. */
 .fc-row-expanded {
-    background: var(--neutral-fill-stealth-hover, rgba(0, 0, 0, 0.04));
+    background: var(--colorSubtleBackgroundHover, rgba(0, 0, 0, 0.04));
     transition: background 150ms ease-in-out;
 }
 
@@ -72,7 +72,7 @@
 
 @supports (color: color-mix(in srgb, red, blue)) {
     .fc-reconciliation-sweep {
-        outline: 1px solid color-mix(in srgb, var(--accent-fill-rest, #0078d4) 45%, transparent);
+        outline: 1px solid color-mix(in srgb, var(--colorBrandBackground, #0078d4) 45%, transparent);
     }
 }
 
@@ -89,7 +89,7 @@
 @supports (color: color-mix(in srgb, red, blue)) {
     @keyframes fc-reconciliation-sweep {
         from {
-            background-color: color-mix(in srgb, var(--accent-fill-rest, #0078d4) 18%, transparent);
+            background-color: color-mix(in srgb, var(--colorBrandBackground, #0078d4) 18%, transparent);
         }
 
         to {
@@ -106,7 +106,7 @@
 
     @supports (color: color-mix(in srgb, red, blue)) {
         .fc-reconciliation-sweep {
-            outline: 1px solid color-mix(in srgb, var(--accent-fill-rest, #0078d4) 35%, transparent);
+            outline: 1px solid color-mix(in srgb, var(--colorBrandBackground, #0078d4) 35%, transparent);
         }
     }
 }

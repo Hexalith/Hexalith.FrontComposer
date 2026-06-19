@@ -10,7 +10,7 @@
    Renders one of four states based on (manifest count, hydration, total urgency, seen-set size). *@
 
 @* The shell's #fc-main-content now owns the single page `main` landmark (role="main"); this page must not declare a second one. *@
-<div class="fc-home-directory" aria-label="@Localizer["AppTitle"].Value" data-testid="fc-home-directory">
+<FluentStack Orientation="Orientation.Vertical" VerticalGap="calc(var(--fc-spacing-unit, 4px) * 4)" Class="fc-home-directory" aria-label="@Localizer["AppTitle"].Value" data-testid="fc-home-directory">
     @{
         IReadOnlyList<DomainManifest> manifests = Registry.GetManifests();
         FrontComposerCapabilityDiscoveryState discovery = DiscoveryState.Value;
@@ -154,5 +154,5 @@
             }
         }
     }
-</div>
+</FluentStack>
 

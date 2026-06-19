@@ -21,7 +21,7 @@
     }
 
     50% {
-        outline-color: var(--accent-fill-rest, currentColor);
+        outline-color: var(--colorBrandStroke1, currentColor);
     }
 }
 
@@ -29,12 +29,12 @@
 @media (prefers-reduced-motion: reduce) {
     .fc-lifecycle-pulse {
         animation: none;
-        outline: 2px solid var(--accent-fill-rest, currentColor);
+        outline: 2px solid var(--colorBrandStroke1, currentColor);
     }
 }
 
 .fc-lifecycle-still-syncing {
-    margin-top: var(--design-unit, 0.5rem);
+    margin-top: calc(var(--fc-spacing-unit, 4px) * 2);
     display: inline-block;
 }
 

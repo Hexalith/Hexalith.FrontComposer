@@ -1,9 +1,8 @@
 /* Story 3-4 Task 5.3 — palette dialog body. .fc-sr-only is defined in the Story 3-3 shared
    stylesheet (FrontComposerShell.razor.css). */
+/* Vertical stacking + gap now live on the nested <FluentStack> (architecture.md §4.3). This element
+   stays a <div> because it is the role="dialog" landmark (@ref + @onkeydown live here). */
 .fc-palette-root {
-    display: flex;
-    flex-direction: column;
-    gap: calc(var(--fc-spacing-unit, 4px) * 2);
     padding: calc(var(--fc-spacing-unit, 4px) * 3);
     min-height: 400px;
 }

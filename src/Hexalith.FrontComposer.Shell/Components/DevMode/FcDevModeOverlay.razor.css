@@ -14,9 +14,9 @@
     padding: 1rem;
     overflow: auto;
     pointer-events: auto;
-    background: var(--neutral-layer-1);
-    border-left: 1px solid var(--neutral-stroke-divider-rest);
-    box-shadow: var(--elevation-shadow-card-rest);
+    background: var(--colorNeutralBackground1);
+    border-left: 1px solid var(--colorNeutralStroke2);
+    box-shadow: var(--shadow4);
 }
 
 .fc-devmode-drawer__header {
@@ -61,5 +61,5 @@
     width: 100%;
     min-height: 12rem;
     resize: vertical;
-    font-family: var(--type-ramp-base-font-family);
+    font-family: var(--fontFamilyBase);
 }
