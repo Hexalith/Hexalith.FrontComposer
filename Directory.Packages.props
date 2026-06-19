@@ -22,11 +22,11 @@
          contract; net10.0 carries it in-box. -->
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <!-- Story 2-4 Task 3.4 — OptionsBuilder<T>.ValidateDataAnnotations() extension for FcShellOptions. -->
-    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.9" />
     <!-- Story 3-1 Task 8.2 — IStringLocalizer<FcShellResources> + AddLocalization() for the
          Quickstart chain. Adopters who don't use the shell localization still get AddLocalization
          transitively via the web SDK; Shell owning the package keeps the granular API surface honest. -->
-    <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.8" />
+    <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.9" />
     <!-- Story 5-1 — default EventStore projection subscriptions consume the EventStore-owned SignalR hub. -->
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.9" />
     <!-- Story 7-1 — OIDC challenge handler for host-owned authentication integration. -->
@@ -38,7 +38,7 @@
          `Subject<T>` + `.AsObservable()` producer/consumer isolation pattern. Declared
          explicitly (rather than relying on a transitive pull from Fluent UI v5) so a future
          minor bump cannot silently drop the dependency. -->
-    <PackageVersion Include="System.Reactive" Version="7.0.0-preview.20" />
+    <PackageVersion Include="System.Reactive" Version="7.0.0-rc.1" />
   </ItemGroup>
   <ItemGroup Label="Blazor">
     <!-- Fluent UI v5 RC2 available on public NuGet (Path 1 from story spec).
@@ -71,8 +71,8 @@
     <!-- Story 10-3 — file-based Pact consumer contracts for the EventStore REST boundary. -->
     <PackageVersion Include="PactNet" Version="5.0.1" />
     <!-- Verify snapshot testing — XunitV3 for xUnit v3 (NOT Verify.Xunit which is v2) -->
-    <PackageVersion Include="Verify" Version="31.19.1" />
-    <PackageVersion Include="Verify.XunitV3" Version="31.19.1" />
+    <PackageVersion Include="Verify" Version="31.20.0" />
+    <PackageVersion Include="Verify.XunitV3" Version="31.20.0" />
     <!-- FsCheck property-based testing (Story 2.1 adds FsCheck.Xunit.v3 for xUnit v3 integration) -->
     <PackageVersion Include="FsCheck.Xunit.v3" Version="3.3.3" />
     <!-- Story 2-4 Task 0.3 — FakeTimeProvider for deterministic ITimer-callback-driven threshold tests. -->
