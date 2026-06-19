@@ -11,10 +11,10 @@
             <FluentSkeleton Height="32px" Width="40%" Shape="SkeletonShape.Rectangle" />
             @for (int i = 0; i < RowCount; i++)
             {
-                <div class="fc-projection-skeleton-row">
+                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="12px" Class="fc-projection-skeleton-row">
                     <FluentSkeleton Height="16px" Width="24%" Shape="SkeletonShape.Rectangle" />
                     <FluentSkeleton Height="16px" Width="60%" Shape="SkeletonShape.Rectangle" />
-                </div>
+                </FluentStack>
             }
         </div>
     }
@@ -23,31 +23,31 @@
         <div class="fc-projection-skeleton-timeline">
             @for (int i = 0; i < RowCount; i++)
             {
-                <div class="fc-projection-skeleton-row">
+                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="12px" Class="fc-projection-skeleton-row">
                     <FluentSkeleton Height="20px" Width="20%" Shape="SkeletonShape.Rectangle" />
                     <FluentSkeleton Height="16px" Width="55%" Shape="SkeletonShape.Rectangle" />
                     <FluentSkeleton Height="20px" Width="15%" Shape="SkeletonShape.Rectangle" />
-                </div>
+                </FluentStack>
             }
         </div>
     }
     else
     {
         <div class="fc-projection-skeleton-grid">
-            <div class="fc-projection-skeleton-row fc-projection-skeleton-header">
+            <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="12px" Class="fc-projection-skeleton-row fc-projection-skeleton-header">
                 @for (int c = 0; c < ColumnCount; c++)
                 {
                     <FluentSkeleton Height="16px" Width="@HeaderCellWidth" Shape="SkeletonShape.Rectangle" />
                 }
-            </div>
+            </FluentStack>
             @for (int i = 0; i < RowCount; i++)
             {
-                <div class="fc-projection-skeleton-row">
+                <FluentStack Orientation="Orientation.Horizontal" VerticalAlignment="VerticalAlignment.Center" HorizontalGap="12px" Class="fc-projection-skeleton-row">
                     @for (int c = 0; c < ColumnCount; c++)
                     {
                         <FluentSkeleton Height="14px" Width="@BodyCellWidth" Shape="SkeletonShape.Rectangle" />
                     }
-                </div>
+                </FluentStack>
             }
         </div>
     }

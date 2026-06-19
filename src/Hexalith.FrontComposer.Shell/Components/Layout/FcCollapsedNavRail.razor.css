@@ -1,13 +1,11 @@
 /* Story 3-2 Task 7.3 (D13) — 48 px vertical icon rail for CompactDesktop + Desktop-with-manual-collapse.
    Scoped CSS inherits Story 3-1 ADR-034 scoped-bundle filename contract ({AssemblyName}.styles.css). */
 
+/* Vertical stacking, 4px gap, centered items, and 48px width now live on the <FluentStack> wrapper
+   (architecture.md §4.3: Orientation=Vertical, VerticalGap=4px, HorizontalAlignment=Center,
+   Width=48px). Only the non-flex rail chrome (vertical padding + full height) remains here. */
 .fc-collapsed-rail {
-    display: flex;
-    flex-direction: column;
-    width: 48px;
     padding: 4px 0;
-    gap: 4px;
-    align-items: center;
     height: 100%;
 }
 

@@ -151,6 +151,17 @@ _This file contains critical rules and patterns that AI agents must follow when 
   always-visible. Generated output already conforms (field groups → accordion items). This is a
   **guideline enforced by review, not a Governance guard** (unlike the Fluent-only rule). See
   `architecture.md` §4.2
+- **Layout uses Fluent v5 layout components (project-wide guideline):** a `<div>` whose only job is
+  one-dimensional flex stacking (`display:flex`+`gap`) → `FluentStack`; a responsive 12-col grid →
+  `FluentGrid`; page header/nav/content/footer chrome → `FluentLayout` (already used by
+  `FrontComposerShell`). `FluentStack` defaults `Width="100%"` — set `Width="fit-content"`/explicit width
+  when replacing an `inline-flex`/fixed-width div, and confirm it splats `data-testid`/`role`/`aria-*`
+  (it does on the pinned RC). **Keep a `<div>`** for positioning/overlays, sr-only/`aria-live` regions,
+  `role`/semantic-element landmarks (nest the `FluentStack` inside), `auto-fill`/`auto-fit minmax()` card
+  walls (`FluentGrid` can't express them), `@media` direction flips, and gaps bound to the density token
+  system (`--design-unit*`) — converting those would break density or relocate a legacy token into a
+  `.razor` and trip the §4.1 guard. Guideline-by-review (no guard); shrink-only backlog. See
+  `architecture.md` §4.3
 - **Icons:** use the custom inline-SVG `FcFluentIcons` factory, **not** a FluentUI icons NuGet
 - **NFR17 tripwire:** a new `IStorageService.SetAsync` call site in `Shell/State/` requires updating
   the tripwire whitelist + the story compliance matrix

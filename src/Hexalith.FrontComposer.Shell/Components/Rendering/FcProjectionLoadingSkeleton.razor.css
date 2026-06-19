@@ -2,10 +2,10 @@
     padding: 8px 0;
 }
 
+/* Horizontal stacking, 12px gap, and centered alignment now live on the <FluentStack> wrapper
+   (architecture.md §4.3: Orientation=Horizontal, VerticalAlignment=Center, HorizontalGap=12px).
+   Only the non-flex row padding remains here. */
 .fc-projection-skeleton-row {
-    display: flex;
-    gap: 12px;
-    align-items: center;
     padding: 6px 0;
 }
 

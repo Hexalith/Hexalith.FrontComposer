@@ -17,7 +17,10 @@
         @Localizer["SettingsDialogTitle"].Value
     </TitleTemplate>
     <ChildContent>
-        <div class="fc-settings-body" data-testid="fc-settings-dialog">
+        <FluentStack Orientation="Orientation.Vertical"
+                     VerticalGap="16px"
+                     Class="fc-settings-body"
+                     data-testid="fc-settings-dialog">
             <h3 id="fc-density-section">@Localizer["DensitySectionLabel"].Value</h3>
             <FluentRadioGroup Value="@SelectedDensity"
                               ValueChanged="@((DensityLevel v) => SelectedDensity = v)"
@@ -43,7 +46,7 @@
             <h3 id="fc-preview-section">@Localizer["DensityPreviewHeading"].Value</h3>
             <FcDensityPreviewPanel Density="@SelectedDensity"
                                    ShowForcedViewportBadge="@(IsForcedByViewport && SelectedDensity != DensityLevel.Comfortable)" />
-        </div>
+        </FluentStack>
     </ChildContent>
     <ActionTemplate>
         <div class="fc-settings-footer">

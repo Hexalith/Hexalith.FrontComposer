@@ -15,8 +15,14 @@
    FluentTooltip anchored by id. Click dispatches SidebarExpandedAction to restore the full
    sidebar and, at CompactDesktop, opens the hamburger drawer so the expansion is visible. *@
 
-<div class="fc-collapsed-rail" data-testid="fc-collapsed-rail" role="navigation"
-     aria-label="@Localizer["NavMenuAriaLabel"].Value">
+<FluentStack Orientation="Orientation.Vertical"
+             VerticalGap="4px"
+             HorizontalAlignment="HorizontalAlignment.Center"
+             Width="48px"
+             Class="fc-collapsed-rail"
+             data-testid="fc-collapsed-rail"
+             role="navigation"
+             aria-label="@Localizer["NavMenuAriaLabel"].Value">
     @{
         FrontComposerCapabilityDiscoveryState discovery = DiscoveryState.Value;
         HashSet<string> navEntryContexts = new(
@@ -58,4 +64,4 @@
                 @LocalizeName(manifest)
             </FluentTooltip>
         }
-    </div>
+    </FluentStack>

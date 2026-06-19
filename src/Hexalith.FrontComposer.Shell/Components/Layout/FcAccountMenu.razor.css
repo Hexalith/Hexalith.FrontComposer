@@ -1,8 +1,6 @@
-.fc-account-menu {
-    align-items: center;
-    display: inline-flex;
-    gap: 0.5rem;
-}
+/* Row layout (inline-flex + 8px gap, shrink-to-content) now lives on the <FluentStack> wrapper
+   (architecture.md §4.3): Orientation=Horizontal, VerticalAlignment=Center, HorizontalGap=8px,
+   Width=fit-content. The .fc-account-menu class is retained only as a selector hook. */
 
 /* Connected user's full name, shown to the left of the avatar. The avatar keeps the initials, so
    the name is supplementary — hide it on narrow viewports where header space is scarce. */

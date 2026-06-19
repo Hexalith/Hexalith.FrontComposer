@@ -161,6 +161,60 @@ accordion-appropriateness is contextual (single-section and grid-first pages are
 exceptions) and cannot be asserted mechanically without false positives. It is enforced by code review
 against this definition, not by a `…FluentConformanceTests` guard.
 
+### 4.3 Layout-component policy (project-wide guideline)
+
+**Hand-authored layout the design system owns is expressed through Fluent v5 layout components, not
+bare `<div>` + CSS flex/grid.** This is the layout companion to §4.1 (components) and §4.2 (page
+sections), and like §4.2 it is a code-review guideline, not a governance guard.
+
+- A `<div>` whose only role is **one-dimensional flex stacking** (`display:flex` + `flex-direction` +
+  `gap`, ± alignment) → **`FluentStack`** (`Orientation`, `HorizontalGap`/`VerticalGap`,
+  `HorizontalAlignment`/`VerticalAlignment`, `Wrap`, `Width`). Note `FluentStack` defaults `Width="100%"`
+  — set `Width="fit-content"` (or an explicit width) when replacing an `inline-flex` / fixed-width `<div>`.
+- A `<div>` forming a **responsive 12-point column grid** → **`FluentGrid`/`FluentGridItem`**
+  (`Xs/Sm/Md/Lg` spans, `Spacing`).
+- **Page header/nav/content/footer scaffold** → **`FluentLayout`/`FluentLayoutItem`** (already used by
+  `FrontComposerShell`).
+
+**Stays a `<div>` — layout the design system does *not* own (never converted):**
+
+- Positioning contexts & overlays (`position: absolute|fixed|sticky`, `inset`, `z-index`) — drawers,
+  badges, the dev-mode overlay.
+- Visually-hidden / sr-only / `aria-live` regions (clip-rect / off-screen).
+- Accessibility/semantic landmarks where the **role/element is the point** (`role="status|alert|region|
+  group"`; `role="dialog"` bodies carrying `@onkeydown`/`@ref`; semantic `<header>`/`<section>`/`<aside>`).
+  When such a landmark *also* needs flex, the flex moves to a `FluentStack` **nested inside** — the
+  landmark element stays.
+- **`grid-template-columns: repeat(auto-fill|auto-fit, minmax(...))` card walls.** `FluentGrid` is a
+  fixed 12-point breakpoint grid and cannot express content-driven auto-fill; converting changes the
+  responsive behavior, so these stay CSS grid.
+- **Responsive flow/direction flips via `@media`** (e.g. `flex-direction: column-reverse` at a breakpoint)
+  — `FluentStack` has a single static `Orientation`.
+- **Gaps/spacing bound to the density token system** (`var(--design-unit*)`, `--fc-spacing-unit`-driven
+  scaling) where the value must change with density — moving the token onto a `FluentStack` param would
+  hardcode it (breaking density) *or* relocate a legacy `--design-unit*` token into a `.razor`, tripping
+  the §4.1 legacy-token guard. Convert only after the underlying token is migrated to a Fluent 2 token.
+- Single-child wrappers with no flex/grid (nothing to delegate).
+
+**Generated output already conforms** (the emitter renders through `FluentStack`/accordion; no emitter
+change). **Guideline, not a guard** — like §4.2, enforced by code review, *not* a
+`…FluentConformanceTests` guard: a regex cannot separate a delegatable flex stack from a
+positioning/sr-only/landmark/auto-fill/density-coupled `<div>` without false positives. Conversion
+progress is tracked as a **shrink-only backlog** (mirroring §4.1's token-backlog discipline) in the
+correct-course proposal that introduced this section.
+
+**RC attribute-splatting caveat.** When a converted `<div>` carried `data-testid`/`role`/`aria-*`/event
+handlers, `FluentStack` must splat them onto its root element for the unit/e2e selector and a11y
+contracts to survive. This holds on the pinned `5.0.0-rc.3-26138.1` (`FluentStack` captures unmatched
+attributes); confirm via the component's own bUnit lane after each conversion. (Mirrors §4.2's
+RC-surface caveat.)
+
+**First burn-down (correct-course 2026-06-19).** Four clean Shell conversions landed:
+`FcAccountMenu` (`.fc-account-menu`), `FcSettingsDialog` (`.fc-settings-body`), `FcCollapsedNavRail`
+(`.fc-collapsed-rail`), and `FcProjectionLoadingSkeleton` (`.fc-projection-skeleton-row`) — each div's
+flex moved to a `FluentStack`, the now-redundant flex CSS removed (non-layout rules — padding, width,
+borders, the `.razor.css` legacy `--neutral-stroke-rest` in the skeleton header — preserved).
+
 ## 5. AI-agent surface (MCP)
 
 `Hexalith.FrontComposer.Mcp` is an ASP.NET Core adapter (HTTP streamable MCP) that turns the generated `McpManifest` into a live tool/resource surface:

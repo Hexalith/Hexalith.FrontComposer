@@ -12,7 +12,12 @@
    Sign in / out navigate to the framework auth endpoints with forceLoad so the OIDC challenge /
    sign-out round-trips through the server (equivalent to the retired auth-bar's data-enhance-nav). *@
 
-<div class="fc-account-menu" data-testid="fc-account-menu">
+<FluentStack Orientation="Orientation.Horizontal"
+             VerticalAlignment="VerticalAlignment.Center"
+             HorizontalGap="8px"
+             Width="fit-content"
+             Class="fc-account-menu"
+             data-testid="fc-account-menu">
     @if (IsAuthenticated)
     {
         <span class="fc-account-menu__name" data-testid="fc-account-name" title="@SignedInAsText">@UserName</span>
@@ -49,4 +54,4 @@
             </FluentMenuList>
         </FluentMenu>
     }
-</div>
+</FluentStack>
