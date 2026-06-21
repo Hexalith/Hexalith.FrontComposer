@@ -13,6 +13,7 @@ residuals_not_covered: ['#1 change-proposal sign-off (human decision — APPROVE
 artifacts_changed:
   - '_bmad-output/planning-artifacts/epics.md'
   - '_bmad-output/implementation-artifacts/deferred-work.md'
+  - 'tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs (DW-0666 follow-on test pins)'
 ---
 
 # Sprint Change Proposal — Close the readiness residuals (#3 / #4 / #5)
@@ -209,7 +210,33 @@ the READY readiness report are resolved** and the planning corpus is fully clean
 
 ---
 
+## Post-pass follow-on (2026-06-21) — `DW-0666` decided & closed
+
+Following the #5 reconciliation, the user authorized closing the one genuinely-open ledger item:
+**`DW-0666`** — the docs-slug UNC / drive-relative normalization policy that kept the legacy "Epic 11"
+gate dangling. Decision recorded in `deferred-work.md`:
+
+- **Decision (Administrator, as Product + Architecture owner):** **option (a) — reject UNC
+  (`//server/share`) and drive-relative (`C:…`) slug forms fail-closed** as rooted/hostile
+  (accept-with-rationale and split-per-platform declined; no off-site docs-hosting driver).
+- **Already-enforced (confirm-and-pin, not a behaviour change)** — `IsRootedSlug` classifies both shapes
+  as rooted (`slug[0]=='/'` for UNC; `slug[1]==':'` for drive-relative) and the `== "diagnostics/{id}"`
+  exact-match gate rejects them a second time.
+- **Pinned** — added `//server/share/diagnostics/HFC1058` and `C:diagnostics/HFC1058` → `invalid-slug`
+  cases to `DocsSlugValidation_DistinguishesUnsafeCanonicalizationFailures` (**26/26 green**, run 2026-06-21).
+- **Ledger reconciled** — top-of-file note flipped to RESOLVED; a `Final classification 2026-06-21:
+  resolved` marker appended to the `DW-0666` row; Reconciliation Summary reclassified
+  (`release-gate` 1 → 0, `resolved-preserved` 119 → 120, total still 666). **No live release-gate rows
+  remain.**
+
+This is a **`tests`-only** code change (1 file, 2 `InlineData` lines) plus ledger reconciliation — no
+`src/` or runtime-behaviour change.
+
+---
+
 **Outcome:** The three planning-artifact residuals from the READY readiness report are closed. The
 retired escape hatch can no longer be re-learned from a single story's AC, UX-DR3/UX-DR8 have an explicit
 traceability record, and the legacy Epic-11 / `DW-0666` ledger cruft is reconciled against the live 7-epic
-plan — leaving only the human sign-off (#1) and the FR11 implementation check (#2) outside this pass.
+plan. Follow-on at the user's request: residual #1 sign-off **approved**, residual #2 (FR11) **verified
+by passing tests**, and the last open ledger item **`DW-0666` decided and closed** — the readiness corpus
+now has **no open items**.

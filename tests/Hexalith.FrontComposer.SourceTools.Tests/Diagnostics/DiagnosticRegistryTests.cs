@@ -519,6 +519,10 @@ public sealed partial class DiagnosticRegistryTests {
     [InlineData("diagnostics/HFC1058/../HFC1058", true)]
     [InlineData("/diagnostics/HFC1058", true)]
     [InlineData("C:/diagnostics/HFC1058", true)]
+    // DW-0666 (ratified 2026-06-21): UNC (`//server/share/...`) and drive-relative (`C:...`) slug
+    // forms are rejected fail-closed as rooted/hostile, consistent with the other rooted cases.
+    [InlineData("//server/share/diagnostics/HFC1058", true)]
+    [InlineData("C:diagnostics/HFC1058", true)]
     [InlineData("diagnostics/HFC1058%00null", true)]
     [InlineData("../diagnostics/HFC1058", true)]
     [InlineData("..\\diagnostics\\HFC1058", true)]

@@ -13,19 +13,25 @@
 > The `Owner: Story 11.x` / `Story 12.x` row markers are retained as **historical audit labels only**
 > (accountability for a row's next decision), **not** live epics or stories.
 
-> **`DW-0666` — the dangling "Epic 11 in-progress" gate, clarified.** `DW-0666` is **not** an open
-> implementation epic. It is a **standalone Product + Architecture release-gate decision**: the docs-slug
-> UNC (`//server/share`) / drive-relative (`C:foo`) normalization policy (evidence:
-> `tests/.../DiagnosticRegistryTests.cs:929-945`,
+> **`DW-0666` — RESOLVED 2026-06-21** (was the dangling "Epic 11 in-progress" gate). `DW-0666` was **not**
+> an open implementation epic — it was a **standalone Product + Architecture release-gate decision**: the
+> docs-slug UNC (`//server/share`) / drive-relative (`C:foo`) normalization policy (evidence:
+> `tests/.../DiagnosticRegistryTests.cs` → `DocsSlugValidation_DistinguishesUnsafeCanonicalizationFailures`,
 > `11-2-diagnostic-registry-and-documentation-governance-follow-ups.md`,
 > `sprint-change-proposal-2026-05-13.md`). Its legacy wording *"Epic 11 remains in-progress until that
-> policy is selected"* is **decoupled** from — and does **not** contradict — the all-done 7-epic status.
-> Per the Contract-confirmation Definition-of-Done (2026-06-21, `epics.md`), it is recorded here as an
-> **open, tracked, dated, owned blocking follow-up** (not silently closed):
-> - **Decision:** docs-slug UNC + drive-relative policy (reject fail-closed / accept-with-rationale / split per-platform).
-> - **Owners:** Product Owner + Architect. **Recommended default:** reject both forms fail-closed until selected.
-> - **Scope:** release-gate only (diagnostic docs-slug validation + canonical help-link safety). It does **not** block the Epics 1–7 corpus, which is independently `done`.
-> - **Closure trigger:** Product + Architecture record the selected policy with matching tests/evidence.
+> policy is selected"* was decoupled from the all-done 7-epic status; **with the policy now selected, the
+> last legacy "Epic 11" gate is closed.**
+> - **Decision (Administrator, as Product + Architecture owner, 2026-06-21):** **option (a) — reject UNC and
+>   drive-relative slug forms fail-closed** as rooted/hostile (the recommended default; accept-with-rationale
+>   and split-per-platform declined — there is no off-site docs-hosting driver).
+> - **Rationale:** this was already the shipped, intent-explicit behaviour — `IsRootedSlug` classifies both
+>   `//server/share/...` (leading `/`) and `C:...` (drive-letter `:`) as rooted, and the
+>   `== "diagnostics/{id}"` exact-match gate rejects them a second time.
+> - **Pinned:** `DocsSlugValidation_DistinguishesUnsafeCanonicalizationFailures` now carries explicit
+>   `//server/share/diagnostics/HFC1058` and `C:diagnostics/HFC1058` → `invalid-slug` cases (26/26 green
+>   2026-06-21), so the policy cannot silently regress.
+> - **Scope:** release-gate only (diagnostic docs-slug validation + canonical help-link safety); it never
+>   blocked the Epics 1–7 corpus, which is independently `done`.
 
 ## Backlog Routing Status (2026-05-10)
 
@@ -77,14 +83,19 @@ Owner means accountability for the next decision or evidence, not permission to 
 | `unresolved-owned` | 0 |
 | `unresolved-ambiguous` | 0 |
 | `duplicate-alias` | 6 |
-| `resolved-preserved` | 119 |
+| `resolved-preserved` | 120 |
 | `accepted-constraint` | 149 |
 | `split-to-named-story` | 377 |
 | `superseded-preserved` | 3 |
 | `non-action` | 7 |
 | `rejected-with-rationale` | 4 |
-| `release-gate` | 1 |
+| `release-gate` | 0 |
 | **Total inventoried rows** | **666** |
+
+> **2026-06-21 reclassification:** the single `release-gate` row (`DW-0666`) was **resolved** (option (a),
+> reject UNC + drive-relative slugs fail-closed; see the *Legacy Epic 11 / 12 Numbering Reconciliation*
+> note at the top of this file), moving it from `release-gate` (1 → 0) to `resolved-preserved`
+> (119 → 120). Total inventoried rows unchanged (666); **no live release-gate rows remain.**
 
 Story 11.2 code review (2026-05-11) reconciled DEF-9-4-A16, DEF-9-4-C3, DEF-9-4-C7, and DEF-9-4-C8 to `rejected-with-rationale` per AC33's final-state vocabulary. Each row's rationale documents the bounded reason and names the deferred follow-up scope (full-corpus title/prose authoring, per-stub schema-version field, cross-file vocabulary enforcement).
 
@@ -1091,7 +1102,7 @@ These two defects sit in the Counter-sample lifecycle wiring — the generated e
 - `_bmad-output` Path.Combine case-asymmetry between Windows (case-insensitive) and Linux CI (case-sensitive) — repo policy is lowercase; rename unlikely. Reconciliation: Row: DW-0663; Non-action decision 2026-05-11; Decision owner: Story 11.2 review pass 2; Rationale: cross-platform exposure is theoretical until anyone renames the directory; Evidence: `tests/.../DiagnosticRegistryTests.cs:659`. (blind)
 - `RegistryValidator_CrossPackageRangeException_NegativeControl` is a documented tautology — real negative control requires a positive bypass (out-of-range id listed in exception array) plus a non-HFC1601 cross-package row not in the exception array. Reconciliation: Row: DW-0664; Split to Story 11.2 diagnostic registry negative-control follow-up 2026-05-13; Disposition: split-to-named-story; Reason: registry validator negative control is diagnostic governance; Residual release-gate risk: low.; Related: Story 11.2 follow-up; Evidence: `tests/.../DiagnosticRegistryTests.cs:612-621`. (blind)
 - `HfcmIdShapeRegex` vs `SampleFindingIdShapeRegex` divergence — intentional split (HFCM-specific for migration-findings, broader sample regex for placeholder evidence). Confusion risk acknowledged. Reconciliation: Row: DW-0665; Non-action decision 2026-05-11; Decision owner: Story 11.2 review pass 2; Rationale: split is intentional per AC15; document split in `docs/diagnostics/README.md` if Story 11.3 expands HFCM scope; Evidence: `tests/.../DiagnosticRegistryTests.cs:474-475,966`. (edge)
-- `IsRootedSlug` UNC `//server/share` and drive-relative `C:foo` semantics — boundary policy decision (should drive-relative paths fail like absolute paths, or be accepted). Reconciliation: Row: DW-0666; Release gate 2026-05-14; Gate: docs-slug UNC and drive-relative policy decision; Product owner: Product Owner role; Architecture owner: Architect role; Decision date target: TBD on next Product/Architecture review trigger; Policy options: reject UNC-like `//server/share` and drive-relative `C:foo` as rooted/hostile slug forms, accept only after explicit docs-slug normalization rationale, or split platform-specific handling with test-backed exceptions; Recommended default: reject both forms fail-closed until Product and Architecture select otherwise; Evidence: `tests/.../DiagnosticRegistryTests.cs:929-945`, `_bmad-output/implementation-artifacts/11-2-diagnostic-registry-and-documentation-governance-follow-ups.md`, and `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-13.md`; Downstream impact: diagnostic docs slug validation and canonical help-link safety; Release consequence: Epic 11 remains in-progress and v1 release certification is blocked for this policy until selected; Closure trigger: Product and Architecture record the selected docs-slug policy and matching tests/evidence; Previous ambiguous marker is preserved by row history.
+- `IsRootedSlug` UNC `//server/share` and drive-relative `C:foo` semantics — boundary policy decision (should drive-relative paths fail like absolute paths, or be accepted). Reconciliation: Row: DW-0666; Release gate 2026-05-14; Gate: docs-slug UNC and drive-relative policy decision; Product owner: Product Owner role; Architecture owner: Architect role; Decision date target: TBD on next Product/Architecture review trigger; Policy options: reject UNC-like `//server/share` and drive-relative `C:foo` as rooted/hostile slug forms, accept only after explicit docs-slug normalization rationale, or split platform-specific handling with test-backed exceptions; Recommended default: reject both forms fail-closed until Product and Architecture select otherwise; Evidence: `tests/.../DiagnosticRegistryTests.cs:929-945`, `_bmad-output/implementation-artifacts/11-2-diagnostic-registry-and-documentation-governance-follow-ups.md`, and `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-13.md`; Downstream impact: diagnostic docs slug validation and canonical help-link safety; Release consequence: Epic 11 remains in-progress and v1 release certification is blocked for this policy until selected; Closure trigger: Product and Architecture record the selected docs-slug policy and matching tests/evidence; Previous ambiguous marker is preserved by row history. Final classification 2026-06-21: resolved; Decision owner: Administrator (Product + Architecture owner); Selected policy: option (a) — reject UNC (`//server/share`) and drive-relative (`C:`) slug forms fail-closed as rooted/hostile (accept-with-rationale and split-per-platform declined — no off-site docs-hosting driver); Already-enforced: `IsRootedSlug` classifies both shapes as rooted and the `== "diagnostics/{id}"` exact-match gate rejects them again; Pinned: `DiagnosticRegistryTests.cs` `DocsSlugValidation_DistinguishesUnsafeCanonicalizationFailures` UNC + drive-relative `invalid-slug` cases (26/26 green 2026-06-21); Release consequence cleared: docs-slug policy selected → the legacy "Epic 11 in-progress" gate is closed and does not affect Epics 1–7 (independently done).
 
 
 ## Story 11.5 resolution markers — MCP schema negotiation and agent contract hardening (2026-05-12)
