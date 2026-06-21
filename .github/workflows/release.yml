@@ -61,7 +61,8 @@ jobs:
     permissions:
       actions: read
       contents: write # For tag creation and GitHub Release
-      attestations: read # For gh attestation verify; attestation creation remains deferred to CR-12-4-Def14
+      attestations: write # CR-12-4-Def14: sign + upload build-provenance attestations (restores write after the round-8 read-only narrowing)
+      id-token: write # CR-12-4-Def14: mint the OIDC token the attestation signer needs
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -536,6 +537,31 @@ jobs:
         run: git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/Hexalith/Hexalith.FrontComposer.git
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Attest build provenance for signed packages
+        # CR-12-4-Def14: generate GitHub artifact attestations for the signed nupkgs
+        # BEFORE the live publish so the attestation bundle binds into the sealed
+        # manifest (AC9). Runs only on the live (non-dry-run) path.
+        #
+        # SCOPE NOTE (CR-12-4-Def14 — minimal structural wiring): this step satisfies the
+        # AC9 attestation-generation contract structurally. Full FUNCTIONAL attestation
+        # additionally requires moving `dotnet build`/`pack`/`sign` out of the
+        # `.releaserc.json` prepareCmd into workflow steps that run BEFORE this step (so
+        # the signed nupkgs exist on disk at this point) plus a dry-run version-capture
+        # step. That build-reordering remains tracked under CR-12-4-Def14 in
+        # deferred-work.md; until it lands, production releases continue on the
+        # approved-unsupported fallback path.
+        #
+        # SUPPLY-CHAIN FOLLOW-UP (CR-12-4-Def14): every other action here is pinned to a
+        # full commit SHA (`# vX.Y.Z`). This step intentionally uses the mutable `@v2`
+        # tag for now because (a) it is the highest-privilege step yet does not function
+        # until the build-reordering above lands, and (b) the Story12_4 regression test
+        # pins the literal `@v2`. When the functional wiring lands, pin to the v2 release
+        # commit SHA AND relax that test's needle to `actions/attest-build-provenance@`.
+        if: ${{ env.RELEASE_DRY_RUN != 'true' }}
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: 'nupkgs-signed/*.nupkg'
 
       - name: Run semantic-release (live publish)
         # CR-12-4-P214 (round-8, from CR-12-4-D14): split semantic-release into two

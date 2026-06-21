@@ -220,6 +220,14 @@ DANGEROUS_EVIDENCE_PATTERNS = [
     re.compile(r"(?<![\w/])/(?:home|Users|tmp|var)/[^ \r\n]+"),
     re.compile(r"(?i)\b(tenant|tenantid|user|userid|commandpayload)\s*[:=]\s*[^,; \r\n]+"),
     re.compile(r"^::", re.MULTILINE),
+    # CR-12-4-Def106 (AC29): credentialed URLs of the form `scheme://user:pass@host/...`
+    # leak embedded basic-auth credentials. The userinfo halves stop at the first
+    # `/`, `?`, `#`, `&`, `@`, or whitespace, so neither a normal `https://host/path`
+    # (no `@`) nor a path-less port URL whose query/fragment merely contains a later
+    # `@` (e.g. `https://host:8080#a@b`) trips it — only real `user:pass@` userinfo.
+    re.compile(r"(?i)\bhttps?://[^\s/@?#&]+:[^\s/@?#&]+@"),
+    # CR-12-4-Def106 (AC29): PEM signing-material markers (private keys, certificates).
+    re.compile(r"-----BEGIN (?:[A-Z0-9]+ )*(?:PRIVATE KEY|CERTIFICATE)-----"),
 ]
 TRUTHY_LITERALS = {"true"}
 FALSY_LITERALS = {"false"}
@@ -695,6 +703,14 @@ def deep_merge(base: Any, override: Any) -> Any:
             merged[key] = deep_merge(merged.get(key), value)
         return merged
     if isinstance(base, list) and isinstance(override, list):
+        # CR-12-4-Def25: an explicit empty-list override clears the base list. The
+        # element-wise merge below can only grow or rewrite entries, never shrink, so a
+        # fixture that pins `packages: []` (to exercise the "package rows are required"
+        # gate) would otherwise silently retain the base row. An OMITTED field still
+        # routes through the `override == {}` reset branch below, so this only triggers
+        # on a deliberate empty-list override.
+        if not override:
+            return []
         merged = [deep_merge(item, {}) for item in base]
         for index, value in enumerate(override):
             if index < len(merged):
@@ -822,16 +838,23 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
     # Release-definition drift: when a root is provided, recompute current fingerprints
     # and compare to the manifest's embedded baseline. The baseline is written by
     # prepare_manifest, so absence from the manifest is itself a drift signal.
+    # CR-12-4-Def23: enforce the structural presence + non-emptiness of
+    # release_definition_fingerprints ALWAYS — including under --no-root offline
+    # fixture verification — so replayed evidence carrying a missing or empty baseline
+    # cannot authorize publishing. The drift comparison against on-disk files still
+    # requires a root.
+    embedded = manifest.get("release_definition_fingerprints")
+    if embedded is None:
+        diagnostics.append("manifest missing release_definition_fingerprints")
+    elif not isinstance(embedded, dict):
+        diagnostics.append("manifest release_definition_fingerprints must be an object")
+    elif not embedded:
+        diagnostics.append("manifest release_definition_fingerprints must not be empty")
+    elif root is not None and root_exists:
+        current = release_definition_fingerprints(root)
+        for drift in fingerprint_diff(current, embedded):
+            diagnostics.append(f"release-definition drift: {drift}")
     if root is not None and root_exists:
-        embedded = manifest.get("release_definition_fingerprints")
-        if embedded is None:
-            diagnostics.append("manifest missing release_definition_fingerprints")
-        elif not isinstance(embedded, dict):
-            diagnostics.append("manifest release_definition_fingerprints must be an object")
-        else:
-            current = release_definition_fingerprints(root)
-            for drift in fingerprint_diff(current, embedded):
-                diagnostics.append(f"release-definition drift: {drift}")
         # CR-12-4-P215 (round-8): verify the sealed `helper_version` against the live
         # helper. Mismatch on `version` OR `content_sha256` means either the helper
         # was edited post-seal or someone forgot to bump `__version__`. Both fail
@@ -1390,7 +1413,11 @@ def fallback_complete(
         "scope",
         "approved_against_fingerprints_sha256",
     ]
-    missing = [field for field in required if not fallback.get(field)]
+    # CR-12-4-Def107 (review): strip before the presence check so a whitespace-only
+    # required field (e.g. affected_artifact="   ") is treated as MISSING. Without this a
+    # blank-but-truthy value passed completeness here yet was skipped by the downstream
+    # affected_artifact cross-check (it strips to empty), opening a fail-open hole.
+    missing = [field for field in required if not str(fallback.get(field) or "").strip()]
     if missing:
         return False, f"fallback missing required field(s): {', '.join(missing)}"
     # CR-12-4-P108 (round-5): validate the digest is a well-formed sha256 hex string
@@ -1407,18 +1434,23 @@ def fallback_complete(
     approved_at, approved_at_diagnostic = parse_release_timestamp(fallback["approved_at"], "approved_at")
     if approved_at is None:
         return False, approved_at_diagnostic
-    # CR-12-4-P152 (round-7): full-datetime comparison so a sub-day TZ offset cannot
-    # silently shift expiry by a calendar day.
-    if expiry <= dt.datetime.now(dt.timezone.utc):
-        return False, f"fallback expired on {expiry.isoformat()}"
     # CR-12-4-P243 (round-10, BH-F21/EC-6): the parser rejects future-skewed
     # `approved_at` values (>5 min in future) but the original code accepted any past
     # value — `0001-01-01T00:00:00Z` would satisfy structural completeness. Document
     # WHEN the owner accepted the risk requires the timestamp to be (a) before
     # `expires_at`, and (b) within the last 365 days (operationally a 1-year approval
     # window matches the typical signing-cert lifetime).
+    # CR-12-4-Def102: the approved_at < expires_at ordering invariant is checked BEFORE
+    # the expiry-in-the-past check so the precise "approved_at must be before expires_at"
+    # diagnostic fires on an `approved_at == expires_at` operator footgun even when both
+    # instants are in the past — a static fixture cannot place them in the future without
+    # tripping the >5-min future-skew guard in `parse_release_timestamp`.
     if approved_at >= expiry:
         return False, f"approved_at ({approved_at.isoformat()}) must be before expires_at ({expiry.isoformat()})"
+    # CR-12-4-P152 (round-7): full-datetime comparison so a sub-day TZ offset cannot
+    # silently shift expiry by a calendar day.
+    if expiry <= dt.datetime.now(dt.timezone.utc):
+        return False, f"fallback expired on {expiry.isoformat()}"
     approval_age = dt.datetime.now(dt.timezone.utc) - approved_at
     # CR-12-4-P259 (round-11, blind+edge): use `>=` so an approval at exactly
     # 365 days, 0 microseconds old is rejected. The prior `>` allowed the exact
@@ -1540,6 +1572,14 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
     approval_approved, approval_diagnostic = parse_approval_bool(approval.get("approved"), field="approval.approved")
     if approval_diagnostic:
         bool_diagnostics.append(approval_diagnostic)
+    # CR-12-4-Def105: `approval.approved` must be a real JSON boolean. `parse_approval_bool`
+    # leniently interprets a stringly-typed "true"/"false" (P184 robustness vs. the bash
+    # gate), but on this publish-authorizing field a non-boolean type is a coercion/tamper
+    # signal — fail closed so a producer that emits any non-empty string cannot ride a
+    # string "true" into an authorized publish.
+    raw_approved = approval.get("approved")
+    if raw_approved is not None and not isinstance(raw_approved, bool):
+        bool_diagnostics.append(f"approval.approved must be a JSON boolean, not a string; actual={sanitize(raw_approved)}")
     bool_checks: dict[str, bool] = {}
     for key in [
         "dry_run_side_effect_attempt",
@@ -1553,6 +1593,13 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
         bool_checks[key] = parsed
         if diagnostic:
             bool_diagnostics.append(diagnostic)
+    # CR-12-4-Def105: the same JSON-boolean strictness for the concurrent-publish guard.
+    # `concurrent_same_version` gates the same-version side-effect path; a stringly-typed
+    # value (even "false") is a type/coercion signal that must fail closed rather than be
+    # leniently coerced by `parse_strict_bool`.
+    raw_concurrent = checks.get("concurrent_same_version")
+    if raw_concurrent is not None and not isinstance(raw_concurrent, bool):
+        bool_diagnostics.append(f"concurrent_same_version must be a JSON boolean, not a string; actual={sanitize(raw_concurrent)}")
 
     for diag in context_diagnostics:
         blocking.append(f"context: {diag}")
@@ -1753,6 +1800,36 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
                 }
             else:
                 blocking.append(fallback_diagnostic or "unsupported-attestation fallback is missing, stale, or incomplete")
+            # CR-12-4-Def107 (AC34): when the approved fallback is scoped to a SPECIFIC
+            # package artifact, the sealed manifest must actually ship that artifact — a
+            # changed/mismatched affected artifact is a distinct invalidation trigger
+            # requiring re-approval. `fallback_complete` only validates presence of
+            # `affected_artifact`, never its value against the shipped rows, so the
+            # cross-check lives here where the manifest rows are in scope.
+            #
+            # Scope rules (post-review hardening):
+            #   - Only a value naming a concrete package artifact (a .nupkg/.snupkg
+            #     filename) is artifact-scoped. The default sentinel ("release package
+            #     set") and any non-filename label scope the approval to the whole
+            #     inventory — whose drift is covered by the package-set fingerprint — so
+            #     they are NOT cross-checked here. (Without this gate the production
+            #     default "release package set" would block EVERY fallback release.)
+            #   - Compare by normalized BASENAME EQUALITY, not suffix: a truncated or
+            #     coincidental tail (e.g. "Contracts.1.2.3.nupkg" vs the real
+            #     "Hexalith.FrontComposer.Contracts.1.2.3.nupkg") must NOT pass, and a
+            #     leading "./" or "\\" path prefix must NOT falsely block.
+            affected_artifact = str(fallback.get("affected_artifact", "")).strip()
+            if affected_artifact.lower().endswith((".nupkg", ".snupkg")):
+                affected_basename = affected_artifact.replace("\\", "/").rsplit("/", 1)[-1]
+                shipped_basenames = {
+                    str(row.get("artifact_path", "")).replace("\\", "/").rsplit("/", 1)[-1]
+                    for row in (manifest.get("packages") if isinstance(manifest.get("packages"), list) else [])
+                    if isinstance(row, dict)
+                }
+                if affected_basename not in shipped_basenames:
+                    blocking.append(
+                        f"fallback affected_artifact does not match any sealed manifest artifact; affected_artifact={sanitize(affected_artifact)}"
+                    )
     elif status == "attested":
         # CR-12-4-P173 (round-7): when the sealed manifest claims `attestation_status=attested`
         # but carries no `attestation_bundle`, the bundle integrity proof is missing.
@@ -2091,6 +2168,13 @@ def verify_manifest(args: argparse.Namespace) -> int:
     diagnostics.extend(manifest_diagnostics(manifest, root))
     if args.output:
         write_json(args.output, {"status": "valid" if not diagnostics else "invalid", "diagnostics": diagnostics})
+    # CR-12-4-Def23: when no --output sink is given, surface the diagnostics on stdout so
+    # the operator (and offline --no-root verification) can see WHY verification failed.
+    # Printed to stdout, never stderr, to preserve the empty-stderr contract asserted by
+    # the existing manifest-verification tests.
+    elif diagnostics:
+        for diagnostic in diagnostics:
+            print(diagnostic)
     return 0 if not diagnostics else 1
 
 
@@ -2700,6 +2784,11 @@ def classify_fixtures(args: argparse.Namespace) -> int:
         result = {
             "classification": decision["classification"],
             "context_class": decision["context_class"],
+            # CR-12-4-Def22/25/102/103/106/107: surface the typed reason groups so the
+            # fixture corpus can assert WHICH diagnostic fired (not just the headline
+            # classification), e.g. "package rows are required" or the affected_artifact
+            # mismatch. Without this the red-phase tests cannot read grouped_reasons.blocking.
+            "grouped_reasons": decision["grouped_reasons"],
             "name": case.get("name", ""),
             "next_owner_action": decision["next_owner_action"],
             "publish_authorized": decision["publish_authorized"],

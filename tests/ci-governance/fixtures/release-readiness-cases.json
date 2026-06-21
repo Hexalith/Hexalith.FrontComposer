@@ -745,6 +745,175 @@
           ]
         }
       }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "local-candidate",
+      "expected_publish_authorized": false,
+      "name": "dry-run-with-side-effect-attempt",
+      "override": {
+        "checks": {
+          "dry_run_side_effect_attempt": true
+        },
+        "context": {
+          "dry_run": true
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_publish_authorized": false,
+      "name": "packages-empty-array",
+      "override": {
+        "manifest": {
+          "packages": []
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "trusted-main-or-release",
+      "expected_publish_authorized": false,
+      "name": "fallback-approved-at-equals-expires-at",
+      "override": {
+        "attestation": {
+          "fallback": {
+            "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_at": "2026-01-01T00:00:00Z",
+            "approver": "release-owner",
+            "evidence": "attestation-unavailable.md",
+            "expires_at": "2026-01-01T00:00:00Z",
+            "reason": "GitHub artifact attestations unavailable for this repository context",
+            "release_note_impact": "Release notes mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.",
+            "reopen_event": "GitHub artifact attestations become available or release evidence contract changes",
+            "scope": "v1 release candidate"
+          },
+          "status": "approved-unsupported"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "trusted-main-or-release",
+      "expected_publish_authorized": false,
+      "name": "fallback-approved-at-365-day-boundary",
+      "override": {
+        "attestation": {
+          "fallback": {
+            "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_at": "2024-01-01T00:00:00Z",
+            "approver": "release-owner",
+            "evidence": "attestation-unavailable.md",
+            "expires_at": "2099-12-31T23:59:59Z",
+            "reason": "GitHub artifact attestations unavailable for this repository context",
+            "release_note_impact": "Release notes mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.",
+            "reopen_event": "GitHub artifact attestations become available or release evidence contract changes",
+            "scope": "v1 release candidate"
+          },
+          "status": "approved-unsupported"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "rerun-review",
+      "expected_publish_authorized": false,
+      "name": "partial-publish-state-recovered",
+      "override": {
+        "context": {
+          "partial_publish_state": "recovered"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "rerun-review",
+      "expected_publish_authorized": false,
+      "name": "partial-publish-state-full",
+      "override": {
+        "context": {
+          "partial_publish_state": "full"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_publish_authorized": false,
+      "name": "string-true-approval",
+      "override": {
+        "approval": {
+          "approved": "true"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_publish_authorized": false,
+      "name": "concurrent-same-version-string-false",
+      "override": {
+        "checks": {
+          "concurrent_same_version": "false"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_publish_authorized": false,
+      "name": "credentialed-url-leakage",
+      "override": {
+        "checks": {
+          "raw_evidence": "git clone failed: https://abc123:def456@example.com/Hexalith/Hexalith.FrontComposer.git"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_publish_authorized": false,
+      "name": "signing-material-leakage",
+      "override": {
+        "checks": {
+          "raw_evidence": "leaked signing key -----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBg\n-----END PRIVATE KEY-----"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "trusted-main-or-release",
+      "expected_publish_authorized": false,
+      "name": "fallback-affected-artifact-mismatch",
+      "override": {
+        "attestation": {
+          "fallback": {
+            "affected_artifact": "Hexalith.FrontComposer.Cli.9.9.9.nupkg",
+            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_at": "2026-05-19T00:00:00Z",
+            "approver": "release-owner",
+            "evidence": "attestation-unavailable.md",
+            "expires_at": "2026-12-31T23:59:59Z",
+            "reason": "GitHub artifact attestations unavailable for this repository context",
+            "release_note_impact": "Release notes mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.",
+            "reopen_event": "GitHub artifact attestations become available or release evidence contract changes",
+            "scope": "v1 release candidate"
+          },
+          "status": "approved-unsupported"
+        },
+        "manifest": {
+          "attestation_bundle": false,
+          "packages": [
+            {
+              "artifact_path": "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+              "attestation_status": "approved-unsupported"
+            }
+          ],
+          "seal": {
+            "algorithm": "sha256",
+            "hash": "7eab6ec93d720598c9f4c40ba86d5cc7855f4c1d3f233f101672358e35d77ce0",
+            "sealed_at": "2026-05-17T00:00:00+00:00"
+          }
+        }
+      }
     }
   ]
 }

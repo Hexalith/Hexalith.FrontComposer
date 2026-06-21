@@ -5,37 +5,36 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 
 // ----------------------------------------------------------------------------
-// Story 12.4 — Red-phase ATDD scaffolds for genuinely-deferred work.
+// Story 12.4 — Release-evidence regression pins (formerly red-phase ATDD scaffolds).
 //
-// These tests intentionally FAIL today against the current release-evidence
-// implementation. They are the executable specification for the open
-// CR-12-4-DefN items called out in
-// _bmad-output/implementation-artifacts/12-4-trusted-release-evidence-dry-run.md.
+// These tests were authored as quarantined red-phase scaffolds for the open
+// CR-12-4-DefN items. As of this change those Def items are IMPLEMENTED, so the
+// tests are GREEN and the per-method Quarantined trait + frontcomposer-quarantine
+// metadata comments have been removed — they now run as ordinary regression pins:
 //
-// They are quarantined so they do not block the main lane. When the targeted
-// Def item is implemented, the corresponding test should go green and the
-// Quarantined trait + frontcomposer-quarantine metadata comment must be
-// removed in the same change.
+//   Def14  -> release.yml wires `actions/attest-build-provenance@v2` before the
+//             live publish + restores `attestations: write` / `id-token: write`
+//             (minimal structural wiring; the build-step reordering needed for the
+//             attestation to FUNCTION at runtime remains tracked in deferred-work.md).
+//   Def22  -> compound dry-run-with-side-effect-attempt fixture.
+//   Def23  -> verify-manifest --no-root fails closed on empty fingerprints.
+//   Def25  -> packages-empty-array fixture + "package rows are required" diagnostic.
+//   Def102 -> approved_at == expires_at boundary fixture + ordering check.
+//   Def103 -> approved_at 365-day boundary fixture.
+//   Def104 -> partial_publish_state recovered/full fixtures.
+//   Def105 -> string/JSON-boolean strictness for approval + concurrent guard.
+//   Def106 -> credentialed-URL + signing-material dangerous-evidence patterns.
+//   Def107 -> fallback affected_artifact mismatch cross-check.
 //
-// IMPORTANT - class placement: These tests live in a SEPARATE class without
-// the Governance Category class-level trait carried by `CiGovernanceTests`.
-// The Gate 2b CI lane runs the Category=Governance filter and ignores the
-// per-method Quarantined trait (xUnit traits are additive), so a
-// quarantined-but-Governance-class test would run in Gate 2b and break the
-// blocking lane. The existing
-// `CiGovernanceTests.BlockingTestLanes_ExcludeQuarantinedTestsWithoutSkippingGovernance`
-// contract forbids excluding quarantined tests from the governance lane by
-// design - so the right place for quarantined release-evidence red-phase
-// tests is outside the Governance class. These tests therefore live here,
-// with only the Quarantined Category trait on each method, and reach into
-// `CiGovernanceTests` for shared `internal static` helpers.
+// They live in a SEPARATE class (no Governance Category class-level trait) and reach
+// into `CiGovernanceTests` for shared `internal static` helpers. They run in the
+// default blocking test lane (Category!=Quarantined etc.), not the Gate 2b governance
+// filter — which is fine now that none carry the Quarantined trait.
 // ----------------------------------------------------------------------------
 public sealed class Story12_4_RedPhaseDefTests {
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def14 owner=release-owner reason=attest-build-provenance-step-not-wired reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def14_AttestBuildProvenanceStep_IsWiredInReleaseWorkflow() {
-        // RED until Def14 lands: AC9 ("Attestations are generated and verified before
+        // Regression pin (Def14, implemented): AC9 ("Attestations are generated and verified before
         // release readiness is claimed") requires an actual generation step. The story
         // currently reaches AC9 only via AC10's `fallback-approved` path, leaving AC9
         // structurally unreachable for production. This test pins the contract that
@@ -70,11 +69,9 @@ public sealed class Story12_4_RedPhaseDefTests {
             "AC9/Def14: attest-build-provenance must run before semantic-release (live publish) so the attestation bundle is bound into the sealed manifest.");
     }
 
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def14 owner=release-owner reason=attestations-write-permission-narrowed reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def14_AttestationsWritePermission_IsRestored() {
-        // RED until Def14 lands: round-8 CR-12-4-P189 deliberately narrowed the job
+        // Regression pin (Def14, implemented): round-8 CR-12-4-P189 deliberately narrowed the job
         // permission scope to `attestations: read` because no attestation creation
         // step exists. The attested path becomes reachable only when Def14 restores
         // `attestations: write` AND wires the build-provenance step. Pin both halves
@@ -106,11 +103,9 @@ public sealed class Story12_4_RedPhaseDefTests {
             "AC9/Def14: the narrowed `attestations: read` from round-8 CR-12-4-P189 must be replaced, not duplicated, when Def14 wires the attestation step.");
     }
 
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def22 owner=release-owner reason=compound-dry-run-side-effect-fixture-missing reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def22_DryRunWithSideEffectAttemptFixture_IsPresent() {
-        // RED until Def22 lands: the `dry-run-from-dispatch` fixture exercises only
+        // Regression pin (Def22, implemented): the `dry-run-from-dispatch` fixture exercises only
         // the single axis `context.dry_run=true`. Def22 calls for a compound fixture
         // that ALSO sets `checks.dry_run_side_effect_attempt=true` so the AC24
         // invariant — dry-run runs cannot reach side-effect-capable steps — is proven
@@ -187,11 +182,9 @@ public sealed class Story12_4_RedPhaseDefTests {
         }
     }
 
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def23 owner=release-owner reason=manifest-missing-fingerprints-no-root-fixture-missing reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def23_ManifestMissingFingerprints_NoRoot_IsBlocked() {
-        // RED until Def23 lands: AC30 binds release-definition fingerprints into the
+        // Regression pin (Def23, implemented): AC30 binds release-definition fingerprints into the
         // sealed manifest so replayed evidence cannot authorize publishing. The
         // current `--no-root` verify-manifest path only enforces the fingerprint
         // contract when `root is not None`. Def23 calls for a fixture that proves
@@ -277,11 +270,9 @@ public sealed class Story12_4_RedPhaseDefTests {
         }
     }
 
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def25 owner=release-owner reason=packages-empty-fixture-missing reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def25_PackagesEmptyArrayFixture_EmitsPackageRowsRequiredDiagnostic() {
-        // RED until Def25 lands: AC12 ("Manifest rows bind package id, version, …")
+        // Regression pin (Def25, implemented): AC12 ("Manifest rows bind package id, version, …")
         // implies a non-empty packages array. The `manifest_diagnostics` helper
         // already queues a "package rows are required" diagnostic when packages
         // is null, but the analogous `packages: []` case is structurally untested.
@@ -358,11 +349,9 @@ public sealed class Story12_4_RedPhaseDefTests {
         }
     }
 
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def102 owner=release-owner reason=fallback-approved-at-equals-expires-at-boundary-missing reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def102_FallbackApprovedAtEqualsExpiresAtFixture_IsPresentAndBlocked() {
-        // RED until Def102 lands: P243 requires fallback approvals to be strictly
+        // Regression pin (Def102, implemented): P243 requires fallback approvals to be strictly
         // before their expiry. A future refactor that permits approved_at == expires_at
         // would silently re-open the operator-footgun window unless the exact boundary
         // is pinned in the release-readiness fixture corpus.
@@ -398,11 +387,9 @@ public sealed class Story12_4_RedPhaseDefTests {
         }
     }
 
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def103 owner=release-owner reason=fallback-approved-at-365-day-boundary-missing reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def103_FallbackApprovedAtExactly365DaysOldFixture_IsPresentAndBlocked() {
-        // RED until Def103 lands: P259 changed fallback approval age from `>` to
+        // Regression pin (Def103, implemented): P259 changed fallback approval age from `>` to
         // `>=` 365 days. The exact boundary needs a fixture so the regression cannot
         // slip back through as an apparently harmless off-by-one.
         string root = CiGovernanceTests.RepositoryRoot();
@@ -433,11 +420,9 @@ public sealed class Story12_4_RedPhaseDefTests {
         }
     }
 
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def104 owner=release-owner reason=partial-publish-recovered-and-full-fixtures-missing reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def104_PartialPublishRecoveredAndFullFixtures_ArePresentAndRequireRerunReview() {
-        // RED until Def104 lands: the classifier treats every non-none partial publish
+        // Regression pin (Def104, implemented): the classifier treats every non-none partial publish
         // state as rerun-review, but the fixture corpus only pins `partial`. Add
         // `recovered` and `full` so future state-machine edits cannot accidentally
         // route those publish-side-effect states through the trusted happy path.
@@ -481,11 +466,9 @@ public sealed class Story12_4_RedPhaseDefTests {
         }
     }
 
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def105 owner=release-owner reason=string-boolean-symmetry-fixtures-missing reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def105_StringBooleanSymmetryFixtures_ArePresentAndBlocked() {
-        // RED until Def105 lands: existing fixtures catch string false for approval
+        // Regression pin (Def105, implemented): existing fixtures catch string false for approval
         // and string true for concurrent publish. The inverse stringly-typed cases
         // need fixtures too, otherwise truthy-string coercion regressions can survive.
         string root = CiGovernanceTests.RepositoryRoot();
@@ -523,11 +506,9 @@ public sealed class Story12_4_RedPhaseDefTests {
         }
     }
 
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def106 owner=release-owner reason=credentialed-url-and-signing-material-evidence-fixtures-missing reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def106_DangerousEvidenceFixtures_CoverCredentialedUrlsAndSigningMaterial() {
-        // RED until Def106 lands: AC29 calls out credentialed URLs and signing
+        // Regression pin (Def106, implemented): AC29 calls out credentialed URLs and signing
         // material markers, but the helper-side dangerous evidence patterns do not
         // currently pin those categories. These fixtures should fail closed with
         // unsafe raw evidence diagnostics.
@@ -539,8 +520,12 @@ public sealed class Story12_4_RedPhaseDefTests {
             fixtureDoc.RootElement,
             "credentialed-url-leakage",
             "Def106: fixture `credentialed-url-leakage` must exist as a cases[].name entry in release-readiness-cases.json.");
+        // The credentialed shape deliberately avoids `user:`/`tenant:` tokens so this case
+        // pins the NEW credentialed-URL pattern specifically — a `user:pass@` form would
+        // also trip the pre-existing tenant/user-identifier pattern, masking a regression
+        // that deleted the credentialed-URL regex.
         (credentialedUrl.GetProperty("override").GetProperty("checks").GetProperty("raw_evidence").GetString() ?? string.Empty)
-            .Contains("https://user:pass@", StringComparison.Ordinal).ShouldBeTrue(
+            .Contains("https://abc123:def456@", StringComparison.Ordinal).ShouldBeTrue(
             "Def106: credentialed-url-leakage must include a credentialed URL shape.");
         credentialedUrl.GetProperty("expected_classification").GetString().ShouldBe("blocked");
         credentialedUrl.GetProperty("expected_publish_authorized").GetBoolean().ShouldBeFalse();
@@ -573,11 +558,9 @@ public sealed class Story12_4_RedPhaseDefTests {
         }
     }
 
-    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def107 owner=release-owner reason=fallback-affected-artifact-mismatch-fixture-missing reintroduction=5-nightly-passes
     [Fact]
-    [Trait("Category", "Quarantined")]
     public void Story12_4_Def107_FallbackAffectedArtifactMismatchFixture_IsPresentAndBlocked() {
-        // RED until Def107 lands: AC34 says changed affected artifacts invalidate an
+        // Regression pin (Def107, implemented): AC34 says changed affected artifacts invalidate an
         // approved fallback, but fallback_complete currently validates only presence.
         // This fixture pins the mismatch so a fallback approved for artifact X cannot
         // authorize a manifest shipping artifact Y.

@@ -174,10 +174,13 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("contents: read");
         workflow.ShouldContain("actions: read");
         workflow.ShouldContain("contents: write");
-        workflow.ShouldContain("attestations: read");
+        // CR-12-4-Def14: the release job now restores `attestations: write` + `id-token: write`
+        // for the build-provenance attestation step (round-8 narrowed it to `attestations: read`
+        // while attestation creation was deferred). `packages: write` is still never granted.
+        workflow.ShouldContain("attestations: write");
+        workflow.ShouldContain("id-token: write");
+        workflow.ShouldNotContain("attestations: read");
         workflow.ShouldNotContain("packages: write");
-        workflow.ShouldNotContain("id-token: write");
-        workflow.ShouldNotContain("attestations: write");
         workflow.ShouldContain("submodules: true");
         workflow.ShouldNotContain("submodules: recursive");
 
