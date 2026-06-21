@@ -1,0 +1,21 @@
+/* FC-DTL aggregate detail back-link affordances (cc-2026-06-21). The wrapper renders the optional
+   back link itself, so it must also own that link's color, intrinsic width, and keyboard/high-contrast
+   focus outline: the element lives in this component's CSS-isolation scope, so a consuming domain
+   cannot reach it from its own scoped stylesheet. Uses CSS system colors (LinkText/Highlight) so the
+   affordance survives theming and forced-colors high-contrast mode. */
+
+.fc-aggregate-detail__back {
+    color: LinkText;
+    width: fit-content;
+}
+
+.fc-aggregate-detail__back:focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 3px;
+}
+
+@media (forced-colors: active) {
+    .fc-aggregate-detail__back:focus-visible {
+        outline-color: Highlight;
+    }
+}
