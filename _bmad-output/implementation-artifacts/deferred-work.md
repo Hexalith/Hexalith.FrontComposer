@@ -1,5 +1,32 @@
 # Deferred Work
 
+## Legacy Epic 11 / 12 Numbering Reconciliation (2026-06-21)
+
+> **Read this first — the `Epic 11` / `Epic 12` / `Story 11.x` / `Story 12.x` numbering used throughout
+> this ledger is a *superseded decomposition*.** It predates the current plan structure and **no longer
+> maps to the active epics.** The current `_bmad-output/planning-artifacts/epics.md` and
+> `_bmad-output/implementation-artifacts/sprint-status.yaml` track **only Epics 1–7**, all marked `done`
+> (epics + retrospectives) as of the 2026-06-21 cleanup. There are **no `epic-11` / `epic-12` markers
+> in the current `sprint-status.yaml`** — any reference below to `sprint-status.yaml:147`
+> (`epic-11: in-progress`) or `:155` (`epic-11-retrospective: done`), including the `W3` notes, is a
+> **stale line reference to a prior file revision** and does **not** describe the current sprint status.
+> The `Owner: Story 11.x` / `Story 12.x` row markers are retained as **historical audit labels only**
+> (accountability for a row's next decision), **not** live epics or stories.
+
+> **`DW-0666` — the dangling "Epic 11 in-progress" gate, clarified.** `DW-0666` is **not** an open
+> implementation epic. It is a **standalone Product + Architecture release-gate decision**: the docs-slug
+> UNC (`//server/share`) / drive-relative (`C:foo`) normalization policy (evidence:
+> `tests/.../DiagnosticRegistryTests.cs:929-945`,
+> `11-2-diagnostic-registry-and-documentation-governance-follow-ups.md`,
+> `sprint-change-proposal-2026-05-13.md`). Its legacy wording *"Epic 11 remains in-progress until that
+> policy is selected"* is **decoupled** from — and does **not** contradict — the all-done 7-epic status.
+> Per the Contract-confirmation Definition-of-Done (2026-06-21, `epics.md`), it is recorded here as an
+> **open, tracked, dated, owned blocking follow-up** (not silently closed):
+> - **Decision:** docs-slug UNC + drive-relative policy (reject fail-closed / accept-with-rationale / split per-platform).
+> - **Owners:** Product Owner + Architect. **Recommended default:** reject both forms fail-closed until selected.
+> - **Scope:** release-gate only (diagnostic docs-slug validation + canonical help-link safety). It does **not** block the Epics 1–7 corpus, which is independently `done`.
+> - **Closure trigger:** Product + Architecture record the selected policy with matching tests/evidence.
+
 ## Backlog Routing Status (2026-05-10)
 
 The unresolved deferred-work ledger is now routed to **Epic 11: Deferred Hardening & Release Readiness** in `_bmad-output/planning-artifacts/epics/epic-11-deferred-hardening-release-readiness.md`.

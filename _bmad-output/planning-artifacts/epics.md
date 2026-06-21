@@ -130,6 +130,22 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - UX-DR7 (FC-LYT): **Page layout contract** — full-width vs constrained `<PageLayout>` (ties to AR1). ✅ Confirmed 2026-06-21 (FullWidth default + `75rem` max-measure).
 - UX-DR8: **Account control & server security** (architecture §4) — a framework-owned `FcAccountMenu` (`FluentAvatar` → Sign in/Sign out, wired to `/authentication/{challenge,sign-out}`) rendered **always** so it survives adopter `HeaderEnd` customization; backed by framework-owned server-side security wiring (`AddHexalithFrontComposerServerSecurity`). Domain modules supply only domain-specific security *configuration*.
 
+> 🔗 **UX-DR story-traceability note (added 2026-06-21).** Two UX-DR refinements shipped through
+> sprint-change-proposals rather than numbered Epic stories. They are **accepted as
+> change-proposal-of-record** — architected in `architecture.md` §4 and enforced by
+> `FluentConformanceTests` + bUnit/e2e coverage — so **no synthetic backfill story is created**; this
+> note is their requirement-level traceability record:
+> - **UX-DR3** — the *always-visible Desktop hamburger* (superseding the "D9 / no Desktop hamburger"
+>   decision) and the *single-active-nav-item* rule shipped via
+>   `sprint-change-proposal-2026-06-09-shell-account-hamburger` and
+>   `sprint-change-proposal-2026-06-19-nav-single-active-item`. The **base** responsive
+>   rail/breakpoint/hamburger-collapse behaviour remains traced to **Story 2.2** (AC `*(UX-DR3)*`).
+> - **UX-DR8** — `FcAccountMenu` (always-rendered account control) + framework-owned server security
+>   (`AddHexalithFrontComposerServerSecurity`) shipped via
+>   `sprint-change-proposal-2026-06-09-shell-account-hamburger` and
+>   `sprint-change-proposal-2026-06-14-shell-security-helper`. It has **no dedicated numbered story**;
+>   this note is its sole story-level traceability link.
+
 ### FR Coverage Map
 
 - FR1 (projection generation): **Epic 2** — read-only projection views
@@ -283,7 +299,7 @@ So that every page renders at the correct measure without per-page layout hacks.
 
 **Given** the contract document,
 **When** Product/UX reviews it,
-**Then** it is marked confirmed (or the open question is escalated with an owner) and linked from the component docs (FC-DOC).
+**Then** it is marked confirmed — or, per the Contract-confirmation Definition-of-Done (2026-06-21), the open question is recorded as a tracked, dated, owned blocking follow-up ("escalated with an owner" alone is **not** Done) — and linked from the component docs (FC-DOC).
 
 **Given** a bUnit render of `FrontComposerShell` in each layout mode,
 **Then** the rendered DOM exposes the expected layout container/data attribute for each mode.
@@ -326,7 +342,7 @@ So that shell text is localizable without colliding with host-owned strings.
 
 **Given** the ownership map,
 **When** the Tenants author reviews it,
-**Then** it is confirmed or the boundary question is escalated with an owner.
+**Then** it is confirmed — or, per the Contract-confirmation Definition-of-Done (2026-06-21), the boundary question is recorded as a tracked, dated, owned blocking follow-up ("escalated with an owner" alone is **not** Done).
 
 ### Story 1.5: Produce the FC-DOC component documentation contract
 
@@ -511,7 +527,7 @@ So that I can build on the DataGrid without breaking-change risk.
 
 **Given** the FC-TBL API surface exercised by the Story 1.0 spike,
 **When** documented and reviewed,
-**Then** the column/filter/expand API is marked confirmed-stable (or open items escalated with owners) and reflected in `PublicAPI.Shipped.txt` if public. *(NFR10)*
+**Then** the column/filter/expand API is marked confirmed-stable — or, per the Contract-confirmation Definition-of-Done (2026-06-21), any open items are recorded as tracked, dated, owned blocking follow-ups ("escalated with owners" alone is **not** Done) — and reflected in `PublicAPI.Shipped.txt` if public. *(NFR10)*
 
 ## Epic 3: Command Authoring & Lifecycle
 
@@ -567,7 +583,7 @@ So that all command epics share one agreed pending-identity / correlation model.
 
 **Given** the FC-CMD contract draft,
 **When** reviewed,
-**Then** the correlation-key shape (the 26-char checkout shape, ASCII ULID), uniqueness scope (per-tenant / user / circuit), lifecycle ownership, `alreadyApplied` semantics, and reconciliation responsibility are each decided or escalated with an owner. *(AR6)*
+**Then** the correlation-key shape (the 26-char checkout shape, ASCII ULID), uniqueness scope (per-tenant / user / circuit), lifecycle ownership, `alreadyApplied` semantics, and reconciliation responsibility are each decided — or, per the Contract-confirmation Definition-of-Done (2026-06-21), recorded as a tracked, dated, owned blocking follow-up ("escalated with an owner" alone is **not** Done). *(AR6)*
 
 **Given** the confirmed contract,
 **When** a command is dispatched,
@@ -607,7 +623,7 @@ So that confirmed/rejected outcomes reflect backend truth.
 
 **Given** the endpoint contract,
 **When** EventStore maintainers review,
-**Then** it is marked confirm-stable or the gap is escalated with an owner.
+**Then** it is marked confirm-stable — or, per the Contract-confirmation Definition-of-Done (2026-06-21), the gap is recorded as a tracked, dated, owned blocking follow-up ("escalated with an owner" alone is **not** Done).
 
 ### Story 3.6: Apply confirming→degraded and polling budgets
 
