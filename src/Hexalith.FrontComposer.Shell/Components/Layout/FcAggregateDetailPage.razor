@@ -1,0 +1,52 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Contracts.Rendering
+@using Microsoft.FluentUI.AspNetCore.Components
+@typeparam TItem
+
+@* FC-DTL aggregate detail page (cc-2026-06-21). Reusable detail chrome: it composes FcPageLayout
+   (measure) + a vertical FluentStack root + an optional back link, and routes the FC-DTL surface
+   state so the ready body renders only for Ready/Stale/Degraded (with a caller-supplied banner above
+   the body for Stale/Degraded) and every non-ready state renders its own caller-supplied content. The
+   consuming domain supplies all headers (FcPageHeader with Actions/Metadata), copy, sections, and
+   command flows through the slots; the wrapper owns no domain copy or query behaviour. *@
+
+<FcPageLayout Mode="LayoutMode">
+    <FluentStack Orientation="Orientation.Vertical"
+                 VerticalGap="@RootGap"
+                 Class="@RootClass"
+                 data-testid="@RootTestId">
+        @if (ShowBackLink)
+        {
+            <a class="@BackLinkCssClass"
+               href="@BackHref"
+               data-testid="@BackLinkTestId">
+                @BackLinkLabel
+            </a>
+        }
+
+        @if (State is FcAggregateDetailState.Ready or FcAggregateDetailState.Stale or FcAggregateDetailState.Degraded)
+        {
+            if (State is FcAggregateDetailState.Stale)
+            {
+                @StaleBanner
+            }
+            else if (State is FcAggregateDetailState.Degraded)
+            {
+                @DegradedBanner
+            }
+
+            if (ReadyTemplate is not null && Item is not null)
+            {
+                @ReadyTemplate(Item)
+            }
+            else
+            {
+                @ReadyContent
+            }
+        }
+        else
+        {
+            @ResolveStateContent()
+        }
+    </FluentStack>
+</FcPageLayout>

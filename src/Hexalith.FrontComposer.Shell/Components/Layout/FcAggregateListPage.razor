@@ -1,0 +1,35 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Microsoft.FluentUI.AspNetCore.Components
+@typeparam TItem
+
+@* FC-LST aggregate list page (cc-2026-06-21). Reusable operational browse chrome: it composes
+   FcPageLayout (measure) + a vertical FluentStack root + FcPageHeader (with the header Actions slot
+   as the toolbar and the Metadata slot for return context). The consuming domain supplies the
+   filters, command flows, surface states, data grid body, and pager through slots and keeps every
+   query/freshness/search/safety semantic in its own page. The wrapper owns no domain copy. *@
+
+<FcPageLayout Mode="LayoutMode">
+    <FluentStack Orientation="Orientation.Vertical"
+                 VerticalGap="@RootGap"
+                 Class="@RootClass"
+                 data-testid="@RootTestId">
+        <FcPageHeader @ref="_pageHeader"
+                      PageTitle="@PageTitle"
+                      Heading="@Heading"
+                      Eyebrow="@Eyebrow"
+                      Description="@Description"
+                      HeadingId="@HeadingId"
+                      HeadingTabIndex="@HeadingTabIndex"
+                      TestId="@HeaderTestId"
+                      Class="@HeaderClass"
+                      Actions="@Toolbar"
+                      Metadata="@HeaderMetadata" />
+
+        @Filters
+        @Commands
+        @States
+        @Body
+        @Pager
+        @ChildContent
+    </FluentStack>
+</FcPageLayout>
