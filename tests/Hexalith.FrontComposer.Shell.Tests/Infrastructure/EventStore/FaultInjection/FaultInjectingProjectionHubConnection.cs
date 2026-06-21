@@ -37,6 +37,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
     private readonly List<int> _nudgeQueueOrder = [];
     private readonly Dictionary<string, Queue<NudgeSelector>> _nudgeSelectors = [];
     private readonly List<HandlerRegistration<Func<string, string, Task>>> _projectionHandlers = [];
+    private readonly List<HandlerRegistration<Func<ProjectionChangedDetail, Task>>> _projectionDetailHandlers = [];
     private readonly List<HandlerRegistration<Func<ProjectionHubConnectionStateChanged, Task>>> _stateHandlers = [];
     private readonly List<string> _activeQualifiers = [];
     private readonly List<string> _handlerFailureCategories = [];
@@ -74,6 +75,11 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
         return RegisterHandler(_projectionHandlers, handler);
     }
 
+    public IDisposable OnProjectionChangedDetail(Func<ProjectionChangedDetail, Task> handler) {
+        ArgumentNullException.ThrowIfNull(handler);
+        return RegisterHandler(_projectionDetailHandlers, handler);
+    }
+
     public IDisposable OnConnectionStateChanged(Func<ProjectionHubConnectionStateChanged, Task> handler) {
         ArgumentNullException.ThrowIfNull(handler);
         return RegisterHandler(_stateHandlers, handler);
@@ -109,6 +115,26 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
         }
     }
 
+    public async Task JoinGroupAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken) {
+        if (string.IsNullOrWhiteSpace(scope)) {
+            await JoinGroupAsync(projectionType, tenantId, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        ThrowIfDisposed();
+        var checkpoint = HarnessCheckpoint.Join(projectionType, tenantId);
+        await CrossCheckpointAsync(checkpoint, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate) {
+            ThrowIfDisposedLocked();
+            string qualifier = $"{projectionType}:{tenantId}:{scope}";
+            if (!_activeQualifiers.Contains(qualifier, StringComparer.Ordinal)) {
+                _activeQualifiers.Add(qualifier);
+            }
+        }
+    }
+
     public async Task LeaveGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken) {
         cancellationToken.ThrowIfCancellationRequested();
         ThrowIfDisposed();
@@ -118,6 +144,23 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
         lock (_gate) {
             ThrowIfDisposedLocked();
             _ = _activeQualifiers.Remove(checkpoint.Qualifier!);
+        }
+    }
+
+    public async Task LeaveGroupAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken) {
+        if (string.IsNullOrWhiteSpace(scope)) {
+            await LeaveGroupAsync(projectionType, tenantId, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+        ThrowIfDisposed();
+        var checkpoint = HarnessCheckpoint.Leave(projectionType, tenantId);
+        await CrossCheckpointAsync(checkpoint, cancellationToken).ConfigureAwait(false);
+        cancellationToken.ThrowIfCancellationRequested();
+        lock (_gate) {
+            ThrowIfDisposedLocked();
+            _ = _activeQualifiers.Remove($"{projectionType}:{tenantId}:{scope}");
         }
     }
 
@@ -141,6 +184,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
             _disposed = true;
             IsConnected = false;
             _projectionHandlers.Clear();
+            _projectionDetailHandlers.Clear();
             _stateHandlers.Clear();
             _activeQualifiers.Clear();
         }

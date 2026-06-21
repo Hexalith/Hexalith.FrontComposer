@@ -18,7 +18,7 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 /// <summary>
 /// Default SignalR-backed projection subscription service.
 /// </summary>
-internal sealed class ProjectionSubscriptionService : IProjectionSubscription, IAsyncDisposable {
+internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscription, IAsyncDisposable {
     private readonly IProjectionHubConnection _connection;
     private readonly IProjectionConnectionState _connectionState;
     private readonly IProjectionFallbackRefreshScheduler _refreshScheduler;
@@ -29,6 +29,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly ConcurrentDictionary<GroupKey, GroupState> _activeGroups = new();
     private readonly IDisposable _projectionChangedRegistration;
+    private readonly IDisposable _projectionChangedDetailRegistration;
     private readonly IDisposable _connectionStateRegistration;
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ProjectionFallbackPollingDriver? _fallbackDriver;
@@ -79,6 +80,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         Uri hubUri = BuildHubUri(current.BaseAddress ?? throw new InvalidOperationException("EventStore BaseAddress is required."), current.ProjectionChangesHubPath);
         _connection = connectionFactory.Create(hubUri, _accessTokenProvider);
         _projectionChangedRegistration = _connection.OnProjectionChanged(OnProjectionChangedAsync);
+        _projectionChangedDetailRegistration = _connection.OnProjectionChangedDetail(OnProjectionChangedDetailAsync);
         _connectionStateRegistration = _connection.OnConnectionStateChanged(OnConnectionStateChangedAsync);
         // DN1 — wire the bounded fallback polling driver. The driver subscribes to connection
         // state and only runs while disconnected; injection is optional so test harnesses without
@@ -90,9 +92,12 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     private readonly IUserContextAccessor? _userContextAccessor;
     private readonly IOptions<FcShellOptions>? _shellOptions;
 
-    public async Task SubscribeAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) {
+    public Task SubscribeAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default)
+        => SubscribeAsync(projectionType, tenantId, scope: null, cancellationToken);
+
+    public async Task SubscribeAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken = default) {
         TenantContextSnapshot? context = ResolveTenantContext(tenantId, "projection-subscribe");
-        GroupKey key = ValidateGroup(projectionType, context?.TenantId ?? tenantId);
+        GroupKey key = ValidateGroup(projectionType, context?.TenantId ?? tenantId, scope);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
             ThrowIfDisposed();
@@ -113,7 +118,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                 }
             }
 
-            await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, cancellationToken).ConfigureAwait(false);
+            await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, key.Scope, cancellationToken).ConfigureAwait(false);
             _ = _activeGroups.TryAdd(key, new GroupState(GroupHealth.Active, context));
         }
         finally {
@@ -121,13 +126,16 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         }
     }
 
-    public async Task UnsubscribeAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) {
+    public Task UnsubscribeAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default)
+        => UnsubscribeAsync(projectionType, tenantId, scope: null, cancellationToken);
+
+    public async Task UnsubscribeAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken = default) {
         // P2 — unsubscribe must be non-throwing on missing/stale tenant context. Sign-out
         // makes TenantId null on the accessor, and the previous code threw TenantContextException,
         // leaving the group permanently in _activeGroups (no LeaveGroupAsync, no removal). A
         // subsequent re-sign-in short-circuited at `_activeGroups.ContainsKey(key) → return`,
         // silently keeping a stale subscription.
-        GroupKey key = ValidateGroup(projectionType, tenantId);
+        GroupKey key = ValidateGroup(projectionType, tenantId, scope);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
             if (!_activeGroups.ContainsKey(key) || _disposed) {
@@ -135,7 +143,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
             }
 
             try {
-                await _connection.LeaveGroupAsync(key.ProjectionType, key.TenantId, cancellationToken).ConfigureAwait(false);
+                await _connection.LeaveGroupAsync(key.ProjectionType, key.TenantId, key.Scope, cancellationToken).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
@@ -172,6 +180,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
             _disposed = true;
             _activeGroups.Clear();
             _projectionChangedRegistration.Dispose();
+            _projectionChangedDetailRegistration.Dispose();
             _connectionStateRegistration.Dispose();
             if (_fallbackDriver is not null) {
                 await _fallbackDriver.DisposeAsync().ConfigureAwait(false);
@@ -273,6 +282,45 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                     "Projection change subscriber threw while handling nudge. FailureCategory={FailureCategory}",
                     ex.GetType().Name);
             }
+        }
+    }
+
+    private async Task OnProjectionChangedDetailAsync(ProjectionChangedDetail detail) {
+        if (_disposed || detail is null) {
+            return;
+        }
+
+        // Validate the routing shape defensively; ignore malformed messages. The SignalR server
+        // only delivers detail messages to groups this client actually joined, so the payload is
+        // surfaced opaquely — FrontComposer adds no AI/domain interpretation (it does NOT trigger
+        // the scheduler refresh or pending-command poll; the detail subscriber owns that decision).
+        try {
+            _ = ValidateGroup(detail.ProjectionType, detail.TenantId, detail.GroupScope);
+        }
+        catch (ArgumentException) {
+            return;
+        }
+
+        if (_notifier is not IProjectionChangeDetailNotifier detailNotifier) {
+            return;
+        }
+
+        using Activity? activity = FrontComposerTelemetry.StartProjectionNudgeReceived(
+            detail.ProjectionType,
+            FrontComposerTelemetry.TenantMarker(detail.TenantId));
+        try {
+            await detailNotifier.NotifyDetailAsync(detail, _disposalCts.Token).ConfigureAwait(false);
+            FrontComposerTelemetry.SetOutcome(activity, "handled");
+        }
+        catch (OperationCanceledException) when (_disposalCts.IsCancellationRequested) {
+            FrontComposerTelemetry.SetOutcome(activity, "canceled");
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) {
+            // A buggy detail subscriber must not kill the SignalR callback dispatcher.
+            FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+            _logger.LogWarning(
+                "Projection change detail subscriber threw while handling nudge. FailureCategory={FailureCategory}",
+                ex.GetType().Name);
         }
     }
 
@@ -393,7 +441,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                         continue;
                     }
 
-                    await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, cancellationToken).ConfigureAwait(false);
+                    await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, key.Scope, cancellationToken).ConfigureAwait(false);
                     // P3/P4 — TryUpdate so a concurrent unsubscribe/reconnect does not
                     // resurrect a removed key. If the entry is gone, the rejoin is moot.
                     _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Active }, state);
@@ -447,10 +495,16 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         _ = await _accessTokenProvider(cancellationToken).ConfigureAwait(false);
     }
 
-    private static GroupKey ValidateGroup(string projectionType, string tenantId)
+    private static GroupKey ValidateGroup(string projectionType, string tenantId, string? scope = null)
         => new(
             EventStoreValidation.RequireNonColonSegment(projectionType, nameof(projectionType)),
-            EventStoreValidation.RequireNonColonSegment(tenantId, nameof(tenantId)));
+            EventStoreValidation.RequireNonColonSegment(tenantId, nameof(tenantId)),
+            NormalizeScope(scope));
+
+    private static string? NormalizeScope(string? scope)
+        => string.IsNullOrWhiteSpace(scope)
+            ? null
+            : EventStoreValidation.RequireNonColonSegment(scope, nameof(scope));
 
     private TenantContextSnapshot? ResolveTenantContext(string? requestedTenant, string operationKind) {
         if (_userContextAccessor is null) {
@@ -507,7 +561,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     private static Uri BuildHubUri(Uri baseAddress, string path)
         => new(baseAddress, path);
 
-    private readonly record struct GroupKey(string ProjectionType, string TenantId);
+    private readonly record struct GroupKey(string ProjectionType, string TenantId, string? Scope);
 
     private readonly record struct GroupState(GroupHealth Health, TenantContextSnapshot? TenantContext);
 

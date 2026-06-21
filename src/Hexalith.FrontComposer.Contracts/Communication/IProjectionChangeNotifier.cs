@@ -39,3 +39,26 @@ public interface IProjectionChangeNotifierWithTenant : IProjectionChangeNotifier
     /// <param name="tenantId">The tenant context that observed the change.</param>
     void NotifyChanged(string projectionType, string tenantId);
 }
+
+/// <summary>
+/// Additive notifier surface that carries the metadata-rich, optionally scoped
+/// <see cref="ProjectionChangedDetail"/> received from EventStore's detail broadcast. Kept
+/// separate from <see cref="IProjectionChangeNotifier"/> so existing signal-only consumers are
+/// unaffected. The payload is surfaced opaquely — FrontComposer adds no domain interpretation.
+/// </summary>
+public interface IProjectionChangeDetailNotifier {
+    /// <summary>
+    /// Raised when a metadata-rich, optionally scoped projection-changed message is received.
+    /// Handlers are awaited so a subscriber can run an ordering/staleness gate before re-querying.
+    /// </summary>
+    event Func<ProjectionChangedDetail, Task>? ProjectionChangedDetail;
+
+    /// <summary>
+    /// Raises <see cref="ProjectionChangedDetail"/> for the supplied detail, awaiting every
+    /// subscriber.
+    /// </summary>
+    /// <param name="detail">The opaque, metadata-only, optionally scoped change detail.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation.</param>
+    /// <returns>A task that completes when all subscribers have been awaited.</returns>
+    Task NotifyDetailAsync(ProjectionChangedDetail detail, CancellationToken cancellationToken = default);
+}

@@ -82,6 +82,7 @@ public static class EventStoreServiceExtensions {
         services.TryAddScoped<ProjectionChangeNotifier>();
         services.TryAddScoped<IProjectionChangeNotifier>(sp => sp.GetRequiredService<ProjectionChangeNotifier>());
         services.TryAddScoped<IProjectionChangeNotifierWithTenant>(sp => sp.GetRequiredService<ProjectionChangeNotifier>());
+        services.TryAddScoped<IProjectionChangeDetailNotifier>(sp => sp.GetRequiredService<ProjectionChangeNotifier>());
 
         // Story 5-2 T4 — replace the NullActionQueueCountReader default with the EventStore-
         // backed reader so badge counts share the same response classifier + ETag cache seam
@@ -103,6 +104,7 @@ public static class EventStoreServiceExtensions {
             sp.GetRequiredService<ICommandServiceWithLifecycle>());
         services.TryAddScoped<IQueryService>(sp => sp.GetRequiredService<EventStoreQueryClient>());
         services.TryAddScoped<IProjectionSubscription>(sp => sp.GetRequiredService<ProjectionSubscriptionService>());
+        services.TryAddScoped<IProjectionScopedSubscription>(sp => sp.GetRequiredService<ProjectionSubscriptionService>());
 
         return services;
     }

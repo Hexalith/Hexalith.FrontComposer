@@ -31,6 +31,98 @@ public sealed class ProjectionSubscriptionServiceTests {
     }
 
     [Fact]
+    public async Task SubscribeScoped_JoinsScopedGroup() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier);
+
+        await sut.SubscribeAsync("orders", "acme", "conv-1", TestContext.Current.CancellationToken);
+
+        connection.JoinedGroups.ShouldBe(["orders:acme:conv-1"]);
+    }
+
+    [Fact]
+    public async Task SubscribeScoped_NullScope_JoinsTenantWideGroup() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier);
+
+        await sut.SubscribeAsync("orders", "acme", null, TestContext.Current.CancellationToken);
+
+        connection.JoinedGroups.ShouldBe(["orders:acme"]);
+    }
+
+    [Fact]
+    public async Task SubscribeScoped_AndTenantWide_AreIndependentGroups() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier);
+
+        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        await sut.SubscribeAsync("orders", "acme", "conv-1", TestContext.Current.CancellationToken);
+
+        connection.JoinedGroups.ShouldBe(["orders:acme", "orders:acme:conv-1"]);
+    }
+
+    [Fact]
+    public async Task UnsubscribeScoped_LeavesScopedGroup() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier);
+
+        await sut.SubscribeAsync("orders", "acme", "conv-1", TestContext.Current.CancellationToken);
+        await sut.UnsubscribeAsync("orders", "acme", "conv-1", TestContext.Current.CancellationToken);
+
+        connection.LeftGroups.ShouldBe(["orders:acme:conv-1"]);
+    }
+
+    [Fact]
+    public async Task Reconnect_RejoinsScopedGroupCarryingScope() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier);
+
+        await sut.SubscribeAsync("orders", "acme", "conv-1", TestContext.Current.CancellationToken);
+        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
+
+        // Joined once on subscribe and once on reconnect rejoin — the scope survives reconnect.
+        connection.JoinedGroups.ShouldBe(["orders:acme:conv-1", "orders:acme:conv-1"]);
+    }
+
+    [Fact]
+    public async Task OnProjectionChangedDetail_RaisesDetailNotifierOpaquely() {
+        FakeProjectionHubConnection connection = new();
+        DetailCapturingNotifier notifier = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier);
+
+        await sut.SubscribeAsync("orders", "acme", "conv-1", TestContext.Current.CancellationToken);
+        ProjectionChangedDetail detail = new(
+            "orders",
+            "acme",
+            "conv-1",
+            new Dictionary<string, string> { ["sequence"] = "7", ["state"] = "running" });
+
+        await connection.RaiseDetailAsync(detail);
+
+        ProjectionChangedDetail captured = notifier.Details.ShouldHaveSingleItem();
+        captured.GroupScope.ShouldBe("conv-1");
+        captured.Metadata["sequence"].ShouldBe("7");
+    }
+
+    [Fact]
+    public async Task OnProjectionChangedDetail_MalformedRouting_IsIgnored() {
+        FakeProjectionHubConnection connection = new();
+        DetailCapturingNotifier notifier = new();
+        _ = Create(connection, notifier);
+
+        // A colon in projectionType fails routing validation; the detail is dropped, not surfaced.
+        await connection.RaiseDetailAsync(new ProjectionChangedDetail(
+            "orders:bad", "acme", null, new Dictionary<string, string>()));
+
+        notifier.Details.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Subscribe_TenantMismatch_BlocksBeforeStartJoinAndActiveGroupRegistration() {
         FakeProjectionHubConnection connection = new();
         TestNotifier notifier = new();
@@ -456,6 +548,7 @@ public sealed class ProjectionSubscriptionServiceTests {
 
     private sealed class FakeProjectionHubConnection : IProjectionHubConnection {
         private Func<string, string, Task>? _handler;
+        private Func<ProjectionChangedDetail, Task>? _detailHandler;
         private Func<ProjectionHubConnectionStateChanged, Task>? _stateHandler;
 
         public bool IsConnected { get; private set; }
@@ -473,6 +566,11 @@ public sealed class ProjectionSubscriptionServiceTests {
             return new Registration(() => _handler = null);
         }
 
+        public IDisposable OnProjectionChangedDetail(Func<ProjectionChangedDetail, Task> handler) {
+            _detailHandler = handler;
+            return new Registration(() => _detailHandler = null);
+        }
+
         public IDisposable OnConnectionStateChanged(Func<ProjectionHubConnectionStateChanged, Task> handler) {
             _stateHandler = handler;
             return new Registration(() => _stateHandler = null);
@@ -488,22 +586,32 @@ public sealed class ProjectionSubscriptionServiceTests {
             return Task.CompletedTask;
         }
 
-        public Task JoinGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken) {
+        public Task JoinGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken)
+            => JoinGroupAsync(projectionType, tenantId, scope: null, cancellationToken);
+
+        public Task JoinGroupAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken) {
             LastJoinToken = cancellationToken;
             if (JoinException is not null) {
                 throw JoinException;
             }
 
-            JoinedGroups.Add($"{projectionType}:{tenantId}");
+            JoinedGroups.Add(string.IsNullOrWhiteSpace(scope)
+                ? $"{projectionType}:{tenantId}"
+                : $"{projectionType}:{tenantId}:{scope}");
             return Task.CompletedTask;
         }
 
-        public Task LeaveGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken) {
+        public Task LeaveGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken)
+            => LeaveGroupAsync(projectionType, tenantId, scope: null, cancellationToken);
+
+        public Task LeaveGroupAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken) {
             if (LeaveException is not null) {
                 throw LeaveException;
             }
 
-            LeftGroups.Add($"{projectionType}:{tenantId}");
+            LeftGroups.Add(string.IsNullOrWhiteSpace(scope)
+                ? $"{projectionType}:{tenantId}"
+                : $"{projectionType}:{tenantId}:{scope}");
             return Task.CompletedTask;
         }
 
@@ -518,6 +626,9 @@ public sealed class ProjectionSubscriptionServiceTests {
         public Task RaiseAsync(string projectionType, string tenantId)
             => _handler?.Invoke(projectionType, tenantId) ?? Task.CompletedTask;
 
+        public Task RaiseDetailAsync(ProjectionChangedDetail detail)
+            => _detailHandler?.Invoke(detail) ?? Task.CompletedTask;
+
         public Task RaiseStateAsync(ProjectionHubConnectionStateChanged change)
             => _stateHandler?.Invoke(change) ?? Task.CompletedTask;
     }
@@ -529,6 +640,19 @@ public sealed class ProjectionSubscriptionServiceTests {
         public void NotifyChanged(string projectionType) {
             Changed.Add(projectionType);
             ProjectionChanged?.Invoke(projectionType);
+        }
+    }
+
+    private sealed class DetailCapturingNotifier : IProjectionChangeNotifier, IProjectionChangeDetailNotifier {
+        public event Action<string>? ProjectionChanged;
+        public event Func<ProjectionChangedDetail, Task>? ProjectionChangedDetail;
+        public List<ProjectionChangedDetail> Details { get; } = [];
+
+        public void NotifyChanged(string projectionType) => ProjectionChanged?.Invoke(projectionType);
+
+        public Task NotifyDetailAsync(ProjectionChangedDetail detail, CancellationToken cancellationToken = default) {
+            Details.Add(detail);
+            return ProjectionChangedDetail?.Invoke(detail) ?? Task.CompletedTask;
         }
     }
 
