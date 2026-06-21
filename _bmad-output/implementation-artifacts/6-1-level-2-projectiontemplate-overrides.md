@@ -47,7 +47,7 @@ so that I can replace the generated layout without forking.
 > AC3 and AC4 are the contract-producing + no-regression framing required by the Epic 5 retrospective
 > readiness constraints for Epic 6.
 
-**AC1 — A registered `[ProjectionTemplate]` renders in place of the generated view for its projection+role.** *(Epic 6 AC; FR8, FR5)*
+**AC1 — A registered `[ProjectionTemplate]` renders in place of the generated view for its projection+role.** *(Epic 6 AC; FR8, FR5, FR4 — projection-template manifest emission)*
 **Given** a Blazor component annotated `[ProjectionTemplate]` with a typed `Context` parameter
 (`[Parameter] ProjectionTemplateContext<TProjection> Context`),
 **When** it is registered via `AddHexalithProjectionTemplates<TMarker>` (or the descriptor-list overload),

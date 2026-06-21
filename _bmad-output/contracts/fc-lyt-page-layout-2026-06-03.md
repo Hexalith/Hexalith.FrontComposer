@@ -2,8 +2,8 @@
 title: 'FC-LYT — Page-layout contract'
 date: '2026-06-03'
 story: '1.2'
-status: 'escalated'   # default + max-measure value pending Product/UX sign-off (AC2 escalate-with-owner)
-owner: 'FrontComposer + Product/UX (pending)'
+status: 'confirmed'   # FullWidth default + 75rem max-measure signed off 2026-06-21 (sprint-change-proposal-2026-06-21)
+owner: 'FrontComposer + Product/UX (Administrator, 2026-06-21)'
 supersedes: ''
 ---
 
@@ -78,14 +78,12 @@ The exact default value (`75rem`) is a **Product/UX input** — see Confirmation
 
 ## Confirmation
 
-**Status: ESCALATED (owner: Product/UX — pending).** No live Product/UX confirmation was available
-at implementation time. Per AC2, the contract is recorded as *escalated with a named owner* and the
-mechanism ships on the recommended decisions above. The following two items need Product/UX sign-off:
+**Status: CONFIRMED (Product/UX — Administrator, 2026-06-21).** The two open inputs are signed off via
+the 2026-06-21 correct-course pass (`sprint-change-proposal-2026-06-21.md`):
 
-1. **Default mode = `FullWidth`?** — Recommended and shipped. Confirm or override.
-2. **Constrained max-measure default = `75rem`?** — Recommended and shipped as the
-   `--fc-page-max-inline-size` default. Confirm the exact value (it is themeable, so a change is a
-   one-line CSS-variable override, not a code change).
+1. **Default mode = `FullWidth`?** — ✅ **Confirmed.** Ships as the default (zero-regression; right for the DataGrid-heavy MVP).
+2. **Constrained max-measure default = `75rem`?** — ✅ **Confirmed** as the `--fc-page-max-inline-size`
+   default (themeable, so a future change remains a one-line CSS-variable override, not a code change).
 
 Owner column per the readiness request (`frontcomposer-readiness-request-2026-06-03.md:22`, 🔴
 FC-LYT row): **FrontComposer + Product/UX**. Resolution does not block Story 1.2 — the AC explicitly

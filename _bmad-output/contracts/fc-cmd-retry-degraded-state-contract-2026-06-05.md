@@ -2,7 +2,7 @@
 
 Date: 2026-06-05
 Owner: FrontComposer Shell and EventStore command adapter
-Status: v1 implementation contract
+Status: confirmed v1 contract (ratified 2026-06-21 — sprint-change-proposal-2026-06-21)
 
 ## Decision
 

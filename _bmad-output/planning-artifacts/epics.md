@@ -87,7 +87,7 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - NFR10: Test discipline — solution-level `dotnet test` + trait filters, `DiffEngine_Disabled=true`, Governance + Contract lanes blocking; committed `.verified.txt`, `PublicAPI.Shipped.txt`, pacts updated intentionally.
 - NFR11: Telemetry via `FrontComposerActivitySource` (OpenTelemetry `ActivitySource`).
 - NFR12: Dependency direction points down to `Contracts`; `SourceTools` references only `Contracts` to stay netstandard2.0-clean.
-- NFR13: `[inferred]` Trim/AOT readiness — `PublishTrimmed`/`PublishAot` enable the HFC1070 advisory; reflection projection catalog needs an `IActionQueueProjectionCatalog` override.
+- NFR13: **Confirmed (2026-06-21)** Trim/AOT readiness — `PublishTrimmed`/`PublishAot` enable the HFC1070 advisory; reflection projection catalog needs an `IActionQueueProjectionCatalog` override.
 
 ### Additional Requirements
 
@@ -102,23 +102,33 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - AR5 (🔴 **Shell-integration spike**): Verify `AddHexalithFrontComposer*` / manifest / projection-routing / `FC-TBL` (table) APIs — the bootstrap spike (Story 1.0) that unblocks Story 1.1.
 - AR6 (🟠 **FC-CMD**): Confirm the command-lifecycle contract — pending-identity / correlation-key shape (the 26-char checkout shape **not yet approved**), uniqueness scope (per-tenant / user / circuit?), lifecycle ownership, `alreadyApplied` semantics, reconciliation. Blocks all command epics.
 - AR7 (🟠 **FC-CNC**): Confirm one-at-a-time command execution is the v1 contract (fallback approved; batching = fast-follow).
-- AR8 (🟠 **Numeric budgets**): Decide confirming→degraded threshold, polling budget, and retry budget (none approved yet) — with Product/UX + EventStore.
+- AR8 (🟠 **Numeric budgets**): ✅ **Confirmed (2026-06-21).** confirming→degraded (`TimeoutActionThresholdMs=10_000`), polling (cadence `1_000` / max `120_000`), and retry (Epic 3 `0`; Epic 4 `1×250ms`) budgets ratified in `fc-cmd-command-budget-contract` + `fc-cmd-retry-degraded-state-contract`.
 - AR9 (🟡 **EventStore status contract**): Confirm-stable `GET /api/v1/commands/status/{id}` as the command-status query the polling coordinator binds to (exists already — confirm, don't build).
 - AR10 (**Out of scope for v1 / fast-follow**): Do **not** build `<AuditTimeline>` or `<ConsequencePreview>` rich components now — approved fallbacks stand; track as fast-follow.
 
+> 📋 **Contract-confirmation Definition-of-Done (2026-06-21 process amendment).** A contract-confirmation
+> story (the `Confirm …`/`Establish …` stories: 1.2, 1.3, 1.4, 1.5, 2.8, 3.3, 3.5, 3.6, 4.3) MUST NOT reach
+> **Done** on *"escalated with an owner"* alone. "Escalated" is a valid intermediate state, but Done requires
+> either (a) the decision **confirmed**, or (b) a **tracked, dated, owned blocking follow-up** in the sprint
+> backlog. This amends the AC2-style *"confirmed OR escalated with an owner"* wording that previously let
+> decisions close silently — the root cause of the FC-LYT / AR8 / UX-DR confirmation debt closed in
+> `sprint-change-proposal-2026-06-21`.
+
 ### UX Design Requirements
 
-> `[inferred]` — No authored UX spec exists. These are extracted from the
-> implemented component catalog (`component-inventory.md`) and the readiness request.
-> They represent UX *contracts to confirm/standardize*, not net-new design work.
+> **Confirmed 2026-06-21** (sprint-change-proposal-2026-06-21). Originally reverse-engineered from the
+> implemented component catalog (`component-inventory.md`) + readiness request, these UX contracts are now
+> confirmed against the shipped, `FluentConformanceTests`-guarded, bUnit/e2e-tested behaviour and refreshed
+> to match `architecture.md` §4.
 
-- UX-DR1 `[inferred]`: **Design tokens** — `Typography` (9 `FcTypoToken` role constants → FluentUI v5 `TextSize`/`TextWeight`/`TextTag`, pinned `TypographyMappingVersion="3.1.0"`); `DensityLevel`/`DensitySurface` density tokens applied via `<body data-fc-density>`.
-- UX-DR2 `[inferred]`: **Semantic badge slots** — `[ProjectionBadge]` enum-member → `FcStatusBadge`/`FcDesaturatedBadge` (`FluentBadge` Color/Appearance) with mandatory `aria-label`; desaturated variant for non-urgent counts.
-- UX-DR3 `[inferred]`: **Responsive layout** — breakpoint behavior (`FcLayoutBreakpointWatcher`), `FcCollapsedNavRail` (48px) at compact desktop, `FcHamburgerToggle` on mobile/tablet.
-- UX-DR4 `[inferred]`: **Reusable interaction components** — `FcCommandPalette` (ARIA combobox, keyboard nav), `FcSettingsDialog`, `FcDestructiveConfirmationDialog`, `FcFormAbandonmentGuard`, `FcLifecycleWrapper`.
-- UX-DR5 `[inferred]`: **Status & empty/loading UX** — `FcProjectionLoadingSkeleton` (Card/Timeline/Grid), `FcProjectionEmptyPlaceholder`, `FcProjectionConnectionStatus`, `FcPendingCommandSummary` (`aria-live`).
-- UX-DR6 `[inferred]`: **Accessibility patterns** — skip links, focus indicators, `role="region"` row-detail with live-region for filter-hidden expansions (WCAG 4.1.2), keyboard reachability, reduced-motion/forced-colors fallbacks.
-- UX-DR7 (FC-LYT): **Page layout contract** — full-width vs constrained `<PageLayout>` (ties to AR1).
+- UX-DR1: **Design tokens** — `Typography` (9 `FcTypoToken` role constants → FluentUI v5 `TextSize`/`TextWeight`/`TextTag`, pinned `TypographyMappingVersion="3.1.0"`); `DensityLevel`/`DensitySurface` density tokens applied via `<body data-fc-density>`.
+- UX-DR2: **Semantic badge slots** — `[ProjectionBadge]` enum-member → `FcStatusBadge`/`FcDesaturatedBadge` (`FluentBadge` Color/Appearance) with mandatory `aria-label`; desaturated variant for non-urgent counts.
+- UX-DR3: **Responsive layout** — breakpoint behaviour (`FcLayoutBreakpointWatcher`), `FcCollapsedNavRail` (48px). `FcHamburgerToggle` is **always visible** and at Desktop toggles full-nav ↔ 48px rail (`SidebarToggledAction`) — **supersedes the earlier "D9 / no Desktop hamburger" decision** (architecture §4). The framework sidebar keeps **exactly one active item** (longest segment-prefix, `NavLinkMatch.Prefix`).
+- UX-DR4: **Reusable interaction components** — `FcCommandPalette` (ARIA combobox, keyboard nav), `FcSettingsDialog`, `FcDestructiveConfirmationDialog`, `FcFormAbandonmentGuard`, `FcLifecycleWrapper`.
+- UX-DR5: **Status & empty/loading UX** — `FcProjectionLoadingSkeleton` (Card/Timeline/Grid), `FcProjectionEmptyPlaceholder`, `FcProjectionConnectionStatus`, `FcPendingCommandSummary` (`aria-live`).
+- UX-DR6: **Accessibility patterns** — skip links, focus indicators, `role="region"` row-detail with live-region for filter-hidden expansions (WCAG 4.1.2), keyboard reachability, reduced-motion/forced-colors fallbacks.
+- UX-DR7 (FC-LYT): **Page layout contract** — full-width vs constrained `<PageLayout>` (ties to AR1). ✅ Confirmed 2026-06-21 (FullWidth default + `75rem` max-measure).
+- UX-DR8: **Account control & server security** (architecture §4) — a framework-owned `FcAccountMenu` (`FluentAvatar` → Sign in/Sign out, wired to `/authentication/{challenge,sign-out}`) rendered **always** so it survives adopter `HeaderEnd` customization; backed by framework-owned server-side security wiring (`AddHexalithFrontComposerServerSecurity`). Domain modules supply only domain-specific security *configuration*.
 
 ### FR Coverage Map
 
@@ -146,7 +156,7 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - FR22 (Testing library): **Epic 7**
 
 **Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic).
-**Cross-cutting NFRs** (NFR1–NFR13) apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1.
+**Cross-cutting NFRs** (NFR1–NFR13) apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. **NFR11 (telemetry)** is owned cross-cutting (not per-AC traced) — emitting through `FrontComposerActivitySource` on the Shell command-lifecycle/projection paths and the MCP tool/resource paths.
 
 ## Epic List
 
@@ -187,7 +197,7 @@ the numeric budgets.
 **FRs covered:** FR12 (destructive/abandonment/authorization paths)
 **ARs:** AR7 (FC-CNC), AR8 (retry/degraded budgets)
 **Standalone:** safe command UX layered on Epic 3.
-> ⚠️ *File-overlap note:* Epics 3 & 4 both touch the generated command pipeline + `FcAuthorizedCommandRegion`. They're split on a genuine **risk boundary** (FC-CMD identity contract vs. FC-CNC concurrency policy — both unapproved). Say the word and I'll **consolidate them into one command epic** with ordered stories.
+> ✅ *Split accepted (2026-06-21).* Epics 3 & 4 both touch the generated command pipeline + `FcAuthorizedCommandRegion`, split on a genuine **risk boundary** (FC-CMD identity contract vs. FC-CNC concurrency policy). This is the **final v1 structure**: both epics shipped and retro'd (2026-06-04 / 2026-06-05), the dependency is backward (4→3, allowed), and retro-consolidating completed work would be churn with no benefit. Consolidation offer withdrawn.
 
 ### Epic 5: AI-Agent (MCP) Surface
 An **AI agent** can discover every generated command as an MCP tool (rebuilt at each `tools/list`),
@@ -344,7 +354,7 @@ So that the shell remembers my display preferences across sessions.
 
 **Given** the shell is running,
 **When** I press `Ctrl+,` or activate the settings button,
-**Then** `FcSettingsDialog` opens with a density radio group, theme toggle, and a density preview panel. *(FR15)*
+**Then** `FcSettingsDialog` opens with a density radio group, theme toggle, and a density preview panel. *(FR15, UX-DR4)*
 
 **Given** I change theme or density and confirm,
 **When** I reload the app,
@@ -418,6 +428,10 @@ So that I can narrow large read-models and always know the grid's state.
 **Given** status-enum columns mapped via `[ProjectionBadge]`,
 **When** rendered,
 **Then** `FcStatusBadge`/`FcDesaturatedBadge` render with a mandatory `aria-label`. *(UX-DR2, NFR6)*
+
+**Given** a query exceeding the slow-query threshold or the max-items cap,
+**When** rendered,
+**Then** a non-blocking slow-query / max-items-truncation notice is surfaced above the grid. *(FR11)*
 
 ### Story 2.4: Accessible expand-in-row detail
 
@@ -569,7 +583,7 @@ So that I know whether it was acknowledged, confirmed, or rejected.
 
 **Given** a submitted command,
 **When** it progresses,
-**Then** `FcLifecycleWrapper` surfaces `Submitting → Acknowledged → Syncing → Confirmed/Rejected` via badge/message-bar. *(FR12)*
+**Then** `FcLifecycleWrapper` surfaces `Submitting → Acknowledged → Syncing → Confirmed/Rejected` via badge/message-bar. *(FR12, UX-DR4)*
 
 **Given** a rejection,
 **When** received,
@@ -625,7 +639,7 @@ So that I can't trigger irreversible actions by accident.
 
 **Given** a `[Destructive]` command,
 **When** I submit it,
-**Then** `FcDestructiveConfirmationDialog` shows the configured title/body and requires confirm before dispatch. *(FR12)*
+**Then** `FcDestructiveConfirmationDialog` shows the configured title/body and requires confirm before dispatch. *(FR12, UX-DR4)*
 
 **Given** a destructive-verb-named command without `[Destructive]`,
 **When** built,
@@ -641,7 +655,7 @@ So that I don't lose in-progress input.
 
 **Given** a dirty command form,
 **When** I attempt to navigate away,
-**Then** `FcFormAbandonmentGuard` (`NavigationLock`) intercepts and shows a `FluentMessageBar` to confirm or cancel. *(FR12)*
+**Then** `FcFormAbandonmentGuard` (`NavigationLock`) intercepts and shows a `FluentMessageBar` to confirm or cancel. *(FR12, UX-DR4)*
 
 **Given** a clean form,
 **When** I navigate,
@@ -801,7 +815,7 @@ So that I can replace the generated layout without forking.
 
 **Given** a Blazor component annotated `[ProjectionTemplate]` with a typed `Context` parameter,
 **When** registered via `AddHexalithProjectionTemplates<TMarker>`,
-**Then** it renders in place of the generated view for its projection+role. *(FR8, FR5)*
+**Then** it renders in place of the generated view for its projection+role. *(FR8, FR5, FR4)*
 
 **Given** an invalid template (bad projection type, missing context, duplicate, version mismatch),
 **When** built,

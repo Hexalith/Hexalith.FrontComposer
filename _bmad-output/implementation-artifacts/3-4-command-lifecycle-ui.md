@@ -33,7 +33,7 @@ so that I know whether it was acknowledged, confirmed, or rejected.
 
 ## Acceptance Criteria
 
-1. **Lifecycle wrapper surfaces every command phase.**  
+1. **Lifecycle wrapper surfaces every command phase.** *(UX-DR4)*  
    Given a submitted generated command form,  
    When it progresses through the normal local lifecycle,  
    Then `FcLifecycleWrapper` surfaces `Submitting -> Acknowledged -> Syncing -> Confirmed/Rejected`

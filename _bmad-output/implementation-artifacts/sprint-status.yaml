@@ -1,5 +1,5 @@
 # generated: 2026-06-03
-# last_updated: 2026-06-05
+# last_updated: 2026-06-21
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,14 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-03
-last_updated: 2026-06-05
+last_updated: 2026-06-21
+# epic-1 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
+# epic-2 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
+# epic-3 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
+# epic-4 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
+# epic-5 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
+# epic-6 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
+# epic-7 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
 # epic-7 moved backlog -> in-progress on 2026-06-05 (create-story; first story of Authoring Tooling & Drift Safety)
 # 7-1 moved backlog -> ready-for-dev on 2026-06-05 (create-story; frontcomposer inspect. Brownfield reality: InspectCommand, CLI dispatch/help, README, and InspectCommandTests already exist. Dev must confirm-and-pin FC-CLI-INSPECT v1 rather than rebuild the CLI; create the inspect contract artifact, pin JSON schema/frontcomposer.cli.inspect.v1 counts, fail-on-warning/error exit behavior, --build generated-output path behavior, sidecar parsing/redaction, template manifest reporting, and Epic 6 diagnostic phase honesty. Preserve .csproj-only project selection, .slnx/.fsproj fail-closed behavior, no third-party CLI framework, no package/Roslyn pin changes, and do not touch migrate except for narrowly shared path/sanitization helpers if required.)
 # 7-1 moved ready-for-dev -> in-progress on 2026-06-05 (dev-story; baseline d35f34534b8b43e1c7a9f7f7a8d7774a3a809922 captured; starting FC-CLI-INSPECT v1 contract, inspect implementation audit, focused JSON/fail-flag/sidecar/build pins, help/README reconciliation, and File List reconciliation.)
@@ -185,7 +192,7 @@ story_location: "{project-root}/_bmad-output/implementation-artifacts"
 
 development_status:
   # Epic 1: Shell Foundation & Bootstrap
-  epic-1: in-progress
+  epic-1: done
   1-0-shell-integration-spike-verify-the-bootstrap-table-apis: done
   1-1-bootstrap-a-minimal-bootable-shell: done
   1-2-confirm-and-apply-the-fc-lyt-page-layout-contract: done
@@ -196,7 +203,7 @@ development_status:
   epic-1-retrospective: done
 
   # Epic 2: Read-Only Projection Experience (the read-only MVP)
-  epic-2: in-progress
+  epic-2: done
   2-1-render-a-projection-from-a-projection-type: done
   2-2-registry-driven-navigation-and-home-directory: done
   2-3-datagrid-filtering-status-and-empty-loading-states: done
@@ -208,7 +215,7 @@ development_status:
   epic-2-retrospective: done
 
   # Epic 3: Command Authoring & Lifecycle
-  epic-3: in-progress
+  epic-3: done
   3-1-generate-a-command-form-from-a-command-type: done
   3-2-apply-the-density-rule-to-command-forms: done
   3-3-confirm-the-fc-cmd-pending-identity-and-correlation-contract: done
@@ -218,7 +225,7 @@ development_status:
   epic-3-retrospective: done
 
   # Epic 4: Safe & Concurrent Command Execution
-  epic-4: in-progress
+  epic-4: done
   4-1-destructive-command-confirmation: done
   4-2-unsaved-form-abandonment-guard: done
   4-3-one-at-a-time-execution-policy-fc-cnc: done
@@ -227,7 +234,7 @@ development_status:
   epic-4-retrospective: done
 
   # Epic 5: AI-Agent (MCP) Surface
-  epic-5: in-progress
+  epic-5: done
   5-1-expose-generated-commands-as-mcp-tools: done
   5-2-lifecycle-subscription-tool: done
   5-3-projection-and-skill-corpus-resources: done
@@ -236,7 +243,7 @@ development_status:
   epic-5-retrospective: done
 
   # Epic 6: Customization & Extensibility
-  epic-6: in-progress
+  epic-6: done
   6-1-level-2-projectiontemplate-overrides: done
   6-2-level-3-field-slot-overrides: done
   6-3-level-4-full-view-overrides: done
@@ -244,7 +251,7 @@ development_status:
   epic-6-retrospective: done
 
   # Epic 7: Authoring Tooling & Drift Safety
-  epic-7: in-progress
+  epic-7: done
   7-1-frontcomposer-inspect: done
   7-2-frontcomposer-migrate: done
   7-3-surface-the-hfc-diagnostic-catalog: done

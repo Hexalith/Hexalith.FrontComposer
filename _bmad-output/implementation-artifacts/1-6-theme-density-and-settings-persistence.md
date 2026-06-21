@@ -75,7 +75,7 @@ so that the shell remembers my display preferences across sessions.
 
 ## Acceptance Criteria
 
-**AC1 — The settings dialog opens via `Ctrl+,` or the settings button and exposes density radio group + theme toggle + density preview. *(FR15)***
+**AC1 — The settings dialog opens via `Ctrl+,` or the settings button and exposes density radio group + theme toggle + density preview. *(FR15, UX-DR4)***
 **Given** the shell is running,
 **When** I press `Ctrl+,` (or `meta+,` on macOS) or activate the header settings button,
 **Then** `FcSettingsDialog` opens (both entry points routing through the single `FcSettingsDialogLauncher.ShowAsync`) showing a density `FluentRadioGroup` (Compact / Comfortable / Roomy), the embedded `FcThemeToggle`, and the `FcDensityPreviewPanel` live preview.

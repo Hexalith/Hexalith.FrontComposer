@@ -1,6 +1,6 @@
 # FC-CMD Command Budget Contract
 
-Status: confirm-stable
+Status: confirmed (Product/UX + EventStore ratified 2026-06-21 — sprint-change-proposal-2026-06-21)
 Date: 2026-06-04
 Owner: FrontComposer Product/UX + FrontComposer Shell + EventStore integration
 

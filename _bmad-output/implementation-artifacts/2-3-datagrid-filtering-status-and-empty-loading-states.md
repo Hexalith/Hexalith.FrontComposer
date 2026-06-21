@@ -68,6 +68,12 @@ so that I can narrow large read-models and always know the grid's state.
 **Then** the `ColumnEmitter` badge switch emits an `FcStatusBadge` arm per mapped enum member (with the `Slot` from `BadgeSlot` and the `ColumnHeader` supplied for aria-label context), a plain-text arm for declared-but-unannotated members, and a default arm using the localized `StatusBadgeUnknownStateFallback`,
 **And** the rendered `FcStatusBadge`/`FcDesaturatedBadge` carries a **mandatory `aria-label`** composed as `"{ColumnHeader}: {Label}"` (falling back to `{Label}` when no column header), localized (FR-locale uses the non-breaking space before the colon).
 
+**AC4 — Slow-query and max-items result notices surface as non-blocking status. *(FR11 — traceability addendum, sprint-change-proposal-2026-06-21)***
+**Given** a projection query that exceeds the slow-query threshold or whose result set exceeds the max-items cap,
+**When** the grid renders,
+**Then** a non-blocking slow-query / max-items-truncation notice is surfaced above the grid (`role="status"`) without blocking interaction with the loaded rows.
+> ℹ️ Added 2026-06-21 to trace the FR11 *slow-query/max-items notices* sub-clause (previously untraced in any AC). Confirm against the shipped grid notice surfaces; raise a follow-up story if the surface is absent.
+
 ## Tasks / Subtasks
 
 > ⚠️ **Verification-first.** Every task starts by confirming current behaviour against `src/` before

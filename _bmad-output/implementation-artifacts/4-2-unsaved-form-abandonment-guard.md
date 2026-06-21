@@ -27,7 +27,7 @@ so that I don't lose in-progress input.
 
 ## Acceptance Criteria
 
-1. **Dirty generated full-page command forms are protected before internal navigation.**  
+1. **Dirty generated full-page command forms are protected before internal navigation.** *(UX-DR4)*  
    Given a generated `CommandRenderMode.FullPage` command form has received at least one user edit,  
    When the operator attempts internal navigation after the configured abandonment threshold,  
    Then `FcFormAbandonmentGuard` intercepts the `NavigationLock` callback, prevents navigation, and

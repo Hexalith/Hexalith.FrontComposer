@@ -1,7 +1,7 @@
 ---
 project_name: 'Hexalith.FrontComposer'
 user_name: 'Administrator'
-date: '2026-06-02'
+date: '2026-06-21'
 sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow_rules', 'critical_rules']
 status: 'complete'
 rule_count: 77
@@ -16,41 +16,32 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ## Technology Stack & Versions
 
-- **.NET 10** — SDK pinned `10.0.300` (`rollForward: latestPatch`, `global.json`); all projects
-  `Nullable`+`ImplicitUsings` enabled, **`TreatWarningsAsErrors=true`**, `LangVersion=latest`
-  (`Directory.Build.props`)
-- **Multi-TFM split:** `Hexalith.FrontComposer.Contracts` and `.SourceTools` target
-  **`net10.0` + `netstandard2.0`** so the Roslyn analyzer host can reference Contracts; every
-  other project is `net10.0` only
-- **Roslyn** `Microsoft.CodeAnalysis.CSharp(.Workspaces/.Workspaces.Common)` **5.3.0** — pinned;
-  the generator/IDE host is sensitive to it. Don't bump outside a story that owns the compat work
-  (`PrivateAssets="all"` is set per-project, not in `Directory.Packages.props`)
-- **Blazor UI:** `Microsoft.FluentUI.AspNetCore.Components` **`5.0.0-rc.3-26138.1`** — FluentUI v5
-  **RC**, exact pin (ADR-003). No FluentUI icons NuGet — a custom inline-SVG `FcFluentIcons` factory
-- **State:** `Fluxor.Blazor.Web` **6.9.0** — single-writer discipline per slice (ADR-007)
-- **MCP:** `ModelContextProtocol.AspNetCore` **1.3.0** — HTTP streamable transport
-- **Identity:** `NUlid` **1.7.3** — ULIDs (26-char Crockford base32), **never GUIDs**, for
-  `messageId`/`correlationId`
-- **Real-time / Auth:** `Microsoft.AspNetCore.SignalR.Client` **10.0.8** (EventStore projection
-  subscriptions); `…Authentication.OpenIdConnect` **10.0.8** (host-owned OIDC)
-- **Reactive:** `System.Reactive` **6.1.0** — badge-count producer/consumer isolation; declared
-  explicitly so a FluentUI minor bump can't silently drop it
-- **netstandard2.0 backports** (in-box on net10.0; pulled only for the analyzer TFM):
-  `System.Collections.Immutable` 10.0.8, `System.Text.Json` 10.0.8,
-  `System.Threading.Tasks.Extensions` 4.6.3, `System.ComponentModel.Annotations` 5.0.0
-- **Orchestration:** `Aspire.Hosting.AppHost` **13.4.2** — a SINGLE AppHost,
-  `src/Hexalith.FrontComposer.AppHost`, orchestrates the whole local stack (keycloak, eventstore +
-  admin/admin-ui, tenants, tenants-ui, and the `counter-web` sample) via DAPR. FrontComposer itself
-  ships no deployed service; the sample shell (`samples/Counter/Counter.Web`) also runs standalone
-  for the a11y/visual specimen gate.
-- **Testing:** xUnit **v3** `3.2.2`, Shouldly `4.3.0`, NSubstitute `5.3.0`, bUnit `2.7.2`,
-  **Verify** `31.19.0` (use `Verify.XunitV3`, NOT `Verify.Xunit`), **FsCheck.Xunit.v3** `3.3.3`,
-  **PactNet** `5.0.1`, **BenchmarkDotNet** `0.15.8`, coverlet `10.0.1`, `Microsoft.NET.Test.Sdk`
-  `18.6.0`, `Microsoft.Extensions.TimeProvider.Testing` `10.6.0`
-- **All versions centralized** in `Directory.Packages.props` (`ManagePackageVersionsCentrally=true`)
-  — never add `Version=` to a `.csproj`
-- **Ships as signed NuGet packages** (`.nupkg`+`.snupkg`); **no Dockerfiles/containers** (unlike the
-  EventStore submodule). semantic-release drives versioning from Conventional Commits
+- **.NET 10** — `global.json` pins SDK `10.0.301` with `rollForward: latestPatch`; root props enable
+  `Nullable`, `ImplicitUsings`, `LangVersion=latest`, and **`TreatWarningsAsErrors=true`**
+- **Solution format:** `Hexalith.FrontComposer.slnx` only. Do not create or use `.sln`
+- **Central package management:** `Directory.Packages.props` owns all package versions; never add
+  `Version=` to `.csproj`
+- **Multi-TFM split:** `Contracts` targets `net10.0;netstandard2.0`; `SourceTools` targets
+  `netstandard2.0`; most other projects target `net10.0`. Guard net10/Fluent-only code with
+  `#if NET10_0_OR_GREATER`
+- **Roslyn:** `Microsoft.CodeAnalysis.*` **5.3.0**; SourceTools is a Roslyn component and must remain
+  compiler-host compatible
+- **Blazor UI:** `Microsoft.FluentUI.AspNetCore.Components` **`5.0.0-rc.3-26138.1`**; exact RC pin.
+  UI code uses FrontComposer/Fluent v5 components, not raw interactive HTML controls
+- **State:** `Fluxor.Blazor.Web` **6.9.0**
+- **MCP:** `ModelContextProtocol.AspNetCore` **1.4.0**
+- **Aspire/AppHost:** `Aspire.Hosting.AppHost` **13.4.6**; Keycloak hosting
+  **`13.4.6-preview.1.26319.6`**. Bump in lockstep with sibling AppHosts only in an owned story
+- **Identity:** `NUlid` **1.7.3**; `messageId`/`correlationId` are ULIDs, never GUIDs
+- **Runtime support:** `System.Collections.Immutable`/`System.Text.Json` **10.0.9**,
+  `Microsoft.Extensions.*` **10.0.9**, SignalR/OIDC **10.0.9**, `System.Reactive` **7.0.0-rc.1**
+- **Testing:** xUnit v3 **3.2.2**, bUnit **2.8.4-preview**, Verify/Verify.XunitV3 **31.20.0**,
+  NSubstitute **6.0.0-rc.1**, Shouldly **4.3.0**, FsCheck.Xunit.v3 **3.3.3**, PactNet **5.0.1**,
+  BenchmarkDotNet **0.15.8**
+- **E2E:** Playwright **1.61.0**, TypeScript **6.0.3**, Node engine `>=24.0.0`
+- **Release tooling:** semantic-release **25.0.5**, commitlint **21.0.2**, Husky **9.1.7**
+- **Packages:** six publishable NuGet packages: `Cli`, `Contracts`, `Mcp`, `Schema`, `Shell`,
+  `Testing`. `AppHost` and `SourceTools` are intentionally non-packable
 
 ## Critical Implementation Rules
 

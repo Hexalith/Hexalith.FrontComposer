@@ -24,7 +24,7 @@ so that I can't trigger irreversible actions by accident.
 
 ## Acceptance Criteria
 
-1. **Destructive generated commands require confirmation before dispatch.**  
+1. **Destructive generated commands require confirmation before dispatch.** *(UX-DR4)*  
    Given a `[Destructive]` command with one or more non-derivable properties,  
    When the generated renderer/form is submitted,  
    Then `FcDestructiveConfirmationDialog` opens with the configured title/body, cancel is the safe
