@@ -39,6 +39,11 @@
        @ChildContent) can declare its measure without a shell [Parameter]. IsFixed: the coordinator
        instance is stable; its Mode mutates and the shell re-renders via the Changed subscription. *@
     <CascadingValue Value="_pageLayoutCoordinator" IsFixed="true">
+    @* Handoff outcome 1/2 — cascade the content-label coordinator so a page's <FcContentLabel> can
+       name #fc-main-content's `main` landmark by its route heading (no orphaned page-level
+       aria-labelledby). IsFixed: the coordinator instance is stable; its values mutate and the shell
+       re-renders via the Changed subscription. *@
+    <CascadingValue Value="_contentLabelCoordinator" IsFixed="true">
         <FluentLayout>
             <FluentLayoutItem Area="@LayoutArea.Header" Height="48px">
                 <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
@@ -110,7 +115,14 @@
                 <FcDensityAnnouncer />
                 @* FC-LYT (Story 1.2): id + tabindex stay adjacent (skip-link/focus target + locked test
                    substring); the data-fc-page-layout attr + fc-page-layout class are appended after. *@
-                <div id="fc-main-content" tabindex="-1" role="main" data-fc-page-layout="@PageLayoutAttribute" class="@PageLayoutCssClass">
+                @* Handoff outcome 1/2 — the shell's single content `main` landmark. id + tabindex stay
+                   adjacent (skip-link/focus target + locked test substring). aria-labelledby / aria-label
+                   name the landmark from the route heading (via <FcContentLabel> or the ContentLabelledBy
+                   / ContentLabel shell parameters); exactly one is ever emitted, both null by default so
+                   the implicit "main" name is the zero-config default. *@
+                <div id="fc-main-content" tabindex="-1" role="main"
+                     aria-labelledby="@ContentLabelledByValue" aria-label="@ContentLabelValue"
+                     data-fc-page-layout="@PageLayoutAttribute" class="@PageLayoutCssClass">
                     <FcProjectionConnectionStatus />
                     <FcPendingCommandSummary />
                     @ChildContent
@@ -128,6 +140,7 @@
                 }
             </FluentLayoutItem>
         </FluentLayout>
+    </CascadingValue>
     </CascadingValue>
     </CascadingValue>
 

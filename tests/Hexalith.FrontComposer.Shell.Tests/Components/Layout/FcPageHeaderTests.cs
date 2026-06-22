@@ -83,4 +83,81 @@ public sealed class FcPageHeaderTests : LayoutComponentTestBase {
 
         injectedProperties.ShouldBeEmpty("FcPageHeader must stay generic; consuming domains pass localized strings and fragments.");
     }
+
+    // ── Handoff frontcomposer-2026-06-19-page-header-landmarks-and-contract-hardening ────────────
+
+    [Fact]
+    public void FcPageHeader_HeaderRoot_IsNotABannerLandmark() {
+        // Requested outcome 2: the page header must not create a competing global `banner` landmark
+        // on every route page (the shell header owns the single page banner). The header carries
+        // role="presentation" so it never resolves to banner even when rendered outside a sectioning
+        // ancestor (as in this isolated bUnit render).
+        IRenderedComponent<FcPageHeader> cut = Render<FcPageHeader>(parameters => parameters
+            .Add(component => component.Heading, "Tenant operations")
+            .Add(component => component.TestId, "tenant-page-header"));
+
+        IElement header = cut.Find("[data-testid='tenant-page-header']");
+        header.TagName.ShouldBe("HEADER");
+        header.GetAttribute("role").ShouldBe("presentation");
+
+        // No element in the rendered header advertises the banner role.
+        cut.FindAll("[role='banner']").ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public void FcPageHeader_WithBlankHeading_RendersNoDanglingHeadingElement(string blankHeading) {
+        // Requested outcome 3: a blank/whitespace Heading must not render a dangling/empty <h1>
+        // (an empty heading is itself a WCAG failure). The component fails safely by suppressing the
+        // heading element entirely rather than throwing or emitting an empty <h1>.
+        IRenderedComponent<FcPageHeader> cut = Render<FcPageHeader>(parameters => parameters
+            .Add(component => component.PageTitle, "Browser title")
+            .Add(component => component.Heading, blankHeading)
+            .Add(component => component.Description, "Body still renders."));
+
+        cut.FindAll("h1").ShouldBeEmpty();
+        // The rest of the header still renders (it is fail-safe, not a hard failure).
+        cut.Find("[data-fc-page-header-description]").TextContent.ShouldBe("Body still renders.");
+        // The document title still resolves from the explicit PageTitle.
+        cut.FindComponents<PageTitle>().Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public void FcPageHeader_WithHeading_RendersExactlyOneHeading() {
+        // The non-blank path still renders exactly one <h1> (no regression from the blank fail-safe).
+        IRenderedComponent<FcPageHeader> cut = Render<FcPageHeader>(parameters => parameters
+            .Add(component => component.Heading, "Visible title"));
+
+        cut.FindAll("h1").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task FcPageHeader_FocusHeadingAsync_WithoutTabIndex_FailsDiagnostically() {
+        // Requested outcome 5: a heading is not focusable without a tabindex, so a browser focus call
+        // would silently no-op. When HeadingTabIndex is omitted, FocusHeadingAsync must fail
+        // diagnostically (throw) rather than silently no-op.
+        IRenderedComponent<FcPageHeader> cut = Render<FcPageHeader>(parameters => parameters
+            .Add(component => component.Heading, "Tenant operations")
+            .Add(component => component.HeadingId, "tenants-heading"));
+        // HeadingTabIndex intentionally NOT set.
+
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(
+            () => cut.InvokeAsync(() => cut.Instance.FocusHeadingAsync().AsTask()));
+
+        ex.Message.ShouldContain(nameof(FcPageHeader.HeadingTabIndex));
+    }
+
+    [Fact]
+    public void FcPageHeader_FocusHeadingAsync_WithTabIndex_DoesNotThrow() {
+        // The supported focus-target path (HeadingTabIndex set) keeps working: focus moves to the
+        // heading via JS interop (loose mode), no exception.
+        IRenderedComponent<FcPageHeader> cut = Render<FcPageHeader>(parameters => parameters
+            .Add(component => component.Heading, "Tenant operations")
+            .Add(component => component.HeadingId, "tenants-heading")
+            .Add(component => component.HeadingTabIndex, -1));
+
+        Should.NotThrow(() => cut.InvokeAsync(() => cut.Instance.FocusHeadingAsync().AsTask()));
+    }
 }

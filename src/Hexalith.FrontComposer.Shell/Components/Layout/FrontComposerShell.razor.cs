@@ -102,6 +102,13 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     // field, not DI). The shell subscribes to Changed to re-render #fc-main-content's mode attribute/class.
     private readonly FcPageLayoutCoordinator _pageLayoutCoordinator = new();
 
+    // Handoff frontcomposer-2026-06-19-page-header-landmarks-and-contract-hardening (outcome 1/2) —
+    // instance-per-shell coordinator cascaded to @ChildContent so a page's <FcContentLabel> can name
+    // the #fc-main-content `main` landmark by its route heading (no orphaned page-level aria-labelledby).
+    // Mirrors _pageLayoutCoordinator. The shell subscribes to Changed to re-render the landmark's
+    // aria-label / aria-labelledby.
+    private readonly FcContentLabelCoordinator _contentLabelCoordinator = new();
+
     /// <summary>
     /// Header content rendered BEFORE the application title (left-aligned). When <see langword="null"/>
     /// the shell auto-populates <see cref="FcHamburgerToggle"/> (Story 3-2 D8 / D18).
@@ -143,6 +150,28 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// resolves <c>FcShellResources.AppTitle</c> — the framework-owned product name string.
     /// </summary>
     [Parameter] public string? AppTitle { get; set; }
+
+    /// <summary>
+    /// Accessible name for the shell's single content <c>main</c> landmark (<c>#fc-main-content</c>),
+    /// emitted as <c>aria-label</c> (handoff
+    /// <c>frontcomposer-2026-06-19-page-header-landmarks-and-contract-hardening</c>, Requested outcome 1).
+    /// Prefer <see cref="ContentLabelledBy"/> when the page renders a visible route heading so the
+    /// landmark is named by that heading; use <see cref="ContentLabel"/> only when no visible heading
+    /// exists. Ignored when <see cref="ContentLabelledBy"/> is set (a labelledby reference wins). When
+    /// both are <see langword="null"/> the landmark carries no accessible name and the implicit
+    /// "main" label is used, matching the pre-handoff behavior.
+    /// </summary>
+    [Parameter] public string? ContentLabel { get; set; }
+
+    /// <summary>
+    /// Id reference that names the shell's content <c>main</c> landmark (<c>#fc-main-content</c>),
+    /// emitted as <c>aria-labelledby</c> (Requested outcome 1). Pass the <c>HeadingId</c> of the
+    /// route's <see cref="FcPageHeader"/> so the shell-owned main landmark is named by the visible
+    /// page heading <b>without</b> an orphaned page-level <c>aria-labelledby</c> on a non-landmark
+    /// wrapper. Takes precedence over <see cref="ContentLabel"/>. When <see langword="null"/> the
+    /// landmark is not labelled by reference.
+    /// </summary>
+    [Parameter] public string? ContentLabelledBy { get; set; }
 
     /// <summary>Injected Fluent UI theme service. Called once on first render per D6.</summary>
     [Inject] private IThemeService ThemeService { get; set; } = default!;
@@ -255,6 +284,45 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         ? "fc-page-layout fc-page-layout--constrained"
         : "fc-page-layout";
 
+    /// <summary>
+    /// Handoff <c>frontcomposer-2026-06-19-page-header-landmarks-and-contract-hardening</c>
+    /// (outcome 1/2) — the resolved <c>aria-labelledby</c> for the <c>#fc-main-content</c> landmark,
+    /// or <see langword="null"/>. A page-declared <see cref="FcContentLabel"/> wins over the shell
+    /// <see cref="ContentLabelledBy"/> parameter; <c>aria-labelledby</c> wins over <c>aria-label</c>.
+    /// Returns <see langword="null"/> when an <c>aria-label</c> is resolved instead, so only one of the
+    /// two attributes is ever emitted.
+    /// </summary>
+    protected string? ContentLabelledByValue {
+        get {
+            if (_contentLabelCoordinator.HasDeclaration) {
+                return _contentLabelCoordinator.LabelledBy;
+            }
+
+            return string.IsNullOrWhiteSpace(ContentLabelledBy) ? null : ContentLabelledBy;
+        }
+    }
+
+    /// <summary>
+    /// Handoff <c>frontcomposer-2026-06-19-page-header-landmarks-and-contract-hardening</c>
+    /// (outcome 1/2) — the resolved <c>aria-label</c> for the <c>#fc-main-content</c> landmark, or
+    /// <see langword="null"/>. Suppressed when an <c>aria-labelledby</c> is in effect
+    /// (see <see cref="ContentLabelledByValue"/>) so the two attributes never compete.
+    /// </summary>
+    protected string? ContentLabelValue {
+        get {
+            // aria-labelledby always wins; never emit aria-label alongside it.
+            if (ContentLabelledByValue is not null) {
+                return null;
+            }
+
+            if (_contentLabelCoordinator.HasDeclaration) {
+                return _contentLabelCoordinator.Label;
+            }
+
+            return string.IsNullOrWhiteSpace(ContentLabel) ? null : ContentLabel;
+        }
+    }
+
     /// <summary>Development-only customization contract mismatch diagnostics.</summary>
     protected IReadOnlyList<CustomizationDiagnostic> ContractMismatchDiagnostics {
         get {
@@ -301,9 +369,14 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         // <FcPageLayout> flips the coordinator (it registers in its OnAfterRender, after the shell's
         // first paint). SetMode no-ops on an unchanged mode, so this cannot loop the render cycle.
         _pageLayoutCoordinator.Changed += OnPageLayoutChanged;
+        // Handoff outcome 1/2 — re-render #fc-main-content's accessible name when a child
+        // <FcContentLabel> declares/clears it (same render-cycle safety as the page-layout coordinator).
+        _contentLabelCoordinator.Changed += OnContentLabelChanged;
     }
 
     private void OnPageLayoutChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private void OnContentLabelChanged() => _ = InvokeAsync(StateHasChanged);
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -414,6 +487,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
         // FC-LYT (Story 1.2) — drop the coordinator subscription so the shell is not rooted by it.
         _pageLayoutCoordinator.Changed -= OnPageLayoutChanged;
+        _contentLabelCoordinator.Changed -= OnContentLabelChanged;
 
         if (_beforeUnloadSubscription is not null && _beforeUnloadModule is not null) {
             try {

@@ -1,0 +1,9 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+
+@* Handoff frontcomposer-2026-06-19-page-header-landmarks-and-contract-hardening (outcome 1/2) —
+   a page drops this into its content to name the shell's single #fc-main-content `main` landmark
+   by its visible route heading, WITHOUT an orphaned page-level aria-labelledby on a non-landmark
+   wrapper: <FcContentLabel LabelledBy="@HeadingId" />. It carries no markup of its own; it registers
+   the name with the cascaded FcContentLabelCoordinator and renders its (optional) ChildContent. *@
+
+@ChildContent

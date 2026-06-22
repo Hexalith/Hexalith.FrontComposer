@@ -4,7 +4,11 @@
 
 <PageTitle>@ResolvedPageTitle</PageTitle>
 
-<header class="@CssClass" data-testid="@TestId" @attributes="AdditionalAttributes">
+@* role="presentation" — the page header is purely visual chrome scoped inside the shell's single
+   #fc-main-content `main` landmark. Stripping the implicit `banner` role guarantees exactly one
+   banner per page (owned by the shell header), even when an adopter renders this header outside a
+   sectioning ancestor. The route heading keeps its own h1 semantics independently. *@
+<header class="@CssClass" role="@LandmarkRole" data-testid="@TestId" @attributes="AdditionalAttributes">
     <FluentStack Orientation="Orientation.Vertical" VerticalGap="8px" Width="100%">
         @if (!string.IsNullOrWhiteSpace(Eyebrow))
         {
@@ -25,12 +29,17 @@
                      VerticalGap="8px"
                      Wrap="true"
                      Width="100%">
-            <h1 id="@HeadingId"
-                tabindex="@HeadingTabIndex"
-                style="margin: 0;"
-                @ref="_headingElement">
-                <FluentText As="TextTag.Span" Size="TextSize.Size700" Weight="TextWeight.Semibold">@Heading</FluentText>
-            </h1>
+            @* Blank-heading fail-safe (Requested outcome 3): suppress the h1 entirely when Heading is
+               blank/whitespace so the route never renders a dangling empty heading element. *@
+            @if (HasHeading)
+            {
+                <h1 id="@HeadingId"
+                    tabindex="@HeadingTabIndex"
+                    style="margin: 0;"
+                    @ref="_headingElement">
+                    <FluentText As="TextTag.Span" Size="TextSize.Size700" Weight="TextWeight.Semibold">@Heading</FluentText>
+                </h1>
+            }
 
             @if (Actions is not null)
             {
