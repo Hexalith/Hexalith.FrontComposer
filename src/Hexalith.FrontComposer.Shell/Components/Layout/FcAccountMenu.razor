@@ -20,7 +20,6 @@
              data-testid="fc-account-menu">
     @if (IsAuthenticated)
     {
-        <span class="fc-account-menu__name" data-testid="fc-account-name" title="@SignedInAsText">@UserName</span>
         <FluentAvatar Id="@AvatarId"
                       Name="@UserName"
                       Color="AvatarColor.Colorful"
