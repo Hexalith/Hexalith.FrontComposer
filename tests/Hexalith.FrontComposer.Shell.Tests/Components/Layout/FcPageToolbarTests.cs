@@ -93,7 +93,10 @@ public sealed class FcPageToolbarTests : LayoutComponentTestBase {
         menuButton.Markup.ShouldContain("View");
 
         cut.FindComponent<FluentMenu>().ShouldNotBeNull();
-        cut.Find("[data-testid='compact']").TextContent.ShouldBe("Compact view");
+        IRenderedComponent<FluentMenuItem> menuItem = cut.FindComponent<FluentMenuItem>();
+        menuItem.Instance.AdditionalAttributes.ShouldNotBeNull();
+        menuItem.Instance.AdditionalAttributes!["data-testid"].ShouldBe("compact");
+        menuItem.Instance.Label.ShouldBe("Compact view");
 
         IElement actions = cut.Find("[data-testid='fc-page-toolbar-actions']");
         actions.TextContent.ShouldContain("Refresh");
@@ -155,7 +158,7 @@ public sealed class FcPageToolbarTests : LayoutComponentTestBase {
         => builder => {
             builder.OpenComponent<FluentMenuItem>(0);
             builder.AddAttribute(1, "data-testid", testId);
-            builder.AddContent(2, text);
+            builder.AddAttribute(2, nameof(FluentMenuItem.Label), text);
             builder.CloseComponent();
         };
 }
