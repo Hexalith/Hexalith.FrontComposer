@@ -1,0 +1,12 @@
+/* Post-navigation focus restoration (see FcPageHeader.FocusHeadingAsync / HeadingTabIndex) moves
+   keyboard focus onto the route-level <h1 tabindex="-1"> so screen-reader and keyboard users land on
+   the page title after a route change. For that PROGRAMMATIC focus the browser would otherwise paint
+   its default focus ring around the heading, which reads as a stray bordered box around the title.
+
+   Suppress the ring only for non-keyboard focus (:focus:not(:focus-visible)); a real keyboard user who
+   Tabs to the heading still gets a visible :focus-visible ring. This is the user-agent focus reset the
+   UX rules explicitly allow — the Fluent design system owns no programmatic-focus affordance, so there
+   is no component or token to express it. */
+h1:focus:not(:focus-visible) {
+    outline: none;
+}
