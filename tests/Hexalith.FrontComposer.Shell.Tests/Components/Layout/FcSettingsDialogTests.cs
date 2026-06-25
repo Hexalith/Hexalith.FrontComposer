@@ -94,7 +94,7 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase {
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
 
         // Pre-set a non-default state so reset has visible effect.
-        dispatcher.Dispatch(new UserPreferenceChangedAction("seed-1", DensityLevel.Compact, DensityLevel.Compact));
+        dispatcher.Dispatch(new UserPreferenceChangedAction("seed-1", DensityLevel.Roomy, DensityLevel.Roomy));
         dispatcher.Dispatch(new ThemeChangedAction("seed-2", ThemeValue.Dark));
 
         IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
@@ -109,8 +109,32 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase {
                 Services.GetRequiredService<IState<FrontComposerThemeState>>();
 
             density.Value.UserPreference.ShouldBeNull("Reset must clear the user density preference (D13).");
+            density.Value.EffectiveDensity.ShouldBe(DensityLevel.Compact, "Reset must fall through to the Desktop factory default.");
             theme.Value.CurrentTheme.ShouldBe(ThemeValue.System, "Reset must restore System theme (D13).");
         });
+    }
+
+    [Fact]
+    public void RendersForcedDensityNoteAtTabletWhenFactoryDefaultWouldBeCompact() {
+        System.Globalization.CultureInfo previous = System.Globalization.CultureInfo.CurrentUICulture;
+        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
+        try {
+            IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+            dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Tablet));
+            dispatcher.Dispatch(new UserPreferenceClearedAction("c1", DensityLevel.Comfortable));
+
+            IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
+
+            cut.WaitForAssertion(() =>
+                cut.Markup.ShouldContain(
+                    "Your device size is forcing Comfortable density",
+                    Case.Sensitive,
+                    "ADR-040 — settings dialog must compare against the resolver's factory default, not a duplicated Comfortable fallback."));
+        }
+        finally {
+            System.Globalization.CultureInfo.CurrentUICulture = previous;
+        }
     }
 
     [Fact]

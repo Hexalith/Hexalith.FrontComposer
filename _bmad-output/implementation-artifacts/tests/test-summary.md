@@ -1,5 +1,51 @@
 # Test Automation Summary
 
+## Story 8.4 - Compact default density and grid polish
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/State/Density/DensityPrecedenceTests.cs` - updated resolver coverage for Desktop/CompactDesktop no-preference Compact defaults and Tablet/Phone Comfortable forcing.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/State/Density/DensityEffectsTests.cs` and `tests/Hexalith.FrontComposer.Shell.Tests/State/HydrationTests.cs` - pinned bootstrap Comfortable hydration followed by real Desktop/CompactDesktop viewport recompute to Compact.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcSettingsDialogTests.cs` - pinned reset-to-default Compact behavior and forced-note resolver behavior when factory default would otherwise be Compact.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/DataGridDensityMetricsTests.cs` - pinned Compact/Comfortable/Roomy virtualization row-height values.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` - added static CSS guard for generated projection-grid class, `--fc-spacing-unit`, and `--colorSubtleBackgroundHover`.
+- [x] `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterVirtualizationTests.cs` - pinned generated `Class`, `GenerateHeader`, `ItemSize`, and `SetKey(_density)` together.
+
+### E2E Tests
+- [x] `tests/e2e/specs/settings-persistence.spec.ts` - added fresh-session Compact default, Restore defaults back-to-Compact, and Tablet forced-Comfortable coverage using the existing settings workflow.
+- [x] `tests/e2e/page-objects/settings.page.ts` - added a semantic page-object action for the dialog `Restore defaults` button.
+- [x] `tests/e2e/specs/fc-tbl-contract.spec.ts` - extended generated-grid render contract coverage to require `.fc-projection-grid`, inherited compact spacing, and `body[data-fc-density="compact"]` for specimen sessions.
+- [x] `tests/e2e/tsconfig.json` - corrected the stale TypeScript `ignoreDeprecations` value so the e2e workspace typecheck runs under the installed compiler.
+- [ ] Local Playwright execution remains blocked before browser assertions because Kestrel cannot bind a socket in this sandbox.
+
+### Coverage
+- AC1: Desktop and CompactDesktop unset sessions resolve Compact after viewport measurement; Tablet/Phone still force Comfortable.
+- AC2: live preference selection, persisted `DensityLevel?` schema, reload hydration, and Restore defaults behavior remain covered.
+- AC3: generated-grid styling is scoped to `.fc-projection-grid`, uses density spacing and Fluent 2 hover token, and keeps row-height metrics unchanged at 32/44/56.
+- AC4: standard and status-overview generated grids emit Fluent v5 `DataGridGeneratedHeaderType.Sticky` and do not use the v4 enum name.
+
+### Validation
+- [x] RED phase: focused Shell lane failed 8 expected tests before implementation; SourceTools virtualization lane failed 1 expected test before emitter changes.
+- [x] `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
+- [x] `dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
+- [x] Focused Shell direct xUnit v3 lane passed 50/50: density precedence/effects/hydration/settings/dialog metrics plus `FluentConformanceTests`.
+- [x] Focused SourceTools virtualization lane passed 8/8.
+- [x] SourceTools emitter approval lane passed 29/29 after intentionally updating generated-output snapshots.
+- [x] Broad SourceTools in-process default lane passed 1026/1026.
+- [x] Broad Shell in-process lane excluding socket-bound Contract/Pact tests passed 1987/1987 after intentionally updating two Shell generated render snapshots.
+- [x] `npm --prefix tests/e2e run typecheck` passed after correcting `ignoreDeprecations`.
+- [x] `npm --prefix tests/e2e run test -- --list specs/settings-persistence.spec.ts specs/fc-tbl-contract.spec.ts --project=chromium` discovered 10 tests in 2 files.
+- [ ] Full Shell in-process lane ran 1990 tests: 1989 passed, 1 Pact Contract test failed because PactNet could not start a local mock server in this sandbox.
+- [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false --no-restore` built through test assemblies, then VSTest aborted across assemblies with `System.Net.Sockets.SocketException (13): Permission denied`.
+- [ ] `npm run test --prefix tests/e2e -- specs/settings-persistence.spec.ts specs/fc-tbl-contract.spec.ts --project=chromium` failed before browser assertions because the Counter web server could not bind Kestrel: `System.Net.Sockets.SocketException (13): Permission denied`.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no HTTP API endpoint surface.
+- [x] E2E tests generated/updated if UI exists; local browser execution is socket-blocked.
+- [x] Tests use standard xUnit v3, Shouldly, bUnit, Verify, and Playwright project patterns.
+- [x] Tests cover happy paths and critical density precedence/settings reset/grid render-contract regressions.
+- [x] Story-owned focused lanes run successfully through the direct xUnit v3 in-process runner.
+- [x] Test summary updated with counts, typecheck evidence, and local blockers.
+
 ## Story 7.1 - frontcomposer inspect
 
 ### Generated Tests

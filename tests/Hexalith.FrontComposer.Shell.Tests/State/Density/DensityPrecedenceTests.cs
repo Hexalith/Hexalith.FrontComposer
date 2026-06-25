@@ -18,8 +18,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 public sealed class DensityPrecedenceTests {
     [Theory]
     // (userPreference, deploymentDefault, surface, tier, expected)
-    // Row 1 — no preferences, Default surface, Desktop → factory hybrid (Comfortable)
-    [InlineData(null, null, DensitySurface.Default, ViewportTier.Desktop, DensityLevel.Comfortable)]
+    // Row 1 — no preferences, Default surface, Desktop → factory hybrid (Compact)
+    [InlineData(null, null, DensitySurface.Default, ViewportTier.Desktop, DensityLevel.Compact)]
     // Row 2 — user pref wins over factory hybrid at Desktop
     [InlineData(DensityLevel.Compact, null, DensitySurface.Default, ViewportTier.Desktop, DensityLevel.Compact)]
     // Row 3 — deployment default wins over factory hybrid at Desktop (no user pref)
@@ -30,6 +30,10 @@ public sealed class DensityPrecedenceTests {
     [InlineData(null, DensityLevel.Compact, DensitySurface.NavigationSidebar, ViewportTier.Desktop, DensityLevel.Compact)]
     // Row 6 — tier-force override at Tablet supersedes user pref AND deployment default (ADR-040)
     [InlineData(DensityLevel.Compact, DensityLevel.Roomy, DensitySurface.Default, ViewportTier.Tablet, DensityLevel.Comfortable)]
+    // Row 7 — no preferences, Default surface, CompactDesktop → factory hybrid (Compact)
+    [InlineData(null, null, DensitySurface.Default, ViewportTier.CompactDesktop, DensityLevel.Compact)]
+    // Row 8 — Phone force still wins over user pref and deployment default (ADR-040)
+    [InlineData(DensityLevel.Roomy, DensityLevel.Roomy, DensitySurface.Default, ViewportTier.Phone, DensityLevel.Comfortable)]
     public void Resolve_AllCombinations(
         DensityLevel? userPreference,
         DensityLevel? deploymentDefault,

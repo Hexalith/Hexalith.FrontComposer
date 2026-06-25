@@ -132,6 +132,8 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Items\", groupedItems.AsQueryable());");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Virtualize\", true);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DisplayMode\", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Class\", \"fc-projection-grid\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"GenerateHeader\", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OverscanCount\", 3);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemKey\", (System.Func<" + recordTypeName + ", object>)(static r => (object)r.StatusLabel));");
@@ -461,6 +463,8 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Virtualize\", true);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DisplayMode\", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Class\", \"fc-projection-grid\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"GenerateHeader\", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OverscanCount\", 3);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemKey\", (System.Func<" + model.TypeName + ", object>)_itemKeyAccessor);");

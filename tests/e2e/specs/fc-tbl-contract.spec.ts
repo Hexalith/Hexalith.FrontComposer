@@ -74,6 +74,7 @@ test.describe('FC-TBL generated table contract', () => {
 const gotoSpecimen = async (page: import('@playwright/test').Page, route: SpecimenRoute): Promise<void> => {
   await page.goto(route.path);
   await expect(page.locator(route.readySelector), `${route.path} missing ready marker`).toBeVisible();
+  await expect.poll(() => page.evaluate(() => document.body.dataset.fcDensity)).toBe('compact');
 };
 
 const assertGeneratedGridContract = async (
@@ -83,6 +84,10 @@ const assertGeneratedGridContract = async (
   const gridHost = root.locator('[data-fc-datagrid]');
   await expect(gridHost).toHaveCount(1);
   await expect(gridHost).toHaveAttribute('data-fc-datagrid', /.+:.+/);
+  await expect(gridHost).toHaveClass(/(^|\s)fc-projection-grid(\s|$)/);
+  await expect
+    .poll(() => gridHost.evaluate((element) => getComputedStyle(element).getPropertyValue('--fc-spacing-unit').trim()))
+    .toBe('2px');
   await expect(gridHost.locator('table, [role="grid"]').first()).toBeVisible();
 
   for (const fieldKey of options.expectedFieldKeys) {

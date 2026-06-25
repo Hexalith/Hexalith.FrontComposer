@@ -18,11 +18,22 @@
 
 import { expect, test } from '../fixtures/index.js';
 import { SettingsPage } from '../page-objects/settings.page.js';
-import { ShellPage } from '../page-objects/shell.page.js';
+import { ShellPage, ViewportBreakpoints } from '../page-objects/shell.page.js';
 
 const DESKTOP_WIDTH = 1920; // >= desktopMin (1366): user density preference applies, no viewport forcing.
 
 test.describe('Story 1.6: theme, density, and settings persistence @p1 @smoke', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      const marker = '__frontcomposer_e2e_storage_cleared';
+      if (window.sessionStorage.getItem(marker) !== 'true') {
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+        window.sessionStorage.setItem(marker, 'true');
+      }
+    });
+  });
+
   test('Ctrl+, opens the settings dialog exposing density radios, theme toggle, and live preview @p1', async ({
     page,
     tenant,
@@ -61,7 +72,7 @@ test.describe('Story 1.6: theme, density, and settings persistence @p1 @smoke', 
     const settings = new SettingsPage(page);
     await settings.openViaButton();
 
-    // Pick a non-default density (default is Comfortable) so restoration is observable.
+    // Pick a non-default density (default is Compact) so restoration is observable.
     await settings.selectDensity('Roomy');
 
     // Live (no-Apply): the body cascade reflects the choice immediately (FcDensityApplier).
@@ -76,6 +87,71 @@ test.describe('Story 1.6: theme, density, and settings persistence @p1 @smoke', 
 
     // AC2 — density is restored from IStorageService on app-init hydration.
     await expect.poll(() => settings.appliedDensity()).toBe('roomy');
+  });
+
+  test('desktop sessions without a stored density preference settle on Compact @p1', async ({
+    page,
+    tenant,
+  }) => {
+    expect(tenant.tenantId).toBeTruthy();
+
+    const shell = new ShellPage(page);
+    await shell.goto();
+    await shell.resizeTo(DESKTOP_WIDTH);
+
+    const settings = new SettingsPage(page);
+
+    await expect.poll(() => settings.storedValue(tenant, 'density')).toBeNull();
+    await expect.poll(() => settings.appliedDensity()).toBe('compact');
+  });
+
+  test('Restore defaults clears the density preference back to Compact at desktop @p1', async ({
+    page,
+    tenant,
+  }) => {
+    expect(tenant.tenantId).toBeTruthy();
+
+    const shell = new ShellPage(page);
+    await shell.goto();
+    await shell.resizeTo(DESKTOP_WIDTH);
+
+    const settings = new SettingsPage(page);
+    await settings.openViaButton();
+    await settings.selectDensity('Roomy');
+
+    await expect.poll(() => settings.appliedDensity()).toBe('roomy');
+    await expect.poll(() => settings.storedValue(tenant, 'density')).not.toBeNull();
+
+    await settings.restoreDefaults();
+
+    await expect.poll(() => settings.storedValue(tenant, 'density')).toBeNull();
+    await expect.poll(() => settings.appliedDensity()).toBe('compact');
+    await expect(settings.densityRadio('Compact')).toBeChecked();
+  });
+
+  test('tablet viewport still forces Comfortable even when Compact is selected @p1', async ({
+    page,
+    tenant,
+  }) => {
+    expect(tenant.tenantId).toBeTruthy();
+
+    const shell = new ShellPage(page);
+    await shell.goto();
+    await shell.resizeTo(DESKTOP_WIDTH);
+
+    const settings = new SettingsPage(page);
+    await settings.openViaButton();
+    await settings.selectDensity('Roomy');
+    await expect.poll(() => settings.appliedDensity()).toBe('roomy');
+
+    await settings.selectDensity('Compact');
+
+    await expect.poll(() => settings.appliedDensity()).toBe('compact');
+
+    await shell.resizeTo(ViewportBreakpoints.tabletMax);
+
+    await expect.poll(() => settings.appliedDensity()).toBe('comfortable');
+    await expect(page.getByTestId('fc-settings-forced-note')).toBeVisible();
   });
 
   test('theme preference is persisted to scoped storage and survives a reload @p1', async ({
@@ -119,8 +195,8 @@ test.describe('Story 1.6: theme, density, and settings persistence @p1 @smoke', 
     // NFR6 / WCAG — the first render is suppressed, so the region starts empty.
     await expect(announcer).toBeEmpty();
 
-    // Change density away from the default (Comfortable) — this drives an EffectiveDensity change.
-    await settings.selectDensity('Compact');
+    // Change density away from the default (Compact) — this drives an EffectiveDensity change.
+    await settings.selectDensity('Roomy');
 
     // AC2 / NFR6 — the change is announced (region gains text) for assistive technology.
     await expect(announcer).not.toBeEmpty();

@@ -147,6 +147,27 @@ public class DensityEffectsTests {
             ArgEx.Is<EffectiveDensityRecomputedAction>(a => a.NewEffective == DensityLevel.Comfortable));
     }
 
+    [Theory]
+    [InlineData(ViewportTier.Desktop)]
+    [InlineData(ViewportTier.CompactDesktop)]
+    public async Task HandleViewportTierChanged_NoPreference_RecomputesDesktopFactoryDefaultToCompact(ViewportTier tier) {
+        InMemoryStorageService storage = new();
+        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Tablet);
+        IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
+        IState<FrontComposerDensityState> densityState = FakeDensityState(
+            userPreference: null,
+            effective: DensityLevel.Comfortable);
+
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options, densityState);
+
+        await sut.HandleViewportTierChanged(new ViewportTierChangedAction(tier), dispatcher);
+
+        dispatcher.Received(1).Dispatch(
+            ArgEx.Is<EffectiveDensityRecomputedAction>(a => a.NewEffective == DensityLevel.Compact));
+    }
+
     [Fact]
     public async Task HandleUserPreferenceChanged_PersistsToStorage() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;

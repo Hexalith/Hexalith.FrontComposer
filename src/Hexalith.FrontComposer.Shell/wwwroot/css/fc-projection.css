@@ -19,6 +19,24 @@
     }
 }
 
+/* Story 8.4 / AC3 — Aspire-dense projection-grid polish.
+   FluentDataGrid v5 renders a light-DOM <table class="fluent-data-grid fc-projection-grid"> with
+   <th class="column-header"> headers, <td> cells, and <tr class="fluent-data-grid-row"> rows — it is
+   NOT a FAST shadow-DOM web component, so shadow-part pseudo-selectors match nothing here. Target the
+   real table elements instead. Padding-block stays well inside the virtualized row height bound by
+   DataGridDensityMetrics.ResolveRowHeightPx(_density), so FluentDataGrid.ItemSize remains truthful
+   (no CSS-only row-height drift). --fc-spacing-unit is density-coupled (compact 2px / comfortable 4px /
+   roomy 6px) in fc-density.css. */
+.fc-projection-grid td,
+.fc-projection-grid th.column-header {
+    padding-block: calc(var(--fc-spacing-unit, 4px) * 1);
+    padding-inline: calc(var(--fc-spacing-unit, 4px) * 2);
+}
+
+.fc-projection-grid tbody tr.fluent-data-grid-row:hover {
+    background: var(--colorSubtleBackgroundHover);
+}
+
 /* Highlight the currently-expanded row. CSS variable so adopters can theme without
    patching the Shell. Reduced-motion users get an instant transition. */
 .fc-row-expanded {

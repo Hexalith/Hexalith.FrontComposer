@@ -42,6 +42,19 @@ public sealed class RazorEmitterVirtualizationTests {
         src.ShouldContain("_density = RenderContext?.DensityLevel");
     }
 
+    [Fact]
+    public void EmitsProjectionGridClassStickyHeaderItemSizeAndDensityKeyTogether() {
+        string src = RazorEmitter.Emit(Model(Col("Id"), Col("Name")));
+        int gridIndex = src.IndexOf("builder.OpenComponent<FluentDataGrid<OrderProjection>>(seq++);", StringComparison.Ordinal);
+        gridIndex.ShouldBeGreaterThanOrEqualTo(0);
+
+        string gridBlock = src[gridIndex..src.IndexOf("builder.CloseComponent();", gridIndex, StringComparison.Ordinal)];
+        gridBlock.ShouldContain("builder.SetKey(_density);");
+        gridBlock.ShouldContain("\"Class\", \"fc-projection-grid\"");
+        gridBlock.ShouldContain("\"GenerateHeader\", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky");
+        gridBlock.ShouldContain("\"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density)");
+    }
+
     [Theory]
     [InlineData("AggregateId")]
     [InlineData("Id")]

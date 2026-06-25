@@ -67,6 +67,7 @@ public static class DensityPrecedence {
     }
 
     private static DensityLevel GetFactoryDefault(DensitySurface surface) => surface switch {
+        DensitySurface.Default => DensityLevel.Compact,
         DensitySurface.DataGrid => DensityLevel.Compact,
         DensitySurface.DevModeOverlay => DensityLevel.Compact,
         _ => DensityLevel.Comfortable,

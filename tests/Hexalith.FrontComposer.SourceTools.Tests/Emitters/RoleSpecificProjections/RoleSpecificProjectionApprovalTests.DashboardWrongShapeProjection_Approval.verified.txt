@@ -670,6 +670,8 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
         }
         builder.AddAttribute(seq++, "Virtualize", true);
         builder.AddAttribute(seq++, "DisplayMode", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);
+        builder.AddAttribute(seq++, "Class", "fc-projection-grid");
+        builder.AddAttribute(seq++, "GenerateHeader", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky);
         builder.AddAttribute(seq++, "ItemSize", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));
         builder.AddAttribute(seq++, "OverscanCount", 3);
         builder.AddAttribute(seq++, "ItemKey", (System.Func<DashboardWrongShapeProjection, object>)_itemKeyAccessor);

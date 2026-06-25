@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Density;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -37,7 +38,7 @@ public class HydrationTests : FrontComposerTestBase {
     }
 
     [Fact]
-    public async Task DensityHydration_StorageEmpty_UsesDefaultComfortable() {
+    public async Task DensityHydration_StorageEmpty_UsesBootstrapComfortableUntilViewportMeasured() {
         // Arrange — no seeding
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await InitializeStoreAsync();
@@ -50,6 +51,25 @@ public class HydrationTests : FrontComposerTestBase {
 
         // Assert
         densityState.Value.EffectiveDensity.ShouldBe(DensityLevel.Comfortable);
+    }
+
+    [Fact]
+    public async Task DensityHydration_StorageEmpty_DesktopViewportRecomputesToCompact() {
+        // Arrange — no seeding
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        IState<FrontComposerDensityState> densityState = Services.GetRequiredService<IState<FrontComposerDensityState>>();
+
+        // Act
+        dispatcher.Dispatch(new AppInitializedAction("hydrate-5"));
+        await Task.Delay(100, ct);
+        dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
+        await Task.Delay(100, ct);
+
+        // Assert — real Desktop measurement falls through to the new Compact factory default.
+        densityState.Value.UserPreference.ShouldBeNull();
+        densityState.Value.EffectiveDensity.ShouldBe(DensityLevel.Compact);
     }
 
     [Fact]

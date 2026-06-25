@@ -84,8 +84,13 @@ public partial class FcSettingsDialog : Fluxor.Blazor.Web.Components.FluxorCompo
                 return false;
             }
 
-            DensityLevel userChoice = density.UserPreference ?? Options.Value.DefaultDensity ?? DensityLevel.Comfortable;
-            return userChoice != density.EffectiveDensity;
+            DensityLevel unforcedChoice = DensityPrecedence.Resolve(
+                userPreference: density.UserPreference,
+                deploymentDefault: Options.Value.DefaultDensity,
+                surface: DensitySurface.Default,
+                tier: ViewportTier.Desktop);
+
+            return unforcedChoice != density.EffectiveDensity;
         }
     }
 

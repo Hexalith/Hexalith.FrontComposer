@@ -40,6 +40,7 @@ export class SettingsPage {
   readonly themeToggleButton: Locator;
   readonly densityPreview: Locator;
   readonly densityAnnouncer: Locator;
+  readonly restoreDefaultsButton: Locator;
 
   constructor(page: Page) {
     this.page = page;
@@ -50,6 +51,7 @@ export class SettingsPage {
     // FcThemeToggle renders a FluentMenuButton carrying Title="Change theme" (ThemeToggleAriaLabel).
     this.themeToggleButton = this.dialog.getByTitle('Change theme');
     this.densityPreview = page.getByTestId('fc-density-preview');
+    this.restoreDefaultsButton = page.getByTestId('fc-settings-reset');
     // FcDensityAnnouncer: visually-hidden role="status" region (aria-atomic distinguishes it).
     this.densityAnnouncer = page.locator(
       'div.fc-sr-only[role="status"][aria-live="polite"][aria-atomic="true"]',
@@ -79,6 +81,11 @@ export class SettingsPage {
   /** Selects a density level via the live (no-Apply) radio group. */
   async selectDensity(value: DensityValue): Promise<void> {
     await this.densityRadio(value).check();
+  }
+
+  /** Clears persisted shell preferences via the dialog's Restore defaults action. */
+  async restoreDefaults(): Promise<void> {
+    await this.restoreDefaultsButton.click();
   }
 
   /** Selects a theme via the embedded FcThemeToggle menu. */

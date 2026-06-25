@@ -205,6 +205,31 @@ public sealed class FluentConformanceTests {
             + $"render blank section headers. Found a \"Heading\" attribute literal in: {string.Join("; ", offenders)}");
     }
 
+    [Fact]
+    public void Projection_grid_css_uses_density_spacing_and_fluent2_hover_token() {
+        string cssPath = Path.Combine(
+            RepositoryRoot(),
+            "src",
+            "Hexalith.FrontComposer.Shell",
+            "wwwroot",
+            "css",
+            "fc-projection.css");
+        File.Exists(cssPath).ShouldBeTrue($"Projection CSS not found: {cssPath}");
+
+        string css = File.ReadAllText(cssPath);
+        css.ShouldContain(".fc-projection-grid", Case.Sensitive);
+        css.ShouldContain("--fc-spacing-unit", Case.Sensitive);
+        css.ShouldContain("--colorSubtleBackgroundHover", Case.Sensitive);
+
+        // FluentDataGrid v5 renders a light-DOM <table> (<td>, <th class="column-header">, and
+        // <tr class="fluent-data-grid-row"> elements), NOT a shadow-DOM web component. The polish must
+        // therefore target real table elements; ::part() selectors silently match nothing and must not
+        // be reintroduced.
+        css.ShouldContain(".fc-projection-grid td", Case.Sensitive);
+        css.ShouldContain("tr.fluent-data-grid-row:hover", Case.Sensitive);
+        css.ShouldNotContain("::part(", Case.Sensitive);
+    }
+
     private static void AssertNoRawControls(string root, string[] carveOuts) {
         Directory.Exists(root).ShouldBeTrue($"Fluent conformance scan root not found: {root}");
 
