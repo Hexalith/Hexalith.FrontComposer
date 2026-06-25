@@ -3,7 +3,7 @@ import manifestJson from '../specimens/frontcomposer-specimen-manifest.json' wit
 export const SPECIMEN_OWNER = '10-2-accessibility-ci-gates-and-visual-specimen-verification';
 
 export interface SpecimenRoute {
-  name: 'type' | 'data-formatting';
+  name: 'type' | 'data-formatting' | 'page-toolbar';
   path: string;
   readySelector: string;
   landmarkRoot: string;

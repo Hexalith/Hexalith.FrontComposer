@@ -151,6 +151,26 @@ public sealed class FcPageToolbarTests : LayoutComponentTestBase {
         headerActions.QuerySelector("[data-testid='tenant-action']").ShouldNotBeNull();
     }
 
+    [Fact]
+    public void FcPageToolbar_AppliesLayoutViaRenderedInlineStyle_NotDeadScopedCss() {
+        // Story 8.6 review: a .razor.css scoped sheet cannot reach Fluent child-component
+        // output because no raw HTML element in the .razor carries the component scope, so
+        // every scoped rule was dead (the Story 8.4 trap). Layout therefore rides on inline
+        // Style that actually renders to the DOM. This proves AC1's right-aligned actions slot
+        // and the search sizing are applied, not silently dropped like the prior scoped CSS.
+        IRenderedComponent<FcPageToolbar> cut = Render<FcPageToolbar>(parameters => parameters
+            .Add(toolbar => toolbar.SearchAriaLabel, "Search orders")
+            .Add(toolbar => toolbar.Actions, Markup("toolbar-action", "Refresh")));
+
+        IRenderedComponent<FluentTextInput> search = cut.FindComponent<FluentTextInput>();
+        search.Instance.Style.ShouldNotBeNull();
+        search.Instance.Style!.ShouldContain("flex");
+        search.Instance.Style!.ShouldContain("max-width");
+
+        IElement actions = cut.Find("[data-testid='fc-page-toolbar-actions']");
+        (actions.GetAttribute("style") ?? string.Empty).ShouldContain("margin-inline-start: auto");
+    }
+
     private static RenderFragment Markup(string testId, string text)
         => builder => builder.AddMarkupContent(0, $"<span data-testid=\"{testId}\">{text}</span>");
 

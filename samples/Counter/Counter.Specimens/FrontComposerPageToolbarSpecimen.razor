@@ -1,0 +1,97 @@
+@page "/__frontcomposer/specimens/page-toolbar"
+@namespace Counter.Specimens
+@using Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Shell.Components.Specimens
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<PageTitle>FrontComposer page toolbar specimen</PageTitle>
+
+<main class="fc-specimen fc-specimen--toolbar"
+      aria-labelledby="fc-page-toolbar-specimen-title"
+      data-testid="fc-page-toolbar-specimen"
+      data-specimen-ready="true"
+      data-owner-story="@FrontComposerSpecimenRoutes.OwnerStoryKey">
+    <header class="fc-specimen__header" data-testid="fc-page-toolbar-specimen-header">
+        <p class="fc-specimen__eyebrow">FrontComposer accessibility specimen</p>
+        <h1 id="fc-page-toolbar-specimen-title">Page toolbar specimen</h1>
+        <p>Reusable search, filter, view, action, and tab toolbar rendered with Fluent UI.</p>
+    </header>
+
+    <section aria-labelledby="fc-page-toolbar-section-title" data-testid="fc-page-toolbar-section">
+        <h2 id="fc-page-toolbar-section-title">Toolbar</h2>
+        <FcPageToolbar AriaLabel="Orders page tools"
+                       SearchValue="@SearchValue"
+                       SearchValueChanged="@OnSearchChangedAsync"
+                       SearchPlaceholder="Search orders"
+                       SearchAriaLabel="Search orders"
+                       FilterLabel="Order filters"
+                       ViewMenuLabel="View options"
+                       Tabs="@Tabs"
+                       ActiveTabId="@ActiveTabId"
+                       ActiveTabIdChanged="@OnActiveTabChangedAsync">
+            <FilterContent>
+                <FluentStack Orientation="Orientation.Vertical" VerticalGap="8px" data-testid="fc-page-toolbar-filter-content">
+                    <FluentText Size="TextSize.Size300">Status: Active</FluentText>
+                    <FluentText Size="TextSize.Size300">Owner: Current tenant</FluentText>
+                </FluentStack>
+            </FilterContent>
+            <ViewMenuContent>
+                <FluentMenuItem Label="Density columns" data-testid="fc-page-toolbar-view-density" />
+                <FluentMenuItem Label="Export view" data-testid="fc-page-toolbar-view-export" />
+            </ViewMenuContent>
+            <Actions>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              OnClick="@RefreshAsync"
+                              data-testid="fc-page-toolbar-refresh">
+                    Refresh
+                </FluentButton>
+            </Actions>
+        </FcPageToolbar>
+    </section>
+
+    <section aria-labelledby="fc-page-toolbar-state-title" data-testid="fc-page-toolbar-state">
+        <h2 id="fc-page-toolbar-state-title">Toolbar state</h2>
+        <FluentStack Orientation="Orientation.Vertical" VerticalGap="4px">
+            <FluentText Size="TextSize.Size300" data-testid="fc-page-toolbar-search-state">
+                Current search: @SearchValue
+            </FluentText>
+            <FluentText Size="TextSize.Size300" data-testid="fc-page-toolbar-tab-state">
+                Active tab: @ActiveTabId
+            </FluentText>
+            <FluentText Size="TextSize.Size300" data-testid="fc-page-toolbar-refresh-state">
+                Refresh count: @RefreshCount
+            </FluentText>
+        </FluentStack>
+    </section>
+</main>
+
+@code {
+    private static readonly FcPageToolbarTab[] Tabs = [
+        new("summary", "Summary"),
+        new("activity", "Activity"),
+        new("history", "History"),
+    ];
+
+    private string SearchValue { get; set; } = "open";
+
+    private string ActiveTabId { get; set; } = "summary";
+
+    private int RefreshCount { get; set; }
+
+    private Task OnSearchChangedAsync(string? value) {
+        SearchValue = value ?? string.Empty;
+        return Task.CompletedTask;
+    }
+
+    private Task OnActiveTabChangedAsync(string? activeTabId) {
+        ActiveTabId = activeTabId ?? "summary";
+        return Task.CompletedTask;
+    }
+
+    private Task RefreshAsync() {
+        RefreshCount++;
+        return Task.CompletedTask;
+    }
+}

@@ -57,6 +57,25 @@
       "expectedArtifacts": [
         "axe-data-formatting.json"
       ]
+    },
+    {
+      "name": "page-toolbar",
+      "path": "/__frontcomposer/specimens/page-toolbar",
+      "readySelector": "[data-testid='fc-page-toolbar-specimen'][data-specimen-ready='true']",
+      "landmarkRoot": "[data-testid='fc-page-toolbar-specimen']",
+      "requiredSections": [
+        "[data-testid='fc-page-toolbar-section']",
+        "[data-testid='fc-page-toolbar']",
+        "[data-testid='fc-page-toolbar-search']",
+        "[data-testid='fc-page-toolbar-filter-trigger']",
+        "[data-testid='fc-page-toolbar-view-trigger']",
+        "[data-testid='fc-page-toolbar-actions']",
+        "[data-testid='fc-page-toolbar-tabs']",
+        "[data-testid='fc-page-toolbar-state']"
+      ],
+      "expectedArtifacts": [
+        "axe-page-toolbar.json"
+      ]
     }
   ],
   "themeDensityCombinations": [

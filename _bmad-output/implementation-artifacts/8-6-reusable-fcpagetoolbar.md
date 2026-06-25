@@ -4,9 +4,10 @@ baseline_commit: dccec20851f162f04ae8aef4d794a43908cb5f85
 
 # Story 8.6: Reusable `FcPageToolbar`
 
-Status: review
+Status: done
 
 <!-- Validation completed against .agents/skills/bmad-create-story/checklist.md on 2026-06-25. -->
+<!-- Senior Developer Review (AI) completed on 2026-06-25; 1 HIGH auto-fixed, status review -> done. -->
 
 ## Story
 
@@ -142,6 +143,7 @@ GPT-5 Codex
 - 2026-06-25: Implemented `FcPageToolbar` with `FluentTextInput` search, optional `FluentButton`/`FluentPopover` filters, optional `FluentMenuButton`/`FluentMenu` view menu, actions slot, and optional `FluentTabs` from caller-owned `FcPageToolbarTab` descriptors.
 - 2026-06-25: Added FC-DOC `docs/reference/components/page-toolbar.md` and linked it from the component index without changing `docs/toc.yml`.
 - 2026-06-25: Validation evidence recorded in `_bmad-output/implementation-artifacts/tests/test-summary.md`; local VSTest, DocFX metadata, and Playwright browser execution are socket-blocked in this sandbox.
+- 2026-06-25: QA generate E2E tests added a browser-visible Counter specimen route plus focused Playwright page-toolbar coverage for search, filters, view menu, actions, tabs, narrow viewport reachability, and blocking axe checks. Counter.Web Release build and e2e typecheck passed; Playwright browser execution remains Kestrel socket-blocked in this sandbox.
 
 ### Completion Notes List
 
@@ -153,6 +155,7 @@ GPT-5 Codex
 - Added focused bUnit coverage for default rendering, callbacks, stable selectors, filter popover, menu/action slots, optional tabs, and aggregate-list composition.
 - Authored the FC-DOC page for the toolbar and updated the component index; `docs/toc.yml` was intentionally untouched.
 - Verified Release Shell.Tests build 0/0, focused Shell lane 46/46, broad Shell non-Contract lane 1987/1987, and e2e TypeScript typecheck. Exact VSTest, full DocFX, and Playwright browser lanes are locally socket-blocked or pre-existing docs-gate blocked as recorded.
+- Added Story 8.6 Playwright coverage through a new Counter specimen route and registered it in the shared specimen manifest; focused tests list 3 Chromium cases.
 
 ### File List
 
@@ -161,12 +164,42 @@ GPT-5 Codex
 - `_bmad-output/implementation-artifacts/tests/test-summary.md`
 - `docs/reference/components/index.md`
 - `docs/reference/components/page-toolbar.md`
+- `samples/Counter/Counter.Specimens/FrontComposerPageToolbarSpecimen.razor`
 - `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor`
 - `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor.cs`
-- `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor.css`
 - `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbarTab.cs`
+- `tests/e2e/helpers/specimen-manifest.ts`
+- `tests/e2e/package.json`
+- `tests/e2e/page-objects/page-toolbar-specimen.page.ts`
+- `tests/e2e/specimens/frontcomposer-specimen-manifest.json`
+- `tests/e2e/specs/page-toolbar.spec.ts`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPageToolbarTests.cs`
 
 ### Change Log
 
 - 2026-06-25: Implemented Story 8.6 reusable `FcPageToolbar` and moved story to review. Release Shell.Tests build passed 0 warnings / 0 errors; focused Shell lane passed 46/46; broad Shell non-Contract lane passed 1987/1987; e2e TypeScript typecheck passed. Exact solution VSTest and Playwright browser lanes are socket-blocked locally. Docs validation was attempted; full DocFX metadata is socket-blocked and the structural fallback is blocked by pre-existing docs snippet/hash failures unrelated to the new toolbar page.
+- 2026-06-25: QA generate E2E tests added focused Story 8.6 Playwright coverage and a Counter specimen route. Counter.Web Release build and e2e TypeScript typecheck passed; focused Playwright browser execution remains blocked by Kestrel socket permissions in this sandbox.
+- 2026-06-25: Senior Developer Review (AI) auto-fixed 1 HIGH dead-CSS finding (AC1 right-aligned actions + search sizing) by moving layout from the dead `FcPageToolbar.razor.css` to rendered inline `Style`, deleted the dead CSS file, and added a DOM-proving regression test. Re-verified Release build 0W/0E, focused lane 47/47, broad Shell non-Contract lane 1988/1988. Status moved review -> done.
+
+## Senior Developer Review (AI)
+
+**Reviewer:** Administrator · **Date:** 2026-06-25 · **Outcome:** Approved after auto-fix (review -> done)
+
+**Method:** Re-derived the change set from the story `baseline_commit` (`dccec208`), read every File List entry against the actual implementation, verified the pinned Fluent v5 API by a clean Release build (0W/0E — confirms `FluentPopover.AnchorId/Opened/OpenedChanged`, `FluentTabs.Appearance`/`TabsAppearance.Subtle`, `FluentText.As/Size/Weight`, `FluentMenuButton`/`FluentMenu` all exist), and independently reproduced the test evidence through the direct xUnit v3 in-process runner (VSTest/Playwright sockets are blocked locally). Inspected the generated `scopedcss` bundle to confirm the CSS finding.
+
+### 🔴 HIGH (fixed)
+
+1. **Dead scoped CSS — AC1 "right-aligned actions slot" and narrow-width search sizing were never applied.** `FcPageToolbar.razor.css` defined `.fc-page-toolbar-actions { margin-left: auto }`, `.fc-page-toolbar-search { flex … }`, `.fc-page-toolbar-row`, and `.fc-page-toolbar-filter-panel`. Blazor CSS isolation rewrote each rule with the component scope (`.fc-page-toolbar-actions[b-91kq7byan7]`), but `FcPageToolbar.razor` contains **zero raw HTML elements** — every node is a Fluent component — so **no rendered DOM element carries `[b-91kq7byan7]`** and all four rules were inert. This is exactly the Story 8.4 dead-`::part()` regression the Dev Notes cite, and bUnit could not catch it because the dev tests only assert class/`data-testid` presence, never computed layout. The repo's own pattern is `::deep` (4 other Shell components) or `HorizontalAlignment.SpaceBetween` (`FcPageHeader`), neither of which this component used.
+   - **Fix:** Moved layout onto inline `Style` that reliably renders to the element — `margin-inline-start: auto` on the actions `FluentStack` (logical/RTL-aware), `flex: 1 1 18rem; min-width: min(100%, 14rem); max-width: 32rem` on the search `FluentTextInput`, `min-width: 16rem` on the filter panel, `min-width: 0` on the row. Deleted the dead `FcPageToolbar.razor.css`. Added `FcPageToolbar_AppliesLayoutViaRenderedInlineStyle_NotDeadScopedCss`, which asserts the right-alignment and search sizing are present on rendered DOM (proving behavior, not dead-CSS string presence).
+
+### 🟢 LOW (noted, not changed)
+
+- **Hardcoded inner selectors prevent two toolbars on one page.** `data-testid="fc-page-toolbar-search"` (and the filter/view/actions/tabs test ids) plus the default `FilterTriggerId="fc-page-toolbar-filter-trigger"` element `id` are literal constants, so two `FcPageToolbar` instances on the same page would emit duplicate ids/test ids and the popover `AnchorId` would bind the first match. These literals are mandated verbatim by the story Tasks/Subtasks and asserted by the dev tests, and the read-only MVP renders one toolbar per page, so this is left as a documented single-instance limitation rather than an API change.
+
+### Verification after fix
+
+- `dotnet build …Shell.Tests.csproj -c Release -m:1 /nr:false` → **0 warnings / 0 errors**.
+- Focused direct xUnit v3 lane (`FcPageToolbarTests`, `FcPageHeaderTests`, `FcAggregateListPageTests`, `FluentConformanceTests`) → **47/47** (was 46/46; +1 regression test).
+- Broad Shell non-Contract direct xUnit v3 lane → **1988/1988** (was 1987/1987).
+- `FluentConformanceTests` stayed green: the inline styles are pure layout (`flex`, `min/max-width`, `margin-inline-start`) with no raw controls, legacy/FAST tokens, or accent background fills.
+- VSTest and Playwright browser lanes remain socket-blocked locally (unchanged sandbox limitation, consistent with the dev evidence).

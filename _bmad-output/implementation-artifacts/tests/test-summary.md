@@ -4,8 +4,13 @@
 
 ### Generated Tests
 - [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPageToolbarTests.cs` - added reusable toolbar bUnit coverage for default rendering, search value/callback, accessible names, stable selectors, optional filter popover, view menu, right-aligned actions, optional tabs, and aggregate-list composition through `FcAggregateListPage.Toolbar`.
+- [x] `samples/Counter/Counter.Specimens/FrontComposerPageToolbarSpecimen.razor` - added a browser-visible Story 8.6 specimen route with live search state, filter popover content, view menu items, refresh action, and tab state.
 
 ### E2E Tests
+- [x] `tests/e2e/specs/page-toolbar.spec.ts` - added focused Playwright coverage for the toolbar user workflow, narrow viewport wrapping, and blocking axe scan.
+- [x] `tests/e2e/page-objects/page-toolbar-specimen.page.ts` - added semantic locators for the toolbar specimen route.
+- [x] `tests/e2e/specimens/frontcomposer-specimen-manifest.json` - registered the page-toolbar specimen in the shared specimen accessibility manifest.
+- [x] `tests/e2e/package.json` - added `test:fc-page-toolbar` for the focused Story 8.6 Chromium lane.
 - [x] `npm --prefix tests/e2e run typecheck` passed for the existing Playwright workspace.
 - [ ] Local Playwright browser execution remains blocked before browser assertions because Kestrel cannot bind a socket in this sandbox.
 
@@ -15,26 +20,44 @@
 - AC3: `FcAggregateListPage.Toolbar` composes `<FcPageToolbar>` through the existing `FcPageHeader.Actions` seam; no `FcPageHeader` or `FcAggregateListPage` parameter changes were needed.
 - AC4: `FluentConformanceTests` stayed green; no raw interactive controls, legacy Fluent tokens, accent background fills, package changes, or PublicAPI baseline changes were introduced.
 - AC5: `docs/reference/components/page-toolbar.md` was authored and linked from `docs/reference/components/index.md`; `docs/toc.yml` was not changed.
+- Browser E2E coverage now targets the full `FcPageToolbar` workflow through the Counter specimen host: search callback state, filter popover, view menu, right-aligned action callback, tabs callback, narrow viewport reachability, and axe blocking checks.
 
 ### Validation
+- [x] `node -e "JSON.parse(...)"` parsed `tests/e2e/package.json` and `tests/e2e/specimens/frontcomposer-specimen-manifest.json` successfully.
+- [x] `dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Release --no-restore -m:1 /nr:false` passed with 0 warnings / 0 errors after adding the Story 8.6 specimen route.
+- [x] `npm --prefix tests/e2e run typecheck` passed after adding the Story 8.6 Playwright spec and page object.
+- [x] `PLAYWRIGHT_SKIP_WEBSERVER=1 npm --prefix tests/e2e run test:fc-page-toolbar -- --list` discovered 3 Chromium tests in `page-toolbar.spec.ts`.
+- [x] `PLAYWRIGHT_SKIP_WEBSERVER=1 npm --prefix tests/e2e run test -- --list specs/specimen-accessibility.spec.ts --project=chromium` discovered the shared `page-toolbar specimen is nonblank and passes blocking axe gate` manifest test.
+- [x] `git diff --check -- ...Story 8.6 files...` passed.
 - [x] RED phase: new `FcPageToolbarTests` failed the Release Shell.Tests build before implementation because `FcPageToolbar` and `FcPageToolbarTab` did not exist.
 - [x] `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
 - [x] Focused Shell direct xUnit v3 lane passed 46/46: `FcPageToolbarTests`, `FcPageHeaderTests`, `FcAggregateListPageTests`, and `FluentConformanceTests`.
 - [x] Broad Shell direct xUnit v3 non-Contract lane passed 1987/1987 with `-trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -trait- Category=Contract`.
 - [x] `npm --prefix tests/e2e run typecheck` passed.
+- [ ] `npm --prefix tests/e2e run test:fc-page-toolbar` failed before browser assertions because the Counter web server could not bind Kestrel: `System.Net.Sockets.SocketException (13): Permission denied`.
 - [ ] `pwsh ./eng/validate-docs.ps1` failed during DocFX metadata before page validation because Roslyn/MSBuild build-host socket creation is blocked: `System.Net.Sockets.SocketException (13): Permission denied`.
 - [ ] `pwsh ./eng/validate-docs.ps1 -SkipDocFx` reached repo-wide validation but failed on pre-existing docs issues unrelated to Story 8.6: existing compile snippets in `customization-gradient-cookbook.md`, `test-generated-components.md`, and `getting-started.md`, plus stale producer hashes for Stories 9.1-9.3 artifacts.
 - [ ] `pwsh ./eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild` still failed on the same pre-existing stale producer hashes for Stories 9.1-9.3.
+- [ ] `dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore -m:1 /nr:false` failed in the Tenants submodule because nested `Hexalith.Tenants/Hexalith.Memories/...` projects are not initialized; nested submodules were not initialized per repository rules. The run also reported NuGet vulnerability data access blocked for `api.nuget.org:443`.
 - [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false` built into test assemblies, then VSTest aborted across assemblies with `System.Net.Sockets.SocketException (13): Permission denied`.
 - [ ] `npm --prefix tests/e2e run test:fc-shell-chrome` failed before browser assertions because the Counter web server could not bind Kestrel: `System.Net.Sockets.SocketException (13): Permission denied`.
 
 ### Checklist
 - [x] API tests generated if applicable: N/A, no HTTP API endpoint surface.
-- [x] E2E tests generated if UI exists: no toolbar-specific browser spec was added; local browser execution is socket-blocked, and the e2e workspace typecheck passed.
+- [x] E2E tests generated if UI exists: toolbar-specific browser spec, page object, specimen route, manifest entry, and npm script were added; local browser execution is socket-blocked, and the e2e workspace typecheck passed.
 - [x] Tests use standard xUnit v3, Shouldly, bUnit, and Fluent component test patterns.
-- [x] Tests cover happy paths, optional-slot absence, filter/menu/tabs/actions paths, callback wiring, and aggregate-list composition.
+- [x] Tests cover happy paths, optional-slot absence, filter/menu/tabs/actions paths, callback wiring, aggregate-list composition, narrow viewport reachability, and blocking a11y checks.
 - [x] Story-owned focused and broad Shell lanes run successfully through the direct xUnit v3 in-process runner.
 - [x] Test summary updated with counts, docs validation caveats, solution VSTest blocker, and Playwright/Kestrel blocker.
+
+### Senior Developer Review (AI) - 2026-06-25
+- [x] HIGH dead-CSS fix: `FcPageToolbar.razor.css` scoped every rule with the component `[b-hash]`, but the `.razor` has no raw HTML element to carry that scope, so AC1's right-aligned actions and the search width/wrap sizing were inert (the Story 8.4 trap; confirmed against the generated `scopedcss` bundle). Moved layout to rendered inline `Style` (`margin-inline-start:auto`, `flex/min/max-width`, filter-panel `min-width`) and deleted the dead CSS file.
+- [x] Added `FcPageToolbar_AppliesLayoutViaRenderedInlineStyle_NotDeadScopedCss` proving the right-alignment and search sizing are on rendered DOM, not dead CSS.
+- [x] Release Shell.Tests build re-verified 0 warnings / 0 errors after the fix.
+- [x] Focused direct xUnit v3 lane (`FcPageToolbarTests`, `FcPageHeaderTests`, `FcAggregateListPageTests`, `FluentConformanceTests`) passed **47/47** (was 46/46; +1 regression test).
+- [x] Broad Shell non-Contract direct xUnit v3 lane passed **1988/1988** (was 1987/1987); `FluentConformanceTests` stayed green (inline styles are pure layout, no raw controls / legacy tokens / accent fills).
+- [ ] VSTest and Playwright browser lanes remain socket-blocked locally (unchanged sandbox limitation).
+- Noted-not-changed (LOW): inner `data-testid`s and the default filter-trigger `id` are hardcoded literals per the story task contract, so multiple toolbars per page would collide — acceptable for the single-instance MVP, documented for future multi-instance hosts.
 
 ## Story 8.5 - Icon+label navigation rail and projection flyout
 
