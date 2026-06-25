@@ -160,4 +160,39 @@ public sealed class FcPageHeaderTests : LayoutComponentTestBase {
 
         Should.NotThrow(() => cut.InvokeAsync(() => cut.Instance.FocusHeadingAsync().AsTask()));
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("\t")]
+    public async Task FcPageHeader_FocusHeadingAsync_WithBlankHeading_FailsDiagnostically(string blankHeading) {
+        // Requested outcomes 3 + 5: when Heading is blank the <h1> is suppressed, so there is no focus
+        // target. FocusHeadingAsync must fail diagnostically (throw) rather than silently no-op against a
+        // non-existent heading element. The blank-Heading branch was previously uncovered — only the
+        // missing-tabindex branch had a test. (Documented as the strict consumer contract on FcPageHeader.)
+        IRenderedComponent<FcPageHeader> cut = Render<FcPageHeader>(parameters => parameters
+            .Add(component => component.PageTitle, "Browser title")
+            .Add(component => component.Heading, blankHeading)
+            .Add(component => component.HeadingTabIndex, -1));
+
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(
+            () => cut.InvokeAsync(() => cut.Instance.FocusHeadingAsync().AsTask()));
+
+        ex.Message.ShouldContain(nameof(FcPageHeader.Heading));
+    }
+
+    [Fact]
+    public void FcPageHeader_HeaderRoot_RolePresentation_IsNotOverridableByAdditionalAttributes() {
+        // The presentation role is a landmark-safety invariant: an adopter must not be able to splat
+        // role="banner" via captured unmatched attributes and silently re-introduce a competing
+        // top-level banner. The explicit role is emitted after @attributes so it always wins.
+        IRenderedComponent<FcPageHeader> cut = Render<FcPageHeader>(parameters => parameters
+            .Add(component => component.Heading, "Tenant operations")
+            .Add(component => component.TestId, "tenant-page-header")
+            .AddUnmatched("role", "banner"));
+
+        IElement header = cut.Find("[data-testid='tenant-page-header']");
+        header.GetAttribute("role").ShouldBe("presentation");
+        cut.FindAll("[role='banner']").ShouldBeEmpty();
+    }
 }

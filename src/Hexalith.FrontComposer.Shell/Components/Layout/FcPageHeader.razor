@@ -7,8 +7,10 @@
 @* role="presentation" — the page header is purely visual chrome scoped inside the shell's single
    #fc-main-content `main` landmark. Stripping the implicit `banner` role guarantees exactly one
    banner per page (owned by the shell header), even when an adopter renders this header outside a
-   sectioning ancestor. The route heading keeps its own h1 semantics independently. *@
-<header class="@CssClass" role="@LandmarkRole" data-testid="@TestId" @attributes="AdditionalAttributes">
+   sectioning ancestor. The route heading keeps its own h1 semantics independently.
+   role is emitted AFTER @attributes so a splatted adopter `role` (captured via AdditionalAttributes)
+   cannot override the presentation role and silently re-introduce a competing banner landmark. *@
+<header class="@CssClass" data-testid="@TestId" @attributes="AdditionalAttributes" role="@LandmarkRole">
     <FluentStack Orientation="Orientation.Vertical" VerticalGap="8px" Width="100%">
         @if (!string.IsNullOrWhiteSpace(Eyebrow))
         {

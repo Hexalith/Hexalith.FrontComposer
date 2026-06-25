@@ -26,8 +26,11 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// <b>Blank-heading fail-safe (Requested outcome 3):</b> a blank or whitespace <see cref="Heading"/>
 /// is tolerated. When <see cref="Heading"/> is blank the visible <c>&lt;h1&gt;</c> is suppressed so
 /// the route never renders a dangling empty heading element (an empty heading is itself a WCAG
-/// failure). Consumers that require a heading should keep passing a non-blank value; the
-/// <c>FcPageHeaderRequiresHeading</c> diagnostic guard test enforces the strict consumer contract.
+/// failure); this is pinned by <c>FcPageHeader_WithBlankHeading_RendersNoDanglingHeadingElement</c>.
+/// Consumers that require a heading should keep passing a non-blank value: a blank
+/// <see cref="Heading"/> then surfaces diagnostically at the focus-restore call rather than silently,
+/// because <see cref="FocusHeadingAsync"/> throws when the heading is suppressed (pinned by
+/// <c>FcPageHeader_FocusHeadingAsync_WithBlankHeading_FailsDiagnostically</c>).
 /// </para>
 /// </remarks>
 public sealed partial class FcPageHeader : ComponentBase {
