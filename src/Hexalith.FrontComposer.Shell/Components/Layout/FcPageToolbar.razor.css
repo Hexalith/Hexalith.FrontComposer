@@ -1,0 +1,17 @@
+.fc-page-toolbar-row {
+    min-width: 0;
+}
+
+.fc-page-toolbar-search {
+    flex: 1 1 18rem;
+    min-width: min(100%, 14rem);
+    max-width: 32rem;
+}
+
+.fc-page-toolbar-actions {
+    margin-left: auto;
+}
+
+.fc-page-toolbar-filter-panel {
+    min-width: 16rem;
+}

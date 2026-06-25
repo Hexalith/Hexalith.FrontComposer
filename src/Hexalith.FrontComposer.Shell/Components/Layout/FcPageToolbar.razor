@@ -1,0 +1,105 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentStack Orientation="Orientation.Vertical"
+             VerticalGap="8px"
+             Width="100%"
+             Class="@RootClass">
+    <FluentStack Orientation="Orientation.Horizontal"
+                 HorizontalGap="8px"
+                 VerticalGap="8px"
+                 VerticalAlignment="VerticalAlignment.Center"
+                 Wrap="true"
+                 Width="100%"
+                 Class="fc-page-toolbar-row"
+                 role="toolbar"
+                 aria-label="@AriaLabel"
+                 data-testid="@TestId">
+        <FluentTextInput Value="@SearchValue"
+                         ValueChanged="@OnSearchValueChangedAsync"
+                         TextInputType="TextInputType.Search"
+                         Placeholder="@SearchPlaceholder"
+                         Class="fc-page-toolbar-search"
+                         aria-label="@SearchAriaLabel"
+                         data-testid="fc-page-toolbar-search" />
+
+        @if (FilterContent is not null)
+        {
+            <FluentButton Id="@FilterTriggerId"
+                          Appearance="ButtonAppearance.Subtle"
+                          OnClick="@ToggleFilterAsync"
+                          aria-label="@FilterLabel"
+                          aria-haspopup="dialog"
+                          aria-expanded="@(_filterOpen ? "true" : "false")"
+                          data-testid="fc-page-toolbar-filter-trigger">
+                @FilterLabel
+            </FluentButton>
+
+            @if (_filterOpen)
+            {
+                <FluentPopover AnchorId="@FilterTriggerId"
+                               Opened="true"
+                               OpenedChanged="@OnFilterOpenChangedAsync"
+                               role="dialog"
+                               aria-labelledby="@FilterTitleId"
+                               data-testid="fc-page-toolbar-filter-popover">
+                    <FluentStack Orientation="Orientation.Vertical"
+                                 VerticalGap="8px"
+                                 Class="fc-page-toolbar-filter-panel">
+                        <FluentText Id="@FilterTitleId"
+                                    As="TextTag.Paragraph"
+                                    Size="TextSize.Size300"
+                                    Weight="TextWeight.Semibold"
+                                    Style="margin: 0;">
+                            @FilterLabel
+                        </FluentText>
+                        @FilterContent
+                    </FluentStack>
+                </FluentPopover>
+            }
+        }
+
+        @if (ViewMenuContent is not null)
+        {
+            <FluentMenu data-testid="fc-page-toolbar-view-menu">
+                <FluentMenuButton Appearance="ButtonAppearance.Subtle"
+                                  aria-label="@ViewMenuLabel"
+                                  data-testid="fc-page-toolbar-view-trigger">
+                    @ViewMenuLabel
+                </FluentMenuButton>
+                <FluentMenuList>
+                    @ViewMenuContent
+                </FluentMenuList>
+            </FluentMenu>
+        }
+
+        @if (Actions is not null)
+        {
+            <FluentStack Orientation="Orientation.Horizontal"
+                         HorizontalGap="8px"
+                         VerticalGap="8px"
+                         Wrap="true"
+                         Class="fc-page-toolbar-actions"
+                         data-testid="fc-page-toolbar-actions">
+                @Actions
+            </FluentStack>
+        }
+    </FluentStack>
+
+    @if (HasTabs)
+    {
+        <FluentTabs ActiveTabId="@ActiveTabId"
+                    ActiveTabIdChanged="@OnActiveTabIdChangedAsync"
+                    Appearance="TabsAppearance.Subtle"
+                    Width="100%"
+                    data-testid="fc-page-toolbar-tabs">
+            @foreach (FcPageToolbarTab tab in Tabs)
+            {
+                <FluentTab Id="@tab.Id"
+                           Header="@tab.Header"
+                           Disabled="@tab.Disabled"
+                           IconStart="@tab.IconStart" />
+            }
+        </FluentTabs>
+    }
+</FluentStack>
