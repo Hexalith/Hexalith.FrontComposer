@@ -137,6 +137,23 @@ shrink (a stale-entry assertion fails the build the moment an allowlisted file g
 The earlier `fc-page-header.css` removal (`--type-ramp-plus-3-*` heading ramp → `FluentText`
 `Size`/`Weight`, correct-course 2026-06-19) was the first burn-down; this pass cleared the remaining 15.
 
+**Accent is a thread, never a chrome fill (Epic 8 / correct-course 2026-06-25).** The brand accent
+(`FcShellOptions.AccentColor`, default `#0097A7`, applied via `IThemeService.SetThemeAsync`) is used **only
+as a thread** — active-nav indicator, focus ring, primary buttons, links, and badge/selected states — and
+**must not paint a chrome surface**. Header, navigation rail, and footer backgrounds stay
+`--colorNeutralBackground{1,2}` with `--colorNeutralStroke2` dividers (the Aspire Dashboard's neutral-chrome
+principle, translated off its banned v4 `--neutral-layer-*` tokens). The earlier teal **header band** was
+the accent used *as a fill* — Story 8.1 neutralizes it. This is enforced by a **third
+`…FluentConformanceTests` guard** (Story 8.2): it fails if `--fc-color-accent`/`--fc-accent-base-color`
+appears in a `background`/`background-color` declaration in Shell chrome CSS, with an empty shrink-only
+allowlist mirroring this section's token-backlog discipline. Epic 8 also restyles the navigation into an
+**icon+label rail with a projection flyout** (Story 8.5, refining UX-DR3), tightens **default density** +
+grid (Story 8.4), adds a reusable **`FcPageToolbar`** (Story 8.6), and **amends UX-DR2** so *status* renders
+as a **colored Fluent icon** (success = green checkmark, error = red cross, unknown/neutral = grey question)
+with a hover/focus-revealed label and an always-present `aria-label` — superseding the pill-only
+`FcStatusBadge` model (Story 8.7; touches the `[ProjectionBadge]` generator emit). Source of record:
+`sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md`.
+
 ### 4.2 Page-section layout pattern (FluentAccordion) — project-wide guideline
 
 **Every titled page section renders inside a `FluentAccordion` / `FluentAccordionItem`.** A *titled

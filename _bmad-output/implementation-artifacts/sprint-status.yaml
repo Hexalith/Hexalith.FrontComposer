@@ -35,7 +35,8 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-03
-last_updated: 2026-06-21
+last_updated: 2026-06-25
+# epic-8 added backlog on 2026-06-25 (correct-course; Aspire-grade visual refresh, stories 8.1-8.7, framework-only)
 # epic-1 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
 # epic-2 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
 # epic-3 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
@@ -258,3 +259,17 @@ development_status:
   7-4-opt-in-drift-detection-vs-a-baseline: done
   7-5-testing-library-bunit-host-and-deterministic-fakes: done
   epic-7-retrospective: done
+
+  # Epic 8: Aspire-grade Visual Refresh (post-MVP chrome parity)
+  # Added 2026-06-25 via Correct Course (sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md).
+  # Framework-only; Tenants.UI page-body adoption (Host-A) is a separate Tenants correct-course.
+  # Suggested order 8.1 -> 8.2 -> 8.3 -> 8.4 -> 8.5 -> 8.6 -> 8.7; 8.1 is a Minor change shippable first.
+  epic-8: backlog
+  8-1-neutral-header-chrome-and-footer-framing: backlog
+  8-2-accent-as-thread-policy-and-regression-guard: backlog
+  8-3-brand-logo-cell-in-header-start: backlog
+  8-4-compact-default-density-and-grid-polish: backlog
+  8-5-icon-label-navigation-rail-and-projection-flyout: backlog
+  8-6-reusable-fcpagetoolbar: backlog
+  8-7-status-as-colored-icon: backlog
+  epic-8-retrospective: optional

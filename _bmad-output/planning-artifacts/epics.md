@@ -122,7 +122,7 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 > to match `architecture.md` §4.
 
 - UX-DR1: **Design tokens** — `Typography` (9 `FcTypoToken` role constants → FluentUI v5 `TextSize`/`TextWeight`/`TextTag`, pinned `TypographyMappingVersion="3.1.0"`); `DensityLevel`/`DensitySurface` density tokens applied via `<body data-fc-density>`.
-- UX-DR2: **Semantic badge slots** — `[ProjectionBadge]` enum-member → `FcStatusBadge`/`FcDesaturatedBadge` (`FluentBadge` Color/Appearance) with mandatory `aria-label`; desaturated variant for non-urgent counts.
+- UX-DR2: **Semantic status slots** — `[ProjectionBadge]` enum-member → a status indicator with a mandatory accessible name. **Amended 2026-06-25 (Epic 8 / Story 8.7 — `sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md`):** *status* members render as a **colored Fluent icon** (success = green checkmark, error = red cross, unknown/neutral = grey question; warning/info as extensions) with the status label revealed **on hover _and_ keyboard focus** via `FluentTooltip`, plus an always-present `aria-label` so the accessible name is never hover-only (NFR6/WCAG preserved). Numeric **count** slots keep the `FluentBadge` pill (`FcDesaturatedBadge` desaturated variant for non-urgent counts). This **supersedes the prior pill-only status model** (`FcStatusBadge` `FluentBadge` Color/Appearance) and is a contract amendment that touches the `[ProjectionBadge]` generator emit.
 - UX-DR3: **Responsive layout** — breakpoint behaviour (`FcLayoutBreakpointWatcher`), `FcCollapsedNavRail` (48px). `FcHamburgerToggle` is **always visible** and at Desktop toggles full-nav ↔ 48px rail (`SidebarToggledAction`) — **supersedes the earlier "D9 / no Desktop hamburger" decision** (architecture §4). The framework sidebar keeps **exactly one active item** (longest segment-prefix, `NavLinkMatch.Prefix`).
 - UX-DR4: **Reusable interaction components** — `FcCommandPalette` (ARIA combobox, keyboard nav), `FcSettingsDialog`, `FcDestructiveConfirmationDialog`, `FcFormAbandonmentGuard`, `FcLifecycleWrapper`.
 - UX-DR5: **Status & empty/loading UX** — `FcProjectionLoadingSkeleton` (Card/Timeline/Grid), `FcProjectionEmptyPlaceholder`, `FcProjectionConnectionStatus`, `FcPendingCommandSummary` (`aria-live`).
@@ -238,6 +238,19 @@ library's bUnit host + deterministic fakes, and catch structural/metadata drift 
 baseline (HFC1065/66) before it ships.
 **FRs covered:** FR6, FR7, FR20, FR21, FR22
 **Standalone:** the developer-confidence toolchain; usable against any annotated domain, independent of runtime epics.
+
+### Epic 8: Aspire-grade Visual Refresh  *(post-MVP chrome parity)*
+An **operator** experiences shell chrome matching the polish of the **.NET Aspire Dashboard** while the
+codebase stays strictly on **Fluent UI v5 components + Fluent 2 tokens**: a **neutral header/footer** (brand
+accent demoted to a *thread* — active nav, focus, primary, links, badges — never a surface fill), an
+**icon+label navigation rail** with outline→filled active swap + a projection flyout, **compact default
+density** + sticky-header grids, a reusable **`FcPageToolbar`** (search + filter + view-menu + underline
+tabs), and **colored-icon status** (green check / red cross / grey question, hover+focus label). Aspire runs
+Fluent v4/FAST tokens that §4.1 bans here, so every pattern is **translated**, not copied.
+**Refines:** FR9 (shell frame), FR14 (nav), FR15 (theme/density) · **UX-DRs:** UX-DR1, UX-DR2 (amended), UX-DR3 (refined) · **introduces no new FRs**
+**Standalone:** each story (8.1–8.7) ships independently; Story 8.1 (header/footer) is a Minor change shippable on its own.
+**Source of record:** `sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md` (Correct Course, 2026-06-25).
+**Out of framework scope:** Tenants.UI page-body adoption (neutral page titles, `FcPageToolbar` adoption) is a separate **Host-A** Tenants correct-course under submodule approval.
 
 > **Out of scope (fast-follow, not an epic):** `<AuditTimeline>` and `<ConsequencePreview>` rich
 > components (AR10) — approved fallbacks stand; tracked for a later cycle.
@@ -972,3 +985,137 @@ So that I can unit-test generated components reliably.
 **Given** the Testing library's `PublicAPI.Shipped.txt`,
 **When** its exported surface drifts,
 **Then** `PackageBoundaryTests` fails until the baseline is intentionally updated. *(NFR10)*
+
+## Epic 8: Aspire-grade Visual Refresh *(post-MVP chrome parity)*
+
+> **Source of record:** `sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md` (Correct Course,
+> 2026-06-25). Raises shell chrome to .NET Aspire Dashboard polish using **Fluent v5 components + Fluent 2
+> tokens only** (Aspire's v4/FAST tokens are §4.1-banned, so every pattern is translated). **Framework-only;**
+> Tenants.UI page-body adoption is a separate **Host-A** Tenants correct-course. Suggested order:
+> 8.1 → 8.2 → 8.3 → 8.4 → 8.5 → 8.6 → 8.7. Each story keeps both light AND dark themes verified and the
+> `FluentConformanceTests` Governance lane green (no legacy v4/FAST tokens).
+
+### Story 8.1: Neutral header chrome + footer framing *(Minor — ship first)*
+
+As an operator,
+I want the shell header and footer to be neutral chrome with the brand accent used only as an accent,
+So that the app looks modern instead of a saturated colored band.
+
+**Acceptance Criteria:**
+
+**Given** the shell header,
+**When** rendered in light or dark theme,
+**Then** the header band uses `--colorNeutralBackground2` with a `--colorNeutralStroke2` bottom divider, the
+app title + action icons read in neutral foreground with sufficient contrast, and no brand-accent surface
+fill remains. *(FR9; §4.1)*
+
+**Given** the shell footer,
+**Then** it renders a matching top divider + subtle (`Color.Lightweight`) text on the same neutral chrome.
+
+**Given** the §4.1 Fluent-token guard,
+**Then** no legacy v4/FAST token is introduced and the Governance lane stays green; `FrontComposerShellTests`
++ Verify snapshots + a11y/visual baselines are updated intentionally.
+
+### Story 8.2: Accent-as-thread policy + regression guard
+
+As an adopter developer,
+I want a documented + guarded rule that the brand accent is never a chrome surface fill,
+So that the neutral-header design cannot silently regress.
+
+**Acceptance Criteria:**
+
+**Given** architecture.md §4.1,
+**Then** it states the accent (`FcShellOptions.AccentColor`, default `#0097A7`) is a *thread* (active nav,
+focus, primary, links, badges) and MUST NOT fill header/nav/footer surfaces (which stay `--colorNeutralBackground*`).
+
+**Given** a `…FluentConformanceTests` Governance guard,
+**When** Shell chrome CSS uses `--fc-color-accent`/`--fc-accent-base-color` in a `background`/`background-color`,
+**Then** the build fails; the guard ships with an empty, shrink-only allowlist (§4.1 discipline).
+
+### Story 8.3: Brand/logo cell in header-start
+
+As an operator,
+I want a proper brand lockup at the top-left,
+So that the header reads as a branded product surface like the Aspire logo cell.
+
+**Acceptance Criteria:**
+
+**Given** the header-start cluster,
+**Then** an optional logo-mark slot renders before the `AppTitle` (adopter-supplied or a default
+`FcFluentIcons` mark) with tightened lockup spacing; behavior is additive (no change when no logo is supplied).
+
+### Story 8.4: Compact default density + grid polish
+
+As an operator,
+I want a compact default density and Aspire-dense projection grids,
+So that more data is readable at a glance, while I can still change density.
+
+**Acceptance Criteria:**
+
+**Given** a fresh session with no stored preference,
+**Then** the default `data-fc-density` is **Compact**, and the choice remains changeable in `FcSettingsDialog`. *(FR15)*
+
+**Given** a projection grid,
+**Then** rows tighten toward ~46px via the `--fc-spacing-unit` cascade with a subtle `--colorSubtleBackgroundHover`
+row-hover, and the header is **sticky** — confirmed against the generated `FluentDataGrid` (if not already set,
+via a `ProjectionRoleBodyEmitter` change + regenerated Verify snapshots).
+
+### Story 8.5: Icon+label navigation rail + projection flyout
+
+As an operator,
+I want an icon+label navigation rail with an outline→filled active state and a projection flyout,
+So that navigation is compact and scannable like the Aspire app-bar while keeping the registry hierarchy.
+
+**Acceptance Criteria:**
+
+**Given** Desktop,
+**Then** the primary nav is one rail rendered at **72px labeled** or **48px icon-only**, toggled by the
+always-visible hamburger via the existing `SidebarToggledAction`/`SidebarCollapsed`; Mobile/Compact opens the drawer. *(UX-DR3)*
+
+**Given** a bounded-context tile,
+**Then** it shows a `FluentIcon` (rest = outline, active = filled) + (labeled) short name + aggregate-count
+badge; the active context shows an accent left-bar + `aria-current`.
+
+**Given** a tile is activated (click/Enter),
+**Then** a flyout (`FluentMenu`/`FluentPopover`) lists that context's projections (count + "New" badges); the
+single-active-item rule lights the current projection; the flyout is fully keyboard-navigable (Enter/Space,
+arrows, Esc, focus-return) with `role="menu"`. *(UX-DR6)*
+
+**Given** the pinned RC `5.0.0-rc.3-26138.1`,
+**Then** flyout anchoring/keyboard and `data-testid`/`role`/`aria-*` splatting are confirmed before commit (§4.3 caveat).
+
+### Story 8.6: Reusable `FcPageToolbar`
+
+As an adopter developer,
+I want a reusable page-toolbar component matching the Aspire toolbar pattern,
+So that every page presents a consistent search/filter/view/tab strip.
+
+**Acceptance Criteria:**
+
+**Given** `FcPageToolbar`,
+**Then** it renders a `FluentToolbar` with leading `FluentSearch`, a filter `FluentButton`→`FluentPopover`, a
+view/overflow `FluentMenuButton`, and a right-aligned actions slot, plus an optional underline `FluentTabs`
+strip for multi-view pages; it composes under `FcPageHeader`.
+
+**Given** the FC-DOC contract (Story 1.5),
+**Then** the component has a conforming doc page. *(AR4)*
+
+### Story 8.7: Status as colored icon *(UX-DR2 amendment)*
+
+As an operator,
+I want status shown as a colored icon with the label on hover/focus,
+So that statuses are scannable and lightweight like the Aspire dashboard, without losing accessibility.
+
+**Acceptance Criteria:**
+
+**Given** a `[ProjectionBadge]` status member,
+**When** rendered,
+**Then** it shows a colored Fluent icon (success = green checkmark, error = red cross, unknown/neutral = grey
+question; warning/info extensions) emitted by the generator (`[ProjectionBadge]` emit; regenerated Verify snapshots). *(UX-DR2 amended)*
+
+**Given** the status icon,
+**Then** the label is revealed on **hover and keyboard focus** via `FluentTooltip`, and an `aria-label` is
+**always** present (never hover-only), preserving NFR6/WCAG; numeric count slots keep the `FluentBadge` pill.
+
+**Given** architecture.md §4.1 + epics.md UX-DR2,
+**Then** both are amended to record the colored-icon status model superseding the pill-only model.
