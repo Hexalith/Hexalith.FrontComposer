@@ -104,6 +104,56 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void HeaderChrome_UsesNeutralSurfaceAndDivider() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain(
+                "height: 48px; padding: 0 12px; background: var(--colorNeutralBackground2); border-block-end: 1px solid var(--colorNeutralStroke2);",
+                Case.Sensitive);
+            cut.Markup.ShouldNotContain("--colorCompoundBrandBackground", Case.Sensitive);
+            cut.Markup.ShouldNotContain("--colorBrandBackground", Case.Sensitive);
+        });
+    }
+
+    [Fact]
+    public void DefaultFooterChrome_UsesNeutralFrameAndFluentText() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("padding: 8px 12px;", Case.Sensitive);
+            cut.Markup.ShouldContain("min-height: 36px;", Case.Sensitive);
+            cut.Markup.ShouldContain("background: var(--colorNeutralBackground2);", Case.Sensitive);
+            cut.Markup.ShouldContain("border-block-start: 1px solid var(--colorNeutralStroke2);", Case.Sensitive);
+
+            bool defaultFooterUsesFluentText = cut
+                .FindAll("fluent-text")
+                .Any(element => element.TextContent.Contains(DateTime.Now.Year.ToString(), StringComparison.Ordinal));
+            defaultFooterUsesFluentText.ShouldBeTrue("the default footer must render through FluentText, not as raw layout text.");
+        });
+    }
+
+    [Fact]
+    public void AdopterSuppliedFooter_RendersInsideNeutralFrame() {
+        static void customFooter(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+            => builder.AddMarkupContent(0, "<span data-testid=\"adopter-footer\">Adopter footer</span>");
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .Add(c => c.Footer, customFooter)
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("data-testid=\"adopter-footer\"", Case.Sensitive);
+            cut.Markup.ShouldContain("padding: 8px 12px;", Case.Sensitive);
+            cut.Markup.ShouldContain("min-height: 36px;", Case.Sensitive);
+            cut.Markup.ShouldContain("background: var(--colorNeutralBackground2);", Case.Sensitive);
+            cut.Markup.ShouldContain("border-block-start: 1px solid var(--colorNeutralStroke2);", Case.Sensitive);
+        });
+    }
+
+    [Fact]
     public void Renders_navigation_slot_when_provided() {
         static void navigation(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) => builder.AddMarkupContent(0, "<nav>Navigation rail</nav>");
 

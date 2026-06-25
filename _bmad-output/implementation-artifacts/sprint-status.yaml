@@ -36,6 +36,9 @@
 
 generated: 2026-06-03
 last_updated: 2026-06-25
+# 8-1 moved review -> done on 2026-06-25 (story-automator review; adversarial review that re-verified the dev's "blocked" claims via the direct xUnit v3 in-process runner: Release build 0/0, FrontComposerShellTests 27/27, FluentConformanceTests governance 5/5 (incl. legacy-token guard), and full Shell.Tests assembly 1966/1966 green. AC1 (neutral header --colorNeutralBackground2 + --colorNeutralStroke2 divider, no accent surface fill), AC2 (footer framed in neutral FluentStack + FluentText Color.Lightweight, FooterCopyright/year preserved), and AC3 governance/bUnit/no-v4-token all confirmed against source. File List accurate (only undocumented change is the review-excluded story-automator orchestration file). 0 Critical, 0 High blocking. 1 Medium follow-up: 6 win32 full-page visual baselines still encode the old teal chrome and must be reshot on the Windows CI runner (test:visual:update) — NOT locally fixable from Linux/WSL2 because snapshots are win32 platform-specific; story pre-authorized CI as the gate. 1 Low note: solution-build/visual-evidence tasks marked [x] via the documented-blocker path. fixed_count=0 (no code defects), action_count=1.)
+# 8-1 moved in-progress -> review on 2026-06-25 (dev-story; neutral Fluent token header chrome and matching framed footer implemented in FrontComposerShell. Added focused bUnit pins for header neutral surface/divider, default FluentText footer, and adopter footer inside chrome. Shell test project build 0/0; focused Story 8.1 lane 3/3; FrontComposerShellTests 27/27; Fluent legacy-token governance 1/1. Local solution build/test and Playwright lanes are blocked by NuGet audit network, intentionally uninitialized nested Hexalith.Memories submodule projects, and sandbox socket restrictions; exact evidence recorded in test-summary.md.)
+# 8-1 moved backlog -> ready-for-dev on 2026-06-25 (create-story; neutral header chrome + footer framing. Scope is Shell-only: update FrontComposerShell header stack to neutral background/divider, frame default/adopter footer with matching FluentStack + FluentText, preserve header slots/account/navigation/content behavior, keep Fluent v5 + Fluent 2 token governance clean, and verify focused Shell tests plus light/dark visual/a11y evidence. Story 8.2 owns the new accent-as-background regression guard; later Epic 8 stories remain out of scope.)
 # epic-8 added backlog on 2026-06-25 (correct-course; Aspire-grade visual refresh, stories 8.1-8.7, framework-only)
 # epic-1 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
 # epic-2 moved in-progress -> done on 2026-06-21 (cleanup; all stories and retrospective are done)
@@ -264,8 +267,8 @@ development_status:
   # Added 2026-06-25 via Correct Course (sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md).
   # Framework-only; Tenants.UI page-body adoption (Host-A) is a separate Tenants correct-course.
   # Suggested order 8.1 -> 8.2 -> 8.3 -> 8.4 -> 8.5 -> 8.6 -> 8.7; 8.1 is a Minor change shippable first.
-  epic-8: backlog
-  8-1-neutral-header-chrome-and-footer-framing: backlog
+  epic-8: in-progress
+  8-1-neutral-header-chrome-and-footer-framing: done
   8-2-accent-as-thread-policy-and-regression-guard: backlog
   8-3-brand-logo-cell-in-header-start: backlog
   8-4-compact-default-density-and-grid-polish: backlog

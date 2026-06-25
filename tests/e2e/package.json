@@ -26,6 +26,7 @@
     "test:mcp-resources": "playwright test specs/mcp-resources.spec.ts --project=chromium",
     "test:mcp-security": "playwright test specs/mcp-fail-closed-security.spec.ts --project=chromium",
     "test:mcp-schema": "playwright test specs/mcp-schema-fingerprint-negotiation.spec.ts --project=chromium",
+    "test:fc-shell-chrome": "playwright test specs/shell-chrome.spec.ts --project=chromium",
     "test:a11y": "playwright test specs/specimen-accessibility.spec.ts --project=chromium",
     "test:visual": "playwright test specs/specimen-accessibility.spec.ts --project=chromium --grep \"visual baseline\"",
     "test:visual:update": "playwright test specs/specimen-accessibility.spec.ts --project=chromium --grep \"visual baseline\" --update-snapshots",

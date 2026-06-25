@@ -241,3 +241,54 @@
 - [x] Test summary updated.
 - [x] Tests saved to appropriate directories.
 - [x] Summary includes coverage metrics.
+
+## Story 8.1 - Neutral header chrome and footer framing
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs` - added focused shell chrome pins for the neutral header background/divider, default footer neutral frame with `FluentText`, and adopter-supplied footer content inside the framed footer chrome.
+- [x] `tests/e2e/specs/shell-chrome.spec.ts` - added focused Playwright coverage that drives the live shell through the existing settings theme control, then asserts header/footer computed styles resolve to `--colorNeutralBackground2`/`--colorNeutralStroke2`, the header does not use the accent surface fill, and title/action contrast remains WCAG AA in light and dark themes.
+- [x] `tests/e2e/package.json` - added `test:fc-shell-chrome` for the focused Story 8.1 browser lane.
+
+### API Tests
+- [x] Not applicable - Story 8.1 has no HTTP API endpoint surface.
+
+### E2E Tests
+- [x] Browser a11y/visual evidence remains owned by `tests/e2e/specs/specimen-accessibility.spec.ts`.
+- [x] Story 8.1 browser chrome assertions are now generated in `tests/e2e/specs/shell-chrome.spec.ts`.
+- [ ] Local Playwright execution was blocked before browser launch because Kestrel could not create a listening socket in this sandbox; CI remains the browser/a11y/visual gate.
+
+### Coverage
+- Header chrome: top-level shell header `FluentStack` keeps `height: 48px`, `padding: 0 12px`, and `HorizontalAlignment.SpaceBetween`, and now uses `--colorNeutralBackground2` plus `--colorNeutralStroke2`.
+- Footer chrome: default and adopter-supplied footer content render inside the same neutral `FluentStack` frame with `min-height: 36px`.
+- Browser chrome: live shell header/footer computed styles are pinned against Fluent neutral tokens in light and dark themes, with accent-surface regression and contrast checks.
+- Fluent governance: no legacy Fluent v4/FAST token was introduced; the focused Shell legacy-token governance method passes.
+
+### Validation
+- [x] RED phase: `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests -noLogo -noColor -parallel none -method Hexalith.FrontComposer.Shell.Tests.Components.Layout.FrontComposerShellTests.HeaderChrome_UsesNeutralSurfaceAndDivider -method Hexalith.FrontComposer.Shell.Tests.Components.Layout.FrontComposerShellTests.DefaultFooterChrome_UsesNeutralFrameAndFluentText -method Hexalith.FrontComposer.Shell.Tests.Components.Layout.FrontComposerShellTests.AdopterSuppliedFooter_RendersInsideNeutralFrame` failed 3/3 before the Razor change, proving the new assertions covered the missing behavior.
+- [x] `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false --no-restore` passed with 0 warnings / 0 errors.
+- [x] Focused Story 8.1 direct xUnit v3 lane passed 3/3 after implementation.
+- [x] `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests -noLogo -noColor -parallel none -class Hexalith.FrontComposer.Shell.Tests.Components.Layout.FrontComposerShellTests` passed 27/27.
+- [x] `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests -noLogo -noColor -parallel none -method Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests.Shell_styles_use_no_legacy_fluent_v4_tokens_except_migration_backlog` passed 1/1.
+- [x] (QA Generate E2E Tests, AI) `./tests/e2e/node_modules/.bin/tsc --noEmit --ignoreDeprecations 5.0 -p tests/e2e/tsconfig.json` passed for the generated Playwright spec under the installed TypeScript 5.9.3 compiler.
+- [ ] (QA Generate E2E Tests, AI) `npm --prefix tests/e2e run typecheck` failed before type-checking because local `node_modules` contains stale `typescript@5.9.3` while `package.json`/`package-lock.json` require `typescript@6.0.3`; TS 5.9 rejects `tsconfig.json` `ignoreDeprecations: "6.0"`.
+- [ ] (QA Generate E2E Tests, AI) `npm --prefix tests/e2e run test:fc-shell-chrome` failed before browser assertions executed because Kestrel could not create a listening socket: `System.Net.Sockets.SocketException (13): Permission denied`.
+- [ ] `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 /nr:false` failed during restore with `NU1900` because this sandbox cannot access NuGet vulnerability data at `api.nuget.org:443`.
+- [ ] `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 /nr:false -p:NuGetAudit=false` built Story 8.1-owned Shell projects, then failed in `Hexalith.Tenants.UI` because nested `Hexalith.Memories` submodule projects are intentionally not initialized under the repository submodule rules.
+- [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false` failed during restore with the same `NU1900` NuGet vulnerability-data network blocker.
+- [ ] `npm --prefix tests/e2e run test:a11y` failed before tests executed because the specimen web server could not bind a Kestrel socket: `System.Net.Sockets.SocketException (13): Permission denied`.
+- [ ] `npm --prefix tests/e2e run test:visual:update` failed with the same Kestrel socket permission blocker before refreshing light/dark visual baselines.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no HTTP API endpoint surface.
+- [x] E2E tests generated if UI exists: `tests/e2e/specs/shell-chrome.spec.ts` now covers Story 8.1 browser chrome in light/dark themes; local execution blocked by sandbox socket restrictions.
+- [x] Tests use standard test framework APIs.
+- [x] Tests cover the happy path.
+- [x] Tests cover custom/default footer paths and token-governed header/footer chrome.
+- [x] Story-owned focused lanes run successfully through the direct xUnit v3 in-process runner.
+- [x] Tests use existing user-visible controls, visible shell text, and computed Fluent token assertions without hardcoded waits.
+- [x] Tests have clear descriptions.
+- [x] No hardcoded waits or sleeps.
+- [x] Tests are independent.
+- [x] Test summary updated.
+- [x] Tests saved to appropriate directories.
+- [x] Summary includes coverage metrics and local blockers.
