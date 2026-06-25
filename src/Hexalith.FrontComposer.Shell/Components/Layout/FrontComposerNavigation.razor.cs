@@ -4,7 +4,6 @@ using System.Text;
 using Fluxor;
 using Fluxor.Blazor.Web.Components;
 
-using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.Components.Icons;
@@ -20,8 +19,8 @@ using Microsoft.FluentUI.AspNetCore.Components;
 namespace Hexalith.FrontComposer.Shell.Components.Layout;
 
 /// <summary>
-/// Framework-owned sidebar composing <c>FluentNavCategory</c> per registered <c>DomainManifest</c>
-/// (Story 3-2 D1, D2, D9, D11, D16; AC1, AC3, AC6).
+/// Framework-owned navigation rail composing one bounded-context tile per registered
+/// <see cref="DomainManifest"/> or orphan navigation-entry context.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -44,8 +43,6 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
 
     [Inject] private IState<FrontComposerCapabilityDiscoveryState> DiscoveryState { get; set; } = default!;
 
-    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
-
     [Inject] private IStringLocalizerFactory LocalizerFactory { get; set; } = default!;
 
     /// <summary>
@@ -54,6 +51,14 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     /// <see cref="NavigationManager.LocationChanged"/> subscription) so exactly one item highlights.
     /// </summary>
     private string? _activeNavHref;
+
+    private string RailWidth => ShouldRenderIconOnlyRail() ? "48px" : "72px";
+
+    private string RailWidthValue => ShouldRenderIconOnlyRail() ? "48" : "72";
+
+    private string RailClass => ShouldRenderIconOnlyRail()
+        ? "fc-navigation-rail fc-navigation-rail--icon-only"
+        : "fc-navigation-rail fc-navigation-rail--labeled";
 
     /// <inheritdoc />
     protected override void OnInitialized() {
@@ -109,17 +114,6 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
 
         _activeNavHref = LongestNavPrefix(NormalizeHref(Navigation.ToBaseRelativePath(Navigation.Uri)), hrefs);
     }
-
-    /// <summary>
-    /// Returns the <see cref="NavLinkMatch"/> for a nav item: <see cref="NavLinkMatch.Prefix"/> for the
-    /// single active route, otherwise <see cref="NavLinkMatch.All"/> (an exact, query-stripped match).
-    /// </summary>
-    /// <param name="href">The item's href, or <see langword="null"/> for a disabled (non-link) entry.</param>
-    /// <returns>The match mode the item should use.</returns>
-    private NavLinkMatch MatchFor(string? href)
-        => href is not null && string.Equals(NormalizeHref(href), _activeNavHref, StringComparison.Ordinal)
-            ? NavLinkMatch.Prefix
-            : NavLinkMatch.All;
 
     /// <summary>
     /// Canonicalizes a route for comparison: drops the query/fragment, ensures a single leading slash,
@@ -268,10 +262,10 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     /// </summary>
     /// <param name="iconKey">The optional icon key (e.g. <c>Regular.Size20.Search</c>).</param>
     /// <returns>The resolved icon.</returns>
-    internal static Icon ResolveNavEntryIcon(string? iconKey)
-        => FcFluentIcons.TryCreate(iconKey, out Icon? icon) && icon is not null
+    internal static Icon ResolveNavEntryIcon(string? iconKey, bool filled = false)
+        => FcFluentIcons.TryCreate(iconKey, filled ? IconVariant.Filled : IconVariant.Regular, out Icon? icon) && icon is not null
             ? icon
-            : FcFluentIcons.Apps20();
+            : FcFluentIcons.Apps20(filled ? IconVariant.Filled : IconVariant.Regular);
 
     /// <summary>
     /// Builds the stable <c>data-testid</c> for a navigation entry item.
@@ -406,37 +400,71 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     internal void HandleNavItemClickedForTest(string boundedContext, string capabilityId)
         => HandleNavItemClicked(boundedContext, capabilityId);
 
-    /// <summary>
-    /// Test hook exposing the private handler so the nav-group expand/collapse tests
-    /// can invoke the category callback without driving the FluentNavCategory event pipeline.
-    /// </summary>
-    /// <param name="boundedContext">The bounded context whose category changed.</param>
-    /// <param name="expanded">The new expanded state reported by FluentNavCategory.</param>
-    internal void OnGroupExpandedChangedForTest(string boundedContext, bool expanded)
-        => OnGroupExpandedChanged(boundedContext, CapabilityIds.ForBoundedContext(boundedContext), expanded);
-
-    private bool ShouldRenderCollapsedRail() {
+    private bool ShouldRenderIconOnlyRail() {
         FrontComposerNavigationState snapshot = NavState.Value;
         return snapshot.CurrentViewport == ViewportTier.CompactDesktop
             || (snapshot.CurrentViewport == ViewportTier.Desktop && snapshot.SidebarCollapsed);
     }
 
-    private bool IsGroupCollapsed(string boundedContext)
-        => NavState.Value.CollapsedGroups.TryGetValue(boundedContext, out bool collapsed) && collapsed;
+    private static string RailAnchorId(string boundedContext)
+        => $"fc-rail-{boundedContext}";
 
-    private void OnGroupExpandedChanged(string boundedContext, string capabilityId, bool expanded) {
-        // D13 (review 2026-04-22): only an explicit expand signals engagement with the category;
-        // collapsing is decluttering and MUST NOT mark the capability as seen.
-        if (expanded) {
-            Dispatcher.Dispatch(new CapabilityVisitedAction(capabilityId));
+    private static string ContextTileClass(bool active)
+        => active
+            ? "fc-navigation-rail__tile fc-navigation-rail__tile--active"
+            : "fc-navigation-rail__tile";
+
+    private bool IsHrefActive(string? href)
+        => href is not null
+            && string.Equals(NormalizeHref(href), _activeNavHref, StringComparison.Ordinal);
+
+    private bool IsContextActive(
+        string boundedContext,
+        IReadOnlyList<string> projections,
+        IReadOnlyList<FrontComposerNavEntry> entries) {
+        ArgumentNullException.ThrowIfNull(projections);
+        ArgumentNullException.ThrowIfNull(entries);
+
+        if (_activeNavHref is null) {
+            return false;
         }
 
-        Dispatcher.Dispatch(new NavGroupToggledAction(UlidFactory.NewUlid(), boundedContext, Collapsed: !expanded));
+        foreach (string projection in projections) {
+            if (IsHrefActive(BuildRoute(boundedContext, projection))) {
+                return true;
+            }
+        }
+
+        foreach (FrontComposerNavEntry entry in entries) {
+            if (entry.Enabled && IsHrefActive(entry.Href)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private void HandleNavItemClicked(string boundedContext, string capabilityId) {
         Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(boundedContext)));
         Dispatcher.Dispatch(new CapabilityVisitedAction(capabilityId));
+    }
+
+    private void HandleContextTileActivated(string boundedContext)
+        => Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(boundedContext)));
+
+    private void HandleProjectionMenuItemClicked(string boundedContext, string projectionFqn, string route) {
+        HandleNavItemClicked(boundedContext, CapabilityIds.ForProjection(boundedContext, projectionFqn));
+        Navigation.NavigateTo(route);
+    }
+
+    private void HandleNavEntryMenuItemClicked(FrontComposerNavEntry entry) {
+        ArgumentNullException.ThrowIfNull(entry);
+        if (!entry.Enabled || string.IsNullOrWhiteSpace(entry.Href)) {
+            return;
+        }
+
+        Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(entry.BoundedContext)));
+        Navigation.NavigateTo(entry.Href);
     }
 
     private static string LastSegment(string fqn) {

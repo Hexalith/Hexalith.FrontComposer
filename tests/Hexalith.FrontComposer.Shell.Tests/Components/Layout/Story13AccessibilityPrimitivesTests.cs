@@ -117,7 +117,7 @@ public sealed class Story13AccessibilityPrimitivesTests : LayoutComponentTestBas
                                                // landmark (the #fc-nav focus target's content) must itself carry the localized accessible
                                                // name so the skip-to-nav link lands on a named region, not an anonymous one. Asserted
                                                // against the localized IStringLocalizer<FcShellResources> value (FC-L10N-safe), not English.
-            cut.Find("[data-testid=\"fc-navigation-full\"]").GetAttribute("aria-label")
+            cut.Find("[data-testid=\"fc-navigation-rail\"]").GetAttribute("aria-label")
                 .ShouldBe(navLabel));
     }
 

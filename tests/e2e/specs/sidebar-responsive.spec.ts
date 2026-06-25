@@ -3,10 +3,19 @@
 // markers (Task 6-8) and Counter.Web boots with the framework sidebar (Task 9).
 
 import { expect, test } from '../fixtures/index.js';
+import { expectNoBlockingAxeViolations } from '../helpers/a11y.js';
+import { SettingsPage, type ThemeLabel } from '../page-objects/settings.page.js';
 import { ShellPage, ViewportBreakpoints } from '../page-objects/shell.page.js';
 
-test.describe('Story 3-2: sidebar navigation responsive behavior @p0 @smoke', () => {
-  test('resizes across tiers: full nav → rail → drawer-only @p0 @smoke', async ({ page, tenant }) => {
+test.describe('Story 8.5: navigation rail responsive behavior @p0 @smoke', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+  });
+
+  test('resizes across tiers: labeled rail → icon-only rail → drawer-only @p0 @smoke', async ({ page, tenant }) => {
     // F17 — pulls the tenant fixture so IUserContextAccessor resolves; without it, any
     // NavigationEffects path fail-closes (AC2 scope guard) and tests would pass for the wrong reason.
     expect(tenant.tenantId).toBeTruthy();
@@ -15,8 +24,8 @@ test.describe('Story 3-2: sidebar navigation responsive behavior @p0 @smoke', ()
     await shell.goto();
 
     // --- Desktop (≥1366) — AC3 ---
-    // 2026-06 (supersedes D9): the hamburger is now visible at Desktop too — it toggles the sidebar
-    // between the full nav and the collapsed rail.
+    // Story 8.5: the hamburger is visible at Desktop and toggles the rail between
+    // 72px labeled and 48px icon-only modes.
     await shell.resizeTo(1920);
     await expect(shell.fullNav).toBeVisible();
     await expect(shell.collapsedRail).toBeHidden();
@@ -83,44 +92,135 @@ test.describe('Story 3-2: sidebar navigation responsive behavior @p0 @smoke', ()
     const shell = new ShellPage(page);
     await shell.goto();
 
-    // D9 amendment (2026-04-19) removed the Desktop-side manual-collapse affordance. The
-    // sticky-collapse state is now established at CompactDesktop (where the rail is the natural
-    // UI) and persists back to Desktop. Round-trip steps:
-    //   1. Start at Desktop: full nav, no rail.
-    //   2. Resize to CompactDesktop: rail appears, hamburger visible.
-    //   3. Click a rail button → SidebarExpandedAction + drawer; the dispatch flips SidebarCollapsed
-    //      to false. Click the hamburger to close drawer (leaves SidebarCollapsed false).
-    //   4. Click hamburger again to collapse — this is the only user-reachable collapse trigger.
-    //   5. Reload → CompactDesktop still shows rail; resize to Desktop → rail persists (D7 + D14).
+    // Round-trip steps:
+    //   1. Start at Desktop: 72px labeled rail.
+    //   2. Click hamburger: 48px icon-only rail through SidebarToggledAction.
+    //   3. Reload: collapsed state persists at Desktop.
     await shell.resizeTo(1920);
     await expect(shell.fullNav).toBeVisible();
+    await shell.clickHamburger();
+    await expect(shell.collapsedRail).toBeVisible();
 
-    await shell.resizeTo(1200);
-    await expect(shell.collapsedRail).toBeVisible({ timeout: 2_000 });
-    await expect(shell.hamburgerToggle).toBeVisible();
-
-    // Refresh — hydrate must be a round-trip no-op for tier (tier is never persisted — ADR-037),
-    // and SidebarCollapsed=true persists via the CompactDesktop state established by the rail.
     await page.reload();
     await shell.shellRoot.waitFor();
     await expect(shell.collapsedRail).toBeVisible({ timeout: 5_000 });
-
-    // Resize back to Desktop: sticky-collapse rule — rail persists (does NOT auto-expand).
-    await shell.resizeTo(1920);
-    await expect(shell.collapsedRail).toBeVisible();
     await expect(shell.fullNav).toBeHidden();
-    // 2026-06 (supersedes D9): the Desktop hamburger is now visible — it is the manual sidebar toggle.
     await expect(shell.hamburgerToggle).toBeVisible();
   });
 
-  test('Counter bounded context renders exactly one nav category with one projection item (AC1 + AC7) @p0 @smoke', async ({ page, tenant }) => {
+  test('Counter bounded context renders one rail tile with one projection menu item (AC1 + AC7) @p0 @smoke', async ({ page, tenant }) => {
     expect(tenant.tenantId).toBeTruthy();
     const shell = new ShellPage(page);
     await shell.goto();
     await shell.resizeTo(1920);
 
     await expect(shell.counterCategory).toBeVisible();
-    const counterItems = shell.counterCategory.getByRole('link');
-    await expect(counterItems).toHaveCount(1);
+    await shell.counterCategory.click();
+    await expect(shell.counterFlyout).toBeVisible();
+    await expect(shell.counterProjectionItem).toHaveCount(1);
   });
+
+  test('Counter flyout opens from keyboard and Escape restores focus to the tile (AC4) @p0', async ({
+    page,
+    tenant,
+  }) => {
+    expect(tenant.tenantId).toBeTruthy();
+    const shell = new ShellPage(page);
+    await shell.goto();
+    await shell.resizeTo(1920);
+
+    await shell.openCounterFlyoutWithKeyboard('Space');
+
+    await expect(shell.counterFlyout).toBeVisible();
+    await expect(shell.counterFlyout).toHaveAttribute('role', 'menu');
+    await expect(shell.counterProjectionItem).toBeVisible();
+
+    await page.keyboard.press('Escape');
+
+    await expect(shell.counterFlyout).toBeHidden();
+    await expect(page.locator(':focus')).toHaveAttribute('data-testid', 'fc-nav-context-Counter');
+  });
+
+  test('Counter projection menu item activates from keyboard and marks one active route (AC3 + AC4) @p0', async ({
+    page,
+    tenant,
+  }) => {
+    expect(tenant.tenantId).toBeTruthy();
+    const shell = new ShellPage(page);
+    await shell.goto();
+    await shell.resizeTo(1920);
+
+    await shell.openCounterFlyoutWithKeyboard('Enter');
+    await shell.counterProjectionItem.focus();
+    await page.keyboard.press('Enter');
+
+    await expect(page).toHaveURL(/\/counter\/counter-projection$/);
+    await expect(shell.counterCategory).toHaveAttribute('aria-current', 'page');
+    await expect(shell.counterProjectionItem).toHaveAttribute('aria-current', 'page');
+    await expect(page.locator('[data-href][aria-current="page"]')).toHaveCount(1);
+  });
+
+  for (const theme of ['Light', 'Dark'] as const satisfies readonly ThemeLabel[]) {
+    test(`Counter rail and flyout pass light/dark visual and a11y checks in ${theme.toLowerCase()} theme (AC2 + AC5) @p1`, async ({
+      page,
+      tenant,
+    }, testInfo) => {
+      expect(tenant.tenantId).toBeTruthy();
+      const shell = new ShellPage(page);
+      await shell.goto();
+      await shell.resizeTo(1920);
+
+      const settings = new SettingsPage(page);
+      await settings.openViaButton();
+      await settings.selectTheme(theme);
+      await page.getByTestId('fc-settings-done').click();
+
+      await page.goto('/counter/counter-projection');
+      await shell.shellRoot.waitFor();
+      await shell.counterCategory.click();
+      await expect(shell.counterFlyout).toBeVisible();
+
+      await assertActiveRailUsesAccentThreadOnly(shell);
+      await expectNoBlockingAxeViolations(page, {
+        route: `Story 8.5 navigation rail ${theme}`,
+        include: [
+          '[data-testid="fc-navigation-rail"]',
+          '[data-testid="fc-nav-flyout-Counter"]',
+        ],
+        requiredSelectors: [
+          '[data-testid="fc-navigation-rail"]',
+          '[data-testid="fc-nav-flyout-Counter"]',
+          '[data-testid="fc-nav-flyout-projection-Counter-CounterProjection"]',
+        ],
+        artifactPath: testInfo.outputPath(`axe-story-8-5-nav-${theme.toLowerCase()}.json`),
+      });
+    });
+  }
 });
+
+const assertActiveRailUsesAccentThreadOnly = async (shell: ShellPage): Promise<void> => {
+  await expect(shell.counterCategory).toHaveAttribute('data-active', 'true');
+
+  const visual = await shell.counterCategory.evaluate((element) => {
+    const styles = getComputedStyle(element);
+    const probe = document.createElement('span');
+    probe.style.backgroundColor = 'var(--fc-color-accent, var(--fc-accent-base-color))';
+    probe.style.display = 'none';
+    element.appendChild(probe);
+    const accentBackground = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+
+    return {
+      accentBackground,
+      backgroundColor: styles.backgroundColor,
+      borderInlineStartColor: styles.borderInlineStartColor,
+      borderInlineStartStyle: styles.borderInlineStartStyle,
+      borderInlineStartWidth: styles.borderInlineStartWidth,
+    };
+  });
+
+  expect(visual.borderInlineStartWidth).toBe('3px');
+  expect(visual.borderInlineStartStyle).toBe('solid');
+  expect(visual.borderInlineStartColor).toBe(visual.accentBackground);
+  expect(visual.backgroundColor).not.toBe(visual.accentBackground);
+};

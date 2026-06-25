@@ -26,8 +26,8 @@ public sealed record NavGroupToggledAction(string CorrelationId, string BoundedC
 public sealed record ViewportTierChangedAction(ViewportTier NewTier);
 
 /// <summary>
-/// Dispatched when the user clicks a <c>FcCollapsedNavRail</c> button to force the sidebar open
-/// (Story 3-2 D13). Idempotent — always sets <see cref="FrontComposerNavigationState.SidebarCollapsed"/>
+/// Dispatched when a caller forces the sidebar to its expanded state. Idempotent — always sets
+/// <see cref="FrontComposerNavigationState.SidebarCollapsed"/>
 /// to <see langword="false"/>.
 /// </summary>
 /// <param name="CorrelationId">ULID correlation identifier for tracing.</param>

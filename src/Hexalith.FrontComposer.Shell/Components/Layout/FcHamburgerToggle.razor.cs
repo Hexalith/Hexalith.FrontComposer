@@ -13,8 +13,8 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// Always-visible navigation hamburger. Supersedes the earlier D9 "Desktop has no visible toggle"
 /// decision (2026-06 UX request to match the Fluent reference shell). At <see cref="ViewportTier.Desktop"/>
 /// it renders a subtle <c>FluentButton</c> whose click dispatches <see cref="SidebarToggledAction"/>,
-/// flipping <c>SidebarCollapsed</c> — already wired to swap the full 220px sidebar with the 48px
-/// <c>FcCollapsedNavRail</c> and to persist via <c>NavigationEffects.HandleSidebarToggled</c>. At every
+/// flipping <c>SidebarCollapsed</c> — already wired to swap the 72px labeled rail with the 48px
+/// icon-only rail and to persist via <c>NavigationEffects.HandleSidebarToggled</c>. At every
 /// other tier it renders <c>FluentLayoutHamburger</c>, which opens the responsive navigation drawer.
 /// </summary>
 public partial class FcHamburgerToggle : FluxorComponent, IAsyncDisposable {

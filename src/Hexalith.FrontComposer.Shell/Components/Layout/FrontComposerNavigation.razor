@@ -11,42 +11,31 @@
 @inject IFrontComposerRegistry Registry
 @inject IStringLocalizer<FcShellResources> Localizer
 
-@* Story 3-2 Task 6 (D1, D2, D7, D9, D11 / AC1, AC3, AC6) — framework-owned sidebar.
-   At CompactDesktop OR Desktop + SidebarCollapsed we swap to FcCollapsedNavRail (D7 / D9);
-   otherwise we render FluentNav with one FluentNavCategory per manifest whose Projections list
-   is non-empty (D1). Commands are excluded. Nav-item routes follow the D2 convention:
-   /{boundedContext-lowercase}/{projectionTypeName-kebab-case}.
-
-   Story 3-5 Task 5 (D8 / D12 / D13 / D14 / AC8 / AC9 / AC10) — alongside each projection nav entry
-   render a FluentBadge when the IBadgeCountService count > 0, plus a "New" FluentBadge when the
-   capabilityId is not in the seen-set AND the projection has data. Click dispatches
-   CapabilityVisitedAction synchronously (D13 ordering — reducer wins before navigation). *@
-
-@if (ShouldRenderCollapsedRail())
-{
-    <FcCollapsedNavRail />
-}
-else
-{
+@{
     FrontComposerCapabilityDiscoveryState discovery = DiscoveryState.Value;
     IReadOnlyList<FrontComposerNavEntry> navEntries = Registry.GetNavEntries();
+    bool iconOnly = ShouldRenderIconOnlyRail();
+
     RecomputeActiveNavHref(discovery, navEntries);
 
-    // Explicit nav entries are rendered as FluentNavItems alongside projection items. Gated entries
-    // (RequiredPolicy set) wrap in AuthorizeView; disabled entries render a non-link affordance + reason.
     RenderFragment<FrontComposerNavEntry> navEntryItem = entry =>
-        @<FluentNavItem Href="@(entry.Enabled ? entry.Href : null)"
-                        Match="@MatchFor(entry.Enabled ? entry.Href : null)"
-                        Disabled="@(!entry.Enabled)"
-                        IconRest="@ResolveNavEntryIcon(entry.Icon)"
-                        Tooltip="@(entry.Enabled ? null : LocalizeEntryReason(entry))"
-                        data-testid="@NavEntryTestId(entry)">
-            @LocalizeEntryTitle(entry)
-            @if (!entry.Enabled && !string.IsNullOrWhiteSpace(entry.DisabledReason))
-            {
-                <span class="fc-nav-entry__reason" data-testid="@($"{NavEntryTestId(entry)}-reason")">@LocalizeEntryReason(entry)</span>
-            }
-        </FluentNavItem>;
+        @<FluentMenuItem Role="@MenuItemRole.MenuItem"
+                         Disabled="@(!entry.Enabled)"
+                         IconStart="@ResolveNavEntryIcon(entry.Icon, IsHrefActive(entry.Href))"
+                         OnClick="@(_ => HandleNavEntryMenuItemClicked(entry))"
+                         data-testid="@NavEntryTestId(entry)"
+                         data-href="@(entry.Enabled ? entry.Href : null)"
+                         aria-current="@(IsHrefActive(entry.Href) ? "page" : null)">
+            <FluentStack Orientation="Orientation.Vertical" VerticalGap="2px">
+                <FluentText>@LocalizeEntryTitle(entry)</FluentText>
+                @if (!entry.Enabled && !string.IsNullOrWhiteSpace(entry.DisabledReason))
+                {
+                    <FluentText Size="TextSize.Size200"
+                                Color="Color.Lightweight"
+                                data-testid="@($"{NavEntryTestId(entry)}-reason")">@LocalizeEntryReason(entry)</FluentText>
+                }
+            </FluentStack>
+        </FluentMenuItem>;
 
     RenderFragment<FrontComposerNavEntry> navEntry = entry =>
         @<text>
@@ -61,80 +50,148 @@ else
                 @navEntryItem(entry)
             }
         </text>;
+}
 
-    <FluentNav UseIcons="true" data-testid="fc-navigation-full"
-               aria-label="@Localizer["NavMenuAriaLabel"].Value">
-        @foreach (DomainManifest manifest in Registry.GetManifests())
+<FluentStack Orientation="Orientation.Vertical"
+             VerticalGap="4px"
+             HorizontalAlignment="HorizontalAlignment.Center"
+             Width="@RailWidth"
+             Class="@RailClass"
+             data-testid="fc-navigation-rail"
+             data-rail-width="@RailWidthValue"
+             role="navigation"
+             aria-label="@Localizer["NavMenuAriaLabel"].Value">
+    @foreach (DomainManifest manifest in Registry.GetManifests())
+    {
+        List<string> projections = VisibleProjections(manifest, discovery.Counts);
+        List<FrontComposerNavEntry> entries = EntriesForContext(navEntries, manifest.BoundedContext);
+        @if (projections.Count == 0 && entries.Count == 0)
         {
-            List<string> projections = VisibleProjections(manifest, discovery.Counts);
-            List<FrontComposerNavEntry> entries = EntriesForContext(navEntries, manifest.BoundedContext);
-            @if (projections.Count == 0 && entries.Count == 0)
+            continue;
+        }
+
+        string anchorId = RailAnchorId(manifest.BoundedContext);
+        string bcCapabilityId = CapabilityIds.ForBoundedContext(manifest.BoundedContext);
+        int aggregateCount = AggregateBoundedContextCount(manifest, discovery.Counts);
+        bool bcShowsNew = !discovery.SeenCapabilities.Contains(bcCapabilityId) && aggregateCount > 0;
+        bool activeContext = IsContextActive(manifest.BoundedContext, projections, entries);
+
+        <FluentButton id="@anchorId"
+                      Appearance="@ButtonAppearance.Subtle"
+                      Class="@ContextTileClass(activeContext)"
+                      Title="@(iconOnly ? LocalizeManifestName(manifest) : null)"
+                      aria-label="@(iconOnly ? LocalizeManifestName(manifest) : null)"
+                      aria-current="@(activeContext ? "page" : null)"
+                      data-testid="@($"fc-nav-context-{manifest.BoundedContext}")"
+                      data-active="@activeContext"
+                      tabindex="0"
+                      OnClick="@(_ => HandleContextTileActivated(manifest.BoundedContext))">
+            <FluentIcon Value="@ResolveNavEntryIcon(manifest.Icon, activeContext)" />
+            @if (!iconOnly)
             {
-                continue;
+                <FluentText Class="fc-navigation-rail__label"
+                            Size="TextSize.Size200"
+                            Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@LocalizeManifestName(manifest)</FluentText>
             }
+            @if (aggregateCount > 0)
+            {
+                <FluentBadge Appearance="@BadgeAppearance.Filled"
+                             Color="@BadgeColor.Brand"
+                             data-testid="@($"fc-rail-badge-{manifest.BoundedContext}")">@aggregateCount</FluentBadge>
+            }
+            @if (bcShowsNew)
+            {
+                <FluentBadge Appearance="@BadgeAppearance.Tint"
+                             Color="@BadgeColor.Informative"
+                             data-testid="@($"fc-rail-new-{manifest.BoundedContext}")">@Localizer["NewCapabilityBadgeText"].Value</FluentBadge>
+            }
+        </FluentButton>
+        <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
+            @LocalizeManifestName(manifest)
+        </FluentTooltip>
+        <FluentMenu Trigger="@anchorId"
+                    PersistOnItemClick="false"
+                    data-testid="@($"fc-nav-flyout-{manifest.BoundedContext}")"
+                    role="menu"
+                    aria-label="@LocalizeManifestName(manifest)">
+            @foreach (string projectionFqn in projections)
+            {
+                int count = LookupCount(projectionFqn, discovery.Counts);
+                string label = ProjectionLabel(projectionFqn);
+                string route = BuildRoute(manifest.BoundedContext, projectionFqn);
+                string projCapabilityId = CapabilityIds.ForProjection(manifest.BoundedContext, projectionFqn);
+                bool projShowsNew = !discovery.SeenCapabilities.Contains(projCapabilityId) && count > 0;
+                bool activeProjection = IsHrefActive(route);
 
-            string bcCapabilityId = CapabilityIds.ForBoundedContext(manifest.BoundedContext);
-            int aggregateCount = AggregateBoundedContextCount(manifest, discovery.Counts);
-            bool bcShowsNew = !discovery.SeenCapabilities.Contains(bcCapabilityId) && aggregateCount > 0;
-
-            <FluentNavCategory Id="@manifest.BoundedContext"
-                               Title="@LocalizeManifestName(manifest)"
-                               Expanded="@(!IsGroupCollapsed(manifest.BoundedContext))"
-                               ExpandedChanged="@(value => OnGroupExpandedChanged(manifest.BoundedContext, bcCapabilityId, value))"
-                               data-testid="@($"fc-nav-category-{manifest.BoundedContext}")">
-                @foreach (string projectionFqn in projections)
-                {
-                    int count = LookupCount(projectionFqn, discovery.Counts);
-                    string projCapabilityId = CapabilityIds.ForProjection(manifest.BoundedContext, projectionFqn);
-                    bool projShowsNew = !discovery.SeenCapabilities.Contains(projCapabilityId) && count > 0;
-                    string route = BuildRoute(manifest.BoundedContext, projectionFqn);
-
-                    <FluentNavItem Href="@route"
-                                   Match="@MatchFor(route)"
-                                   OnClick="@(_ => HandleNavItemClicked(manifest.BoundedContext, projCapabilityId))">
-                        @ProjectionLabel(projectionFqn)
+                <FluentMenuItem Role="@MenuItemRole.MenuItem"
+                                IconStart="@ResolveNavEntryIcon(manifest.Icon, activeProjection)"
+                                OnClick="@(_ => HandleProjectionMenuItemClicked(manifest.BoundedContext, projectionFqn, route))"
+                                data-testid="@($"fc-nav-flyout-projection-{manifest.BoundedContext}-{label}")"
+                                data-href="@route"
+                                aria-current="@(activeProjection ? "page" : null)">
+                    <FluentStack Horizontal="true"
+                                 VerticalAlignment="VerticalAlignment.Center"
+                                 HorizontalGap="6px">
+                        <FluentText>@label</FluentText>
                         @if (count > 0)
                         {
                             <FluentBadge Appearance="@BadgeAppearance.Filled"
                                          Color="@BadgeColor.Brand"
-                                         data-testid="@($"fc-nav-badge-{manifest.BoundedContext}-{ProjectionLabel(projectionFqn)}")">@count</FluentBadge>
+                                         data-testid="@($"fc-nav-badge-{manifest.BoundedContext}-{label}")">@count</FluentBadge>
                         }
                         @if (projShowsNew)
                         {
                             <FluentBadge Appearance="@BadgeAppearance.Tint"
                                          Color="@BadgeColor.Informative"
-                                         data-testid="@($"fc-nav-new-{manifest.BoundedContext}-{ProjectionLabel(projectionFqn)}")">
+                                         data-testid="@($"fc-nav-new-{manifest.BoundedContext}-{label}")">
                                 @Localizer["NewCapabilityBadgeText"].Value
                             </FluentBadge>
                         }
-                    </FluentNavItem>
-                }
-                @foreach (FrontComposerNavEntry entry in entries)
-                {
-                    @navEntry(entry)
-                }
-                @if (bcShowsNew)
-                {
-                    <FluentBadge Appearance="@BadgeAppearance.Tint"
-                                 Color="@BadgeColor.Informative"
-                                 data-testid="@($"fc-nav-bc-new-{manifest.BoundedContext}")">
-                        @Localizer["NewCapabilityBadgeText"].Value
-                    </FluentBadge>
-                }
-            </FluentNavCategory>
-        }
-        @foreach (string orphanBc in OrphanEntryContexts(navEntries))
-        {
-            <FluentNavCategory Id="@orphanBc"
-                               Title="@orphanBc"
-                               Expanded="@(!IsGroupCollapsed(orphanBc))"
-                               ExpandedChanged="@(value => OnGroupExpandedChanged(orphanBc, CapabilityIds.ForBoundedContext(orphanBc), value))"
-                               data-testid="@($"fc-nav-category-{orphanBc}")">
-                @foreach (FrontComposerNavEntry entry in EntriesForContext(navEntries, orphanBc))
-                {
-                    @navEntry(entry)
-                }
-            </FluentNavCategory>
-        }
-    </FluentNav>
-}
+                    </FluentStack>
+                </FluentMenuItem>
+            }
+            @foreach (FrontComposerNavEntry entry in entries)
+            {
+                @navEntry(entry)
+            }
+        </FluentMenu>
+    }
+    @foreach (string orphanBc in OrphanEntryContexts(navEntries))
+    {
+        List<FrontComposerNavEntry> entries = EntriesForContext(navEntries, orphanBc);
+        string anchorId = RailAnchorId(orphanBc);
+        bool activeContext = IsContextActive(orphanBc, [], entries);
+
+        <FluentButton id="@anchorId"
+                      Appearance="@ButtonAppearance.Subtle"
+                      Class="@ContextTileClass(activeContext)"
+                      Title="@(iconOnly ? orphanBc : null)"
+                      aria-label="@(iconOnly ? orphanBc : null)"
+                      aria-current="@(activeContext ? "page" : null)"
+                      data-testid="@($"fc-nav-context-{orphanBc}")"
+                      data-active="@activeContext"
+                      tabindex="0"
+                      OnClick="@(_ => HandleContextTileActivated(orphanBc))">
+            <FluentIcon Value="@ResolveNavEntryIcon(null, activeContext)" />
+            @if (!iconOnly)
+            {
+                <FluentText Class="fc-navigation-rail__label"
+                            Size="TextSize.Size200"
+                            Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@orphanBc</FluentText>
+            }
+        </FluentButton>
+        <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
+            @orphanBc
+        </FluentTooltip>
+        <FluentMenu Trigger="@anchorId"
+                    PersistOnItemClick="false"
+                    data-testid="@($"fc-nav-flyout-{orphanBc}")"
+                    role="menu"
+                    aria-label="@orphanBc">
+            @foreach (FrontComposerNavEntry entry in entries)
+            {
+                @navEntry(entry)
+            }
+        </FluentMenu>
+    }
+</FluentStack>

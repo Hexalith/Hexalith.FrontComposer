@@ -225,7 +225,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("Navigation rail");
-            cut.Markup.ShouldContain("220px");
+            cut.Markup.ShouldContain("72px");
 
             // F5 — lock the e2e selector contract at the unit level.
             cut.Markup.ShouldContain("data-testid=\"fc-shell-navigation\"");
@@ -259,7 +259,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() => {
             _ = cut.FindComponent<FrontComposerNavigation>();
-            cut.Markup.ShouldContain("220px", Case.Sensitive);
+            cut.Markup.ShouldContain("72px", Case.Sensitive);
         });
     }
 

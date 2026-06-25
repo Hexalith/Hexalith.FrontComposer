@@ -1,5 +1,50 @@
 # Test Automation Summary
 
+## Story 8.5 - Icon+label navigation rail and projection flyout
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerNavigationTests.cs` - replaced full-nav/collapsed-rail assertions with unified 72px/48px rail, `FluentMenu` flyout, route `data-href`, active context, and badge pins.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerNavigationNavEntryTests.cs` - migrated explicit entry, policy, disabled reason, orphan context, and single-active assertions to flyout menu semantics.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs`, `Story13AccessibilityPrimitivesTests.cs`, and `Story14ShellStringOwnershipTests.cs` - updated shell width and localized navigation landmark pins for the rail.
+- [x] Deleted stale `FcCollapsedNavRailTests.cs`; replacement rail-mode coverage lives in `FrontComposerNavigationTests`.
+
+### E2E Tests
+- [x] `tests/e2e/page-objects/shell.page.ts` - remapped legacy `fullNav` / `collapsedRail` locators to the Story 8.5 72px and 48px rail modes, and added Counter flyout/projection locators plus a keyboard-open helper.
+- [x] `tests/e2e/specs/sidebar-responsive.spec.ts` - updated responsive, persistence, and Counter projection flyout checks for the unified rail.
+- [x] `tests/e2e/specs/sidebar-responsive.spec.ts` - added keyboard coverage for Space/Enter opening, Escape close with focus return, keyboard menu-item activation, single active route pinning, and light/dark rail visual plus axe checks.
+- [ ] Local Playwright execution remains blocked before browser assertions because Kestrel cannot bind a socket in this sandbox.
+
+### Coverage
+- AC1: Desktop expanded rail is 72px; Desktop collapsed and CompactDesktop rail are 48px; Tablet/Phone still omit the navigation layout item.
+- AC2: bounded-context tiles use Fluent buttons/icons, localized accessible names, count badges, "New" badges, filled active icon variants, `aria-current`, and an accent border thread instead of accent background fill.
+- AC3: flyout content includes visible projections and explicit nav entries, including orphan entry contexts, with capability seen dispatch before navigation.
+- AC4/AC5: `FluentMenu` owns trigger anchoring, menu role, item roles, and roving behavior; bUnit pins trigger id, role/testid splatting, route attributes, disabled reasons, and single-active semantics. Playwright now covers keyboard open, Escape focus return, keyboard activation, and light/dark a11y/visual checks, but browser execution is Kestrel-blocked locally.
+
+### Validation
+- [x] RED phase: new Story 8.5 navigation tests failed against the old split implementation (`fc-navigation-rail` missing; flyout menu missing) before implementation.
+- [x] `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
+- [x] Focused Shell direct xUnit v3 lane passed 113/113: `FrontComposerNavigationTests`, `FrontComposerNavigationCapabilityBadgeTests`, `FrontComposerNavigationNavEntryTests`, `FcHamburgerToggleTests`, `FrontComposerShellTests`, `Story13AccessibilityPrimitivesTests`, `Story14ShellStringOwnershipTests`, and `FluentConformanceTests`.
+- [x] Broad Shell direct xUnit v3 non-Contract lane passed 1983/1983 with `-notrait Category=Performance -notrait Category=e2e-palette -notrait Category=NightlyProperty -notrait Category=Quarantined -notrait Category=Contract`.
+- [x] `npm --prefix tests/e2e run typecheck` passed.
+- [x] `npm --prefix tests/e2e run test -- --list specs/sidebar-responsive.spec.ts --project=chromium` discovered 13 Story 8.5 Chromium tests.
+- [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false` built into test assemblies, then VSTest aborted across assemblies with `System.Net.Sockets.SocketException (13): Permission denied`.
+- [ ] `npm --prefix tests/e2e run test:chromium -- specs/sidebar-responsive.spec.ts` failed before browser assertions because the Counter web server could not bind Kestrel: `System.Net.Sockets.SocketException (13): Permission denied`.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no HTTP API endpoint surface.
+- [x] E2E tests updated for the UI rail/flyout flow; local browser execution is socket-blocked.
+- [x] Tests use standard xUnit v3, Shouldly, bUnit, Fluent component, and Playwright project patterns.
+- [x] Tests cover happy paths, active-route edge cases, disabled/policy-gated entries, orphan contexts, responsive rail modes, keyboard open/close/activation, focus return, and light/dark visual/a11y guardrails.
+- [x] Story-owned focused and broad Shell lanes run successfully through the direct xUnit v3 in-process runner.
+- [x] Test summary updated with counts, typecheck evidence, and local blockers.
+
+### Senior Developer Review (AI) re-run - 2026-06-25
+- [x] Release build re-verified 0 warnings / 0 errors after auto-fixes.
+- [x] Focused lane (`FrontComposerNavigationTests`, `FrontComposerNavigationCapabilityBadgeTests`, `FrontComposerNavigationNavEntryTests`, `FcHamburgerToggleTests`, `FrontComposerShellTests`, `Story13AccessibilityPrimitivesTests`, `Story14ShellStringOwnershipTests`, `FluentConformanceTests`) passed 111/111 via the direct xUnit v3 in-process runner.
+- [x] Broad Shell non-Contract lane passed 1984/1984 (two stale UI-coupled nav-group tests removed; reducer behavior still covered by `NavigationReducerTests`).
+- [x] AC2 fix: the "filled active icon variant" (line 19) was previously a no-op — `FcFluentIcons.Apps20(Filled)` reused the Regular SVG path, so active/rest tiles rendered an identical glyph. Added a distinct `AppsFilledPath` (denser app-grid) for the Filled variant only; `Apps20(Regular)` and the Story-8.3 logo cell are unchanged, so `FrontComposerShellTests` solid-path pins stay green.
+- [ ] VSTest/Playwright browser lanes remain socket-blocked locally (unchanged from dev-story; recorded above).
+
 ## Story 8.4 - Compact default density and grid polish
 
 ### Generated Tests

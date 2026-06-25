@@ -20,9 +20,9 @@ export const ViewportBreakpoints = {
 } as const;
 
 /**
- * Page object for the framework-owned FrontComposerShell — covers the sidebar, collapsed rail,
- * and hamburger toggle introduced by Story 3-2. See
- * _bmad-output/implementation-artifacts/3-2-sidebar-navigation-and-responsive-behavior/acceptance-criteria.md.
+ * Page object for the framework-owned FrontComposerShell — covers the Story 8.5 unified
+ * navigation rail and hamburger toggle. The legacy fullNav/collapsedRail property names are
+ * retained for older specs: fullNav = 72px labeled rail, collapsedRail = 48px icon-only rail.
  */
 export class ShellPage {
   readonly page: Page;
@@ -32,15 +32,19 @@ export class ShellPage {
   readonly collapsedRail: Locator;
   readonly hamburgerToggle: Locator;
   readonly counterCategory: Locator;
+  readonly counterFlyout: Locator;
+  readonly counterProjectionItem: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.shellRoot = page.locator('.fc-shell-root');
     this.navigationPane = page.getByTestId('fc-shell-navigation');
-    this.fullNav = page.getByTestId('fc-navigation-full');
-    this.collapsedRail = page.getByTestId('fc-collapsed-rail');
+    this.fullNav = page.locator('[data-testid="fc-navigation-rail"][data-rail-width="72"]');
+    this.collapsedRail = page.locator('[data-testid="fc-navigation-rail"][data-rail-width="48"]');
     this.hamburgerToggle = page.getByTestId('fc-hamburger-toggle');
-    this.counterCategory = page.getByTestId('fc-nav-category-Counter');
+    this.counterCategory = page.getByTestId('fc-nav-context-Counter');
+    this.counterFlyout = page.getByTestId('fc-nav-flyout-Counter');
+    this.counterProjectionItem = page.getByTestId('fc-nav-flyout-projection-Counter-CounterProjection');
   }
 
   /**
@@ -72,5 +76,11 @@ export class ShellPage {
 
   async clickHamburger(): Promise<void> {
     await this.hamburgerToggle.click();
+  }
+
+  async openCounterFlyoutWithKeyboard(key: 'Enter' | 'Space'): Promise<void> {
+    await this.counterCategory.focus();
+    await this.page.keyboard.press(key);
+    await this.counterFlyout.waitFor({ state: 'visible' });
   }
 }

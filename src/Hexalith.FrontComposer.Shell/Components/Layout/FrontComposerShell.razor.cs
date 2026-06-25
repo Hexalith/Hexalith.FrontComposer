@@ -290,12 +290,12 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     }
 
     /// <summary>
-    /// Width of the Navigation area for framework-provided navigation. The compact rail occupies
-    /// 48 px; the expanded desktop sidebar remains 220 px.
+    /// Width of the Navigation area for framework-provided navigation. Story 8.5 renders one rail:
+    /// 72 px labeled on expanded Desktop, 48 px icon-only when collapsed or CompactDesktop.
     /// </summary>
     protected string NavigationWidth => Navigation is null && ShouldUseCollapsedRailWidth()
         ? "48px"
-        : "220px";
+        : "72px";
 
     /// <summary>
     /// FC-LYT (Story 1.2) — the <c>data-fc-page-layout</c> attribute value for <c>#fc-main-content</c>,

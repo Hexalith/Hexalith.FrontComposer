@@ -9,9 +9,9 @@
 
 @* Always-visible navigation hamburger. Supersedes the earlier D9 "no Desktop hamburger" decision
    (2026-06 UX request — match the Fluent reference shell where a hamburger toggles the menu at every
-   width). At Desktop the hamburger is a subtle FluentButton that toggles SidebarCollapsed (full 220px
-   sidebar <-> 48px icon rail) via SidebarToggledAction — the width/rail swap (FrontComposerShell
-   NavigationWidth + FrontComposerNavigation.ShouldRenderCollapsedRail) and persistence
+   width). At Desktop the hamburger is a subtle FluentButton that toggles SidebarCollapsed (72px
+   labeled rail <-> 48px icon-only rail) via SidebarToggledAction — the width/rail swap (FrontComposerShell
+   NavigationWidth + FrontComposerNavigation rail mode) and persistence
    (NavigationEffects.HandleSidebarToggled) are already wired to that state. At CompactDesktop /
    Tablet / Phone it stays the FluentLayoutHamburger that opens the responsive navigation drawer. *@
 

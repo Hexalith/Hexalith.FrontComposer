@@ -1,6 +1,8 @@
 using Bunit;
 using Bunit.TestDoubles;
 
+using AngleSharp.Dom;
+
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Layout;
@@ -61,9 +63,10 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
         cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("data-testid=\"fc-nav-category-tenants\"");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-context-tenants\"");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-flyout-tenants\"");
             cut.Markup.ShouldContain("data-testid=\"fc-nav-entry-tenants-tenants\"");
-            cut.Markup.ShouldContain("href=\"/tenants\"");
+            cut.Markup.ShouldContain("data-href=\"/tenants\"");
             cut.Markup.ShouldContain("Tenants");
         });
     }
@@ -84,10 +87,10 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
         cut.WaitForAssertion(() => {
-            // projection item (D2 route convention) and the explicit entry both render in the category
-            cut.Markup.ShouldContain("/tenants/tenant-view");
+            // Projection item (D2 route convention) and the explicit entry both render in the flyout.
+            cut.Markup.ShouldContain("data-href=\"/tenants/tenant-view\"");
             cut.Markup.ShouldContain("data-testid=\"fc-nav-entry-tenants-my-tenants\"");
-            cut.Markup.ShouldContain("href=\"/tenants/my\"");
+            cut.Markup.ShouldContain("data-href=\"/tenants/my\"");
         });
     }
 
@@ -148,7 +151,7 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
 
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("data-testid=\"fc-nav-entry-tenants-global-administrators\"");
-            cut.Markup.ShouldContain("href=\"/global-administrators\"");
+            cut.Markup.ShouldContain("data-href=\"/global-administrators\"");
         });
     }
 
@@ -162,9 +165,10 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
         cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("data-testid=\"fc-nav-category-standalone\"");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-context-standalone\"");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-flyout-standalone\"");
             cut.Markup.ShouldContain("data-testid=\"fc-nav-entry-standalone-standalone-page\"");
-            cut.Markup.ShouldContain("href=\"/standalone\"");
+            cut.Markup.ShouldContain("data-href=\"/standalone\"");
         });
     }
 
@@ -186,14 +190,12 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
         cut.WaitForAssertion(() => {
-            IReadOnlyList<FluentNavItem> active = ActiveItems(cut);
+            IReadOnlyList<IElement> active = ActiveItems(cut);
             active.Count.ShouldBe(1, "exactly one nav item may carry the active (Prefix) match");
-            active[0].Href.ShouldBe("/tenants/users");
+            active[0].GetAttribute("data-href").ShouldBe("/tenants/users");
 
             // The container route must no longer prefix-match its sub-routes.
-            cut.FindComponents<FluentNavItem>()
-                .Single(i => i.Instance.Href == "/tenants")
-                .Instance.Match.ShouldBe(NavLinkMatch.All);
+            cut.Find("[data-href=\"/tenants\"]").HasAttribute("aria-current").ShouldBeFalse();
         });
     }
 
@@ -210,9 +212,9 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
         cut.WaitForAssertion(() => {
-            IReadOnlyList<FluentNavItem> active = ActiveItems(cut);
+            IReadOnlyList<IElement> active = ActiveItems(cut);
             active.Count.ShouldBe(1, "a detail page keeps exactly its section ancestor lit");
-            active[0].Href.ShouldBe("/tenants");
+            active[0].GetAttribute("data-href").ShouldBe("/tenants");
         });
     }
 
@@ -236,8 +238,6 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
         new FrontComposerNavEntry("tenants", "User lookup", "/tenants/users"),
     ];
 
-    private static IReadOnlyList<FluentNavItem> ActiveItems(IRenderedComponent<FrontComposerNavigation> cut)
-        => [.. cut.FindComponents<FluentNavItem>()
-                  .Select(i => i.Instance)
-                  .Where(i => i.Match == NavLinkMatch.Prefix)];
+    private static IReadOnlyList<IElement> ActiveItems(IRenderedComponent<FrontComposerNavigation> cut)
+        => [.. cut.Nodes.QuerySelectorAll("[data-href][aria-current='page']")];
 }

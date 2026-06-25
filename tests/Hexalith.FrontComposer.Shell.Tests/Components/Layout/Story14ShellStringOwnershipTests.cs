@@ -157,7 +157,7 @@ public sealed class Story14ShellStringOwnershipTests : LayoutComponentTestBase {
                 renderedSkipNav.ShouldNotBe(enSkipNav);
 
                 // The navigation landmark accessible-name resolves to the FR value, not the EN literal.
-                string renderedNav = cut.Find("[data-testid=\"fc-navigation-full\"]").GetAttribute("aria-label")!;
+                string renderedNav = cut.Find("[data-testid=\"fc-navigation-rail\"]").GetAttribute("aria-label")!;
                 renderedNav.ShouldBe(frNav);
                 renderedNav.ShouldNotBe(enNav);
             });
@@ -187,7 +187,7 @@ public sealed class Story14ShellStringOwnershipTests : LayoutComponentTestBase {
                 .ShouldBe("SWAP::PaletteTriggerAriaLabel");
             cut.Find("[data-testid=\"fc-settings-button\"]").GetAttribute("aria-label")
                 .ShouldBe("SWAP::SettingsTriggerAriaLabel");
-            cut.Find("[data-testid=\"fc-navigation-full\"]").GetAttribute("aria-label")
+            cut.Find("[data-testid=\"fc-navigation-rail\"]").GetAttribute("aria-label")
                 .ShouldBe("SWAP::NavMenuAriaLabel");
         });
     }

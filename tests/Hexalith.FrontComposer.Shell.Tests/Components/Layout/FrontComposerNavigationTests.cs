@@ -35,10 +35,13 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// </summary>
 public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     private readonly IFrontComposerRegistry _registry;
+    private readonly IFrontComposerNavEntryRegistry _navRegistry;
     private readonly IUlidFactory _ulidFactory;
 
     public FrontComposerNavigationTests() {
-        _registry = Substitute.For<IFrontComposerRegistry>();
+        _registry = Substitute.For<IFrontComposerRegistry, IFrontComposerNavEntryRegistry>();
+        _navRegistry = (IFrontComposerNavEntryRegistry)_registry;
+        _navRegistry.GetNavEntries().Returns([]);
         Services.Replace(ServiceDescriptor.Singleton(_registry));
 
         _ulidFactory = Substitute.For<IUlidFactory>();
@@ -46,6 +49,50 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
         Services.Replace(ServiceDescriptor.Singleton(_ulidFactory));
 
         EnsureStoreInitialized();
+    }
+
+    [Fact]
+    public void DesktopExpanded_RendersUnifiedLabeledRail_WithoutLegacyFluentNavTree() {
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            IElement rail = cut.Find("[data-testid=\"fc-navigation-rail\"]");
+            rail.GetAttribute("data-rail-width").ShouldBe("72");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-context-Counter\"");
+            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(
+                () => cut.FindComponent<FluentNav>(),
+                "Story 8.5 replaces the expanded FluentNav tree with the same rail path used by collapsed mode.");
+        });
+    }
+
+    [Fact]
+    public void ContextTile_RendersProjectionFlyoutMenu_WithProjectionAndExplicitEntries() {
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+        _navRegistry.GetNavEntries().Returns([
+            new FrontComposerNavEntry("Counter", "Counter audit", "/counter/audit"),
+        ]);
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            IRenderedComponent<FluentMenu> menu = cut.FindComponents<FluentMenu>()
+                .Single(m => m.Instance.Trigger == "fc-rail-Counter");
+            menu.Instance.AdditionalAttributes.ShouldNotBeNull();
+            menu.Instance.AdditionalAttributes!["data-testid"].ShouldBe("fc-nav-flyout-Counter");
+            menu.Instance.AdditionalAttributes!["role"].ShouldBe("menu");
+
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-flyout-projection-Counter-CounterView\"");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-entry-Counter-counter-audit\"");
+        });
     }
 
     [Fact]
@@ -58,13 +105,13 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
         cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("id=\"Counter\"", Case.Sensitive);
-            cut.Markup.ShouldContain("id=\"Orders\"", Case.Sensitive);
+            cut.Markup.ShouldContain("id=\"fc-rail-Counter\"", Case.Sensitive);
+            cut.Markup.ShouldContain("id=\"fc-rail-Orders\"", Case.Sensitive);
 
-            // F5 — lock the e2e selector contract at the unit level.
-            cut.Markup.ShouldContain("data-testid=\"fc-navigation-full\"");
-            cut.Markup.ShouldContain("data-testid=\"fc-nav-category-Counter\"");
-            cut.Markup.ShouldContain("data-testid=\"fc-nav-category-Orders\"");
+            // Story 8.5 — lock the e2e selector contract at the unit level.
+            cut.Markup.ShouldContain("data-testid=\"fc-navigation-rail\"");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-context-Counter\"");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-context-Orders\"");
         });
     }
 
@@ -85,9 +132,9 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
         cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("/counter/counter-view");
-            cut.Markup.ShouldContain("/counter/counter-history");
-            cut.Markup.ShouldContain("/counter/counter-audit");
+            cut.Markup.ShouldContain("data-href=\"/counter/counter-view\"");
+            cut.Markup.ShouldContain("data-href=\"/counter/counter-history\"");
+            cut.Markup.ShouldContain("data-href=\"/counter/counter-audit\"");
         });
     }
 
@@ -189,7 +236,7 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void ExpandedStateBindsToCollapsedGroups() {
+    public void CollapsedGroupsState_DoesNotHideUnifiedRailTile() {
         _registry.GetManifests().Returns([
             new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
         ]);
@@ -199,57 +246,20 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
 
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
-        // F6 — assert the component property, not the rendered markup. FluentNavCategory may omit
-        // the Expanded attribute when the value equals the default, making markup regex brittle.
         cut.WaitForAssertion(() => {
-            IRenderedComponent<FluentNavCategory> category = cut
-                .FindComponents<FluentNavCategory>()
-                .Single(c => c.Instance.Id == "Counter");
-            category.Instance.Expanded.ShouldBeFalse("Collapsed bounded context must render Expanded=false");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-context-Counter\"");
+            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(
+                () => cut.FindComponent<FluentNavCategory>(),
+                "Story 8.5 keeps CollapsedGroups in the persisted schema, but the rail no longer renders collapsible categories.");
         });
     }
 
-    [Fact]
-    public void NavGroupCollapseDispatchesNavGroupToggledButDoesNotMarkCapabilitySeen() {
-        // D11 — dispatches NavGroupToggledAction(correlationId, boundedContext, collapsed)
-        // on FluentNavCategory.ExpandedChanged.
-        // D13 (review 2026-04-22) — collapsing is decluttering, not engagement: seen-set MUST
-        // NOT gain the bc:{BC} id on a collapse toggle.
-        _registry.GetManifests().Returns([
-            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
-        ]);
-
-        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
-
-        // Invoke the internal handler directly — the FluentNavCategory callback wires to this method.
-        cut.Instance.OnGroupExpandedChangedForTest(boundedContext: "Counter", expanded: false);
-
-        IState<FrontComposerNavigationState> state = Services.GetRequiredService<IState<FrontComposerNavigationState>>();
-        IState<FrontComposerCapabilityDiscoveryState> discoveryState =
-            Services.GetRequiredService<IState<FrontComposerCapabilityDiscoveryState>>();
-        state.Value.CollapsedGroups.ShouldContainKeyAndValue("Counter", true);
-        discoveryState.Value.SeenCapabilities.ShouldNotContain("bc:Counter");
-    }
-
-    [Fact]
-    public void NavGroupExpandMarksCapabilitySeen() {
-        // D13 (review 2026-04-22) — an explicit expand signals category engagement and MUST
-        // dispatch CapabilityVisitedAction(bc:{BC}), dismissing the BC-level "New" badge.
-        _registry.GetManifests().Returns([
-            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
-        ]);
-
-        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
-
-        cut.Instance.OnGroupExpandedChangedForTest(boundedContext: "Counter", expanded: true);
-
-        IState<FrontComposerNavigationState> state = Services.GetRequiredService<IState<FrontComposerNavigationState>>();
-        IState<FrontComposerCapabilityDiscoveryState> discoveryState =
-            Services.GetRequiredService<IState<FrontComposerCapabilityDiscoveryState>>();
-        // ReduceNavGroupToggled removes the key when Collapsed=false (expanded is the default).
-        state.Value.CollapsedGroups.ShouldNotContainKey("Counter");
-        discoveryState.Value.SeenCapabilities.ShouldContain("bc:Counter");
-    }
+    // Story 8.5 review (2026-06-25): the legacy NavGroupCollapse/Expand component tests were removed.
+    // The Aspire-style rail/flyout has no collapsible nav categories, so the component-level
+    // OnGroupExpandedChanged handler they drove was dead (no UI trigger) and was deleted. The persisted
+    // CollapsedGroups schema and its D13 reducer/seen-set semantics stay covered by NavigationReducerTests
+    // (ReduceNavGroupToggled), and CollapsedGroupsState_DoesNotHideUnifiedRailTile above pins that a
+    // persisted collapsed group no longer hides a rail tile.
 
     [Fact]
     public void NavItemsAreTabReachable() {
@@ -275,9 +285,8 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void RendersRailAtCompactDesktop() {
-        // D7 / D9 — when CurrentViewport is CompactDesktop (or Desktop + SidebarCollapsed), the
-        // navigation renders as FcCollapsedNavRail instead of the full FluentNav.
+    public void RendersIconOnlyRailAtCompactDesktop() {
+        // Story 8.5 — CompactDesktop uses the same unified rail path, in 48px icon-only mode.
         _registry.GetManifests().Returns([
             new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
         ]);
@@ -287,20 +296,18 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
 
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
-        // F3 — assert via typed component absence, not markup string. `<FluentNav` never appears
-        // in rendered HTML (Razor components emit their DOM, not their tag name), so the previous
-        // markup-string check was a tautology.
         cut.WaitForAssertion(() => {
-            _ = cut.FindComponent<FcCollapsedNavRail>();
+            cut.Find("[data-testid=\"fc-navigation-rail\"]").GetAttribute("data-rail-width").ShouldBe("48");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-context-Counter\"");
             Should.Throw<Bunit.Rendering.ComponentNotFoundException>(
                 () => cut.FindComponent<FluentNav>(),
-                "At CompactDesktop the full FluentNav must NOT render — only the FcCollapsedNavRail.");
+                "At CompactDesktop the old full FluentNav must not render.");
         });
     }
 
     [Fact]
-    public void RendersFullNavAtDesktop() {
-        // AC3 — Desktop tier renders full FluentNav (categories + items), not the rail.
+    public void RendersLabeledRailAtDesktop() {
+        // Story 8.5 — Desktop tier renders the 72px labeled rail.
         _registry.GetManifests().Returns([
             new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
         ]);
@@ -311,8 +318,9 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
         cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("id=\"Counter\"");
-            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(() => cut.FindComponent<FcCollapsedNavRail>());
+            cut.Find("[data-testid=\"fc-navigation-rail\"]").GetAttribute("data-rail-width").ShouldBe("72");
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-context-Counter\"");
+            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(() => cut.FindComponent<FluentNav>());
         });
     }
 
@@ -384,7 +392,7 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
 
         cut.WaitForAssertion(() => {
-            cut.Markup.ShouldContain("/counter/counter-view");
+            cut.Markup.ShouldContain("data-href=\"/counter/counter-view\"");
             cut.Markup.ShouldNotContain("data-testid=\"fc-nav-badge-Counter-CounterView\"");
         });
     }
@@ -433,7 +441,7 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
             cut.Find("[data-testid=\"fc-nav-badge-Counter-String\"]").TextContent.Trim().ShouldBe("2");
             cut.Find("[data-testid=\"fc-nav-badge-Counter-Int32\"]").TextContent.Trim().ShouldBe("3");
             // aggregate 5 > 0 and bc:Counter unseen → BC-level "New" renders.
-            cut.Markup.ShouldContain("data-testid=\"fc-nav-bc-new-Counter\"");
+            cut.Markup.ShouldContain("data-testid=\"fc-rail-new-Counter\"");
         });
     }
 
@@ -454,7 +462,7 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
             // count badges still render…
             cut.Markup.ShouldContain("data-testid=\"fc-nav-badge-Counter-String\"");
             // …but the BC-level "New" is gone.
-            cut.Markup.ShouldNotContain("data-testid=\"fc-nav-bc-new-Counter\"");
+            cut.Markup.ShouldNotContain("data-testid=\"fc-rail-new-Counter\"");
         });
     }
 
@@ -465,8 +473,8 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     // existing pin would still pass. These three pins close that gap.
 
     [Fact]
-    public void FullNav_RendersLocalizedNavMenuAriaLabel() {
-        // AC1 / FC-A11Y in-scope pin — the full FluentNav exposes its accessible name bound to the
+    public void Rail_RendersLocalizedNavMenuAriaLabel() {
+        // AC1 / FC-A11Y in-scope pin — the navigation rail exposes its accessible name bound to the
         // localized NavMenuAriaLabel resource (not a hardcoded/empty string).
         _registry.GetManifests().Returns([
             new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
