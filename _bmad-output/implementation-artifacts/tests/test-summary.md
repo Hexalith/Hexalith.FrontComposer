@@ -292,3 +292,53 @@
 - [x] Test summary updated.
 - [x] Tests saved to appropriate directories.
 - [x] Summary includes coverage metrics and local blockers.
+
+## Story 8.2 - Accent-as-thread policy and regression guard
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` - added `Shell_chrome_styles_never_use_accent_as_surface_background`, a Shell `.css`/`.razor` static-scan guard that fails when `background` or `background-color` declarations reference `var(--fc-color-accent)` or `var(--fc-accent-base-color)`.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` - added matcher-level QA pins for forbidden `background`/`background-color` declarations, including CSS `var(..., fallback)` syntax, and allowed non-background accent thread uses.
+
+### API Tests
+- [x] Not applicable - Story 8.2 has no HTTP API endpoint surface.
+
+### E2E Tests
+- [x] No new browser E2E was required; Story 8.2 reuses Story 8.1 shell-chrome browser coverage for rendered neutral header/footer behavior.
+- [ ] Local `test:fc-shell-chrome` execution remains blocked before browser assertions because Kestrel cannot create a listening socket in this sandbox.
+
+### Coverage
+- Architecture rule: `_bmad-output/project-docs/architecture.md` §4.1 already states that the accent is a thread, not a chrome fill, so no architecture edit was required.
+- Forbidden uses: `background:` and `background-color:` declarations in Shell `.css`/`.razor` source now fail if their value references the Shell accent bridge variables, including fallback-valued CSS variable calls.
+- Allowed uses: custom property definitions, foreground color, border/outline/focus, active navigation, links, primary affordances, badges, selected-state accent thread uses, and future accent-left-bar-style shadows are not flagged.
+- Allowlist discipline: the accent-surface allowlist is empty and includes stale-entry detection.
+- Story 8.1 preservation: neutral header/footer bUnit pins pass unchanged.
+
+### Validation
+- [x] `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
+- [x] (QA Generate E2E Tests, AI) `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false --no-restore` passed with 0 warnings / 0 errors after adding matcher pins.
+- [x] RED phase: temporarily adding `background: var(--fc-color-accent);` to `src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor.css` made `Shell_chrome_styles_never_use_accent_as_surface_background` fail 1/1 with the expected repository-relative offender path; the temporary violation was removed before final validation.
+- [x] Focused new guard direct xUnit v3 lane passed 1/1 after removing the temporary violation.
+- [x] Full `FluentConformanceTests` governance class passed 6/6, including the existing legacy-token guard and the new accent-as-background guard.
+- [x] (QA Generate E2E Tests, AI) Full `FluentConformanceTests` governance class passed 17/17, including the new matcher-level forbidden/allowed declaration pins.
+- [x] Story 8.1 shell chrome direct xUnit v3 lane passed 3/3: `HeaderChrome_UsesNeutralSurfaceAndDivider`, `DefaultFooterChrome_UsesNeutralFrameAndFluentText`, and `AdopterSuppliedFooter_RendersInsideNeutralFrame`.
+- [x] (QA Generate E2E Tests, AI) Focused Story 8.1 preservation lane passed 28/28 via direct xUnit v3: `FrontComposerShellTests` plus `SlotMappingRegressionTests`.
+- [x] (QA Generate E2E Tests, AI) Matcher-focused direct xUnit v3 lane passed 11/11: `Accent_surface_guard_flags_background_declarations` and `Accent_surface_guard_allows_thread_declarations`.
+- [x] Shell in-process assembly excluding Contract tests passed 1964/1964 via the direct xUnit v3 runner.
+- [ ] Full Shell in-process assembly ran 1967 tests: 1966 passed, 1 Pact Contract test failed because PactNet could not start a local mock server in this sandbox.
+- [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false` restored/built until test execution, then VSTest aborted across assemblies with `System.Net.Sockets.SocketException (13): Permission denied` from the local socket transport.
+- [ ] `npm --prefix tests/e2e run test:fc-shell-chrome` failed before browser assertions because the Counter web server could not bind Kestrel: `System.Net.Sockets.SocketException (13): Permission denied`.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no HTTP API endpoint surface.
+- [x] E2E tests generated if UI exists: no new browser test required; Story 8.1 shell-chrome E2E remains the rendered-browser coverage and is locally socket-blocked.
+- [x] Tests use standard test framework APIs.
+- [x] Tests cover the happy path.
+- [x] Tests cover the critical regression path with a RED-phase temporary violation.
+- [x] Story-owned focused lanes run successfully through the direct xUnit v3 in-process runner.
+- [x] Tests use source scanning rather than brittle rendered markup for this governance policy.
+- [x] Tests have clear descriptions.
+- [x] No hardcoded waits or sleeps.
+- [x] Tests are independent.
+- [x] Test summary updated.
+- [x] Tests saved to appropriate directories.
+- [x] Summary includes coverage metrics and local blockers.

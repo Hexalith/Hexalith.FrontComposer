@@ -42,6 +42,17 @@ public sealed class FluentConformanceTests {
         + "focus-stroke|stroke-width|disabled-opacity)[a-z0-9-]*",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // Matches a background/background-color declaration whose value references the Shell accent bridge
+    // variables. Requiring the literal `background`/`background-color` keyword is what leaves the allowed
+    // thread uses untouched (color, border, outline, focus rings, box-shadow active-nav bars, links, primary
+    // affordances, badges, and selected states never contain that keyword). The negative lookbehind anchors
+    // on a real property boundary so the keyword is not matched as the suffix of a longer identifier — e.g. a
+    // custom-property *definition* named `--…-background: var(--fc-color-accent)` is left alone: defining an
+    // accent-valued variable is allowed; painting the accent onto the `background` property is what is blocked.
+    private static readonly Regex AccentSurfaceBackgroundDeclaration = new(
+        "(?<![-\\w])background(?:-color)?\\s*:\\s*[^;}]*var\\(\\s*--fc-(?:color-accent|accent-base-color)(?:\\s*,[^)]*)?\\s*\\)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     // Matches a FluentAccordionItem opening tag that sets its title via the removed Fluent v4 `Heading=`
     // attribute instead of the Fluent v5 `Header=` parameter. In v5 FluentAccordionItem has no `Heading`
     // parameter, so `Heading="…"` is silently captured as an unknown splatted HTML attribute and the section
@@ -91,6 +102,40 @@ public sealed class FluentConformanceTests {
         string[] migrationBacklog = [];
 
         AssertNoLegacyTokens(root, migrationBacklog);
+    }
+
+    [Fact]
+    public void Shell_chrome_styles_never_use_accent_as_surface_background() {
+        string root = Path.Combine(RepositoryRoot(), "src", "Hexalith.FrontComposer.Shell");
+
+        // Accent-as-background backlog (architecture.md §4.1): Shell chrome must keep header, navigation,
+        // and footer surfaces on neutral Fluent 2 background tokens. The accent remains a semantic thread for
+        // active/focus/link/primary/badge/selected affordances, but this allowlist must stay empty on
+        // completion and can only shrink if a future temporary carve-out is explicitly approved.
+        string[] accentSurfaceBacklog = [];
+
+        AssertNoAccentSurfaceBackgrounds(root, accentSurfaceBacklog);
+    }
+
+    [Theory]
+    [InlineData("background: var(--fc-color-accent);")]
+    [InlineData("background-color: var(--fc-accent-base-color);")]
+    [InlineData("background: linear-gradient(var(--fc-color-accent), transparent);")]
+    [InlineData("background-color: var(--fc-color-accent, #0097A7);")]
+    [InlineData("Style=\"background: var( --fc-accent-base-color , #0097A7 );\"")]
+    public void Accent_surface_guard_flags_background_declarations(string declaration) {
+        AccentSurfaceBackgroundDeclaration.IsMatch(declaration).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("--fc-color-accent: var(--fc-accent-base-color);")]
+    [InlineData("color: var(--fc-color-accent);")]
+    [InlineData("border-color: var(--fc-accent-base-color);")]
+    [InlineData("outline: 2px solid var(--fc-color-accent);")]
+    [InlineData("box-shadow: inset 4px 0 0 var(--fc-color-accent);")]
+    [InlineData("background-image: linear-gradient(var(--fc-color-accent), transparent);")]
+    public void Accent_surface_guard_allows_thread_declarations(string declaration) {
+        AccentSurfaceBackgroundDeclaration.IsMatch(declaration).ShouldBeFalse();
     }
 
     [Fact]
@@ -246,6 +291,60 @@ public sealed class FluentConformanceTests {
         migrated.ShouldBeEmpty(
             "These files no longer use legacy Fluent v4 tokens — remove them from the migrationBacklog "
             + $"allowlist so the backlog only shrinks: {string.Join("; ", migrated)}");
+    }
+
+    private static void AssertNoAccentSurfaceBackgrounds(string root, string[] accentSurfaceBacklog) {
+        Directory.Exists(root).ShouldBeTrue($"Accent-surface scan root not found: {root}");
+
+        EnumerationOptions options = new() {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            IgnoreInaccessible = true,
+        };
+
+        string repoRoot = RepositoryRoot();
+        string[] styleFiles = Directory
+            .EnumerateFiles(root, "*.css", options)
+            .Concat(Directory.EnumerateFiles(root, "*.razor", options))
+            .Where(f => !IsBuildOutput(f))
+            .ToArray();
+
+        // Guard against a broken path silently passing the scan.
+        styleFiles.ShouldNotBeEmpty($"no .css/.razor files found under {root}");
+
+        HashSet<string> allowed = new(accentSurfaceBacklog, StringComparer.Ordinal);
+        List<string> offenders = [];
+        List<string> cleaned = [];
+
+        foreach (string file in styleFiles) {
+            string relativeToShell = Path.GetRelativePath(root, file).Replace('\\', '/');
+            string relativeToRepository = Path.GetRelativePath(repoRoot, file).Replace('\\', '/');
+            bool usesAccentSurfaceBackground = AccentSurfaceBackgroundDeclaration.IsMatch(File.ReadAllText(file));
+
+            if (allowed.Contains(relativeToShell)) {
+                if (!usesAccentSurfaceBackground) {
+                    cleaned.Add(relativeToShell);
+                }
+
+                continue;
+            }
+
+            if (usesAccentSurfaceBackground) {
+                offenders.Add(relativeToRepository);
+            }
+        }
+
+        offenders.ShouldBeEmpty(
+            "Shell chrome backgrounds must use neutral Fluent 2 tokens such as --colorNeutralBackground* "
+            + "with neutral dividers, not the accent bridge variables --fc-color-accent or "
+            + "--fc-accent-base-color. Accent remains valid for thread uses like active nav, focus, links, "
+            + "primary affordances, badges, and selected states. Accent-as-background declarations found in: "
+            + $"{string.Join("; ", offenders)}");
+
+        cleaned.ShouldBeEmpty(
+            "These files no longer use accent bridge variables as background/background-color values — remove "
+            + "them from the accentSurfaceBacklog allowlist so the backlog only shrinks: "
+            + $"{string.Join("; ", cleaned)}");
     }
 
     private static bool IsBuildOutput(string file) {
