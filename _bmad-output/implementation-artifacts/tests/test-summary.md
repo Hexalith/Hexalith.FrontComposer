@@ -293,6 +293,68 @@
 - [x] Tests saved to appropriate directories.
 - [x] Summary includes coverage metrics and local blockers.
 
+## Story 8.3 - Brand/logo cell in header-start
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellParameterSurfaceTests.cs` - appended `HeaderLogo:RenderFragment` and `ShowDefaultHeaderLogo:Boolean` to the locked metadata-order parameter surface.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs` - added default no-logo preservation, adopter logo ordering/precedence, and opt-in default decorative `FcFluentIcons.Apps20()` logo cell coverage.
+- [x] `samples/Counter/Counter.Web/Components/Layout/HeaderDefaultLogoLayout.razor` and `HeaderCustomLogoLayout.razor` - added specimen-only shell layouts that exercise opt-in default and adopter-supplied header logo states in the browser host.
+- [x] `samples/Counter/Counter.Web/Components/Pages/HeaderDefaultLogoSpecimen.razor` and `HeaderCustomLogoSpecimen.razor` - added focused specimen routes for Story 8.3 E2E coverage.
+- [x] `tests/e2e/specs/shell-chrome.spec.ts` - added Story 8.3 Playwright assertions for zero-config no-logo preservation, opt-in default decorative logo markup, custom adopter logo markup, and header-start/title DOM ordering.
+
+### API Tests
+- [x] Public component API shape is covered by the parameter-surface metadata-order test.
+- [x] No HTTP API endpoint surface applies to this story.
+
+### E2E Tests
+- [x] `tests/e2e/specs/shell-chrome.spec.ts` now includes rendered-browser Story 8.3 coverage.
+- [ ] Local `test:fc-shell-chrome` execution remains blocked before browser assertions because Kestrel cannot create a listening socket in this sandbox.
+
+### Coverage
+- Zero-config shell: no `data-testid="fc-shell-brand-logo"` is emitted when `HeaderLogo` is null and `ShowDefaultHeaderLogo` is false; default `FcHamburgerToggle` and title remain present.
+- Adopter logo: supplied `HeaderLogo` renders inside the stable brand-logo cell after adopter `HeaderStart` content and before the app title.
+- Precedence: supplied `HeaderLogo` wins over `ShowDefaultHeaderLogo=true`; the framework default Apps path is not emitted in that branch.
+- Default opt-in logo: `ShowDefaultHeaderLogo=true` renders a decorative brand-logo cell with the existing `FcFluentIcons.Apps20()` SVG path.
+- Browser routes: zero-config, opt-in default logo, and adopter logo states are reachable through the Counter specimen host and discovered by Playwright.
+- Parameter surface: new parameters are append-only after `ContentLabelledBy`; existing names/types/order remain unchanged.
+- Governance: Fluent conformance and accent-as-background guards remain green; no new dependencies, raw interactive controls, Fluent v4/FAST tokens, or accent surface backgrounds were added.
+
+### Validation
+- [x] RED phase: `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release --filter "FullyQualifiedName~FrontComposerShellTests|FullyQualifiedName~FrontComposerShellParameterSurfaceTests" -m:1 /nr:false` failed before implementation because `HeaderLogo` and `ShowDefaultHeaderLogo` did not exist.
+- [x] `DiffEngine_Disabled=true dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
+- [x] Focused header/logo + parameter direct xUnit v3 lane passed 31/31: `FrontComposerShellTests` and `FrontComposerShellParameterSurfaceTests`.
+- [x] `FluentConformanceTests` direct xUnit v3 lane passed 17/17.
+- [x] Broad Shell direct xUnit v3 lane excluding socket-bound Pact namespace passed 1973/1973.
+- [x] (QA Generate E2E Tests, AI) `dotnet build samples/Counter/Counter.Web/Counter.Web.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors after adding the specimen routes.
+- [x] (QA Generate E2E Tests, AI) `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
+- [x] (QA Generate E2E Tests, AI) `DiffEngine_Disabled=true ./tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests -noLogo -noColor -parallel none -class Hexalith.FrontComposer.Shell.Tests.Components.Layout.FrontComposerShellTests -class Hexalith.FrontComposer.Shell.Tests.Components.Layout.FrontComposerShellParameterSurfaceTests -class Hexalith.FrontComposer.Shell.Tests.Governance.FluentConformanceTests -class Hexalith.FrontComposer.Shell.Tests.Integration.CounterWebIntegrationTests` passed 49/49.
+- [x] (QA Generate E2E Tests, AI) `PLAYWRIGHT_SKIP_WEBSERVER=1 npx playwright test specs/shell-chrome.spec.ts --project=chromium --list` from `tests/e2e` discovered 5 shell-chrome tests, including the 3 new Story 8.3 tests.
+- [ ] Full Shell direct xUnit v3 lane ran 1976 tests: 1975 passed, 1 Pact test failed because PactNet could not start a local mock server in this sandbox.
+- [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false` restored/built until test execution, then VSTest aborted across assemblies with `System.Net.Sockets.SocketException (13): Permission denied` from the local socket transport. The run also reported the expected uninitialized nested `Hexalith.Memories` project skips and a NuGet audit network warning.
+- [ ] (QA Generate E2E Tests, AI) `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~FrontComposerShellTests|FullyQualifiedName~FrontComposerShellParameterSurfaceTests|FullyQualifiedName~FluentConformanceTests|FullyQualifiedName~CounterWebIntegrationTests" -m:1 /nr:false` aborted before execution because VSTest could not create its local socket listener: `System.Net.Sockets.SocketException (13): Permission denied`.
+- [ ] (QA Generate E2E Tests, AI) `npm --prefix tests/e2e run typecheck` failed before type-checking because local `node_modules` contains stale TypeScript that rejects `tsconfig.json` `ignoreDeprecations: "6.0"`.
+- [ ] `npm --prefix tests/e2e run test:fc-shell-chrome` failed before browser assertions because the Counter web server could not bind Kestrel: `System.Net.Sockets.SocketException (13): Permission denied`.
+- [x] `git diff --check` passed with no whitespace errors; Git reported LF-to-CRLF normalization warnings only.
+- [x] (Senior Developer Review, AI) `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false --no-restore` passed with 0 warnings / 0 errors after the review fix.
+- [x] (Senior Developer Review, AI) `DiffEngine_Disabled=true ./tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests -noLogo -noColor -parallel none -class …FrontComposerShellTests -class …FrontComposerShellParameterSurfaceTests -class …FluentConformanceTests` passed **48/48** after adding the adopter-logo a11y assertion.
+- [x] (Senior Developer Review, AI) Re-ran the three Story 8.3 logo tests by name (`HeaderLogo_WhenNotProvidedAndDefaultDisabled_EmitsNoBrandLogoCell`, `HeaderLogo_WhenProvided_RendersBetweenHeaderStartAndAppTitle`, `HeaderLogo_WhenDefaultLogoOptedIn_RendersDecorativeAppsIconCell`) → 3/3 passed.
+- [x] (Senior Developer Review, AI) Auto-fixed 1 Low: added `adopterLogoCell.GetAttribute("aria-hidden").ShouldBeNull()` to `HeaderLogo_WhenProvided_RendersBetweenHeaderStartAndAppTitle`, pinning that an adopter-supplied logo is not marked decorative even when `ShowDefaultHeaderLogo=true`. 0 Critical/High/Medium. Status moved review → done.
+
+### Checklist
+- [x] API tests generated if applicable: parameter-surface API guard updated.
+- [x] E2E tests generated if UI exists: Story 8.3 browser assertions and specimen routes were added to `shell-chrome.spec.ts`; execution remains locally socket-blocked.
+- [x] Tests use standard bUnit/xUnit v3/Shouldly APIs.
+- [x] Tests cover the happy path and safe default path.
+- [x] Tests cover the critical precedence/error-prone path where custom logo overrides the opt-in default mark.
+- [x] Story-owned focused lanes run successfully through the direct xUnit v3 in-process runner.
+- [x] Tests use stable selectors, semantic page assertions, and DOM order checks without hardcoded waits.
+- [x] Tests have clear descriptions.
+- [x] No hardcoded waits or sleeps.
+- [x] Tests are independent.
+- [x] Test summary updated.
+- [x] Tests saved to appropriate directories.
+- [x] Summary includes coverage metrics and local blockers.
+
 ## Story 8.2 - Accent-as-thread policy and regression guard
 
 ### Generated Tests

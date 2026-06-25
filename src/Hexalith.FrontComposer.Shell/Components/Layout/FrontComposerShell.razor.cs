@@ -31,11 +31,18 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Parameter ordering (Story 3-2 D10):</b> the 7 parameters follow the L→R visual header layout,
-/// NOT alphabetical order: <see cref="HeaderStart"/>, <see cref="HeaderCenter"/>, <see cref="HeaderEnd"/>,
-/// <see cref="Navigation"/>, <see cref="Footer"/>, <see cref="ChildContent"/>, <see cref="AppTitle"/>.
-/// The snapshot test <c>FrontComposerShellParameterSurfaceTests</c> locks this list — any addition
-/// must be append-only, no parameter may be removed/renamed/retyped without a major bump.
+/// <b>Parameter ordering (Story 3-2 D10 / Story 8.3):</b> the original shell parameters keep their
+/// metadata order and later additions are append-only: <see cref="HeaderStart"/>, <see cref="HeaderCenter"/>,
+/// <see cref="HeaderEnd"/>, <see cref="Navigation"/>, <see cref="Footer"/>, <see cref="ChildContent"/>,
+/// <see cref="AppTitle"/>, landmark parameters, then brand/logo parameters. The snapshot test
+/// <c>FrontComposerShellParameterSurfaceTests</c> locks this list — any addition must be append-only,
+/// no parameter may be removed/renamed/retyped without a major bump.
+/// </para>
+/// <para>
+/// <b>Brand/logo lockup (Story 8.3):</b> <see cref="HeaderLogo"/> renders adopter-supplied logo markup
+/// between the header-start slot and the app title. When it is <see langword="null"/> and
+/// <see cref="ShowDefaultHeaderLogo"/> is <see langword="false"/> (the default), the shell emits no
+/// logo markup so zero-config adopters keep the existing header.
 /// </para>
 /// <para>
 /// <b>Navigation auto-populate (Story 3-2 D18 / ADR-035):</b> when <see cref="Navigation"/> is
@@ -173,6 +180,19 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// </summary>
     [Parameter] public string? ContentLabelledBy { get; set; }
 
+    /// <summary>
+    /// Optional adopter-supplied brand/logo markup rendered between <see cref="HeaderStart"/> (or the
+    /// default <see cref="FcHamburgerToggle"/>) and <see cref="AppTitle"/>. When <see langword="null"/>,
+    /// the shell emits no logo unless <see cref="ShowDefaultHeaderLogo"/> is explicitly enabled.
+    /// </summary>
+    [Parameter] public RenderFragment? HeaderLogo { get; set; }
+
+    /// <summary>
+    /// Opts into the framework default decorative header logo when <see cref="HeaderLogo"/> is
+    /// <see langword="null"/>. The default is <see langword="false"/> so zero-config shells emit no logo.
+    /// </summary>
+    [Parameter] public bool ShowDefaultHeaderLogo { get; set; }
+
     /// <summary>Injected Fluent UI theme service. Called once on first render per D6.</summary>
     [Inject] private IThemeService ThemeService { get; set; } = default!;
 
@@ -222,6 +242,17 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     /// <summary>Accent color projected into the inline <c>:root</c> style block (AC2).</summary>
     protected string AccentColor => Options.Value.AccentColor;
+
+    /// <summary>Whether the header should render the optional brand/logo cell.</summary>
+    protected bool ShouldRenderHeaderLogo => HeaderLogo is not null || ShowDefaultHeaderLogo;
+
+    /// <summary>
+    /// Gap applied only when the optional brand/logo cell exists, preserving the zero-config header spacing.
+    /// </summary>
+    protected string? HeaderStartHorizontalGap => ShouldRenderHeaderLogo ? "6px" : null;
+
+    /// <summary>Marks only the framework default logo as decorative.</summary>
+    protected string? HeaderLogoAriaHidden => HeaderLogo is null && ShowDefaultHeaderLogo ? "true" : null;
 
     /// <summary>Global stylesheet that owns the body density cascade + shared screen-reader-only helper.</summary>
     protected string DensityStylesheetPath => NavigationManager

@@ -1,0 +1,14 @@
+@inherits LayoutComponentBase
+@using Hexalith.FrontComposer.Shell.Components.Layout
+
+<FrontComposerShell HeaderLogo="@CustomLogo">@Body</FrontComposerShell>
+
+@code {
+    private static RenderFragment CustomLogo => builder =>
+    {
+        builder.OpenElement(0, "span");
+        builder.AddAttribute(1, "data-testid", "fc-e2e-custom-brand-mark");
+        builder.AddContent(2, "FC");
+        builder.CloseElement();
+    };
+}

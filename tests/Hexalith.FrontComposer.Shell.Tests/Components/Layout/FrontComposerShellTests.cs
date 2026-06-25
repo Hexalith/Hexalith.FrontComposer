@@ -1,5 +1,7 @@
 using Bunit;
 
+using AngleSharp.Dom;
+
 using Fluxor;
 using Fluxor.Blazor.Web;
 
@@ -150,6 +152,66 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
             cut.Markup.ShouldContain("min-height: 36px;", Case.Sensitive);
             cut.Markup.ShouldContain("background: var(--colorNeutralBackground2);", Case.Sensitive);
             cut.Markup.ShouldContain("border-block-start: 1px solid var(--colorNeutralStroke2);", Case.Sensitive);
+        });
+    }
+
+    [Fact]
+    public void HeaderLogo_WhenNotProvidedAndDefaultDisabled_EmitsNoBrandLogoCell() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldNotContain("data-testid=\"fc-shell-brand-logo\"", Case.Sensitive);
+            cut.Markup.ShouldContain("Hexalith FrontComposer", Case.Sensitive);
+            _ = cut.FindComponent<FcHamburgerToggle>();
+        });
+    }
+
+    [Fact]
+    public void HeaderLogo_WhenProvided_RendersBetweenHeaderStartAndAppTitle() {
+        static void headerStart(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+            => builder.AddMarkupContent(0, "<span data-testid=\"adopter-header-start\">Menu</span>");
+
+        static void logo(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+            => builder.AddMarkupContent(0, "<span data-testid=\"adopter-logo\">Logo</span>");
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .Add(c => c.HeaderStart, headerStart)
+            .Add(c => c.HeaderLogo, logo)
+            .Add(c => c.ShowDefaultHeaderLogo, true)
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("data-testid=\"fc-shell-brand-logo\"", Case.Sensitive);
+            cut.Markup.ShouldContain("data-testid=\"adopter-logo\"", Case.Sensitive);
+            cut.Markup.ShouldNotContain("M 4 4 h 5 v 5 H 4 V 4 Z", Case.Sensitive);
+
+            // An adopter-supplied logo is meaningful content, not the framework's decorative default,
+            // so the brand-logo cell must NOT hide it from assistive tech even when ShowDefaultHeaderLogo
+            // is also set (custom logo wins). Pins the HeaderLogoAriaHidden null-branch at the unit level.
+            IElement adopterLogoCell = cut.Find("[data-testid=\"fc-shell-brand-logo\"]");
+            adopterLogoCell.GetAttribute("aria-hidden").ShouldBeNull();
+
+            int headerStartIndex = cut.Markup.IndexOf("data-testid=\"adopter-header-start\"", StringComparison.Ordinal);
+            int logoIndex = cut.Markup.IndexOf("data-testid=\"fc-shell-brand-logo\"", StringComparison.Ordinal);
+            int titleIndex = cut.Markup.IndexOf("Hexalith FrontComposer", StringComparison.Ordinal);
+
+            headerStartIndex.ShouldBeGreaterThanOrEqualTo(0);
+            logoIndex.ShouldBeGreaterThan(headerStartIndex);
+            titleIndex.ShouldBeGreaterThan(logoIndex);
+        });
+    }
+
+    [Fact]
+    public void HeaderLogo_WhenDefaultLogoOptedIn_RendersDecorativeAppsIconCell() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .Add(c => c.ShowDefaultHeaderLogo, true)
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            IElement logoCell = cut.Find("[data-testid=\"fc-shell-brand-logo\"]");
+            logoCell.GetAttribute("aria-hidden").ShouldBe("true");
+            logoCell.InnerHtml.ShouldContain("M 4 4 h 5 v 5 H 4 V 4 Z", Case.Sensitive);
         });
     }
 

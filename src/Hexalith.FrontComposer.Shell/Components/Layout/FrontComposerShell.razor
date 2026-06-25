@@ -7,6 +7,7 @@
 @using Hexalith.FrontComposer.Shell.Components.Diagnostics
 @using Hexalith.FrontComposer.Shell.Components.DevMode
 @using Hexalith.FrontComposer.Shell.Components.EventStore
+@using Hexalith.FrontComposer.Shell.Components.Icons
 @using Hexalith.FrontComposer.Shell.Resources
 @inherits Fluxor.Blazor.Web.Components.FluxorComponent
 @implements IAsyncDisposable
@@ -49,7 +50,8 @@
                 <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
                              HorizontalAlignment="HorizontalAlignment.SpaceBetween"
                              Style="height: 48px; padding: 0 12px; background: var(--colorNeutralBackground2); border-block-end: 1px solid var(--colorNeutralStroke2);">
-                    <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center">
+                    <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
+                                 HorizontalGap="@HeaderStartHorizontalGap">
                         @if (HeaderStart is not null)
                         {
                             @HeaderStart
@@ -57,6 +59,19 @@
                         else
                         {
                             <FcHamburgerToggle />
+                        }
+                        @if (ShouldRenderHeaderLogo)
+                        {
+                            <span data-testid="fc-shell-brand-logo" aria-hidden="@HeaderLogoAriaHidden">
+                                @if (HeaderLogo is not null)
+                                {
+                                    @HeaderLogo
+                                }
+                                else
+                                {
+                                    <FluentIcon Value="@FcFluentIcons.Apps20()" />
+                                }
+                            </span>
                         }
                         <FluentText Size="@Typography.AppTitle.Size" Weight="@Typography.AppTitle.Weight"
                                     As="@Typography.AppTitle.Tag">

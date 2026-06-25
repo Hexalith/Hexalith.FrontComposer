@@ -23,6 +23,8 @@ type ChromeSnapshot = {
 };
 
 const SPECIMEN_ROUTE = '/__frontcomposer/specimens/type';
+const DEFAULT_LOGO_ROUTE = '/__frontcomposer/specimens/header-logo/default';
+const CUSTOM_LOGO_ROUTE = '/__frontcomposer/specimens/header-logo/custom';
 const MIN_TEXT_CONTRAST = 4.5;
 
 test.describe('Story 8.1: neutral shell chrome @p1', () => {
@@ -67,6 +69,56 @@ test.describe('Story 8.1: neutral shell chrome @p1', () => {
       expect(snapshot.actionContrast).toBeGreaterThanOrEqual(MIN_TEXT_CONTRAST);
     });
   }
+});
+
+test.describe('Story 8.3: header brand logo cell @p1', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+  });
+
+  test('zero-config shell emits no brand logo cell', async ({ page }) => {
+    await page.goto(SPECIMEN_ROUTE);
+    await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+
+    await expect(page.getByTestId('fc-shell-brand-logo')).toHaveCount(0);
+    await expect(page.getByTestId('fc-hamburger-toggle')).toBeVisible();
+    await expect(page.getByText('Hexalith FrontComposer', { exact: true })).toBeVisible();
+  });
+
+  test('default logo opt-in renders a decorative logo between hamburger and title', async ({ page }) => {
+    await page.goto(DEFAULT_LOGO_ROUTE);
+    await expect(page.getByTestId('fc-header-logo-specimen')).toBeVisible();
+
+    const logo = page.getByTestId('fc-shell-brand-logo');
+    await expect(logo).toBeVisible();
+    await expect(logo).toHaveAttribute('aria-hidden', 'true');
+    await expect(logo.locator('svg')).toHaveCount(1);
+    await expect(page.getByTestId('fc-hamburger-toggle')).toBeVisible();
+    await expect(page.getByText('Hexalith FrontComposer', { exact: true })).toBeVisible();
+
+    const order = await readHeaderLogoOrder(page);
+    expect(order.logoAfterHamburger).toBe(true);
+    expect(order.logoBeforeTitle).toBe(true);
+  });
+
+  test('adopter logo renders supplied markup before the app title', async ({ page }) => {
+    await page.goto(CUSTOM_LOGO_ROUTE);
+    await expect(page.getByTestId('fc-header-logo-specimen')).toBeVisible();
+
+    const logo = page.getByTestId('fc-shell-brand-logo');
+    await expect(logo).toBeVisible();
+    await expect(logo).not.toHaveAttribute('aria-hidden', 'true');
+    await expect(page.getByTestId('fc-e2e-custom-brand-mark')).toHaveText('FC');
+
+    const order = await readHeaderLogoOrder(page);
+    expect(order.logoAfterHamburger).toBe(true);
+    expect(order.logoBeforeTitle).toBe(true);
+  });
 });
 
 const readChromeSnapshot = async (page: Page): Promise<ChromeSnapshot> => page.evaluate(() => {
@@ -171,5 +223,38 @@ const readChromeSnapshot = async (page: Page): Promise<ChromeSnapshot> => page.e
     neutralStroke,
     titleColor: titleStyles.color,
     titleContrast: contrastRatio(titleStyles.color, headerStyles.backgroundColor),
+  };
+});
+
+const readHeaderLogoOrder = async (page: Page): Promise<{
+  logoAfterHamburger: boolean;
+  logoBeforeTitle: boolean;
+}> => page.evaluate(() => {
+  const resolveElement = (selector: string): HTMLElement => {
+    const element = document.querySelector(selector);
+    if (!(element instanceof HTMLElement)) {
+      throw new Error(`Missing element: ${selector}`);
+    }
+
+    return element;
+  };
+
+  const textElement = (exactText: string): HTMLElement => {
+    const candidates = Array.from(document.querySelectorAll('.fc-shell-root *'));
+    const element = candidates.find((candidate) => candidate.textContent?.trim() === exactText);
+    if (!(element instanceof HTMLElement)) {
+      throw new Error(`Missing shell text: ${exactText}`);
+    }
+
+    return element;
+  };
+
+  const hamburger = resolveElement('[data-testid="fc-hamburger-toggle"]');
+  const logo = resolveElement('[data-testid="fc-shell-brand-logo"]');
+  const title = textElement('Hexalith FrontComposer');
+
+  return {
+    logoAfterHamburger: (hamburger.compareDocumentPosition(logo) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    logoBeforeTitle: (logo.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
   };
 });

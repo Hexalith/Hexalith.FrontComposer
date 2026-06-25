@@ -14,7 +14,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// single append at index 1 (between HeaderStart and HeaderEnd, mirroring the L→R visual header
 /// layout). Handoff <c>frontcomposer-2026-06-19-page-header-landmarks-and-contract-hardening</c>
 /// (outcome 1) appends <c>ContentLabel</c> and <c>ContentLabelledBy</c> at the tail so the shell's
-/// single <c>#fc-main-content</c> <c>main</c> landmark can carry an accessible name.
+/// single <c>#fc-main-content</c> <c>main</c> landmark can carry an accessible name. Story 8.3 appends
+/// the safe-default brand/logo parameters after the landmark parameters.
 /// Append-only discipline: no rename, retype, removal, or reorder of existing parameters.
 /// </summary>
 public sealed class FrontComposerShellParameterSurfaceTests {
@@ -38,6 +39,9 @@ public sealed class FrontComposerShellParameterSurfaceTests {
             // Handoff outcome 1 — append-only landmark-naming parameters (safe-default null).
             "ContentLabel:String",
             "ContentLabelledBy:String",
+            // Story 8.3 — append-only brand/logo parameters (safe-default null/false).
+            "HeaderLogo:RenderFragment",
+            "ShowDefaultHeaderLogo:Boolean",
         ]);
     }
 }
