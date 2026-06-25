@@ -59,7 +59,7 @@ public sealed class RazorEmitterFieldGroupTests {
 
         src.ShouldContain("FluentAccordion");
         src.ShouldNotContain("FieldGroupCatchAllTitle");
-        src.ShouldNotContain("\"Heading\", \"Shipping\"");
+        src.ShouldNotContain("\"Header\", \"Shipping\"");
     }
 
     [Fact]
@@ -79,12 +79,12 @@ public sealed class RazorEmitterFieldGroupTests {
             Col("UngroupedAfter")));
 
         src.ShouldContain("FluentAccordionItem");
-        src.ShouldContain("\"Heading\", \"Shipping\"");
-        src.ShouldContain("\"Heading\", \"Billing\"");
+        src.ShouldContain("\"Header\", \"Shipping\"");
+        src.ShouldContain("\"Header\", \"Billing\"");
         src.ShouldContain("FieldGroupCatchAllTitle");
 
-        int shippingIdx = src.IndexOf("\"Heading\", \"Shipping\"", StringComparison.Ordinal);
-        int billingIdx = src.IndexOf("\"Heading\", \"Billing\"", StringComparison.Ordinal);
+        int shippingIdx = src.IndexOf("\"Header\", \"Shipping\"", StringComparison.Ordinal);
+        int billingIdx = src.IndexOf("\"Header\", \"Billing\"", StringComparison.Ordinal);
         int catchAllIdx = src.IndexOf("FieldGroupCatchAllTitle", StringComparison.Ordinal);
 
         shippingIdx.ShouldBeGreaterThanOrEqualTo(0);

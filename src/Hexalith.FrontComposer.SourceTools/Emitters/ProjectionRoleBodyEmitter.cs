@@ -289,7 +289,7 @@ public static class ProjectionRoleBodyEmitter {
                 : "\"" + RoleBodyHelpers.EscapeString(bucket.GroupName) + "\"";
 
             _ = sb.AppendLine("            b.OpenComponent<FluentAccordionItem>(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ");");
-            _ = sb.AppendLine("            b.AddAttribute(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"Heading\", " + headingExpression + ");");
+            _ = sb.AppendLine("            b.AddAttribute(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"Header\", " + headingExpression + ");");
             _ = sb.AppendLine("            b.AddAttribute(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"Expanded\", false);");
             _ = sb.AppendLine("            b.AddAttribute(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"HeadingLevel\", 3);");
             _ = sb.AppendLine("            b.AddAttribute(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"ChildContent\", (RenderFragment)((RenderTreeBuilder ib) =>");

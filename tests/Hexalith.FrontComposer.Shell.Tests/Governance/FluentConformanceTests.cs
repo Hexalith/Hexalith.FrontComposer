@@ -42,6 +42,17 @@ public sealed class FluentConformanceTests {
         + "focus-stroke|stroke-width|disabled-opacity)[a-z0-9-]*",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // Matches a FluentAccordionItem opening tag that sets its title via the removed Fluent v4 `Heading=`
+    // attribute instead of the Fluent v5 `Header=` parameter. In v5 FluentAccordionItem has no `Heading`
+    // parameter, so `Heading="…"` is silently captured as an unknown splatted HTML attribute and the section
+    // title never renders (the blank-accordion-header regression fixed by correct-course 2026-06-24).
+    // `[^>]*?` keeps the match inside the FluentAccordionItem tag, so FcPageHeader's own legitimate `Heading`
+    // parameter is not matched; `\bHeading\s*=` excludes the valid `HeadingLevel` attribute (the char after
+    // "Heading" is 'L', not '=').
+    private static readonly Regex V4AccordionHeadingAttribute = new(
+        "<FluentAccordionItem\\b[^>]*?\\bHeading\\s*=",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     [Fact]
     public void Shell_components_use_fluent_v5_only_except_documented_carveouts() {
         string root = Path.Combine(RepositoryRoot(), "src", "Hexalith.FrontComposer.Shell");
@@ -80,6 +91,73 @@ public sealed class FluentConformanceTests {
         string[] migrationBacklog = [];
 
         AssertNoLegacyTokens(root, migrationBacklog);
+    }
+
+    [Fact]
+    public void Accordion_items_use_v5_Header_param_not_removed_v4_Heading() {
+        EnumerationOptions options = new() {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            IgnoreInaccessible = true,
+        };
+
+        string repoRoot = RepositoryRoot();
+        string[] roots = [Path.Combine(repoRoot, "src"), Path.Combine(repoRoot, "samples")];
+
+        List<string> offenders = [];
+        bool scannedAny = false;
+        foreach (string root in roots) {
+            if (!Directory.Exists(root)) {
+                continue;
+            }
+
+            foreach (string file in Directory
+                .EnumerateFiles(root, "*.razor", options)
+                .Where(f => !IsBuildOutput(f))) {
+                scannedAny = true;
+                if (V4AccordionHeadingAttribute.IsMatch(File.ReadAllText(file))) {
+                    offenders.Add(Path.GetRelativePath(repoRoot, file).Replace('\\', '/'));
+                }
+            }
+        }
+
+        // Guard against a broken path silently passing the scan.
+        scannedAny.ShouldBeTrue($"no .razor files found under {string.Join(", ", roots)}");
+
+        offenders.ShouldBeEmpty(
+            "FluentAccordionItem must set its section title via the Fluent v5 `Header` parameter, not the "
+            + "removed v4 `Heading` parameter — v5 silently swallows `Heading=` so the section title never "
+            + $"renders. Replace `Heading=` with `Header=` in: {string.Join("; ", offenders)}");
+    }
+
+    [Fact]
+    public void Generator_emits_v5_Header_attribute_for_accordion_items() {
+        string emittersRoot = Path.Combine(
+            RepositoryRoot(), "src", "Hexalith.FrontComposer.SourceTools", "Emitters");
+        Directory.Exists(emittersRoot).ShouldBeTrue($"Emitter scan root not found: {emittersRoot}");
+
+        EnumerationOptions options = new() {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            IgnoreInaccessible = true,
+        };
+
+        // The emitter writes attribute names as escaped string literals (e.g. b.AddAttribute(seq, "Header", …)),
+        // so on disk an emitted `Heading` attribute appears as the substring \"Heading\". This excludes the
+        // valid \"HeadingLevel\" emission (the char after "Heading" is 'L', not the closing escaped quote).
+        const string emittedV4HeadingAttribute = "\\\"Heading\\\"";
+
+        List<string> offenders = Directory
+            .EnumerateFiles(emittersRoot, "*.cs", options)
+            .Where(f => !IsBuildOutput(f))
+            .Where(f => File.ReadAllText(f).Contains(emittedV4HeadingAttribute, StringComparison.Ordinal))
+            .Select(f => Path.GetRelativePath(RepositoryRoot(), f).Replace('\\', '/'))
+            .ToList();
+
+        offenders.ShouldBeEmpty(
+            "The Razor emitter must emit the Fluent v5 `Header` attribute for FluentAccordionItem, not the "
+            + "removed v4 `Heading` attribute — generated grouped projection/detail forms would otherwise "
+            + $"render blank section headers. Found a \"Heading\" attribute literal in: {string.Join("; ", offenders)}");
     }
 
     private static void AssertNoRawControls(string root, string[] carveOuts) {

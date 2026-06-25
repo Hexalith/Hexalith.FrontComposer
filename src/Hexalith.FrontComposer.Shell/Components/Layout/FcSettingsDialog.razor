@@ -25,7 +25,7 @@
            aria-label now that the heading is owned by the accordion item. *@
         <div class="fc-settings-body" data-testid="fc-settings-dialog">
             <FluentAccordion>
-                <FluentAccordionItem Heading="@Localizer["DensitySectionLabel"].Value" Expanded="true">
+                <FluentAccordionItem Header="@Localizer["DensitySectionLabel"].Value" Expanded="true">
                     <FluentRadioGroup Value="@SelectedDensity"
                                       ValueChanged="@((DensityLevel v) => SelectedDensity = v)"
                                       TValue="DensityLevel"
@@ -44,10 +44,10 @@
                         </FluentMessageBar>
                     }
                 </FluentAccordionItem>
-                <FluentAccordionItem Id="fc-theme-section" Heading="@Localizer["ThemeSectionLabel"].Value">
+                <FluentAccordionItem Id="fc-theme-section" Header="@Localizer["ThemeSectionLabel"].Value">
                     <FcThemeToggle />
                 </FluentAccordionItem>
-                <FluentAccordionItem Heading="@Localizer["DensityPreviewHeading"].Value">
+                <FluentAccordionItem Header="@Localizer["DensityPreviewHeading"].Value">
                     <FcDensityPreviewPanel Density="@SelectedDensity"
                                            ShowForcedViewportBadge="@(IsForcedByViewport && SelectedDensity != DensityLevel.Comfortable)" />
                 </FluentAccordionItem>

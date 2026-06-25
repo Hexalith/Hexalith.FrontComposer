@@ -17,13 +17,13 @@
            prior <h2> heading order under the page <h1>. The .command-section/.inline-section/
            .fullpage-section classes are kept on the items for the e2e selectors. *@
         <FluentAccordion ExpandMode="AccordionExpandMode.Multi" HeadingLevel="2">
-            <FluentAccordionItem Class="command-section" Heading="Compact inline (3 fields)" Expanded="true">
+            <FluentAccordionItem Class="command-section" Header="Compact inline (3 fields)" Expanded="true">
                 <BatchIncrementCommandRenderer />
             </FluentAccordionItem>
-            <FluentAccordionItem Class="inline-section" Heading="Inline + popover (1 field)" Expanded="true">
+            <FluentAccordionItem Class="inline-section" Header="Inline + popover (1 field)" Expanded="true">
                 <IncrementCommandRenderer />
             </FluentAccordionItem>
-            <FluentAccordionItem Class="fullpage-section" Heading="Full-page command (5 fields)" Expanded="true">
+            <FluentAccordionItem Class="fullpage-section" Header="Full-page command (5 fields)" Expanded="true">
                 <p role="note" style="padding: 12px; background: var(--colorNeutralBackground2); border-left: 4px solid var(--colorBrandStroke1);">
                     Navigation state persistence (scroll, filter, sort across FullPage round-trip) lands in Story 4.3.
                     The current demo proves routing + breadcrumb return only.

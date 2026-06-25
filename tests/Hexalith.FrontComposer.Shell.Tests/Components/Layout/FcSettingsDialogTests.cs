@@ -49,6 +49,30 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void AccordionSectionsBindTitlesToV5HeaderParam() {
+        System.Globalization.CultureInfo previous = System.Globalization.CultureInfo.CurrentUICulture;
+        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
+        try {
+            IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
+
+            // The three titled sections (Density / Theme / Preview, §4.2) must bind their titles to the
+            // Fluent v5 `Header` parameter. With the removed v4 `Heading` attribute the value lands in
+            // AdditionalAttributes and `Header` stays null, so each chevron renders with no visible title
+            // (the blank-accordion-header regression fixed by correct-course 2026-06-24).
+            string?[] headers = cut.FindComponents<FluentAccordionItem>()
+                .Select(item => item.Instance.Header)
+                .ToArray();
+
+            headers.ShouldContain("Display density");
+            headers.ShouldContain("Theme");
+            headers.ShouldContain("Preview");
+        }
+        finally {
+            System.Globalization.CultureInfo.CurrentUICulture = previous;
+        }
+    }
+
+    [Fact]
     public void DensityRadioSelectionDispatchesAction() {
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();

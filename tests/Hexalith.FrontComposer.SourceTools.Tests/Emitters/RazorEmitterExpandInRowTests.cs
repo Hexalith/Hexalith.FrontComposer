@@ -71,7 +71,7 @@ public sealed class RazorEmitterExpandInRowTests {
         src.ShouldContain("ExpandInRowDetailPanelAriaLabelTemplate");
         src.ShouldContain("int seq = 800;");
         src.ShouldContain("var entity = _expandedItem;");
-        src.ShouldContain("\"Heading\", \"Shipping\"");
+        src.ShouldContain("\"Header\", \"Shipping\"");
     }
 
     [Fact]
