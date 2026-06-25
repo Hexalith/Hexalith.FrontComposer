@@ -13,8 +13,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 |---|---|
 | `FrontComposerShell` | **Root shell.** `FluentLayout` with Header/Navigation/Content/Footer; mounts Fluxor `StoreInitializer`, `FluentProviders`, skip links, global keyboard shortcuts (`Ctrl+,`, `Ctrl+K`). Adopter `MainLayout` reduces to `<FrontComposerShell>@Body</FrontComposerShell>`. Slots: `HeaderStart/Center/End`, `Navigation`, `Footer`. |
 | `FcPageLayout` | Opt-in page-measure wrapper (FC-LYT contract, Story 1.2). `Mode` parameter (`FcPageLayoutMode.FullWidth` default / `Constrained`) cascades through `FcPageLayoutCoordinator` to toggle `#fc-main-content[data-fc-page-layout]` + the constrained `--fc-page-max-inline-size` rule. Public enum `FcPageLayoutMode` lives in `Contracts.Rendering`. |
-| `FcHamburgerToggle` | `FluentLayoutHamburger` wrapper; mobile/tablet only. |
-| `FcCollapsedNavRail` | 48px icon rail at compact-desktop / manual collapse. |
+| `FcHamburgerToggle` | Always-visible `FluentLayoutHamburger` wrapper; at Desktop toggles the unified rail between 72px labelled and 48px icon-only modes, and at Tablet/Phone opens the drawer. |
 | `FcLayoutBreakpointWatcher` | Headless JS interop (`fc-layout-breakpoints.js`) → `ViewportChangedAction`. |
 | `FcSystemThemeWatcher` | Headless (`fc-prefers-color-scheme.js`) → `SystemThemeChangedAction`. |
 | `FcDensityApplier` / `FcDensityAnnouncer` | Headless density → `<body data-fc-density>` + `aria-live` announcement. |
@@ -23,7 +22,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 ### Navigation
 | Component | Role |
 |---|---|
-| `FrontComposerNavigation` | `FluentNav`/`FluentNavCategory`/`FluentNavItem` tree driven by `IFrontComposerRegistry`; per-projection count + "New" badges; renders rail at compact viewport. |
+| `FrontComposerNavigation` | Unified registry-driven navigation rail; renders bounded-context `FluentButton` tiles at 72px labelled or 48px icon-only width, opens `FluentMenu` projection flyouts, and preserves count + "New" badge semantics. |
 
 ### Forms, dialogs & lifecycle
 | Component | Role |
@@ -67,7 +66,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 ### Helper (C#-only) components
 `FcSettingsButton`, `FcPaletteTriggerButton`, `FcSettingsDialogLauncher`, `LayoutHamburgerCoordinator`, `FcPageLayoutCoordinator` (internal child→shell cascade for `FcPageLayout`, Story 1.2), `FcFluentIcons` (inline-SVG icon factory — avoids the unavailable FluentUI v5 icons NuGet), `FcThemeToggle`.
 
-> **Authoring conventions:** `FluxorComponent` base for state-bound components; `[EditorRequired]` on mandatory params; FluentUI **v5** API (`FluentLayoutHamburger`, `FluentNavCategory`/`FluentNavItem`, `FluentDialogBody`, `FluentProviders`, `FluentBadge`, `FluentTextInput`, `FluentDataGrid`); accessibility attributes (`aria-label`, `role`, `aria-live`, `data-testid`) on every interactive element; JS loaded lazily as ES modules from `_content/Hexalith.FrontComposer.Shell/js/`.
+> **Authoring conventions:** `FluxorComponent` base for state-bound components; `[EditorRequired]` on mandatory params; FluentUI **v5** API (`FluentLayoutHamburger`, `FluentButton`, `FluentMenu`, `FluentDialogBody`, `FluentProviders`, `FluentBadge`, `FluentTextInput`, `FluentDataGrid`); accessibility attributes (`aria-label`, `role`, `aria-live`, `data-testid`) on every interactive element; JS loaded lazily as ES modules from `_content/Hexalith.FrontComposer.Shell/js/`.
 
 ---
 

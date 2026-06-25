@@ -256,10 +256,11 @@ attributes); confirm via the component's own bUnit lane after each conversion. (
 RC-surface caveat.)
 
 **First burn-down (correct-course 2026-06-19).** Four clean Shell conversions landed:
-`FcAccountMenu` (`.fc-account-menu`), `FcSettingsDialog` (`.fc-settings-body`), `FcCollapsedNavRail`
-(`.fc-collapsed-rail`), and `FcProjectionLoadingSkeleton` (`.fc-projection-skeleton-row`) — each div's
-flex moved to a `FluentStack`, the now-redundant flex CSS removed (non-layout rules — padding, width,
-borders, the `.razor.css` legacy `--neutral-stroke-rest` in the skeleton header — preserved).
+`FcAccountMenu` (`.fc-account-menu`), `FcSettingsDialog` (`.fc-settings-body`), the former
+`FcCollapsedNavRail` (`.fc-collapsed-rail`, later absorbed into `FrontComposerNavigation` by Story 8.5),
+and `FcProjectionLoadingSkeleton` (`.fc-projection-skeleton-row`) — each div's flex moved to a
+`FluentStack`, the now-redundant flex CSS removed (non-layout rules — padding, width, borders, the
+`.razor.css` legacy `--neutral-stroke-rest` in the skeleton header — preserved).
 (`FcSettingsDialog`'s `.fc-settings-body` `FluentStack` was subsequently reverted to a plain `<div>` by
 the §4.2 accordion conversion — the single-child stack was no longer needed once the accordion owned
 the sectioning.)

@@ -280,7 +280,7 @@ development_status:
   # Added 2026-06-25 via Correct Course (sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md).
   # Framework-only; Tenants.UI page-body adoption (Host-A) is a separate Tenants correct-course.
   # Suggested order 8.1 -> 8.2 -> 8.3 -> 8.4 -> 8.5 -> 8.6 -> 8.7; 8.1 is a Minor change shippable first.
-  epic-8: in-progress
+  epic-8: done
   8-1-neutral-header-chrome-and-footer-framing: done
   8-2-accent-as-thread-policy-and-regression-guard: done
   8-3-brand-logo-cell-in-header-start: done
@@ -297,4 +297,26 @@ development_status:
   # 8-7 moved in-progress -> review on 2026-06-25 (dev-story; implemented generated [ProjectionBadge] FcStatusIcon output with exhaustive BadgeSlot icon/color mapping, tooltip/focus labels, localized aria-labels, SourceTools emitter parity, Verify snapshot regeneration, and docs/inventory updates. Release builds 0/0; focused Shell 18/18; badge regression 62/62; focused SourceTools 41/41; broad Shell non-Contract 2005/2005; e2e typecheck passed. Broad SourceTools has 2 pre-existing Story 8.6 page-toolbar docs failures; solution VSTest and Playwright/Kestrel lanes are socket-blocked locally.)
   # 8-7 moved review -> done on 2026-06-25 (story-automator review; adversarial review independently reproduced the dev's evidence via the direct xUnit v3 in-process runner — Release SourceTools.Tests + Shell.Tests builds 0W/0E; focused Shell FcStatusIcon+BadgeProjectionRender 19/19; SourceTools badge-column/role-approval/scope-guardrail 28/28; badge regression FcDesaturatedBadge+FcStatusFilterChips+FluentConformance 23/23; e2e typecheck passed. All 5 ACs confirmed: exhaustive BadgeSlot->icon/color mapping (incl. Accent=Star/Color.Accent), focusable role=img span with always-present localized contextual aria-label, anchored FluentTooltip UseTooltipService=false, count/filter/nav/optimistic surfaces preserved as FluentBadge pills, intentional Verify snapshot regen, docs/inventory/diagnostics updated, no package/raw-control/legacy-token/accent-background/obj edits. Auto-fixed 1 MEDIUM: the new specimen-accessibility.spec.ts touch test called locator.tap() but all 3 Playwright projects run desktop devices with hasTouch=false, so it would throw "The page does not support tap" in CI (hidden locally because Kestrel/socket is blocked); scoped the touch test under a nested describe with test.use({ hasTouch: true }), inheriting the parent locale + console/network guards. Post-fix e2e typecheck passes; browser lanes remain socket-blocked locally. Cleared as non-defects: StatusIconTable.Resolve KeyNotFoundException-on-unsafe-cast is parity with SlotAppearanceTable.Resolve; retained FcStatusBadge/SlotAppearanceTable/FcStatusBadgeTests are correct since FcDesaturatedBadge still uses the pill; CS0618 Color.Neutral/Accent suppression is story-mandated; focusable <span> is not a governance violation. 0 CRITICAL remaining. fixed_count=1, action_count=0.)
   8-7-status-as-colored-icon: done
-  epic-8-retrospective: optional
+  epic-8-retrospective: done
+
+action_items:
+  - epic: 8
+    action: "Add a reusable visual-component checklist that requires rendered-DOM or computed-style proof for Fluent component layout/CSS changes"
+    owner: "Test Architect"
+    status: open
+  - epic: 8
+    action: "Keep shell/navigation reference docs synchronized with Story 8.3 and Story 8.5 public-surface changes"
+    owner: "Technical Writer"
+    status: open
+  - epic: 8
+    action: "Make changed-file and story-task reconciliation mechanical before story review completion"
+    owner: "QA automation maintainer"
+    status: open
+  - epic: 8
+    action: "Preserve the accent-as-thread guard as a mandatory Shell governance lane for future chrome work"
+    owner: "Architect"
+    status: open
+  - epic: 8
+    action: "Track browser/visual evidence gaps as named CI responsibilities rather than local unknowns"
+    owner: "QA Engineer"
+    status: open

@@ -53,9 +53,10 @@ First-time adopters can use the one-line `AddHexalithFrontComposerQuickstart()` 
 
 ## Parameters / slots
 
-The shell exposes a **locked 7-parameter surface**. The parameters are ordered to follow the
-left-to-right visual header layout, not alphabetically. All slots are optional render fragments
-except `AppTitle` (a string); leaving a slot `null` triggers the documented default.
+The shell exposes a **locked 11-parameter surface**. The original header/navigation/content/footer
+slots keep their established order, and newer accessibility/brand parameters are appended to preserve
+metadata-order compatibility. All slots are optional render fragments except `AppTitle` (a string);
+leaving a slot `null` triggers the documented default.
 
 | Parameter | Type | Default when `null` |
 |---|---|---|
@@ -66,12 +67,16 @@ except `AppTitle` (a string); leaving a slot `null` triggers the documented defa
 | `Footer` | `RenderFragment?` | Renders the default localized copyright (`Hexalith FrontComposer © {Year}`). |
 | `ChildContent` | `RenderFragment?` | The page body (your `@Body`). |
 | `AppTitle` | `string?` | Resolves the framework-owned `FcShellResources.AppTitle` product-name string. |
+| `ContentLabel` | `string?` | Optional accessible name for the `#fc-main-content` landmark when no visible heading labels it. |
+| `ContentLabelledBy` | `string?` | Optional id reference that names the `#fc-main-content` landmark; takes precedence over `ContentLabel`. |
+| `HeaderLogo` | `RenderFragment?` | Optional adopter-supplied logo rendered between `HeaderStart` or the default hamburger and `AppTitle`. |
+| `ShowDefaultHeaderLogo` | `bool` | Opts into the framework default decorative logo when `HeaderLogo` is not supplied; default is `false`. |
 
 The header also always renders the theme toggle, and (DEBUG + `IsDevelopment()` only) the dev-mode
 toggle. An adopter-supplied fragment always wins over the framework default; to render **no**
 sidebar even with registered domains, pass an empty fragment to `Navigation`.
 
-> **Surface stability:** this 7-parameter list is locked by `FrontComposerShellParameterSurfaceTests`.
+> **Surface stability:** this 11-parameter list is locked by `FrontComposerShellParameterSurfaceTests`.
 > Additions must be append-only; no parameter may be removed, renamed, or retyped without a major
 > version bump.
 
@@ -88,7 +93,7 @@ render at one of two measures, selected per page:
 
 A page opts in to constrained measure by dropping `<FcPageLayout Mode="FcPageLayoutMode.Constrained">`
 into its content; it lives *inside* `ChildContent` and signals the shell through a cascaded
-coordinator, so the shell's 7-parameter surface stays untouched. The max measure is the themeable
+coordinator, so the shell's parameter surface stays untouched. The max measure is the themeable
 `--fc-page-max-inline-size` custom property (default `75rem`), expressed with logical properties for
 RTL-awareness.
 
