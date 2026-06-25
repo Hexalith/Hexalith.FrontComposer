@@ -21,12 +21,13 @@ Layout, Accessibility, Localization, Related) so you can adopt a component witho
 - [FrontComposerShell](front-composer-shell.md) — the root application shell (Header / Navigation / Content / Footer).
 - [Navigation](navigation.md) — the registry-driven navigation rail (`FrontComposerNavigation`).
 - [DataGrid Surface](datagrid.md) — the confirmed FC-TBL table surface for generated projection grids.
+- [Page Toolbar](page-toolbar.md) — reusable page search/filter/view/action/tab toolbar (`FcPageToolbar`).
 
 ## Coverage and tracked gaps
 
-The read-only-MVP component set is **layout, navigation, DataGrid surface, and settings**. Layout,
-navigation, and the FC-TBL DataGrid surface are documented above. One area remains a **tracked gap
-with a named owner**, pending the story that finalizes its surface:
+The read-only-MVP component set is **layout, navigation, DataGrid surface, page toolbar, and settings**.
+Layout, navigation, the FC-TBL DataGrid surface, and the page toolbar are documented above. One area
+remains a **tracked gap with a named owner**, pending the story that finalizes its surface:
 
 - **Settings** (`FcSettingsDialog`, `FcThemeToggle`, `FcDensityPreviewPanel`) — owed when Story 1.6
   finalizes the settings / theme / density UX.
