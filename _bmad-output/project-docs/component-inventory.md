@@ -38,7 +38,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 | Component | Role |
 |---|---|
 | `FcHomeDirectory` / `FcHomeCard` / `FcHomeRouteView` | Home landing page (`@page "/"`, `/home`): four progressive states; urgency-sorted bounded-context cards. |
-| `FcStatusBadge` / `FcDesaturatedBadge` | Semantic slot → `FluentBadge` (Color/Appearance) with mandatory `aria-label`; desaturated variant for non-urgent counts. |
+| `FcStatusIcon` / `FcStatusBadge` / `FcDesaturatedBadge` | Generated `[ProjectionBadge]` statuses render colored `FluentIcon` indicators with tooltip/focus labels; text badge variants remain for optimistic/count-like status summaries. |
 | `FcProjectionConnectionStatus` | `FluentMessageBar` for SignalR reconnect/reconciliation. |
 | `FcPendingCommandSummary` | Bounded `aria-live` summary of active pending commands plus rejected, confirmed, idempotent-confirmed, and NeedsReview entries. |
 | `FcProjectionLoadingSkeleton` | `FluentSkeleton` in Card/Timeline/Grid layout. |

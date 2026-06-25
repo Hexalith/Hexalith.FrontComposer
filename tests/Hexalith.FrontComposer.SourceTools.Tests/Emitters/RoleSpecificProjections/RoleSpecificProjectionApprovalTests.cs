@@ -119,17 +119,18 @@ public class RoleSpecificProjectionApprovalTests {
     }
 
     [Fact]
-    public void ActionQueueProjection_RendersBadgeColumn_ThroughFcStatusBadge_WithAccessibleColumnHeader() {
+    public void ActionQueueProjection_RendersBadgeColumn_ThroughFcStatusIcon_WithAccessibleColumnHeader() {
         // AC2 badge a11y pin (FC-A11Y Layer-1 invariant for projection output): a [ProjectionBadge]-
-        // mapped enum column renders through FcStatusBadge carrying the ColumnHeader that FcStatusBadge
+        // mapped enum column renders through FcStatusIcon carrying the ColumnHeader that FcStatusIcon
         // turns into the mandatory aria-label (pinned by
-        // FcStatusBadgeTests.AriaLabelCombinesColumnHeaderAndLabelInEnglish → aria-label="Status: ...").
+        // FcStatusIconTests.AriaLabelCombinesColumnHeaderAndLabelInEnglish → aria-label="Status: ...").
         (string generatedSource, _) = RunGenerator(
             RoleSpecificTestSources.ActionQueueProjection,
             "RoleSpecific.Orders.ActionQueueProjection.g.razor.cs",
             TestContext.Current.CancellationToken);
 
-        generatedSource.ShouldContain("Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge");
+        generatedSource.ShouldContain("Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon");
+        generatedSource.ShouldNotContain("Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge");
         generatedSource.ShouldContain("\"ColumnHeader\", \"Status\"");
     }
 

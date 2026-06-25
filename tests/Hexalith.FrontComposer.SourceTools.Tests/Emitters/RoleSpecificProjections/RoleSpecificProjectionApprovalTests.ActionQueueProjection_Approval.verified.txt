@@ -204,28 +204,28 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     switch (_memberName)
                     {
                         case "Pending":
-                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                             builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
                             builder.AddAttribute(fieldSeq++, "Label", _label);
                             builder.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
                             builder.CloseComponent();
                             break;
                         case "Submitted":
-                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                             builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
                             builder.AddAttribute(fieldSeq++, "Label", _label);
                             builder.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
                             builder.CloseComponent();
                             break;
                         case "Approved":
-                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                             builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
                             builder.AddAttribute(fieldSeq++, "Label", _label);
                             builder.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
                             builder.CloseComponent();
                             break;
                         case "Rejected":
-                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                             builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
                             builder.AddAttribute(fieldSeq++, "Label", _label);
                             builder.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
@@ -834,28 +834,28 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     switch (_memberName)
                     {
                         case "Pending":
-                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(0);
                             rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
                             rb.AddAttribute(2, "Label", _label);
                             rb.AddAttribute(3, "ColumnHeader", "Status");
                             rb.CloseComponent();
                             break;
                         case "Submitted":
-                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(0);
                             rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
                             rb.AddAttribute(2, "Label", _label);
                             rb.AddAttribute(3, "ColumnHeader", "Status");
                             rb.CloseComponent();
                             break;
                         case "Approved":
-                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(0);
                             rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
                             rb.AddAttribute(2, "Label", _label);
                             rb.AddAttribute(3, "ColumnHeader", "Status");
                             rb.CloseComponent();
                             break;
                         case "Rejected":
-                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(0);
                             rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
                             rb.AddAttribute(2, "Label", _label);
                             rb.AddAttribute(3, "ColumnHeader", "Status");
@@ -1078,28 +1078,28 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     switch (_memberName)
                     {
                         case "Pending":
-                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(slotSeq++);
                             slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
                             slotBuilder.AddAttribute(slotSeq++, "Label", _label);
                             slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
                             slotBuilder.CloseComponent();
                             break;
                         case "Submitted":
-                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(slotSeq++);
                             slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
                             slotBuilder.AddAttribute(slotSeq++, "Label", _label);
                             slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
                             slotBuilder.CloseComponent();
                             break;
                         case "Approved":
-                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(slotSeq++);
                             slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
                             slotBuilder.AddAttribute(slotSeq++, "Label", _label);
                             slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
                             slotBuilder.CloseComponent();
                             break;
                         case "Rejected":
-                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(slotSeq++);
                             slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
                             slotBuilder.AddAttribute(slotSeq++, "Label", _label);
                             slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
@@ -1118,28 +1118,28 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 switch (_memberName)
                 {
                     case "Pending":
-                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                         b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
                         b.AddAttribute(fieldSeq++, "Label", _label);
                         b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
                         b.CloseComponent();
                         break;
                     case "Submitted":
-                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                         b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
                         b.AddAttribute(fieldSeq++, "Label", _label);
                         b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
                         b.CloseComponent();
                         break;
                     case "Approved":
-                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                         b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
                         b.AddAttribute(fieldSeq++, "Label", _label);
                         b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
                         b.CloseComponent();
                         break;
                     case "Rejected":
-                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                         b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
                         b.AddAttribute(fieldSeq++, "Label", _label);
                         b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");

@@ -41,6 +41,7 @@ public class RazorEmitterBadgeColumnTests {
 
         source.ShouldContain("Truncate(HumanizeEnumLabel(x.Status.ToString()), 30)");
         source.ShouldNotContain("FcStatusBadge");
+        source.ShouldNotContain("FcStatusIcon");
         // Story 4-5 amended: the expand-row chevron TemplateColumn introduces a
         // RenderFragment<OrderProjection> ChildContent on every Default emission, so the
         // unconditional negative-assert was relaxed to the badge-specific path. The badge
@@ -51,7 +52,7 @@ public class RazorEmitterBadgeColumnTests {
 
     /// <summary>
     /// Story 4-2 AC3 / RF3 — partial coverage. Mapped enum members emit
-    /// <c>FcStatusBadge</c> switch arms; declared-but-unannotated members emit plain-text
+    /// <c>FcStatusIcon</c> switch arms; declared-but-unannotated members emit plain-text
     /// arms that render the humanized label (partial coverage is an HFC1025 fallback, not
     /// an error); the <c>default</c> arm covers out-of-range runtime values (unsafe casts)
     /// with the localised <c>StatusBadgeUnknownStateFallback</c> resource lookup. Badge columns
@@ -76,6 +77,8 @@ public class RazorEmitterBadgeColumnTests {
 
         source.ShouldContain("b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);");
         source.ShouldNotContain("b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);");
+        source.ShouldContain("Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon");
+        source.ShouldNotContain("Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge");
         source.ShouldContain("case \"Pending\":");
         source.ShouldContain("BadgeSlot.Warning");
         source.ShouldContain("case \"Approved\":");
@@ -142,12 +145,12 @@ public class RazorEmitterBadgeColumnTests {
     }
 
     /// <summary>
-    /// Story 4-2 AC5 — generated badge emission always threads the column header into the
+    /// Story 4-2 AC5 — generated status-icon emission always threads the column header into the
     /// <c>ColumnHeader</c> parameter so adopter-side screen readers announce the contextual
     /// state, not a bare state name.
     /// </summary>
     [Fact]
-    public void BadgeEmission_SuppliesColumnHeaderForAriaLabelContext() {
+    public void StatusIconEmission_SuppliesColumnHeaderForAriaLabelContext() {
         EquatableArray<BadgeMappingEntry> badges = new(ImmutableArray.Create(
             new BadgeMappingEntry("Active", "Success")));
 

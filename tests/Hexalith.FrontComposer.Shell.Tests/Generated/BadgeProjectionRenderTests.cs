@@ -11,9 +11,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 /// <summary>
 /// Story 2-3 AC3 — end-to-end pin: a generated grid column for a <c>[ProjectionBadge]</c>-annotated
-/// status enum renders through <c>FcStatusBadge</c> carrying the mandatory aria-label
+/// status enum renders through <c>FcStatusIcon</c> carrying the mandatory aria-label
 /// <c>"{ColumnHeader}: {Label}"</c>. The emitted source is pinned by
-/// <c>RoleSpecificProjectionApprovalTests</c> and the component aria-label by <c>FcStatusBadgeTests</c>;
+/// <c>RoleSpecificProjectionApprovalTests</c> and the component aria-label by <c>FcStatusIconTests</c>;
 /// this closes the runtime-render wiring between the two halves.
 /// </summary>
 public sealed class BadgeProjectionRenderTests : GeneratedComponentTestBase {
@@ -22,7 +22,7 @@ public sealed class BadgeProjectionRenderTests : GeneratedComponentTestBase {
     }
 
     [Fact]
-    public async Task BadgeColumn_RendersFcStatusBadge_WithAccessibleColumnHeaderAriaLabel() {
+    public async Task BadgeColumn_RendersFcStatusIcon_WithAccessibleColumnHeaderAriaLabel() {
         using CultureScope _ = new("en");
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
@@ -37,11 +37,37 @@ public sealed class BadgeProjectionRenderTests : GeneratedComponentTestBase {
         IRenderedComponent<BadgeProjectionView> cut = Render<BadgeProjectionView>();
 
         await cut.WaitForAssertionAsync(() => {
-            cut.Markup.ShouldContain("data-testid=\"fc-status-badge\"");
+            cut.Markup.ShouldContain("data-testid=\"fc-status-icon\"");
             cut.Markup.ShouldContain("aria-label=\"Status: Pending\"");
             cut.Markup.ShouldContain("aria-label=\"Status: Approved\"");
             cut.Markup.ShouldContain("data-fc-badge-slot=\"Warning\"");
             cut.Markup.ShouldContain("data-fc-badge-slot=\"Success\"");
+            cut.Markup.ShouldNotContain("data-testid=\"fc-status-badge\"");
+            cut.Markup.ShouldNotContain("fluent-badge", Case.Insensitive);
+        });
+    }
+
+    [Fact]
+    public async Task BadgeColumn_RendersPlainTextForUnannotatedAndUnknownEnumStates() {
+        using CultureScope _ = new("en");
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        dispatcher.Dispatch(new BadgeProjectionLoadedAction(
+            Guid.NewGuid().ToString(),
+            [
+                new BadgeProjection { Name = "Gamma", Status = ReviewState.Cancelled },
+                new BadgeProjection { Name = "Delta", Status = (ReviewState)42 },
+            ]));
+
+        IRenderedComponent<BadgeProjectionView> cut = Render<BadgeProjectionView>();
+
+        await cut.WaitForAssertionAsync(() => {
+            cut.Markup.ShouldContain("Cancelled");
+            cut.Markup.ShouldContain("Unknown");
+            cut.Markup.ShouldNotContain("data-testid=\"fc-status-icon\"");
+            cut.Markup.ShouldNotContain("aria-label=\"Status: Cancelled\"");
+            cut.Markup.ShouldNotContain("aria-label=\"Status: Unknown\"");
         });
     }
 }

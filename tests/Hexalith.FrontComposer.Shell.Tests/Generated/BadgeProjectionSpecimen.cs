@@ -21,11 +21,14 @@ public enum ReviewState {
     /// <summary>Approved — success slot.</summary>
     [ProjectionBadge(BadgeSlot.Success)]
     Approved,
+
+    /// <summary>Cancelled review — intentionally unannotated plain-text path.</summary>
+    Cancelled,
 }
 
 /// <summary>
 /// Story 2-3 AC3 specimen — minimal projection with a <c>[ProjectionBadge]</c>-annotated status
-/// enum column, used to pin the generated-grid → <c>FcStatusBadge</c> aria-label flow end-to-end.
+/// enum column, used to pin the generated-grid → <c>FcStatusIcon</c> aria-label flow end-to-end.
 /// </summary>
 [Projection]
 [BoundedContext("Badge")]

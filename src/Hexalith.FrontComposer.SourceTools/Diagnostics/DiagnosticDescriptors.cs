@@ -300,7 +300,7 @@ public static class DiagnosticDescriptors {
     /// <summary>
     /// HFC1025: An enum column on a projection carries <c>[ProjectionBadge]</c> on SOME of
     /// its members but not ALL (Story 4-2 D6 / AC3). Information severity — the build
-    /// succeeds, annotated members render as semantic badges, and unannotated members
+    /// succeeds, annotated members render as semantic status icons, and unannotated members
     /// fall back to humanized text. Fix: annotate every member or none for visual
     /// consistency. Per-view deduped: one diagnostic per (projection, enum) pair.
     /// </summary>
@@ -313,10 +313,10 @@ public static class DiagnosticDescriptors {
         isEnabledByDefault: true);
 
     /// <summary>
-    /// HFC1026: Reserved (Story 4-2 D7). Color-only badge rendered without a visible text
-    /// label — unreachable from generated code because <c>FcStatusBadge.Label</c> is
-    /// <c>EditorRequired</c>. Reserved now so Story 10-2's specimen checker can emit the
-    /// diagnostic for adopter-authored custom badges (Epic 6 override path) without
+    /// HFC1026: Reserved (Story 4-2 D7 / Story 8.7). Color-only status indicator rendered
+    /// without an accessible label — unreachable from generated code because <c>FcStatusIcon.Label</c>
+    /// is <c>EditorRequired</c>. Reserved now so Story 10-2's specimen checker can emit the
+    /// diagnostic for adopter-authored custom indicators (Epic 6 override path) without
     /// re-opening the diagnostic table. No call sites in Story 4-2.
     /// </summary>
     public static readonly DiagnosticDescriptor ColorOnlyBadgeDetected = Create(

@@ -55,7 +55,7 @@ public static class FcDiagnosticIds {
 
     /// <summary>
     /// Build-time Information: a projection enum column carries <c>[ProjectionBadge]</c> on
-    /// some members but not all (Story 4-2 D6 / AC3). The generator emits semantic badges
+    /// some members but not all (Story 4-2 D6 / AC3). The generator emits semantic status icons
     /// for annotated members and falls back to humanized text for unannotated members.
     /// Deduped per (projection, enum) pair so the same mixed enum is reported once per
     /// projection it appears on. Fix: annotate every enum member or remove all annotations
@@ -64,10 +64,10 @@ public static class FcDiagnosticIds {
     public const string HFC1025_BadgeSlotFallbackApplied = "HFC1025";
 
     /// <summary>
-    /// Build-time Warning (RESERVED): a rendered badge is missing its visible text label
-    /// (Story 4-2 D7). Unreachable from generated code because <c>FcStatusBadge.Label</c>
+    /// Build-time Warning (RESERVED): a rendered status indicator is missing its accessible label
+    /// (Story 4-2 D7 / Story 8.7). Unreachable from generated code because <c>FcStatusIcon.Label</c>
     /// is <c>EditorRequired</c> — the reservation is held for Story 10-2's specimen
-    /// checker to flag adopter-authored custom badges that violate UX-DR30 commitment #1.
+    /// checker to flag adopter-authored custom status indicators that violate UX-DR30 commitment #1.
     /// No call sites in Story 4-2.
     /// </summary>
     public const string HFC1026_ColorOnlyBadgeDetected = "HFC1026";

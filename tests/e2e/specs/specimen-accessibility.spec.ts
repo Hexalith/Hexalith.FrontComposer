@@ -70,13 +70,43 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await expect(page.getByTestId('fc-density-state-compact')).toBeVisible();
     await expect(page.getByTestId('fc-density-state-comfortable')).toBeVisible();
     await expect(page.getByTestId('fc-density-state-roomy')).toBeVisible();
-    await expect(page.getByTestId('fc-status-badge')).toHaveCount(6);
+    await expect(page.getByTestId('fc-status-icon')).toHaveCount(6);
+    await expect(page.getByLabel(/Status.*Neutral/u)).toHaveAttribute('data-fc-badge-slot', 'Neutral');
+    await expect(page.getByLabel(/Status.*Info/u)).toHaveAttribute('data-fc-badge-slot', 'Info');
+    await expect(page.getByLabel(/Status.*Success/u)).toHaveAttribute('data-fc-badge-slot', 'Success');
+    await expect(page.getByLabel(/Status.*Warning/u)).toHaveAttribute('data-fc-badge-slot', 'Warning');
+    await expect(page.getByLabel(/Status.*Danger/u)).toHaveAttribute('data-fc-badge-slot', 'Danger');
+    await expect(page.getByLabel(/Status.*Accent/u)).toHaveAttribute('data-fc-badge-slot', 'Accent');
     await expect(page.getByTestId('fc-badge-grid').locator("[data-fc-field='Status']")).toHaveCount(6);
     await expect(page.getByTestId('fc-generated-counter-grid').locator("[data-fc-field='Count']").first()).toContainText('42');
     await expect(page.getByTestId('fc-lifecycle-idle')).toContainText('Ready to submit');
     await expect(page.getByTestId('fc-lifecycle-confirmed-rejected')).toContainText('Terminal confirmation');
     await expect(page.getByTestId('fc-expanded-detail')).toContainText('fc-correlation-0002');
     await expect(page.getByRole('navigation', { name: 'Specimen multi-level navigation' })).toBeVisible();
+  });
+
+  // Touch activation (AC2) requires a touch-enabled browser context. The desktop projects
+  // (chromium/firefox/webkit) run with hasTouch=false, so locator.tap() would throw
+  // "The page does not support tap"; scope just this test to a touch-capable context.
+  test.describe('status icon touch interactions', () => {
+    test.use({ hasTouch: true });
+
+    test('status icons expose contextual labels and reveal tooltips on focus, hover, and touch', async ({ page }) => {
+      const route = getSpecimenRoute('type');
+      await gotoSpecimen(page, route);
+
+      const warningIcon = page.getByLabel(/Status.*Warning/u);
+      await expect(warningIcon).toHaveAttribute('data-testid', 'fc-status-icon');
+      await warningIcon.focus();
+      await expect(page.locator('fluent-tooltip').filter({ hasText: 'Warning' })).toBeVisible();
+
+      const dangerIcon = page.getByLabel(/Status.*Danger/u);
+      await dangerIcon.hover();
+      await expect(page.locator('fluent-tooltip').filter({ hasText: 'Danger' })).toBeVisible();
+
+      await dangerIcon.tap();
+      await expect(page.locator('fluent-tooltip').filter({ hasText: 'Danger' })).toBeVisible();
+    });
   });
 
   test('data-formatting specimen renders deterministic text and accessible names', async ({ page }) => {
@@ -153,7 +183,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await gotoSpecimen(page, route);
 
     await expect(page.locator(route.readySelector)).toBeVisible();
-    await expect(page.getByTestId('fc-badge-grid').getByText('Warning', { exact: true })).toBeVisible();
+    await expect(page.getByLabel(/Status.*Warning/u)).toHaveAttribute('data-fc-badge-slot', 'Warning');
     await expect(page.getByTestId('fc-lifecycle-confirmed-rejected')).toContainText('rejection');
     expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
     expect(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches)).toBe(true);

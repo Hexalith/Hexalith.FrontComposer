@@ -105,8 +105,9 @@ max-item notices are rendered as grid-adjacent status surfaces rather than cells
 - `FcExpandInRowDetail` always renders a `role="region"` panel. Expand triggers point
   `aria-controls` at that always-present panel, and filter-hidden expansions are announced through a
   polite live region.
-- `FcStatusBadge` and `FcDesaturatedBadge` receive status column context so the generated badge
-  cells have mandatory accessible labels.
+- Generated `[ProjectionBadge]` status cells render `FcStatusIcon` with a contextual accessible
+  label and hover/focus tooltip. Numeric counts, filter chips, and optimistic command summaries
+  remain `FluentBadge` pill surfaces.
 
 Adopter overrides of table components are still subject to the override-accessibility diagnostics,
 especially [HFC1050](../../diagnostics/HFC1050.md), [HFC1051](../../diagnostics/HFC1051.md), and

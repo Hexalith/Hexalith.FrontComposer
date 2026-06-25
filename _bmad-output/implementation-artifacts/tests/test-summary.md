@@ -1,5 +1,45 @@
 # Test Automation Summary
 
+## Story 8.7 - Status as colored icon
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/FcStatusIconTests.cs` - added exhaustive status-icon slot mapping, localized accessible-name, focusable target, tooltip anchoring, and no-`FluentBadge` pins.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Generated/BadgeProjectionRenderTests.cs` - updated generated runtime render coverage to require `fc-status-icon` instances with contextual `aria-label`s and slot attributes, plus fail-soft plain text for unannotated and out-of-range enum states.
+- [x] `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterBadgeColumnTests.cs` and `RoleSpecificProjectionApprovalTests.cs` - updated generator assertions for `FcStatusIcon`, preserving nullable, plain-text, and unknown fallback paths.
+- [x] SourceTools Verify snapshots intentionally regenerated for badge-column and role-specific projection approvals.
+
+### E2E Tests
+- [x] `tests/e2e/specs/specimen-accessibility.spec.ts` - updated the type specimen to expect six `fc-status-icon` instances and added focus/hover/tap tooltip coverage.
+- [x] `npm run typecheck` in `tests/e2e` passed.
+- [ ] Local Playwright execution is blocked before browser assertions because Counter.Web/Kestrel cannot bind a socket in this sandbox: `System.Net.Sockets.SocketException (13): Permission denied`.
+
+### Coverage
+- AC1: generated `[ProjectionBadge]` enum members now render `FcStatusIcon` with Success checkmark-circle, Danger dismiss-circle, Neutral question-circle, Warning warning glyph, Info info-circle, and Accent star with `Color.Accent`.
+- AC2: icon targets are focusable, carry contextual localized `aria-label`s, and anchor `FluentTooltip` with `UseTooltipService=false`.
+- AC3: `FcDesaturatedBadge`, `FcStatusFilterChips`, navigation count/"New" badges, and home/count surfaces remain `FluentBadge` pill surfaces; focused regression lane is green.
+- Critical fail-soft paths: generated render coverage now proves declared unannotated enum members render as plain text and out-of-range enum values render the localized `Unknown` fallback without a status icon.
+- AC4: data grid docs, component inventory, diagnostics comments, generator comments, tests, and snapshots updated for the status-icon model while preserving existing resource keys.
+- AC5: Release builds and `FluentConformanceTests` pass; no package changes, raw interactive controls, legacy tokens, accent background fills, or `obj/**` edits were introduced.
+
+### Validation
+- [x] RED phase: focused Shell test lane failed before implementation because `FcStatusIcon` and `StatusIconTable` did not exist.
+- [x] `dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
+- [x] `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
+- [x] QA gap fix: added runtime generated-render coverage for unannotated and unknown enum states in `BadgeProjectionRenderTests`.
+- [x] Focused Shell direct xUnit v3 lane passed 19/19: `FcStatusIconTests` and `BadgeProjectionRenderTests`.
+- [x] Focused non-generated badge regression lane passed 62/62: `FcDesaturatedBadgeTests`, `FcStatusFilterChipsTests`, `FrontComposerNavigationTests`, `FrontComposerNavigationCapabilityBadgeTests`, and `FluentConformanceTests`.
+- [x] Focused SourceTools direct xUnit v3 lane passed 41/41 during dev-story; QA re-run of badge emitters, role-specific approvals, and scope guardrail passed 28/28.
+- [x] Broad Shell non-Contract direct xUnit v3 lane passed 2005/2005.
+- [ ] Broad SourceTools direct xUnit v3 default lane ran 1031 tests with 1029 passing and 2 pre-existing Story 8.6 `docs/reference/components/page-toolbar.md` FC-DOC failures outside Story 8.7.
+- [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false` built into test assemblies, then VSTest aborted across assemblies with `System.Net.Sockets.SocketException (13): Permission denied`. The run also reported skipped nested Tenants/Memories projects per submodule rules and NuGet audit network blocking.
+- [ ] `npm run test:a11y -- --grep "status icons|type specimen renders"` / `npm --prefix tests/e2e run test -- --grep "status icons|type specimen renders" --project=chromium` failed before browser assertions because Counter.Web/Kestrel could not bind: `System.Net.Sockets.SocketException (13): Permission denied`.
+
+### Checklist
+- [x] Tests cover generated status icon happy paths, every `BadgeSlot`, localization, tooltip anchoring, generator parity, generated fail-soft enum paths, and non-generated badge regression surfaces.
+- [x] E2E coverage was updated and typechecked; local browser execution is socket-blocked.
+- [x] Story-owned focused lanes are green through the direct xUnit v3 in-process runner.
+- [x] Test summary updated with exact counts, snapshot regeneration, VSTest blocker, and Playwright/Kestrel blocker.
+
 ## Story 8.6 - Reusable FcPageToolbar
 
 ### Generated Tests

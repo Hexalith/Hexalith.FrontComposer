@@ -1,0 +1,14 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Badges
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<span id="@_anchorId"
+      tabindex="0"
+      role="img"
+      aria-label="@_ariaLabel"
+      data-testid="fc-status-icon"
+      data-fc-badge-slot="@Slot">
+    <FluentIcon Value="@_icon" Color="@_color" />
+</span>
+<FluentTooltip Anchor="@_anchorId" Positioning="@Positioning.Above" UseTooltipService="false">
+    @Label
+</FluentTooltip>

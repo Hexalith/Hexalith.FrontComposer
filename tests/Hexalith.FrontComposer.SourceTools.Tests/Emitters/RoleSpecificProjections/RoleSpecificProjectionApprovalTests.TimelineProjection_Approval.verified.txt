@@ -185,21 +185,21 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                     switch (_memberName)
                     {
                         case "Info":
-                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                             builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
                             builder.AddAttribute(fieldSeq++, "Label", _label);
                             builder.AddAttribute(fieldSeq++, "ColumnHeader", "Severity");
                             builder.CloseComponent();
                             break;
                         case "Warning":
-                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                             builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning);
                             builder.AddAttribute(fieldSeq++, "Label", _label);
                             builder.AddAttribute(fieldSeq++, "ColumnHeader", "Severity");
                             builder.CloseComponent();
                             break;
                         case "Critical":
-                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
                             builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
                             builder.AddAttribute(fieldSeq++, "Label", _label);
                             builder.AddAttribute(fieldSeq++, "ColumnHeader", "Severity");

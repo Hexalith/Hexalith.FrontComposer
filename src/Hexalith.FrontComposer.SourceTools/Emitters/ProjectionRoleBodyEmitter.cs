@@ -827,8 +827,8 @@ public static class ProjectionRoleBodyEmitter {
             return;
         }
 
-        // Story 4-2 RF1 — annotated enum fields dispatch through FcStatusBadge so DetailRecord
-        // reaches the same semantic-color surface as the DataGrid column path.
+        // Story 4-2 RF1 / Story 8.7 — annotated enum fields dispatch through FcStatusIcon so
+        // DetailRecord reaches the same semantic status surface as the DataGrid column path.
         if (col.TypeCategory == TypeCategory.Enum && col.BadgeMappings.Count > 0) {
             ColumnEmitter.EmitInlineEnumRenderFragment(
                 sb,

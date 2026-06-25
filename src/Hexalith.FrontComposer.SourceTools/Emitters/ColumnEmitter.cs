@@ -196,7 +196,7 @@ internal static class ColumnEmitter {
 
     /// <summary>
     /// Story 4-2 D1 / D5 / D8 / AC1 / AC3 — emits the <c>ChildContent</c> render fragment for a
-    /// DataGrid <c>TemplateColumn</c> that wraps annotated enum members in <c>FcStatusBadge</c>
+    /// DataGrid <c>TemplateColumn</c> that wraps annotated enum members in <c>FcStatusIcon</c>
     /// and falls back to humanized text / the localised unknown-state string for null / declared
     /// but unannotated / out-of-range values respectively.
     /// </summary>
@@ -233,7 +233,7 @@ internal static class ColumnEmitter {
     /// StatusOverview grouped grid cells, DetailRecord detail fields, and Timeline rows.
     /// Emits an inline <c>switch (memberName)</c> with three classes of arm:
     /// <list type="bullet">
-    /// <item>annotated members → open <see cref="Hexalith.FrontComposer.Shell.Components.Badges"/><c>.FcStatusBadge</c> with the resolved slot;</item>
+    /// <item>annotated members → open <see cref="Hexalith.FrontComposer.Shell.Components.Badges"/><c>.FcStatusIcon</c> with the resolved slot;</item>
     /// <item>declared-but-unannotated members (partial coverage) → <c>AddContent</c> with the humanized label;</item>
     /// <item>out-of-range (unsafe cast) values → <c>AddContent</c> with the localised
     /// <c>StatusBadgeUnknownStateFallback</c> resource resolved through the view-scoped
@@ -245,7 +245,7 @@ internal static class ColumnEmitter {
     /// <param name="col">Column model carrying <see cref="ColumnModel.BadgeMappings"/> and
     /// <see cref="ColumnModel.EnumMemberNames"/>.</param>
     /// <param name="headerLiteral">Escaped, quoted column-header string used for the
-    /// <c>ColumnHeader</c> parameter on <c>FcStatusBadge</c> (e.g. <c>"\"Order Status\""</c>).</param>
+    /// <c>ColumnHeader</c> parameter on <c>FcStatusIcon</c> (e.g. <c>"\"Order Status\""</c>).</param>
     /// <param name="builderName">Name of the local <c>RenderTreeBuilder</c> variable in scope
     /// at the call site (e.g. <c>rb</c> or <c>b</c>).</param>
     /// <param name="indent">Leading whitespace for each emitted line — lets the helper nest
@@ -271,7 +271,7 @@ internal static class ColumnEmitter {
         foreach (BadgeMappingEntry mapping in col.BadgeMappings) {
             string memberLiteral = "\"" + RoleBodyHelpers.EscapeString(mapping.EnumMemberName) + "\"";
             _ = sb.AppendLine(indent + "    case " + memberLiteral + ":");
-            _ = sb.AppendLine(indent + "        " + builderName + ".OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(" + SequenceExpression(seqVariable, 0) + ");");
+            _ = sb.AppendLine(indent + "        " + builderName + ".OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(" + SequenceExpression(seqVariable, 0) + ");");
             _ = sb.AppendLine(indent + "        " + builderName + ".AddAttribute(" + SequenceExpression(seqVariable, 1) + ", \"Slot\", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot." + mapping.Slot + ");");
             _ = sb.AppendLine(indent + "        " + builderName + ".AddAttribute(" + SequenceExpression(seqVariable, 2) + ", \"Label\", _label);");
             _ = sb.AppendLine(indent + "        " + builderName + ".AddAttribute(" + SequenceExpression(seqVariable, 3) + ", \"ColumnHeader\", " + headerLiteral + ");");
@@ -304,7 +304,7 @@ internal static class ColumnEmitter {
     /// Story 4-2 RF1 — shared inline enum-field emitter used outside the DataGrid column path
     /// (DetailRecord FluentText host, Timeline row stack, StatusOverview grouped-grid cell).
     /// Handles the null-check / badge-switch / plain-text dispatch in one place so every role
-    /// body reaches the same <c>FcStatusBadge</c> rendering contract.
+    /// body reaches the same <c>FcStatusIcon</c> rendering contract.
     /// </summary>
     /// <param name="sb">Output builder.</param>
     /// <param name="col">Column model (the enum column whose value is being rendered).</param>

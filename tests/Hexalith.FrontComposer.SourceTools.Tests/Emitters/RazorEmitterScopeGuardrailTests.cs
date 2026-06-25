@@ -24,7 +24,7 @@ public sealed class RazorEmitterScopeGuardrailTests {
         ("FcEmptyState", "Story 4.6 — Empty States (full CTA variant; only FcProjectionEmptyPlaceholder is allowed in 4-1)"),
         ("CaptureGridStateAction", "Story 3-6 / 4.3 — Filter/Sort state persistence is 4.3's scope"),
         ("HubConnection", "Epic 5 — SignalR"),
-        ("FcStatusBadge", "Story 4.2 — Status Badge System"),
+        ("FcStatusIcon", "Story 8.7 — Status Icon System"),
         ("FcFilterChip", "Story 4.3"),
     ];
 

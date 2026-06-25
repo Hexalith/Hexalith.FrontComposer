@@ -24,6 +24,9 @@ public static class FcFluentIcons {
 
     // 16x16 glyphs (viewBox 0 0 16 16) used by domain badges (status / role / freshness / category).
     private const string CheckmarkPath = "<path d=\"M6.3 12.3a1 1 0 0 1-.71-.3L2.8 9.2A1 1 0 0 1 4.2 7.8l2.1 2.1 5.5-5.5a1 1 0 0 1 1.4 1.42l-6.2 6.2a1 1 0 0 1-.7.3Z\"/>";
+    private const string CheckmarkCirclePath = "<path fill-rule=\"evenodd\" d=\"M8 1.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 8 1.6Zm3.45 4.95a.75.75 0 0 0-1.06-1.06L7.15 8.73 5.61 7.19a.75.75 0 0 0-1.06 1.06l2.07 2.07c.3.3.77.3 1.06 0l3.77-3.77Z\"/>";
+    private const string DismissCirclePath = "<path fill-rule=\"evenodd\" d=\"M8 1.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 8 1.6ZM5.65 5.65a.75.75 0 0 1 1.06 0L8 6.94l1.29-1.29a.75.75 0 1 1 1.06 1.06L9.06 8l1.29 1.29a.75.75 0 1 1-1.06 1.06L8 9.06l-1.29 1.29a.75.75 0 0 1-1.06-1.06L6.94 8 5.65 6.71a.75.75 0 0 1 0-1.06Z\"/>";
+    private const string InfoCirclePath = "<path fill-rule=\"evenodd\" d=\"M8 1.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 8 1.6ZM7.25 7.2A.75.75 0 0 1 8 6.45h.05a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0V7.2h-.05Zm.8-3.05a.9.9 0 1 0 0 1.8.9.9 0 0 0 0-1.8Z\"/>";
     private const string SubtractCirclePath = "<path fill-rule=\"evenodd\" d=\"M8 1.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 8 1.6ZM5 7.2a.8.8 0 0 0 0 1.6h6a.8.8 0 0 0 0-1.6Z\"/>";
     private const string QuestionCirclePath = "<path fill-rule=\"evenodd\" d=\"M8 1.6a6.4 6.4 0 1 0 0 12.8A6.4 6.4 0 0 0 8 1.6ZM8 4.3c-1.25 0-2.3.83-2.45 2a.8.8 0 1 0 1.59.2c.05-.37.4-.6.86-.6.5 0 .85.3.85.68 0 .26-.1.42-.62.8-.62.45-1.03.92-1.03 1.72a.8.8 0 0 0 1.6 0c0-.2.1-.32.55-.66.62-.46 1.1-.95 1.1-1.96 0-1.27-1.04-2.18-2.45-2.18ZM8 10.6a.95.95 0 1 0 0 1.9.95.95 0 0 0 0-1.9Z\"/>";
     private const string WarningPath = "<path fill-rule=\"evenodd\" d=\"M6.9 2.6a1.25 1.25 0 0 1 2.2 0l5.2 9.05a1.25 1.25 0 0 1-1.08 1.87H2.78A1.25 1.25 0 0 1 1.7 11.65L6.9 2.6ZM8 5.8a.78.78 0 0 0-.78.86l.25 2.7a.53.53 0 0 0 1.06 0l.25-2.7A.78.78 0 0 0 8 5.8Zm0 4.9a.82.82 0 1 0 0 1.64.82.82 0 0 0 0-1.64Z\"/>";
@@ -71,6 +74,15 @@ public static class FcFluentIcons {
 
     /// <summary>Creates a 16px success / present checkmark glyph (domain status &amp; freshness badges).</summary>
     public static Icon Checkmark16() => Create("Checkmark", IconSize.Size16, CheckmarkPath);
+
+    /// <summary>Creates a 16px success status glyph.</summary>
+    public static Icon CheckmarkCircle16() => Create("CheckmarkCircle", IconSize.Size16, CheckmarkCirclePath);
+
+    /// <summary>Creates a 16px rejected / error status glyph.</summary>
+    public static Icon DismissCircle16() => Create("DismissCircle", IconSize.Size16, DismissCirclePath);
+
+    /// <summary>Creates a 16px informational status glyph.</summary>
+    public static Icon InfoCircle16() => Create("InfoCircle", IconSize.Size16, InfoCirclePath);
 
     /// <summary>Creates a 16px disabled / blocked (circle-minus) glyph.</summary>
     public static Icon SubtractCircle16() => Create("SubtractCircle", IconSize.Size16, SubtractCirclePath);

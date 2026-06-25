@@ -349,7 +349,7 @@
   </data>
   <data name="StatusBadgeAriaLabelTemplate" xml:space="preserve">
     <value>{0}: {1}</value>
-    <comment>Story 4-2 D4 / D12 / AC5 — aria-label template for FcStatusBadge when a ColumnHeader is supplied. {0}=column header, {1}=badge label. French satellite inserts U+00A0 NBSP before the colon.</comment>
+    <comment>Story 4-2 D4 / D12 / AC5 and Story 8.7 — aria-label template for generated status indicators when a ColumnHeader is supplied. {0}=column header, {1}=status label. French satellite inserts U+00A0 NBSP before the colon.</comment>
   </data>
   <data name="StatusBadgeUnknownStateFallback" xml:space="preserve">
     <value>Unknown</value>
