@@ -4,7 +4,7 @@ baseline_commit: dccec20851f162f04ae8aef4d794a43908cb5f85
 
 # Story 8.6: Reusable `FcPageToolbar`
 
-Status: ready-for-dev
+Status: review
 
 <!-- Validation completed against .agents/skills/bmad-create-story/checklist.md on 2026-06-25. -->
 
@@ -24,42 +24,42 @@ so that every page presents a consistent search/filter/view/tab strip.
 
 ## Tasks / Subtasks
 
-- [ ] Audit pinned Fluent and existing FrontComposer toolbar-adjacent surfaces before editing (AC: 1, 2, 3)
-  - [ ] Confirm from the pinned RC XML/DLL that `FluentToolbar` and `FluentSearch` are unavailable and that `FluentTextInput`, `FluentButton`, `FluentPopover`, `FluentMenuButton`, `FluentMenu`, `FluentTabs`, and `FluentTab` are available.
-  - [ ] Read `FcPageHeader.razor(.cs/.css)`, `FcAggregateListPage.razor(.cs)`, `FcProjectionGlobalSearch.razor(.cs)`, `FcColumnFilterCell.razor(.cs)`, `FcColumnPrioritizer.razor(.cs/.css)`, and `FcThemeToggle.razor(.cs)` before designing the component API.
-  - [ ] Treat stale comments that say `FluentSearch` as comments only; do not add a `FluentSearch` dependency or raw `<input>`.
-- [ ] Add the reusable Shell component (AC: 1, 2, 4)
-  - [ ] Create `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor` and `FcPageToolbar.razor.cs`; add `FcPageToolbar.razor.css` only if layout/positioning cannot be expressed with Fluent component parameters.
-  - [ ] Keep one C# type per `.cs` file. If tab/filter/view item models are needed, put each public/internal record or class in its own file named for the type.
-  - [ ] Use `FluentTextInput` with `TextInputType.Search`, `Value`, `ValueChanged`, `Placeholder`, `aria-label`, and a stable selector such as `data-testid="fc-page-toolbar-search"`.
-  - [ ] Render filter affordance only when `FilterContent` is supplied: a `FluentButton` trigger with accessible name, `aria-haspopup`, `aria-expanded`, and a `FluentPopover` anchored to the trigger with role/labeling pinned by tests.
-  - [ ] Render view/overflow affordance only when view menu content is supplied, using `FluentMenuButton`/`FluentMenu` semantics already used by `FcThemeToggle` and `FcAccountMenu`.
-  - [ ] Render a right-aligned `Actions` slot without wrapping it in a card; actions remain caller-owned `RenderFragment`.
-  - [ ] Render optional `FluentTabs` under the toolbar row only when tab content is supplied; use underline/subtle visual treatment without legacy tokens or custom theme ramps.
-  - [ ] Ensure compact/wrap behavior works at narrow widths: search must not overlap filter/view/actions, and long labels must wrap or be omitted in favor of accessible names.
-- [ ] Preserve integration seams (AC: 3)
-  - [ ] Do not change the existing `FcPageHeader` parameter contract unless required; if changed, additions must be append-only and covered by `FcPageHeaderTests`.
-  - [ ] Do not break `FcAggregateListPage.Toolbar`; the simplest path is documenting that callers can pass `<FcPageToolbar ... />` through the existing slot.
-  - [ ] Do not modify `Hexalith.Tenants/**`, `Hexalith.EventStore/**`, or `Hexalith.Commons/**`; Host-A adoption is explicitly out of scope.
-  - [ ] Do not implement Story 8.7 status-icon generator work.
-- [ ] Add focused tests (AC: 1, 2, 3, 4)
-  - [ ] Add `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPageToolbarTests.cs`.
-  - [ ] Cover default rendering, search value/callback, accessible names, stable selectors, filter popover open/close state, view menu rendering, right-aligned actions slot, optional tabs, and absence of empty markup when optional slots are omitted.
-  - [ ] Add or update an aggregate-list/header integration test proving `<FcPageToolbar>` composes through `FcAggregateListPage.Toolbar` under `FcPageHeader.Actions`.
-  - [ ] Keep `FluentConformanceTests` green and add a narrow guard only if the implementation introduces a new pattern that could regress raw controls, legacy tokens, or accent background fills.
-  - [ ] If bUnit cannot model a Fluent-owned keyboard behavior, document the limitation in the test name/comment and cover it with Playwright when local socket permissions allow.
-- [ ] Add FC-DOC documentation (AC: 5)
-  - [ ] Create `docs/reference/components/page-toolbar.md` with front matter matching existing component docs: `genre: reference`, `audience: adopter`, `ownerStory: 8-6-reusable-fcpagetoolbar`, `status: published`, `reviewed: 2026-06-25`, unique `uid`, and stable `slug`.
-  - [ ] Include FC-DOC sections: Overview, Usage, Parameters / slots, Layout, Accessibility, Localization, Related.
-  - [ ] Mark any `csharp` fences as `compile` or `no-compile reason="..."`; use `razor` fences for component examples.
-  - [ ] Add the page to `docs/reference/components/index.md`; leave `docs/toc.yml` top-level Diataxis entries unchanged.
-- [ ] Verify and record evidence (AC: 1-5)
-  - [ ] Run `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false`.
-  - [ ] Run focused Shell tests for `FcPageToolbarTests`, `FcPageHeaderTests`, `FcAggregateListPageTests`, and `FluentConformanceTests`.
-  - [ ] Run docs validation: `pwsh ./eng/validate-docs.ps1`.
-  - [ ] Run the solution default lane when feasible: `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false`.
-  - [ ] Run relevant Playwright a11y/visual coverage when feasible, or record exact Kestrel/socket blockers in `_bmad-output/implementation-artifacts/tests/test-summary.md`.
-  - [ ] Reconcile the File List against `git status --short` before moving to review.
+- [x] Audit pinned Fluent and existing FrontComposer toolbar-adjacent surfaces before editing (AC: 1, 2, 3)
+  - [x] Confirm from the pinned RC XML/DLL that `FluentToolbar` and `FluentSearch` are unavailable and that `FluentTextInput`, `FluentButton`, `FluentPopover`, `FluentMenuButton`, `FluentMenu`, `FluentTabs`, and `FluentTab` are available.
+  - [x] Read `FcPageHeader.razor(.cs/.css)`, `FcAggregateListPage.razor(.cs)`, `FcProjectionGlobalSearch.razor(.cs)`, `FcColumnFilterCell.razor(.cs)`, `FcColumnPrioritizer.razor(.cs/.css)`, and `FcThemeToggle.razor(.cs)` before designing the component API.
+  - [x] Treat stale comments that say `FluentSearch` as comments only; do not add a `FluentSearch` dependency or raw `<input>`.
+- [x] Add the reusable Shell component (AC: 1, 2, 4)
+  - [x] Create `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor` and `FcPageToolbar.razor.cs`; add `FcPageToolbar.razor.css` only if layout/positioning cannot be expressed with Fluent component parameters.
+  - [x] Keep one C# type per `.cs` file. If tab/filter/view item models are needed, put each public/internal record or class in its own file named for the type.
+  - [x] Use `FluentTextInput` with `TextInputType.Search`, `Value`, `ValueChanged`, `Placeholder`, `aria-label`, and a stable selector such as `data-testid="fc-page-toolbar-search"`.
+  - [x] Render filter affordance only when `FilterContent` is supplied: a `FluentButton` trigger with accessible name, `aria-haspopup`, `aria-expanded`, and a `FluentPopover` anchored to the trigger with role/labeling pinned by tests.
+  - [x] Render view/overflow affordance only when view menu content is supplied, using `FluentMenuButton`/`FluentMenu` semantics already used by `FcThemeToggle` and `FcAccountMenu`.
+  - [x] Render a right-aligned `Actions` slot without wrapping it in a card; actions remain caller-owned `RenderFragment`.
+  - [x] Render optional `FluentTabs` under the toolbar row only when tab content is supplied; use underline/subtle visual treatment without legacy tokens or custom theme ramps.
+  - [x] Ensure compact/wrap behavior works at narrow widths: search must not overlap filter/view/actions, and long labels must wrap or be omitted in favor of accessible names.
+- [x] Preserve integration seams (AC: 3)
+  - [x] Do not change the existing `FcPageHeader` parameter contract unless required; if changed, additions must be append-only and covered by `FcPageHeaderTests`.
+  - [x] Do not break `FcAggregateListPage.Toolbar`; the simplest path is documenting that callers can pass `<FcPageToolbar ... />` through the existing slot.
+  - [x] Do not modify `Hexalith.Tenants/**`, `Hexalith.EventStore/**`, or `Hexalith.Commons/**`; Host-A adoption is explicitly out of scope.
+  - [x] Do not implement Story 8.7 status-icon generator work.
+- [x] Add focused tests (AC: 1, 2, 3, 4)
+  - [x] Add `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPageToolbarTests.cs`.
+  - [x] Cover default rendering, search value/callback, accessible names, stable selectors, filter popover open/close state, view menu rendering, right-aligned actions slot, optional tabs, and absence of empty markup when optional slots are omitted.
+  - [x] Add or update an aggregate-list/header integration test proving `<FcPageToolbar>` composes through `FcAggregateListPage.Toolbar` under `FcPageHeader.Actions`.
+  - [x] Keep `FluentConformanceTests` green and add a narrow guard only if the implementation introduces a new pattern that could regress raw controls, legacy tokens, or accent background fills.
+  - [x] If bUnit cannot model a Fluent-owned keyboard behavior, document the limitation in the test name/comment and cover it with Playwright when local socket permissions allow.
+- [x] Add FC-DOC documentation (AC: 5)
+  - [x] Create `docs/reference/components/page-toolbar.md` with front matter matching existing component docs: `genre: reference`, `audience: adopter`, `ownerStory: 8-6-reusable-fcpagetoolbar`, `status: published`, `reviewed: 2026-06-25`, unique `uid`, and stable `slug`.
+  - [x] Include FC-DOC sections: Overview, Usage, Parameters / slots, Layout, Accessibility, Localization, Related.
+  - [x] Mark any `csharp` fences as `compile` or `no-compile reason="..."`; use `razor` fences for component examples.
+  - [x] Add the page to `docs/reference/components/index.md`; leave `docs/toc.yml` top-level Diataxis entries unchanged.
+- [x] Verify and record evidence (AC: 1-5)
+  - [x] Run `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false`.
+  - [x] Run focused Shell tests for `FcPageToolbarTests`, `FcPageHeaderTests`, `FcAggregateListPageTests`, and `FluentConformanceTests`.
+  - [x] Run docs validation: `pwsh ./eng/validate-docs.ps1`.
+  - [x] Run the solution default lane when feasible: `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false`.
+  - [x] Run relevant Playwright a11y/visual coverage when feasible, or record exact Kestrel/socket blockers in `_bmad-output/implementation-artifacts/tests/test-summary.md`.
+  - [x] Reconcile the File List against `git status --short` before moving to review.
 
 ## Dev Notes
 
@@ -137,14 +137,36 @@ GPT-5 Codex
 - 2026-06-25: Confirmed Story 8.6 status was `backlog` in `sprint-status.yaml`; Epic 8 is already `in-progress`; previous story 8.5 is `done`.
 - 2026-06-25: Confirmed pinned Fluent UI Blazor `5.0.0-rc.3-26138.1` exposes `FluentTextInput`, `FluentButton`, `FluentPopover`, `FluentMenuButton`, `FluentMenu`, `FluentTabs`, and `FluentTab`, but not `FluentToolbar` or `FluentSearch`.
 - 2026-06-25: Confirmed the working tree has unrelated modified `_bmad-output/story-automator/orchestration-8-20260625-123921.md`; story boundaries instruct dev-story to leave it alone unless explicitly owned.
+- 2026-06-25: Dev-story activation loaded BMAD workflow/config/project-context, Hexalith LLM and UX rules, sprint status, Story 8.6, FC-DOC contract, component docs/index, and required Shell source/test files.
+- 2026-06-25: RED phase added `FcPageToolbarTests`; Release Shell.Tests build failed as expected because `FcPageToolbar` and `FcPageToolbarTab` did not exist.
+- 2026-06-25: Implemented `FcPageToolbar` with `FluentTextInput` search, optional `FluentButton`/`FluentPopover` filters, optional `FluentMenuButton`/`FluentMenu` view menu, actions slot, and optional `FluentTabs` from caller-owned `FcPageToolbarTab` descriptors.
+- 2026-06-25: Added FC-DOC `docs/reference/components/page-toolbar.md` and linked it from the component index without changing `docs/toc.yml`.
+- 2026-06-25: Validation evidence recorded in `_bmad-output/implementation-artifacts/tests/test-summary.md`; local VSTest, DocFX metadata, and Playwright browser execution are socket-blocked in this sandbox.
 
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - Story 8.6 created as an additive Shell layout component story with explicit guardrails around pinned Fluent v5 API reality, `FcPageHeader`/`FcAggregateListPage` source compatibility, FC-DOC documentation, Fluent governance, and Host-A submodule boundaries.
 - Validation pass completed against the create-story checklist; guardrails added for no raw controls, no legacy tokens, no accent background fills, no package changes, no submodule edits, no Story 8.7 scope creep, and no dependency on nonexistent `FluentToolbar`/`FluentSearch` types.
+- Added the reusable `FcPageToolbar` Shell component and narrow `FcPageToolbarTab` model with caller-owned search, filters, view menu, actions, and tab selection.
+- Preserved `FcPageHeader` and `FcAggregateListPage` parameter contracts; composition is through the existing `Toolbar`/`Actions` seam.
+- Added focused bUnit coverage for default rendering, callbacks, stable selectors, filter popover, menu/action slots, optional tabs, and aggregate-list composition.
+- Authored the FC-DOC page for the toolbar and updated the component index; `docs/toc.yml` was intentionally untouched.
+- Verified Release Shell.Tests build 0/0, focused Shell lane 46/46, broad Shell non-Contract lane 1987/1987, and e2e TypeScript typecheck. Exact VSTest, full DocFX, and Playwright browser lanes are locally socket-blocked or pre-existing docs-gate blocked as recorded.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/8-6-reusable-fcpagetoolbar.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/tests/test-summary.md`
+- `docs/reference/components/index.md`
+- `docs/reference/components/page-toolbar.md`
+- `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor`
+- `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor.cs`
+- `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbar.razor.css`
+- `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPageToolbarTab.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPageToolbarTests.cs`
+
+### Change Log
+
+- 2026-06-25: Implemented Story 8.6 reusable `FcPageToolbar` and moved story to review. Release Shell.Tests build passed 0 warnings / 0 errors; focused Shell lane passed 46/46; broad Shell non-Contract lane passed 1987/1987; e2e TypeScript typecheck passed. Exact solution VSTest and Playwright browser lanes are socket-blocked locally. Docs validation was attempted; full DocFX metadata is socket-blocked and the structural fallback is blocked by pre-existing docs snippet/hash failures unrelated to the new toolbar page.

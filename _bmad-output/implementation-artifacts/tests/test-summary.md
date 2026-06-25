@@ -1,5 +1,41 @@
 # Test Automation Summary
 
+## Story 8.6 - Reusable FcPageToolbar
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPageToolbarTests.cs` - added reusable toolbar bUnit coverage for default rendering, search value/callback, accessible names, stable selectors, optional filter popover, view menu, right-aligned actions, optional tabs, and aggregate-list composition through `FcAggregateListPage.Toolbar`.
+
+### E2E Tests
+- [x] `npm --prefix tests/e2e run typecheck` passed for the existing Playwright workspace.
+- [ ] Local Playwright browser execution remains blocked before browser assertions because Kestrel cannot bind a socket in this sandbox.
+
+### Coverage
+- AC1: `FcPageToolbar` renders one `role="toolbar"` row with `FluentTextInput TextInputType.Search`, stable selectors, optional filter trigger/popover, optional view menu, and right-aligned actions without changing `FcPageHeader` landmarks.
+- AC2: optional `FluentTabs` render only when tabs are supplied; `ActiveTabId` and `ActiveTabIdChanged` stay caller-owned through `FcPageToolbarTab`.
+- AC3: `FcAggregateListPage.Toolbar` composes `<FcPageToolbar>` through the existing `FcPageHeader.Actions` seam; no `FcPageHeader` or `FcAggregateListPage` parameter changes were needed.
+- AC4: `FluentConformanceTests` stayed green; no raw interactive controls, legacy Fluent tokens, accent background fills, package changes, or PublicAPI baseline changes were introduced.
+- AC5: `docs/reference/components/page-toolbar.md` was authored and linked from `docs/reference/components/index.md`; `docs/toc.yml` was not changed.
+
+### Validation
+- [x] RED phase: new `FcPageToolbarTests` failed the Release Shell.Tests build before implementation because `FcPageToolbar` and `FcPageToolbarTab` did not exist.
+- [x] `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release -m:1 /nr:false` passed with 0 warnings / 0 errors.
+- [x] Focused Shell direct xUnit v3 lane passed 46/46: `FcPageToolbarTests`, `FcPageHeaderTests`, `FcAggregateListPageTests`, and `FluentConformanceTests`.
+- [x] Broad Shell direct xUnit v3 non-Contract lane passed 1987/1987 with `-trait- Category=Performance -trait- Category=e2e-palette -trait- Category=NightlyProperty -trait- Category=Quarantined -trait- Category=Contract`.
+- [x] `npm --prefix tests/e2e run typecheck` passed.
+- [ ] `pwsh ./eng/validate-docs.ps1` failed during DocFX metadata before page validation because Roslyn/MSBuild build-host socket creation is blocked: `System.Net.Sockets.SocketException (13): Permission denied`.
+- [ ] `pwsh ./eng/validate-docs.ps1 -SkipDocFx` reached repo-wide validation but failed on pre-existing docs issues unrelated to Story 8.6: existing compile snippets in `customization-gradient-cookbook.md`, `test-generated-components.md`, and `getting-started.md`, plus stale producer hashes for Stories 9.1-9.3 artifacts.
+- [ ] `pwsh ./eng/validate-docs.ps1 -SkipDocFx -SkipSnippetBuild` still failed on the same pre-existing stale producer hashes for Stories 9.1-9.3.
+- [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false` built into test assemblies, then VSTest aborted across assemblies with `System.Net.Sockets.SocketException (13): Permission denied`.
+- [ ] `npm --prefix tests/e2e run test:fc-shell-chrome` failed before browser assertions because the Counter web server could not bind Kestrel: `System.Net.Sockets.SocketException (13): Permission denied`.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no HTTP API endpoint surface.
+- [x] E2E tests generated if UI exists: no toolbar-specific browser spec was added; local browser execution is socket-blocked, and the e2e workspace typecheck passed.
+- [x] Tests use standard xUnit v3, Shouldly, bUnit, and Fluent component test patterns.
+- [x] Tests cover happy paths, optional-slot absence, filter/menu/tabs/actions paths, callback wiring, and aggregate-list composition.
+- [x] Story-owned focused and broad Shell lanes run successfully through the direct xUnit v3 in-process runner.
+- [x] Test summary updated with counts, docs validation caveats, solution VSTest blocker, and Playwright/Kestrel blocker.
+
 ## Story 8.5 - Icon+label navigation rail and projection flyout
 
 ### Generated Tests
