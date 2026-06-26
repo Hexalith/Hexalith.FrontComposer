@@ -22,3 +22,7 @@
 	path = Hexalith.AI.Tools
 	url = https://github.com/Hexalith/Hexalith.AI.Tools.git
 	branch = main
+[submodule "Hexalith.Memories"]
+	path = Hexalith.Memories
+	url = https://github.com/Hexalith/Hexalith.Memories.git
+	branch = main
