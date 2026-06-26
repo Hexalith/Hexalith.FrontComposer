@@ -41,6 +41,7 @@
        This is the transitive project-reference closure of the FrontComposer projects plus the
        AppHost-orchestrated EventStore/Tenants services. -->
   <Folder Name="/Hexalith.Commons/">
+    <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.Aspire/Hexalith.Commons.Aspire.csproj" />
     <Project Path="Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj" />
   </Folder>
   <Folder Name="/Hexalith.EventStore/">
@@ -63,5 +64,9 @@
     <Project Path="Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj" />
     <Project Path="Hexalith.Tenants/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj" />
     <Project Path="Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj" />
+  </Folder>
+  <Folder Name="/Hexalith.Memories/">
+    <Project Path="Hexalith.Memories/src/Hexalith.Memories.Client.Rest/Hexalith.Memories.Client.Rest.csproj" />
+    <Project Path="Hexalith.Memories/src/Hexalith.Memories.Contracts/Hexalith.Memories.Contracts.csproj" />
   </Folder>
 </Solution>
