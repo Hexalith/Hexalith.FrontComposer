@@ -12,7 +12,6 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Aspire.Hosting.AppHost" />
-    <PackageReference Include="Aspire.Hosting.Keycloak" />
   </ItemGroup>
   <ItemGroup>
     <!-- Reusable DAPR topology orchestration (state store + pub/sub, sidecars, resiliency)

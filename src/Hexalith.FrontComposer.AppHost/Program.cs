@@ -14,18 +14,11 @@ string stateStoreComponentPath = ResolveDaprConfigPath(builder.AppHostDirectory,
     builder.Configuration[AspireDaprLocalServiceEndpoints.PlacementHostAddressKey],
     builder.Configuration[AspireDaprLocalServiceEndpoints.SchedulerHostAddressKey]);
 
-// Keycloak identity provider for JWT authentication.
+// Keycloak-backed security resource for JWT/OIDC authentication.
 // Enabled by default for local development with real OIDC token testing.
 // Set EnableKeycloak=false in environment or appsettings to run without Keycloak
 // (falls back to symmetric key auth via Authentication:JwtBearer:SigningKey).
-IResourceBuilder<KeycloakResource>? keycloak = null;
-ReferenceExpression? realmUrl = null;
-if (!string.Equals(builder.Configuration["EnableKeycloak"], "false", StringComparison.OrdinalIgnoreCase)) {
-    keycloak = builder.AddKeycloak("keycloak", 8180)
-        .WithRealmImport("./KeycloakRealms");
-    EndpointReference keycloakEndpoint = keycloak.GetEndpoint("http");
-    realmUrl = ReferenceExpression.Create($"{keycloakEndpoint}/realms/hexalith");
-}
+HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSecurity();
 
 // Add EventStore (command gateway), Admin Server, and Admin UI projects.
 // Project paths are resolved cross-repo via the IProjectMetadata classes in this AppHost.
@@ -106,59 +99,27 @@ IResourceBuilder<ProjectResource> tenantsUI = builder.AddProject<HexalithTenants
 _ = builder.AddProject<Projects.Counter_Web>("counter-web")
     .WithExternalHttpEndpoints();
 
-// Wire Keycloak auth to EventStore, Tenants, Admin.Server, and Admin.UI if enabled.
-if (keycloak is not null && realmUrl is not null) {
-    _ = eventStore
-        .WithReference(keycloak)
-        .WaitFor(keycloak)
-        .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
-        .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
+// Wire Keycloak auth to EventStore, Tenants, Admin.Server, Admin.UI, and Tenants.UI if enabled.
+if (security is not null) {
+    _ = eventStore.WithJwtBearerSecurity(security);
 
-    _ = tenants
-        .WithReference(keycloak)
-        .WaitFor(keycloak)
-        .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
-        .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
+    _ = tenants.WithJwtBearerSecurity(security);
 
-    _ = adminServer
-        .WithReference(keycloak)
-        .WaitFor(keycloak)
-        .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
-        .WithEnvironment("Authentication__JwtBearer__SigningKey", "");
+    _ = adminServer.WithJwtBearerSecurity(security);
 
     _ = adminUI
-        .WithReference(keycloak)
-        .WaitFor(keycloak)
-        .WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"))
-        .WithEnvironment("EventStore__Authentication__Authority", realmUrl)
-        .WithEnvironment("EventStore__Authentication__ClientId", "hexalith-eventstore")
-        .WithEnvironment("EventStore__Authentication__Username", "admin-user")
-        .WithEnvironment("EventStore__Authentication__Password", "admin-pass");
+        .WithEventStoreClientCredentials(security)
+        .WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
 
+    // Interactive browser sign-in (authorization-code flow) for the Tenants UI. Uses a
+    // confidential Keycloak client; the relayed access token carries the hexalith-eventstore
+    // audience so EventStore gateway calls authorize per-user.
     _ = tenantsUI
-        .WithReference(keycloak)
-        .WaitFor(keycloak)
-        .WithEnvironment("Authentication__JwtBearer__Authority", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Issuer", realmUrl)
-        .WithEnvironment("Authentication__JwtBearer__Audience", "hexalith-eventstore")
-        .WithEnvironment("Authentication__JwtBearer__RequireHttpsMetadata", "false")
-        .WithEnvironment("Authentication__JwtBearer__SigningKey", "")
-        // Interactive browser sign-in (authorization-code flow) for the Tenants UI. Uses a
-        // confidential Keycloak client; the relayed access token carries the hexalith-eventstore
-        // audience so EventStore gateway calls authorize per-user.
-        .WithEnvironment("Authentication__OpenIdConnect__Authority", realmUrl)
-        .WithEnvironment("Authentication__OpenIdConnect__ClientId", "hexalith-tenants-ui")
-        .WithEnvironment("Authentication__OpenIdConnect__ClientSecret", "tenants-ui-dev-secret")
-        .WithEnvironment("Authentication__OpenIdConnect__Audience", "hexalith-eventstore");
+        .WithJwtBearerSecurity(security)
+        .WithOpenIdConnectSecurity(
+            security,
+            "hexalith-tenants-ui",
+            "tenants-ui-dev-secret");
 }
 else {
     _ = adminUI.WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
