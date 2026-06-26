@@ -1,3 +1,4 @@
+using Hexalith.Commons.Aspire;
 using Hexalith.EventStore.Aspire;
 using Hexalith.FrontComposer.AppHost;
 
@@ -9,8 +10,9 @@ string accessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory,
 string adminServerAccessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.eventstore-admin.yaml");
 string resiliencyConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "resiliency.yaml");
 string stateStoreComponentPath = ResolveDaprConfigPath(builder.AppHostDirectory, "statestore.yaml");
-string? daprPlacementHostAddress = builder.Configuration["Dapr:PlacementHostAddress"];
-string? daprSchedulerHostAddress = builder.Configuration["Dapr:SchedulerHostAddress"];
+(string? daprPlacementHostAddress, string? daprSchedulerHostAddress) = AspireDaprLocalServiceEndpoints.Resolve(
+    builder.Configuration[AspireDaprLocalServiceEndpoints.PlacementHostAddressKey],
+    builder.Configuration[AspireDaprLocalServiceEndpoints.SchedulerHostAddressKey]);
 
 // Keycloak identity provider for JWT authentication.
 // Enabled by default for local development with real OIDC token testing.
