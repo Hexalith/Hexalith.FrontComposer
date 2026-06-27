@@ -32,7 +32,7 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
-          # Root-level submodules only; do not use recursive nested submodule checkout.
+          # Root-declared references submodules only; do not use recursive nested submodule checkout.
           submodules: true
 
       - name: Download CI evidence artifacts

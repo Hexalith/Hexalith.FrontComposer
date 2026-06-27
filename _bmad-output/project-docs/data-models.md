@@ -124,7 +124,7 @@ This is the backbone of FrontComposer's "drift detection" — how producer (gene
 There is no relational/document database in FrontComposer itself. Persistence seams are:
 
 - **`IStorageService`** — key-value abstraction; runtime impl is `LocalStorageService` (browser `localStorage` via JS interop); `InMemoryStorageService` for tests/defaults.
-- **EventStore** — the actual event-sourced backend lives in the `Hexalith.EventStore` submodule (external). The Shell talks to it via `EventStoreCommandClient` / `EventStoreQueryClient` (HTTP) and `ProjectionSubscriptionService` (SignalR). See [architecture.md](./architecture.md) §8.
+- **EventStore** — the actual event-sourced backend lives in the `references/Hexalith.EventStore` submodule (external). The Shell talks to it via `EventStoreCommandClient` / `EventStoreQueryClient` (HTTP) and `ProjectionSubscriptionService` (SignalR). See [architecture.md](./architecture.md) §8.
 
 ## 8. Entity-relationship sketch (conceptual)
 

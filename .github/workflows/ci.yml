@@ -57,8 +57,8 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
-          # DIVERGENCE 1: FrontComposer has nested submodules (EventStore has none).
-          # fetch-depth: 1 (shallow) to keep checkout fast with nested submodules.
+          # DIVERGENCE 1: FrontComposer has root-declared references submodules.
+          # fetch-depth: 1 (shallow) keeps checkout fast while avoiding nested recursion.
           fetch-depth: 1
           persist-credentials: false
           submodules: true
@@ -143,7 +143,7 @@ jobs:
         run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
 
       # Gate 2c: File-based consumer pacts for the FrontComposer/EventStore REST boundary.
-      # This lane intentionally uses the existing root-level `submodules: true` checkout above and
+      # This lane intentionally uses the existing root-declared `submodules: true` checkout above and
       # does not run recursive nested submodule initialization.
       - name: 'Gate 2c: Contract pacts'
         env:
@@ -425,7 +425,7 @@ jobs:
         with:
           fetch-depth: 1
           persist-credentials: false
-          # Root-level submodules only; do not use recursive nested submodule checkout.
+          # Root-declared references submodules only; do not use recursive nested submodule checkout.
           submodules: true
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1

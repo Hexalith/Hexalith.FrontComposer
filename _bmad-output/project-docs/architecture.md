@@ -33,8 +33,8 @@ FrontComposer is a **source-generation-driven Blazor application framework**. It
 │   Cli    ── frontcomposer tool: inspect + migrate generated output         │
 │   Testing── bUnit host + fakes for adopters of the generated components    │
 ├──────────────────────────────────────────────────────────────────────────┤
-│ EXTERNAL (git submodules, root-level only, treated as dependencies)        │
-│   Hexalith.Commons · Hexalith.EventStore · Hexalith.Tenants                │
+│ EXTERNAL (root-declared git submodules under references/)                  │
+│   Hexalith.* dependencies are treated as external                          │
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -323,12 +323,16 @@ This is the "MCP boundary" described in `docs/concepts/source-generation-and-mcp
 
 ## 8. External dependencies (submodules)
 
-The three root-level git submodules ([.gitmodules](.gitmodules)) are consumed as **local `ProjectReference`s by default** (via [deps.local.props](deps.local.props)) or as NuGet packages when `UseNuGetDeps=true` (via `deps.nuget.props`). They are **not** part of this documentation scope:
+Root-declared git submodules live under `references/` ([.gitmodules](.gitmodules)). Build-relevant submodules are consumed as **local `ProjectReference`s by default** (via [deps.local.props](deps.local.props)) or as NuGet packages when `UseNuGetDeps=true` (via `deps.nuget.props`). They are **not** part of this documentation scope:
 
 | Submodule | Repo | Role for FrontComposer |
 |---|---|---|
-| `Hexalith.Commons` | github.com/Hexalith/Hexalith.Commons | Shared primitives (e.g. ULID helpers, value/error patterns) |
-| `Hexalith.EventStore` | github.com/Hexalith/Hexalith.EventStore | The CQRS/event-sourcing backend the Shell talks to via SignalR/HTTP |
-| `Hexalith.Tenants` | github.com/Hexalith/Hexalith.Tenants | Multi-tenancy primitives |
+| `references/Hexalith.AI.Tools` | github.com/Hexalith/Hexalith.AI.Tools | Shared LLM/UX/state instructions |
+| `references/Hexalith.Builds` | github.com/Hexalith/Hexalith.Builds | Shared build/release assets |
+| `references/Hexalith.Commons` | github.com/Hexalith/Hexalith.Commons | Shared primitives (e.g. ULID helpers, value/error patterns) |
+| `references/Hexalith.EventStore` | github.com/Hexalith/Hexalith.EventStore | The CQRS/event-sourcing backend the Shell talks to via SignalR/HTTP |
+| `references/Hexalith.Memories` | github.com/Hexalith/Hexalith.Memories | Memories contracts/client projects referenced by the solution |
+| `references/Hexalith.PolymorphicSerializations` | github.com/Hexalith/Hexalith.PolymorphicSerializations | Shared polymorphic serialization dependency |
+| `references/Hexalith.Tenants` | github.com/Hexalith/Hexalith.Tenants | Multi-tenancy primitives and sample/UI services |
 
 > Each submodule has its own `CLAUDE.md`/`project-context.md`. Do **not** recurse into nested submodules, and never modify submodule files without explicit approval (changes propagate across the Hexalith ecosystem).

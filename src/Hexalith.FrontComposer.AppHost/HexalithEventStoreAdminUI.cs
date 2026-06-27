@@ -1,6 +1,6 @@
 namespace Hexalith.FrontComposer.AppHost;
 
-/// <summary>EventStore Admin Blazor UI (root submodule copy).</summary>
+/// <summary>EventStore Admin Blazor UI (root-declared references submodule copy).</summary>
 public class HexalithEventStoreAdminUI : IProjectMetadata {
 
     public string ProjectPath => ProjectMetadataPaths.GetProjectPath(

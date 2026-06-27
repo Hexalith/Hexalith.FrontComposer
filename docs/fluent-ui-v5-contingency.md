@@ -129,7 +129,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: recursive
+          # Root-declared references submodules only; never recurse into nested submodules.
+          submodules: true
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x

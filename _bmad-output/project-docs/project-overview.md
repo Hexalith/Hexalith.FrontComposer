@@ -1,6 +1,6 @@
 # Hexalith.FrontComposer — Project Overview
 
-> **Generated:** 2026-06-02 · **Scan mode:** initial / deep · **Scope:** FrontComposer own code (`src/`, `tests/`, `samples/`). The three git submodules (Hexalith.Commons, Hexalith.EventStore, Hexalith.Tenants) are treated as external dependencies — see [data-models.md](./data-models.md) and [architecture.md](./architecture.md).
+> **Generated:** 2026-06-02 · **Scan mode:** initial / deep · **Scope:** FrontComposer own code (`src/`, `tests/`, `samples/`). Root-declared git submodules under `references/Hexalith.*` are treated as external dependencies — see [data-models.md](./data-models.md) and [architecture.md](./architecture.md).
 >
 > This documentation set is generated **for AI-assisted development**. It lives in `_bmad-output/project-docs/` and is intentionally separate from the published DocFX site under `docs/`.
 
@@ -89,5 +89,5 @@ The `frontcomposer` **CLI** (`Hexalith.FrontComposer.Cli`) lets you `inspect` th
 2. **ULIDs, not GUIDs**, for `messageId`/`correlationId` (NUlid; 26-char Crockford base32).
 3. **`TreatWarningsAsErrors=true`** everywhere — analyzer/style warnings break the build.
 4. **Centralized package versions** — never add a `Version=` to a `.csproj`; edit [Directory.Packages.props](Directory.Packages.props).
-5. **Submodules are root-level only** and must not be modified without approval; `docs/` is a published site (do not treat it as scratch space).
+5. **Submodules are root-declared under `references/` only** and must not be modified without approval; `docs/` is a published site (do not treat it as scratch space).
 6. **Schema fingerprints** bind generator output to runtime/MCP/CLI; changing canonical serialization silently invalidates baselines.

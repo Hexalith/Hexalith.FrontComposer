@@ -11,7 +11,7 @@ Top-level guide for every test layer in this repository. Each layer has its own 
 | **Unit — SourceTools** | `tests/Hexalith.FrontComposer.SourceTools.Tests/` | xUnit + FsCheck | Roslyn analyzers, source generators, property-based |
 | **E2E — Browser** | `tests/e2e/` | Playwright (TS) | Six-state command lifecycle, WCAG 2.1 AA, smoke |
 
-Submodule test suites (`Hexalith.Tenants/**`, `Hexalith.EventStore/**`) are run from their own roots and are out of scope for this guide.
+Submodule test suites (`references/Hexalith.Tenants/**`, `references/Hexalith.EventStore/**`) are run from their own roots and are out of scope for this guide.
 
 ---
 

@@ -251,9 +251,12 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Code review is mandatory per story** — run `/bmad-code-review` (adversarial: Blind Hunter / Edge
   Case Hunter / Acceptance Auditor) before flipping to Done; `/bmad-dev-story` is the main build
   command. Budget for review-found rework; **verify any CRITICAL finding before acting on it**
-- **Submodules: root-level only** (Commons, EventStore, Tenants). **Never `--init --recursive`** or
-  recurse into nested submodules; **never modify submodule files without explicit approval** (changes
-  propagate across the Hexalith ecosystem). Build defaults to local `ProjectReference`s
+- **Submodules: root-declared under `references/` only** (`references/Hexalith.AI.Tools`,
+  `references/Hexalith.Builds`, `references/Hexalith.Commons`, `references/Hexalith.EventStore`,
+  `references/Hexalith.Memories`, `references/Hexalith.PolymorphicSerializations`,
+  `references/Hexalith.Tenants`). **Never `--init --recursive`** or recurse into nested submodules;
+  **never modify submodule files without explicit approval** (changes propagate across the Hexalith
+  ecosystem). Build defaults to local `ProjectReference`s
   (`deps.local.props`); `-p:UseNuGetDeps=true` switches to published NuGet (`deps.nuget.props`)
 - **`docs/` is a PUBLISHED DocFX site** (Diataxis), CI-gated (Gate 2d, `pwsh ./eng/validate-docs.ps1`)
   and referenced by product code, tests, CI & fixtures — **do NOT use it as scratch space**.
@@ -283,8 +286,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
   (built-in analyzers only)
 - **Never use a GUID for `messageId`/`correlationId`** — ULIDs via `IUlidFactory`
 - **Never `feat:` a refactor** (false minor bump + NuGet publish); **never commit directly to `main`**
-- **Never recurse into nested submodules** (`--init --recursive`) or modify submodule files without
-  explicit approval
+- **Never recurse into nested submodules** (`--init --recursive`) or modify `references/Hexalith.*`
+  submodule files without explicit approval
 - **Never use `docs/` as scratch space** — it's the published, CI-gated DocFX site; generated docs go
   to `_bmad-output/`
 - **Never leave `Debugger.Launch()` in `src/**/*.cs`** — the IDE-parity suite fails on it
@@ -310,13 +313,14 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 - Read this file before implementing any code in `Hexalith.FrontComposer`.
 - Follow ALL rules exactly as documented; when in doubt, prefer the more restrictive option.
-- There is **no root `CLAUDE.md`** in this repo — this file plus the BMAD docs under
+- Read root `AGENTS.md` / `CLAUDE.md` first, then
+  `references/Hexalith.AI.Tools/hexalith-llm-instructions.md`; this file plus the BMAD docs under
   `_bmad-output/project-docs/` (architecture, api-contracts, data-models, dev/contribution/deployment
-  guides) are the primary agent context.
-- The three submodules (`Hexalith.Commons`, `Hexalith.EventStore`, `Hexalith.Tenants`) are **external
-  dependencies** with their own `CLAUDE.md`/`project-context.md`, and their rules differ from this
-  repo's (e.g. Commons uses copyright headers + the Sonar/StyleCop/Roslynator stack; EventStore runs
-  tests per-project). **Don't apply sibling-repo rules here.**
+  guides) are the primary generated agent context.
+- The root-declared submodules under `references/Hexalith.*` are **external dependencies** with their
+  own `CLAUDE.md`/`project-context.md`, and their rules differ from this repo's (e.g. Commons uses
+  copyright headers + the Sonar/StyleCop/Roslynator stack; EventStore runs tests per-project).
+  **Don't apply sibling-repo rules here.**
 
 **For Humans:**
 

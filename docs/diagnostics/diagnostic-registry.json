@@ -41,16 +41,16 @@
       "owner": "EventStore",
       "rangePolicy": "owns-range",
       "rangeOwner": "EventStore",
-      "provenance": "root-submodule",
+      "provenance": "root-declared-references-submodule",
       "updatePolicy": "Changes require Story 11.7 or explicit registry governance review.",
-      "rationale": "EventStore is a root-level submodule with a dedicated HFC3000-HFC3999 range."
+      "rationale": "EventStore is a root-declared references submodule with a dedicated HFC3000-HFC3999 range."
     },
     {
       "package": "Hexalith.Tenants",
       "owner": "Tenants",
       "rangePolicy": "no-range-reserved",
       "rangeOwner": null,
-      "provenance": "root-submodule",
+      "provenance": "root-declared-references-submodule",
       "updatePolicy": "A future Tenants diagnostic range requires an explicit registry range allocation story.",
       "rationale": "Tenants is an external boundary but currently emits no FrontComposer-owned diagnostics."
     }

@@ -18,12 +18,12 @@
 ## Get the code (submodules)
 
 ```bash
-git clone --recurse-submodules https://github.com/Hexalith/Hexalith.FrontComposer.git
-# or, after a plain clone:
-git submodule update --init   # ROOT-LEVEL submodules only
+git clone https://github.com/Hexalith/Hexalith.FrontComposer.git
+cd Hexalith.FrontComposer
+git submodule update --init   # root-declared references/ submodules only
 ```
 
-> **Submodule rule:** initialize/​update only the three **root-level** submodules (Commons, EventStore, Tenants) declared in [.gitmodules](.gitmodules). **Do not** recurse into nested submodules; deinit any that get pulled in accidentally. Never modify submodule files without explicit approval.
+> **Submodule rule:** initialize/update only the **root-declared** submodules under `references/` declared in [.gitmodules](.gitmodules). **Do not** recurse into nested submodules; deinit any that get pulled in accidentally. Never modify submodule files without explicit approval.
 
 By default the build references the submodules as **local `ProjectReference`s** ([deps.local.props](deps.local.props)). Set `-p:UseNuGetDeps=true` to reference the published NuGet packages instead (uses `deps.nuget.props`).
 

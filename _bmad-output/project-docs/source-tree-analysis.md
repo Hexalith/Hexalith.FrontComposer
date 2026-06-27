@@ -39,9 +39,14 @@ frontcomposer/
 ├── _bmad/                          # BMAD module config + scripts
 ├── _bmad-output/project-docs/      # ← THIS generated documentation set
 │
-├── Hexalith.Commons/               # submodule (external dep) — not expanded
-├── Hexalith.EventStore/            # submodule (external dep) — not expanded
-└── Hexalith.Tenants/               # submodule (external dep) — not expanded
+└── references/                     # root-declared submodules (external deps) — not expanded
+    ├── Hexalith.AI.Tools/
+    ├── Hexalith.Builds/
+    ├── Hexalith.Commons/
+    ├── Hexalith.EventStore/
+    ├── Hexalith.Memories/
+    ├── Hexalith.PolymorphicSerializations/
+    └── Hexalith.Tenants/
 ```
 
 `★` = critical for understanding/operating the project.

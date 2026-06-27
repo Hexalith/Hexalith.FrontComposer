@@ -5,7 +5,7 @@
   "inputs": {
     "registry": "docs/diagnostics/diagnostic-registry.json",
     "sourceRoot": "src",
-    "submodulePolicy": "exclude-root-level-external-boundaries"
+    "submodulePolicy": "exclude-root-declared-references-external-boundaries"
   },
   "findings": [
     {

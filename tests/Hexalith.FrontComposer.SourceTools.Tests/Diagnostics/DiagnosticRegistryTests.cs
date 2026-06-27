@@ -742,8 +742,8 @@ public sealed partial class DiagnosticRegistryTests {
         var declaredPaths = sectionPath.Matches(modules)
             .Select(m => m.Groups["path"].Value.Trim())
             .ToHashSet(Ordinal);
-        declaredPaths.ShouldContain("Hexalith.EventStore");
-        declaredPaths.ShouldContain("Hexalith.Tenants");
+        declaredPaths.ShouldContain("references/Hexalith.EventStore");
+        declaredPaths.ShouldContain("references/Hexalith.Tenants");
 
         DiagnosticRegistry registry = LoadRegistry();
         registry.ExternalBoundaries.Select(b => b.Package).ShouldContain("Hexalith.EventStore");
@@ -2333,8 +2333,8 @@ public sealed partial class DiagnosticRegistryTests {
             $"{Path.DirectorySeparatorChar}.git{Path.DirectorySeparatorChar}",
             $"{Path.DirectorySeparatorChar}artifacts{Path.DirectorySeparatorChar}",
             $"{Path.DirectorySeparatorChar}_bmad-output{Path.DirectorySeparatorChar}",
-            $"{Path.DirectorySeparatorChar}Hexalith.EventStore{Path.DirectorySeparatorChar}",
-            $"{Path.DirectorySeparatorChar}Hexalith.Tenants{Path.DirectorySeparatorChar}",
+            $"{Path.DirectorySeparatorChar}references{Path.DirectorySeparatorChar}Hexalith.EventStore{Path.DirectorySeparatorChar}",
+            $"{Path.DirectorySeparatorChar}references{Path.DirectorySeparatorChar}Hexalith.Tenants{Path.DirectorySeparatorChar}",
         ];
 
         EnumerationOptions options = new() {

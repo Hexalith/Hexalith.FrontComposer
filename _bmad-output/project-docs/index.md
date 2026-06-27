@@ -47,11 +47,13 @@
 
 - **Published DocFX site** — [docs/](docs/) (Diataxis: `tutorials/`, `how-to/`, `reference/`, `concepts/`, `diagnostics/`, `migrations/`). Build with `dotnet docfx docs/docfx.json`; validate with `pwsh ./eng/validate-docs.ps1`. Concept overview: `docs/concepts/source-generation-and-mcp-split.md`.
 - [README.md](README.md) · [CONTRIBUTING.md](CONTRIBUTING.md) (generator debugging) · [ONBOARDING.md](ONBOARDING.md) (team/Claude usage)
-- **Submodule docs** (external deps, not in scope): `Hexalith.Commons`, `Hexalith.EventStore`, `Hexalith.Tenants` — each has its own `CLAUDE.md` / `project-context.md`.
+- **Submodule docs** (external deps, not in scope): `references/Hexalith.*` — each submodule owns its
+  own `CLAUDE.md` / `project-context.md` when present.
 
 ## Getting started (contributors)
 
-1. Clone with **root-level** submodules: `git submodule update --init` (do **not** recurse into nested submodules).
+1. Clone, then initialize **root-declared** submodules under `references/`: `git submodule update --init`
+   (do **not** recurse into nested submodules).
 2. `dotnet restore Hexalith.FrontComposer.slnx` → `dotnet build … -c Release`.
 3. Run the default test lane (command above). For a11y/visual: `cd tests/e2e && npm ci && npm run test:a11y`.
 4. Explore the `samples/Counter` Aspire sample to see a generated shell end-to-end.
@@ -63,4 +65,4 @@
 2. **`docs/` is a published, CI-gated site** referenced by 80+ product/test/CI/fixture sites — never overwrite it; generated docs go in `_bmad-output/project-docs/`.
 3. **ULIDs, not GUIDs**; **centralized package versions**; **`TreatWarningsAsErrors=true`**; **`.slnx` only**.
 4. **Solution-level `dotnet test`** with trait filters (unlike the EventStore submodule's per-project model); `DiffEngine_Disabled=true` for Verify snapshots.
-5. **Submodules are root-level only** and must not be modified without approval.
+5. **Submodules are root-declared under `references/` only** and must not be modified without approval.

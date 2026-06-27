@@ -35,7 +35,7 @@ Senior/adversarial code review is part of this team's workflow — see [ONBOARDI
 4. **Contracts & SourceTools multi-target** `net10.0` + `netstandard2.0`. Guard any FluentUI-dependent code with `#if NET10_0_OR_GREATER` (e.g. `Typography.cs`) so the analyzer-host build stays clean.
 5. **ULIDs, not GUIDs** for `messageId`/`correlationId` (`IUlidFactory`).
 6. **Don't hand-edit generated code.** Change the generator or the annotated domain types. The generated-output path (`obj/{Config}/{TFM}/generated/HexalithFrontComposer/`) is a **public contract** — validate in Debug *and* Release.
-7. **Submodules:** root-level only (Commons, EventStore, Tenants); never recurse into nested submodules; **never modify submodule files without explicit approval** (changes propagate across the Hexalith ecosystem).
+7. **Submodules:** root-declared under `references/` only; never recurse into nested submodules; **never modify submodule files without explicit approval** (changes propagate across the Hexalith ecosystem).
 8. **`docs/` is a published DocFX site** referenced by product code, tests, CI, and fixtures — don't repurpose it as scratch space. (This BMAD doc set lives in `_bmad-output/project-docs/` precisely for that reason.)
 9. **Schema canonicalization is load-bearing** — don't change the encoder/sentinel/comparer in `CanonicalSchemaMaterial` (silently invalidates all fingerprints/baselines). Don't relax the `SchemaBaselineProvenance` safe-identifier regex (security boundary).
 
