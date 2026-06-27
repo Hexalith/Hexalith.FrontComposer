@@ -47,7 +47,6 @@
     <PackageVersion Include="Fluxor.Blazor.Web" Version="6.9.0" />
   </ItemGroup>
   <ItemGroup Label="Aspire">
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.4.6" />
     <!-- Keycloak hosting for the FrontComposer AppHost (OIDC/JWT identity provider).
          Pinned to the exact preview build shared by the Hexalith.Tenants / Hexalith.EventStore
          AppHosts. There is no stable 13.4.x Keycloak-hosting line, so the ecosystem holds this
