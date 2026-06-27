@@ -20,6 +20,8 @@ public static class FcFluentIcons {
     private const string PlayPath = "<path d=\"M5 3.8c0-.8.9-1.3 1.6-.8l7 4.2a1 1 0 0 1 0 1.7l-7 4.2A1 1 0 0 1 5 12.2V3.8Z\"/>";
     private const string SearchPath = "<path d=\"M8.5 4a4.5 4.5 0 1 0 2.8 8l3.4 3.4a1 1 0 0 0 1.4-1.4l-3.4-3.4A4.5 4.5 0 0 0 8.5 4Zm0 2a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5Z\"/>";
     private const string SettingsPath = "<path d=\"M10 6a4 4 0 1 0 0 8 4 4 0 0 0 0-8Zm0 2a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm0-6a1 1 0 0 1 1 1v1.1a6.8 6.8 0 0 1 1.5.6l.8-.8a1 1 0 0 1 1.4 1.4l-.8.8c.3.5.5 1 .6 1.5H16a1 1 0 1 1 0 2h-1.1a6.8 6.8 0 0 1-.6 1.5l.8.8a1 1 0 0 1-1.4 1.4l-.8-.8c-.5.3-1 .5-1.5.6V17a1 1 0 1 1-2 0v-1.1a6.8 6.8 0 0 1-1.5-.6l-.8.8a1 1 0 0 1-1.4-1.4l.8-.8c-.3-.5-.5-1-.6-1.5H4a1 1 0 1 1 0-2h1.1c.1-.5.3-1 .6-1.5l-.8-.8a1 1 0 0 1 1.4-1.4l.8.8c.5-.3 1-.5 1.5-.6V3a1 1 0 0 1 1-1Z\"/>";
+    private const string BuildingPeoplePath = "<path d=\"M6.75 9.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm3-3a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5ZM4 17.5c0 .28.22.5.5.5h4.8a3.32 3.32 0 0 1-.28-1H5V3.5c0-.28.22-.5.5-.5h6c.28 0 .5.22.5.5v5c0 .28.22.5.5.5h2c.28 0 .5.22.5.5v.86c.2.21.37.46.49.72.15-.14.32-.25.51-.35V9.5c0-.83-.67-1.5-1.5-1.5H13V3.5c0-.83-.67-1.5-1.5-1.5h-6C4.67 2 4 2.67 4 3.5v14Zm2.75-5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm3.75-3.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0ZM6.75 6.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Zm8 5.75a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 0 1 3.5 0Zm3.5.5a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM16 16.6c0 1.18-.8 2.4-3 2.4s-3-1.22-3-2.4c0-.88.72-1.6 1.6-1.6h2.8c.88 0 1.6.72 1.6 1.6Zm.7 1.4h.05c1.65 0 2.25-.91 2.25-1.8 0-.66-.54-1.2-1.2-1.2h-1.35c.34.44.55 1 .55 1.6 0 .46-.09.95-.3 1.4Z\"/>";
+    private const string BuildingPeopleFilledPath = "<path d=\"M4 3.5C4 2.67 4.67 2 5.5 2h6c.83 0 1.5.67 1.5 1.5V8h1.5c.83 0 1.5.67 1.5 1.5v1.23c-.19.1-.36.21-.51.35a2.75 2.75 0 1 0-4.54 3A2.6 2.6 0 0 0 9 16.6c0 .46.09.95.3 1.4H4.5a.5.5 0 0 1-.5-.5v-14Zm3.5 2.25a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0ZM6.75 8a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Zm.75 3.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0ZM10.25 5a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM11 8.75a.75.75 0 1 0-1.5 0 .75.75 0 0 0 1.5 0Zm3.75 3.5a1.75 1.75 0 1 1-3.5 0 1.75 1.75 0 0 1 3.5 0Zm3.5.5a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0ZM16 16.6c0 1.18-.8 2.4-3 2.4s-3-1.22-3-2.4c0-.88.72-1.6 1.6-1.6h2.8c.88 0 1.6.72 1.6 1.6Zm.7 1.4h.05c1.65 0 2.25-.91 2.25-1.8 0-.66-.54-1.2-1.2-1.2h-1.35c.34.44.55 1 .55 1.6 0 .46-.09.95-.3 1.4Z\"/>";
     private const string PeoplePath = "<path d=\"M7 4a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm6 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM7 10c-2.2 0-4 1.3-4 3v.5c0 .83.67 1.5 1.5 1.5h5c.83 0 1.5-.67 1.5-1.5V13c0-1.7-1.8-3-4-3Zm6 0c-.5 0-.98.07-1.43.2.88.74 1.43 1.73 1.43 2.8v.5c0 .54-.14 1.05-.4 1.5H15.5c.83 0 1.5-.67 1.5-1.5V13c0-1.7-1.8-3-4-3Z\"/>";
 
     // 16x16 glyphs (viewBox 0 0 16 16) used by domain badges (status / role / freshness / category).
@@ -68,6 +70,10 @@ public static class FcFluentIcons {
 
     /// <summary>Creates the navigation (hamburger) icon used by the desktop sidebar toggle.</summary>
     public static Icon Navigation20(IconVariant variant = IconVariant.Regular) => Create("Navigation", variant, IconSize.Size20, NavigationPath);
+
+    /// <summary>Creates a building with people bounded-context rail icon.</summary>
+    public static Icon BuildingPeople20(IconVariant variant = IconVariant.Regular)
+        => Create("BuildingPeople", variant, IconSize.Size20, variant == IconVariant.Filled ? BuildingPeopleFilledPath : BuildingPeoplePath);
 
     /// <summary>Creates a people / group bounded-context rail icon.</summary>
     public static Icon People20(IconVariant variant = IconVariant.Regular) => Create("People", variant, IconSize.Size20, PeoplePath);
@@ -130,6 +136,7 @@ public static class FcFluentIcons {
             "Regular.Size20.Search" => Search20(variant),
             "Regular.Size20.Settings" => Settings20(variant),
             "Regular.Size20.Navigation" => Navigation20(variant),
+            "Regular.Size20.BuildingPeople" => BuildingPeople20(variant),
             "Regular.Size20.People" => People20(variant),
             "Regular.Size32.DocumentSearch" => DocumentSearch32(variant),
             "Regular.Size48.DocumentSearch" => DocumentSearch48(variant),
