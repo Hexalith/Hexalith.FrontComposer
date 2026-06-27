@@ -14,7 +14,16 @@
     <Project Path="samples/Counter/Counter.Specimens/Counter.Specimens.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
     <File Path=".gitignore" />
+    <File Path="AGENTS.md" />
+    <File Path="CLAUDE.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="Directory.Packages.props" />
+    <File Path="nuget.config" />
+    <File Path="ONBOARDING.md" />
+    <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj">
@@ -37,11 +46,23 @@
     <Project Path="tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj" />
     <Project Path="tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj" />
   </Folder>
+  <Folder Name="/references/" />
+  <Folder Name="/references/Hexalith.AI.Tools/">
+    <File Path="references/Hexalith.AI.Tools/.gitignore" />
+    <File Path="references/Hexalith.AI.Tools/AGENTS.md" />
+    <File Path="references/Hexalith.AI.Tools/CLAUDE.md" />
+    <File Path="references/Hexalith.AI.Tools/hexalith-llm-instructions.md" />
+    <File Path="references/Hexalith.AI.Tools/hexalith-state-instructions.md" />
+    <File Path="references/Hexalith.AI.Tools/hexalith-ux-instructions.md" />
+    <File Path="references/Hexalith.AI.Tools/LICENSE" />
+    <File Path="references/Hexalith.AI.Tools/README.md" />
+  </Folder>
   <!-- Referenced Hexalith submodule library projects (project references, not packages).
        This is the transitive project-reference closure of the FrontComposer projects plus the
        AppHost-orchestrated EventStore/Tenants services. -->
   <Folder Name="/references/Hexalith.Commons/">
     <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.Aspire/Hexalith.Commons.Aspire.csproj" />
+    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/Hexalith.Commons.ServiceDefaults.csproj" />
     <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj" />
   </Folder>
   <Folder Name="/references/Hexalith.EventStore/">

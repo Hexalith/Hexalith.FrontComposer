@@ -93,7 +93,7 @@ Render the toolbar through the aggregate-list toolbar slot:
 `FcPageToolbarTab` contains `Id`, `Header`, `Disabled`, and optional `IconStart`. Use it for local
 page tabs only; routing and persistence remain caller-owned.
 
-## Layout
+## Layout (FC-LYT)
 
 The toolbar renders a vertical `FluentStack` containing a horizontal `FluentStack` row with
 `role="toolbar"`. The search input flexes first, filter and view controls follow, and the `Actions`
@@ -103,7 +103,7 @@ not overlap. Optional tabs render below the row as `FluentTabs` with the subtle 
 The component does not change `FcPageHeader` landmarks. In aggregate-list pages it composes through
 the existing `Toolbar` slot, which is forwarded to `FcPageHeader.Actions`.
 
-## Accessibility
+## Accessibility (FC-A11Y)
 
 The toolbar row has an accessible name through `AriaLabel`. The search input uses
 `FluentTextInput` with `TextInputType.Search` and requires a caller-owned `SearchAriaLabel`. Filter
@@ -112,7 +112,12 @@ content renders only when supplied; its trigger exposes `aria-haspopup="dialog"`
 `FluentMenuButton`, `FluentMenu`, and caller-owned `FluentMenuItem` content, so keyboard behavior is
 delegated to Fluent UI v5.
 
-## Localization
+Because the toolbar exposes search, filter, menu, action, and tab controls through caller-owned
+slots, custom toolbar content must preserve accessible names and keyboard reachability. The closest
+published checks are [HFC1050](../../diagnostics/HFC1050.md) for missing accessible names and
+[HFC1051](../../diagnostics/HFC1051.md) for blocked keyboard access.
+
+## Localization (FC-L10N)
 
 `FcPageToolbar` does not inject `IStringLocalizer`. Adopters pass localized strings for
 `AriaLabel`, `SearchPlaceholder`, `SearchAriaLabel`, `FilterLabel`, `ViewMenuLabel`, action text,

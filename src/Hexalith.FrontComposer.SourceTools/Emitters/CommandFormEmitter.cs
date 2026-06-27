@@ -210,7 +210,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            _serverWarning = null;");
             _ = sb.AppendLine("        }");
-            _ = sb.AppendLine("        await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
+            _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationRequest CreateAuthorizationRequest()");
@@ -496,7 +496,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
             _ = sb.AppendLine("            }");
-            _ = sb.AppendLine("            await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
+            _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
             _ = sb.AppendLine("            Logger?.LogWarning(\"Command authorization blocked. CorrelationId={CorrelationId} Reason={Reason}\", authorization.CorrelationId, authorization.Reason);");
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
@@ -536,7 +536,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
             _ = sb.AppendLine("            }");
-            _ = sb.AppendLine("            await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
+            _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
             _ = sb.AppendLine("            Logger?.LogWarning(\"Command authorization blocked after BeforeSubmit. CorrelationId={CorrelationId} Reason={Reason}\", authorizationPostBeforeSubmit.CorrelationId, authorizationPostBeforeSubmit.Reason);");
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
@@ -553,7 +553,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
         _ = sb.AppendLine("            }");
-        _ = sb.AppendLine("            await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
+        _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
         _ = sb.AppendLine("            Logger?.LogWarning(\"Command submit blocked by FC-CNC. Reason={Reason} BlockingMessageId={BlockingMessageId}\", admission.DenialReason, admission.BlockingMessageId);");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
@@ -752,7 +752,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            int wseq = 0;");
         _ = sb.AppendLine("            __wrap.OpenComponent<EditForm>(wseq++);");
         _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"EditContext\", _editContext);");
-        _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"OnValidSubmit\", EventCallback.Factory.Create<EditContext>(this, _ => OnValidSubmitAsync()));");
+        _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"OnValidSubmit\", EventCallback.Factory.Create<EditContext>(this, async _ => await OnValidSubmitAsync()));");
         _ = sb.AppendLine("        RenderFragment<EditContext> formBody = _ => (RenderFragment)(__b =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            int cseq = 0;");

@@ -245,7 +245,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             {
                 CommandFeedbackPublisher.PublishWarning(_serverWarning);
             }
-            await InvokeAsync(StateHasChanged).ConfigureAwait(false);
+            await InvokeAsync(StateHasChanged);
             Logger?.LogWarning("Command submit blocked by FC-CNC. Reason={Reason} BlockingMessageId={BlockingMessageId}", admission.DenialReason, admission.BlockingMessageId);
             return;
         }
@@ -424,7 +424,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             int wseq = 0;
             __wrap.OpenComponent<EditForm>(wseq++);
             __wrap.AddAttribute(wseq++, "EditContext", _editContext);
-            __wrap.AddAttribute(wseq++, "OnValidSubmit", EventCallback.Factory.Create<EditContext>(this, _ => OnValidSubmitAsync()));
+            __wrap.AddAttribute(wseq++, "OnValidSubmit", EventCallback.Factory.Create<EditContext>(this, async _ => await OnValidSubmitAsync()));
         RenderFragment<EditContext> formBody = _ => (RenderFragment)(__b =>
         {
             int cseq = 0;

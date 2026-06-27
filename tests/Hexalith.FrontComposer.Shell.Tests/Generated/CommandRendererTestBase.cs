@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Bunit;
 
 using Fluxor;
@@ -27,6 +29,9 @@ public abstract class CommandRendererTestBase : BunitContext {
     protected BunitJSModuleInterop FcExpandInRowModule { get; }
 
     protected CommandRendererTestBase() {
+        CultureInfo.CurrentCulture = new CultureInfo("en");
+        CultureInfo.CurrentUICulture = new CultureInfo("en");
+
         JSInterop.Mode = JSRuntimeMode.Strict;
         JSInterop.SetupVoid("Microsoft.FluentUI.Blazor.Utilities.Attributes.observeAttributeChange", _ => true)
             .SetVoidResult();

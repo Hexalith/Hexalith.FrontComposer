@@ -36,6 +36,7 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("using Fluxor;");
         _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts;");
         _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Communication;");
+        _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Lifecycle;");
         _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Rendering;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Forms;");
@@ -94,6 +95,7 @@ public static class CommandRendererEmitter {
         if (hasAuthorizationPolicy) {
             _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Authorization.ICommandAuthorizationEvaluator CommandAuthorizationEvaluator { get; set; } = default!;");
             _ = sb.AppendLine("    [Inject] private global::Microsoft.Extensions.Localization.IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> AuthorizationLocalizer { get; set; } = default!;");
+            _ = sb.AppendLine("    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;");
         }
         if (model.IsDestructive) {
             // Story 2-5 Task 6.1 — destructive commands open a FluentDialog via IDialogService (D11).
@@ -159,7 +161,7 @@ public static class CommandRendererEmitter {
             // (Pass-3 form-emitter pattern; mirror in renderer).
             _ = sb.AppendLine("        _authorizationPresentationReady = false;");
             _ = sb.AppendLine("        _authorizationPresentationAllowed = false;");
-            _ = sb.AppendLine("        SetAuthorizationPresentationMessage(global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision.Pending(global::System.Guid.NewGuid().ToString(\"N\")));");
+            _ = sb.AppendLine("        SetAuthorizationPresentationMessage(global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision.Pending(UlidFactory.NewUlid()));");
             _ = sb.AppendLine("        long sequence = global::System.Threading.Interlocked.Increment(ref _authorizationRefreshSequence);");
             _ = sb.AppendLine("        var cts = _authorizationCts;");
             _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision? decision;");
@@ -650,6 +652,9 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");
             _ = sb.AppendLine("                builder.CloseComponent();");
             _ = sb.AppendLine("                builder.CloseElement();");
+            if (hasAuthorizationPolicy) {
+                EmitAuthorizationMessageBar(sb, "builder", "seq");
+            }
         }
         else {
             _ = sb.AppendLine("                builder.OpenComponent<FluentButton>(seq++);");
@@ -691,6 +696,9 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                    __popover.CloseElement();");
             _ = sb.AppendLine("                }));");
             _ = sb.AppendLine("                builder.CloseComponent();");
+            if (hasAuthorizationPolicy) {
+                EmitAuthorizationMessageBar(sb, "builder", "seq");
+            }
         }
 
         _ = sb.AppendLine("                break;");
@@ -808,6 +816,18 @@ public static class CommandRendererEmitter {
         CommandDensity.FullPage => "FullPage",
         _ => "FullPage",
     };
+
+    private static void EmitAuthorizationMessageBar(StringBuilder sb, string builderName, string sequenceName) {
+        _ = sb.AppendLine("                if (AuthorizationTriggerDisabled())");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    " + builderName + ".OpenComponent<FluentMessageBar>(" + sequenceName + "++);");
+        _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"Intent\", MessageBarIntent.Warning);");
+        _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"Title\", _authorizationPresentationTitle);");
+        _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"AllowDismiss\", false);");
+        _ = sb.AppendLine("                    " + builderName + ".AddAttribute(" + sequenceName + "++, \"ChildContent\", (RenderFragment)(__message => __message.AddContent(0, _authorizationPresentationMessage)));");
+        _ = sb.AppendLine("                    " + builderName + ".CloseComponent();");
+        _ = sb.AppendLine("                }");
+    }
 
     /// <summary>Matches <see cref="CommandFormEmitter"/> — safe C# string literals for generated code.</summary>
     private static string EscapeString(string? value) {

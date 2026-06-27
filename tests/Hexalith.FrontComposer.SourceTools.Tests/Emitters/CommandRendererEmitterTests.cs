@@ -153,9 +153,9 @@ public class CommandRendererEmitterTests {
 
         int gateOccurrences = System.Text.RegularExpressions.Regex.Matches(source, @"AuthorizationTriggerDisabled\(\)").Count;
         gateOccurrences.ShouldBeGreaterThanOrEqualTo(3, "expected gating in Inline + CompactInline + FullPage cases");
-        // The CompactInline + FullPage placeholder branches both check the gate via if-statement.
+        // Inline + CompactInline + FullPage placeholder branches all check the gate via if-statement.
         int placeholderBranches = System.Text.RegularExpressions.Regex.Matches(source, @"if \(AuthorizationTriggerDisabled\(\)\)").Count;
-        placeholderBranches.ShouldBe(2, "CompactInline + FullPage placeholder branches");
+        placeholderBranches.ShouldBe(3, "Inline + CompactInline + FullPage placeholder branches");
     }
 
     [Fact]

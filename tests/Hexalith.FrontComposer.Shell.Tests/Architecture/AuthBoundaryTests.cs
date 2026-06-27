@@ -23,6 +23,8 @@ public sealed class AuthBoundaryTests {
             // circuit-safe bearer relay, so this is a legitimate Shell auth-area file.
             Normalize("src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerTokenRelayServiceExtensions.cs"),
             Normalize("src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthenticationOptions.cs"),
+            // AppHost owns local orchestration and may call provider-specific Aspire security helpers.
+            Normalize("src/Hexalith.FrontComposer.AppHost/Program.cs"),
             Normalize("src/Hexalith.FrontComposer.Shell/Services/Auth/"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Extensions/FrontComposerAuthenticationServiceExtensionsTests.cs"),
@@ -36,6 +38,7 @@ public sealed class AuthBoundaryTests {
             // P18 — case-insensitive path comparison (Windows-developed, may run on Linux CI).
             if (relative.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
                 || relative.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                || relative.StartsWith($"references{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
                 || allowedPathFragments.Any(p => relative.StartsWith(p, StringComparison.OrdinalIgnoreCase))) {
                 continue;
             }

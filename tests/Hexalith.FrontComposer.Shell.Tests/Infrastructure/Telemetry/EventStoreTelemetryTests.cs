@@ -150,21 +150,25 @@ public sealed class EventStoreTelemetryTests {
 
         _ = await sut.QueryAsync<OrderProjection>(
             new QueryRequest(
-                ProjectionType: "orders",
+                ProjectionType: "telemetry-raw-etag-orders",
                 TenantId: "tenant-secret",
                 Domain: "orders",
                 AggregateId: "order-1",
-                QueryType: "GetOrders"),
+                QueryType: "TelemetryRawEtagProbe"),
             TestContext.Current.CancellationToken);
 
         Activity activity = capture.Single(
             FrontComposerTelemetry.QueryExecuteOperation,
             activity => string.Equals(
-                activity.GetTagItem(FrontComposerTelemetry.QueryTypeTag) as string,
-                "GetOrders",
-                StringComparison.Ordinal));
-        activity.GetTagItem(FrontComposerTelemetry.ProjectionTypeTag).ShouldBe("orders");
-        activity.GetTagItem(FrontComposerTelemetry.QueryTypeTag).ShouldBe("GetOrders");
+                    activity.GetTagItem(FrontComposerTelemetry.QueryTypeTag) as string,
+                    "TelemetryRawEtagProbe",
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    activity.GetTagItem(FrontComposerTelemetry.OutcomeTag) as string,
+                    "not_modified",
+                    StringComparison.Ordinal));
+        activity.GetTagItem(FrontComposerTelemetry.ProjectionTypeTag).ShouldBe("telemetry-raw-etag-orders");
+        activity.GetTagItem(FrontComposerTelemetry.QueryTypeTag).ShouldBe("TelemetryRawEtagProbe");
         activity.GetTagItem(FrontComposerTelemetry.OutcomeTag).ShouldBe("not_modified");
         activity.Tags.Select(static tag => tag.Value).ShouldNotContain("\"raw-etag-secret\"");
         activity.Tags.Select(static tag => tag.Value).ShouldNotContain("tenant-secret");
