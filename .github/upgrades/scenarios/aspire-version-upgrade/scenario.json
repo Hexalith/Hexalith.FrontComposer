@@ -3,11 +3,12 @@
   "operationId": "0a62fac4-a4df-4a7f-a809-916b1b56aa81",
   "description": "Upgrade existing Aspire projects to a newer Aspire version. Also handles TFM upgrades \u2014 preferred when the solution contains Aspire projects, since the Aspire version drives the required TFM. Triggers for \u0022upgrade Aspire\u0022, \u0022update Aspire version\u0022, \u0022move to latest Aspire\u0022, or any .NET upgrade request on a solution with Aspire artifacts.\n",
   "startTime": "2026-06-27T06:51:36.840129Z",
-  "lastUpdateTime": "2026-06-27T07:11:47.2235425Z",
+  "lastUpdateTime": "2026-06-27T07:14:16.9997819Z",
   "properties": {
     "taskStates": {
       "01-update-aspire-cli": "Completed",
-      "02-consolidate-apphost-sdk": "Completed"
+      "02-consolidate-apphost-sdk": "Completed",
+      "03-build-solution": "Completed"
     }
   },
   "folderPath": ""
