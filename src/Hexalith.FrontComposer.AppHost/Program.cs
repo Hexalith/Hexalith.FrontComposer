@@ -8,8 +8,10 @@ IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(ar
 // Uses builder.AppHostDirectory to work under both `dotnet run` and Aspire testing.
 string accessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.yaml");
 string adminServerAccessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.eventstore-admin.yaml");
+string sampleAccessControlConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "accesscontrol.sample.yaml");
 string resiliencyConfigPath = ResolveDaprConfigPath(builder.AppHostDirectory, "resiliency.yaml");
 string stateStoreComponentPath = ResolveDaprConfigPath(builder.AppHostDirectory, "statestore.yaml");
+string emptyDaprResourcesPath = ResolveEmptyDaprResourcesPath();
 (string? daprPlacementHostAddress, string? daprSchedulerHostAddress) = AspireDaprLocalServiceEndpoints.Resolve(
     builder.Configuration[AspireDaprLocalServiceEndpoints.PlacementHostAddressKey],
     builder.Configuration[AspireDaprLocalServiceEndpoints.SchedulerHostAddressKey]);
@@ -59,7 +61,8 @@ _ = builder.AddProject<HexalithTenantsSample>("sample")
     .AddEventStoreDomainModule(
         eventStoreResources,
         "sample",
-        accessControlConfigPath,
+        sampleAccessControlConfigPath,
+        isolatedDaprResourcesPath: emptyDaprResourcesPath,
         daprPlacementHostAddress: daprPlacementHostAddress,
         daprSchedulerHostAddress: daprSchedulerHostAddress);
 
@@ -147,4 +150,10 @@ static string ResolveDaprConfigPath(string appHostDirectory, string fileName) {
         "DAPR access control configuration not found. "
         + $"Ensure {fileName} exists in the DaprComponents directory.",
         configPath);
+}
+
+static string ResolveEmptyDaprResourcesPath() {
+    string path = Path.Combine(Path.GetTempPath(), "hexalith-frontcomposer-empty-dapr-resources");
+    _ = Directory.CreateDirectory(path);
+    return path;
 }

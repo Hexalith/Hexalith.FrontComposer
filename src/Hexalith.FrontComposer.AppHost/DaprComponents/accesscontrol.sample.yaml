@@ -1,0 +1,41 @@
+# WARNING: Local development only.
+# Production MUST use receiver-specific deny-by-default configs with mTLS.
+# See deploy/dapr/ for production templates.
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: accesscontrol-sample
+spec:
+  # Name resolution: SQLite shared registry (replaces the self-hosted mDNS default).
+  # On Windows, mDNS multicast (UDP 5353) is frequently dropped, so sidecars can't
+  # discover each other's randomly-assigned gRPC ports -> "couldn't find service: <app-id>".
+  # SQLite has every sidecar register into one shared on-disk registry instead. The path is
+  # RELATIVE, so it resolves against each daprd's working directory (the AppHost dir) -> all
+  # sidecars on this host share the SAME nr.db. Committable + CI-friendly; needs no firewall
+  # rule. MUST be identical in every Configuration CRD.
+  # Ref: https://docs.dapr.io/reference/components-reference/supported-name-resolution/nr-sqlite/
+  nameResolution:
+    component: "sqlite"
+    version: "v1"
+    configuration:
+      connectionString: "nr.db"
+      timeout: "5s"
+      updateInterval: "10s"
+      busyTimeout: "2s"
+      # Dapr's default SQLite cleanupInterval is 1h. In local multi-sidecar
+      # Aspire runs this can remove active host registrations and terminate
+      # sidecars with "Host registration lost"; keep cleanup outside normal
+      # developer session length.
+      cleanupInterval: "168h"
+  accessControl:
+    defaultAction: allow
+    trustDomain: "public"
+    policies:
+      - appId: eventstore
+        defaultAction: deny
+        trustDomain: "public"
+        namespace: "default"
+        operations:
+          - name: /**
+            httpVerb: ['POST']
+            action: allow
