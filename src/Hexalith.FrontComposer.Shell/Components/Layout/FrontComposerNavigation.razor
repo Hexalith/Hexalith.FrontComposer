@@ -52,15 +52,21 @@
         </text>;
 }
 
+@* Story (cc-2026-06-28): the rail root is a plain <div> so Blazor CSS isolation lands the scope
+   id on it. Previously the root was a <FluentStack>, whose rendered div never received the scope
+   attribute, leaving the entire FrontComposerNavigation.razor.css inert (no rail divider/padding,
+   no active accent indicator, dead label rule). The div revives the scoped rules; the inner
+   FluentStack keeps the vertical stack/gap so Fluent still owns the layout primitive. *@
+<div class="@RailClass"
+     style="width: @RailWidth"
+     data-testid="fc-navigation-rail"
+     data-rail-width="@RailWidthValue"
+     role="navigation"
+     aria-label="@Localizer["NavMenuAriaLabel"].Value">
 <FluentStack Orientation="Orientation.Vertical"
              VerticalGap="4px"
              HorizontalAlignment="HorizontalAlignment.Center"
-             Width="@RailWidth"
-             Class="@RailClass"
-             data-testid="fc-navigation-rail"
-             data-rail-width="@RailWidthValue"
-             role="navigation"
-             aria-label="@Localizer["NavMenuAriaLabel"].Value">
+             Width="100%">
     @foreach (DomainManifest manifest in Registry.GetManifests())
     {
         List<string> projections = VisibleProjections(manifest, discovery.Counts);
@@ -195,3 +201,4 @@
         </FluentMenu>
     }
 </FluentStack>
+</div>

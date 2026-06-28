@@ -1,28 +1,23 @@
-/* Story 8.5 — unified bounded-context navigation rail. CSS is limited to layout,
-   overflow, and the accent thread; Fluent components own control styling. */
+/* Story 8.5 / cc-2026-06-28 — unified bounded-context navigation rail. The rail root is a plain
+   <div> (see .razor) so Blazor CSS isolation lands the scope id and these rules actually apply;
+   Fluent components still own control styling. CSS is limited to layout, the rail divider, the
+   active accent thread, and Aspire-style icon-over-label tiles. */
 
 .fc-navigation-rail {
     box-sizing: border-box;
     height: 100%;
-    padding: 4px 0;
+    padding: 8px 4px;
     border-inline-end: 1px solid var(--colorNeutralStroke2);
-}
-
-.fc-navigation-rail--labeled {
-    align-items: stretch;
-}
-
-.fc-navigation-rail--icon-only {
-    align-items: center;
 }
 
 ::deep .fc-navigation-rail__tile {
     position: relative;
-    width: calc(100% - 8px);
-    min-height: 44px;
+    width: 100%;
+    min-height: 48px;
     min-width: 0;
-    justify-content: center;
     box-sizing: border-box;
+    /* Aspire-style: stack the icon over its label inside the tile button. */
+    flex-direction: column;
 }
 
 ::deep .fc-navigation-rail__tile--active {
@@ -30,8 +25,7 @@
 }
 
 ::deep .fc-navigation-rail__label {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 40px;
+    max-width: 100%;
+    text-align: center;
+    line-height: 1.15;
 }
