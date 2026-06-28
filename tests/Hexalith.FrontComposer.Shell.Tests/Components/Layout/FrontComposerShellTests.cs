@@ -112,7 +112,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain(
-                "height: 48px; padding: 0 12px; background: var(--colorNeutralBackground2); border-block-end: 1px solid var(--colorNeutralStroke2);",
+                "height: 48px; padding: 0 12px; background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); border-block-end: 1px solid var(--colorNeutralStroke2);",
                 Case.Sensitive);
             cut.Markup.ShouldNotContain("--colorCompoundBrandBackground", Case.Sensitive);
             cut.Markup.ShouldNotContain("--colorBrandBackground", Case.Sensitive);

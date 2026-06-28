@@ -49,7 +49,7 @@
             <FluentLayoutItem Area="@LayoutArea.Header" Height="48px">
                 <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
                              HorizontalAlignment="HorizontalAlignment.SpaceBetween"
-                             Style="height: 48px; padding: 0 12px; background: var(--colorNeutralBackground2); border-block-end: 1px solid var(--colorNeutralStroke2);">
+                             Style="height: 48px; padding: 0 12px; background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); border-block-end: 1px solid var(--colorNeutralStroke2);">
                     <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
                                  HorizontalGap="@HeaderStartHorizontalGap">
                         @if (HeaderStart is not null)
@@ -147,14 +147,18 @@
 
             <FluentLayoutItem Area="@LayoutArea.Footer">
                 <FluentStack VerticalAlignment="VerticalAlignment.Center"
-                             Style="padding: 8px 12px; min-height: 36px; background: var(--colorNeutralBackground2); border-block-start: 1px solid var(--colorNeutralStroke2);">
+                             Style="padding: 8px 12px; min-height: 36px; background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground2); border-block-start: 1px solid var(--colorNeutralStroke2);">
                     @if (Footer is not null)
                     {
                         @Footer
                     }
                     else
                     {
-                        <FluentText As="TextTag.Span" Size="TextSize.Size200" Color="Color.Lightweight">
+                        @* Footer text inherits the muted --colorNeutralForeground2 from the frame above.
+                           Color.Lightweight is NOT used here: in Fluent UI v5 it maps to
+                           --colorNeutralForegroundInverted (white), which is invisible on the neutral
+                           light footer surface. *@
+                        <FluentText As="TextTag.Span" Size="TextSize.Size200">
                             @Localizer["FooterCopyright", DateTime.Now.Year].Value
                         </FluentText>
                     }
