@@ -15,20 +15,25 @@
    (NavigationEffects.HandleSidebarToggled) are already wired to that state. At CompactDesktop /
    Tablet / Phone it stays the FluentLayoutHamburger that opens the responsive navigation drawer. *@
 
-@if (IsDesktop)
-{
-    <FluentButton Appearance="@ButtonAppearance.Subtle"
-                  Title="@Localizer["HamburgerToggleAriaLabel"].Value"
-                  aria-label="@Localizer["HamburgerToggleAriaLabel"].Value"
-                  data-testid="fc-hamburger-toggle"
-                  OnClick="ToggleSidebar">
-        <FluentIcon Value="@FcFluentIcons.Navigation20()" />
-    </FluentButton>
-}
-else
-{
-    <FluentLayoutHamburger Visible="true"
-                           @ref="_hamburger"
-                           IconTitle="@Localizer["HamburgerToggleAriaLabel"].Value"
-                           data-testid="fc-hamburger-toggle" />
-}
+@* Plain HTML root so the scoped FcHamburgerToggle.razor.css scope id (b-xxxxx) lands on a real
+   element and the `::deep svg` fill override actually applies. A Fluent component root would NOT
+   get the scope id splatted onto its rendered DOM, leaving the stylesheet inert. *@
+<div class="fc-hamburger-toggle">
+    @if (IsDesktop)
+    {
+        <FluentButton Appearance="@ButtonAppearance.Subtle"
+                      Title="@Localizer["HamburgerToggleAriaLabel"].Value"
+                      aria-label="@Localizer["HamburgerToggleAriaLabel"].Value"
+                      data-testid="fc-hamburger-toggle"
+                      OnClick="ToggleSidebar">
+            <FluentIcon Value="@FcFluentIcons.Navigation20()" />
+        </FluentButton>
+    }
+    else
+    {
+        <FluentLayoutHamburger Visible="true"
+                               @ref="_hamburger"
+                               IconTitle="@Localizer["HamburgerToggleAriaLabel"].Value"
+                               data-testid="fc-hamburger-toggle" />
+    }
+</div>

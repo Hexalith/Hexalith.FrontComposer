@@ -1,0 +1,21 @@
+.fc-hamburger-toggle {
+    display: inline-flex;
+    align-items: center;
+}
+
+/* Force the navigation toggle glyph to the theme foreground so it is visible at every viewport
+   tier and in both light/dark themes.
+
+   Root cause this fixes: at non-Desktop tiers (< 1366px) the toggle renders Fluent's
+   <FluentLayoutHamburger>, whose internal FluentButton carries an inline
+   `color: var(--colorNeutralForegroundOnBrand)` (white, meant for text on a brand-colored bar).
+   The glyph's `fill: currentColor` therefore resolves to white, which is invisible on the shell's
+   light `--colorNeutralBackground2` header. The Desktop branch (our own Subtle FluentButton) was
+   unaffected, so the bug only showed when the window was narrower than the Desktop breakpoint.
+
+   Because both the glyph `fill` and the button `color` are set as INLINE styles by Fluent, an author
+   rule must use `!important` to win the cascade. `::deep` is required because the <svg> lives inside
+   a child component and does not carry this component's scope id. */
+.fc-hamburger-toggle ::deep svg {
+    fill: var(--colorNeutralForeground1) !important;
+}
