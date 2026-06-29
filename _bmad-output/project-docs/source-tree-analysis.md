@@ -11,8 +11,8 @@ frontcomposer/
 ├── Directory.Build.props           # LangVersion=latest, Nullable, ImplicitUsings, TreatWarningsAsErrors=true; deps switch
 ├── Directory.Build.targets         # opt-in NuGet package validation (ApiCompat)
 ├── Directory.Packages.props        # ★ Centralized package versions (single source of truth)
-├── deps.local.props                # submodule ProjectReference paths (default)
-├── deps.nuget.props                # NuGet-package refs (when UseNuGetDeps=true)
+├── deps.local.props                # Debug/source submodule ProjectReference paths
+├── deps.nuget.props                # Release/package NuGet dependency mode
 ├── nuget.config
 ├── package.json / package-lock.json# semantic-release + husky + e2e test scripts (Node tooling, not an app)
 ├── commitlint.config.mjs           # Conventional Commits enforcement

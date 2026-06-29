@@ -25,7 +25,7 @@ git submodule update --init   # root-declared references/ submodules only
 
 > **Submodule rule:** initialize/update only the **root-declared** submodules under `references/` declared in [.gitmodules](.gitmodules). **Do not** recurse into nested submodules; deinit any that get pulled in accidentally. Never modify submodule files without explicit approval.
 
-By default the build references the submodules as **local `ProjectReference`s** ([deps.local.props](deps.local.props)). Set `-p:UseNuGetDeps=true` to reference the published NuGet packages instead (uses `deps.nuget.props`).
+Debug builds reference the submodules as **local `ProjectReference`s** ([deps.local.props](deps.local.props)). Release/package builds reference the published NuGet packages instead ([deps.nuget.props](deps.nuget.props)); direct `references/Hexalith.*` solution entries are disabled for `Release|*`. Use `-p:UseHexalithProjectReferences=true` only for an intentional source-debug Release session. `-p:UseNuGetDeps=true|false` remains the legacy inverse switch.
 
 ## Solution & build
 
@@ -33,7 +33,7 @@ By default the build references the submodules as **local `ProjectReference`s** 
 
 ```bash
 # Restore (centralized package versions live in Directory.Packages.props)
-dotnet restore Hexalith.FrontComposer.slnx
+dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
 
 # Gate 1 — Contracts must build in isolation on netstandard2.0 (analyzer-host TFM)
 dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj \

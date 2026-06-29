@@ -61,33 +61,77 @@
        This is the transitive project-reference closure of the FrontComposer projects plus the
        AppHost-orchestrated EventStore/Tenants services. -->
   <Folder Name="/references/Hexalith.Commons/">
-    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.Aspire/Hexalith.Commons.Aspire.csproj" />
-    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/Hexalith.Commons.ServiceDefaults.csproj" />
-    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj" />
+    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.Aspire/Hexalith.Commons.Aspire.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.ServiceDefaults/Hexalith.Commons.ServiceDefaults.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.Commons/src/libraries/Hexalith.Commons.UniqueIds/Hexalith.Commons.UniqueIds.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
   </Folder>
   <Folder Name="/references/Hexalith.EventStore/">
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj" />
-    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj" />
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Abstractions/Hexalith.EventStore.Admin.Abstractions.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.Server/Hexalith.EventStore.Admin.Server.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Client/Hexalith.EventStore.Client.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Hexalith.EventStore.Contracts.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.DomainService/Hexalith.EventStore.DomainService.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.Server/Hexalith.EventStore.Server.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.ServiceDefaults/Hexalith.EventStore.ServiceDefaults.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore.SignalR/Hexalith.EventStore.SignalR.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.EventStore/src/Hexalith.EventStore/Hexalith.EventStore.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
   </Folder>
   <Folder Name="/references/Hexalith.Tenants/">
-    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants.Client/Hexalith.Tenants.Client.csproj" />
-    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj" />
-    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj" />
-    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj" />
-    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj" />
+    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants.Client/Hexalith.Tenants.Client.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants.Contracts/Hexalith.Tenants.Contracts.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants.Server/Hexalith.Tenants.Server.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.Tenants/src/Hexalith.Tenants/Hexalith.Tenants.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
   </Folder>
   <Folder Name="/references/Hexalith.Memories/">
-    <Project Path="references/Hexalith.Memories/src/Hexalith.Memories.Client.Rest/Hexalith.Memories.Client.Rest.csproj" />
-    <Project Path="references/Hexalith.Memories/src/Hexalith.Memories.Contracts/Hexalith.Memories.Contracts.csproj" />
+    <Project Path="references/Hexalith.Memories/src/Hexalith.Memories.Client.Rest/Hexalith.Memories.Client.Rest.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
+    <Project Path="references/Hexalith.Memories/src/Hexalith.Memories.Contracts/Hexalith.Memories.Contracts.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
   </Folder>
 </Solution>

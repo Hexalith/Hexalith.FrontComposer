@@ -88,7 +88,7 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - NFR11: Telemetry via `FrontComposerActivitySource` (OpenTelemetry `ActivitySource`).
 - NFR12: Dependency direction points down to `Contracts`; `SourceTools` references only `Contracts` to stay netstandard2.0-clean.
 - NFR13: **Confirmed (2026-06-21)** Trim/AOT readiness — `PublishTrimmed`/`PublishAot` enable the HFC1070 advisory; reflection projection catalog needs an `IActionQueueProjectionCatalog` override.
-- NFR14: Root-declared Hexalith submodules live under `references/Hexalith.*`; initialize only those root `.gitmodules` entries, never recurse into nested submodules, and never modify submodule files without explicit approval.
+- NFR14: Root-declared Hexalith submodules live under `references/Hexalith.*`; initialize only those root `.gitmodules` entries, never recurse into nested submodules, and never modify submodule files without explicit approval. Debug/source builds consume Hexalith libraries through local `ProjectReference`s, while Release/package builds consume published NuGet packages.
 
 ### Additional Requirements
 

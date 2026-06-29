@@ -256,8 +256,9 @@ _This file contains critical rules and patterns that AI agents must follow when 
   `references/Hexalith.Memories`, `references/Hexalith.PolymorphicSerializations`,
   `references/Hexalith.Tenants`). **Never `--init --recursive`** or recurse into nested submodules;
   **never modify submodule files without explicit approval** (changes propagate across the Hexalith
-  ecosystem). Build defaults to local `ProjectReference`s
-  (`deps.local.props`); `-p:UseNuGetDeps=true` switches to published NuGet (`deps.nuget.props`)
+  ecosystem). Debug builds use local `ProjectReference`s (`deps.local.props`); Release/package builds
+  use published NuGet packages (`deps.nuget.props`). `UseHexalithProjectReferences` is the explicit
+  source override; `UseNuGetDeps` remains the legacy inverse switch.
 - **`docs/` is a PUBLISHED DocFX site** (Diataxis), CI-gated (Gate 2d, `pwsh ./eng/validate-docs.ps1`)
   and referenced by product code, tests, CI & fixtures — **do NOT use it as scratch space**.
   Generated/BMAD docs go to `_bmad-output/` (this file lives there)

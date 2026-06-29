@@ -72,6 +72,8 @@ REQUIRED_ROW_FIELDS = [
 # because they encode symbol-package format, trim/IsTrimmable, and other release-relevant
 # pack/sign policy. Files that are listed but missing on disk are simply skipped by
 # `release_definition_fingerprints`.
+# Correct-course 2026-06-29: `deps.nuget.props` is release-definition input because Release
+# builds must consume published Hexalith packages rather than local submodule projects.
 # CR-12-4-P215 (round-8, from CR-12-4-D16): removed `eng/release_evidence.py`. Routine
 # helper refactors / type-hint additions / docstring polish previously invalidated every
 # fallback approval and every prior sealed manifest. The helper is now bound via the
@@ -86,6 +88,7 @@ RELEASE_DEFINITION_FILES = [
     "Directory.Build.props",
     "Directory.Build.targets",
     "Directory.Packages.props",
+    "deps.nuget.props",
 ]
 # CR-12-4-P124 (round-6): keys whose drift invalidates a `fallback-approved` release.
 # Excludes `Directory.Packages.props` so transitive package-version bumps do not force
@@ -99,6 +102,7 @@ FALLBACK_INVALIDATION_FILES = [
     "eng/release-package-inventory.json",
     "Directory.Build.props",
     "Directory.Build.targets",
+    "deps.nuget.props",
 ]
 
 # CR-12-4-D7 (round-5): the AC26 approval matrix is now a machine-readable constant

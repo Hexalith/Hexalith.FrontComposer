@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 using Shouldly;
 
@@ -101,6 +102,67 @@ public sealed class CiGovernanceTests {
             recurseFlagEnabling.IsMatch(text).ShouldBeFalse($"{name} must not enable --recurse-submodules.");
             submodulesRecursive.IsMatch(text).ShouldBeFalse($"{name} must not use submodules: recursive.");
         }
+    }
+
+    [Fact]
+    public void HexalithDependencyMode_DefaultsToProjectReferencesForDebugAndPackagesForRelease() {
+        string root = RepositoryRoot();
+        string directoryBuildProps = File.ReadAllText(Path.Combine(root, "Directory.Build.props"));
+        string appHostProject = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.AppHost", "Hexalith.FrontComposer.AppHost.csproj"));
+        string appHostProgram = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.AppHost", "Program.cs"));
+
+        directoryBuildProps.ShouldContain("UseHexalithProjectReferences");
+        directoryBuildProps.ShouldContain("$(Configuration)' == 'Debug'\">true</UseHexalithProjectReferences>");
+        directoryBuildProps.ShouldContain("<Import Project=\"deps.local.props\" Condition=\"'$(UseHexalithProjectReferences)' == 'true'");
+        directoryBuildProps.ShouldContain("<Import Project=\"deps.nuget.props\" Condition=\"'$(UseHexalithProjectReferences)' != 'true'");
+        directoryBuildProps.ShouldContain("UseNuGetDeps", customMessage: "the legacy inverse switch remains supported for existing scripts");
+
+        File.Exists(Path.Combine(root, "deps.local.props")).ShouldBeTrue();
+        File.Exists(Path.Combine(root, "deps.nuget.props")).ShouldBeTrue();
+
+        appHostProject.ShouldContain("ProjectReference Include=\"$(EventStorePath)/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj\"");
+        appHostProject.ShouldContain("Condition=\"'$(HexalithEventStoreFromSource)' == 'true'\"");
+        appHostProject.ShouldContain("PackageReference Include=\"Hexalith.EventStore.Aspire\"");
+        appHostProject.ShouldContain("Condition=\"'$(HexalithEventStoreFromSource)' != 'true'\"");
+        appHostProgram.ShouldNotContain(
+            "Hexalith.Commons.Aspire",
+            customMessage: "Hexalith.Commons.Aspire is not published as a NuGet package, so AppHost Release builds must not depend on it.");
+
+        XDocument packages = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
+        XElement eventStoreAspire = packages
+            .Descendants("PackageVersion")
+            .Single(e => string.Equals((string?)e.Attribute("Include"), "Hexalith.EventStore.Aspire", StringComparison.Ordinal));
+        eventStoreAspire.Attribute("Version")?.Value.ShouldBe("3.20.0");
+    }
+
+    [Fact]
+    public void ReleaseSolutionBuild_ExcludesExternalHexalithReferenceProjects() {
+        string root = RepositoryRoot();
+        XDocument solution = XDocument.Load(Path.Combine(root, "Hexalith.FrontComposer.slnx"));
+
+        List<string> offenders = [];
+        int scanned = 0;
+        foreach (XElement project in solution.Descendants("Project")) {
+            string? path = project.Attribute("Path")?.Value;
+            if (path is null || !path.StartsWith("references/Hexalith.", StringComparison.Ordinal)) {
+                continue;
+            }
+
+            scanned++;
+            bool disablesRelease = project
+                .Elements("Build")
+                .Any(static build =>
+                    string.Equals((string?)build.Attribute("Solution"), "Release|*", StringComparison.Ordinal)
+                    && string.Equals((string?)build.Attribute("Project"), "false", StringComparison.Ordinal));
+            if (!disablesRelease) {
+                offenders.Add(path);
+            }
+        }
+
+        scanned.ShouldBeGreaterThan(0, "the solution should continue to expose external Hexalith projects for Debug/source navigation");
+        offenders.ShouldBeEmpty(
+            "references/Hexalith.* projects are source-debug conveniences only. Release solution builds must consume "
+            + "published NuGet packages instead. Missing Release|* Project=false on: " + string.Join("; ", offenders));
     }
 
     private static string StripYamlComments(string yaml) {
@@ -399,7 +461,7 @@ public sealed class CiGovernanceTests {
             // fallback approvals. CR-12-4-P124 (round-6) restored it to
             // RELEASE_DEFINITION_FILES (drift detection) while keeping it out of
             // fallback invalidation. CR-12-4-P172 (round-7): the test baseline must
-            // include all 7 RELEASE_DEFINITION_FILES so `fingerprint_diff` does NOT
+            // include all 8 RELEASE_DEFINITION_FILES so `fingerprint_diff` does NOT
             // emit a spurious "fingerprint has no baseline entry" diagnostic for
             // Directory.Packages.props — that would let a future regression on a
             // different file slip past the assertion which only checks for the test's
@@ -412,6 +474,7 @@ public sealed class CiGovernanceTests {
                 "Directory.Build.props",
                 "Directory.Build.targets",
                 "Directory.Packages.props",
+                "deps.nuget.props",
             ];
             foreach (string file in releaseDefinitionFiles) {
                 string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));
@@ -497,7 +560,7 @@ public sealed class CiGovernanceTests {
             // fallback approvals. CR-12-4-P124 (round-6) restored it to
             // RELEASE_DEFINITION_FILES (drift detection) while keeping it out of
             // fallback invalidation. CR-12-4-P172 (round-7): the test baseline must
-            // include all 7 RELEASE_DEFINITION_FILES so `fingerprint_diff` does NOT
+            // include all 8 RELEASE_DEFINITION_FILES so `fingerprint_diff` does NOT
             // emit a spurious "fingerprint has no baseline entry" diagnostic for
             // Directory.Packages.props — that would let a future regression on a
             // different file slip past the assertion which only checks for the test's
@@ -510,6 +573,7 @@ public sealed class CiGovernanceTests {
                 "Directory.Build.props",
                 "Directory.Build.targets",
                 "Directory.Packages.props",
+                "deps.nuget.props",
             ];
             foreach (string file in releaseDefinitionFiles) {
                 string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));
@@ -1009,7 +1073,7 @@ public sealed class CiGovernanceTests {
             // longer in RELEASE_DEFINITION_FILES — the sealed manifest tracks helper
             // identity via the structured `helper_version` field instead. The
             // round-trip baseline now matches the live `RELEASE_DEFINITION_FILES` set
-            // (6 entries) and embeds the live `helper_version_record()` so
+            // (7 entries) and embeds the live `helper_version_record()` so
             // `manifest_diagnostics` sees no drift.
             string[] releaseDefinitionFiles = [
                 ".github/workflows/release.yml",
@@ -1018,6 +1082,7 @@ public sealed class CiGovernanceTests {
                 "Directory.Build.props",
                 "Directory.Build.targets",
                 "Directory.Packages.props",
+                "deps.nuget.props",
             ];
             foreach (string file in releaseDefinitionFiles) {
                 string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));

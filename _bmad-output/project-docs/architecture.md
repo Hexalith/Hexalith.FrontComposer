@@ -323,7 +323,7 @@ This is the "MCP boundary" described in `docs/concepts/source-generation-and-mcp
 
 ## 8. External dependencies (submodules)
 
-Root-declared git submodules live under `references/` ([.gitmodules](.gitmodules)). Build-relevant submodules are consumed as **local `ProjectReference`s by default** (via [deps.local.props](deps.local.props)) or as NuGet packages when `UseNuGetDeps=true` (via `deps.nuget.props`). They are **not** part of this documentation scope:
+Root-declared git submodules live under `references/` ([.gitmodules](.gitmodules)). Build-relevant Hexalith libraries are consumed as **local `ProjectReference`s in Debug/source builds** (via [deps.local.props](deps.local.props)) and as **published NuGet packages in Release/package builds** (via [deps.nuget.props](deps.nuget.props)). `UseHexalithProjectReferences=true` is the explicit source-debug override; `UseNuGetDeps` remains the legacy inverse switch. Direct `references/Hexalith.*` solution entries are disabled for `Release|*` so Release solution builds cannot silently compile submodule sources. They are **not** part of this documentation scope:
 
 | Submodule | Repo | Role for FrontComposer |
 |---|---|---|

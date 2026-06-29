@@ -8,9 +8,21 @@
     <FrontComposerRoot Condition="'$(FrontComposerRoot)' == ''">false</FrontComposerRoot>
   </PropertyGroup>
 
-  <!-- deps import switch: UseNuGetDeps selects between local submodule refs and NuGet packages -->
-  <Import Project="deps.local.props" Condition="'$(UseNuGetDeps)' != 'true' AND '$(FrontComposerRoot)' == 'true'" />
-  <Import Project="deps.nuget.props" Condition="'$(UseNuGetDeps)' == 'true' AND '$(FrontComposerRoot)' == 'true'" />
+  <PropertyGroup>
+    <!-- Hexalith dependency mode:
+         Debug uses root-declared submodule ProjectReference paths for source debugging.
+         Release uses published NuGet packages for reproducible package/release builds.
+         UseNuGetDeps is kept as the legacy inverse switch for existing scripts. -->
+    <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(UseNuGetDeps)' == 'true'">false</UseHexalithProjectReferences>
+    <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(UseNuGetDeps)' == 'false'">true</UseHexalithProjectReferences>
+    <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(Configuration)' == 'Debug'">true</UseHexalithProjectReferences>
+    <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == ''">false</UseHexalithProjectReferences>
+    <UseNuGetDeps Condition="'$(UseNuGetDeps)' == '' AND '$(UseHexalithProjectReferences)' == 'true'">false</UseNuGetDeps>
+    <UseNuGetDeps Condition="'$(UseNuGetDeps)' == ''">true</UseNuGetDeps>
+  </PropertyGroup>
+
+  <Import Project="deps.local.props" Condition="'$(UseHexalithProjectReferences)' == 'true' AND '$(FrontComposerRoot)' == 'true'" />
+  <Import Project="deps.nuget.props" Condition="'$(UseHexalithProjectReferences)' != 'true' AND '$(FrontComposerRoot)' == 'true'" />
 
   <PropertyGroup>
     <LangVersion>latest</LangVersion>

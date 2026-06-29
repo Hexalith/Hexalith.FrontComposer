@@ -38,7 +38,7 @@ jobs:
 
       - name: Restore and build
         run: |
-          dotnet restore Hexalith.FrontComposer.slnx
+          dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
           dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore
 
       - name: Validate quarantine metadata

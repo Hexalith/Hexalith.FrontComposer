@@ -13,8 +13,12 @@
     <!-- Reusable DAPR topology orchestration (state store + pub/sub, sidecars, resiliency)
          for the Hexalith event store. Consumed via the platform Aspire extension methods
          (AddHexalithEventStore / AddEventStoreDomainModule). EventStore is ALWAYS taken from
-         the root-declared references submodule (see deps.local.props), never Tenants' nested copy. -->
-    <ProjectReference Include="$(EventStorePath)/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj" IsAspireProjectResource="false" />
+         the root-declared references submodule for Debug/source builds, never Tenants' nested copy. -->
+    <ProjectReference Include="$(EventStorePath)/src/Hexalith.EventStore.Aspire/Hexalith.EventStore.Aspire.csproj"
+                      IsAspireProjectResource="false"
+                      Condition="'$(HexalithEventStoreFromSource)' == 'true'" />
+    <PackageReference Include="Hexalith.EventStore.Aspire"
+                      Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
     <!-- Counter sample web shell, co-hosted as a resource in the single platform AppHost. -->
     <ProjectReference Include="..\..\samples\Counter\Counter.Web\Counter.Web.csproj" />
   </ItemGroup>

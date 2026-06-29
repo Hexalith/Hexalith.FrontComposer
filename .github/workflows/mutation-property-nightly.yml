@@ -31,7 +31,7 @@ jobs:
       - name: Restore tools and packages
         run: |
           dotnet tool restore
-          dotnet restore Hexalith.FrontComposer.slnx
+          dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
 
       - name: Build SourceTools tests
         run: dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --no-restore

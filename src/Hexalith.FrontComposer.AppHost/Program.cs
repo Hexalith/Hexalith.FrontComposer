@@ -1,4 +1,3 @@
-using Hexalith.Commons.Aspire;
 using Hexalith.EventStore.Aspire;
 using Hexalith.FrontComposer.AppHost;
 

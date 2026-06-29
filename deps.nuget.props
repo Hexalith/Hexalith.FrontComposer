@@ -1,0 +1,6 @@
+<Project>
+  <!-- Published Hexalith NuGet packages (Release/package builds). -->
+  <PropertyGroup>
+    <HexalithEventStoreFromSource>false</HexalithEventStoreFromSource>
+  </PropertyGroup>
+</Project>

@@ -91,7 +91,7 @@ jobs:
       # Gate 1: Contracts builds in isolation targeting netstandard2.0
       - name: 'Gate 1: Contracts Build (netstandard2.0)'
         run: |
-          dotnet restore Hexalith.FrontComposer.slnx
+          dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
           dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -f netstandard2.0 --configuration Release --no-restore
 
       # Gate 2: Full solution builds

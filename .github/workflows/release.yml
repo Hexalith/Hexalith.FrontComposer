@@ -103,7 +103,7 @@ jobs:
           restore-keys: nuget-
 
       - name: Restore
-        run: dotnet restore Hexalith.FrontComposer.slnx
+        run: dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
 
       - name: Run All Tests
         env:
