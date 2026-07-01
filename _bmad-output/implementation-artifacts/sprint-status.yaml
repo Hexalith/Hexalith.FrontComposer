@@ -1,5 +1,5 @@
 # generated: 2026-06-03
-# last_updated: 2026-06-21
+# last_updated: 2026-07-01
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -27,15 +27,22 @@
 #   - optional: Can be completed but not required
 #   - done: Retrospective has been completed
 #
+# Action Item Status:
+#   - open: Committed during a retrospective, not yet addressed
+#   - in-progress: Actively being worked on
+#   - done: Completed
+#
 # WORKFLOW NOTES:
 # ===============
 # - Epic transitions to 'in-progress' automatically when first story is created
 # - Stories can be worked in parallel if team capacity allows
 # - Developer typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+# - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-06-03
-last_updated: 2026-06-25
+last_updated: 2026-07-01
+project: frontcomposer
 # 8-7 moved backlog -> ready-for-dev on 2026-06-25 (create-story; status as colored icon. Scope is Shell badge component + SourceTools generator emit: replace generated [ProjectionBadge] status-member FluentBadge pills with a colored FluentIcon + FluentTooltip/focus affordance and always-present contextual aria-label. Preserve nullable/plain-text/out-of-range enum fallbacks, exhaustive BadgeSlot handling including Accent, count/filter/nav badges as FluentBadge pills, Story 8.1-8.6 chrome/density/nav/toolbar guards, pinned Fluent v5 APIs, no icon package/package changes, no submodule edits, and no generated obj hand-edits.)
 # 8-6 moved in-progress -> review on 2026-06-25 (dev-story; implemented reusable FcPageToolbar with FluentTextInput search, optional FluentButton/FluentPopover filters, optional FluentMenuButton/FluentMenu view menu, right-aligned actions, caller-owned FluentTabs, FC-DOC page, and component index link. Release Shell.Tests build 0/0; focused Shell toolbar/header/list/governance lane 46/46; broad Shell non-Contract lane 1987/1987; e2e typecheck passed. Solution VSTest, DocFX metadata, and Playwright/Kestrel browser lanes are socket-blocked locally; docs structural fallback has pre-existing Story 9 producer/snippet failures.)
 # 8-6 moved ready-for-dev -> in-progress on 2026-06-25 (dev-story; starting reusable FcPageToolbar implementation. Baseline dccec20851f162f04ae8aef4d794a43908cb5f85 captured.)

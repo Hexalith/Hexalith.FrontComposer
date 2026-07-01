@@ -5,6 +5,7 @@
 - **Trigger type:** UI defect + minor UX refinement (direct UX request, running app `localhost:62445`)
 - **Change scope:** **Minor** — direct implementation by Developer agent
 - **Path forward:** Option 1 — Direct Adjustment (Effort **Low**, Risk **Low**)
+- **Status:** **APPROVED** by Administrator on 2026-07-01. Implementation evidence is present in the current FrontComposer source tree.
 
 ---
 
@@ -162,3 +163,14 @@ initials and menu title" — drop "the header label".
 - The connected user's name no longer renders inline in the header bar.
 - The avatar menu shows: **{user name} (disabled)** → divider → **Sign out**, unchanged.
 - All configured tests pass; Release build clean.
+
+---
+
+## Approval and Handoff Log
+
+- **2026-07-01 — Approved by Administrator.** User directive: `$bmad-correct-course approve change proposals`.
+- **Scope classification:** Minor.
+- **Routed to:** Developer agent for direct implementation.
+- **Implementation evidence observed in this approval pass:** the Shell header right action cluster has `Width="fit-content"`, the inline `fc-account-name` header label is absent from `FcAccountMenu`, and `FcAccountMenuAuthenticatedTests` now guards against reintroducing `data-testid="fc-account-name"`.
+- **Sprint-status:** N/A; no epic/story add, remove, or renumber is required.
+- **Validation note:** approval was documented from source inspection; build/test commands were not re-run in this approval pass.

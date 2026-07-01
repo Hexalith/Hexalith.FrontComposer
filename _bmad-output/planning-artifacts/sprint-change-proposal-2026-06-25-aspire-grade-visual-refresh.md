@@ -6,6 +6,7 @@
 - **Change scope:** **Major** — new **Epic 8** sequenced by PM/Architect. Lead story **8.1 ships immediately as Minor**.
 - **Path forward:** Hybrid — new framework epic, independently-shippable stories, lowest-risk/highest-impact first, plus a downstream host-adoption track.
 - **Review mode:** Incremental (each change refined and approved individually before compilation).
+- **Status:** **APPROVED** by Administrator on 2026-07-01. Epic 8 planning and implementation evidence are present in the current FrontComposer artifacts; Host-A remains a separate Tenants approval-gated track.
 
 ---
 
@@ -271,3 +272,14 @@ Réinitialiser les filtres" + search fields), and verify Compact density. **Not 
 - All configured tests pass; Release clean; `FluentConformanceTests` green incl. the new
   accent-as-background guard; **no legacy v4/FAST tokens introduced**.
 - Host-A tracked as a separate Tenants.UI change.
+
+---
+
+## Approval and Handoff Log
+
+- **2026-07-01 — Approved by Administrator.** User directive: `$bmad-correct-course approve change proposals`.
+- **Scope classification:** Major.
+- **Routed to:** PM / Architect for Epic 8 planning, Developer agent for stories 8.1-8.7, and Tenants team for the separate Host-A adoption track.
+- **Planning evidence observed in this approval pass:** `epics.md` contains Epic 8 and stories 8.1-8.7; `architecture.md` records the accent-as-thread rule and UX-DR amendments; component docs include `FcPageToolbar`.
+- **Implementation evidence observed in this approval pass:** `_bmad-output/implementation-artifacts/sprint-status.yaml` records Epic 8 and stories 8.1-8.7 as done, and story files 8.1-8.7 each carry `Status: done`.
+- **Submodule boundary:** no Tenants submodule files were modified by this approval pass. Host-A remains a separate scoped Tenants correct-course under explicit submodule approval.

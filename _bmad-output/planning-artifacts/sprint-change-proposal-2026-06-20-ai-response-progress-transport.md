@@ -6,6 +6,7 @@
 - **Driving change:** ChatBot Epic 10, Story 10.6b — "Streaming AI response + Stop/Cancel" AC1 progress transport
 - **Scope classification:** **Moderate** (additive Shell client + public-contract change; back-compatible)
 - **Release order:** **2 of 3** — depends on the EventStore detail/scope contract (proposal 1) being published; must publish before the ChatBot change (proposal 3).
+- **Status:** **APPROVED** by Administrator on 2026-07-01. Implementation evidence is present in the current FrontComposer source tree; release/package coordination remains the active handoff.
 - **Companion proposals:**
   - `Hexalith.EventStore/_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-ai-response-progress-transport.md`
   - `<chatbot>/_bmad-output/planning-artifacts/sprint-change-proposal-2026-06-20-ai-response-progress-transport.md`
@@ -133,3 +134,14 @@ public interface IProjectionChangeDetailNotifier
   3. Detail payload surfaced verbatim (opaque) to consumers; Shell adds no AI-domain knowledge.
   4. New version published and pinned for ChatBot (proposal 3).
 - **Do NOT:** change the signal-only handler signature or existing notifier events; interpret/transform the metadata map (pass it through opaque); drop scope on reconnect.
+
+---
+
+## Approval and Handoff Log
+
+- **2026-07-01 — Approved by Administrator.** User directive: `$bmad-correct-course approve change proposals`.
+- **Scope classification:** Moderate.
+- **Routed to:** FrontComposer Developer for direct implementation/release coordination, with Architect sign-off on the additive public communication surface.
+- **Implementation evidence observed in this approval pass:** `ProjectionChangedDetail`, `IProjectionChangeDetailNotifier`, `OnProjectionChangedDetail`, scoped `JoinGroupAsync`/`LeaveGroupAsync`, scoped `GroupKey`, DI registration, and focused projection subscription tests are present in `src/` and `tests/`.
+- **Accepted implementation deviation:** the approved implementation uses a FrontComposer-local, wire-compatible `ProjectionChangedDetail` DTO instead of referencing the EventStore client DTO, because `Hexalith.FrontComposer.Contracts` multi-targets `netstandard2.0` and cannot reference the net10-only EventStore client. Scoped joins/leaves use explicit `JoinGroupScoped` / `LeaveGroupScoped` wire methods for non-empty scope.
+- **Remaining handoff:** publish/pin the FrontComposer package version required by the downstream ChatBot proposal. No root sprint-status update is required unless a release-tracking story is added.
