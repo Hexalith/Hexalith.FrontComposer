@@ -174,6 +174,24 @@ public sealed class Story13AccessibilityPrimitivesTests : LayoutComponentTestBas
             "FrontComposerShell.razor.css must not contain `box-shadow: none` (zero-override focus invariant).");
     }
 
+    [Fact]
+    public void FrontComposerShell_GlobalCss_HidesSkipLinksUntilFocused() {
+        string cssPath = LocateShellGlobalCssFile();
+        string content = File.ReadAllText(cssPath);
+        string normalized = Regex.Replace(content, @"\s+", string.Empty);
+
+        normalized.ShouldContain(
+            ".fc-skip-link{position:absolute;left:-9999px;",
+            Case.Sensitive,
+            "Skip links must be off-screen on initial paint even when adopter scoped CSS wiring is delayed or broken.");
+        normalized.ShouldContain(
+            ".fc-skip-link:focus{left:8px;top:8px;",
+            Case.Sensitive,
+            "Keyboard focus must reveal the skip link.");
+        normalized.ShouldNotContain("display:none", Case.Insensitive);
+        normalized.ShouldNotContain("visibility:hidden", Case.Insensitive);
+    }
+
     private void RegisterRenderableRegistry() {
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
         registry.GetManifests().Returns([
@@ -201,5 +219,26 @@ public sealed class Story13AccessibilityPrimitivesTests : LayoutComponentTestBas
         }
 
         throw new FileNotFoundException("FrontComposerShell.razor.css not found from the test base directory.");
+    }
+
+    private static string LocateShellGlobalCssFile() {
+        string here = AppContext.BaseDirectory;
+        DirectoryInfo? cursor = new(here);
+        while (cursor is not null) {
+            string candidate = Path.Combine(
+                cursor.FullName,
+                "src",
+                "Hexalith.FrontComposer.Shell",
+                "wwwroot",
+                "css",
+                "fc-shell.css");
+            if (File.Exists(candidate)) {
+                return candidate;
+            }
+
+            cursor = cursor.Parent;
+        }
+
+        throw new FileNotFoundException("fc-shell.css not found from the test base directory.");
     }
 }

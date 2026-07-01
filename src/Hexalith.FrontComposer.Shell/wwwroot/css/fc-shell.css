@@ -1,0 +1,20 @@
+/* Framework-owned shell chrome primitives.
+   This global asset is injected by FrontComposerShell so adopter apps do not need to correctly wire
+   the Razor class library scoped CSS bundle before skip links are visually hidden. */
+
+.fc-skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 9999;
+    padding: 8px 12px;
+    background: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+    text-decoration: none;
+    border: 2px solid var(--colorStrokeFocus2);
+}
+
+.fc-skip-link:focus {
+    left: 8px;
+    top: 8px;
+}

@@ -254,6 +254,11 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// <summary>Marks only the framework default logo as decorative.</summary>
     protected string? HeaderLogoAriaHidden => HeaderLogo is null && ShowDefaultHeaderLogo ? "true" : null;
 
+    /// <summary>Global stylesheet that owns shell chrome primitives that must apply before scoped CSS is available.</summary>
+    protected string ShellStylesheetPath => NavigationManager
+        .ToAbsoluteUri("_content/Hexalith.FrontComposer.Shell/css/fc-shell.css")
+        .ToString();
+
     /// <summary>Global stylesheet that owns the body density cascade + shared screen-reader-only helper.</summary>
     protected string DensityStylesheetPath => NavigationManager
         .ToAbsoluteUri("_content/Hexalith.FrontComposer.Shell/css/fc-density.css")

@@ -15,29 +15,12 @@
     --fc-color-info: var(--colorStatusInfoForeground1);
 }
 
-/* Story 3-2 Task 8.3a (AC6 / D16) — visually-hidden-until-focused skip links for SkipToContent
-   + SkipToNavigation. WCAG 2.4.1 compliant; focus ring inherits Fluent UI's --colorStrokeFocus2
-   via the native :focus-visible default (zero-override invariant). */
-.fc-skip-link {
-    position: absolute;
-    left: -9999px;
-    top: 0;
-    z-index: 9999;
-    padding: 8px 12px;
-    background: var(--colorNeutralBackground1);
-    color: var(--colorNeutralForeground1);
-    text-decoration: none;
-    border: 2px solid var(--colorStrokeFocus2);
-}
-
-.fc-skip-link:focus {
-    left: 8px;
-    top: 8px;
-}
+/* Global shell primitives that must apply before scoped CSS, including .fc-skip-link, live in
+   wwwroot/css/fc-shell.css. */
 
 /* Story 3-3 Task 4.4 (D9 / ADR-041 / D20) — the density cascade + shared .fc-sr-only helper live
-    in wwwroot/css/fc-density.css, NOT here. CSS isolation suffixes the body-level density selectors
-    and utility selectors, which makes <body> overrides and aria-live-only helpers unreachable. */
+   in wwwroot/css/fc-density.css, NOT here. CSS isolation suffixes the body-level density selectors
+   and utility selectors, which makes <body> overrides and aria-live-only helpers unreachable. */
 
 /* Story 1.2 FC-LYT — constrained page measure. This rule is SCOPED (not global) on purpose: it
     targets #fc-main-content, which the shell renders itself, so CSS isolation's scope-id suffix
