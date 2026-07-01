@@ -11,9 +11,7 @@
         "DOTNET_ENVIRONMENT": "Development",
         "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "https://localhost:21279",
         "ASPIRE_DASHBOARD_MCP_ENDPOINT_URL": "https://localhost:23450",
-        "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "https://localhost:22385",
-        "Dapr__PlacementHostAddress": "localhost:6050",
-        "Dapr__SchedulerHostAddress": "localhost:6060"
+        "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "https://localhost:22385"
       }
     },
     "http": {
@@ -26,9 +24,7 @@
         "DOTNET_ENVIRONMENT": "Development",
         "ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL": "http://localhost:19457",
         "ASPIRE_DASHBOARD_MCP_ENDPOINT_URL": "http://localhost:18258",
-        "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "http://localhost:20363",
-        "Dapr__PlacementHostAddress": "localhost:6050",
-        "Dapr__SchedulerHostAddress": "localhost:6060"
+        "ASPIRE_RESOURCE_SERVICE_ENDPOINT_URL": "http://localhost:20363"
       }
     }
   }
