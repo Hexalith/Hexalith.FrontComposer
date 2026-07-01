@@ -16,8 +16,18 @@
     min-height: 48px;
     min-width: 0;
     box-sizing: border-box;
-    /* Aspire-style: stack the icon over its label inside the tile button. */
-    flex-direction: column;
+}
+
+::deep .fc-navigation-rail__tile-content {
+    min-width: 0;
+}
+
+::deep .fc-navigation-rail__tile-badges {
+    position: absolute;
+    inset-block-start: 2px;
+    inset-inline-end: 2px;
+    max-width: calc(100% - 4px);
+    min-width: 0;
 }
 
 ::deep .fc-navigation-rail__tile--active {

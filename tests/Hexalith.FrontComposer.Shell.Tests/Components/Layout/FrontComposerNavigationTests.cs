@@ -65,10 +65,44 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
         cut.WaitForAssertion(() => {
             IElement rail = cut.Find("[data-testid=\"fc-navigation-rail\"]");
             rail.GetAttribute("data-rail-width").ShouldBe("72");
-            cut.Markup.ShouldContain("data-testid=\"fc-nav-context-Counter\"");
+            IElement tile = cut.Find("[data-testid=\"fc-nav-context-Counter\"]");
+            IElement content = tile.QuerySelector(".fc-navigation-rail__tile-content")
+                ?? throw new InvalidOperationException("The labeled rail tile must wrap its icon and label in a vertical content stack.");
+            string contentClass = content.GetAttribute("class") ?? string.Empty;
+            contentClass.ShouldContain("fluent-stack-vertical");
+            content.QuerySelector("svg").ShouldNotBeNull();
+            content.QuerySelector(".fc-navigation-rail__label")?.TextContent.Trim().ShouldBe("Counter");
             Should.Throw<Bunit.Rendering.ComponentNotFoundException>(
                 () => cut.FindComponent<FluentNav>(),
                 "Story 8.5 replaces the expanded FluentNav tree with the same rail path used by collapsed mode.");
+        });
+    }
+
+    [Fact]
+    public void LabeledRail_KeepsBadgesOutsideIconLabelStack() {
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", [typeof(string).FullName!], Commands: []),
+        ]);
+        SeedDiscovery(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal),
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 7));
+
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            IElement tile = cut.Find("[data-testid=\"fc-nav-context-Counter\"]");
+            IElement content = tile.QuerySelector(".fc-navigation-rail__tile-content")
+                ?? throw new InvalidOperationException("The labeled rail tile must expose the icon/label stack.");
+            IElement badges = tile.QuerySelector(".fc-navigation-rail__tile-badges")
+                ?? throw new InvalidOperationException("The rail tile must keep badges separate from icon and label.");
+
+            content.QuerySelector("[data-testid=\"fc-rail-badge-Counter\"]").ShouldBeNull();
+            content.QuerySelector("[data-testid=\"fc-rail-new-Counter\"]").ShouldBeNull();
+            badges.QuerySelector("[data-testid=\"fc-rail-badge-Counter\"]").ShouldNotBeNull();
+            badges.QuerySelector("[data-testid=\"fc-rail-new-Counter\"]").ShouldNotBeNull();
         });
     }
 

@@ -92,24 +92,40 @@
                       data-active="@activeContext"
                       tabindex="0"
                       OnClick="@(_ => HandleContextTileActivated(manifest.BoundedContext))">
-            <FluentIcon Value="@ResolveNavEntryIcon(manifest.Icon, activeContext)" />
-            @if (!iconOnly)
+            <FluentStack Class="fc-navigation-rail__tile-content"
+                         Orientation="Orientation.Vertical"
+                         HorizontalAlignment="HorizontalAlignment.Center"
+                         VerticalAlignment="VerticalAlignment.Center"
+                         VerticalGap="2px"
+                         Width="100%">
+                <FluentIcon Value="@ResolveNavEntryIcon(manifest.Icon, activeContext)" />
+                @if (!iconOnly)
+                {
+                    <FluentText Class="fc-navigation-rail__label"
+                                Size="TextSize.Size200"
+                                Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@LocalizeManifestName(manifest)</FluentText>
+                }
+            </FluentStack>
+            @if (aggregateCount > 0 || bcShowsNew)
             {
-                <FluentText Class="fc-navigation-rail__label"
-                            Size="TextSize.Size200"
-                            Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@LocalizeManifestName(manifest)</FluentText>
-            }
-            @if (aggregateCount > 0)
-            {
-                <FluentBadge Appearance="@BadgeAppearance.Filled"
-                             Color="@BadgeColor.Brand"
-                             data-testid="@($"fc-rail-badge-{manifest.BoundedContext}")">@aggregateCount</FluentBadge>
-            }
-            @if (bcShowsNew)
-            {
-                <FluentBadge Appearance="@BadgeAppearance.Tint"
-                             Color="@BadgeColor.Informative"
-                             data-testid="@($"fc-rail-new-{manifest.BoundedContext}")">@Localizer["NewCapabilityBadgeText"].Value</FluentBadge>
+                <FluentStack Class="fc-navigation-rail__tile-badges"
+                             Horizontal="true"
+                             HorizontalAlignment="HorizontalAlignment.End"
+                             VerticalAlignment="VerticalAlignment.Center"
+                             HorizontalGap="2px">
+                    @if (aggregateCount > 0)
+                    {
+                        <FluentBadge Appearance="@BadgeAppearance.Filled"
+                                     Color="@BadgeColor.Brand"
+                                     data-testid="@($"fc-rail-badge-{manifest.BoundedContext}")">@aggregateCount</FluentBadge>
+                    }
+                    @if (bcShowsNew)
+                    {
+                        <FluentBadge Appearance="@BadgeAppearance.Tint"
+                                     Color="@BadgeColor.Informative"
+                                     data-testid="@($"fc-rail-new-{manifest.BoundedContext}")">@Localizer["NewCapabilityBadgeText"].Value</FluentBadge>
+                    }
+                </FluentStack>
             }
         </FluentButton>
         <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
@@ -178,13 +194,20 @@
                       data-active="@activeContext"
                       tabindex="0"
                       OnClick="@(_ => HandleContextTileActivated(orphanBc))">
-            <FluentIcon Value="@ResolveNavEntryIcon(null, activeContext)" />
-            @if (!iconOnly)
-            {
-                <FluentText Class="fc-navigation-rail__label"
-                            Size="TextSize.Size200"
-                            Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@orphanBc</FluentText>
-            }
+            <FluentStack Class="fc-navigation-rail__tile-content"
+                         Orientation="Orientation.Vertical"
+                         HorizontalAlignment="HorizontalAlignment.Center"
+                         VerticalAlignment="VerticalAlignment.Center"
+                         VerticalGap="2px"
+                         Width="100%">
+                <FluentIcon Value="@ResolveNavEntryIcon(null, activeContext)" />
+                @if (!iconOnly)
+                {
+                    <FluentText Class="fc-navigation-rail__label"
+                                Size="TextSize.Size200"
+                                Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@orphanBc</FluentText>
+                }
+            </FluentStack>
         </FluentButton>
         <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
             @orphanBc
