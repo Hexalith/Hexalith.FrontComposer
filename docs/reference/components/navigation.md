@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 1-5-produce-the-fc-doc-component-documentation-contract
 status: published
-reviewed: 2026-06-03
+reviewed: 2026-06-25
 uid: frontcomposer.reference.components.navigation
 slug: reference/components/navigation/
 ---
@@ -20,10 +20,11 @@ driven entirely by `IFrontComposerRegistry`: one bounded-context tile per regist
 opens a `FluentMenu` flyout with the context's projections and explicit entries. The rail surfaces
 aggregate count badges, projection count badges, and a "New" badge for not-yet-visited capabilities.
 At Desktop it renders as a 72 px labelled rail or a 48 px icon-only rail, controlled by the shell's
-hamburger and navigation state; CompactDesktop also uses the 48 px rail. Adopt it implicitly — the
-shell auto-renders it in the Navigation area when you register at least one domain — or place it
-yourself via the shell's `Navigation` slot. You do not configure it directly: it reflects what you
-register.
+hamburger and navigation state; CompactDesktop also uses the 48 px rail. In the 72 px rail, each
+context tile stacks the icon above the visible label, while count and "New" badges stay as separate
+overlay indicators. Adopt it implicitly — the shell auto-renders it in the Navigation area when you
+register at least one domain — or place it yourself via the shell's `Navigation` slot. You do not
+configure it directly: it reflects what you register.
 
 ## Usage
 

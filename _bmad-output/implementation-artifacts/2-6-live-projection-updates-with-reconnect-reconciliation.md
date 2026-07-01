@@ -59,14 +59,14 @@ so that I see current data and know when the stream is degraded.
 
 > **AC1 disposition (PO-accepted 2026-06-04):**
 > - **AC1(a) — live nudge → grid re-query/re-render (ETag-gated): ✅ IMPLEMENTED & durably pinned.**
-> - **AC1(b) — "new-item indicator marks fresh rows": ⏸️ ACCEPTED-DEFERRED to Epic 3/5 — Story 5-5.**
->   The Product Owner has **formally accepted** carrying AC1(b) into the command-lifecycle producer story
->   (Story 5-5). Rationale (independently review-verified): the live-nudge seam
+> - **AC1(b) — "new-item indicator marks fresh rows": ⏸️ ACCEPTED-DEFERRED to Epic 9 — FC-NIP Stories 9.1/9.2.**
+>   The Product Owner has **formally accepted** carrying AC1(b) into the FC-NIP row-identity producer follow-up
+>   (Epic 9). Rationale (independently review-verified): the live-nudge seam
 >   `IProjectionHubConnection.OnProjectionChanged(projectionType, tenantId)` carries **no per-row identity**
 >   (`EntityKey`/`MessageId`), and the new-item indicator's producer belongs to the
 >   command-lifecycle / pending-command-resolution path — out of scope for this projection-read-path story.
 >   `FcNewItemIndicator` + `NewItemIndicatorStateService` ship as a **confirmed, unit- and integration-pinned
->   primitive**; their end-to-end producer→consumer wiring is **tracked as a Story 5-5 dependency**. This is a
+>   primitive**; their end-to-end producer→consumer wiring is **tracked as an Epic 9 / FC-NIP dependency**. This is a
 >   conscious acceptance, not a silent pass.
 
 **Given** an active projection subscription over SignalR (a registered, visible projection lane in a tenant
@@ -361,13 +361,13 @@ then a brief "Reconnected — data refreshed" confirmation **only when the recon
 | Expand-in-row detail (coexists in the same grid) | Story 2.4 | ✅ done & pinned |
 | Column prioritization (coexists in wide grids) | Story 2.5 | ✅ done & pinned |
 | EventStore SignalR+HTTP client swap (`AddHexalithEventStore`) | Story 1.x / Epic-5 plumbing | ✅ present — real `ProjectionSubscriptionService` + `SignalRProjectionHubConnectionFactory` swapped in over the stub |
-| Command-lifecycle reconciliation / pending-command resolution on reconnect | Epic 3/5 | ⏳ the reconcile coordinator polls pending commands on reconnect (Story-5-5 DN1) — **not reopened here**; this story is the *projection* read path, not command lifecycle |
+| Command-lifecycle reconciliation / pending-command resolution on reconnect | Epic 9 / FC-NIP | ⏳ the reconcile coordinator polls pending commands on reconnect, but row-level producer wiring now belongs to the Epic 9 FC-NIP follow-up — **not reopened here**; this story is the *projection* read path, not command lifecycle |
 
 > **Scope boundary:** this story is "**live projection updates with reconnect & reconciliation**" (AC1 live
 > nudge → grid refresh + new-item marking; AC2 reconnect → status surface + reconcile missed changes). It is
 > *not* the command palette / global search (2.7 — `FcCommandPalette` / `FcProjectionGlobalSearch`), nor the
 > FC-TBL table-API confirmation (2.8). It does **not** reopen command-lifecycle reconciliation
-> (`alreadyApplied`, pending-command polling internals — Epic 3/5), the EventStore client swap itself, or
+> (`alreadyApplied`, pending-command polling internals — completed Epic 3 command lifecycle work), the EventStore client swap itself, or
 > Story-4-4 column-visibility persistence. Stay inside AC1–AC2.
 
 ### Why this is confirm-and-pin, and what "done" looks like
@@ -422,7 +422,7 @@ claude-opus-4-8[1m] (Claude Opus 4.8, 1M context)
 - Build: `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 /nr:false` → **Build succeeded, 0 Warning(s), 0 Error(s)** (TWAE green).
 - Test lane (host constraint per Stories 2.3/2.4/2.5): solution-level VSTest opens a local socket → `SocketException` in this sandbox, so evidence was captured via the **xUnit v3 in-process runner** on the built `Hexalith.FrontComposer.Shell.Tests` assembly with `DiffEngine_Disabled=true` and the story trait filter (`-notrait Category=Performance -notrait Category=e2e-palette -notrait Category=NightlyProperty -notrait Category=Quarantined`). The solution-level VSTest run is the CI gate.
 - AC1 gap verification (grep against `src/`, excluding `obj/`/`bin/`): `<FcNewItemIndicator` render sites in `src/` = **0** (only the component's own `FcNewItemIndicator.razor.cs` partial); `INewItemIndicatorStateService.Add(`/`Snapshot(` callers in `src/` = **0** (only the DI registration in `ServiceCollectionExtensions.cs:365` + the service's own definition). The only generated artifact referencing `FcNewItemIndicator` is the Razor compiler's own `FcNewItemIndicator_razor.g.cs` (the component compiling its own markup) — **no FrontComposer-generated projection view emits it**. Gap confirmed: the new-item indicator is an isolated, unwired primitive at `ea23187`.
-- Nudge seam: `IProjectionHubConnection.OnProjectionChanged(Func<string,string,Task>)` carries only `(projectionType, tenantId)` — no per-row `EntityKey`/`MessageId`. `ProjectionSubscriptionService.OnProjectionChangedAsync` → `TriggerNudgeRefreshAsync` + pending-command `PollOnceAsync` (Story 5-5 DN1, the command-lifecycle path) — never calls `INewItemIndicatorStateService.Add`.
+- Nudge seam: `IProjectionHubConnection.OnProjectionChanged(Func<string,string,Task>)` carries only `(projectionType, tenantId)` — no per-row `EntityKey`/`MessageId`. `ProjectionSubscriptionService.OnProjectionChangedAsync` → `TriggerNudgeRefreshAsync` + pending-command `PollOnceAsync` (the command-lifecycle path) — never calls `INewItemIndicatorStateService.Add`.
 
 ### Completion Notes List
 
@@ -436,9 +436,9 @@ claude-opus-4-8[1m] (Claude Opus 4.8, 1M context)
 
 **AC1(b) — "new item indicator marks fresh rows": GAP RESOLVED VIA OPTION 3 (CONSCIOUS DEFERRAL — REQUIRES PO/REVIEW SIGN-OFF).**
 - ⚠️ **AC1 is NOT fully satisfied end-to-end in `src/` by this story.** The `FcNewItemIndicator` component and `NewItemIndicatorStateService` exist and are unit-pinned **in isolation**, but at `ea23187` the indicator is **rendered by no `src/` view** and its producer (`Add`/`Snapshot`) has **no `src/` caller**.
-- **Why deferred, not wired (option 2 rejected as dishonest/out-of-scope):** `NewItemIndicatorEntry` requires `EntityKey` + `MessageId`; its semantics ("confirmed created entity ... outside current filters") belong to the **command-lifecycle / pending-command resolution path (Story 5-5 DN1, Epic 3/5)**, which Story 2.6 explicitly does **not** reopen. The live nudge seam carries only `(projectionType, tenantId)` — no per-row identity — so producing the indicator from the projection read path would require either a SignalR wire-protocol change (out of scope — EventStore client swap not reopened) or fabricated identities + per-projection key-diffing + regenerating every projection's approval baseline. None of that is the "small and low-risk" wiring option 2 is meant for, and it cannot honour "marks the row that arrived during the live window outside current filters."
+- **Why deferred, not wired (option 2 rejected as dishonest/out-of-scope):** `NewItemIndicatorEntry` requires `EntityKey` + `MessageId`; its semantics ("confirmed created entity ... outside current filters") belong to the **Epic 9 / FC-NIP command-outcome row-identity follow-up**, which Story 2.6 explicitly does **not** reopen. The live nudge seam carries only `(projectionType, tenantId)` — no per-row identity — so producing the indicator from the projection read path would require either a SignalR wire-protocol change (out of scope — EventStore client swap not reopened) or fabricated identities + per-projection key-diffing + regenerating every projection's approval baseline. None of that is the "small and low-risk" wiring option 2 is meant for, and it cannot honour "marks the row that arrived during the live window outside current filters."
 - **What was delivered instead (the durable, honest AC1(b) pin):** `FcNewItemIndicatorLaneIntegrationTests` (5 tests) proves the in-scope, testable half of the contract end-to-end: a `NewItemIndicatorEntry` pushed to `INewItemIndicatorStateService` for a lane surfaces a rendered `FcNewItemIndicator` (correct `role="status"`/`aria-live="polite"`/localized copy) **only for that lane**, and disappears on every dismissal trigger (10s TTL via `FakeTimeProvider`, materialization, filter-change). A minimal test-only `LaneHost` stands in for the eventual generated/shell-level consumer, reading `Snapshot(viewKey)` exactly as that consumer will.
-- **Action for PO/review:** consciously **accept the AC1(b) deferral** (new-item marking lands with its command-lifecycle producer in Epic 3/5 / Story 5-5) **or** carve AC1(b) out of 2.6's acceptance. AC1(a) and AC2 are satisfied and durably pinned.
+- **Action for PO/review:** consciously **accept the AC1(b) deferral** (new-item marking lands with its command-lifecycle producer in Epic 9 / FC-NIP Stories 9.1/9.2) **or** carve AC1(b) out of 2.6's acceptance. AC1(a) and AC2 are satisfied and durably pinned.
 
 **Test counts (xUnit v3 in-process, filtered lane):**
 - `Hexalith.FrontComposer.Shell.Tests`: **before 1740 total / 8 failed → after 1751 total / 8 failed** (+11 new pins across 4 files — 7 from dev-story, 4 from the subsequent `bmad-qa-generate-e2e-tests` pass — all green; **0 new failures**). _(Review-verified 2026-06-04: build 0/0 TWAE; the 4 new files' 11 tests pass; full filtered lane = 1751 total / 8 failed.)_
@@ -469,12 +469,12 @@ _Tracking (not `src/`):_
 **Outcome:** **APPROVED → done.** Record corrected (retro AI-1) in the prior pass; the sole remaining gate — the AC1(b) deferral product decision — was **formally accepted by the Product Owner on 2026-06-04** (see PO Acceptance below). No CRITICAL/HIGH code blockers remain.
 
 > **PO Acceptance (2026-06-04).** The Product Owner has **formally accepted** the **AC1(b)** ("new-item
-> indicator marks fresh rows") **deferral to Epic 3/5 — Story 5-5**, because the live-nudge seam
+> indicator marks fresh rows") **deferral to Epic 9 — FC-NIP Stories 9.1/9.2**, because the live-nudge seam
 > `OnProjectionChanged(projectionType, tenantId)` carries **no per-row identity** and the indicator's producer
 > belongs to the command-lifecycle path. **AC1(a) and AC2 are implemented and durably pinned.** AC1(b) is
-> recorded as **accepted-deferred** and **tracked as a Story 5-5 dependency**. With no other CRITICAL/HIGH
+> recorded as **accepted-deferred** and **tracked as an Epic 9 / FC-NIP dependency**. With no other CRITICAL/HIGH
 > blockers, Story 2.6 is **promoted to `done`**. The unwired `FcNewItemIndicator` / `NewItemIndicatorStateService`
-> primitive remains confirmed and pinned in isolation + integration; its end-to-end wiring lands in Story 5-5.
+> primitive remains confirmed and pinned in isolation + integration; its end-to-end wiring lands in Epic 9 / FC-NIP.
 
 ### What was independently verified (not taken on the story's word)
 - **Build:** `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/...csproj -c Release -m:1 /nr:false` → **0 Warning(s) / 0 Error(s)** (TWAE green).
@@ -487,15 +487,16 @@ _Tracking (not `src/`):_
 
 ### Findings
 - 🟡 **MEDIUM — File List / counts / Change Log were stale (retro AI-1, the exact recurring tax).** The dev-story record documented only its **own 2 pins** (7 tests, "1747/8") and omitted the **2 pins + test-summary added by the later `bmad-qa-generate-e2e-tests` pass** — leaving the File List, Completion-Notes counts, and Change Log out of sync with the actual git tree (4 new test files, 11 tests, 1751/8). **FIXED in this review:** File List now lists all 4 test files + the QA summary artifact; counts corrected to 1740 → 1751/8 (+11).
-- ✅ **AC1(b) deferral — RESOLVED by PO acceptance (2026-06-04).** The gap is real (verified: `<FcNewItemIndicator` rendered in no `src/` view; `Add`/`Snapshot` have no `src/` caller; nudge seam carries no per-row identity), and per the story's mandate ("do **not** silently pass AC1") it was held for a conscious product decision rather than auto-fixed. The **Product Owner has formally accepted the deferral** to the command-lifecycle producer story (Epic 3/5 — Story 5-5); AC1(b) is recorded as **accepted-deferred** and **tracked as a Story 5-5 dependency**. No code change warranted. **Story promoted to `done`.**
+- ✅ **AC1(b) deferral — RESOLVED by PO acceptance (2026-06-04), normalized by Correct Course on 2026-07-01.** The gap is real (verified: `<FcNewItemIndicator` rendered in no `src/` view; `Add`/`Snapshot` have no `src/` caller; nudge seam carries no per-row identity), and per the story's mandate ("do **not** silently pass AC1") it was held for a conscious product decision rather than auto-fixed. The **Product Owner has formally accepted the deferral** to the command-lifecycle producer follow-up, now tracked as Epic 9 / FC-NIP Stories 9.1/9.2; AC1(b) is recorded as **accepted-deferred**. No code change warranted. **Story remains `done`.**
 
 ### Action items
-- [x] **[AI-Review][HIGH] PO decision — RESOLVED (2026-06-04):** PO **accepted** the AC1(b) "new-item indicator marks fresh rows" deferral to Epic 3/5 / Story 5-5 (tracked as a Story 5-5 dependency). AC1(a) + AC2 are done & pinned; Story 2.6 promoted to `done`. [ref: AC1 / Task 2 / Completion Notes / PO Acceptance]
+- [x] **[AI-Review][HIGH] PO decision — RESOLVED (2026-06-04), normalized by Correct Course on 2026-07-01:** PO **accepted** the AC1(b) "new-item indicator marks fresh rows" deferral, now tracked as Epic 9 / FC-NIP Stories 9.1/9.2. AC1(a) + AC2 are done & pinned; Story 2.6 remains `done`. [ref: AC1 / Task 2 / Completion Notes / PO Acceptance]
 
 ## Change Log
 
 | Date | Change | Author |
 |---|---|---|
-| 2026-06-04 | **PO acceptance → Story PROMOTED to `done`.** Product Owner **formally accepted** the **AC1(b)** ("new-item indicator marks fresh rows") **deferral to Epic 3/5 — Story 5-5** (live-nudge seam carries no per-row identity; indicator producer belongs to the command-lifecycle path). AC1(b) recorded as **accepted-deferred** + **tracked as a Story 5-5 dependency**; AC1 disposition note added to Acceptance Criteria; review Outcome updated to **APPROVED → done**, action item closed. Story-automator review re-verified no other CRITICAL/HIGH blockers (AC1(a) + AC2 implemented & durably pinned; 11 new pins green; sentinel-clean; ZERO `src/` change). **Status `review` → `done`; sprint-status synced.** | Jérôme Piquot (review / PO) |
+| 2026-07-01 | Correct Course approval normalized AC1(b)'s follow-up target from stale prior wording to **Epic 9 / FC-NIP Stories 9.1/9.2**. Story 2.6 remains `done`; no runtime claim or `src/` implementation changed. | Administrator (Correct Course approval) |
+| 2026-06-04 | **PO acceptance → Story PROMOTED to `done`.** Product Owner **formally accepted** the **AC1(b)** ("new-item indicator marks fresh rows") deferral (live-nudge seam carries no per-row identity; indicator producer belongs to the command-lifecycle path). AC1(b) recorded as **accepted-deferred**; AC1 disposition note added to Acceptance Criteria; review Outcome updated to **APPROVED → done**, action item closed. Story-automator review re-verified no other CRITICAL/HIGH blockers (AC1(a) + AC2 implemented & durably pinned; 11 new pins green; sentinel-clean; ZERO `src/` change). **Status `review` → `done`; sprint-status synced.** | Jérôme Piquot (review / PO) |
 | 2026-06-04 | **Senior Developer Review (AI).** Independently re-verified: build 0/0 TWAE; all 11 new tests (4 files) green; full filtered `Shell.Tests` lane = **1751 / 8** with the 8 failures confirmed as the documented pre-existing baseline (none in AC1/AC2 surface, zero new). AC2 + AC1(a) confirmed implemented & durably pinned end-to-end; AC1(b) gap + deferral rationale confirmed honest. **Corrected stale record (retro AI-1):** File List now includes the 2 QA-pass pins (`NudgeToSchedulerLaneRefreshIntegrationTests`, `ReconnectReconcileSubscriptionIntegrationTests`) + `tests/2-6-test-summary.md`; counts fixed to 1740 → 1751/8 (+11). **Status held at `review`** — promotion to `done` blocked on PO sign-off of the AC1(b) deferral. | Jérôme Piquot (review) |
-| 2026-06-04 | Story 2.6 dev-story (confirm-and-pin). Verified AC1(a) live-refresh + AC2 reconnect/reconcile/status hold end-to-end against `src/` at `ea23187` with ZERO `src/` change. Added 2 durable integration pins (7 tests): `FcNewItemIndicatorLaneIntegrationTests` (AC1(b) producer-state→consumer-component contract) + `ReconnectReconcileStatusIntegrationTests` (AC2 real coordinator→state→status). **AC1(b) "new-item indicator marks fresh rows" consciously DEFERRED (option 3)** to the command-lifecycle producer story (Epic 3/5 / Story 5-5) — flagged for PO/review sign-off; the live nudge seam carries no per-row identity to produce the indicator. Build 0/0 TWAE; Shell.Tests 1740/8 → 1747/8 (+7 green, 0 new failures); approval baseline byte-for-byte unchanged. | Amelia (dev agent) |
+| 2026-06-04 | Story 2.6 dev-story (confirm-and-pin). Verified AC1(a) live-refresh + AC2 reconnect/reconcile/status hold end-to-end against `src/` at `ea23187` with ZERO `src/` change. Added 2 durable integration pins (7 tests): `FcNewItemIndicatorLaneIntegrationTests` (AC1(b) producer-state→consumer-component contract) + `ReconnectReconcileStatusIntegrationTests` (AC2 real coordinator→state→status). **AC1(b) "new-item indicator marks fresh rows" consciously DEFERRED (option 3)** to a command-lifecycle producer follow-up — later normalized to Epic 9 / FC-NIP on 2026-07-01; the live nudge seam carries no per-row identity to produce the indicator. Build 0/0 TWAE; Shell.Tests 1740/8 → 1747/8 (+7 green, 0 new failures); approval baseline byte-for-byte unchanged. | Amelia (dev agent) |

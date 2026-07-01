@@ -140,7 +140,7 @@ project: frontcomposer
 # 3-2 moved backlog -> ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of command density rule. Live pipeline already has CommandModel.ComputeDensity, non-derivable-only form transform, renderer density mapping, and conditional FullPage CommandPage. Dev must pin exact 0/1/2/4/5 thresholds, derivable-field exclusion including [DerivedFrom], HFC1007/HFC1011 count diagnostics, and preserve Story 3.1 command artifact/lifecycle/ULID behavior without reopening FC-CMD identity, FC-TBL, or new-item producer work.)
 # epic-2-retrospective moved optional -> done on 2026-06-04 (bmad-retrospective YOLO/autonomous; Epic 2 reviewed, FC-TBL documentation follow-through completed, DataGrid component reference authored, public API baseline guidance updated, and Epic 3 preparation gates recorded.)
 # 2-8 moved backlog -> ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of FC-TBL table API contract. Primary deliverable = _bmad-output/contracts/fc-tbl-table-api-contract-2026-06-04.md + Shell/public-surface disposition. Story 1.0 F3 gap carried forward: 12 public DataGrid sub-components are adopter-facing but no Shell PublicAPI.Shipped.txt exists; dev must freeze via baseline/boundary test, internalize deliberately, or escalate with owner. Expect docs/tests/package-boundary work, not DataGrid rebuild.)
-# 2-8 moved ready-for-dev -> review on 2026-06-04 (dev-story; FC-TBL contract created, 12 public DataGrid components + ColumnDescriptor/ColumnVisibilityContext frozen by focused Shell baseline and boundary test. Only open item = FcNewItemIndicator row-identity producer wiring, owned by FrontComposer Product/UX + command lifecycle and tracked to Story 5-5 / Epic 3-5. Build 0/0 TWAE; focused FC-TBL lanes green: DataGrid 60/60, spike 8/8, generated render 8/8, SourceTools DataGrid pins 32/32. Solution-level VSTest remains locally socket-blocked; in-process fallback reproduced known non-FC-TBL baselines; .verified.txt unchanged.)
+# 2-8 moved ready-for-dev -> review on 2026-06-04 (dev-story; FC-TBL contract created, 12 public DataGrid components + ColumnDescriptor/ColumnVisibilityContext frozen by focused Shell baseline and boundary test. Only open item = FcNewItemIndicator row-identity producer wiring, owned by FrontComposer Product/UX + command lifecycle and normalized on 2026-07-01 to Epic 9 / FC-NIP. Build 0/0 TWAE; focused FC-TBL lanes green: DataGrid 60/60, spike 8/8, generated render 8/8, SourceTools DataGrid pins 32/32. Solution-level VSTest remains locally socket-blocked; in-process fallback reproduced known non-FC-TBL baselines; .verified.txt unchanged.)
 # 2-7 moved backlog → ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of command palette + registry global search — Ctrl+K/Cmd+K → FcCommandPalette ARIA combobox + keyboard nav (AC1), live registry scoring/filter/rank surfaces matching projections (AC2); palette/shortcut/scorer/hydration authored under Story 3-4/3-5/3-6/3-7 markers, expected. Gaps: AC1 ARIA role=combobox/listbox/option + aria-activedescendant + Arrow/Enter/Escape nav only proven in EXCLUDED e2e-palette lane or attribute-subset/reducer level → add DEFAULT-LANE pins; AC2 epic wording names FcProjectionGlobalSearch (a separate per-grid Story-4-3 input) → resolve honestly (palette = registry search surface). Expect ZERO src change)
 # 2-7 moved review → done on 2026-06-04 (story-automator-review; ZERO src change. Adversarial review re-ran build (0/0 TWAE) + all lanes via in-process runner: 7 dev-added pins green, full palette/search surface green, e2e-palette 4/4 green, full Shell default lane 1758/8 = documented baseline (PendingStatusReopen x4, NavigationEffectsLastActiveRoute x1, CounterStoryVerification x2, CommandRendererFullPage x1) with ZERO palette/search failures, .verified.txt byte-for-byte unchanged. AC2 option-1 disposition verified honest (FcProjectionGlobalSearch dispatches in-grid GlobalSearchChangedAction, not registry discovery; not emitted by generator at baseline — out of AC2 scope, transparently recorded). Fixed one default-lane coverage gap: AC1 Enter activation was proven only in the EXCLUDED e2e lane → added Enter_ActivatesSelectedProjection_NavigatingToItsRoute rendered pin (palette surface now 107 green). 0 CRITICAL.)
 # 2-7 moved in-progress → review on 2026-06-04 (dev-story; ZERO src change. AC1 default-lane ARIA combobox/listbox/option + aria-activedescendant + rendered Arrow/Escape pins confirmed; AC2 default-lane live registry filter pins confirmed. AC2 disposition option 1: palette Projection results are the registry-wide search surface; FcProjectionGlobalSearch remains an isolated in-grid row-search concern. Build 0/0 TWAE; story-focused Shell pins 60/60 green; e2e-palette 4/4 green; full Shell in-process baseline 1760/9 with no palette/search failures; SourceTools 958/3 unchanged; .verified.txt unchanged)
@@ -192,9 +192,9 @@ project: frontcomposer
 # 2-6 moved backlog → ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of live projection updates + reconnect/reconciliation — SignalR nudge→lane refresh, FcProjectionConnectionStatus mounted in shell, reconnect→rejoin→ReconcileAsync→sweep-markers all built+unit-pinned; gap = AC1 "new-item indicator marks fresh rows" is an UNWIRED isolated primitive — FcNewItemIndicator rendered nowhere + INewItemIndicatorStateService.Add/Snapshot have no src caller; dev must verify+wire-minimally-or-defer + add integration pin; AC2 expect ZERO src change)
 # 2-5 moved review → done on 2026-06-04 (story-automator review; independently re-verified build 0/0 TWAE, AC1/AC2 in src, SourceTools.Tests 958/3 + Shell.Tests 1740/8 (8 pre-existing, 0 new); 0 critical, auto-fixed 2 HIGH + 1 MED + 1 LOW record-keeping defects — render pin WidePriorityProjectionRenderTests + specimen were actually added & green but documented as "NOT added" and missing from File List; corrected File List/Completion Notes/test-count table/sentinel note)
 # 2-6 moved ready-for-dev → in-progress on 2026-06-04 (dev-story; verify AC1/AC2 end-to-end against src, resolve AC1 new-item-indicator wiring gap honestly, add durable integration pins)
-# 2-6 moved in-progress → review on 2026-06-04 (dev-story; ZERO src change. AC1(a) live-refresh + AC2 reconnect/reconcile/status verified end-to-end + pinned; 2 new integration pins added (FcNewItemIndicatorLaneIntegrationTests 5 + ReconnectReconcileStatusIntegrationTests 2). AC1(b) "new-item indicator marks fresh rows" CONSCIOUSLY DEFERRED (option 3) to command-lifecycle producer (Epic 3/5 / Story 5-5) — nudge seam carries no per-row EntityKey/MessageId; FLAGGED FOR PO/REVIEW SIGN-OFF. Build 0/0 TWAE; Shell.Tests 1740/8 → 1747/8 (+7 green, 0 new failures, 8 pre-existing reproduced); SourceTools.Tests untouched; approval baseline byte-for-byte unchanged)
-# 2-6 review pass (story-automator review) on 2026-06-04 — HELD at review (NOT promoted to done): independently re-verified build 0/0 TWAE + all 11 new pins green; full filtered Shell.Tests = 1751/8 (8 pre-existing baseline, 0 new, none in AC1/AC2 surface). AC2 + AC1(a) implemented & durably pinned. Auto-fixed retro AI-1 record drift: dev-story record omitted the 2 later QA-pass pins (NudgeToSchedulerLaneRefreshIntegrationTests + ReconnectReconcileSubscriptionIntegrationTests) + tests/2-6-test-summary.md; File List/counts corrected to 4 files / 11 tests / 1751-8. AC1(b) "new-item indicator marks fresh rows" remains a conscious deferral (option 3) — promotion to done BLOCKED on PO sign-off (accept deferral to Epic 3/5 / Story 5-5, or carve out).
-# 2-6 moved review → done on 2026-06-04 (story-automator review; PO FORMALLY ACCEPTED the AC1(b) "new-item indicator marks fresh rows" deferral to Epic 3/5 / Story 5-5 — live-nudge seam OnProjectionChanged(projectionType,tenantId) carries no per-row identity, indicator producer belongs to command-lifecycle path. AC1(b) recorded as accepted-deferred + tracked as Story 5-5 dependency. Re-verified: AC1(a) + AC2 implemented & durably pinned, 11 new pins green, sentinel-clean, ZERO src change; no other CRITICAL/HIGH blockers. Story file: AC1 disposition note + PO Acceptance + Change Log + review Outcome→APPROVED/done + action item closed)
+# 2-6 moved in-progress → review on 2026-06-04 (dev-story; ZERO src change. AC1(a) live-refresh + AC2 reconnect/reconcile/status verified end-to-end + pinned; 2 new integration pins added (FcNewItemIndicatorLaneIntegrationTests 5 + ReconnectReconcileStatusIntegrationTests 2). AC1(b) "new-item indicator marks fresh rows" CONSCIOUSLY DEFERRED (option 3) to a command-lifecycle producer follow-up, normalized on 2026-07-01 to Epic 9 / FC-NIP — nudge seam carries no per-row EntityKey/MessageId; FLAGGED FOR PO/REVIEW SIGN-OFF. Build 0/0 TWAE; Shell.Tests 1740/8 → 1747/8 (+7 green, 0 new failures, 8 pre-existing reproduced); SourceTools.Tests untouched; approval baseline byte-for-byte unchanged)
+# 2-6 review pass (story-automator review) on 2026-06-04 — HELD at review (NOT promoted to done): independently re-verified build 0/0 TWAE + all 11 new pins green; full filtered Shell.Tests = 1751/8 (8 pre-existing baseline, 0 new, none in AC1/AC2 surface). AC2 + AC1(a) implemented & durably pinned. Auto-fixed retro AI-1 record drift: dev-story record omitted the 2 later QA-pass pins (NudgeToSchedulerLaneRefreshIntegrationTests + ReconnectReconcileSubscriptionIntegrationTests) + tests/2-6-test-summary.md; File List/counts corrected to 4 files / 11 tests / 1751-8. AC1(b) "new-item indicator marks fresh rows" remains a conscious deferral (option 3), later normalized to Epic 9 / FC-NIP.
+# 2-6 moved review → done on 2026-06-04 (story-automator review; PO FORMALLY ACCEPTED the AC1(b) "new-item indicator marks fresh rows" deferral — live-nudge seam OnProjectionChanged(projectionType,tenantId) carries no per-row identity, indicator producer belongs to command-lifecycle path. AC1(b) recorded as accepted-deferred and normalized on 2026-07-01 to Epic 9 / FC-NIP. Re-verified: AC1(a) + AC2 implemented & durably pinned, 11 new pins green, sentinel-clean, ZERO src change; no other CRITICAL/HIGH blockers. Story file: AC1 disposition note + PO Acceptance + Change Log + review Outcome→APPROVED/done + action item closed)
 # 3-1 moved in-progress -> review on 2026-06-04 (dev-story; command artifact inventory pinned at seven non-page .Command artifacts plus optional FullPage CommandPage, registry discovery and diagnostics HFC1009/HFC1006/HFC1002 pinned, HFC1002 wording made command-accurate, generated command form correlationId now uses IUlidFactory.NewUlid. Build 0/0 TWAE; SourceTools focused 143/143 + lifecycle bridge 1/1 green; Shell focused 68/68 green excluding known full-page query-fallback baseline; solution VSTest remains locally socket-blocked.)
 # 3-1 moved review -> done on 2026-06-04 (story-automator review; adversarial re-verification: build 0/0 TWAE, SourceTools 973/976 with 3 pre-existing unrelated failures, CommandFormEmitterTests 23/23 + generator command lane 5/5 green live. All 5 ACs IMPLEMENTED: artifact inventory + registry discovery pinned, HFC1009 Error / HFC1006 correlation / HFC1002 command-accurate wording, correlationId now IUlidFactory.NewUlid (type-safe string, no downstream Guid.Parse, IUlidFactory TryAddSingleton-registered), lifecycle/pending order preserved, only the 2 intentional .verified.txt snapshots changed. 0 Critical / 0 High; 2 Medium File List completeness gaps auto-fixed (added tests/e2e/specs/command-form-generation.spec.ts + tests/test-summary.md).)
 # 3-2 moved in-progress -> review on 2026-06-04 (dev-story; confirm-and-pin, zero production src change. Added SourceTools density boundary, derivable exclusion, generator artifact/default-mode, form-emitter, and HFC1011 total-property pins; added Shell four-field compact runtime pin. Changed project builds 0/0; focused in-process lanes green: SourceTools 116/116 and Shell 36/36 excluding known full-page query-fallback baseline. Exact solution build/test locally blocked by NuGet audit network and VSTest/MSBuild socket restrictions; .verified.txt unchanged.)
@@ -306,24 +306,81 @@ development_status:
   8-7-status-as-colored-icon: done
   epic-8-retrospective: done
 
+  # Epic 9: Fresh-Row Producer and Row Identity (post-MVP follow-up)
+  # Added 2026-07-01 via Correct Course (sprint-change-proposal-2026-07-01.md).
+  epic-9: backlog
+  9-1-confirm-the-fc-nip-row-identity-producer-contract: backlog
+  9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: backlog
+
+  # Epic 10: Tooling Governance Follow-Through (post-MVP quality hardening)
+  # Added 2026-07-01 via Correct Course (sprint-change-proposal-2026-07-01-epic-7-retro-follow-through.md).
+  # Carries forward Epic 7 retro actions without reopening completed Stories 7.1-7.5.
+  epic-10: backlog
+  10-1-mechanical-story-evidence-reconciliation: backlog
+  10-2-adopter-facing-historical-label-cleanup: backlog
+  10-3-cli-text-output-parity-guard: backlog
+  10-4-hfcm9002-production-emission-decision: backlog
+  10-5-testing-evidence-redaction-default-lane-guard: backlog
+  epic-10-retrospective: optional
+
 action_items:
+  - epic: 2
+    action: "Normalize accepted-deferred new-item references to the Epic 9 FC-NIP follow-up"
+    owner: "Product Owner / Developer"
+    status: done
   - epic: 8
-    action: "Add a reusable visual-component checklist that requires rendered-DOM or computed-style proof for Fluent component layout/CSS changes"
+    action: "E8-AI-1: Add a reusable visual-component checklist that requires rendered-DOM or computed-style proof for Fluent component layout/CSS changes before review promotion"
     owner: "Test Architect"
     status: open
   - epic: 8
-    action: "Keep shell/navigation reference docs synchronized with Story 8.3 and Story 8.5 public-surface changes"
+    action: "E8-AI-2: Synchronize shell/navigation public reference metadata with Story 8.3 and Story 8.5 and record future doc-drift sweeps"
     owner: "Technical Writer"
     status: open
-  - epic: 8
-    action: "Make changed-file and story-task reconciliation mechanical before story review completion"
+  - epic: 10
+    action: "E10-AI-1: Make changed-file, story File List, and story-task reconciliation mechanical before story review completion; covers Epic 7 E7-AI-1 and Epic 8 follow-through"
     owner: "QA automation maintainer"
     status: open
+  - epic: 10
+    action: "E10-AI-2: Audit adopter-facing CLI, diagnostics, and Testing docs for stale historical story ownership labels; retain provenance-only labels only where they do not confuse current ownership"
+    owner: "Technical Writer"
+    status: open
+  - epic: 10
+    action: "E10-AI-3: Add CLI text-output parity coverage guidance for summaries, filtering, and diff budgets on future CLI stories"
+    owner: "Test Architect"
+    status: open
+  - epic: 10
+    action: "E10-AI-4: Decide HFCM9002 production sidecar emission: either implement and pin a SourceTools emitter or keep/remove adopter-facing production promises"
+    owner: "Architect + Product Owner"
+    status: open
+  - epic: 10
+    action: "E10-AI-5: Keep Testing package evidence redaction cases in the default lane for tenant, user, token, secret, password, oversized, and punctuation-heavy values"
+    owner: "Developer"
+    status: open
   - epic: 8
-    action: "Preserve the accent-as-thread guard as a mandatory Shell governance lane for future chrome work"
+    action: "E8-AI-4: Require the Shell accent-as-thread governance guard in every future chrome/story verification record"
     owner: "Architect"
     status: open
   - epic: 8
-    action: "Track browser/visual evidence gaps as named CI responsibilities rather than local unknowns"
+    action: "E8-AI-5: Track browser/visual evidence gaps as named CI responsibilities with owner, lane, and closure evidence"
     owner: "QA Engineer"
     status: open
+  - epic: process
+    action: "Standardize local-blocker vs CI-authoritative test evidence language in story records and test summaries, including VSTest socket/network blockers, xUnit in-process fallbacks, and Playwright/browser CI-gate handoffs"
+    owner: "Test Architect"
+    status: open
+  - epic: process
+    action: "Add a mechanical changed-file vs story File List and test-summary reconciliation check before dev-story review promotion and story-automator review approval"
+    owner: "QA automation maintainer"
+    status: open
+  - epic: process
+    action: "Add a durable authoring-sentinel guard for BMAD/story/test markdown artifacts, allowing quoted examples but failing raw tool-call tag lines"
+    owner: "Developer"
+    status: open
+  - epic: 1
+    action: "Drive residual FC-A11Y, FC-L10N, FC-DOC, and FC-SETTINGS wording decisions to confirmed or dated owned follow-up"
+    owner: "FrontComposer + Product/UX + Tenants author"
+    status: open
+  - epic: 1
+    action: "Close the FC-DOC settings component page gap after Story 1.6 completion, or explicitly defer it with owner and date"
+    owner: "Technical Writer"
+    status: done

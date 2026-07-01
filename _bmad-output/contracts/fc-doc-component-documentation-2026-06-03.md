@@ -2,7 +2,7 @@
 title: 'FC-DOC — Component-documentation contract'
 date: '2026-06-03'
 story: '1.5'
-status: 'escalated'   # required-section template + Gate-2d front-matter/placement/TOC/snippet rules + inline-summarize cross-link convention agreed and proven by the anchor page; author-now-vs-defer scope for DataGrid/settings + the cross-link convention itself pending FrontComposer + Tenants-author sign-off (AC3 escalate-with-owner)
+status: 'escalated'   # required-section template + Gate-2d front-matter/placement/TOC/snippet rules + inline-summarize cross-link convention agreed and proven by published pages; settings page authored 2026-07-01; cross-link convention pending FrontComposer + Tenants-author sign-off
 owner: 'FrontComposer + Tenants author (pending)'
 supersedes: ''
 ---
@@ -102,13 +102,14 @@ contract, and a second page (`Navigation`) is authored to demonstrate repeatabil
 | Layout & frame | `FrontComposerShell` (+ `FcPageLayout`, `FcHamburgerToggle`, `FcCollapsedNavRail`) | `docs/reference/components/front-composer-shell.md` | **authored (this story)** — Gate-2d-validated | FrontComposer |
 | Navigation | `FrontComposerNavigation` | `docs/reference/components/navigation.md` | **authored (this story)** — Gate-2d-validated | FrontComposer + Tenants author |
 | DataGrid surface | `FcColumnFilterCell`, `FcExpandInRowDetail`, `FcColumnPrioritizer`, filter family | `docs/reference/components/datagrid.md` | **authored (Story 2.8 follow-through)** — FC-TBL confirmed-stable and public baseline frozen | FrontComposer (FC-TBL, Story 2.8) |
-| Settings | `FcSettingsDialog` (+ `FcThemeToggle`, `FcDensityPreviewPanel`) | `docs/reference/components/settings.md` *(not yet authored)* | **tracked gap** — defer to Story 1.6, which finalizes the settings / theme / density UX | FrontComposer (Story 1.6) |
+| Settings | `FcSettingsDialog` (+ `FcThemeToggle`, `FcDensityPreviewPanel`) | `docs/reference/components/settings.md` | **authored (correct-course follow-through, 2026-07-01)** — Story 1.6 settings UX is complete and FC-SETTINGS is behavior-confirmed | FrontComposer (Story 1.6) |
 
 **Rationale for remaining gap.** Authoring reference pages for components whose surface is about to be
 finalized would publish documentation that contradicts the governing story. The DataGrid surface is
 now confirmed-stable under **FC-TBL (Story 2.8)** and `docs/reference/components/datagrid.md` has
-been authored as retrospective follow-through. Settings UX is still recorded as a *tracked gap with a
-named owner* until its governing surface lands.
+been authored as retrospective follow-through. The Settings surface landed in Story 1.6 and
+`docs/reference/components/settings.md` was authored on 2026-07-01, closing the tracked settings
+documentation gap.
 
 ### Cross-link convention (the genuinely open item — surfaced, not silently resolved)
 
@@ -135,6 +136,7 @@ FC-L10N each left open.
 | `docs/reference/components/front-composer-shell.md` | FC-LYT full-width vs constrained measure; FC-A11Y skip links / focus / `aria-live` / keyboard (links `HFC1050`–`HFC1055`); FC-L10N shell-vs-host string ownership + `services.Replace` swap seam | `fc-lyt-page-layout-2026-06-03.md`, `fc-a11y-accessibility-primitives-2026-06-03.md`, `fc-l10n-shell-string-ownership-2026-06-03.md` |
 | `docs/reference/components/navigation.md` | FC-A11Y nav-rail accessible name + keyboard reachability (links `HFC1050`/`HFC1051`); FC-L10N nav strings shell-owned | `fc-a11y-accessibility-primitives-2026-06-03.md`, `fc-l10n-shell-string-ownership-2026-06-03.md` |
 | `docs/reference/components/datagrid.md` | FC-TBL generated grid surface, public DataGrid components, reserved filter keys, expand-in-row a11y, wide-column prioritizer, and the remaining new-item producer open item | `fc-tbl-table-api-contract-2026-06-04.md` |
+| `docs/reference/components/settings.md` | FC-SETTINGS live-no-Apply settings UX, theme/density persistence, density preview, aria-live density announcements, and the single-writer reading | `fc-settings-persistence-2026-06-03.md` |
 
 ## Confirmation
 
@@ -147,10 +149,10 @@ rules, and the inline-summarize cross-link convention are **agreed and proven** 
 1. **Cross-link convention — confirm "summarize inline + link published siblings; record the
    `_bmad-output` mapping in the FC-DOC ledger"?** Recommended and shipped (a published page cannot
    xref `_bmad-output/contracts/*`). Confirm or override.
-2. **Author-now-vs-defer scope for the settings page.** Recommended and applied:
-   **defer** settings to **Story 1.6** (finalizes settings UX). DataGrid is no longer deferred:
-   FC-TBL was confirmed in Story 2.8 and `docs/reference/components/datagrid.md` has been authored.
-   Confirm the settings deferral or request the page be authored now.
+2. **Settings page scope — closed 2026-07-01.** The previous "defer to Story 1.6" decision is no
+   longer open: Story 1.6 is done and `docs/reference/components/settings.md` has been authored.
+   DataGrid is also no longer deferred: FC-TBL was confirmed in Story 2.8 and
+   `docs/reference/components/datagrid.md` has been authored.
 
 Owner column per the readiness request (`frontcomposer-readiness-request-2026-06-03.md:23`, 🔴 FC-DOC
 row): **FrontComposer + Tenants author** ("component docs … every story's ready-gate"). Resolution
@@ -162,7 +164,9 @@ FC-L10N all shipped `status: escalated` with a pending owner and passed review.
 - **No new `src/` surface.** The components, the DocFX site, Gate 2d, and the three upstream contracts
   all pre-exist and are unchanged. This story adds **only** new `docs/` reference pages + this contract.
 - **New published pages (Gate-2d-validated):** `docs/reference/components/index.md`,
-  `docs/reference/components/front-composer-shell.md`, `docs/reference/components/navigation.md`.
+  `docs/reference/components/front-composer-shell.md`, `docs/reference/components/navigation.md`,
+  plus follow-through pages `docs/reference/components/datagrid.md` and
+  `docs/reference/components/settings.md`.
 - **Edited (additive, non-breaking):** `docs/toc.yml` (a `Components` group nested under `Reference`),
   `docs/reference/index.md` (a Components bullet).
 - **Referenced, not modified:** the locked 7-parameter `FrontComposerShell` surface; the three

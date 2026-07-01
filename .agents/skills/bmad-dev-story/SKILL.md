@@ -412,6 +412,14 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
     <action>Verify ALL tasks and subtasks are marked [x] (re-scan the story document now)</action>
     <action>Run the full regression suite (do not skip)</action>
     <action>Confirm File List includes every changed file</action>
+    <action>Run `python3 eng/validate-story-artifacts.py --story {{story_file}} --base {{baseline_commit}}` when a baseline commit is known; otherwise run `python3 eng/validate-story-artifacts.py --story {{story_file}}`. Treat any failure as a blocking Definition-of-Done failure.</action>
+    <action>Confirm Dev Agent Record or test summary includes standardized Test Evidence for each required lane:
+      - required command attempted
+      - local result: Passed, Failed, or Blocked with exact blocker
+      - fallback evidence command/result when local exact lane is blocked
+      - CI authority: Required, Advisory, or Not applicable
+      - blocker timing: before test execution or inside the test body
+    </action>
     <action>Execute enhanced definition-of-done validation</action>
     <action>Update the story Status to: "review"</action>
 
@@ -423,8 +431,10 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
       - Integration tests for component interactions added when required
       - End-to-end tests for critical flows added when story demands them
       - All tests pass (no regressions, new tests successful)
+      - Test evidence distinguishes exact local results, blocker details, fallback evidence, and CI authority
       - Code quality checks pass (linting, static analysis if configured)
       - File List includes every new/modified/deleted file (relative paths)
+      - `eng/validate-story-artifacts.py` passes for raw authoring sentinels and changed-file vs File List reconciliation
       - Dev Agent Record contains implementation notes
       - Change Log includes summary of changes
       - Only permitted story sections were modified
@@ -456,6 +466,7 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
     <action if="any task is incomplete">HALT - Complete remaining tasks before marking ready for review</action>
     <action if="regression failures exist">HALT - Fix regression issues before completing</action>
     <action if="File List is incomplete">HALT - Update File List with all changed files</action>
+    <action if="story artifact validation fails">HALT - Fix raw authoring sentinels or File List drift before completing</action>
     <action if="definition-of-done validation fails">HALT - Address DoD failures before completing</action>
   </step>
 

@@ -80,6 +80,9 @@ The focused FC-TBL public baseline currently covers these public types under
 | `FcMaxItemsCapNotice` | Max-items cap notice. | `ViewKey`, `ItemsCount`, `AnyRealFilterActive`, `Visible`. |
 | `FcNewItemIndicator` | Accessible fresh-row indicator component. | `Text`, `AriaLabelOverride`. |
 
+`FcNewItemIndicator` is a confirmed component and state primitive. Automatic row-level producer wiring
+is tracked separately by Epic 9 / FC-NIP because the current projection nudge does not include row identity.
+
 Reserved filter keys remain framework-owned: `__status` for status filters, `__search` for in-grid
 search, and `__hidden` for hidden-column persistence. Column filter keys beginning with `__` are
 rejected.

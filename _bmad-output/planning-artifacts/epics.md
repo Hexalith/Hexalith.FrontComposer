@@ -106,6 +106,8 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - AR8 (🟠 **Numeric budgets**): ✅ **Confirmed (2026-06-21).** confirming→degraded (`TimeoutActionThresholdMs=10_000`), polling (cadence `1_000` / max `120_000`), and retry (Epic 3 `0`; Epic 4 `1×250ms`) budgets ratified in `fc-cmd-command-budget-contract` + `fc-cmd-retry-degraded-state-contract`.
 - AR9 (🟡 **EventStore status contract**): Confirm-stable `GET /api/v1/commands/status/{id}` as the command-status query the polling coordinator binds to (exists already — confirm, don't build).
 - AR10 (**Out of scope for v1 / fast-follow**): Do **not** build `<AuditTimeline>` or `<ConsequencePreview>` rich components now — approved fallbacks stand; track as fast-follow.
+- AR11 (**FC-NIP**): Confirm and implement the row-level new-item producer contract for `FcNewItemIndicator`. The producer must come from command outcome context with precise row identity (`EntityKey` or an approved equivalent), not from the current projection nudge seam that carries only projection type and tenant id.
+- AR12 (**FC-TOOL-GOV**): Preserve Epic 7 authoring-tooling follow-through as explicit backlog work: mechanical story evidence reconciliation, adopter-facing historical-label cleanup, CLI text/JSON parity coverage, HFCM9002 production-emission decisioning, and default-lane Testing redaction coverage.
 
 > 📋 **Contract-confirmation Definition-of-Done (2026-06-21 process amendment).** A contract-confirmation
 > story (the `Confirm …`/`Establish …` stories: 1.2, 1.3, 1.4, 1.5, 2.8, 3.3, 3.5, 3.6, 4.3) MUST NOT reach
@@ -161,18 +163,18 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - FR10 (DI bootstrap): **Epic 1** — Quickstart → Domain → EventStore
 - FR11 (DataGrid surface): **Epic 2** — filter/expand/status/prioritizer
 - FR12 (command lifecycle UI): **Epic 3** (core lifecycle) + **Epic 4** (destructive/abandonment)
-- FR13 (EventStore clients): **Epic 2** (query/SignalR read path) + **Epic 3** (command + status poll)
-- FR14 (nav/home/palette/badges): **Epic 2** — registry-driven discovery
+- FR13 (EventStore clients): **Epic 2** (query/SignalR read path) + **Epic 3** (command + status poll) + **Epic 9** (fresh-row producer evidence)
+- FR14 (nav/home/palette/badges): **Epic 2** (registry-driven discovery) + **Epic 9** (row-level new-item indicator producer)
 - FR15 (theme/density/settings): **Epic 1** — persisted shell preferences
 - FR16 (MCP command tools): **Epic 5**
 - FR17 (MCP projection/skill resources): **Epic 5**
 - FR18 (fail-closed MCP security): **Epic 5**
 - FR19 (MCP schema negotiation): **Epic 5**
-- FR20 (`frontcomposer inspect`): **Epic 7**
-- FR21 (`frontcomposer migrate`): **Epic 7**
-- FR22 (Testing library): **Epic 7**
+- FR20 (`frontcomposer inspect`): **Epic 7** + **Epic 10** (text-output parity guard)
+- FR21 (`frontcomposer migrate`): **Epic 7** + **Epic 10** (HFCM9002 production-emission decision)
+- FR22 (Testing library): **Epic 7** + **Epic 10** (default-lane redaction guard)
 
-**Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic).
+**Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic) · AR11 (FC-NIP) → Epic 9 · AR12 (FC-TOOL-GOV) → Epic 10.
 **Cross-cutting NFRs** (NFR1–NFR13) apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. **NFR11 (telemetry)** is owned cross-cutting (not per-AC traced) — emitting through `FrontComposerActivitySource` on the Shell command-lifecycle/projection paths and the MCP tool/resource paths.
 
 ## Epic List
@@ -252,6 +254,23 @@ Fluent v4/FAST tokens that §4.1 bans here, so every pattern is **translated**, 
 **Standalone:** each story (8.1–8.7) ships independently; Story 8.1 (header/footer) is a Minor change shippable on its own.
 **Source of record:** `sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md` (Correct Course, 2026-06-25).
 **Out of framework scope:** Tenants.UI page-body adoption (neutral page titles, `FcPageToolbar` adoption) is a separate **Host-A** Tenants correct-course under submodule approval.
+
+### Epic 9: Fresh-Row Producer and Row Identity  *(post-MVP follow-up)*
+An **operator** can see newly materialized projection rows marked after command outcomes, using a
+framework-controlled row identity payload and the confirmed `FcNewItemIndicator` component.
+**FRs covered:** FR13, FR14
+**ARs:** AR11 (FC-NIP)
+**Standalone:** post-MVP enhancement; builds on Epics 2 and 3, and does not reopen the projection nudge seam.
+**Source of record:** `sprint-change-proposal-2026-07-01.md` (Correct Course, 2026-07-01).
+
+### Epic 10: Tooling Governance Follow-Through *(post-MVP quality hardening)*
+An **adopter developer** can trust FrontComposer's authoring-tooling evidence because story file
+lists are mechanically reconciled, CLI text output is covered like JSON output, migration sidecar
+promises stay honest, and Testing package evidence remains redacted by default.
+**FRs covered:** FR20, FR21, FR22
+**ARs:** AR12 (FC-TOOL-GOV)
+**Standalone:** post-MVP quality hardening; builds on Epic 7 and does not reopen completed stories.
+**Source of record:** `sprint-change-proposal-2026-07-01-epic-7-retro-follow-through.md` (Correct Course, 2026-07-01).
 
 > **Out of scope (fast-follow, not an epic):** `<AuditTimeline>` and `<ConsequencePreview>` rich
 > components (AR10) — approved fallbacks stand; tracked for a later cycle.
@@ -1073,9 +1092,14 @@ So that navigation is compact and scannable like the Aspire app-bar while keepin
 **Then** the primary nav is one rail rendered at **72px labeled** or **48px icon-only**, toggled by the
 always-visible hamburger via the existing `SidebarToggledAction`/`SidebarCollapsed`; Mobile/Compact opens the drawer. *(UX-DR3)*
 
-**Given** a bounded-context tile,
-**Then** it shows a `FluentIcon` (rest = outline, active = filled) + (labeled) short name + aggregate-count
-badge; the active context shows an accent left-bar + `aria-current`.
+**Given** a bounded-context tile in the 72px labeled rail,
+**Then** the tile content stacks the `FluentIcon` above the short label through a Fluent layout
+primitive, while aggregate count and "New" badges render outside that icon/label stack as an overlay
+indicator row; the active context uses the filled icon, accent left-bar, and `aria-current`.
+
+**Given** a bounded-context tile in the 48px icon-only rail,
+**Then** the icon remains centered and the tile keeps an accessible name through `aria-label`/tooltip;
+badges remain outside the icon content stack.
 
 **Given** a tile is activated (click/Enter),
 **Then** a flyout (`FluentMenu`/`FluentPopover`) lists that context's projections (count + "New" badges); the
@@ -1120,3 +1144,155 @@ question; warning/info extensions) emitted by the generator (`[ProjectionBadge]`
 
 **Given** architecture.md §4.1 + epics.md UX-DR2,
 **Then** both are amended to record the colored-icon status model superseding the pill-only model.
+
+## Epic 9: Fresh-Row Producer and Row Identity *(post-MVP follow-up)*
+
+> **Source of record:** `sprint-change-proposal-2026-07-01.md` (Correct Course, 2026-07-01). This epic
+> resolves the accepted-deferred Story 2.6 AC1(b) gap by giving the row-level new-item producer a current
+> backlog home. It does not reopen completed Epics 2 or 3, and it must not fabricate row identity from the
+> current projection nudge seam.
+
+### Story 9.1: Confirm the FC-NIP row-identity producer contract
+
+As a FrontComposer maintainer,
+I want a confirmed row-identity payload contract for fresh-row indicators,
+So that FrontComposer can mark newly materialized rows without guessing from projection nudges.
+
+**Acceptance Criteria:**
+
+**Given** a command outcome that can create or materially change a projection row,
+**When** the producer contract is reviewed,
+**Then** the contract identifies the exact payload fields required to call
+`INewItemIndicatorStateService.Add(...)`: `ViewKey` or lane key, row `EntityKey`, command `MessageId`,
+projection type, and any status-slot metadata needed to avoid ambiguity.
+
+**Given** the current EventStore status endpoint and projection nudge contracts,
+**When** they do not provide precise row identity,
+**Then** the story records a blocking follow-up with owner/date instead of fabricating identity through
+diffing or broad row marking.
+
+**Given** the contract is confirmed,
+**Then** `fc-tbl`, `fc-cmd`, and DataGrid documentation name FC-NIP as the owner of automatic row-level
+fresh-item marking.
+
+### Story 9.2: Wire `FcNewItemIndicator` producer and generated-grid consumer
+
+As an operator,
+I want rows created or materially changed by a confirmed command outcome to be marked as new,
+So that live command results are discoverable in projection grids.
+
+**Acceptance Criteria:**
+
+**Given** the FC-NIP payload contract from Story 9.1,
+**When** a command reaches the relevant terminal outcome,
+**Then** the command outcome path calls `INewItemIndicatorStateService.Add(...)` with the confirmed
+view/lane, `EntityKey`, `MessageId`, and timestamp.
+
+**Given** a generated projection grid for that view/lane,
+**When** `INewItemIndicatorStateService.Snapshot(viewKey)` contains entries,
+**Then** the grid or shell-level grid wrapper renders `FcNewItemIndicator` with localized copy,
+`role="status"`, and `aria-live="polite"` for the matching lane only.
+
+**Given** the row materializes, the filter changes, the TTL expires, or tenant/user scope changes,
+**Then** the indicator is dismissed through the existing state-service semantics.
+
+**Given** SourceTools output changes,
+**Then** generated Verify snapshots and FC-TBL public-surface tests are updated intentionally.
+
+## Epic 10: Tooling Governance Follow-Through
+
+> **Source of record:** `sprint-change-proposal-2026-07-01-epic-7-retro-follow-through.md` (Correct
+> Course, 2026-07-01). This epic carries forward Epic 7 retrospective actions without reopening
+> completed Stories 7.1-7.5.
+
+### Story 10.1: Mechanical story evidence reconciliation
+
+As a QA automation maintainer,
+I want changed-file, story File List, and task-completion reconciliation to run before review promotion,
+So that story review no longer discovers omitted story-owned files or stale completion claims.
+
+**Acceptance Criteria:**
+
+**Given** a story has a `baseline_commit`,
+**When** the reconciliation check runs,
+**Then** it compares story-owned changed files against the story File List and reports omitted,
+extra, or undocumented files before the story can move to review.
+
+**Given** a workspace has pre-existing unrelated changes,
+**When** they predate the story baseline or are explicitly documented as unrelated,
+**Then** the check reports them separately without forcing the story to claim ownership.
+
+**Given** story tasks are marked complete,
+**When** the check runs,
+**Then** it verifies task claims against changed files, test summaries, or explicit documented blockers.
+
+### Story 10.2: Adopter-facing historical-label cleanup
+
+As a technical writer,
+I want adopter-facing CLI, diagnostics, and Testing docs free of stale historical story ownership labels,
+So that adopters are not sent to obsolete Story 9 provenance when Epic 7 owns the current contract.
+
+**Acceptance Criteria:**
+
+**Given** CLI, migration, diagnostics, Testing README, and published how-to docs,
+**When** they describe current Epic 7 behavior,
+**Then** adopter-facing text names the current contract or feature, not stale historical story ownership.
+
+**Given** source comments or generated diagnostic registry metadata retain old Story 9 labels as
+provenance,
+**When** they are not adopter-facing and do not misstate current ownership,
+**Then** they may remain documented as brownfield provenance.
+
+### Story 10.3: CLI text-output parity guard
+
+As a Test Architect,
+I want text output covered at the same behavioral boundary as JSON output for CLI commands,
+So that summaries, filtering, and budgets cannot drift between machine and human output.
+
+**Acceptance Criteria:**
+
+**Given** a CLI command has JSON summary, filtering, fail-flag, or diff-budget behavior,
+**When** tests are added or changed,
+**Then** text-output pins cover the same shared behavior unless the story explicitly documents why text
+does not expose that field.
+
+**Given** a migration or inspect output budget changes,
+**When** JSON caps are updated,
+**Then** text output caps and omitted-budget markers are updated and tested intentionally.
+
+### Story 10.4: HFCM9002 production-emission decision
+
+As a Product Owner and Architect,
+I want an explicit decision on production HFCM9002 migration sidecar emission,
+So that adopter docs either promise a real SourceTools emitter or clearly keep HFCM9002 synthetic-only.
+
+**Acceptance Criteria:**
+
+**Given** the current CLI migrate contract,
+**When** Product and Architecture review HFCM9002,
+**Then** they choose one of two paths: implement a SourceTools production sidecar emitter with tests, or
+remove/de-emphasize adopter-facing promises beyond synthetic/manual sidecar evidence.
+
+**Given** production emission is approved,
+**Then** SourceTools emits the sidecar, CLI migrate reads it, docs describe it, and tests prove path
+safety, redaction, and text/JSON output parity.
+
+**Given** production emission is not approved,
+**Then** CLI README and contract docs keep the synthetic-only boundary prominent.
+
+### Story 10.5: Testing evidence redaction default-lane guard
+
+As a developer,
+I want Testing package evidence redaction to stay in the default lane,
+So that assertion helpers cannot leak tenant, user, token, secret, password, oversized, or
+punctuation-heavy secret values.
+
+**Acceptance Criteria:**
+
+**Given** Testing package evidence formatters or fakes change,
+**When** the default Testing lane runs,
+**Then** it includes redaction cases for tenant/user IDs, token/secret/password keys, oversized payloads,
+and punctuation-heavy string secret values.
+
+**Given** a new public Testing helper emits evidence,
+**Then** `PublicAPI.Shipped.txt`, README guidance, and redaction tests are updated intentionally.

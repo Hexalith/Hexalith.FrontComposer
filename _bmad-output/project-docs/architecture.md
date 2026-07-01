@@ -80,6 +80,10 @@ authorization/tenant resolution and is limited to pre-`202 Accepted` transient f
 the same `MessageId` and surfaces retry exhaustion as warning feedback, not as a terminal lifecycle
 state.
 
+Fresh-row indicators are not produced from the projection nudge seam. The current nudge carries only
+projection type and tenant id, while `FcNewItemIndicator` requires row identity. FC-NIP owns the
+post-MVP command outcome payload and producer wiring.
+
 ### 4.1 UI component policy (project-wide governance)
 
 **Every UI page and component across all FrontComposer surfaces** — the framework Shell, the samples,
@@ -147,7 +151,9 @@ the accent used *as a fill* — Story 8.1 neutralizes it. This is enforced by a 
 `…FluentConformanceTests` guard** (Story 8.2): it fails if `--fc-color-accent`/`--fc-accent-base-color`
 appears in a `background`/`background-color` declaration in Shell chrome CSS, with an empty shrink-only
 allowlist mirroring this section's token-backlog discipline. Epic 8 also restyles the navigation into an
-**icon+label rail with a projection flyout** (Story 8.5, refining UX-DR3), tightens **default density** +
+**icon-over-label rail with a projection flyout** (Story 8.5, refining UX-DR3): labeled rail tiles stack
+the icon above the visible label through a Fluent layout primitive, while count and "New" badges stay
+as separate overlay indicators outside that icon/label stack. Epic 8 also tightens **default density** +
 grid (Story 8.4), adds a reusable **`FcPageToolbar`** (Story 8.6), and **amends UX-DR2** so *status* renders
 as a **colored Fluent icon** (success = green checkmark, error = red cross, unknown/neutral = grey question)
 with a hover/focus-revealed label and an always-present `aria-label` — superseding the pill-only

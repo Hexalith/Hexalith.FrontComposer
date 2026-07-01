@@ -85,4 +85,3 @@ Story 1.3 ships no API/endpoint surface; the MCP/EventStore boundaries are out o
 - Run the e2e a11y lane in CI (`accessibility-visual`, windows-latest) — the standing AC3 evidence.
 - Run `/bmad-code-review` before flipping the story to Done (mandatory per story).
 - Commit as `test(story-1.3): …` (test-only; **not** `feat` — avoids a minor NuGet publish).
-</content>

@@ -229,5 +229,3 @@ claude-opus-4-8[1m] (Claude Opus 4.8, 1M context) — bmad-dev-story workflow
 
 **Findings**
 - 🟢 LOW (fixed): empty-marker diagnostic falsely attributed a downstream call — see Change Log. No CRITICAL/HIGH/MEDIUM findings.
-</content>
-</invoke>

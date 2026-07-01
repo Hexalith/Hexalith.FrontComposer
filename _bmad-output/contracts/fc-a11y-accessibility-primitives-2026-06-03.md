@@ -131,6 +131,15 @@ Owner column per the readiness request (`frontcomposer-readiness-request-2026-06
 FC-A11Y row): **FrontComposer + Tenants author** (Product/UX for visual-design input). Resolution
 does **not** block Story 1.3 — the AC explicitly permits escalate-with-owner.
 
+### Follow-up tracking (2026-07-01)
+
+Correct-course follow-through from the Epic 1 retro records this as a tracked sprint action rather
+than an untracked pending owner: `sprint-status.yaml` now carries **"Drive residual FC-A11Y,
+FC-L10N, FC-DOC, and FC-SETTINGS wording decisions to confirmed or dated owned follow-up"** with
+owner **FrontComposer + Product/UX + Tenants author**. Until that action is closed, this contract
+stays `status: escalated`; the shipped three-layer automated ready-gate remains the recommended
+default.
+
 ## FC-DOC linkage (deferred to Story 1.5)
 
 The cross-link from the **published component docs** to this contract is owned by **Story 1.5

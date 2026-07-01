@@ -44,6 +44,10 @@ python .github/scripts/ci_governance.py summarize-quarantine --results-dir ./Tes
 python .github/scripts/ci_governance.py validate-quarantine-metadata --root .
 ```
 
+For Shell chrome or visual stories, the verification record must name the Shell Fluent governance lane,
+including `FluentConformanceTests.Shell_chrome_styles_never_use_accent_as_surface_background`, so the
+accent-as-thread rule remains mandatory evidence rather than an implicit background guard.
+
 A quarantined test must carry both the xUnit trait and a nearby metadata comment:
 
 ```csharp

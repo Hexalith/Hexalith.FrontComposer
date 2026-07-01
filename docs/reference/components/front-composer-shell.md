@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 1-5-produce-the-fc-doc-component-documentation-contract
 status: published
-reviewed: 2026-06-03
+reviewed: 2026-06-25
 uid: frontcomposer.reference.components.frontcomposershell
 slug: reference/components/front-composer-shell/
 ---

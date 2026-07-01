@@ -32,10 +32,18 @@
 
     <!-- Cross-reference story File List vs git reality -->
     <action>Compare story's Dev Agent Record → File List with actual git changes</action>
+    <action>Run `python3 eng/validate-story-artifacts.py --story {{story_path}}` from the project root. Treat raw authoring sentinels or changed-file/File List drift as review findings unless the command is blocked; if blocked, record the exact blocker.</action>
     <action>Note discrepancies:
       - Files in git but not in story File List
       - Files in story File List but no git changes
       - Missing documentation of what was actually changed
+    </action>
+    <action>Inspect Dev Agent Record and test summaries for standardized Test Evidence:
+      - exact command attempted for each required lane
+      - local result marked Passed, Failed, or Blocked with exact blocker text
+      - whether the blocker happened before test execution or inside the test body
+      - fallback command/result when exact local execution is blocked
+      - CI authority marked Required, Advisory, or Not applicable
     </action>
 
     <invoke-protocol name="discover_inputs" />
@@ -63,6 +71,12 @@
       1. **Files changed but not in story File List** → MEDIUM finding (incomplete documentation)
       2. **Story lists files but no git changes** → HIGH finding (false claims)
       3. **Uncommitted changes not documented** → MEDIUM finding (transparency issue)
+    </action>
+    <action>Review test evidence language:
+      1. Blocked local lane without exact command and blocker text → MEDIUM finding
+      2. Fallback evidence reported without command/result → MEDIUM finding
+      3. CI-authoritative lane omitted when local exact execution is blocked → MEDIUM finding
+      4. Blocked-before-execution evidence presented as a passing exact lane → HIGH finding
     </action>
 
     <!-- Use combined file list: story File List + git discovered files -->

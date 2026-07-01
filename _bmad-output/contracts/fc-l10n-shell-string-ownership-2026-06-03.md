@@ -109,6 +109,16 @@ Owner column per the readiness request (`frontcomposer-readiness-request-2026-06
 FC-L10N row): **FrontComposer + Tenants author**. Resolution does **not** block Story 1.4 — AC3
 explicitly permits escalate-with-owner.
 
+### Follow-up tracking (2026-07-01)
+
+Correct-course follow-through from the Epic 1 retro records the density-preview-string and
+domain-label-fallback questions as a tracked sprint action rather than untracked pending owner work:
+`sprint-status.yaml` now carries **"Drive residual FC-A11Y, FC-L10N, FC-DOC, and FC-SETTINGS wording
+decisions to confirmed or dated owned follow-up"** with owner **FrontComposer + Product/UX +
+Tenants author**. Until that action is closed, this contract stays `status: escalated`; the
+recommended default remains: shell chrome is shell-owned, domain labels are host-owned, and the shell
+does not supply a domain-label fallback localizer.
+
 ## FC-DOC linkage (deferred to Story 1.5)
 
 The cross-link from the **published component docs** to this contract is owned by **Story 1.5

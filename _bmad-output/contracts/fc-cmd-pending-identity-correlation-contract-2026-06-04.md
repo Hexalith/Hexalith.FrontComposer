@@ -82,8 +82,8 @@ All terminal state changes route through `IPendingCommandStateService.ResolveTer
 Story 3.5 owns binding the concrete `GET /api/v1/commands/status/{id}` EventStore status endpoint.
 Story 3.6 owns numeric confirming, degraded, and polling budgets.
 
-Row-level `FcNewItemIndicator` producer wiring is out of scope until a later command outcome payload
-contains the producer identity needed to mark rows precisely.
+Row-level `FcNewItemIndicator` producer wiring is out of scope for FC-CMD v1. Epic 9 / FC-NIP owns
+the later command outcome payload: Story 9.1 confirms row identity, and Story 9.2 wires the producer.
 
 ## Escalations
 

@@ -97,6 +97,16 @@ literally true at the source and need a human ratification of the *reading* (not
 Resolution does **not** block Story 1.6 — the behaviour ships, is tested, and is now pinned. This note
 records the recommended reading; a reviewer may ratify or refine the wording.
 
+### Follow-up tracking (2026-07-01)
+
+Correct-course follow-through from the Epic 1 retro records the literal AC3 wording decision as a
+tracked sprint action rather than untracked pending owner work: `sprint-status.yaml` now carries
+**"Drive residual FC-A11Y, FC-L10N, FC-DOC, and FC-SETTINGS wording decisions to confirmed or dated
+owned follow-up"** with owner **FrontComposer + Product/UX + Tenants author**. Until that action is
+closed, this contract keeps the behavior as `confirmed` and the wording nuance as explicitly
+escalated. The recommended reading remains: one persistence writer per slice plus one DOM writer per
+side-effect.
+
 ## Surface confirmed by Story 1.6
 
 - Theme slice — `src/Hexalith.FrontComposer.Shell/State/Theme/` (`ThemeValue`, `FrontComposerThemeState`,
@@ -112,13 +122,13 @@ records the recommended reading; a reviewer may ratify or refine the wording.
 - New this story (`tests/` only) —
   `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SliceSingleWriterGovernanceTests.cs`.
 
-## FC-DOC linkage (settings page — tracked gap, optional)
+## FC-DOC linkage (settings page — closed 2026-07-01)
 
 FC-DOC's component status map (`fc-doc-component-documentation-2026-06-03.md`) names **Story 1.6** as
-the owner of the *settings* component-doc decision. These ACs do **not** require the published page;
-`docs/reference/components/settings.md` remains an **optional, Gate-2d-conformant** close-out and is
-left as a tracked gap unless authored deliberately. This note is a BMAD artifact under
-`_bmad-output/contracts/`, **not** a published `docs/` page.
+the owner of the *settings* component-doc decision. The published page now exists at
+`docs/reference/components/settings.md`, so the settings doc gap is closed. This note remains the
+BMAD contract artifact under `_bmad-output/contracts/`; the published page summarizes the adopter
+surface and links to published sibling docs.
 
 ## References
 

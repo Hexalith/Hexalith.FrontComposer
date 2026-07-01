@@ -103,3 +103,16 @@ Each suppression must name:
 Use `npm run test:e2e:visual:update` locally to intentionally update the six v1 baselines: Light/Dark x Compact/Comfortable/Roomy.
 
 When baselines change, include a rationale paragraph plus before/after screenshot artifacts or links. CI never regenerates baselines, suppressions, or specimen manifest entries automatically.
+
+## Named CI Evidence Follow-Ups
+
+When local browser execution is blocked, the story or retrospective must name the CI owner, lane, and
+artifact path expected to close the evidence gap. A generic "Playwright is socket-blocked locally" note
+is not enough for promotion when the story changes visual, hover/focus, touch, or screenshot-baseline
+behavior.
+
+| ID | Source | Lane | Owner | Closure evidence |
+| --- | --- | --- | --- | --- |
+| E8-CI-1 | Story 8.1 review | Windows visual baseline update lane | QA Engineer | Updated win32 visual baselines or explicit non-update decision. |
+| E8-CI-2 | Story 8.3 review | Shell chrome Playwright lane | QA Engineer | Browser assertion for custom-logo non-decorative branch or documented supersession by bUnit pin. |
+| E8-CI-3 | Story 8.7 review | Status icon tooltip/touch browser lane | QA Engineer | Playwright browser run with the hasTouch-scoped test passing. |

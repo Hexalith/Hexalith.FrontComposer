@@ -130,7 +130,7 @@ intentional, reviewed public-contract change.
   `PanelId`, and `SuppressedAnnouncement`.
 - Story 2.5 confirmed `[ColumnPriority]`, HFC1028/HFC1029, >15-column `FcColumnPrioritizer` wrapping,
   and `MaxVisibleColumns=10`.
-- Story 2.6 accepted deferral of true row-level new-item producer wiring to Epic 3/5 / Story 5.5.
+- Story 2.6 accepted deferral of true row-level new-item producer wiring to Epic 9 / FC-NIP Stories 9.1/9.2.
   For FC-TBL, `FcNewItemIndicator` may still be part of the displayed component contract, but do not
   claim row-identity production is complete.
 - Story 2.7 completed command palette/global registry search with zero source change. `FcProjectionGlobalSearch`
@@ -210,7 +210,7 @@ GPT-5 Codex
 - Story context engine analysis completed - comprehensive developer guide created.
 - FC-TBL public surface disposition: 12 Story 1.0 DataGrid components remain public and confirmed stable; `ColumnDescriptor` and `ColumnVisibilityContext` remain public because `FcColumnPrioritizer.ChildContent` exposes them.
 - Added a focused Shell FC-TBL public API baseline at `src/Hexalith.FrontComposer.Shell/PublicAPI.FcTbl.Shipped.txt`, packed from the Shell project and enforced by `FcTblPackageBoundaryTests`.
-- Wrote `_bmad-output/contracts/fc-tbl-table-api-contract-2026-06-04.md` with source/test citations for every required slice. The only `open` item is row-identity producer wiring for `FcNewItemIndicator`, owned by FrontComposer Product/UX plus command lifecycle and followed up by Story 5-5 / Epic 3-5.
+- Wrote `_bmad-output/contracts/fc-tbl-table-api-contract-2026-06-04.md` with source/test citations for every required slice. The only `open` item is row-identity producer wiring for `FcNewItemIndicator`, owned by FrontComposer Product/UX plus command lifecycle and followed up by Epic 9 / FC-NIP Stories 9.1/9.2.
 - This story made no DataGrid behavior changes and no generated snapshot updates.
 - Added `tests/e2e/specs/fc-tbl-contract.spec.ts`: a Playwright FC-TBL generated-table contract spec asserting `data-fc-datagrid` envelopes, generated `data-fc-field` column keys, the 6 `BadgeSlot` status chips (`role="group"`, `aria-pressed` toggle), and `role="region"` expand-in-row detail across the `type` and `data-formatting` specimens; wired via a new `test:fc-tbl` npm script in `tests/e2e/package.json`. This is a contract/boundary e2e test (not a duplicate feature test) and runs in the Playwright lane, not the `dotnet test` lanes.
 
