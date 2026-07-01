@@ -43,7 +43,7 @@
   <ItemGroup Label="Blazor">
     <!-- Fluent UI v5 RC2 available on public NuGet (Path 1 from story spec).
          ADR-003: build on v5 RC, pin exact version. -->
-    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="5.0.0-rc.3-26138.1" />
+    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="5.0.0-rc.4-26180.1" />
     <PackageVersion Include="Fluxor.Blazor.Web" Version="6.9.0" />
   </ItemGroup>
   <ItemGroup Label="Aspire">
