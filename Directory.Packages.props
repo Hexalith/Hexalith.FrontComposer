@@ -52,7 +52,7 @@
          AppHosts. There is no stable 13.4.x Keycloak-hosting line, so the ecosystem holds this
          known-good preview for reproducibility. Do NOT bump independently (e.g. to 13.4.2-preview):
          it must move in lockstep with the sibling AppHosts in an owned, submodule-approved story. -->
-    <PackageVersion Include="Hexalith.EventStore.Aspire" Version="3.20.0" />
+    <PackageVersion Include="Hexalith.EventStore.Aspire" Version="3.21.0" />
     <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.4.6-preview.1.26319.6" />
   </ItemGroup>
   <ItemGroup Label="MCP">
