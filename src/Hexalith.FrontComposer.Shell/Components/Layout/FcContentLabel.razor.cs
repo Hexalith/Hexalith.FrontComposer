@@ -16,6 +16,22 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// re-render, so a rebound <see cref="LabelledBy"/> / <see cref="Label"/> takes effect) and resets it
 /// on dispose, so leaving the page (or omitting this component) restores the shell's unlabelled
 /// default. Used outside a shell the declaration is silently inert.
+/// <para>
+/// <b>Single-writer (last-writer-wins).</b> One declaration per page is the supported shape. Two
+/// <see cref="FcContentLabel"/> markers on one page share the single cascaded
+/// <see cref="FcContentLabelCoordinator"/>: disposing either one calls
+/// <see cref="FcContentLabelCoordinator.Reset"/> and clears a still-live sibling's name from
+/// <c>#fc-main-content</c> until the survivor next re-renders. This faithfully mirrors the accepted
+/// <see cref="FcPageLayoutCoordinator"/> last-writer-wins limitation; a writer-identity guard (applied
+/// to both coordinators together) would be required before multi-writer support is safe.
+/// </para>
+/// <para>
+/// <b>First-paint (InteractiveServer).</b> Registration runs from <c>OnAfterRender</c>, so on a
+/// static-SSR / prerender pass <c>#fc-main-content</c> carries no page-declared
+/// <c>aria-label</c> / <c>aria-labelledby</c> until interactive hydration completes. The shell-parameter
+/// path (<c>FrontComposerShell.ContentLabel</c> / <c>ContentLabelledBy</c>) is correct on first paint;
+/// prefer it when a name must be present before hydration.
+/// </para>
 /// </remarks>
 public sealed partial class FcContentLabel : ComponentBase, IDisposable {
     private bool _registered;

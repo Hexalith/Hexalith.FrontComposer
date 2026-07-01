@@ -20,8 +20,10 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// <b>Single-writer, last-writer-wins.</b> One <see cref="FcContentLabel"/> per page is the supported
 /// shape. Disposing the declaration resets the coordinator so leaving the page restores the
 /// unlabelled default (the implicit "main" name), exactly like <see cref="FcPageLayoutCoordinator"/>.
-/// A shell <c>ContentLabel</c> / <c>ContentLabelledBy</c> parameter remains the app-wide static
-/// fallback used when no page declares one.
+/// Because the coordinator holds no writer identity, a second <see cref="FcContentLabel"/> on the same
+/// page that disposes will <see cref="Reset"/> and clear a still-live sibling's name until that sibling
+/// re-renders — one declaration per page is the supported shape. A shell <c>ContentLabel</c> /
+/// <c>ContentLabelledBy</c> parameter remains the app-wide static fallback used when no page declares one.
 /// </para>
 /// </remarks>
 internal sealed class FcContentLabelCoordinator {

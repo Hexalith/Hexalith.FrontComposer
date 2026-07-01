@@ -98,6 +98,13 @@ public sealed partial class FcPageHeader : ComponentBase {
     /// diagnostically rather than silently (Requested outcome 5) this method throws
     /// <see cref="InvalidOperationException"/> when no <see cref="HeadingTabIndex"/> is set instead of
     /// attempting a focus that cannot succeed.
+    /// <para>
+    /// <b>Behavior change for external adopters:</b> before the landmark/contract hardening this method
+    /// silently no-oped when the heading was not focusable; it now throws (above). Adopters upgrading
+    /// must set <see cref="HeadingTabIndex"/> (typically <c>-1</c>) on any header used as a focus-restore
+    /// target. Note the <c>FcAggregateListPage</c> wrapper's <c>… ?? ValueTask.CompletedTask</c> guards
+    /// only the pre-first-render null <c>@ref</c> window — it does <b>not</b> swallow this throw.
+    /// </para>
     /// </remarks>
     /// <returns>A task that completes once focus has moved to the heading.</returns>
     /// <exception cref="InvalidOperationException">
