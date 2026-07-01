@@ -1,14 +1,20 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <!-- Define paths of the Hexalith packages props. -->
+    <Hexalith1BuildPackageProps>$(MSBuildThisFileDirectory)references/Hexalith.Builds/Props/Directory.Packages.props</Hexalith1BuildPackageProps>
+    <Hexalith2BuildPackageProps>$(MSBuildThisFileDirectory)../Hexalith.Builds/Props/Directory.Packages.props</Hexalith2BuildPackageProps>
+    <Hexalith3BuildPackageProps>$(MSBuildThisFileDirectory)../../Hexalith.Builds/Props/Directory.Packages.props</Hexalith3BuildPackageProps>
   </PropertyGroup>
+  <!-- Import the required Hexalith.Packages.props file. -->
+  <Import Project="$(Hexalith1BuildPackageProps)" Condition="Exists('$(Hexalith1BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'" />
+  <Import Project="$(Hexalith2BuildPackageProps)" Condition="Exists('$(Hexalith2BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'" />
+  <Import Project="$(Hexalith3BuildPackageProps)" Condition="'$(HexalithVersionsLoaded)' != 'true'" />
   <ItemGroup Label="Roslyn">
     <!-- Roslyn analyzers require an SDK/compiler host at least as new as these packages.
          global.json pins the repo to SDK 10.0.300.
          Verify compiler-host compatibility after SDK feature-band bumps.
          PrivateAssets="all" is set in the project file, not here. -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="5.3.0" />
-    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="5.3.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.3.0" />
   </ItemGroup>
   <ItemGroup Label="Runtime">
@@ -17,12 +23,10 @@
     <!-- System.ComponentModel.Annotations is ONLY needed on netstandard2.0 — net10.0 carries it in-box.
          Used by FcShellOptions for [Range] / [RegularExpression] validation. -->
     <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
-    <PackageVersion Include="System.Text.Json" Version="10.0.9" />
     <!-- Story 3-5 D3 — ValueTask<T> is ONLY needed on netstandard2.0 for the IActionQueueCountReader
          contract; net10.0 carries it in-box. -->
     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <!-- Story 2-4 Task 3.4 — OptionsBuilder<T>.ValidateDataAnnotations() extension for FcShellOptions. -->
-    <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="10.0.9" />
     <!-- Story 3-1 Task 8.2 — IStringLocalizer<FcShellResources> + AddLocalization() for the
          Quickstart chain. Adopters who don't use the shell localization still get AddLocalization
          transitively via the web SDK; Shell owning the package keeps the granular API surface honest. -->
@@ -30,7 +34,6 @@
     <!-- Story 5-1 — default EventStore projection subscriptions consume the EventStore-owned SignalR hub. -->
     <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.9" />
     <!-- Story 7-1 — OIDC challenge handler for host-owned authentication integration. -->
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.9" />
     <!-- Story 2-3 Decision D3: ULID generation for MessageId idempotency (FR36/NFR45).
          Story spec pinned 1.7.4; nuget.org published 1.7.3 — latest stable at implementation time. -->
     <PackageVersion Include="NUlid" Version="1.7.3" />
@@ -41,33 +44,12 @@
     <PackageVersion Include="System.Reactive" Version="7.0.0-rc.1" />
   </ItemGroup>
   <ItemGroup Label="Blazor">
-    <!-- Fluent UI v5 RC2 available on public NuGet (Path 1 from story spec).
-         ADR-003: build on v5 RC, pin exact version. -->
-    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="5.0.0-rc.4-26180.1" />
     <PackageVersion Include="Fluxor.Blazor.Web" Version="6.9.0" />
-  </ItemGroup>
-  <ItemGroup Label="Aspire">
-    <!-- Keycloak hosting for the FrontComposer AppHost (OIDC/JWT identity provider).
-         Pinned to the exact preview build shared by the Hexalith.Tenants / Hexalith.EventStore
-         AppHosts. There is no stable 13.4.x Keycloak-hosting line, so the ecosystem holds this
-         known-good preview for reproducibility. Do NOT bump independently (e.g. to 13.4.2-preview):
-         it must move in lockstep with the sibling AppHosts in an owned, submodule-approved story. -->
-    <PackageVersion Include="Hexalith.EventStore.Aspire" Version="3.21.0" />
-    <PackageVersion Include="Aspire.Hosting.Keycloak" Version="13.4.6-preview.1.26319.6" />
   </ItemGroup>
   <ItemGroup Label="MCP">
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
   </ItemGroup>
   <ItemGroup Label="Testing">
-    <!-- xUnit v3 latest stable (3.x) line. -->
-    <PackageVersion Include="xunit.v3" Version="3.2.2" />
-    <PackageVersion Include="xunit.v3.assert" Version="3.2.2" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageVersion Include="bunit" Version="2.8.4-preview" />
-    <PackageVersion Include="Shouldly" Version="4.3.0" />
-    <PackageVersion Include="NSubstitute" Version="6.0.0-rc.1" />
-    <PackageVersion Include="coverlet.collector" Version="10.0.1" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
     <!-- Story 10-3 — file-based Pact consumer contracts for the EventStore REST boundary. -->
     <PackageVersion Include="PactNet" Version="5.0.1" />
     <!-- Verify snapshot testing — XunitV3 for xUnit v3 (NOT Verify.Xunit which is v2) -->
