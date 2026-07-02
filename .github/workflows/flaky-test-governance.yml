@@ -36,7 +36,7 @@ jobs:
           submodules: false
 
       - name: Initialize build submodules
-        uses: Hexalith/Hexalith.Builds/Github/initialize-build@e3be295557d7d7d6009ea2dc207084b20384e740
+        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
 
       - name: Download CI evidence artifacts
         if: github.event_name == 'workflow_run'
