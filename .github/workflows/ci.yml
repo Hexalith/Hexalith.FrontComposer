@@ -21,13 +21,13 @@ jobs:
     # TODO(Epic 2): Remove continue-on-error to harden gates to blocking.
     continue-on-error: true
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
           # DIVERGENCE 1: NO submodules here -- commitlint only needs commit history
 
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 'lts/*'
           cache: 'npm'
@@ -55,23 +55,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           # DIVERGENCE 1: FrontComposer has root-declared references submodules.
-          # fetch-depth: 1 (shallow) keeps checkout fast while avoiding nested recursion.
+          # fetch-depth: 1 (shallow) keeps checkout fast; submodules are initialized explicitly.
           fetch-depth: 1
           persist-credentials: false
-          submodules: true
+          submodules: false
+
+      - name: Initialize build submodules
+        uses: Hexalith/Hexalith.Builds/Github/initialize-build@e3be295557d7d7d6009ea2dc207084b20384e740
+
+      - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@e3be295557d7d7d6009ea2dc207084b20384e740
+        with:
+          dotnet-version: '10.0.300'
 
       - name: Record full CI lane start
         shell: bash
         run: echo "FC_FULL_CI_STARTED_AT=$(date -u +%s)" >> "$GITHUB_ENV"
 
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
-        with:
-          dotnet-version: '10.0.300'
-
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 'lts/*'
           cache: 'npm'
@@ -82,7 +85,7 @@ jobs:
         run: npm ci
 
       - name: Cache NuGet packages
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
           key: nuget-${{ hashFiles('Directory.Packages.props') }}
@@ -143,7 +146,7 @@ jobs:
         run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
 
       # Gate 2c: File-based consumer pacts for the FrontComposer/EventStore REST boundary.
-      # This lane intentionally uses the existing root-declared `submodules: true` checkout above and
+      # This lane intentionally uses explicit root-declared submodule initialization above and
       # does not run recursive nested submodule initialization.
       - name: 'Gate 2c: Contract pacts'
         env:
@@ -177,7 +180,7 @@ jobs:
 
       - name: Upload contract artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: contract-artifacts
           retention-days: 14
@@ -242,7 +245,7 @@ jobs:
 
       - name: Upload quarantine artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: quarantine-artifacts
           retention-days: 14
@@ -307,7 +310,7 @@ jobs:
 
       - name: Upload test results
         if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results
           path: '**/test-results.trx'
@@ -371,7 +374,7 @@ jobs:
 
       - name: Upload coverage reports
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: coverage-reports
           path: '**/coverage.cobertura.xml'
@@ -410,7 +413,7 @@ jobs:
 
       - name: Upload CI duration artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ci-duration-artifacts
           retention-days: 14
@@ -421,18 +424,21 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 1
           persist-credentials: false
           # Root-declared references submodules only; do not use recursive nested submodule checkout.
-          submodules: true
+          submodules: false
 
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+      - name: Initialize build submodules
+        uses: Hexalith/Hexalith.Builds/Github/initialize-build@e3be295557d7d7d6009ea2dc207084b20384e740
+
+      - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@e3be295557d7d7d6009ea2dc207084b20384e740
         with:
           dotnet-version: '10.0.300'
 
-      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 'lts/*'
           cache: 'npm'
@@ -477,7 +483,7 @@ jobs:
 
       - name: Upload accessibility and visual artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: accessibility-visual-artifacts
           retention-days: 14

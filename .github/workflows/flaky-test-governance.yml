@@ -28,12 +28,15 @@ jobs:
     timeout-minutes: 15
     if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
     steps:
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 1
           persist-credentials: false
           # Root-declared references submodules only; do not use recursive nested submodule checkout.
-          submodules: true
+          submodules: false
+
+      - name: Initialize build submodules
+        uses: Hexalith/Hexalith.Builds/Github/initialize-build@e3be295557d7d7d6009ea2dc207084b20384e740
 
       - name: Download CI evidence artifacts
         if: github.event_name == 'workflow_run'
@@ -75,7 +78,7 @@ jobs:
 
       - name: Upload flaky governance artifacts
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: flaky-governance-artifacts
           retention-days: 14
