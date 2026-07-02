@@ -26,7 +26,7 @@
 	path = references/Hexalith.Memories
 	url = https://github.com/Hexalith/Hexalith.Memories.git
 	branch = main
-[submodule "references/Hexalith.Parties"]
+[submodule "Hexalith.Parties"]
 	path = references/Hexalith.Parties
 	url = https://github.com/Hexalith/Hexalith.Parties.git
 	branch = main
