@@ -27,6 +27,7 @@ public sealed class FcShellOptionsValidationTests {
         options.MaxPendingCommandEntries.ShouldBe(100);
         options.CommandDispatchRetryAttempts.ShouldBe(1);
         options.CommandDispatchRetryDelayMs.ShouldBe(250);
+        options.AppTitle.ShouldBeNull();
 
         ValidateDataAnnotations(options).ShouldBeEmpty();
         new FcShellOptionsThresholdValidator().Validate(null, options).Succeeded.ShouldBeTrue();
@@ -182,6 +183,33 @@ public sealed class FcShellOptionsValidationTests {
         FcShellOptions options = new() { AccentColor = hex };
         List<ValidationResult> results = ValidateDataAnnotations(options);
         results.ShouldContain(r => r.MemberNames.Contains(nameof(FcShellOptions.AccentColor)));
+    }
+
+    [Fact]
+    public void AppTitle_TooLong_FailsAnnotation() {
+        FcShellOptions options = new() { AppTitle = new string('x', 121) };
+
+        List<ValidationResult> results = ValidateDataAnnotations(options);
+
+        results.ShouldContain(r => r.MemberNames.Contains(nameof(FcShellOptions.AppTitle)));
+    }
+
+    [Fact]
+    public void AppTitle_Empty_FailsAnnotation() {
+        FcShellOptions options = new() { AppTitle = string.Empty };
+
+        List<ValidationResult> results = ValidateDataAnnotations(options);
+
+        results.ShouldContain(r => r.MemberNames.Contains(nameof(FcShellOptions.AppTitle)));
+    }
+
+    [Fact]
+    public void AppTitle_ConfiguredDisplayName_PassesAnnotation() {
+        FcShellOptions options = new() { AppTitle = "Hexalith Tenants" };
+
+        List<ValidationResult> results = ValidateDataAnnotations(options);
+
+        results.ShouldNotContain(r => r.MemberNames.Contains(nameof(FcShellOptions.AppTitle)));
     }
 
     [Theory]

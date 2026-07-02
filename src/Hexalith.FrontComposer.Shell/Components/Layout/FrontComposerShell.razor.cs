@@ -153,8 +153,9 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     [Parameter] public RenderFragment? ChildContent { get; set; }
 
     /// <summary>
-    /// Application title shown in the header. When <see langword="null"/> (default) the shell
-    /// resolves <c>FcShellResources.AppTitle</c> — the framework-owned product name string.
+    /// Application title shown in the header. When <see langword="null"/> (default), the shell
+    /// resolves <see cref="FcShellOptions.AppTitle"/> and then falls back to
+    /// <c>FcShellResources.AppTitle</c> — the framework-owned product name string.
     /// </summary>
     [Parameter] public string? AppTitle { get; set; }
 
@@ -242,6 +243,18 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     /// <summary>Accent color projected into the inline <c>:root</c> style block (AC2).</summary>
     protected string AccentColor => Options.Value.AccentColor;
+
+    /// <summary>Application title resolved from the explicit parameter, settings, then resources.</summary>
+    protected string ResolvedAppTitle {
+        get {
+            if (AppTitle is not null) {
+                return AppTitle;
+            }
+
+            string? configuredTitle = Options.Value.AppTitle;
+            return configuredTitle ?? Localizer["AppTitle"].Value;
+        }
+    }
 
     /// <summary>Whether the header should render the optional brand/logo cell.</summary>
     protected bool ShouldRenderHeaderLogo => HeaderLogo is not null || ShowDefaultHeaderLogo;

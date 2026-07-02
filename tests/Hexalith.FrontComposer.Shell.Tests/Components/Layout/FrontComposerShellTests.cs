@@ -5,6 +5,7 @@ using AngleSharp.Dom;
 using Fluxor;
 using Fluxor.Blazor.Web;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
@@ -164,6 +165,33 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
             cut.Markup.ShouldNotContain("data-testid=\"fc-shell-brand-logo\"", Case.Sensitive);
             cut.Markup.ShouldContain("Hexalith FrontComposer", Case.Sensitive);
             _ = cut.FindComponent<FcHamburgerToggle>();
+        });
+    }
+
+    [Fact]
+    public void HeaderTitle_WhenConfiguredInShellOptions_RendersConfiguredTitle() {
+        Services.Configure<FcShellOptions>(o => o.AppTitle = "Hexalith Tenants");
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Hexalith Tenants", Case.Sensitive);
+            cut.Markup.ShouldNotContain("Hexalith FrontComposer", Case.Sensitive);
+        });
+    }
+
+    [Fact]
+    public void HeaderTitle_WhenParameterProvided_OverridesConfiguredTitle() {
+        Services.Configure<FcShellOptions>(o => o.AppTitle = "Hexalith Tenants");
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .Add(c => c.AppTitle, "Explicit Shell")
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("Explicit Shell", Case.Sensitive);
+            cut.Markup.ShouldNotContain("Hexalith Tenants", Case.Sensitive);
         });
     }
 

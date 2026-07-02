@@ -67,8 +67,8 @@
     <value>Skip to content</value>
   </data>
   <data name="FooterCopyright" xml:space="preserve">
-    <value>Hexalith FrontComposer © {0}</value>
-    <comment>Default footer copyright line; {0} is the current year.</comment>
+    <value>{0} © {1}</value>
+    <comment>Default footer copyright line; {0} is the resolved app title and {1} is the current year.</comment>
   </data>
 
   <!-- Story 2-4 lifecycle labels (G2 backfill) — 2-4's FcLifecycleWrapper uses inline strings

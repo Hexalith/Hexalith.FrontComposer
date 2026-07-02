@@ -16,6 +16,14 @@ namespace Hexalith.FrontComposer.Contracts;
 /// </remarks>
 public sealed class FcShellOptions {
     /// <summary>
+    /// Gets or sets the adopter-facing application title rendered by the shell header when
+    /// <c>FrontComposerShell.AppTitle</c> is not set. Default: <see langword="null"/>, which falls
+    /// back to the localized framework title.
+    /// </summary>
+    [StringLength(120, MinimumLength = 1, ErrorMessage = "AppTitle must be between 1 and 120 characters.")]
+    public string? AppTitle { get; set; }
+
+    /// <summary>
     /// Gets or sets the <c>max-width</c> CSS value for FullPage command renderers' containers
     /// (Story 2-2 Decision D26). Default: <c>"720px"</c>.
     /// </summary>

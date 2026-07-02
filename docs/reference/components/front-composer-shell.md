@@ -64,9 +64,9 @@ leaving a slot `null` triggers the documented default.
 | `HeaderCenter` | `RenderFragment?` | Slot omitted (breadcrumb slot; filled by later stories). |
 | `HeaderEnd` | `RenderFragment?` | Auto-populates the command-palette trigger + settings button. |
 | `Navigation` | `RenderFragment?` | Auto-renders `FrontComposerNavigation` when the registry has ≥ 1 renderable manifest; the Navigation area is omitted entirely when the registry is empty. |
-| `Footer` | `RenderFragment?` | Renders the default localized copyright (`Hexalith FrontComposer © {Year}`). |
+| `Footer` | `RenderFragment?` | Renders the default localized copyright (`{resolved app title} © {Year}`). |
 | `ChildContent` | `RenderFragment?` | The page body (your `@Body`). |
-| `AppTitle` | `string?` | Resolves the framework-owned `FcShellResources.AppTitle` product-name string. |
+| `AppTitle` | `string?` | Resolves `FcShellOptions.AppTitle`, then the framework-owned `FcShellResources.AppTitle` product-name string. |
 | `ContentLabel` | `string?` | Optional accessible name for the `#fc-main-content` landmark when no visible heading labels it. |
 | `ContentLabelledBy` | `string?` | Optional id reference that names the `#fc-main-content` landmark; takes precedence over `ContentLabel`. |
 | `HeaderLogo` | `RenderFragment?` | Optional adopter-supplied logo rendered between `HeaderStart` or the default hamburger and `AppTitle`. |
@@ -135,8 +135,10 @@ The shell follows the **FC-L10N two-localizer ownership split**:
   via `[Display(Name=…)]` or your own `IStringLocalizer<T>`.
 
 To whitelabel or DB-back the shell's strings, swap the localizer without touching the resx convention:
-`services.Replace(...)` the `IStringLocalizer<FcShellResources>` registration. Override `AppTitle`
-directly via the parameter when you only need the product name changed. Add a culture by extending
+`services.Replace(...)` the `IStringLocalizer<FcShellResources>` registration. Set
+`Hexalith:Shell:AppTitle` when you only need the product name changed, for example
+`"Hexalith Tenants"` in a tenants UI host. Override `AppTitle` directly via the parameter for
+per-layout exceptions. Add a culture by extending
 `FcShellOptions.SupportedCultures` and shipping the matching `FcShellResources.<culture>.resx`
 satellite — no code change required.
 

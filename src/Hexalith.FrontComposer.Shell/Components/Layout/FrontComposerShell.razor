@@ -76,7 +76,7 @@
                         }
                         <FluentText Size="@Typography.AppTitle.Size" Weight="@Typography.AppTitle.Weight"
                                     As="@Typography.AppTitle.Tag">
-                            @(AppTitle ?? Localizer["AppTitle"].Value)
+                            @ResolvedAppTitle
                         </FluentText>
                         @if (HeaderCenter is not null)
                         {
@@ -160,7 +160,7 @@
                            --colorNeutralForegroundInverted (white), which is invisible on the neutral
                            light footer surface. *@
                         <FluentText As="TextTag.Span" Size="TextSize.Size200">
-                            @Localizer["FooterCopyright", DateTime.Now.Year].Value
+                            @Localizer["FooterCopyright", ResolvedAppTitle, DateTime.Now.Year].Value
                         </FluentText>
                     }
                 </FluentStack>
