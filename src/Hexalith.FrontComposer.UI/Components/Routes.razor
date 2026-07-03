@@ -1,0 +1,51 @@
+@inject NavigationManager Nav
+
+<CascadingAuthenticationState>
+    <Router AppAssembly="typeof(Hexalith.FrontComposer.UI.Components.App).Assembly"
+            AdditionalAssemblies="RouteAssemblies">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+                <NotAuthorized Context="authState">
+                    @if (authState.User.Identity?.IsAuthenticated != true)
+                    {
+                        <RedirectToChallenge />
+                    }
+                    else
+                    {
+                        <FcPageLayout Mode="FcPageLayoutMode.Constrained">
+                            <FcPageHeader Title="Forbidden"
+                                          Subtitle="@ForbiddenMessage" />
+                        </FcPageLayout>
+                    }
+                </NotAuthorized>
+                <Authorizing>
+                    <FluentText role="status" aria-live="polite">Authorizing...</FluentText>
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="routeData" Selector="h1" />
+        </Found>
+    </Router>
+</CascadingAuthenticationState>
+
+@code {
+    private static readonly System.Reflection.Assembly[] RouteAssemblies =
+    [
+        typeof(Hexalith.Tenants.UI.Composition.TenantsFrontComposerDomain).Assembly,
+        typeof(Hexalith.Parties.AdminPortal.Components.PartiesAdminPortal).Assembly,
+        typeof(Hexalith.Parties.ConsumerPortal.Components.MyProfilePage).Assembly,
+    ];
+
+    private string ForbiddenMessage
+    {
+        get
+        {
+            string relativePath = Nav.ToBaseRelativePath(Nav.Uri);
+            int queryStart = relativePath.IndexOfAny(['?', '#']);
+            string path = queryStart >= 0 ? relativePath[..queryStart] : relativePath;
+            path = "/" + path.TrimStart('/');
+            return path.StartsWith("/admin", StringComparison.OrdinalIgnoreCase)
+                ? "An administrator role is required to view this area."
+                : "You are not authorized to view this area.";
+        }
+    }
+}

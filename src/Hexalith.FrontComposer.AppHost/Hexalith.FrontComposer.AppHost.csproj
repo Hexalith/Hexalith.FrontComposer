@@ -21,5 +21,7 @@
                       Condition="'$(HexalithEventStoreFromSource)' != 'true'" />
     <!-- Counter sample web shell, co-hosted as a resource in the single platform AppHost. -->
     <ProjectReference Include="..\..\samples\Counter\Counter.Web\Counter.Web.csproj" />
+    <!-- Combined FrontComposer module UI for Tenants + Parties. -->
+    <ProjectReference Include="..\Hexalith.FrontComposer.UI\Hexalith.FrontComposer.UI.csproj" />
   </ItemGroup>
 </Project>

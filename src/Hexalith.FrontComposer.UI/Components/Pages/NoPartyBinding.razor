@@ -1,0 +1,7 @@
+@page "/no-party-binding"
+@attribute [Authorize(Policy = PartiesUiAuthorization.ConsumerPolicy)]
+
+<FcPageLayout Mode="FcPageLayoutMode.Constrained">
+    <FcPageHeader Title="We're still setting up your profile"
+                  Subtitle="Your account is not linked to a profile yet. Contact your administrator or support to finish setup." />
+</FcPageLayout>

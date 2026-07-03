@@ -1,5 +1,16 @@
 # Deferred Work
 
+## Broad Suite Pre-Existing Failures (2026-07-03)
+
+The broad filtered suite for the FrontComposer UI tenant/party host implementation surfaced existing governance/doc failures outside the new UI integration scope:
+
+- `Hexalith.FrontComposer.SourceTools.Tests.Docs.FcDocComponentDocumentationContractTests.EveryComponentPageLinksAtLeastOnePublishedAccessibilityDiagnostic` for `docs/reference/components/settings.md`.
+- `Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.HexalithDependencyMode_DefaultsToProjectReferencesForDebugAndPackagesForRelease`.
+- `Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.PackageInventory_IsExplicitLockstepAndReviewable`.
+- `Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.ReleaseWorkflow_AddsSbomSigningAttestationAndManifestGatesAfterBlockingTests`.
+- `Hexalith.FrontComposer.Shell.Tests.Governance.CiGovernanceTests.NightlyBenchmarkWorkflow_UsesEmbeddedPromptContractAndReadOnlyEvidence`.
+- `Hexalith.FrontComposer.Shell.Tests.Governance.Story12_4_RedPhaseDefTests.Story12_4_Def14_AttestBuildProvenanceStep_IsWiredInReleaseWorkflow`.
+
 ## Legacy Epic 11 / 12 Numbering Reconciliation (2026-06-21)
 
 > **Read this first — the `Epic 11` / `Epic 12` / `Story 11.x` / `Story 12.x` numbering used throughout

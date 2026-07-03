@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsPublishable>true</IsPublishable>
+    <EnableContainer>true</EnableContainer>
+    <ContainerRepository>frontcomposer-ui</ContainerRepository>
+    <_FrontComposerRepoRoot>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..', '..'))</_FrontComposerRepoRoot>
+    <HexalithTenantsRoot Condition="'$(HexalithTenantsRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(_FrontComposerRepoRoot)', 'references', 'Hexalith.Tenants'))</HexalithTenantsRoot>
+    <HexalithPartiesRoot Condition="'$(HexalithPartiesRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(_FrontComposerRepoRoot)', 'references', 'Hexalith.Parties'))</HexalithPartiesRoot>
+    <HexalithEventStoreRoot Condition="'$(HexalithEventStoreRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(_FrontComposerRepoRoot)', 'references', 'Hexalith.EventStore'))</HexalithEventStoreRoot>
+    <HexalithMemoriesRoot Condition="'$(HexalithMemoriesRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(_FrontComposerRepoRoot)', 'references', 'Hexalith.Memories'))</HexalithMemoriesRoot>
+    <HexalithCommonsRoot Condition="'$(HexalithCommonsRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(_FrontComposerRepoRoot)', 'references', 'Hexalith.Commons'))</HexalithCommonsRoot>
+    <HexalithFrontComposerRoot Condition="'$(HexalithFrontComposerRoot)' == ''">$(_FrontComposerRepoRoot)</HexalithFrontComposerRoot>
+    <_HexalithReferenceProperties>HexalithFrontComposerRoot=$(HexalithFrontComposerRoot);HexalithEventStoreRoot=$(HexalithEventStoreRoot);HexalithTenantsRoot=$(HexalithTenantsRoot);HexalithPartiesRoot=$(HexalithPartiesRoot);HexalithMemoriesRoot=$(HexalithMemoriesRoot);HexalithCommonsRoot=$(HexalithCommonsRoot)</_HexalithReferenceProperties>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
+    <ProjectReference Include="$(HexalithTenantsRoot)\src\Hexalith.Tenants.UI\Hexalith.Tenants.UI.csproj"
+                      AdditionalProperties="$(_HexalithReferenceProperties)" />
+    <ProjectReference Include="$(HexalithPartiesRoot)\src\Hexalith.Parties.UI\Hexalith.Parties.UI.csproj"
+                      AdditionalProperties="$(_HexalithReferenceProperties)" />
+    <ProjectReference Include="$(HexalithPartiesRoot)\src\Hexalith.Parties.AdminPortal\Hexalith.Parties.AdminPortal.csproj"
+                      AdditionalProperties="$(_HexalithReferenceProperties)" />
+    <ProjectReference Include="$(HexalithPartiesRoot)\src\Hexalith.Parties.ConsumerPortal\Hexalith.Parties.ConsumerPortal.csproj"
+                      AdditionalProperties="$(_HexalithReferenceProperties)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" />
+  </ItemGroup>
+
+  <Target Name="RemoveStandaloneUiHostRootAssets"
+          AfterTargets="ResolveReferencedProjectsStaticWebAssets"
+          BeforeTargets="ResolveBuildCompressedStaticWebAssetsConfiguration">
+    <ItemGroup>
+      <StaticWebAsset Remove="@(StaticWebAsset)"
+                      Condition="('%(StaticWebAsset.SourceId)' == 'Hexalith.Tenants.UI' or '%(StaticWebAsset.SourceId)' == 'Hexalith.Parties.UI') and '%(StaticWebAsset.BasePath)' == '/' and !$([System.String]::Copy('%(StaticWebAsset.RelativePath)').Contains('.styles.css'))" />
+      <StaticWebAssetEndpoint Remove="@(StaticWebAssetEndpoint)"
+                              Condition="('%(StaticWebAssetEndpoint.SourceId)' == 'Hexalith.Tenants.UI' or '%(StaticWebAssetEndpoint.SourceId)' == 'Hexalith.Parties.UI') and !$([System.String]::Copy('%(StaticWebAssetEndpoint.Route)').Contains('.styles.css'))" />
+    </ItemGroup>
+  </Target>
+
+</Project>

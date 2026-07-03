@@ -177,6 +177,7 @@ public static class FrontComposerAuthenticationServiceExtensions {
         target.ClientId = source.ClientId;
         target.ClientSecret = source.ClientSecret;
         target.Audience = source.Audience;
+        target.RoleClaimType = source.RoleClaimType;
         target.ValidIssuer = source.ValidIssuer;
         target.ResponseType = source.ResponseType;
         target.SaveTokens = source.SaveTokens;
@@ -270,6 +271,10 @@ public static class FrontComposerAuthenticationServiceExtensions {
 
                 if (!string.IsNullOrWhiteSpace(options.OpenIdConnect.Audience)) {
                     oidc.TokenValidationParameters.ValidAudience = options.OpenIdConnect.Audience;
+                }
+
+                if (!string.IsNullOrWhiteSpace(options.OpenIdConnect.RoleClaimType)) {
+                    oidc.TokenValidationParameters.RoleClaimType = options.OpenIdConnect.RoleClaimType;
                 }
 
                 // P15 — explicit issuer validation when supplied.

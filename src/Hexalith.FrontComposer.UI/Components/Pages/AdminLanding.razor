@@ -1,0 +1,13 @@
+@page "/admin"
+@attribute [Authorize(Policy = PartiesUiAuthorization.AdminPolicy)]
+@inject NavigationManager Nav
+
+<FcPageLayout Mode="FcPageLayoutMode.Constrained">
+    <FcPageHeader Title="Administration"
+                  Subtitle="Opening the Parties administration workspace." />
+</FcPageLayout>
+
+@code {
+    protected override void OnInitialized()
+        => Nav.NavigateTo(PartiesAdminPortalManifest.Route);
+}

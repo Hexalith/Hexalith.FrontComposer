@@ -36,6 +36,7 @@
     <Project Path="src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj" />
     <Project Path="src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj" />
+    <Project Path="src/Hexalith.FrontComposer.UI/Hexalith.FrontComposer.UI.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj" />

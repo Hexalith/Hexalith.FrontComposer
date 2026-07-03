@@ -4,6 +4,8 @@
   <PropertyGroup>
     <EventStorePath>$(MSBuildThisFileDirectory)references/Hexalith.EventStore</EventStorePath>
     <TenantsPath>$(MSBuildThisFileDirectory)references/Hexalith.Tenants</TenantsPath>
+    <PartiesPath>$(MSBuildThisFileDirectory)references/Hexalith.Parties</PartiesPath>
+    <HexalithPartiesRoot>$(PartiesPath)</HexalithPartiesRoot>
     <HexalithEventStoreFromSource>true</HexalithEventStoreFromSource>
   </PropertyGroup>
 </Project>

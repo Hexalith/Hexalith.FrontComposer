@@ -40,12 +40,17 @@ public sealed class FrontComposerAuthenticationOptions {
         string clientId,
         string clientSecret,
         string tenantClaimType,
-        string userClaimType) {
+        string userClaimType,
+        string? roleClaimType = null) {
         ArgumentNullException.ThrowIfNull(authority);
         ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
         ArgumentException.ThrowIfNullOrWhiteSpace(clientSecret);
         ArgumentException.ThrowIfNullOrWhiteSpace(tenantClaimType);
         ArgumentException.ThrowIfNullOrWhiteSpace(userClaimType);
+        if (roleClaimType is not null) {
+            ArgumentException.ThrowIfNullOrWhiteSpace(roleClaimType);
+        }
+
         ResetProviderEnablement();
         SetSingleClaim(TenantClaimTypes, tenantClaimType);
         SetSingleClaim(UserClaimTypes, userClaimType);
@@ -54,6 +59,7 @@ public sealed class FrontComposerAuthenticationOptions {
         OpenIdConnect.Authority = authority;
         OpenIdConnect.ClientId = clientId;
         OpenIdConnect.ClientSecret = clientSecret;
+        OpenIdConnect.RoleClaimType = roleClaimType;
         OpenIdConnect.ResponseType = "code";
     }
 
@@ -178,6 +184,7 @@ public sealed class FrontComposerOpenIdConnectOptions {
     public string? ClientId { get; set; }
     public string? ClientSecret { get; set; }
     public string? Audience { get; set; }
+    public string? RoleClaimType { get; set; }
 
     /// <summary>P15 — explicit issuer validation (Story 7-1 Provider Strategy: "Validate issuer and audience explicitly").</summary>
     public string? ValidIssuer { get; set; }

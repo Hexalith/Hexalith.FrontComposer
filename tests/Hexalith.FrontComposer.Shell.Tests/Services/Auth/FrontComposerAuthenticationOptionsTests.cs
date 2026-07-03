@@ -290,6 +290,21 @@ public sealed class FrontComposerAuthenticationOptionsTests {
     }
 
     [Fact]
+    public void Recipe_Keycloak_CanConfigureRoleClaimType() {
+        FrontComposerAuthenticationOptions options = new();
+
+        options.UseKeycloak(
+            authority: new Uri("https://keycloak.test/realms/frontcomposer"),
+            clientId: "frontcomposer",
+            clientSecret: "secret",
+            tenantClaimType: "tenant",
+            userClaimType: "sub",
+            roleClaimType: "roles");
+
+        options.OpenIdConnect.RoleClaimType.ShouldBe("roles");
+    }
+
+    [Fact]
     public void Recipe_Google_ConfiguresOidcAuthorizationCodeDefaults() {
         FrontComposerAuthenticationOptions options = new();
 

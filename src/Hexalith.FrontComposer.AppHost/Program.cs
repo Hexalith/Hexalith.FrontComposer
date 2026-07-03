@@ -24,7 +24,14 @@ HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSec
 // Add EventStore (command gateway), Admin Server, and Admin UI projects.
 // Project paths are resolved cross-repo via the IProjectMetadata classes in this AppHost.
 IResourceBuilder<ProjectResource> eventStore = builder.AddProject<HexalithEventStore>("eventstore");
-_ = eventStore.WithEnvironment("EventStore__Publisher__TopicOverrides__global-administrators", "tenants.events");
+_ = eventStore
+    .WithEnvironment("EventStore__Publisher__TopicOverrides__global-administrators", "tenants.events")
+    .WithEnvironment("EventStore__SignalR__Enabled", "true")
+    .WithEnvironment("EventStore__DomainServices__Registrations__wildcard_party_v1__AppId", "parties")
+    .WithEnvironment("EventStore__DomainServices__Registrations__wildcard_party_v1__MethodName", "process")
+    .WithEnvironment("EventStore__DomainServices__Registrations__wildcard_party_v1__TenantId", "*")
+    .WithEnvironment("EventStore__DomainServices__Registrations__wildcard_party_v1__Domain", "party")
+    .WithEnvironment("EventStore__DomainServices__Registrations__wildcard_party_v1__Version", "v1");
 IResourceBuilder<ProjectResource> adminServer = builder.AddProject<HexalithEventStoreAdminServerHost>("eventstore-admin");
 IResourceBuilder<ProjectResource> adminUI = builder.AddProject<HexalithEventStoreAdminUI>("eventstore-admin-ui");
 
@@ -51,6 +58,21 @@ IResourceBuilder<ProjectResource> tenants = builder.AddProject<HexalithTenants>(
         accessControlConfigPath,
         daprPlacementHostAddress: daprPlacementHostAddress,
         daprSchedulerHostAddress: daprSchedulerHostAddress);
+
+IResourceBuilder<ProjectResource> parties = builder.AddProject<HexalithParties>("parties")
+    .AddEventStoreDomainModule(
+        eventStoreResources,
+        "parties",
+        accessControlConfigPath,
+        daprPlacementHostAddress: daprPlacementHostAddress,
+        daprSchedulerHostAddress: daprSchedulerHostAddress)
+    .WithReference(tenants)
+    .WaitFor(tenants)
+    .WithEnvironment("Tenants__Enabled", "true")
+    .WithEnvironment("Tenants__ServiceName", "tenants")
+    .WithEnvironment("Tenants__CommandApiAppId", "eventstore")
+    .WithEnvironment("Tenants__PubSubName", "pubsub")
+    .WithEnvironment("Tenants__TopicName", "system.tenants.events");
 
 // Tenants sample domain service. EventStore's appsettings register the sample/counter/greeting
 // (and orders/inventory) domains against the "sample" app id; its sidecar shares the EventStore
@@ -94,6 +116,22 @@ IResourceBuilder<ProjectResource> tenantsUI = builder.AddProject<HexalithTenants
     .WithEnvironment("EventStore__BaseAddress", eventStoreHttps)
     .WithExternalHttpEndpoints();
 
+IResourceBuilder<ProjectResource> frontComposerUI = builder.AddProject<Projects.Hexalith_FrontComposer_UI>("frontcomposer-ui")
+    .WithEndpoint("https", e => e.Port = 7273, createIfNotExists: false)
+    .WithEndpoint("http", e => e.Port = 7274, createIfNotExists: false)
+    .WithReference(tenants)
+    .WithReference(parties)
+    .WithReference(eventStore)
+    .WaitFor(tenants)
+    .WaitFor(parties)
+    .WaitFor(eventStore)
+    .WithEnvironment("Tenants__BaseAddress", tenantsHttps)
+    .WithEnvironment("EventStore__BaseAddress", eventStoreHttps)
+    .WithEnvironment("EventStore__SignalR__HubUrl", ReferenceExpression.Create($"{eventStoreHttps}/hubs/projection-changes"))
+    .WithEnvironment("Parties__BaseUrl", eventStoreHttps)
+    .WithEnvironment("Parties__Tenant", builder.Configuration["FrontComposerUi:Parties:Tenant"] ?? "tenant-a")
+    .WithExternalHttpEndpoints();
+
 // Counter sample — the FrontComposer demo shell. Co-hosted in the single platform AppHost so the
 // whole stack (EventStore, Tenants, Tenants UI, Counter) runs from ONE orchestrator. It stays a
 // self-contained demo (fake auth + seeded specimen data) and is intentionally NOT wired to the
@@ -106,6 +144,8 @@ if (security is not null) {
     _ = eventStore.WithJwtBearerSecurity(security);
 
     _ = tenants.WithJwtBearerSecurity(security);
+
+    _ = parties.WithJwtBearerSecurity(security);
 
     _ = adminServer.WithJwtBearerSecurity(security);
 
@@ -122,6 +162,15 @@ if (security is not null) {
             security,
             "hexalith-tenants-ui",
             "tenants-ui-dev-secret");
+
+    _ = frontComposerUI.WithJwtBearerSecurity(security);
+    if (bool.TryParse(builder.Configuration["FrontComposerUi:OpenIdConnect:Enabled"], out bool frontComposerOidcEnabled)
+        && frontComposerOidcEnabled) {
+        _ = frontComposerUI.WithOpenIdConnectSecurity(
+            security,
+            builder.Configuration["FrontComposerUi:OpenIdConnect:ClientId"] ?? "hexalith-frontcomposer-ui",
+            builder.Configuration["FrontComposerUi:OpenIdConnect:ClientSecret"] ?? "frontcomposer-ui-dev-secret");
+    }
 }
 else {
     _ = adminUI.WithEnvironment("EventStore__AdminServer__SwaggerUrl", ReferenceExpression.Create($"{adminServerHttps}/swagger/index.html"));
