@@ -53,11 +53,15 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
 
     [Fact]
     public void RegisteredNavEntry_RendersAsNavItem_UnderItsBoundedContextCategory_EvenWithEmptyProjections() {
+        // D1 gap: a manifest with empty projections still surfaces a tile+flyout when it has nav entries.
+        // Two entries keep the flyout in play (a lone entry navigates directly with no flyout — see
+        // FrontComposerNavigationTests.SingleDestinationContext_RendersNoFlyout_AndNavigatesOnTileClick).
         _registry.GetManifests().Returns([
             new DomainManifest("Tenants", "tenants", Projections: [], Commands: []),
         ]);
         _navRegistry.GetNavEntries().Returns([
             new FrontComposerNavEntry("tenants", "Tenants", "/tenants"),
+            new FrontComposerNavEntry("tenants", "My tenants", "/tenants/my"),
         ]);
 
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
@@ -157,9 +161,13 @@ public sealed class FrontComposerNavigationNavEntryTests : LayoutComponentTestBa
 
     [Fact]
     public void OrphanBoundedContext_WithEntriesButNoManifest_RendersItsOwnCategory() {
+        // An orphan bounded context (entries but no manifest) renders its own tile+flyout. Two entries
+        // keep the flyout in play — a lone orphan entry navigates directly (covered by
+        // FrontComposerNavigationTests.SingleDestinationContext_RendersNoFlyout_AndNavigatesOnTileClick).
         _registry.GetManifests().Returns([]);
         _navRegistry.GetNavEntries().Returns([
             new FrontComposerNavEntry("standalone", "Standalone page", "/standalone"),
+            new FrontComposerNavEntry("standalone", "Standalone settings", "/standalone/settings"),
         ]);
 
         IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();

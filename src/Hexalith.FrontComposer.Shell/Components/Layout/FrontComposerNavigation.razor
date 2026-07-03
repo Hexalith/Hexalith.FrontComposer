@@ -81,6 +81,7 @@
         int aggregateCount = AggregateBoundedContextCount(manifest, discovery.Counts);
         bool bcShowsNew = !discovery.SeenCapabilities.Contains(bcCapabilityId) && aggregateCount > 0;
         bool activeContext = IsContextActive(manifest.BoundedContext, projections, entries);
+        string? soleHref = SoleDestinationHref(projections, entries);
 
         <FluentButton id="@anchorId"
                       Appearance="@ButtonAppearance.Subtle"
@@ -91,7 +92,7 @@
                       data-testid="@($"fc-nav-context-{manifest.BoundedContext}")"
                       data-active="@activeContext"
                       tabindex="0"
-                      OnClick="@(_ => HandleContextTileActivated(manifest.BoundedContext))">
+                      OnClick="@(_ => HandleContextTileActivated(manifest.BoundedContext, soleHref))">
             <FluentStack Class="fc-navigation-rail__tile-content"
                          Orientation="Orientation.Vertical"
                          HorizontalAlignment="HorizontalAlignment.Center"
@@ -131,58 +132,64 @@
         <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
             @LocalizeManifestName(manifest)
         </FluentTooltip>
-        <FluentMenu Trigger="@anchorId"
-                    PersistOnItemClick="false"
-                    data-testid="@($"fc-nav-flyout-{manifest.BoundedContext}")"
-                    role="menu"
-                    aria-label="@LocalizeManifestName(manifest)">
-            @foreach (string projectionFqn in projections)
-            {
-                int count = LookupCount(projectionFqn, discovery.Counts);
-                string label = ProjectionLabel(projectionFqn);
-                string route = BuildRoute(manifest.BoundedContext, projectionFqn);
-                string projCapabilityId = CapabilityIds.ForProjection(manifest.BoundedContext, projectionFqn);
-                bool projShowsNew = !discovery.SeenCapabilities.Contains(projCapabilityId) && count > 0;
-                bool activeProjection = IsHrefActive(route);
+        @if (soleHref is null)
+        {
+            <FluentMenu Trigger="@anchorId"
+                        PersistOnItemClick="false"
+                        data-testid="@($"fc-nav-flyout-{manifest.BoundedContext}")"
+                        role="menu"
+                        aria-label="@LocalizeManifestName(manifest)">
+                <FluentMenuList>
+                    @foreach (string projectionFqn in projections)
+                    {
+                        int count = LookupCount(projectionFqn, discovery.Counts);
+                        string label = ProjectionLabel(projectionFqn);
+                        string route = BuildRoute(manifest.BoundedContext, projectionFqn);
+                        string projCapabilityId = CapabilityIds.ForProjection(manifest.BoundedContext, projectionFqn);
+                        bool projShowsNew = !discovery.SeenCapabilities.Contains(projCapabilityId) && count > 0;
+                        bool activeProjection = IsHrefActive(route);
 
-                <FluentMenuItem Role="@MenuItemRole.MenuItem"
-                                IconStart="@ResolveNavEntryIcon(manifest.Icon, activeProjection)"
-                                OnClick="@(_ => HandleProjectionMenuItemClicked(manifest.BoundedContext, projectionFqn, route))"
-                                data-testid="@($"fc-nav-flyout-projection-{manifest.BoundedContext}-{label}")"
-                                data-href="@route"
-                                aria-current="@(activeProjection ? "page" : null)">
-                    <FluentStack Horizontal="true"
-                                 VerticalAlignment="VerticalAlignment.Center"
-                                 HorizontalGap="6px">
-                        <FluentText>@label</FluentText>
-                        @if (count > 0)
-                        {
-                            <FluentBadge Appearance="@BadgeAppearance.Filled"
-                                         Color="@BadgeColor.Brand"
-                                         data-testid="@($"fc-nav-badge-{manifest.BoundedContext}-{label}")">@count</FluentBadge>
-                        }
-                        @if (projShowsNew)
-                        {
-                            <FluentBadge Appearance="@BadgeAppearance.Tint"
-                                         Color="@BadgeColor.Informative"
-                                         data-testid="@($"fc-nav-new-{manifest.BoundedContext}-{label}")">
-                                @Localizer["NewCapabilityBadgeText"].Value
-                            </FluentBadge>
-                        }
-                    </FluentStack>
-                </FluentMenuItem>
-            }
-            @foreach (FrontComposerNavEntry entry in entries)
-            {
-                @navEntry(entry)
-            }
-        </FluentMenu>
+                        <FluentMenuItem Role="@MenuItemRole.MenuItem"
+                                        IconStart="@ResolveNavEntryIcon(manifest.Icon, activeProjection)"
+                                        OnClick="@(_ => HandleProjectionMenuItemClicked(manifest.BoundedContext, projectionFqn, route))"
+                                        data-testid="@($"fc-nav-flyout-projection-{manifest.BoundedContext}-{label}")"
+                                        data-href="@route"
+                                        aria-current="@(activeProjection ? "page" : null)">
+                            <FluentStack Horizontal="true"
+                                         VerticalAlignment="VerticalAlignment.Center"
+                                         HorizontalGap="6px">
+                                <FluentText>@label</FluentText>
+                                @if (count > 0)
+                                {
+                                    <FluentBadge Appearance="@BadgeAppearance.Filled"
+                                                 Color="@BadgeColor.Brand"
+                                                 data-testid="@($"fc-nav-badge-{manifest.BoundedContext}-{label}")">@count</FluentBadge>
+                                }
+                                @if (projShowsNew)
+                                {
+                                    <FluentBadge Appearance="@BadgeAppearance.Tint"
+                                                 Color="@BadgeColor.Informative"
+                                                 data-testid="@($"fc-nav-new-{manifest.BoundedContext}-{label}")">
+                                        @Localizer["NewCapabilityBadgeText"].Value
+                                    </FluentBadge>
+                                }
+                            </FluentStack>
+                        </FluentMenuItem>
+                    }
+                    @foreach (FrontComposerNavEntry entry in entries)
+                    {
+                        @navEntry(entry)
+                    }
+                </FluentMenuList>
+            </FluentMenu>
+        }
     }
     @foreach (string orphanBc in OrphanEntryContexts(navEntries))
     {
         List<FrontComposerNavEntry> entries = EntriesForContext(navEntries, orphanBc);
         string anchorId = RailAnchorId(orphanBc);
         bool activeContext = IsContextActive(orphanBc, [], entries);
+        string? soleHref = SoleDestinationHref([], entries);
 
         <FluentButton id="@anchorId"
                       Appearance="@ButtonAppearance.Subtle"
@@ -193,7 +200,7 @@
                       data-testid="@($"fc-nav-context-{orphanBc}")"
                       data-active="@activeContext"
                       tabindex="0"
-                      OnClick="@(_ => HandleContextTileActivated(orphanBc))">
+                      OnClick="@(_ => HandleContextTileActivated(orphanBc, soleHref))">
             <FluentStack Class="fc-navigation-rail__tile-content"
                          Orientation="Orientation.Vertical"
                          HorizontalAlignment="HorizontalAlignment.Center"
@@ -212,16 +219,21 @@
         <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
             @orphanBc
         </FluentTooltip>
-        <FluentMenu Trigger="@anchorId"
-                    PersistOnItemClick="false"
-                    data-testid="@($"fc-nav-flyout-{orphanBc}")"
-                    role="menu"
-                    aria-label="@orphanBc">
-            @foreach (FrontComposerNavEntry entry in entries)
-            {
-                @navEntry(entry)
-            }
-        </FluentMenu>
+        @if (soleHref is null)
+        {
+            <FluentMenu Trigger="@anchorId"
+                        PersistOnItemClick="false"
+                        data-testid="@($"fc-nav-flyout-{orphanBc}")"
+                        role="menu"
+                        aria-label="@orphanBc">
+                <FluentMenuList>
+                    @foreach (FrontComposerNavEntry entry in entries)
+                    {
+                        @navEntry(entry)
+                    }
+                </FluentMenuList>
+            </FluentMenu>
+        }
     }
 </FluentStack>
 </div>

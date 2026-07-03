@@ -449,8 +449,52 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
         Dispatcher.Dispatch(new CapabilityVisitedAction(capabilityId));
     }
 
-    private void HandleContextTileActivated(string boundedContext)
-        => Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(boundedContext)));
+    /// <summary>
+    /// Returns the sole navigable href when a context's only destination is a single plain navigation
+    /// entry, otherwise <see langword="null"/>. A non-null result means the rail tile navigates straight
+    /// there on click and renders no flyout: a one-item flyout is redundant and (cc-2026-07-03) rendered
+    /// as a mispositioned popover overlapping the page.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Projection-bearing contexts always keep their flyout — even with a single projection — because the
+    /// flyout is the capability-discovery surface that renders each projection's count / "new" badges
+    /// (<see cref="LookupCount"/>, <c>projShowsNew</c>). Collapsing them to a direct-navigation tile would
+    /// drop those per-projection affordances, so only a context with zero projections and exactly one
+    /// enabled, un-gated entry qualifies.
+    /// </para>
+    /// <para>
+    /// Disabled entries return <see langword="null"/> so the flyout still renders their disabled reason;
+    /// policy-gated entries return <see langword="null"/> so the flyout's <c>AuthorizeView</c> keeps
+    /// owning visibility instead of the tile navigating to a page the user may not be authorized to see.
+    /// </para>
+    /// </remarks>
+    /// <param name="projections">The visible projection FQNs for the context.</param>
+    /// <param name="entries">The navigation entries for the context.</param>
+    /// <returns>The sole destination href, or <see langword="null"/> when the context needs a flyout.</returns>
+    internal static string? SoleDestinationHref(
+        IReadOnlyList<string> projections,
+        IReadOnlyList<FrontComposerNavEntry> entries) {
+        ArgumentNullException.ThrowIfNull(projections);
+        ArgumentNullException.ThrowIfNull(entries);
+        if (projections.Count != 0 || entries.Count != 1) {
+            return null;
+        }
+
+        FrontComposerNavEntry entry = entries[0];
+        return entry.Enabled
+            && string.IsNullOrWhiteSpace(entry.RequiredPolicy)
+            && !string.IsNullOrWhiteSpace(entry.Href)
+                ? entry.Href
+                : null;
+    }
+
+    private void HandleContextTileActivated(string boundedContext, string? soleDestinationHref) {
+        Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(boundedContext)));
+        if (!string.IsNullOrWhiteSpace(soleDestinationHref)) {
+            Navigation.NavigateTo(soleDestinationHref);
+        }
+    }
 
     private void HandleProjectionMenuItemClicked(string boundedContext, string projectionFqn, string route) {
         HandleNavItemClicked(boundedContext, CapabilityIds.ForProjection(boundedContext, projectionFqn));

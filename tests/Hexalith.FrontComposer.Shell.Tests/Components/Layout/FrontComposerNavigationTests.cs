@@ -16,6 +16,7 @@ using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
@@ -126,6 +127,107 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
 
             cut.Markup.ShouldContain("data-testid=\"fc-nav-flyout-projection-Counter-CounterView\"");
             cut.Markup.ShouldContain("data-testid=\"fc-nav-entry-Counter-counter-audit\"");
+        });
+    }
+
+    // ── cc-2026-07-03 — single nav-entry tiles navigate directly (no redundant one-item flyout) ──
+    // Bug: clicking a bounded-context tile whose only destination is a single nav entry (e.g. Tenants)
+    // opened a one-item FluentMenu that rendered as a mispositioned popover overlapping the page. Fix:
+    // a context whose sole destination is one plain nav entry navigates on tile click and renders no
+    // flyout. Projection-bearing contexts always keep their flyout (it carries per-projection badges),
+    // now correctly wrapped in the previously-missing FluentMenuList.
+
+    [Fact]
+    public void SoleDestinationHref_ReturnsEntryHref_ForSingleEnabledUngatedEntry()
+        => FrontComposerNavigation.SoleDestinationHref(
+            [], [new FrontComposerNavEntry("Tenants", "Tenants", "/tenants")])
+            .ShouldBe("/tenants");
+
+    [Fact]
+    public void SoleDestinationHref_ReturnsNull_ForSingleProjection()
+        // Projection-bearing contexts always keep their flyout (it carries each projection's count/"new"
+        // badges), even with a single projection — the tile never collapses to direct navigation.
+        => FrontComposerNavigation.SoleDestinationHref(
+            ["Counter.Domain.Projections.CounterView"], [])
+            .ShouldBeNull();
+
+    [Fact]
+    public void SoleDestinationHref_ReturnsNull_WhenContextAlsoHasAProjection()
+        // A single entry alongside any projection keeps the flyout: 2+ destinations, and projections keep it.
+        => FrontComposerNavigation.SoleDestinationHref(
+            ["Counter.Domain.Projections.CounterView"],
+            [new FrontComposerNavEntry("Counter", "Audit", "/counter/audit")])
+            .ShouldBeNull();
+
+    [Fact]
+    public void SoleDestinationHref_ReturnsNull_ForMultipleEntries()
+        => FrontComposerNavigation.SoleDestinationHref(
+            [],
+            [
+                new FrontComposerNavEntry("Tenants", "All", "/tenants"),
+                new FrontComposerNavEntry("Tenants", "Mine", "/tenants/my"),
+            ])
+            .ShouldBeNull();
+
+    [Fact]
+    public void SoleDestinationHref_ReturnsNull_ForSinglePolicyGatedEntry()
+        // Gated entries keep the flyout so its AuthorizeView owns visibility — the tile must not navigate
+        // straight to a page the user may not be authorized to open.
+        => FrontComposerNavigation.SoleDestinationHref(
+            [],
+            [new FrontComposerNavEntry("Parties", "Parties", "/parties", RequiredPolicy: "PartiesPolicy")])
+            .ShouldBeNull();
+
+    [Fact]
+    public void SoleDestinationHref_ReturnsNull_ForSingleDisabledEntry()
+        // A disabled entry exposes no navigable href → keep the flyout so its disabled reason still renders.
+        => FrontComposerNavigation.SoleDestinationHref(
+            [],
+            [new FrontComposerNavEntry("Counter", "Soon", "/counter/soon", Enabled: false)])
+            .ShouldBeNull();
+
+    [Fact]
+    public void SingleDestinationContext_RendersNoFlyout_AndNavigatesOnTileClick() {
+        // The Tenants case from the bug report: one enabled, un-gated nav entry (orphan context — no
+        // matching manifest). Clicking the tile navigates straight to it and renders NO flyout.
+        _registry.GetManifests().Returns([]);
+        _navRegistry.GetNavEntries().Returns([
+            new FrontComposerNavEntry("Tenants", "Tenants", "/tenants"),
+        ]);
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-context-Tenants\"");
+            cut.Markup.ShouldNotContain("data-testid=\"fc-nav-flyout-Tenants\"");
+            cut.FindComponents<FluentMenu>()
+                .Where(m => m.Instance.Trigger == "fc-rail-Tenants")
+                .ShouldBeEmpty();
+        });
+
+        NavigationManager nav = Services.GetRequiredService<NavigationManager>();
+        cut.Find("[data-testid=\"fc-nav-context-Tenants\"]").Click();
+        nav.Uri.ShouldEndWith("/tenants");
+    }
+
+    [Fact]
+    public void MultiDestinationContext_StillRendersFlyout_WrappedInMenuList() {
+        // A 2+ destination context keeps the flyout, now correctly wrapped in FluentMenuList — the missing
+        // wrapper (items placed directly in FluentMenu) was why the single item rendered as a bare,
+        // mispositioned popover instead of a proper menu.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+        _navRegistry.GetNavEntries().Returns([
+            new FrontComposerNavEntry("Counter", "Counter audit", "/counter/audit"),
+        ]);
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            IRenderedComponent<FluentMenu> menu = cut.FindComponents<FluentMenu>()
+                .Single(m => m.Instance.Trigger == "fc-rail-Counter");
+            _ = menu.FindComponent<FluentMenuList>();
         });
     }
 
