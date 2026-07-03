@@ -20,9 +20,11 @@ public sealed class FcDevModeToggleButtonTests : BunitContext {
     [Fact]
     public void ToggleButtonRendersDevModeIconInsteadOfLiteralPlaceholder() {
         IRenderedComponent<FcDevModeToggleButton> cut = Render<FcDevModeToggleButton>();
+        IRenderedComponent<FluentIcon<Icon>> icon = cut.FindComponent<FluentIcon<Icon>>();
 
         cut.Markup.ShouldContain("fc-devmode-toggle");
-        cut.Markup.ShouldContain("DevMode");
+        icon.Instance.Value.ShouldNotBeNull();
+        icon.Instance.Value!.Name.ShouldBe("DeveloperBoard");
         cut.Markup.ShouldNotContain(">i</button>");
     }
 }

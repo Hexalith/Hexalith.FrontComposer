@@ -27,6 +27,17 @@ public partial class FcAccountMenu : ComponentBase {
     // FluentMenu Trigger (the documented avatar-as-trigger pattern).
     private const string AvatarId = "fc-account-avatar";
 
+    // Right-align the dropdown to the avatar so it opens leftward and stays on-screen. The avatar is
+    // ALWAYS the right-most header action (see FrontComposerShell), so Fluent's default menu popover
+    // rule — inset-inline-start: anchor(start) with position-try-fallbacks: flip-block (vertical flip
+    // only) — left-aligns the list to a viewport-edge trigger and lets it overflow the right edge,
+    // clipping "Se connecter" / "Signed in as …". These two declarations mirror Fluent's own
+    // :host([split]) ::slotted([popover]) rule (inset-inline-start: auto; inset-inline-end:
+    // anchor(end)), the framework-sanctioned way to right-anchor a menu popover. Applied as an inline
+    // Style because CSS isolation scope attributes never reach a Fluent web component's slotted
+    // popover (a scoped .razor.css rule would be dead here).
+    private const string MenuListStyle = "inset-inline-start: auto; inset-inline-end: anchor(end);";
+
     private ClaimsPrincipal? _user;
 
     /// <summary>Injected host authentication-state seam (fail-closed anonymous provider by default).</summary>

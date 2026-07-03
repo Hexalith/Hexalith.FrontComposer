@@ -146,17 +146,22 @@
                 </div>
             </FluentLayoutItem>
 
-            <FluentLayoutItem Area="@LayoutArea.Footer">
+            @* The gray surface + top border live on the FluentLayoutItem (the emitted full-width
+               <footer> element), NOT on the inner FluentStack. Painting only the stack left the
+               surrounding footer box white, so the copyright text sat on a white patch inside an
+               otherwise gray bar. Styling the footer element makes the whole bar uniformly gray. *@
+            <FluentLayoutItem Area="@LayoutArea.Footer"
+                              Style="background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground2); border-block-start: 1px solid var(--colorNeutralStroke2);">
                 <FluentStack VerticalAlignment="VerticalAlignment.Center"
-                             Style="padding: 8px 12px; min-height: 36px; background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground2); border-block-start: 1px solid var(--colorNeutralStroke2);">
+                             Style="padding: 8px 12px; min-height: 36px;">
                     @if (Footer is not null)
                     {
                         @Footer
                     }
                     else
                     {
-                        @* Footer text inherits the muted --colorNeutralForeground2 from the frame above.
-                           Color.Lightweight is NOT used here: in Fluent UI v5 it maps to
+                        @* Footer text inherits the muted --colorNeutralForeground2 from the footer
+                           surface above. Color.Lightweight is NOT used here: in Fluent UI v5 it maps to
                            --colorNeutralForegroundInverted (white), which is invisible on the neutral
                            light footer surface. *@
                         <FluentText As="TextTag.Span" Size="TextSize.Size200">

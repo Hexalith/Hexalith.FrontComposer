@@ -241,6 +241,21 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Theory]
+    [InlineData(false, IconVariant.Regular, "Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20+PersonBoard")]
+    [InlineData(true, IconVariant.Filled, "Microsoft.FluentUI.AspNetCore.Components.Icons.Filled.Size20+PersonBoard")]
+    public void ResolveNavEntryIcon_SupportsPersonBoardMenuIcon(
+        bool filled,
+        IconVariant expectedVariant,
+        string expectedIconType) {
+        Icon icon = FrontComposerNavigation.ResolveNavEntryIcon("Regular.Size20.PersonBoard", filled);
+
+        icon.Name.ShouldBe("PersonBoard");
+        icon.Size.ShouldBe(IconSize.Size20);
+        icon.Variant.ShouldBe(expectedVariant);
+        icon.GetType().FullName.ShouldBe(expectedIconType);
+    }
+
+    [Theory]
     [InlineData("/Tenants/Users", "/tenants/users")] // case-insensitive routing → lowercased
     [InlineData("/tenants/", "/tenants")]             // trailing slash trimmed
     [InlineData("tenants", "/tenants")]               // leading slash ensured

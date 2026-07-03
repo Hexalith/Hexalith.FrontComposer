@@ -11,7 +11,9 @@
    package; the toggle labels carry the full accessible meaning so the UX still satisfies AC3. *@
 
 <FluentMenu>
-    <FluentMenuButton Appearance="ButtonAppearance.Subtle" Title="@Localizer["ThemeToggleAriaLabel"].Value">
+    <FluentMenuButton Appearance="ButtonAppearance.Subtle"
+                      Title="@Localizer["ThemeToggleAriaLabel"].Value"
+                      Style="min-width: 0; width: 48px;">
         <span class="fc-sr-only">@GetAccessibleLabel()</span>
         <span aria-hidden="true">@Localizer[GetCurrentLabelKey()].Value</span>
     </FluentMenuButton>

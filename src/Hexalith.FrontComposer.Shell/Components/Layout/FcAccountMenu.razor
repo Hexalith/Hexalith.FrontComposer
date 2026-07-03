@@ -26,10 +26,11 @@
                       Title="@SignedInAsText"
                       Style="cursor: pointer;" />
         <FluentMenu Trigger="@AvatarId" aria-label="@Localizer["AccountMenuAriaLabel"].Value">
-            <FluentMenuList>
+            <FluentMenuList Style="@MenuListStyle">
                 @* Show the (short) name as the item text — the full "Signed in as {name}" sentence is
-                   long and gets clipped when the menu is anchored at the viewport's right edge, so it
-                   stays as the accessible title/tooltip. *@
+                   long and would widen the menu, so it stays as the accessible title/tooltip. (The
+                   list is right-anchored to the avatar via MenuListStyle so it no longer clips at the
+                   viewport's right edge.) *@
                 <FluentMenuItem Disabled="true" data-testid="fc-account-user" Title="@SignedInAsText">
                     <span class="fc-account-menu__menu-user">@UserName</span>
                 </FluentMenuItem>
@@ -46,7 +47,7 @@
                       Title="@Localizer["AccountMenuAriaLabel"].Value"
                       Style="cursor: pointer;" />
         <FluentMenu Trigger="@AvatarId" aria-label="@Localizer["AccountMenuAriaLabel"].Value">
-            <FluentMenuList>
+            <FluentMenuList Style="@MenuListStyle">
                 <FluentMenuItem OnClick="@(_ => SignIn())" data-testid="fc-account-sign-in">
                     @Localizer["SignInLabel"].Value
                 </FluentMenuItem>

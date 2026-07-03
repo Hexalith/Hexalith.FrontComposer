@@ -30,6 +30,7 @@ public sealed class FcSettingsButtonTests : LayoutComponentTestBase {
                 // FluentButton stealth appearance — D11. Fluent UI v5 rc2 maps the "stealth"
                 // concept to the Subtle appearance slot (no dedicated Stealth enum value).
                 cut.Markup.ShouldContain("appearance=\"subtle\"", Case.Insensitive);
+                cut.Markup.ShouldContain("icon-only", Case.Insensitive);
                 // The aria-label resolves through the Story 3-1 reused resource key.
                 cut.Markup.ShouldContain("Open settings", Case.Sensitive);
             });

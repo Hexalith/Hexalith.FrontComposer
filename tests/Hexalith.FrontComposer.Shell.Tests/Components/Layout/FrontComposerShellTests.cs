@@ -239,7 +239,9 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         cut.WaitForAssertion(() => {
             IElement logoCell = cut.Find("[data-testid=\"fc-shell-brand-logo\"]");
             logoCell.GetAttribute("aria-hidden").ShouldBe("true");
-            logoCell.InnerHtml.ShouldContain("M 4 4 h 5 v 5 H 4 V 4 Z", Case.Sensitive);
+            logoCell.InnerHtml.ShouldContain("<svg", Case.Insensitive);
+            logoCell.InnerHtml.ShouldContain("viewBox=\"0 0 20 20\"", Case.Sensitive);
+            logoCell.InnerHtml.ShouldNotContain("M 4 4 h 5 v 5 H 4 V 4 Z", Case.Sensitive);
         });
     }
 
@@ -464,6 +466,15 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
             paletteIndex.ShouldBeGreaterThanOrEqualTo(0);
             settingsIndex.ShouldBeGreaterThan(paletteIndex);
+            cut.Find("[data-testid=\"fc-palette-trigger\"]")
+                .OuterHtml
+                .ShouldContain("icon-only", Case.Insensitive);
+            cut.Find("[data-testid=\"fc-settings-button\"]")
+                .OuterHtml
+                .ShouldContain("icon-only", Case.Insensitive);
+            string? themeToggleStyle = cut.Find("fluent-menu-button").GetAttribute("style");
+            themeToggleStyle.ShouldNotBeNull();
+            themeToggleStyle.ShouldContain("width: 48px", Case.Insensitive);
         });
     }
 

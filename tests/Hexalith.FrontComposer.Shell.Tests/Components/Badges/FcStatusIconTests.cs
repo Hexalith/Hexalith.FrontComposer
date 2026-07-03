@@ -27,7 +27,7 @@ public sealed class FcStatusIconTests : LayoutComponentTestBase {
 
     [Theory]
     [InlineData(BadgeSlot.Neutral, Color.Neutral, "QuestionCircle")]
-    [InlineData(BadgeSlot.Info, Color.Info, "InfoCircle")]
+    [InlineData(BadgeSlot.Info, Color.Info, "Info")]
     [InlineData(BadgeSlot.Success, Color.Success, "CheckmarkCircle")]
     [InlineData(BadgeSlot.Warning, Color.Warning, "Warning")]
     [InlineData(BadgeSlot.Danger, Color.Error, "DismissCircle")]
