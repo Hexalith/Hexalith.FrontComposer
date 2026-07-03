@@ -24,6 +24,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 /// </summary>
 [Trait("Category", "Governance")]
 public sealed class FluentConformanceTests {
+    private const string FluentV5Version = "5.0.0-rc.4-26180.1";
+
     // Matches an opening tag for a raw interactive HTML control. The trailing character class anchors on a
     // real tag boundary (whitespace, self-close, or '>') so attributes like `inputmode=` and Fluent
     // components like <FluentButton> / <FluentTextInput> (capitalised) are not matched. Case-sensitive on
@@ -63,6 +65,14 @@ public sealed class FluentConformanceTests {
     private static readonly Regex V4AccordionHeadingAttribute = new(
         "<FluentAccordionItem\\b[^>]*?\\bHeading\\s*=",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex FluentPackageVersion = new(
+        "<PackageVersion\\b[^>]*\\bInclude=\"(?<id>Microsoft\\.FluentUI\\.[^\"]+)\"[^>]*\\bVersion=\"(?<version>[^\"]+)\"",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex FluentIconTag = new(
+        "<FluentIcon\\b(?<attributes>[^>]*)>",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
 
     [Fact]
     public void Shell_components_use_fluent_v5_only_except_documented_carveouts() {
@@ -115,6 +125,89 @@ public sealed class FluentConformanceTests {
         string[] accentSurfaceBacklog = [];
 
         AssertNoAccentSurfaceBackgrounds(root, accentSurfaceBacklog);
+    }
+
+    [Fact]
+    public void Fluent_package_versions_are_v5_only_and_icons_match_components() {
+        string repoRoot = RepositoryRoot();
+        EnumerationOptions options = new() {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            IgnoreInaccessible = true,
+        };
+
+        string[] packageFiles = Directory
+            .EnumerateFiles(repoRoot, "Directory.Packages.props", options)
+            .Where(f => !IsBuildOutput(f))
+            .ToArray();
+
+        packageFiles.ShouldNotBeEmpty("no Directory.Packages.props files found for Fluent package governance scan");
+
+        List<string> v4Offenders = [];
+        List<string> mismatchedV5Pins = [];
+        foreach (string file in packageFiles) {
+            string relative = Path.GetRelativePath(repoRoot, file).Replace('\\', '/');
+            foreach (Match match in FluentPackageVersion.Matches(File.ReadAllText(file))) {
+                string id = match.Groups["id"].Value;
+                string version = match.Groups["version"].Value;
+
+                if (string.Equals(id, "Microsoft.FluentUI.Components", StringComparison.Ordinal)
+                    || version.StartsWith("4.", StringComparison.Ordinal)) {
+                    v4Offenders.Add($"{relative}: {id} {version}");
+                    continue;
+                }
+
+                if ((string.Equals(id, "Microsoft.FluentUI.AspNetCore.Components", StringComparison.Ordinal)
+                        || string.Equals(id, "Microsoft.FluentUI.AspNetCore.Components.Icons", StringComparison.Ordinal))
+                    && !string.Equals(version, FluentV5Version, StringComparison.Ordinal)) {
+                    mismatchedV5Pins.Add($"{relative}: {id} {version}");
+                }
+            }
+        }
+
+        v4Offenders.ShouldBeEmpty(
+            "FrontComposer package metadata must not declare Fluent UI v4 packages. Use "
+            + $"Microsoft.FluentUI.AspNetCore.Components and .Icons {FluentV5Version}. Found: "
+            + string.Join("; ", v4Offenders));
+        mismatchedV5Pins.ShouldBeEmpty(
+            "Fluent UI component and icon packages must stay on the same validated v5 pin "
+            + $"{FluentV5Version}. Mismatches: {string.Join("; ", mismatchedV5Pins)}");
+    }
+
+    [Fact]
+    public void Shell_fluent_icons_declare_v5_color_intent() {
+        string repoRoot = RepositoryRoot();
+        string root = Path.Combine(repoRoot, "src", "Hexalith.FrontComposer.Shell");
+        EnumerationOptions options = new() {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            IgnoreInaccessible = true,
+        };
+
+        string[] razorFiles = Directory
+            .EnumerateFiles(root, "*.razor", options)
+            .Where(f => !IsBuildOutput(f))
+            .ToArray();
+
+        razorFiles.ShouldNotBeEmpty($"no .razor files found under {root}");
+
+        List<string> offenders = [];
+        foreach (string file in razorFiles) {
+            string content = File.ReadAllText(file);
+            foreach (Match match in FluentIconTag.Matches(content)) {
+                if (match.Groups["attributes"].Value.Contains("Color=", StringComparison.Ordinal)) {
+                    continue;
+                }
+
+                int line = content.Take(match.Index).Count(c => c == '\n') + 1;
+                offenders.Add($"{Path.GetRelativePath(repoRoot, file).Replace('\\', '/')}:{line}");
+            }
+        }
+
+        offenders.ShouldBeEmpty(
+            "FluentIcon inherits its parent color in Fluent UI Blazor v5 instead of defaulting to the "
+            + "accent color as it did in v4. Shell icons must declare Color explicitly, typically "
+            + $"Color.Primary for accent affordances. Missing Color= in: {string.Join("; ", offenders)}");
     }
 
     [Theory]
