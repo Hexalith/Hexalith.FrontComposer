@@ -25,13 +25,15 @@ HexalithEventStoreSecurityResources? security = builder.AddHexalithEventStoreSec
 // Project paths are resolved cross-repo via the IProjectMetadata classes in this AppHost.
 IResourceBuilder<ProjectResource> eventStore = builder.AddProject<HexalithEventStore>("eventstore");
 _ = eventStore
+    .WithEnvironment("Authentication__DaprInternal__AllowedCallers__0", "tenants")
+    .WithEnvironment("Authentication__DaprInternal__AllowedCallers__1", "parties")
     .WithEnvironment("EventStore__Publisher__TopicOverrides__global-administrators", "tenants.events")
     .WithEnvironment("EventStore__SignalR__Enabled", "true")
-    .WithEnvironment("EventStore__DomainServices__Registrations__wildcard_party_v1__AppId", "parties")
-    .WithEnvironment("EventStore__DomainServices__Registrations__wildcard_party_v1__MethodName", "process")
-    .WithEnvironment("EventStore__DomainServices__Registrations__wildcard_party_v1__TenantId", "*")
-    .WithEnvironment("EventStore__DomainServices__Registrations__wildcard_party_v1__Domain", "party")
-    .WithEnvironment("EventStore__DomainServices__Registrations__wildcard_party_v1__Version", "v1");
+    .WithEnvironment("EventStore__DomainServices__Registrations__*|party|v1__AppId", "parties")
+    .WithEnvironment("EventStore__DomainServices__Registrations__*|party|v1__MethodName", "process")
+    .WithEnvironment("EventStore__DomainServices__Registrations__*|party|v1__TenantId", "*")
+    .WithEnvironment("EventStore__DomainServices__Registrations__*|party|v1__Domain", "party")
+    .WithEnvironment("EventStore__DomainServices__Registrations__*|party|v1__Version", "v1");
 IResourceBuilder<ProjectResource> adminServer = builder.AddProject<HexalithEventStoreAdminServerHost>("eventstore-admin");
 IResourceBuilder<ProjectResource> adminUI = builder.AddProject<HexalithEventStoreAdminUI>("eventstore-admin-ui");
 
@@ -60,6 +62,10 @@ IResourceBuilder<ProjectResource> tenants = builder.AddProject<HexalithTenants>(
         daprSchedulerHostAddress: daprSchedulerHostAddress);
 
 IResourceBuilder<ProjectResource> parties = builder.AddProject<HexalithParties>("parties")
+    // Hexalith.Parties currently carries the EventStore launchSettings ports (8080/7141).
+    // Pin unique proxy ports here so DAPR invokes the Parties app instead of EventStore.
+    .WithEndpoint("https", e => e.Port = 61450, createIfNotExists: false)
+    .WithEndpoint("http", e => e.Port = 61449, createIfNotExists: false)
     .AddEventStoreDomainModule(
         eventStoreResources,
         "parties",

@@ -28,6 +28,34 @@ public sealed class FrontComposerUiAppHostTests {
     }
 
     [Fact]
+    public void AppHost_WiresPartiesWithUniqueDaprReachablePortsAndEventStoreRegistration() {
+        string root = FindRepoRoot();
+        string program = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.AppHost", "Program.cs"));
+
+        program.ShouldContain(".WithEndpoint(\"https\", e => e.Port = 61450, createIfNotExists: false)");
+        program.ShouldContain(".WithEndpoint(\"http\", e => e.Port = 61449, createIfNotExists: false)");
+        program.ShouldContain("EventStore__DomainServices__Registrations__*|party|v1__AppId");
+        program.ShouldContain("Authentication__DaprInternal__AllowedCallers__1\", \"parties\"");
+        program.ShouldNotContain("EventStore__DomainServices__Registrations__wildcard_party_v1");
+    }
+
+    [Fact]
+    public void AppHost_StateStoreScopesPartiesForProjectionState() {
+        string root = FindRepoRoot();
+        string stateStore = File.ReadAllText(Path.Combine(
+            root,
+            "src",
+            "Hexalith.FrontComposer.AppHost",
+            "DaprComponents",
+            "statestore.yaml"));
+
+        stateStore.ShouldContain("  - eventstore");
+        stateStore.ShouldContain("  - tenants");
+        stateStore.ShouldContain("  - parties");
+        stateStore.ShouldContain("  - eventstore-admin");
+    }
+
+    [Fact]
     public void Realm_DeclaresFrontComposerUiConfidentialClientMatchingAppHostDefaults() {
         JsonElement client = FindRealmClient(FrontComposerUiClientId);
 
