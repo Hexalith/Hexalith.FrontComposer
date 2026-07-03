@@ -130,6 +130,8 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
             cut.Markup.ShouldContain("min-height: 36px;", Case.Sensitive);
             cut.Markup.ShouldContain("background: var(--colorNeutralBackground2);", Case.Sensitive);
             cut.Markup.ShouldContain("border-block-start: 1px solid var(--colorNeutralStroke2);", Case.Sensitive);
+            cut.Find("[area=\"footer\"]").ClassList.Contains("pa-0").ShouldBeTrue(
+                "the footer layout item must not add its own padding, otherwise the inner centered stack overflows the status bar.");
 
             bool defaultFooterUsesFluentText = cut
                 .FindAll("fluent-text")
