@@ -19,13 +19,25 @@
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
     <ProjectReference Include="$(HexalithTenantsRoot)\src\Hexalith.Tenants.UI\Hexalith.Tenants.UI.csproj"
+                      Condition="'$(HexalithTenantsFromSource)' == 'true'"
                       AdditionalProperties="$(_HexalithReferenceProperties)" />
+    <PackageReference Include="Hexalith.Tenants.UI"
+                      Condition="'$(HexalithTenantsFromSource)' != 'true'" />
     <ProjectReference Include="$(HexalithPartiesRoot)\src\Hexalith.Parties.UI\Hexalith.Parties.UI.csproj"
+                      Condition="'$(HexalithPartiesFromSource)' == 'true'"
                       AdditionalProperties="$(_HexalithReferenceProperties)" />
+    <PackageReference Include="Hexalith.Parties.UI"
+                      Condition="'$(HexalithPartiesFromSource)' != 'true'" />
     <ProjectReference Include="$(HexalithPartiesRoot)\src\Hexalith.Parties.AdminPortal\Hexalith.Parties.AdminPortal.csproj"
+                      Condition="'$(HexalithPartiesFromSource)' == 'true'"
                       AdditionalProperties="$(_HexalithReferenceProperties)" />
+    <PackageReference Include="Hexalith.Parties.AdminPortal"
+                      Condition="'$(HexalithPartiesFromSource)' != 'true'" />
     <ProjectReference Include="$(HexalithPartiesRoot)\src\Hexalith.Parties.ConsumerPortal\Hexalith.Parties.ConsumerPortal.csproj"
+                      Condition="'$(HexalithPartiesFromSource)' == 'true'"
                       AdditionalProperties="$(_HexalithReferenceProperties)" />
+    <PackageReference Include="Hexalith.Parties.ConsumerPortal"
+                      Condition="'$(HexalithPartiesFromSource)' != 'true'" />
   </ItemGroup>
 
   <ItemGroup>

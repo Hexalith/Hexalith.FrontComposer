@@ -5,7 +5,19 @@
     <EventStorePath>$(MSBuildThisFileDirectory)references/Hexalith.EventStore</EventStorePath>
     <TenantsPath>$(MSBuildThisFileDirectory)references/Hexalith.Tenants</TenantsPath>
     <PartiesPath>$(MSBuildThisFileDirectory)references/Hexalith.Parties</PartiesPath>
+    <MemoriesPath>$(MSBuildThisFileDirectory)references/Hexalith.Memories</MemoriesPath>
+    <CommonsPath>$(MSBuildThisFileDirectory)references/Hexalith.Commons</CommonsPath>
+    <HexalithEventStoreRoot>$(EventStorePath)</HexalithEventStoreRoot>
+    <HexalithTenantsRoot>$(TenantsPath)</HexalithTenantsRoot>
     <HexalithPartiesRoot>$(PartiesPath)</HexalithPartiesRoot>
+    <HexalithMemoriesRoot>$(MemoriesPath)</HexalithMemoriesRoot>
+    <HexalithCommonsRoot>$(CommonsPath)</HexalithCommonsRoot>
+    <HexalithFrontComposerRoot>$(MSBuildThisFileDirectory)</HexalithFrontComposerRoot>
     <HexalithEventStoreFromSource>true</HexalithEventStoreFromSource>
+    <HexalithTenantsFromSource>true</HexalithTenantsFromSource>
+    <HexalithPartiesFromSource>true</HexalithPartiesFromSource>
+    <HexalithMemoriesFromSource>true</HexalithMemoriesFromSource>
+    <HexalithCommonsFromSource>true</HexalithCommonsFromSource>
+    <HexalithFrontComposerFromSource>true</HexalithFrontComposerFromSource>
   </PropertyGroup>
 </Project>

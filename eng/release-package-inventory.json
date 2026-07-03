@@ -39,8 +39,8 @@
     {
       "project": "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj",
       "package_id": "Hexalith.FrontComposer.SourceTools",
-      "packable": false,
-      "exception": "Roslyn source-generator implementation package is intentionally not published; generated-output contracts ship through Contracts, Schema, Shell, MCP, CLI, and Testing."
+      "packable": true,
+      "symbol_required": true
     },
     {
       "project": "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj",

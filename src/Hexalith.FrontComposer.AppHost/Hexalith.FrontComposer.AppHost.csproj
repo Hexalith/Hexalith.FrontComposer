@@ -24,4 +24,35 @@
     <!-- Combined FrontComposer module UI for Tenants + Parties. -->
     <ProjectReference Include="..\Hexalith.FrontComposer.UI\Hexalith.FrontComposer.UI.csproj" />
   </ItemGroup>
+
+  <!-- Debug build-forcing references for path-only child resources. The resources are added to the
+       Aspire app model through IProjectMetadata classes with SuppressBuild=true, so Aspire launches
+       them with `dotnet run` in no-build mode. These pure build edges ensure the executables are present
+       and up to date before launch without adding duplicate Aspire resources or assembly references. -->
+  <ItemGroup Condition="'$(Configuration)' == 'Debug' and '$(UseHexalithProjectReferences)' == 'true'">
+    <ProjectReference Include="$(EventStorePath)/src/Hexalith.EventStore/Hexalith.EventStore.csproj"
+                      Condition="Exists('$(EventStorePath)/src/Hexalith.EventStore/Hexalith.EventStore.csproj')"
+                      ReferenceOutputAssembly="false" Private="false" IsAspireProjectResource="false" />
+    <ProjectReference Include="$(EventStorePath)/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj"
+                      Condition="Exists('$(EventStorePath)/src/Hexalith.EventStore.Admin.Server.Host/Hexalith.EventStore.Admin.Server.Host.csproj')"
+                      ReferenceOutputAssembly="false" Private="false" IsAspireProjectResource="false" />
+    <ProjectReference Include="$(EventStorePath)/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj"
+                      Condition="Exists('$(EventStorePath)/src/Hexalith.EventStore.Admin.UI/Hexalith.EventStore.Admin.UI.csproj')"
+                      ReferenceOutputAssembly="false" Private="false" IsAspireProjectResource="false" />
+    <ProjectReference Include="$(TenantsPath)/src/Hexalith.Tenants/Hexalith.Tenants.csproj"
+                      Condition="Exists('$(TenantsPath)/src/Hexalith.Tenants/Hexalith.Tenants.csproj')"
+                      ReferenceOutputAssembly="false" Private="false" IsAspireProjectResource="false" />
+    <ProjectReference Include="$(TenantsPath)/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj"
+                      Condition="Exists('$(TenantsPath)/src/Hexalith.Tenants.UI/Hexalith.Tenants.UI.csproj')"
+                      ReferenceOutputAssembly="false" Private="false" IsAspireProjectResource="false" />
+    <ProjectReference Include="$(TenantsPath)/samples/Hexalith.Tenants.Sample/Hexalith.Tenants.Sample.csproj"
+                      Condition="Exists('$(TenantsPath)/samples/Hexalith.Tenants.Sample/Hexalith.Tenants.Sample.csproj')"
+                      ReferenceOutputAssembly="false" Private="false" IsAspireProjectResource="false" />
+    <ProjectReference Include="$(PartiesPath)/src/Hexalith.Parties/Hexalith.Parties.csproj"
+                      Condition="Exists('$(PartiesPath)/src/Hexalith.Parties/Hexalith.Parties.csproj')"
+                      ReferenceOutputAssembly="false" Private="false" IsAspireProjectResource="false" />
+    <ProjectReference Include="$(PartiesPath)/src/Hexalith.Parties.UI/Hexalith.Parties.UI.csproj"
+                      Condition="Exists('$(PartiesPath)/src/Hexalith.Parties.UI/Hexalith.Parties.UI.csproj')"
+                      ReferenceOutputAssembly="false" Private="false" IsAspireProjectResource="false" />
+  </ItemGroup>
 </Project>

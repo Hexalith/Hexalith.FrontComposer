@@ -2,5 +2,10 @@
   <!-- Published Hexalith NuGet packages (Release/package builds). -->
   <PropertyGroup>
     <HexalithEventStoreFromSource>false</HexalithEventStoreFromSource>
+    <HexalithTenantsFromSource>false</HexalithTenantsFromSource>
+    <HexalithPartiesFromSource>false</HexalithPartiesFromSource>
+    <HexalithMemoriesFromSource>false</HexalithMemoriesFromSource>
+    <HexalithCommonsFromSource>false</HexalithCommonsFromSource>
+    <HexalithFrontComposerFromSource>false</HexalithFrontComposerFromSource>
   </PropertyGroup>
 </Project>
