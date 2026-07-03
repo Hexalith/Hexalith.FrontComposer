@@ -117,8 +117,8 @@ IResourceBuilder<ProjectResource> tenantsUI = builder.AddProject<HexalithTenants
     .WithExternalHttpEndpoints();
 
 IResourceBuilder<ProjectResource> frontComposerUI = builder.AddProject<Projects.Hexalith_FrontComposer_UI>("frontcomposer-ui")
-    .WithEndpoint("https", e => e.Port = 7273, createIfNotExists: false)
-    .WithEndpoint("http", e => e.Port = 7274, createIfNotExists: false)
+    .WithEndpoint("https", e => e.Port = 7273, createIfNotExists: true)
+    .WithEndpoint("http", e => e.Port = 7274, createIfNotExists: true)
     .WithReference(tenants)
     .WithReference(parties)
     .WithReference(eventStore)
