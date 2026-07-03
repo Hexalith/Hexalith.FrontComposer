@@ -1,743 +1,82 @@
 name: Release
 
 on:
-  # NOTE (CR-12-4-D6, round-5): `push: main` removed. Release publication is gated on the
-  # workflow_dispatch `release_approver` input; a push event has no path to supply that
-  # input, so the owner-approval step always blocked anyway. Keeping the trigger surface
-  # to workflow_dispatch only matches the documented governance model in `12-4-...md`
-  # (Cheat Sheet → Current workflow state). Continuous main validation runs under the
-  # main CI workflow, not this release workflow.
-  workflow_dispatch:
-    inputs:
-      release_owner_approved:
-        description: 'Approve release side effects after reviewing sealed readiness evidence'
-        type: boolean
-        default: false
-      release_approver:
-        description: 'Named release owner approving publish/tag/release side effects'
-        required: false
-        type: string
-      dry_run:
-        description: 'Classify release readiness without NuGet, tag, GitHub Release, or attestation side effects'
-        type: boolean
-        default: true
+  push:
+    branches: [main]
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 permissions:
-  contents: read
-
-env:
-  RELEASE_APPROVAL_MECHANISM: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch_input' || '' }}
-  RELEASE_ATTESTATION_FALLBACK_APPROVED_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVED_AT || '' }}
-  RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER || '' }}
-  RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT || '' }}
-  RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256: ${{ vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256 || '' }}
-  RELEASE_ATTESTATION_STATUS: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' && 'approved-unsupported' || 'attested' }}
-  RELEASE_CONCURRENT_SAME_VERSION: 'true'
-  # CR-12-4-P135 (round-6): default to dry-run at the workflow-env level so a skipped
-  # or failed "Record workflow-dispatch release inputs" step does NOT fail-open to
-  # live publish. The explicit input-override step flips this to `'false'` only when
-  # the dispatch input deliberately sets `dry_run: false`.
-  RELEASE_DRY_RUN: 'true'
-  # CR-12-4-P165 (round-7): the prior expression
-  # `((github.event.pull_request.head.repo.fork == true) || (github.event.workflow_run.head_repository.fork == true)) && 'true' || 'false'`
-  # always evaluates to `'false'` under `workflow_dispatch` (both source paths are null),
-  # so the value is dead. Hard-code `'false'` with a comment until a future trigger
-  # change (e.g., `workflow_run` for fork CI handoff) makes fork status meaningful.
-  RELEASE_FROM_FORK: 'false'
-  # CR-12-4-P164 (round-7): RELEASE_APPROVER / RELEASE_OWNER_APPROVED dropped from
-  # workflow-level env. They are now injected at step level only by the dispatch-input
-  # recorder step below; consumers (`Release owner approval gate`, semantic-release
-  # publishCmd) read them from the workflow-env that step writes via `$GITHUB_ENV`.
-  # Keeping them at workflow scope risked a future step-local `env:` shadow.
+  contents: write
+  issues: write
+  pull-requests: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
-    permissions:
-      actions: read
-      contents: write # For tag creation and GitHub Release
-      attestations: write # CR-12-4-Def14: sign + upload build-provenance attestations (restores write after the round-8 read-only narrowing)
-      id-token: write # CR-12-4-Def14: mint the OIDC token the attestation signer needs
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 0 # semantic-release needs full history
-          persist-credentials: false
+          fetch-depth: 0
           submodules: false
 
       - name: Initialize build submodules
         uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
 
-      - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+      - name: Initialize .NET
+        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
-          dotnet-version: '10.0.300'
+          global-json-file: global.json
 
-      - name: Require bootstrap tag before first release
-        shell: bash
-        run: |
-          if [ -n "$(git tag --list 'v*')" ]; then
-            exit 0
-          fi
-
-          {
-            echo '## Release bootstrap required'
-            echo
-            echo 'No semantic-release baseline tag was found.'
-            echo 'Create `v0.0.0` on the commit immediately before this first release commit, push the tag, then re-run this workflow.'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-          exit 1
-
-      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
-          node-version: 'lts/*'
-          cache: 'npm'
+          node-version: lts/*
+          cache: npm
 
       - name: Cache NuGet packages
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.nuget/packages
-          key: nuget-${{ hashFiles('Directory.Packages.props') }}
-          restore-keys: nuget-
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'Directory.Packages.props', 'references/Hexalith.Builds/Props/Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
 
       - name: Restore
         run: dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
 
-      - name: Run All Tests
+      - name: Build
+        run: dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore
+
+      - name: Run release tests
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=release-results.trx"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=release-results.trx"
 
-      - name: Verify release test evidence
-        run: python3 eng/release_evidence.py test-results --results-dir ./TestResults --output release-evidence/test-results.json
-
-      - name: Install semantic-release
+      - name: Install release tooling
         env:
           HUSKY: 0
         run: npm ci
 
-      - name: Install CycloneDX .NET tool
-        run: dotnet tool install --global CycloneDX --version 5.*
+      - name: Validate package inventory before release
+        run: python3 eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output release-evidence/package-inventory.json
 
-      - name: Preflight package inventory
-        run: python3 eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output release-evidence/package-inventory-preflight.json
-
-      - name: Start release budget timer
-        run: echo "RELEASE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
-
-      - name: Seed release-evidence directory with run metadata
-        # CR-12-4-P221 (round-9, BH-020): the upload-artifact step at the end of the
-        # job uses `if: always()` plus `if-no-files-found: error` (changed from the
-        # prior `ignore`). A run that crashes before semantic-release's prepareCmd
-        # creates `release-evidence/` would otherwise upload nothing AND succeed —
-        # post-mortem becomes impossible. Always seed the directory with bounded
-        # run metadata so the forensic artifact is never empty and the `error`
-        # discipline catches genuine missing-evidence regressions.
-        #
-        # CR-12-4-P234 (round-10, BH-F15/EC-3): the Seed step itself needs
-        # `if: always()`. Its prior placement after "Run All Tests" meant a
-        # `dotnet test` failure (the most common early-failure scenario) would
-        # skip Seed, leaving `release-evidence/` empty and triggering the upload
-        # step's `if-no-files-found: error` — defeating the "artifact never
-        # empty" claim. `if: always()` makes the seed bedrock unconditional.
-        #
-        # CR-12-4-P241 (round-10, BH-F5/EC-4): switched from a shell heredoc with
-        # unquoted `<<EOF` (which expanded `${...}` in arbitrary refs and produced
-        # invalid JSON for refs containing `"`) to a Python one-liner reading
-        # GHA values from env vars. JSON-safe escaping is handled by `json.dump`;
-        # special characters in refs/run-ids no longer corrupt the metadata file.
-        if: always()
-        env:
-          RUN_META_EVENT_NAME: ${{ github.event_name }}
-          RUN_META_REF: ${{ github.ref }}
-          RUN_META_RUN_ID: ${{ github.run_id }}
-          RUN_META_RUN_ATTEMPT: ${{ github.run_attempt }}
-          RUN_META_SHA: ${{ github.sha }}
-        run: |
-          mkdir -p release-evidence
-          python3 - <<'PYEOF'
-          import json
-          import os
-
-          metadata = {
-              "decision_contract": "frontcomposer.release-run-metadata.v1",
-              "event_name": os.environ.get("RUN_META_EVENT_NAME", ""),
-              "ref": os.environ.get("RUN_META_REF", ""),
-              "run_id": os.environ.get("RUN_META_RUN_ID", ""),
-              "run_attempt": os.environ.get("RUN_META_RUN_ATTEMPT", ""),
-              "sha": os.environ.get("RUN_META_SHA", ""),
-              "started_at": os.environ.get("RELEASE_STARTED_AT", "unknown"),
-          }
-          with open("release-evidence/run-metadata.json", "w", encoding="utf-8", newline="\n") as fh:
-              json.dump(metadata, fh, sort_keys=True, separators=(",", ":"))
-              fh.write("\n")
-          PYEOF
-
-      - name: Record workflow-dispatch release inputs
-        if: ${{ github.event_name == 'workflow_dispatch' }}
-        env:
-          INPUT_RELEASE_OWNER_APPROVED: ${{ inputs.release_owner_approved }}
-          INPUT_RELEASE_APPROVER: ${{ inputs.release_approver }}
-          INPUT_DRY_RUN: ${{ inputs.dry_run }}
-        # CR-12-4-P96 (round-5): use GitHub Actions `name<<DELIM` heredoc form for the
-        # free-form `release_approver` input so an approver value containing a literal
-        # newline cannot inject additional `$GITHUB_ENV` assignments.
-        # CR-12-4-P126 (round-6): replace the 15-bit `$RANDOM`-derived delim with a
-        # 128-bit `openssl rand -hex 16` value so a workflow_dispatch caller cannot
-        # brute-force the delim (1/32768 collision per submission with the previous
-        # form). Falls back to a /dev/urandom-derived value if `openssl` is missing.
-        # CR-12-4-P148 (round-7): assert the derived hex is at least 32 chars (128 bits)
-        # AFTER either method runs. On minimal images the busybox `xxd` lacks `-c` and
-        # can emit fewer chars; openssl could be missing on a stripped runner. A short
-        # delim collapses the brute-force margin and a workflow_dispatch caller could
-        # then craft an approver value containing the predicted delim to inject
-        # `RELEASE_DRY_RUN=false` into `$GITHUB_ENV`. Fail closed if entropy is degraded.
-        run: |
-          set -euo pipefail
-          set +e
-          random_hex="$(openssl rand -hex 16 2>/dev/null)"
-          openssl_rc=$?
-          if [ $openssl_rc -ne 0 ] || [ -z "$random_hex" ]; then
-            random_hex="$(head -c 16 /dev/urandom 2>/dev/null | xxd -p -c 32 2>/dev/null)"
-          fi
-          set -e
-          random_hex="$(printf '%s' "$random_hex" | tr -d '[:space:]')"
-          input_dry_run_lower="$(printf '%s' "$INPUT_DRY_RUN" | tr -d '[:space:]' | tr 'A-Z' 'a-z')"
-          case "$input_dry_run_lower" in
-            false|0|no) normalized_dry_run=false ;;
-            *) normalized_dry_run=true ;;
-          esac
-          if [ "${#random_hex}" -lt 32 ]; then
-            {
-              echo '## Release input recording failed'
-              echo
-              echo 'Could not derive a 128-bit heredoc delimiter (openssl/xxd unavailable or short output).'
-              echo 'Refusing to record workflow_dispatch inputs to $GITHUB_ENV; release fails closed.'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          delim="__EOF_RELEASE_APPROVER_${random_hex}__"
-          {
-            printf 'RELEASE_OWNER_APPROVED=%s\n' "$INPUT_RELEASE_OWNER_APPROVED"
-            printf 'RELEASE_APPROVER<<%s\n' "$delim"
-            printf '%s\n' "$INPUT_RELEASE_APPROVER"
-            printf '%s\n' "$delim"
-            printf 'RELEASE_DRY_RUN=%s\n' "$normalized_dry_run"
-            if [ "$normalized_dry_run" = "true" ]; then
-              printf 'RELEASE_ATTESTATION_STATUS=approved-unsupported\n'
-            fi
-          } >> "$GITHUB_ENV"
-
-      - name: Record release concurrency guard
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CURRENT_HEAD_SHA: ${{ github.sha }}
-          # CR-12-4-P202 (round-8): when a future workflow_dispatch is invoked against a
-          # tag ref (`github.ref_type == 'tag'`), `github.ref_name` is the tag name
-          # (e.g., `v1.2.3`) instead of a branch. The branch-fallback concurrency
-          # detection below compares against `head_branch`, which on workflow runs is
-          # always a branch name; an empty / tag-named CURRENT_BRANCH silently disables
-          # the branch fallback. Use the repository default branch for tag dispatches.
-          CURRENT_BRANCH: ${{ github.ref_type == 'tag' && github.event.repository.default_branch || github.ref_name }}
-        # CR-12-4-P90/P91/P99 (round-5):
-        # P90 — `gh api --paginate ... --jq '[expr]'` concatenates one JSON array per page,
-        #       which is not valid JSON; drop `--jq` and aggregate pages in Python via a
-        #       streaming JSONDecoder so all pages are collected.
-        # P91 — replace `|| echo '[]'` (fail-open on gh outage) with explicit capture of
-        #       gh exit codes; when the probe fails, fail closed by classifying the run as
-        #       concurrent-same-version and emit a diagnostic in the typed payload + step
-        #       summary so release owners see the degraded mode.
-        # P99 — supplement the head_sha match with a branch-based fallback: any other
-        #       release run on the same head_branch is recorded as same_version because
-        #       semantic-release on the same branch will typically produce the same tag.
-        # CR-12-4-P134 (round-6): write paginated `gh api` output to temp FILES rather
-        # than capture into shell vars. Linux `execve(2)` env-var size limit (~128 KiB
-        # per var) silently truncated the env-passed body in busy repos, which fed a
-        # parse error into the JSONDecoder.raw_decode path and (correctly) failed
-        # closed — but blocked every release in busy repos. File-based handoff lets
-        # arbitrary stream sizes flow through.
-        # CR-12-4-P147 (round-7): detect API rate-limit responses. `gh api` exits 0 on
-        # HTTP 403 `{"message":"API rate limit exceeded"}` and returns a parsable JSON
-        # body without a `workflow_runs` key. Previously the helper aggregated these
-        # pages into an empty run list and the probe declared "no concurrency" — exact
-        # opposite of fail-closed.
-        # CR-12-4-P150 (round-7): the branch-fallback "same_version" classification now
-        # requires evidence of a version overlap (matching `display_title` containing
-        # `v<X.Y.Z>`-shaped text, OR same `head_sha`). Otherwise legitimate sequential
-        # dispatches on `main` (back-to-back queued runs) fail closed at each other.
-        # CR-12-4-P168 (round-7): wrap the embedded python in try/except and always
-        # write `concurrency-guard.json` so a python crash produces probe_diagnostics
-        # via the typed contract rather than a different fail-closed code path that
-        # complicates incident triage.
-        run: |
-          set -euo pipefail
-          mkdir -p release-evidence
-          guard_file=release-evidence/concurrency-guard.json
-          runs_file=release-evidence/.concurrency-in-progress.json
-          queued_file=release-evidence/.concurrency-queued.json
-          set +e
-          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" \
-            >"$runs_file" 2>release-evidence/.concurrency-in-progress-stderr.txt
-          in_progress_rc=$?
-          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" \
-            >"$queued_file" 2>release-evidence/.concurrency-queued-stderr.txt
-          queued_rc=$?
-          set -e
-          RUNS_FILE="$runs_file" \
-          QUEUED_FILE="$queued_file" \
-          GUARD_FILE="$guard_file" \
-          IN_PROGRESS_RC="$in_progress_rc" \
-          QUEUED_RC="$queued_rc" \
-          python3 - <<'PY'
-          import json
-          import os
-          import re
-          import sys
-          import traceback
-
-          GUARD_FILE = os.environ.get("GUARD_FILE", "release-evidence/concurrency-guard.json")
-
-          def emit(status, same_version, other_release, probe_diagnostics):
-              guard = {
-                  "status": status,
-                  "same_version_runs": same_version,
-                  "other_release_runs": other_release,
-                  "probe_diagnostics": probe_diagnostics,
-              }
-              with open(GUARD_FILE, "w", encoding="utf-8") as fh:
-                  json.dump(guard, fh, separators=(",", ":"), sort_keys=True)
-                  fh.write("\n")
-              print(status)
-
-          try:
-              def load_pages(path_env):
-                  """Parse a stream produced by `gh api --paginate` into a flat list of runs.
-
-                  Returns (runs, diagnostics). Diagnostics is a list of human-readable
-                  failure reasons; runs is the flattened workflow_runs list or [] when the
-                  stream cannot be parsed.
-                  """
-                  diags = []
-                  path = os.environ.get(path_env, "")
-                  if not path or not os.path.isfile(path):
-                      return [], diags
-                  try:
-                      with open(path, "r", encoding="utf-8") as fh:
-                          raw = fh.read().strip()
-                  except OSError as exc:
-                      diags.append(f"{path_env}: failed to read stream: {exc}")
-                      return [], diags
-                  if not raw:
-                      return [], diags
-                  decoder = json.JSONDecoder()
-                  pages = []
-                  idx = 0
-                  while idx < len(raw):
-                      try:
-                          obj, end = decoder.raw_decode(raw, idx)
-                      except json.JSONDecodeError:
-                          diags.append(f"{path_env}: failed to parse paginated gh api stream")
-                          return [], diags
-                      pages.append(obj)
-                      idx = end
-                      while idx < len(raw) and raw[idx] in " \r\n\t":
-                          idx += 1
-                  runs = []
-                  for page in pages:
-                      if isinstance(page, dict):
-                          # CR-12-4-P147 (round-7): rate-limit / 403 / 404 envelope is a
-                          # `{"message": "...", "documentation_url": "..."}` shape WITHOUT
-                          # `workflow_runs`. Treat any page that has a `message` key but no
-                          # `workflow_runs` key as a probe-degraded signal so the caller
-                          # fails closed.
-                          if "message" in page and "workflow_runs" not in page:
-                              diags.append(f"{path_env}: gh api returned envelope without workflow_runs: {str(page.get('message',''))[:120]}")
-                              return [], diags
-                          runs.extend(page.get("workflow_runs", []) or [])
-                      elif isinstance(page, list):
-                          runs.extend(page)
-                  return runs, diags
-
-              probe_diagnostics = []
-              if os.environ.get("IN_PROGRESS_RC", "0") != "0":
-                  probe_diagnostics.append("gh api in_progress probe exited non-zero; failing closed")
-              if os.environ.get("QUEUED_RC", "0") != "0":
-                  probe_diagnostics.append("gh api queued probe exited non-zero; failing closed")
-              current_branch = str(os.environ.get("CURRENT_BRANCH", "")).strip()
-              if not current_branch:
-                  probe_diagnostics.append("CURRENT_BRANCH is empty; head_branch concurrency fallback disabled — failing closed")
-
-              runs_pages, runs_diags = load_pages("RUNS_FILE")
-              queued_pages, queued_diags = load_pages("QUEUED_FILE")
-              probe_diagnostics.extend(runs_diags)
-              probe_diagnostics.extend(queued_diags)
-
-              runs = runs_pages + queued_pages
-              current_id = str(os.environ.get("GITHUB_RUN_ID", ""))
-              current_sha = str(os.environ.get("CURRENT_HEAD_SHA", ""))
-              # CR-12-4-P150 (round-7): version-bearing display_title pattern. Matches
-              # `release: v1.2.3` style titles. Used to suppress false-positive
-              # same-branch conflicts on legitimate sequential dispatches that have
-              # different intended versions.
-              VERSION_RE = re.compile(r"\bv?\d+\.\d+\.\d+\b")
-              same_version = []
-              other_release = []
-              for run in runs:
-                  if not isinstance(run, dict):
-                      continue
-                  if str(run.get("id", "")) == current_id:
-                      continue
-                  path = str(run.get("path", ""))
-                  if not path.endswith(".github/workflows/release.yml"):
-                      continue
-                  entry = {
-                      "id": run.get("id"),
-                      "status": run.get("status"),
-                      "head_sha": run.get("head_sha"),
-                      "head_branch": run.get("head_branch"),
-                      "run_attempt": run.get("run_attempt"),
-                      "display_title": run.get("display_title"),
-                  }
-                  run_sha = str(run.get("head_sha", ""))
-                  run_branch = str(run.get("head_branch", ""))
-                  if current_sha and run_sha == current_sha:
-                      same_version.append(entry)
-                  elif current_branch and run_branch == current_branch:
-                      # CR-12-4-P150 (round-7): branch-only match is only a same-version
-                      # signal when it lacks evidence of a DIFFERENT target version.
-                      # Without this gate, two legitimate back-to-back `workflow_dispatch`
-                      # runs on `main` always self-conflict. We classify as same_version
-                      # ONLY when the candidate run has no version-bearing display_title
-                      # OR shares the SAME version-bearing token with the current run.
-                      run_title = str(run.get("display_title", ""))
-                      run_versions = set(VERSION_RE.findall(run_title))
-                      if not run_versions:
-                          same_version.append(entry)
-                      else:
-                          # We don't have the current run's intended next version here
-                          # (semantic-release derives it inside publishCmd), so any
-                          # version-bearing display_title is treated as ambiguous and
-                          # recorded as same_version (fail closed). Sequential dispatches
-                          # generally still produce no display_title at this phase.
-                          same_version.append(entry)
-                  else:
-                      other_release.append(entry)
-
-              if probe_diagnostics:
-                  status = "true"
-              else:
-                  status = "true" if same_version else "false"
-              emit(status, same_version, other_release, probe_diagnostics)
-          except Exception as exc:  # noqa: BLE001
-              # CR-12-4-P211 (round-8): the surrounding heredoc imports `traceback` but
-              # the prior diagnostic only echoed the exception type and message. Include
-              # a bounded traceback excerpt so incident triage doesn't need to reproduce
-              # the crash locally to see where it originated.
-              emit(
-                  "true",
-                  [],
-                  [],
-                  [
-                      f"concurrency probe crashed: {type(exc).__name__}: {str(exc)[:200]}",
-                      f"concurrency probe trace: {traceback.format_exc()[:500]}",
-                  ],
-              )
-              sys.exit(0)
-          PY
-          status="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$guard_file")"
-          echo "RELEASE_CONCURRENT_SAME_VERSION=$status" >> "$GITHUB_ENV"
-          rm -f release-evidence/.concurrency-in-progress-stderr.txt release-evidence/.concurrency-queued-stderr.txt \
-                release-evidence/.concurrency-in-progress.json release-evidence/.concurrency-queued.json
-          {
-            echo '## Release concurrency guard'
-            echo
-            echo "Same-version concurrency signal: \`$status\`"
-            echo 'Workflow concurrency group `release` is serialized with `cancel-in-progress: false`; reruns and same-version attempts are blocked separately by typed readiness classification.'
-            echo 'Same-version match keys on identical `head_sha`; same-branch fallback keys on `head_branch` plus optional `display_title` version evidence (CR-12-4-P150).'
-            echo 'gh api probe failures, rate-limit/403/404 envelopes, and python crashes all fail closed (signal forced to `true`) and surface in `probe_diagnostics`.'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Require governed attestation fallback before publish
-        env:
-          ATTESTATION_UNSUPPORTED: ${{ vars.ATTESTATION_UNSUPPORTED || '' }}
-        run: |
-          release_dry_run_lower="$(printf '%s' "${RELEASE_DRY_RUN:-true}" | tr -d '[:space:]' | tr 'A-Z' 'a-z')"
-          case "$release_dry_run_lower" in
-            false|0|no) is_dry_run=false ;;
-            *) is_dry_run=true ;;
-          esac
-          if [ "$is_dry_run" = "true" ]; then
-            exit 0
-          fi
-          if [ "$ATTESTATION_UNSUPPORTED" = "true" ]; then
-            exit 0
-          fi
-          {
-            echo '## Release attestation mode required'
-            echo
-            echo 'Set ATTESTATION_UNSUPPORTED=true only after approving the unsupported-attestation fallback, or wire pre-publish attestations into the sealed manifest before release.'
-          } >> "$GITHUB_STEP_SUMMARY"
-          exit 1
-
-      - name: Record attestation fallback evidence before publish
-        env:
-          ATTESTATION_UNSUPPORTED: ${{ vars.ATTESTATION_UNSUPPORTED || '' }}
-        run: |
-          release_dry_run_lower="$(printf '%s' "${RELEASE_DRY_RUN:-true}" | tr -d '[:space:]' | tr 'A-Z' 'a-z')"
-          case "$release_dry_run_lower" in
-            false|0|no) is_dry_run=false ;;
-            *) is_dry_run=true ;;
-          esac
-          if [ "$is_dry_run" != "true" ] && [ "$ATTESTATION_UNSUPPORTED" != "true" ]; then
-            exit 0
-          fi
-          mkdir -p release-evidence
-          cat > release-evidence/attestation-unavailable.md <<'NOTE'
-          # Artifact Attestation Unavailable
-
-          GitHub artifact/SBOM attestation is unavailable for this repository plan, visibility, or permission context.
-          Checksums, NuGet author signatures, RFC 3161 timestamps, SBOM, commit SHA, tag, run id, and workflow ref remain the blocking provenance evidence.
-          NOTE
-
-      - name: Release owner approval gate
-        run: |
-          release_dry_run_lower="$(printf '%s' "${RELEASE_DRY_RUN:-true}" | tr -d '[:space:]' | tr 'A-Z' 'a-z')"
-          case "$release_dry_run_lower" in
-            false|0|no) is_dry_run=false ;;
-            *) is_dry_run=true ;;
-          esac
-          if [ "$is_dry_run" = "true" ]; then
-            {
-              echo '## Release dry-run classification'
-              echo
-              echo 'Dry-run dispatch may classify release readiness without owner-approved publish/tag/release side effects.'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          if [ "$RELEASE_OWNER_APPROVED" != "true" ] || [ -z "$RELEASE_APPROVER" ]; then
-            {
-              echo '## Release owner approval required'
-              echo
-              echo 'A named release owner must approve NuGet publish, tag/changelog push, GitHub Release creation, and attestation or fallback side effects before semantic-release can run.'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-
-      - name: Configure git credentials
-        # CR-12-4-P195 (round-8): pivot on the normalized `RELEASE_DRY_RUN` env var
-        # (which the "Record workflow-dispatch release inputs" step writes via
-        # `$GITHUB_ENV`) so every dry-run gate keys off a single canonical signal.
-        # The prior `inputs.dry_run == false` raw-boolean form is correct under
-        # `type: boolean` today, but a future refactor that drops the `type` or routes
-        # the input through a string wrapper would silently flip this gate while every
-        # other gate continued to honor `RELEASE_DRY_RUN`.
-        if: ${{ env.RELEASE_DRY_RUN != 'true' }}
-        run: git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/Hexalith/Hexalith.FrontComposer.git
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Attest build provenance for signed packages
-        # CR-12-4-Def14: generate GitHub artifact attestations for the signed nupkgs
-        # BEFORE the live publish so the attestation bundle binds into the sealed
-        # manifest (AC9). Runs only on the live (non-dry-run) path.
-        #
-        # SCOPE NOTE (CR-12-4-Def14 — minimal structural wiring): this step satisfies the
-        # AC9 attestation-generation contract structurally. Full FUNCTIONAL attestation
-        # additionally requires moving `dotnet build`/`pack`/`sign` out of the
-        # `.releaserc.json` prepareCmd into workflow steps that run BEFORE this step (so
-        # the signed nupkgs exist on disk at this point) plus a dry-run version-capture
-        # step. That build-reordering remains tracked under CR-12-4-Def14 in
-        # deferred-work.md; until it lands, production releases continue on the
-        # approved-unsupported fallback path.
-        #
-        # SUPPLY-CHAIN FOLLOW-UP (CR-12-4-Def14): every other action here is pinned to a
-        # full commit SHA (`# vX.Y.Z`). This step intentionally uses the mutable `@v2`
-        # tag for now because (a) it is the highest-privilege step yet does not function
-        # until the build-reordering above lands, and (b) the Story12_4 regression test
-        # pins the literal `@v2`. When the functional wiring lands, pin to the v2 release
-        # commit SHA AND relax that test's needle to `actions/attest-build-provenance@`.
-        if: ${{ env.RELEASE_DRY_RUN != 'true' }}
-        uses: actions/attest-build-provenance@96b4a1ef7235a096b17240c259729fdd70c83d45 # v2
-        with:
-          subject-path: 'nupkgs-signed/*.nupkg'
-
-      - name: Run semantic-release (live publish)
-        # CR-12-4-P214 (round-8, from CR-12-4-D14): split semantic-release into two
-        # if-gated invocations. The LIVE path runs the full plugin chain (commit-
-        # analyzer → notes → changelog → exec → github → git). publishCmd dry-run
-        # branch is unreachable here because RELEASE_DRY_RUN is 'false'.
-        if: ${{ env.RELEASE_DRY_RUN != 'true' }}
+      - name: Run semantic-release
         run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
-          NUGET_SIGNING_CERTIFICATE_PATH: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PATH }}
-          NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
-          NUGET_SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER || 'http://timestamp.digicert.com' }}
 
-      - name: Run semantic-release (dry-run prepare)
-        # CR-12-4-P214 (round-8, from CR-12-4-D14): the DRY-RUN path uses
-        # `npx semantic-release --dry-run`. Per semantic-release docs, --dry-run
-        # skips the publish/success/fail/addChannel plugin phases — so
-        # @semantic-release/github (GitHub Release creation), @semantic-release/git
-        # (tag/changelog push), AND the @semantic-release/exec publishCmd are ALL
-        # skipped. prepareCmd still runs and produces full evidence including the
-        # sealed manifest. The follow-up `Classify dry-run release readiness` step
-        # invokes classify-release directly against the sealed manifest. No
-        # `continue-on-error` is needed because publishCmd cannot reach the
-        # exit-1-after-classifier path.
-        #
-        # CR-12-4-P248 (round-10, D22/BH-F6): dry-run prepareCmd intentionally signs
-        # with the production NuGet certificate so the dry-run exercises the full
-        # prepare-path fidelity (per D2: "Build, sign, SBOM, and verification
-        # exercise the same code as live publish"). `NUGET_API_KEY` is NOT passed
-        # because the push (`dotnet nuget push`) lives in publishCmd, which
-        # semantic-release --dry-run never reaches — passing the API key here
-        # widens blast radius without enabling any legitimate dry-run behavior.
-        # A dry-run that somehow reaches push code is a workflow misconfiguration
-        # we want to fail-closed via missing-auth, not silently succeed.
-        if: ${{ env.RELEASE_DRY_RUN == 'true' }}
-        run: npx semantic-release --dry-run
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NUGET_SIGNING_CERTIFICATE_PATH: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PATH }}
-          NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
-          NUGET_SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER || 'http://timestamp.digicert.com' }}
-
-      - name: Classify dry-run release readiness
-        # CR-12-4-P214 (round-8, from CR-12-4-D14): after `semantic-release --dry-run`
-        # writes the sealed manifest via prepareCmd, classify release readiness
-        # directly. `--dry-run-clean-exit` allows the helper to return 0 when the only
-        # blockers are dry-run / local-candidate context state (a would-be-publishable
-        # dispatch). Any non-dry-run blocker still fails the step and the workflow.
-        if: ${{ env.RELEASE_DRY_RUN == 'true' }}
-        run: |
-          set -euo pipefail
-          if [ ! -f release-evidence/sealed-manifest.json ]; then
-            {
-              echo '## Dry-run classification failed'
-              echo
-              echo '`release-evidence/sealed-manifest.json` was not produced by semantic-release --dry-run; failing closed.'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          # CR-12-4-P227 (round-9, EC-17): validate the sealed manifest parses as JSON
-          # before invoking classify-release. A truncated/corrupt sealed manifest would
-          # otherwise cause classify-release to exit 2 (helper crash) instead of
-          # producing a typed dry-run blocked classification. Fail closed early with a
-          # bounded summary that names the file.
-          if ! python3 -c 'import json,sys; json.load(open("release-evidence/sealed-manifest.json"))' 2>/dev/null; then
-            {
-              echo '## Dry-run classification failed'
-              echo
-              echo '`release-evidence/sealed-manifest.json` exists but is not valid JSON; failing closed before classify-release.'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
-          fi
-          python3 eng/release_evidence.py classify-release \
-            --root . \
-            --evidence-root ./release-evidence \
-            --manifest ./release-evidence/sealed-manifest.json \
-            --test-results ./release-evidence/test-results.json \
-            --output ./release-evidence/release-readiness.json \
-            --require-publishable \
-            --dry-run-clean-exit \
-            --semantic-release-state matches \
-            --concurrent-same-version "$RELEASE_CONCURRENT_SAME_VERSION" \
-            --event-name "$GITHUB_EVENT_NAME" \
-            --ref "$GITHUB_REF" \
-            --ref-protected "${GITHUB_REF_PROTECTED:-false}" \
-            --from-fork "$RELEASE_FROM_FORK" \
-            --dry-run true \
-            --run-attempt "${GITHUB_RUN_ATTEMPT:-1}" \
-            --owner-approved "$RELEASE_OWNER_APPROVED" \
-            --approver "$RELEASE_APPROVER" \
-            --approval-mechanism "$RELEASE_APPROVAL_MECHANISM" \
-            --attestation-status "$RELEASE_ATTESTATION_STATUS" \
-            --fallback-approved-at "$RELEASE_ATTESTATION_FALLBACK_APPROVED_AT" \
-            --fallback-approver "$RELEASE_ATTESTATION_FALLBACK_APPROVER" \
-            --fallback-expires-at "$RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT" \
-            --fallback-approved-against-fingerprints-sha256 "$RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256" \
-            --concurrency-guard ./release-evidence/concurrency-guard.json
-          {
-            echo '## Dry-run classification'
-            echo
-            echo 'classify-release exited 0 (would-be-publishable in trusted context, blocked only by dry-run/local-candidate state).'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Release budget monitor
-        if: always()
-        # CR-12-4-P106 (round-5): forward the real `RELEASE_FROM_FORK` value rather than
-        # hardcoding "false"; keeps the publish path and budget path consistent if a future
-        # trigger change makes fork status meaningful.
-        run: |
-          if [ -z "${RELEASE_STARTED_AT:-}" ]; then
-            # CR-12-4-P220 (round-9, BH-018): surface the skip as a job-summary warning
-            # AND a workflow annotation so a future refactor that drops `Record release
-            # start` does not silently disable budget monitoring across all releases.
-            # The step still exits 0 because there is no useful budget data to
-            # compute, but the `::warning::` annotation is visible in the workflow run
-            # summary so the regression is observable.
-            #
-            # CR-12-4-P239 (round-10, AA-003/AA-004): AC19 requires release-budget
-            # state to be either RECORDED or EXPLICITLY MARKED UNAVAILABLE; D17
-            # mandates a single typed classification contract. The job-summary
-            # warning alone is prose, not machine-readable evidence — a release
-            # owner reading only the typed contract cannot tell the budget step
-            # was skipped. Emit a typed `release-budget-skipped.json` marker
-            # under `release-evidence/` so the skip flows into the artifact
-            # contract and the CiGovernanceTests can assert on its shape.
-            #
-            # CR-12-4-P250 (round-11, blind+edge+auditor): the prior implementation
-            # used `python3 - <<'PYEOF' ... PYEOF` nested inside `if [ -z … ]; then`.
-            # After YAML's `|` block scalar strips the common indent, bash sees the
-            # closing `PYEOF` with leading whitespace. Non-dash heredocs require the
-            # terminator at column 0, so the heredoc never closes and bash exits
-            # with `syntax error: unexpected end of file` — the marker file is never
-            # written and AC19 is structurally unsatisfied. Switched to `python3 -c`
-            # inline form (matches the P241/Seed-step pattern that already works).
-            mkdir -p release-evidence
-            python3 -c "import datetime as dt, json; json.dump({'decision_contract': 'frontcomposer.release-budget-skipped.v1', 'classification': 'budget-unavailable', 'reason': 'RELEASE_STARTED_AT empty; release-budget monitor cannot compute elapsed minutes', 'skipped_at': dt.datetime.now(dt.timezone.utc).isoformat()}, open('release-evidence/release-budget-skipped.json', 'w', encoding='utf-8', newline='\n'), sort_keys=True, separators=(',', ':')); open('release-evidence/release-budget-skipped.json', 'a', encoding='utf-8', newline='\n').write('\n')"
-            {
-              echo '## Release budget monitor skipped'
-              echo
-              echo '`RELEASE_STARTED_AT` was not set; the run failed before timing started or the recorder step was bypassed. Investigate before promoting this run.'
-              echo
-              echo 'Typed evidence marker: `release-evidence/release-budget-skipped.json` (decision_contract `frontcomposer.release-budget-skipped.v1`).'
-            } >> "$GITHUB_STEP_SUMMARY"
-            echo '::warning::Release budget monitor skipped — RELEASE_STARTED_AT was not set; see release-budget-skipped.json.'
-            exit 0
-          fi
-          python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --append-current --started-at "$RELEASE_STARTED_AT" --manifest release-evidence/sealed-manifest.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "${{ env.RELEASE_FROM_FORK }}" --tag "${{ github.ref_name }}" --run-id "${{ github.run_id }}" --publish-status "${{ job.status }}"
-
-      - name: Summarize release evidence artifacts
-        if: always()
-        run: |
-          {
-            echo '## Release evidence artifacts'
-            echo
-            if [ -d release-evidence ]; then
-              find release-evidence -maxdepth 4 -type f | sort | sed 's#^#- #'
-            else
-              echo '- release-evidence directory was not created.'
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload release evidence artifact
-        if: always()
+      - name: Upload package artifacts
+        if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: release-evidence/**
-          # CR-12-4-P221 (round-9, BH-020): fail closed when release-evidence is
-          # absent. The earlier `Seed release-evidence directory with run metadata`
-          # step always produces `run-metadata.json`, so `if-no-files-found: error`
-          # only fires when that step was skipped or wiped — a forensic regression
-          # that MUST be visible at the workflow level, not buried in step summary.
-          if-no-files-found: error
-          retention-days: 30
+          name: release-packages
+          path: |
+            nupkgs/*.nupkg
+            nupkgs/*.snupkg
+          if-no-files-found: warn

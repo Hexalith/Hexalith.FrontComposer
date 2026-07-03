@@ -15,6 +15,7 @@
          UseNuGetDeps is kept as the legacy inverse switch for existing scripts. -->
     <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(UseNuGetDeps)' == 'true'">false</UseHexalithProjectReferences>
     <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(UseNuGetDeps)' == 'false'">true</UseHexalithProjectReferences>
+    <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(Configuration)' == ''">true</UseHexalithProjectReferences>
     <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(Configuration)' == 'Debug'">true</UseHexalithProjectReferences>
     <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == ''">false</UseHexalithProjectReferences>
     <UseNuGetDeps Condition="'$(UseNuGetDeps)' == '' AND '$(UseHexalithProjectReferences)' == 'true'">false</UseNuGetDeps>

@@ -136,6 +136,20 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void CentralPackageManagement_EnablesTransitivePinningForImportedPackageVersions() {
+        string root = RepositoryRoot();
+        XDocument packages = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
+
+        XElement? transitivePinning = packages
+            .Descendants("CentralPackageTransitivePinningEnabled")
+            .SingleOrDefault();
+
+        transitivePinning.ShouldNotBeNull(
+            "OpenIdConnect restores IdentityModel packages transitively; imported PackageVersion pins must apply to prevent split Microsoft.IdentityModel assemblies.");
+        transitivePinning.Value.ShouldBe("true");
+    }
+
+    [Fact]
     public void ReleaseSolutionBuild_ExcludesExternalHexalithReferenceProjects() {
         string root = RepositoryRoot();
         XDocument solution = XDocument.Load(Path.Combine(root, "Hexalith.FrontComposer.slnx"));
@@ -228,50 +242,60 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void ReleaseWorkflow_AddsSbomSigningAttestationAndManifestGatesAfterBlockingTests() {
+    public void ReleaseWorkflow_RunsAutomaticPackageReleaseAfterBlockingTests() {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
 
-        workflow.ShouldContain("contents: read");
-        workflow.ShouldContain("actions: read");
+        workflow.ShouldContain("push:");
+        workflow.ShouldContain("branches: [main]");
         workflow.ShouldContain("contents: write");
-        // CR-12-4-Def14: the release job now restores `attestations: write` + `id-token: write`
-        // for the build-provenance attestation step (round-8 narrowed it to `attestations: read`
-        // while attestation creation was deferred). `packages: write` is still never granted.
-        workflow.ShouldContain("attestations: write");
-        workflow.ShouldContain("id-token: write");
+        workflow.ShouldContain("issues: write");
+        workflow.ShouldContain("pull-requests: write");
+        workflow.ShouldNotContain("contents: read");
         workflow.ShouldNotContain("attestations: read");
+        workflow.ShouldNotContain("attestations: write");
+        workflow.ShouldNotContain("id-token: write");
         workflow.ShouldNotContain("packages: write");
-        workflow.ShouldContain("submodules: true");
+        workflow.ShouldContain("submodules: false");
         workflow.ShouldNotContain("submodules: recursive");
+        workflow.ShouldContain("Initialize build submodules");
+        workflow.ShouldContain("global-json-file: global.json");
 
-        workflow.IndexOf("Run All Tests", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
-        workflow.IndexOf("Record attestation fallback evidence before publish", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
-        workflow.ShouldContain("Verify release test evidence");
-        workflow.ShouldContain("release-evidence/test-results.json");
-        workflow.ShouldContain("Preflight package inventory");
-        workflow.ShouldContain("Require governed attestation fallback before publish");
-        workflow.ShouldContain("attestation-unavailable.md");
-        workflow.ShouldContain("release-budget");
-        workflow.ShouldContain("--append-current");
-        workflow.ShouldContain("Upload release evidence artifact");
+        workflow.IndexOf("Run release tests", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
+        workflow.IndexOf("Validate package inventory before release", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
+        workflow.ShouldContain("release-evidence/package-inventory.json");
+        workflow.ShouldContain("NUGET_API_KEY");
+        workflow.ShouldContain("Upload package artifacts");
         workflow.ShouldContain("actions/upload-artifact");
+        workflow.ShouldContain("nupkgs/*.nupkg");
+        workflow.ShouldContain("nupkgs/*.snupkg");
+        workflow.ShouldNotContain("workflow_dispatch:");
+        workflow.ShouldNotContain("release_owner_approved");
+        workflow.ShouldNotContain("dry_run:");
+        workflow.ShouldNotContain("Require bootstrap tag");
+        workflow.ShouldNotContain("Release owner approval gate");
+        workflow.ShouldNotContain("ATTESTATION_UNSUPPORTED");
+        workflow.ShouldNotContain("actions/attest-build-provenance");
         workflow.ShouldNotContain("|| true");
 
+        releaseConfig.ShouldContain("@semantic-release/commit-analyzer");
+        releaseConfig.ShouldContain("@semantic-release/release-notes-generator");
+        releaseConfig.ShouldContain("@semantic-release/changelog");
         releaseConfig.ShouldContain("--include-symbols");
-        releaseConfig.ShouldContain("CycloneDX");
-        releaseConfig.ShouldContain("dotnet nuget sign");
-        releaseConfig.ShouldContain("--timestamper");
-        releaseConfig.ShouldContain("dotnet nuget verify");
-        releaseConfig.ShouldContain("prepare-manifest");
-        releaseConfig.ShouldContain("seal-manifest");
-        releaseConfig.ShouldContain("verify-manifest");
-        releaseConfig.ShouldContain("nupkgs-signed/*.nupkg");
+        releaseConfig.ShouldContain("--include-source");
+        releaseConfig.ShouldContain("dotnet pack Hexalith.FrontComposer.slnx");
+        releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.nupkg");
+        releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.snupkg");
+        releaseConfig.ShouldContain("nupkgs/*.nupkg");
         releaseConfig.ShouldContain("nupkgs/*.snupkg");
-        releaseConfig.ShouldContain("release-evidence/checksums.json");
-        releaseConfig.ShouldContain("release-evidence/release-budget-summary.json");
-        releaseConfig.ShouldContain("partial-publish-incident.json");
+        releaseConfig.ShouldContain("@semantic-release/github");
+        releaseConfig.ShouldContain("@semantic-release/git");
+        releaseConfig.ShouldNotContain("CycloneDX");
+        releaseConfig.ShouldNotContain("dotnet nuget sign");
+        releaseConfig.ShouldNotContain("gh attestation");
+        releaseConfig.ShouldNotContain("classify-release");
+        releaseConfig.ShouldNotContain("nupkgs-signed");
     }
 
     [Fact]
@@ -758,103 +782,41 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void ReleaseWorkflow_GatesPublishSideEffectsOnTypedReadinessAndOwnerApproval() {
+    public void ReleaseWorkflow_PublishesFromMainWithoutManualDispatchGates() {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
 
-        workflow.ShouldContain("release_owner_approved");
-        workflow.ShouldContain("dry_run");
-        workflow.ShouldContain("RELEASE_OWNER_APPROVED");
-        workflow.ShouldContain("RELEASE_APPROVER");
-        workflow.ShouldContain("RELEASE_CONCURRENT_SAME_VERSION: 'true'");
-        workflow.ShouldContain("RELEASE_ATTESTATION_FALLBACK_APPROVED_AT:");
-        workflow.ShouldContain("Record release concurrency guard");
-        workflow.ShouldContain("repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress");
-        workflow.ShouldContain("repos/${GITHUB_REPOSITORY}/actions/runs?status=queued");
-        workflow.ShouldContain("RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256:");
-        workflow.ShouldContain("Release owner approval gate");
-        workflow.ShouldContain("Dry-run dispatch may classify release readiness without owner-approved publish/tag/release side effects.");
-        workflow.ShouldContain("RELEASE_ATTESTATION_STATUS=approved-unsupported");
-        workflow.ShouldContain("Upload release evidence artifact");
-        workflow.ShouldContain("release-evidence-${{ github.run_id }}-${{ github.run_attempt }}");
-        workflow.ShouldNotContain("vars.RELEASE_OWNER_APPROVED");
-        workflow.ShouldNotContain("RELEASE_APPROVER: ${{ inputs.release_approver || vars.RELEASE_APPROVER");
-        workflow.ShouldContain("RELEASE_ATTESTATION_STATUS: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' && 'approved-unsupported' || 'attested' }}");
-        workflow.ShouldContain("github.event.workflow_run.head_repository.fork");
-        // CR-12-4-D6 (round-5): `push: main` removed from publish triggers; only
-        // workflow_dispatch can produce a release-approver env, so any push event
-        // would have permanently blocked at the owner gate anyway. The workflow now
-        // makes that explicit by having no `push:` trigger at all.
-        workflow.ShouldNotContain("push:\n    branches: [main]");
-        // CR-12-4-P222 (round-9, BH-024): the workflow's `on:` block must contain only
-        // `workflow_dispatch` because `RELEASE_FROM_FORK: 'false'` is hardcoded at the
-        // workflow-env level (per P165, round-7). A future trigger expansion to
-        // `pull_request`, `workflow_run`, or `push` would silently report every
-        // fork-originated event as `from_fork=false` and slip past the fork-rejection
-        // gate in classify-release. Lock the trigger surface here so any expansion
-        // forces a paired update to the fork-detection logic. Regex allows YAML
-        // comments between `on:` and the trigger declaration.
-        workflow.ShouldMatch(@"(?m)^on:\s*(?:\n\s*#[^\n]*)*\n\s*workflow_dispatch:");
+        workflow.ShouldMatch(@"(?m)^on:\s*\n\s*push:\s*\n\s*branches:\s*\[main\]");
+        workflow.ShouldContain("Run semantic-release");
+        workflow.ShouldContain("GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}");
+        workflow.ShouldContain("NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}");
+        workflow.ShouldContain("Validate package inventory before release");
+        workflow.ShouldNotContain("workflow_dispatch:");
         workflow.ShouldNotContain("pull_request:");
         workflow.ShouldNotContain("workflow_run:");
         workflow.ShouldNotContain("schedule:");
-        // CR-12-4-P96 (round-5): RELEASE_APPROVER must use the documented `name<<DELIM`
-        // heredoc form when reading workflow_dispatch input, because the value is free-
-        // form text that may contain newlines.
-        workflow.ShouldContain("RELEASE_APPROVER<<");
-        // CR-12-4-P99 (round-5): concurrency guard fallback that classifies same-branch
-        // in-flight release runs as same_version.
-        workflow.ShouldContain("CURRENT_BRANCH:");
-        // CR-12-4-P106 (round-5): release-budget step uses dynamic RELEASE_FROM_FORK.
-        workflow.ShouldContain("--from-fork \"${{ env.RELEASE_FROM_FORK }}\"");
+        workflow.ShouldNotContain("release_owner_approved");
+        workflow.ShouldNotContain("release_approver");
+        workflow.ShouldNotContain("RELEASE_OWNER_APPROVED");
+        workflow.ShouldNotContain("RELEASE_APPROVER");
+        workflow.ShouldNotContain("RELEASE_DRY_RUN");
+        workflow.ShouldNotContain("RELEASE_CONCURRENT_SAME_VERSION");
 
-        releaseConfig.ShouldContain("classify-release");
-        releaseConfig.ShouldContain("--require-publishable");
-        releaseConfig.ShouldContain("--fallback-approved-at");
-        releaseConfig.ShouldContain("--fallback-approved-against-fingerprints-sha256");
-        releaseConfig.ShouldContain("same_version_rc=$?");
-        releaseConfig.ShouldNotContain("|| echo 0");
-        releaseConfig.ShouldContain("repos/${GITHUB_REPOSITORY}/releases/tags/v${nextRelease.version}");
-        // CR-12-4-P97 (round-5): RELEASE_DRY_RUN parsing now goes through `case` on a
-        // lowercased value so non-canonical truthy values (TRUE, 1, yes) don't fall
-        // through to the live publish branch.
-        // CR-12-4-P119 (round-6): the `case` polarity is inverted — only literal
-        // `false|0|no` routes to live publish; any whitespace-padded, unrecognized, or
-        // mistyped value defaults to dry-run (fail closed). Whitespace stripped via
-        // `tr -d '[:space:]'`.
-        releaseConfig.ShouldContain("release_dry_run_lower=");
-        releaseConfig.ShouldContain("tr -d '[:space:]'");
-        releaseConfig.ShouldContain("case \\\"$release_dry_run_lower\\\" in false|0|no)");
-        // CR-12-4-P89 (round-5): after dry-run classification, force a non-zero exit so
-        // semantic-release halts before the `@semantic-release/github` and `git`
-        // plugins create tags / releases on what was supposed to be a no-side-effect run.
-        releaseConfig.ShouldContain("Dry-run classification complete; halting before publish side effects.");
-        // CR-12-4-P100 (round-5): prior-release.json placeholder written in prepareCmd.
-        releaseConfig.ShouldContain("\\\"status\\\":\\\"no-prior-release\\\"");
-        // CR-12-4-P102 (round-5): partial-publish-incident.json placeholder written in
-        // prepareCmd so semantic-release's GitHub plugin can always upload it.
-        releaseConfig.ShouldContain("partial-publish-incident.json --phase none --classification none");
-        // CR-12-4-P105 (round-5): prior-tag probe captures stderr separately so a
-        // stderr warning during a successful gh api call does not corrupt the JSON
-        // written to prior-release.json.
-        releaseConfig.ShouldContain("prior_stderr=");
-        releaseConfig.ShouldNotContain("gh api \\\"repos/${GITHUB_REPOSITORY}/releases/tags/v${nextRelease.version}\\\" 2>&1");
-
-        releaseConfig.ShouldContain("gh attestation verify ./nupkgs-signed/*.nupkg");
-        releaseConfig.ShouldContain("--attestation-bundle");
-        releaseConfig.ShouldContain("--evidence-root ./release-evidence");
-        releaseConfig.ShouldContain("--concurrent-same-version");
-        releaseConfig.ShouldContain("$RELEASE_CONCURRENT_SAME_VERSION");
-        releaseConfig.ShouldContain("--from-fork");
-        releaseConfig.ShouldContain("$RELEASE_FROM_FORK");
-        releaseConfig.ShouldContain("--dry-run");
-        releaseConfig.ShouldContain("$RELEASE_DRY_RUN");
-        releaseConfig.ShouldContain("partial-publish-incident");
-        releaseConfig.ShouldNotContain("--from-fork \"false\"");
-        releaseConfig.IndexOf("verify-manifest", StringComparison.Ordinal).ShouldBeLessThan(
-            releaseConfig.IndexOf("classify-release", StringComparison.Ordinal));
-        releaseConfig.IndexOf("classify-release", StringComparison.Ordinal).ShouldBeLessThan(
+        releaseConfig.ShouldContain("\"branches\": [\"main\"]");
+        releaseConfig.ShouldContain("\"tagFormat\": \"v${version}\"");
+        releaseConfig.ShouldContain("dotnet build Hexalith.FrontComposer.slnx");
+        releaseConfig.ShouldContain("dotnet pack Hexalith.FrontComposer.slnx");
+        releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.nupkg");
+        releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.snupkg");
+        releaseConfig.ShouldContain("@semantic-release/github");
+        releaseConfig.ShouldContain("@semantic-release/git");
+        releaseConfig.ShouldNotContain("classify-release");
+        releaseConfig.ShouldNotContain("--require-publishable");
+        releaseConfig.ShouldNotContain("RELEASE_DRY_RUN");
+        releaseConfig.ShouldNotContain("gh attestation");
+        releaseConfig.ShouldNotContain("partial-publish-incident");
+        releaseConfig.IndexOf("dotnet pack", StringComparison.Ordinal).ShouldBeLessThan(
             releaseConfig.IndexOf("dotnet nuget push", StringComparison.Ordinal));
     }
 
