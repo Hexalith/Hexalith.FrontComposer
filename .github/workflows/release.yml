@@ -46,16 +46,27 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-
 
-      - name: Restore
-        run: dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
-
-      - name: Build
-        run: dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore
-
       - name: Run release tests
+        shell: bash
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=release-results.trx"
+          TEST_PROJECTS: |
+            tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj
+            tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj
+            tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj
+            tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj
+            tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj
+            tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj
+        run: |
+          set -euo pipefail
+          while IFS= read -r project; do
+            [ -z "$project" ] && continue
+            name="$(basename "$project" .csproj)"
+            dotnet test "$project" --configuration Release \
+              --filter "Category!=Quarantined" \
+              --results-directory "./TestResults/$name" \
+              --logger "trx;LogFileName=${name}.trx"
+          done <<< "$TEST_PROJECTS"
 
       - name: Install release tooling
         env:

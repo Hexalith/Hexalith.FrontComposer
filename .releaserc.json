@@ -8,7 +8,7 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "rm -rf ./nupkgs && dotnet build Hexalith.FrontComposer.slnx --configuration Release -p:Version=${nextRelease.version} -p:PackageVersion=${nextRelease.version} && dotnet pack Hexalith.FrontComposer.slnx --no-build --configuration Release --include-symbols --include-source --output ./nupkgs -p:Version=${nextRelease.version} -p:PackageVersion=${nextRelease.version} -p:ContinuousIntegrationBuild=true",
+        "prepareCmd": "rm -rf ./nupkgs && python3 eng/pack_release_packages.py --version ${nextRelease.version} --output ./nupkgs",
         "publishCmd": "dotnet nuget push ./nupkgs/*.nupkg --source https://api.nuget.org/v3/index.json --api-key \"$NUGET_API_KEY\" --skip-duplicate && dotnet nuget push ./nupkgs/*.snupkg --source https://api.nuget.org/v3/index.json --api-key \"$NUGET_API_KEY\" --skip-duplicate"
       }
     ],

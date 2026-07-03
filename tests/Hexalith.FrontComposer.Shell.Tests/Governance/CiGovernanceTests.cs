@@ -264,6 +264,12 @@ public sealed class CiGovernanceTests {
 
         workflow.IndexOf("Run release tests", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
         workflow.IndexOf("Validate package inventory before release", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
+        workflow.ShouldContain("tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj");
+        workflow.ShouldContain("tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj");
+        workflow.ShouldContain("tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj");
+        workflow.ShouldContain("tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj");
+        workflow.ShouldContain("tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj");
+        workflow.ShouldContain("tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj");
         workflow.ShouldContain("release-evidence/package-inventory.json");
         workflow.ShouldContain("NUGET_API_KEY");
         workflow.ShouldContain("Upload package artifacts");
@@ -282,9 +288,7 @@ public sealed class CiGovernanceTests {
         releaseConfig.ShouldContain("@semantic-release/commit-analyzer");
         releaseConfig.ShouldContain("@semantic-release/release-notes-generator");
         releaseConfig.ShouldContain("@semantic-release/changelog");
-        releaseConfig.ShouldContain("--include-symbols");
-        releaseConfig.ShouldContain("--include-source");
-        releaseConfig.ShouldContain("dotnet pack Hexalith.FrontComposer.slnx");
+        releaseConfig.ShouldContain("python3 eng/pack_release_packages.py");
         releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.nupkg");
         releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.snupkg");
         releaseConfig.ShouldContain("nupkgs/*.nupkg");
@@ -805,8 +809,7 @@ public sealed class CiGovernanceTests {
 
         releaseConfig.ShouldContain("\"branches\": [\"main\"]");
         releaseConfig.ShouldContain("\"tagFormat\": \"v${version}\"");
-        releaseConfig.ShouldContain("dotnet build Hexalith.FrontComposer.slnx");
-        releaseConfig.ShouldContain("dotnet pack Hexalith.FrontComposer.slnx");
+        releaseConfig.ShouldContain("python3 eng/pack_release_packages.py --version ${nextRelease.version}");
         releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.nupkg");
         releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.snupkg");
         releaseConfig.ShouldContain("@semantic-release/github");
@@ -816,7 +819,7 @@ public sealed class CiGovernanceTests {
         releaseConfig.ShouldNotContain("RELEASE_DRY_RUN");
         releaseConfig.ShouldNotContain("gh attestation");
         releaseConfig.ShouldNotContain("partial-publish-incident");
-        releaseConfig.IndexOf("dotnet pack", StringComparison.Ordinal).ShouldBeLessThan(
+        releaseConfig.IndexOf("pack_release_packages.py", StringComparison.Ordinal).ShouldBeLessThan(
             releaseConfig.IndexOf("dotnet nuget push", StringComparison.Ordinal));
     }
 
