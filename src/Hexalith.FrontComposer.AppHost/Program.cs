@@ -164,8 +164,11 @@ if (security is not null) {
             "tenants-ui-dev-secret");
 
     _ = frontComposerUI.WithJwtBearerSecurity(security);
-    if (bool.TryParse(builder.Configuration["FrontComposerUi:OpenIdConnect:Enabled"], out bool frontComposerOidcEnabled)
-        && frontComposerOidcEnabled) {
+    bool frontComposerOidcEnabled = !bool.TryParse(
+        builder.Configuration["FrontComposerUi:OpenIdConnect:Enabled"],
+        out bool frontComposerOidcEnabledOverride)
+        || frontComposerOidcEnabledOverride;
+    if (frontComposerOidcEnabled) {
         _ = frontComposerUI.WithOpenIdConnectSecurity(
             security,
             builder.Configuration["FrontComposerUi:OpenIdConnect:ClientId"] ?? "hexalith-frontcomposer-ui",

@@ -19,6 +19,12 @@
       "symbol_required": true
     },
     {
+      "project": "src/Hexalith.FrontComposer.UI/Hexalith.FrontComposer.UI.csproj",
+      "package_id": "Hexalith.FrontComposer.UI",
+      "packable": false,
+      "exception": "Combined FrontComposer module UI is an executable/container host for Tenants and Parties modules; it is run or published as a container image, not shipped as a NuGet package."
+    },
+    {
       "project": "src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj",
       "package_id": "Hexalith.FrontComposer.Mcp",
       "packable": true,
