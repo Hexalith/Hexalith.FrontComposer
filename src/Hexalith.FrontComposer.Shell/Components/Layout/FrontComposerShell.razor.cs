@@ -289,6 +289,15 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         .ToString();
 
     /// <summary>
+    /// Global stylesheet for projection empty states (<c>FcProjectionEmptyPlaceholder</c>) and
+    /// field placeholders (<c>FcFieldPlaceholder</c>). Loaded globally because the classes render
+    /// on Fluent components and generated output where component-scoped selectors would not apply.
+    /// </summary>
+    protected string EmptyStateStylesheetPath => NavigationManager
+        .ToAbsoluteUri("_content/Hexalith.FrontComposer.Shell/css/fc-empty-state.css")
+        .ToString();
+
+    /// <summary>
     /// Whether the shell should render the Navigation area. Adopter-supplied content always wins;
     /// framework auto-navigation appears when at least one manifest has projections OR a domain has
     /// registered explicit navigation entries.
