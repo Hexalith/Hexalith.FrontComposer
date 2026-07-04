@@ -133,6 +133,71 @@ public sealed class InspectCommandTests {
     }
 
     [Fact]
+    public async Task InspectText_SummaryCountsMatchJsonForSharedContractFields() {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string[] generatedFiles = [
+            "Acme.Shipping.ShipmentProjection.g.razor.cs",
+            "Acme.Shipping.ShipmentProjectionFeature.g.cs",
+            "Acme.Shipping.ShipmentProjectionActions.g.cs",
+            "Acme.Shipping.ShipmentProjectionReducers.g.cs",
+            "Acme.Shipping.ShipmentProjectionRegistration.g.cs",
+            "Acme.Shipping.CreateShipment.CommandForm.g.razor.cs",
+            "Acme.Shipping.CreateShipment.CommandRenderer.g.razor.cs",
+            "Acme.Shipping.CreateShipment.CommandLifecycleBridge.g.cs",
+            "Acme.Shipping.CreateShipment.CommandLastUsedSubscriber.g.cs",
+            "Acme.Shipping.CreateShipment.CommandPage.g.razor.cs",
+            "FrontComposerMcpManifest.g.cs",
+            "__FrontComposerProjectionTemplatesRegistration.g.cs",
+        ];
+        foreach (string fileName in generatedFiles) {
+            _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", fileName, "");
+        }
+
+        _ = fixture.WriteGenerated(
+            "Acme.App",
+            "Debug",
+            "net10.0",
+            "FrontComposer.diagnostics.json",
+            """
+            {
+              "diagnostics": [
+                { "id": "HFC1002", "severity": "Warning", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "warn" },
+                { "id": "HFC1003", "severity": "Error", "relatedType": "Acme.Shipping.CreateShipment", "what": "err" }
+              ]
+            }
+            """);
+
+        (int jsonExitCode, string jsonOutput, string jsonError) = await RunInspectCaptureAsync(project, ["--format", "json"]);
+        (int textExitCode, string text, string textError) = await RunInspectCaptureAsync(project, []);
+
+        jsonExitCode.ShouldBe(0);
+        jsonError.ShouldBeEmpty();
+        textExitCode.ShouldBe(0);
+        textError.ShouldBeEmpty();
+
+        using var document = JsonDocument.Parse(jsonOutput);
+        JsonElement summary = document.RootElement.GetProperty("summary");
+        int generatedFileCount = summary.GetProperty("generatedFiles").GetInt32();
+        int forms = summary.GetProperty("forms").GetInt32();
+        int grids = summary.GetProperty("grids").GetInt32();
+        int registrations = summary.GetProperty("registrations").GetInt32();
+        int mcpManifestEntries = summary.GetProperty("mcpManifestEntries").GetInt32();
+        int warnings = summary.GetProperty("warnings").GetInt32();
+        int errors = summary.GetProperty("errors").GetInt32();
+
+        text.ShouldContain($"Generated files: {generatedFileCount}");
+        text.ShouldContain($"Forms: {forms}; Grids: {grids}; Registrations: {registrations}; MCP manifests: {mcpManifestEntries}; Warnings: {warnings}; Errors: {errors}");
+        text.ShouldContain("- ProjectionRazor: obj/Debug/net10.0/generated/HexalithFrontComposer/Acme.Shipping.ShipmentProjection.g.razor.cs");
+        text.ShouldContain("- CommandForm: obj/Debug/net10.0/generated/HexalithFrontComposer/Acme.Shipping.CreateShipment.CommandForm.g.razor.cs");
+        text.ShouldContain("- Registration: obj/Debug/net10.0/generated/HexalithFrontComposer/Acme.Shipping.ShipmentProjectionRegistration.g.cs");
+        text.ShouldContain("- McpManifest: obj/Debug/net10.0/generated/HexalithFrontComposer/FrontComposerMcpManifest.g.cs");
+        text.ShouldContain("! HFC1002 Warning");
+        text.ShouldContain("! HFC1003 Error");
+        text.ShouldNotContain(fixture.Root, Case.Sensitive);
+    }
+
+    [Fact]
     public void InspectBuildArguments_UsePublicGeneratedOutputPathContractShape() {
         IReadOnlyList<string> explicitFramework = GeneratedOutputLoader.CreateBuildArguments(
             "Acme.App.csproj",
@@ -502,6 +567,59 @@ public sealed class InspectCommandTests {
     }
 
     [Fact]
+    public async Task InspectText_FilteringAffectsRowsBeforeFailFlags() {
+        using var fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Billing.InvoiceProjection.g.razor.cs", "");
+        _ = fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "FrontComposerMcpManifest.g.cs", "");
+        _ = fixture.WriteGenerated(
+            "Acme.App",
+            "Debug",
+            "net10.0",
+            "FrontComposer.diagnostics.json",
+            """
+            {
+              "diagnostics": [
+                { "id": "HFC1002", "severity": "Warning", "relatedType": "Acme.Shipping.ShipmentProjection", "what": "warn" },
+                { "id": "HFC1003", "severity": "Error", "relatedType": "Acme.Billing.InvoiceProjection", "what": "err" }
+              ]
+            }
+            """);
+
+        (int typeExitCode, string typeText, string typeError) = await RunInspectCaptureAsync(
+            project,
+            ["--type", "Acme.Shipping.ShipmentProjection", "--fail-on-error"]);
+        (int warningExitCode, string warningText, string warningError) = await RunInspectCaptureAsync(
+            project,
+            ["--type", "Acme.Shipping.ShipmentProjection", "--fail-on-warning"]);
+        (int emptySeverityExitCode, string emptySeverityText, string emptySeverityError) = await RunInspectCaptureAsync(
+            project,
+            ["--type", "Acme.Shipping.ShipmentProjection", "--severity", "error", "--fail-on-warning"]);
+
+        typeExitCode.ShouldBe(0);
+        typeError.ShouldBeEmpty();
+        typeText.ShouldContain("Acme.Shipping.ShipmentProjection.g.razor.cs");
+        typeText.ShouldContain("FrontComposerMcpManifest.g.cs");
+        typeText.ShouldContain("! HFC1002 Warning");
+        typeText.ShouldContain("Warnings: 1");
+        typeText.ShouldContain("Errors: 0");
+        typeText.ShouldNotContain("Acme.Billing.InvoiceProjection");
+        typeText.ShouldNotContain("HFC1003");
+
+        warningExitCode.ShouldBe(ExitCodes.ActionableFindings);
+        warningError.ShouldBeEmpty();
+        warningText.ShouldContain("! HFC1002 Warning");
+
+        emptySeverityExitCode.ShouldBe(0);
+        emptySeverityError.ShouldBeEmpty();
+        emptySeverityText.ShouldContain("Warnings: 0");
+        emptySeverityText.ShouldContain("Errors: 0");
+        emptySeverityText.ShouldNotContain("HFC1002");
+        emptySeverityText.ShouldNotContain("HFC1003");
+    }
+
+    [Fact]
     public async Task InspectDiagnosticsSidecars_DefaultMissingOptionalFieldsIgnoreNonHfcAndRedactHostilePaths() {
         using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
@@ -616,6 +734,12 @@ public sealed class InspectCommandTests {
     }
 
     private static async Task<int> RunInspectAsync(string project, string[] additionalArgs) {
+        (int exitCode, _, string error) = await RunInspectCaptureAsync(project, additionalArgs).ConfigureAwait(false);
+        error.ShouldBeEmpty();
+        return exitCode;
+    }
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunInspectCaptureAsync(string project, string[] additionalArgs) {
         using StringWriter output = new();
         using StringWriter error = new();
         string[] args = [
@@ -630,7 +754,6 @@ public sealed class InspectCommandTests {
         ];
 
         int exitCode = await CliApplication.RunAsync(args, output, error, CancellationToken.None).ConfigureAwait(false);
-        error.ToString().ShouldBeEmpty();
-        return exitCode;
+        return (exitCode, output.ToString(), error.ToString());
     }
 }

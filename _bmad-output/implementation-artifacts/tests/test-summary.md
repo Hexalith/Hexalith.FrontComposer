@@ -1,5 +1,36 @@
 # Test Automation Summary
 
+## Story 10.3 - CLI text-output parity guard
+
+### Generated Tests
+- [x] `tests/e2e/specs/cli-text-output-parity.spec.ts` - added focused Playwright CLI coverage for inspect and migrate text-output parity at the process boundary.
+- [x] `tests/e2e/package.json` - added `test:story-10-3` for the focused Chromium lane with `PLAYWRIGHT_SKIP_WEBSERVER=1`.
+
+### API Tests
+- [x] Not applicable - Story 10.3 hardens CLI process output and does not introduce HTTP API endpoints.
+
+### E2E Tests
+- [x] `tests/e2e/specs/cli-text-output-parity.spec.ts` - repository E2E coverage runs the FrontComposer CLI against disposable temp projects and verifies JSON/text parity for shared summary fields, filtering before fail flags, migrate `--fail-on-findings`, and default path redaction.
+
+### Coverage
+- API endpoints: 0/0 applicable.
+- UI runtime features: 0/0 applicable because Story 10.3 is CLI contract hardening.
+- CLI parity cases: 2/2 authored and 2/2 passing. The suite covers inspect JSON/text summaries and filtered text fail flags, plus migrate JSON/text summaries and text fail-on-findings behavior for changed, manual-only, and unchanged outcomes. Diff-budget parity remains covered by the existing C# CLI renderer tests because synthesizing aggregate diff exhaustion through Playwright would add slow fixture churn without improving the CLI boundary.
+
+### Validation
+- [x] `npm --prefix tests/e2e run typecheck` passed.
+- [x] `npm --prefix tests/e2e run test:story-10-3` passed 2/2.
+- [x] The Playwright runner prefers the existing Release CLI binary when present to avoid sandbox-blocked NuGet restore, and falls back to `dotnet run --no-restore` for clean CI workspaces.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no endpoint surface.
+- [x] E2E tests generated for the existing CLI process surface.
+- [x] Tests use standard Playwright and Node subprocess/filesystem APIs already used by repository CLI specs.
+- [x] Tests cover happy paths: inspect and migrate text summaries mirror JSON contract values.
+- [x] Tests cover critical error cases: inspect filtering occurs before fail flags; migrate text `--fail-on-findings` returns actionable for safe-fix/manual-only and success for unchanged-only.
+- [x] Tests use semantic process-boundary assertions, have clear descriptions, no hardcoded waits, and no order dependency.
+- [x] Test summary updated with coverage metrics and exact validation results.
+
 ## Story 10.2 - Adopter-facing historical-label cleanup
 
 ### Generated Tests

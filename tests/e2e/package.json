@@ -29,6 +29,7 @@
     "test:mcp-schema": "playwright test specs/mcp-schema-fingerprint-negotiation.spec.ts --project=chromium",
     "test:fc-nip": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/fc-nip-row-identity-contract.spec.ts --project=chromium",
     "test:story-10-2": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/adopter-historical-label-cleanup.spec.ts --project=chromium",
+    "test:story-10-3": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/cli-text-output-parity.spec.ts --project=chromium",
     "test:fc-shell-chrome": "playwright test specs/shell-chrome.spec.ts --project=chromium",
     "test:a11y": "playwright test specs/specimen-accessibility.spec.ts --project=chromium",
     "test:visual": "playwright test specs/specimen-accessibility.spec.ts --project=chromium --grep \"visual baseline\"",

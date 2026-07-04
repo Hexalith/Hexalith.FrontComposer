@@ -178,6 +178,41 @@ public sealed class MigrationCommandTests {
     }
 
     [Fact]
+    public void MigrationText_SummaryCountsMatchJsonForSharedContractFields() {
+        MigrationEntry[] entries = [
+            new("HFCM9001", "safe-fix", "Changed.cs", "changed", "expected", "got", "fix", "docs/migrations/9.1-to-9.2.md", "diff"),
+            new("HFCM0001", "unchanged", "Unchanged.cs", "unchanged", "expected", "got", "fix", "docs/migrations/9.1-to-9.2.md", null),
+            new("HFCM0000", "skipped", "Skipped.cs", "skipped", "expected", "got", "fix", "docs/migrations/9.1-to-9.2.md", null),
+            new("HFCM0004", "failed", "Failed.cs", "failed", "expected", "got", "fix", "docs/migrations/9.1-to-9.2.md", null),
+            new("HFCM9002", "manual-only", "Manual.cs", "manual", "expected", "got", "fix", "docs/migrations/9.1-to-9.2.md", null),
+            new("HFCM0004", "conflict", "Conflict.cs", "conflict", "expected", "got", "fix", "docs/migrations/9.1-to-9.2.md", null),
+        ];
+        MigrationResult result = new(false, entries, MigrationSummary.From(entries));
+
+        string json = JsonSerializer.Serialize(MigrationJson.From(result), JsonOptions.Stable);
+        using StringWriter writer = new();
+        MigrationCommand.RenderText(result, writer);
+        string text = writer.ToString();
+
+        using var document = JsonDocument.Parse(json);
+        JsonElement summary = document.RootElement.GetProperty("summary");
+        int changed = summary.GetProperty("changed").GetInt32();
+        int unchanged = summary.GetProperty("unchanged").GetInt32();
+        int skipped = summary.GetProperty("skipped").GetInt32();
+        int failed = summary.GetProperty("failed").GetInt32();
+        int manualOnly = summary.GetProperty("manualOnly").GetInt32();
+        int conflicts = summary.GetProperty("conflicts").GetInt32();
+
+        text.ShouldContain($"Changed: {changed}; Unchanged: {unchanged}; Skipped: {skipped}; Failed: {failed}; Manual-only: {manualOnly}; Conflicts: {conflicts}");
+        text.ShouldContain("- safe-fix HFCM9001 Changed.cs: changed");
+        text.ShouldContain("- unchanged HFCM0001 Unchanged.cs: unchanged");
+        text.ShouldContain("- skipped HFCM0000 Skipped.cs: skipped");
+        text.ShouldContain("- failed HFCM0004 Failed.cs: failed");
+        text.ShouldContain("- manual-only HFCM9002 Manual.cs: manual");
+        text.ShouldContain("- conflict HFCM0004 Conflict.cs: conflict");
+    }
+
+    [Fact]
     public async Task MigrateApply_WritesOnlyImmediatelyPlannedSourceFilesAndIsIdempotent() {
         using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
@@ -648,6 +683,71 @@ public sealed class MigrationCommandTests {
     }
 
     [Fact]
+    public async Task MigrateText_FailOnFindingsMatchesActionableSummaryKinds() {
+        using var changedFixture = CliFixture.Create();
+        string changedProject = changedFixture.WriteProject("Acme.App", "net10.0");
+        _ = changedFixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+
+        (int changedExitCode, string changedOutput, string changedError) = await RunMigrateCaptureAsync(
+            changedProject,
+            ["--fail-on-findings"]);
+
+        changedExitCode.ShouldBe(ExitCodes.ActionableFindings, changedOutput + changedError);
+        changedError.ShouldBeEmpty();
+        changedOutput.ShouldContain("Migration dry-run completed.");
+        changedOutput.ShouldContain("Changed: 1");
+        changedOutput.ShouldContain("Manual-only: 0");
+        changedOutput.ShouldContain("Conflicts: 0");
+
+        using var manualOnlyFixture = CliFixture.Create();
+        string manualOnlyProject = manualOnlyFixture.WriteProject("Acme.App", "net10.0");
+        _ = manualOnlyFixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+        _ = manualOnlyFixture.WriteGeneratedDiagnosticSidecar(
+            "Acme.App",
+            "Debug",
+            "net10.0",
+            "frontcomposer.migration.diagnostics.json",
+            """
+            {
+              "diagnostics": [
+                {
+                  "id": "HFCM9002",
+                  "severity": "Warning",
+                  "path": "Program.cs",
+                  "what": "Custom FrontComposer migration requires manual review"
+                }
+              ]
+            }
+            """);
+
+        (int manualOnlyExitCode, string manualOnlyOutput, string manualOnlyError) = await RunMigrateCaptureAsync(
+            manualOnlyProject,
+            ["--fail-on-findings"]);
+
+        manualOnlyExitCode.ShouldBe(ExitCodes.ActionableFindings, manualOnlyOutput + manualOnlyError);
+        manualOnlyError.ShouldBeEmpty();
+        manualOnlyOutput.ShouldContain("Changed: 0");
+        manualOnlyOutput.ShouldContain("Manual-only: 1");
+        manualOnlyOutput.ShouldContain("- manual-only HFCM9002 Program.cs:");
+        manualOnlyOutput.ShouldNotContain(manualOnlyFixture.Root, Case.Sensitive);
+
+        using var unchangedFixture = CliFixture.Create();
+        string unchangedProject = unchangedFixture.WriteProject("Acme.App", "net10.0");
+        _ = unchangedFixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+
+        (int unchangedExitCode, string unchangedOutput, string unchangedError) = await RunMigrateCaptureAsync(
+            unchangedProject,
+            ["--fail-on-findings"]);
+
+        unchangedExitCode.ShouldBe(ExitCodes.Success, unchangedOutput + unchangedError);
+        unchangedError.ShouldBeEmpty();
+        unchangedOutput.ShouldContain("Changed: 0");
+        unchangedOutput.ShouldContain("Unchanged: 1");
+        unchangedOutput.ShouldContain("Manual-only: 0");
+        unchangedOutput.ShouldContain("Conflicts: 0");
+    }
+
+    [Fact]
     public async Task Migrate_ProjectWithTopLevelImportWarnsAboutUnevaluatedMsBuildImports() {
         using var fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
@@ -869,5 +969,23 @@ public sealed class MigrationCommandTests {
     private sealed class UnsupportedCodeActionOperation : CodeActionOperation {
         public override void Apply(Workspace workspace, CancellationToken cancellationToken) {
         }
+    }
+
+    private static async Task<(int ExitCode, string Output, string Error)> RunMigrateCaptureAsync(string project, string[] additionalArgs) {
+        using StringWriter output = new();
+        using StringWriter error = new();
+        string[] args = [
+            "migrate",
+            "--project",
+            project,
+            "--from",
+            "9.1.0",
+            "--to",
+            "9.2.0",
+            .. additionalArgs,
+        ];
+
+        int exitCode = await CliApplication.RunAsync(args, output, error, CancellationToken.None).ConfigureAwait(false);
+        return (exitCode, output.ToString(), error.ToString());
     }
 }
