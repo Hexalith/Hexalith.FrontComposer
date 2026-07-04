@@ -3,7 +3,7 @@
   "presets": [
     {
       "name": "codex_review_claude",
-      "createdAt": "2026-06-25T12:38:39Z",
+      "createdAt": "2026-07-04T18:20:38Z",
       "config": {
         "defaultPrimary": "codex",
         "defaultFallback": "claude",
