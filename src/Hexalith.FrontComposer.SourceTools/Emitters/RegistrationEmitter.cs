@@ -85,13 +85,13 @@ public static class RegistrationEmitter {
         return sb.ToString();
     }
 
-    private static string EscapeString(string value) => value
-            .Replace("\\", "\\\\")
-            .Replace("\"", "\\\"")
-            .Replace("\n", "\\n")
-            .Replace("\r", "\\r")
-            .Replace("\t", "\\t")
-            .Replace("\0", "\\0");
+    /// <summary>
+    /// Escapes a string for embedding in a C# double-quoted literal. Delegates to
+    /// <see cref="GeneratedLiteral.Escape"/> so Unicode line terminators (U+0085/U+2028/U+2029),
+    /// control characters, and embedded double quotes cannot corrupt the generated source —
+    /// the naive Replace chain this replaces missed the line terminators.
+    /// </summary>
+    private static string EscapeString(string value) => GeneratedLiteral.Escape(value);
 
     private static string XmlEscape(string value) => value
         .Replace("&", "&amp;")

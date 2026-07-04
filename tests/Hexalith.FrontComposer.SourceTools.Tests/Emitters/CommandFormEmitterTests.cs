@@ -378,6 +378,48 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void Emit_NullableNumericField_LiftsCultureToStringThroughNullConditional() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Quantity", "Int32", FormFieldTypeCategory.NumberInput, "Quantity", true, false, null),
+            new FormFieldModel("DiscountAmount", "Decimal", FormFieldTypeCategory.DecimalInput, "Discount Amount", true, false, null),
+        ]);
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        // Nullable<T> exposes no ToString(IFormatProvider) overload — the emitted Value binding
+        // must lift through `?.` or the adopter's generated form fails to compile (CS1501).
+        source.ShouldContain("_QuantityString ?? _model.Quantity?.ToString(CultureInfo.CurrentCulture)");
+        source.ShouldContain("_DiscountAmountString ?? _model.DiscountAmount?.ToString(CultureInfo.CurrentCulture)");
+    }
+
+    [Fact]
+    public void Emit_NonNullableNumericField_KeepsDirectCultureToString() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("_AmountString ?? _model.Amount.ToString(CultureInfo.CurrentCulture)");
+        source.ShouldNotContain("_model.Amount?.ToString");
+    }
+
+    [Fact]
+    public void Emit_EndToEnd_NullableNumericCommand_CompilesSuccessfully() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CommandParseResult parse = CompilationHelper.ParseCommand(CommandTestSources.NullableNumericCommand, "TestDomain.AdjustOrderCommand");
+
+        _ = parse.Model.ShouldNotBeNull();
+        CommandFluxorModel fluxor = CommandFluxorTransform.Transform(parse.Model);
+        CommandFormModel form = CommandFormTransform.Transform(parse.Model);
+        string source = CommandFormEmitter.Emit(form, fluxor);
+
+        Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
+        tree.GetDiagnostics(ct).ShouldBeEmpty();
+        source.ShouldContain("?.ToString(CultureInfo.CurrentCulture)");
+    }
+
+    [Fact]
     public void Emit_SubmitBlocksWhenClientParseErrorsExist() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),

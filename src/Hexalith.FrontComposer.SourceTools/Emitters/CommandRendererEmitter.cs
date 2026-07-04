@@ -829,14 +829,10 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                }");
     }
 
-    /// <summary>Matches <see cref="CommandFormEmitter"/> — safe C# string literals for generated code.</summary>
-    private static string EscapeString(string? value) {
-        if (string.IsNullOrEmpty(value)) {
-            return string.Empty;
-        }
-
-        return Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(value!, quote: false);
-    }
+    /// <summary>Delegates to <see cref="GeneratedLiteral.Escape"/> — the single escaping helper
+    /// (quote-safe; <c>FormatLiteral(quote: false)</c> did not escape embedded double quotes).</summary>
+    private static string EscapeString(string? value)
+        => string.IsNullOrEmpty(value) ? string.Empty : GeneratedLiteral.Escape(value!);
 
     /// <summary>Story 2-2 code-review D12 — reduce a command FQN to a stable CSS/HTML id.</summary>
     private static string SanitizeCssId(string value) {

@@ -109,11 +109,8 @@ public static class CommandPageEmitter {
         return sb.ToString();
     }
 
-    private static string EscapeString(string? value) {
-        if (string.IsNullOrEmpty(value)) {
-            return string.Empty;
-        }
-
-        return SymbolDisplay.FormatLiteral(value!, quote: false);
-    }
+    /// <summary>Delegates to <see cref="GeneratedLiteral.Escape"/> — the single escaping helper
+    /// (quote-safe; <c>FormatLiteral(quote: false)</c> did not escape embedded double quotes).</summary>
+    private static string EscapeString(string? value)
+        => string.IsNullOrEmpty(value) ? string.Empty : GeneratedLiteral.Escape(value!);
 }
