@@ -378,6 +378,18 @@ action_items:
     action: "E10-AI-5: Keep Testing package evidence redaction cases in the default lane for tenant, user, token, secret, password, oversized, and punctuation-heavy values"
     owner: "Developer"
     status: open
+  - epic: 11
+    action: "E11-AI-1: Decide the command/projection route-contract unification (Story 11.7). Nothing resolves the palette/CTA /domain/... command routes generated pages register /commands/{BC}/{TypeName}; pick the canonical family and add an e2e pin. Tracked/owned/dated blocking gate: no 11.x create-story starts before it is decided."
+    owner: "Architect + Product"
+    assigned: "2026-07-04"
+    due: "at Epic 11 dev kickoff"
+    status: open
+  - epic: 11
+    action: "E11-AI-2: Sign off the Contracts kernel split (Story 11.8). Amends the documented multi-TFM decision (project-context.md / architecture.md); plan package-compat in the pre-v1.0 window. Deliberately ordered last."
+    owner: "Architect + PM"
+    assigned: "2026-07-04"
+    due: "at Story 11.8 start (pre-v1.0)"
+    status: open
   - epic: 8
     action: "E8-AI-4: Require the Shell accent-as-thread governance guard in every future chrome/story verification record"
     owner: "Architect"
