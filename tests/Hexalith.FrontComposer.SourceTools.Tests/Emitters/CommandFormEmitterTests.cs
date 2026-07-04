@@ -246,6 +246,24 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void Emit_PendingRegistrationDoesNotFabricateRuntimeRowIdentityMetadata() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("generator-known framework metadata is limited to CorrelationId,");
+        source.ShouldContain("ProjectionTypeName / LaneKey /");
+        source.ShouldContain("EntityKey / ExpectedStatusSlot / PriorStatusSlot would require runtime context");
+        source.ShouldContain("CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand)));");
+        source.ShouldNotContain("ProjectionTypeName:");
+        source.ShouldNotContain("LaneKey:");
+        source.ShouldNotContain("EntityKey:");
+        source.ShouldNotContain("ExpectedStatusSlot:");
+        source.ShouldNotContain("PriorStatusSlot:");
+    }
+
+    [Fact]
     public void Emit_RetryableDispatchWarningResetsIdleWithoutPendingRegistrationOrAcknowledgementInCatch() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),

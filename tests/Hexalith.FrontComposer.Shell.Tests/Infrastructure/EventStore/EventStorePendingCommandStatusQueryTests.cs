@@ -83,6 +83,23 @@ public sealed class EventStorePendingCommandStatusQueryTests {
         observation.RejectionDetail.ShouldNotContain('\n');
     }
 
+    [Fact]
+    public async Task QueryAsync_CompletedStatus_DoesNotPromoteAggregateIdToRowIdentityMetadata() {
+        RecordingHandler handler = new(_ => JsonResponse("Completed", 4));
+        EventStorePendingCommandStatusQuery sut = CreateSut(handler);
+
+        PendingCommandOutcomeObservation? observation = await sut.QueryAsync(
+            Pending(),
+            TestContext.Current.CancellationToken);
+
+        observation.ShouldNotBeNull();
+        observation.MessageId.ShouldBe(MessageId);
+        observation.ProjectionTypeName.ShouldBeNull();
+        observation.LaneKey.ShouldBeNull();
+        observation.EntityKey.ShouldBeNull();
+        observation.ExpectedStatusSlot.ShouldBeNull();
+    }
+
     [Theory]
     [InlineData(HttpStatusCode.BadRequest, typeof(HttpRequestException))]
     [InlineData(HttpStatusCode.Unauthorized, typeof(AuthRedirectRequiredException))]

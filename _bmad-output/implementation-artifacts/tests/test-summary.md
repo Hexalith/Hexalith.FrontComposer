@@ -1,5 +1,40 @@
 # Test Automation Summary
 
+## Story 9.2 - Wire `FcNewItemIndicator` producer and generated-grid consumer
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStorePendingCommandStatusQueryTests.cs` - added aggregate-id-only negative coverage proving EventStore status polling does not promote `AggregateId` into FC-NIP row identity metadata.
+- [x] `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs` - added generated command form coverage proving pending registrations do not fabricate runtime row/lane/status metadata.
+- [x] `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts` - extended the Playwright contract spec to pin Story 9.2's blocked gate and current no-smuggling source evidence.
+
+### API Tests
+- [x] Not applicable - Story 9.2 remains blocked by the missing framework-controlled row-identity payload and no HTTP API endpoint was changed.
+
+### E2E Tests
+- [x] `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts` - runs in Chromium with `PLAYWRIGHT_SKIP_WEBSERVER=1` because the tested surface is repository contracts/story/source evidence, not the Counter sample host.
+
+### Coverage
+- API endpoints: 0/0 applicable.
+- UI runtime features: 0/0 new runtime producer/consumer behavior implemented because the Story 9.2 blocking gate remains active.
+- Contract/seam regressions: 3/3 focused additions cover aggregate-id-only EventStore status input, generated form metadata fabrication, and Story 9.2 blocked-source evidence.
+
+### Validation
+- [x] Direct xUnit v3 fallback passed 21/21: `EventStorePendingCommandStatusQueryTests`.
+- [x] Direct xUnit v3 fallback passed 34/34: `CommandFormEmitterTests`.
+- [x] `PLAYWRIGHT_SKIP_WEBSERVER=1 npx playwright test specs/fc-nip-row-identity-contract.spec.ts --project=chromium` passed 4/4.
+- [ ] `DiffEngine_Disabled=true dotnet test ...Shell.Tests.csproj --filter "FullyQualifiedName~EventStorePendingCommandStatusQueryTests" -m:1 /nr:false` built the focused project, then VSTest aborted before execution with `System.Net.Sockets.SocketException (13): Permission denied`; direct xUnit fallback was used.
+- [ ] `DiffEngine_Disabled=true dotnet test ...SourceTools.Tests.csproj --filter "FullyQualifiedName~CommandFormEmitterTests" -m:1 /nr:false` built the focused project, then VSTest aborted before execution with `System.Net.Sockets.SocketException (13): Permission denied`; direct xUnit fallback was used.
+- [ ] `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false --no-restore` built into test assemblies, then VSTest aborted across reached assemblies with `System.Net.Sockets.SocketException (13): Permission denied`.
+- [ ] Initial Playwright execution without `PLAYWRIGHT_SKIP_WEBSERVER=1` failed before browser assertions because Counter.Web/Kestrel could not bind a socket: `System.Net.Sockets.SocketException (13): Permission denied`.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no endpoint surface changed.
+- [x] E2E tests generated/updated for the repository contract/story evidence surface.
+- [x] Tests use standard xUnit v3, Shouldly, and Playwright APIs.
+- [x] Tests cover happy-path contract evidence and critical negative cases: aggregate-id-only input and generated metadata fabrication.
+- [x] Tests have clear descriptions, no hardcoded waits, and no order dependency.
+- [x] Test summary updated with coverage metrics and exact local blockers.
+
 ## Story 9.1 - Confirm the FC-NIP row-identity producer contract
 
 ### Generated Tests

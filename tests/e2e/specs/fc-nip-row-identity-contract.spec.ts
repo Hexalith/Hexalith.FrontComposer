@@ -74,6 +74,39 @@ test.describe('Story 9.1: FC-NIP row identity producer contract', () => {
     expect(dataGrid).toContain('Epic 9 / FC-NIP');
     expect(dataGrid).toContain('current projection nudge does not include row identity');
   });
+
+  test('pins Story 9.2 blocked gate and current no-smuggling source evidence', async () => {
+    const story = await readRepoFile(
+      '_bmad-output/implementation-artifacts/9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer.md',
+    );
+    const eventStoreStatusQuery = await readRepoFile(
+      'src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStorePendingCommandStatusQuery.cs',
+    );
+    const commandFormEmitter = await readRepoFile(
+      'src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs',
+    );
+
+    expect(story).toContain('Status: blocked-by-contract');
+    expect(story).toContain('Story 9.2 is not ready for code implementation');
+    expect(story).toContain('do not add best-effort producer code');
+    expect(story).toContain('EventStorePendingCommandStatusQuery` currently reads EventStore status by pending `MessageId`');
+    expect(story).toContain('CommandFormEmitter` currently registers pending commands with `CorrelationId`, `MessageId`, and `CommandTypeName` only');
+
+    expect(eventStoreStatusQuery).toContain('MessageId: pendingCommand.MessageId');
+    expect(eventStoreStatusQuery).toContain('string? AggregateId');
+    expect(eventStoreStatusQuery).not.toContain('EntityKey: status.AggregateId');
+    expect(eventStoreStatusQuery).not.toContain('ProjectionTypeName:');
+    expect(eventStoreStatusQuery).not.toContain('LaneKey:');
+    expect(eventStoreStatusQuery).not.toContain('ExpectedStatusSlot:');
+
+    expect(commandFormEmitter).toContain('generator-known framework metadata is limited to CorrelationId,');
+    expect(commandFormEmitter).toContain('MessageId, and CommandTypeName at form-emit time');
+    expect(commandFormEmitter).toContain('CommandTypeName: typeof(');
+    expect(commandFormEmitter).not.toContain('ProjectionTypeName:');
+    expect(commandFormEmitter).not.toContain('LaneKey:');
+    expect(commandFormEmitter).not.toContain('EntityKey:');
+    expect(commandFormEmitter).not.toContain('ExpectedStatusSlot:');
+  });
 });
 
 const readRepoFile = async (relativePath: string): Promise<string> => {
