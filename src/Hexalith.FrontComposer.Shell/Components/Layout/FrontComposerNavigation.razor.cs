@@ -516,21 +516,10 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
         return lastDot < 0 ? fqn : fqn[(lastDot + 1)..];
     }
 
-    private static string ToKebab(string pascal) {
-        if (string.IsNullOrEmpty(pascal)) {
-            return pascal;
-        }
-
-        StringBuilder sb = new(pascal.Length + 4);
-        for (int i = 0; i < pascal.Length; i++) {
-            char c = pascal[i];
-            if (i > 0 && char.IsUpper(c)) {
-                _ = sb.Append('-');
-            }
-
-            _ = sb.Append(char.ToLowerInvariant(c));
-        }
-
-        return sb.ToString();
-    }
+    private static string ToKebab(string pascal)
+        // Delegates to the canonical D21 kebab contract so nav/home/palette projection routes and
+        // command routes share ONE slug algorithm (acronym runs stay together: "XMLReport" →
+        // "xml-report", not "x-m-l-report"). Blank input is tolerated here because BuildRoute
+        // callers historically received it silently; KebabCase itself throws on blank input.
+        => string.IsNullOrWhiteSpace(pascal) ? pascal : Routing.CommandRouteBuilder.KebabCase(pascal);
 }

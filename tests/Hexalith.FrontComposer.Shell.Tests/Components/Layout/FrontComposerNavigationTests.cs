@@ -340,6 +340,14 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
         // Short name (no namespace)
         string route3 = FrontComposerNavigation.BuildRoute("Counter", "CounterView");
         route3.ShouldBe("/counter/counter-view");
+
+        // Acronym runs stay together — pins that nav routes share the canonical D21
+        // CommandRouteBuilder.KebabCase slug algorithm ("xml-report-view", never "x-m-l-report-view").
+        string route4 = FrontComposerNavigation.BuildRoute("Reporting", "Reporting.Projections.XMLReportView");
+        route4.ShouldBe("/reporting/xml-report-view");
+
+        string route5 = FrontComposerNavigation.BuildRoute("Commerce", "SKUList");
+        route5.ShouldBe("/commerce/sku-list");
     }
 
     [Theory]
