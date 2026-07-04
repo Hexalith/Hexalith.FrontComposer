@@ -585,6 +585,7 @@ $mcpOutputs = @(Write-McpSlices $mcpSlices)
 
 $docfxOutput = $null
 if (-not $SkipDocFx) {
+    Invoke-Process 'dotnet' @('build', 'Hexalith.FrontComposer.slnx', '--configuration', 'Release') $RepoRoot | Out-Null
     Invoke-Process 'dotnet' @('docfx', 'metadata', 'docs/docfx.json') $RepoRoot | Out-Null
     Assert-ApiSummaryBaseline $failures
     Invoke-Process 'dotnet' @('docfx', 'build', 'docs/docfx.json') $RepoRoot | Out-Null

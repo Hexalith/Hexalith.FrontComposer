@@ -128,11 +128,11 @@ public sealed class CiGovernanceTests {
             "Hexalith.Commons.Aspire",
             customMessage: "Hexalith.Commons.Aspire is not published as a NuGet package, so AppHost Release builds must not depend on it.");
 
-        XDocument packages = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
+        XDocument packages = XDocument.Load(Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"));
         XElement eventStoreAspire = packages
             .Descendants("PackageVersion")
             .Single(e => string.Equals((string?)e.Attribute("Include"), "Hexalith.EventStore.Aspire", StringComparison.Ordinal));
-        eventStoreAspire.Attribute("Version")?.Value.ShouldBe("3.20.0");
+        eventStoreAspire.Attribute("Version")?.Value.ShouldBe("3.33.4");
     }
 
     [Fact]
@@ -216,7 +216,8 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("schedule:");
         workflow.ShouldContain("workflow_dispatch:");
         workflow.ShouldContain("contents: read");
-        workflow.ShouldContain("submodules: true");
+        workflow.ShouldContain("submodules: false");
+        workflow.ShouldContain("Initialize build submodules");
         workflow.ShouldContain("eng/llm_benchmark.py validate-prompt-set");
         workflow.ShouldContain("eng/llm_benchmark.py run-benchmark");
         workflow.ShouldContain("SkillBenchmarkPromptSet.LoadEmbeddedV1");
@@ -254,8 +255,8 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("pull-requests: write");
         workflow.ShouldNotContain("contents: read");
         workflow.ShouldNotContain("attestations: read");
-        workflow.ShouldNotContain("attestations: write");
-        workflow.ShouldNotContain("id-token: write");
+        workflow.ShouldContain("attestations: write");
+        workflow.ShouldContain("id-token: write");
         workflow.ShouldNotContain("packages: write");
         workflow.ShouldContain("submodules: false");
         workflow.ShouldNotContain("submodules: recursive");
@@ -282,8 +283,10 @@ public sealed class CiGovernanceTests {
         workflow.ShouldNotContain("Require bootstrap tag");
         workflow.ShouldNotContain("Release owner approval gate");
         workflow.ShouldNotContain("ATTESTATION_UNSUPPORTED");
-        workflow.ShouldNotContain("actions/attest-build-provenance");
+        workflow.ShouldContain("actions/attest-build-provenance@v2");
         workflow.ShouldNotContain("|| true");
+        workflow.IndexOf("actions/attest-build-provenance@v2", StringComparison.Ordinal)
+            .ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
 
         releaseConfig.ShouldContain("@semantic-release/commit-analyzer");
         releaseConfig.ShouldContain("@semantic-release/release-notes-generator");

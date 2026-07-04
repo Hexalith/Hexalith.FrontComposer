@@ -14,6 +14,7 @@
     <HexalithCommonsRoot Condition="'$(HexalithCommonsRoot)' == ''">$([MSBuild]::NormalizeDirectory('$(_FrontComposerRepoRoot)', 'references', 'Hexalith.Commons'))</HexalithCommonsRoot>
     <HexalithFrontComposerRoot Condition="'$(HexalithFrontComposerRoot)' == ''">$(_FrontComposerRepoRoot)</HexalithFrontComposerRoot>
     <_HexalithReferenceProperties>HexalithFrontComposerRoot=$(HexalithFrontComposerRoot);HexalithEventStoreRoot=$(HexalithEventStoreRoot);HexalithTenantsRoot=$(HexalithTenantsRoot);HexalithPartiesRoot=$(HexalithPartiesRoot);HexalithMemoriesRoot=$(HexalithMemoriesRoot);HexalithCommonsRoot=$(HexalithCommonsRoot)</_HexalithReferenceProperties>
+    <FrontComposerUiUsePublishedModulePackages Condition="'$(FrontComposerUiUsePublishedModulePackages)' == ''">false</FrontComposerUiUsePublishedModulePackages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,22 +23,22 @@
                       Condition="'$(HexalithTenantsFromSource)' == 'true'"
                       AdditionalProperties="$(_HexalithReferenceProperties)" />
     <PackageReference Include="Hexalith.Tenants.UI"
-                      Condition="'$(HexalithTenantsFromSource)' != 'true'" />
+                      Condition="'$(HexalithTenantsFromSource)' != 'true' and '$(FrontComposerUiUsePublishedModulePackages)' == 'true'" />
     <ProjectReference Include="$(HexalithPartiesRoot)\src\Hexalith.Parties.UI\Hexalith.Parties.UI.csproj"
                       Condition="'$(HexalithPartiesFromSource)' == 'true'"
                       AdditionalProperties="$(_HexalithReferenceProperties)" />
     <PackageReference Include="Hexalith.Parties.UI"
-                      Condition="'$(HexalithPartiesFromSource)' != 'true'" />
+                      Condition="'$(HexalithPartiesFromSource)' != 'true' and '$(FrontComposerUiUsePublishedModulePackages)' == 'true'" />
     <ProjectReference Include="$(HexalithPartiesRoot)\src\Hexalith.Parties.AdminPortal\Hexalith.Parties.AdminPortal.csproj"
                       Condition="'$(HexalithPartiesFromSource)' == 'true'"
                       AdditionalProperties="$(_HexalithReferenceProperties)" />
     <PackageReference Include="Hexalith.Parties.AdminPortal"
-                      Condition="'$(HexalithPartiesFromSource)' != 'true'" />
+                      Condition="'$(HexalithPartiesFromSource)' != 'true' and '$(FrontComposerUiUsePublishedModulePackages)' == 'true'" />
     <ProjectReference Include="$(HexalithPartiesRoot)\src\Hexalith.Parties.ConsumerPortal\Hexalith.Parties.ConsumerPortal.csproj"
                       Condition="'$(HexalithPartiesFromSource)' == 'true'"
                       AdditionalProperties="$(_HexalithReferenceProperties)" />
     <PackageReference Include="Hexalith.Parties.ConsumerPortal"
-                      Condition="'$(HexalithPartiesFromSource)' != 'true'" />
+                      Condition="'$(HexalithPartiesFromSource)' != 'true' and '$(FrontComposerUiUsePublishedModulePackages)' == 'true'" />
   </ItemGroup>
 
   <ItemGroup>

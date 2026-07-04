@@ -29,6 +29,8 @@ public sealed class AuthBoundaryTests {
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Extensions/FrontComposerAuthenticationServiceExtensionsTests.cs"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs"),
+            Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs"),
+            Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs"),
             Normalize("_bmad-output/implementation-artifacts/7-1-oidc-saml-authentication-integration.md"),
         ];
 

@@ -81,8 +81,7 @@ the same `MessageId` and surfaces retry exhaustion as warning feedback, not as a
 state.
 
 Fresh-row indicators are not produced from the projection nudge seam. The current nudge carries only
-projection type and tenant id, while `FcNewItemIndicator` requires row identity. FC-NIP owns the
-post-MVP command outcome payload and producer wiring.
+projection type and tenant id, while `FcNewItemIndicator` requires row identity. FC-NIP owns the post-MVP command outcome payload and producer wiring.
 
 ### 4.1 UI component policy (project-wide governance)
 

@@ -84,7 +84,9 @@ or Roomy even when the active viewport forces a different effective density.
 The settings trigger is a `FluentButton` with a localized accessible name. The dialog uses Fluent UI
 dialog primitives, Fluent accordion sections, and a named density radio group. Density changes are
 announced through `FcDensityAnnouncer` with `role="status"` and `aria-live="polite"` after the first
-render, so loading a page does not announce stale preference text.
+render, so loading a page does not announce stale preference text. The accessible-name expectation
+matches the published [HFC1050](../../diagnostics/HFC1050.md) diagnostic guidance for custom
+interactive override elements.
 
 The viewport-forced density note renders as an informational `FluentMessageBar`. The preview-only
 badge uses `role="note"` so the effective-density distinction is perceivable without relying on

@@ -1,5 +1,36 @@
 # Test Automation Summary
 
+## Story 9.1 - Confirm the FC-NIP row-identity producer contract
+
+### Generated Tests
+- [x] `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts` - added Playwright-side contract automation for the FC-NIP payload decision, Story 9.2 blocking gap, no-guessing guardrails, and FC-NIP ownership wording.
+
+### API Tests
+- [x] Not applicable - Story 9.1 confirms a documentation/contract payload decision and does not introduce an API endpoint.
+
+### E2E Tests
+- [x] `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts` - runs in Chromium with `PLAYWRIGHT_SKIP_WEBSERVER=1` because the tested surface is repository contract/docs, not the sample host.
+- [x] `tests/e2e/package.json` - added `test:fc-nip` focused lane.
+
+### Coverage
+- API endpoints: 0/0 applicable.
+- UI runtime features: 0/0 applicable for Story 9.1.
+- Contract/documentation decisions: 3/3 focused Playwright tests cover minimum payload fields, blocked producer gap, forbidden identity guessing paths, and cross-document FC-NIP ownership.
+
+### Validation
+- [x] `npm run test:fc-nip` passed 3/3.
+- [x] `npm run typecheck` passed.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no HTTP API endpoint surface.
+- [x] E2E tests generated for the existing contract/docs surface in the project Playwright workspace.
+- [x] Tests use standard Playwright APIs.
+- [x] Tests cover the happy path: confirmed minimum payload and FC-NIP ownership references.
+- [x] Tests cover critical error cases: blocked Story 9.2 producer wiring, insufficient `AggregateId`, forbidden `ResultPayload`, projection nudge, row diffing, and broad lane marking paths.
+- [x] Tests have clear descriptions, no hardcoded waits, and no order dependency.
+- [x] Test summary updated with coverage metrics.
+
+
 ## Story 8.7 - Status as colored icon
 
 ### Generated Tests

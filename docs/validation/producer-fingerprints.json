@@ -9,22 +9,22 @@
     {
       "story": "9-1-build-time-drift-detection",
       "path": "docs/diagnostics/samples/registry-drift-report.json",
-      "sha256": "cba284d9b00d13dffa891bc439731bcb9f6fa04738889bde1322576d429cf910"
+      "sha256": "c7aed347b3904d041899dbbb02ec29d66289184595fbe8c490b187e48e476c75"
     },
     {
       "story": "9-2-cli-inspection-and-migration-tools",
       "path": "docs/migrations/9.1-to-9.2.md",
-      "sha256": "8f31ae0ebbfa17456cf526d95ddd965cc7a05ce8fab40db8395af831ca45f717"
+      "sha256": "3ad572abe40334cec41c9ed21bf8241ab15b508b90cfbd0dcf70bbb360ae267e"
     },
     {
       "story": "9-3-ide-parity-and-developer-experience",
       "path": "docs/ide-parity-matrix.md",
-      "sha256": "0c875e63ca2a677c0cecbd7199f78268aa902f2946a2ff190a6de127f548edc4"
+      "sha256": "69a88d3ae19ac2f5ed3fb665f5be5418f0e7a7bd385a58d3a398c007debb1dcc"
     },
     {
       "story": "9-4-diagnostic-id-system-and-deprecation-policy",
       "path": "docs/diagnostics/diagnostic-registry.json",
-      "sha256": "ac4a77bef1cc1f268f6056e4100782a98d1fe11c4609a1ef2d0fd8b8400092c9"
+      "sha256": "cc8c5599d85e4e05c8d0dff25ac07a3e2d14db5a6c90f16d2cdc34fa97e21264"
     }
   ]
 }

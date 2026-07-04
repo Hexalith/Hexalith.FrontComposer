@@ -1,0 +1,84 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { expect, test } from '@playwright/test';
+
+const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
+
+test.describe('Story 9.1: FC-NIP row identity producer contract', () => {
+  test.skip(({ browserName }) => browserName !== 'chromium', 'Contract E2E coverage runs once in Chromium.');
+
+  test('pins the minimum row-identity payload and blocks producer wiring without typed identity', async () => {
+    const contract = await readRepoFile('_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md');
+
+    for (const candidate of [
+      'EventStore command status',
+      'Submit result payload',
+      'Projection nudge',
+      'Projection detail nudge metadata',
+      'Pending-command registration metadata',
+      'Generated command metadata',
+    ]) {
+      expect(contract, `${candidate} disposition is missing`).toContain(candidate);
+    }
+
+    for (const payloadField of [
+      'ViewKey',
+      'EntityKey',
+      'MessageId',
+      'ProjectionTypeName',
+      'ExpectedStatusSlot',
+      'CreatedAt',
+      'TenantId',
+      'UserId',
+      'first-wins',
+    ]) {
+      expect(contract, `${payloadField} payload field is missing`).toContain(payloadField);
+    }
+
+    expect(contract).toContain('Story 9.2 remains blocked');
+    expect(contract).toContain('Owner:');
+    expect(contract).toContain('Date:');
+    expect(contract).toContain('AggregateId is insufficient');
+    expect(contract).toContain('Do not use EventStore ResultPayload');
+  });
+
+  test('preserves the no-guessing guardrails for fresh-row indicators', async () => {
+    const contract = await readRepoFile('_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md');
+
+    expect(contract).toContain('must not infer row identity by diffing visible grid rows');
+    expect(contract).toContain('marking every row in a lane');
+    expect(contract).toContain('treating a projection nudge as row identity');
+    expect(contract).toContain('The nudge can refresh a lane, but it carries no row key');
+    expect(contract).toContain('FrontComposer deliberately treats metadata as opaque');
+  });
+
+  test('names FC-NIP ownership across adopter and architecture documents', async () => {
+    const fcTbl = await readRepoFile('_bmad-output/contracts/fc-tbl-table-api-contract-2026-06-04.md');
+    const fcCmd = await readRepoFile('_bmad-output/contracts/fc-cmd-pending-identity-correlation-contract-2026-06-04.md');
+    const architecture = await readRepoFile('_bmad-output/project-docs/architecture.md');
+    const dataGrid = await readRepoFile('docs/reference/components/datagrid.md');
+
+    expect(fcTbl).toContain('Epic 9 / FC-NIP');
+    expect(fcTbl).toContain('Story 9.1 confirms the row-identity payload');
+    expect(fcTbl).toContain('Story 9.2 wires the producer');
+
+    expect(fcCmd).toContain('Row-level `FcNewItemIndicator` producer wiring is out of scope for FC-CMD v1');
+    expect(fcCmd).toContain('Epic 9 / FC-NIP owns');
+
+    expect(architecture).toContain('Fresh-row indicators are not produced from the projection nudge seam');
+    expect(architecture).toContain('FC-NIP owns the post-MVP command outcome payload and producer wiring');
+
+    expect(dataGrid).toContain('Automatic row-level producer wiring');
+    expect(dataGrid).toContain('Epic 9 / FC-NIP');
+    expect(dataGrid).toContain('current projection nudge does not include row identity');
+  });
+});
+
+const readRepoFile = async (relativePath: string): Promise<string> => {
+  const raw = await readFile(path.join(REPO_ROOT, relativePath), 'utf8');
+  // Collapse whitespace runs (including newlines / CRLF) so a benign markdown reflow does not
+  // silently break these substring guards.
+  return raw.replace(/\s+/g, ' ');
+};

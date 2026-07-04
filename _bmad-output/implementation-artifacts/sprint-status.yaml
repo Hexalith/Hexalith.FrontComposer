@@ -309,8 +309,13 @@ development_status:
 
   # Epic 9: Fresh-Row Producer and Row Identity (post-MVP follow-up)
   # Added 2026-07-01 via Correct Course (sprint-change-proposal-2026-07-01.md).
-  epic-9: backlog
-  9-1-confirm-the-fc-nip-row-identity-producer-contract: backlog
+  # epic-9 moved backlog -> in-progress on 2026-07-04 (create-story; first story of Fresh-Row Producer and Row Identity)
+  epic-9: in-progress
+  # 9-1 moved backlog -> ready-for-dev on 2026-07-04 (create-story; confirm FC-NIP row-identity producer contract. Scope is contract/documentation confirmation: prove the minimum payload for INewItemIndicatorStateService.Add(ViewKey/lane key, EntityKey, MessageId, ProjectionTypeName, optional status-slot metadata), verify EventStore status/projection nudge/pending-command seams, and record a blocking owner/date follow-up instead of fabricating row identity if precise EntityKey cannot be supplied.)
+  # 9-1 moved ready-for-dev -> in-progress on 2026-07-04 (dev-story; baseline b85aec624624b7128096d5ce645118c6f8f1d4e8 captured; starting FC-NIP row-identity producer contract confirmation.)
+  # 9-1 moved in-progress -> review on 2026-07-04 (dev-story; FC-NIP row-identity producer contract confirmed with upstream blocking gap, architecture ownership wording pinned, and focused SourceTools governance guard added. Focused SourceTools test project build 0/0 and FC-NIP guard 2/2 passed via direct xUnit v3 in-process runner. Broad solution build/test and DocFX lanes are locally blocked by NuGet network denial, existing CLI Roslyn package conflict, DocFX build-host socket, and VSTest socket restrictions.)
+  # 9-1 moved review -> done on 2026-07-04 (story-automator review; APPROVED, 0 CRITICAL/0 HIGH. All 3 ACs + all [x] tasks independently verified against source. Auto-fixed: contract duplicate-behavior corrected to match last-wins consumer seam, both governance guards hardened against markdown reflow, blocking follow-up review-by clarified. FC-NIP guard 2/2 + Playwright 3/3 + typecheck re-verified green. validate-story-artifacts.py blocked by a concurrent GPT-5 Codex session live-editing unrelated build/dependency files (Directory.Packages.props, .slnx, UI.csproj, Shell.Tests, tsconfig, release.yml) NOT owned by Story 9.1.)
+  9-1-confirm-the-fc-nip-row-identity-producer-contract: done
   9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: backlog
 
   # Epic 10: Tooling Governance Follow-Through (post-MVP quality hardening)

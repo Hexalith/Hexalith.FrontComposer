@@ -16,7 +16,7 @@
          global.json pins the repo SDK (10.0.301 at the time of writing — global.json is authoritative).
          Verify compiler-host compatibility after SDK feature-band bumps.
          PrivateAssets="all" is set in the project file, not here. -->
-    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.3.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.6.0" />
   </ItemGroup>
   <ItemGroup Label="Runtime">
     <!-- System.Collections.Immutable is ONLY needed on netstandard2.0 — net10.0 carries it in-box. -->
