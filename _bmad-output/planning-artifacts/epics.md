@@ -163,8 +163,8 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - FR10 (DI bootstrap): **Epic 1** — Quickstart → Domain → EventStore
 - FR11 (DataGrid surface): **Epic 2** — filter/expand/status/prioritizer
 - FR12 (command lifecycle UI): **Epic 3** (core lifecycle) + **Epic 4** (destructive/abandonment)
-- FR13 (EventStore clients): **Epic 2** (query/SignalR read path) + **Epic 3** (command + status poll) + **Epic 9** (fresh-row producer evidence)
-- FR14 (nav/home/palette/badges): **Epic 2** (registry-driven discovery) + **Epic 9** (row-level new-item indicator producer)
+- FR13 (EventStore clients): **Epic 2** (query/SignalR read path) + **Epic 3** (command + status poll) + **Epic 9** (fresh-row producer evidence) + **Epic 11** (11.1 circuit-safe auth, 11.2 realtime resilience)
+- FR14 (nav/home/palette/badges): **Epic 2** (registry-driven discovery) + **Epic 9** (row-level new-item indicator producer) + **Epic 11** (11.7 command-route contract unification)
 - FR15 (theme/density/settings): **Epic 1** — persisted shell preferences
 - FR16 (MCP command tools): **Epic 5**
 - FR17 (MCP projection/skill resources): **Epic 5**
@@ -172,10 +172,11 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - FR19 (MCP schema negotiation): **Epic 5**
 - FR20 (`frontcomposer inspect`): **Epic 7** + **Epic 10** (text-output parity guard)
 - FR21 (`frontcomposer migrate`): **Epic 7** + **Epic 10** (HFCM9002 production-emission decision)
-- FR22 (Testing library): **Epic 7** + **Epic 10** (default-lane redaction guard)
+- FR22 (Testing library): **Epic 7** + **Epic 10** (default-lane redaction guard) + **Epic 11** (11.6 harness failure modes)
 
 **Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic) · AR11 (FC-NIP) → Epic 9 · AR12 (FC-TOOL-GOV) → Epic 10.
 **Cross-cutting NFRs** (NFR1–NFR13) apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. **NFR11 (telemetry)** is owned cross-cutting (not per-AC traced) — emitting through `FrontComposerActivitySource` on the Shell command-lifecycle/projection paths and the MCP tool/resource paths.
+**Epic 11 (Architecture Review Remediation)** refines the FRs noted above (FR13 · FR14 · FR22) and **amends cross-cutting NFRs**: NFR5/NFR12 (11.8 Contracts kernel split — pending Architect+PM sign-off) and NFR6 (11.5 visual-conformance guards). Its ten stories trace primarily to the 2026-07-04 architecture-quality-review findings (H1–H12 / M-series), not to net-new FRs. See the Epic 11 section.
 
 ## Epic List
 
@@ -271,6 +272,20 @@ promises stay honest, and Testing package evidence remains redacted by default.
 **ARs:** AR12 (FC-TOOL-GOV)
 **Standalone:** post-MVP quality hardening; builds on Epic 7 and does not reopen completed stories.
 **Source of record:** `sprint-change-proposal-2026-07-01-epic-7-retro-follow-through.md` (Correct Course, 2026-07-01).
+
+### Epic 11: Architecture Review Remediation  *(post-MVP quality hardening)*
+An **adopter developer / operator** gets a FrontComposer whose worst blind-spot defects are closed:
+circuit-safe EventStore auth and self-healing projection realtime (no silent production-circuit
+degradation), fail-closed MCP paths that log and survive across requests, a hardened
+open-redirect/storage-key security surface, dead scoped-CSS remediated behind durable
+visual-conformance guards, a genuinely fault-injectable Testing harness (the key Tenants-adoption
+unblock), a unified command/projection route contract (so palette command activation lands on a page
+that exists), a leaner Contracts kernel, and consolidated shell layering + convention alignment.
+Remediation-framed, but each story is justified by operator/adopter/security impact.
+**Refines:** FR13 (11.1 circuit-safe auth, 11.2 realtime resilience), FR14 (11.7 command-route contract), FR22 (11.6 testing-harness failure modes) · **Amends NFRs:** NFR5/NFR12 (11.8 Contracts kernel split), NFR6 (11.5 visual-conformance guards) · **Introduces:** architecture-review-finding requirements H1–H12 / M-series · **no net-new user-facing FRs**
+**Standalone:** each story ships independently; risk-ordered (11.1 → 11.2 → 11.4 → 11.3 → 11.5 → 11.6 → 11.7 → 11.9 → 11.10 → 11.8 last); independent of Epics 9/10; does not reopen completed Epics 1–8.
+**Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), triggered by `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`. A Minor-scope quick-win fix batch was applied in-tree under the same proposal (PR #48).
+**Decisions (contract-confirmation DoD — tracked, owned, dated blocking gates):** **11.7** route-contract unification → **Architect + Product**, assigned 2026-07-04, due **at Epic 11 dev kickoff** (no 11.x `create-story` before it is decided; it owns the only user-visible broken journey); **11.8** Contracts kernel split → **Architect + PM**, assigned 2026-07-04, due **at Story 11.8 start** (pre-v1.0 window; ordered last).
 
 > **Out of scope (fast-follow, not an epic):** `<AuditTimeline>` and `<ConsequencePreview>` rich
 > components (AR10) — approved fallbacks stand; tracked for a later cycle.
@@ -1296,3 +1311,225 @@ and punctuation-heavy string secret values.
 
 **Given** a new public Testing helper emits evidence,
 **Then** `PublicAPI.Shipped.txt`, README guidance, and redaction tests are updated intentionally.
+
+## Epic 11: Architecture Review Remediation *(post-MVP quality hardening)*
+
+> **Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), triggered by the
+> full-repo architecture/engineering-quality review (`_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`:
+> no Critical, 12 High, ~28 Medium). A Minor-scope quick-win fix batch (UI-host `FcPageHeader` params, orphaned
+> empty-state stylesheet, nullable-numeric codegen, `GeneratedLiteral` escaping incl. a latent quote-injection
+> bug, nav-slug unification, theme-watcher disposal race, `@key` on reordering loops, hygiene) was applied
+> directly under the proposal (PR #48); the stories below carry the Moderate/Major remainder. **Does not reopen
+> completed Epics 1–8; independent of Epics 9/10.** Each story references the review finding IDs it closes in
+> its Change Log (proposal success criterion), and the four blind-spot guard classes (unlinked stylesheets,
+> dead scoped CSS, parameter-splat surfaces, cross-request lifetimes) each gain a durable Governance test.
+> Suggested order: 11.1 → 11.2 → 11.4 → 11.3 → 11.5 → 11.6 → 11.7 (decision) → 11.9 → 11.10 → 11.8 (last).
+>
+> **Decision gates (contract-confirmation DoD, 2026-06-21 amendment — tracked, owned, dated):** **Story 11.7**
+> (command/projection route contract) — owner **Architect + Product**, assigned **2026-07-04**, due **at Epic 11
+> dev kickoff** (no 11.x `create-story` may start before it is decided). **Story 11.8** (Contracts kernel split,
+> amends the multi-TFM decision) — owner **Architect + PM**, assigned **2026-07-04**, due **at Story 11.8 start**
+> (pre-v1.0 window; deliberately ordered last).
+
+### Story 11.1: Token lifecycle and circuit-safe EventStore auth
+
+As a FrontComposer operator,
+I want EventStore auth tokens stored, expired, and evicted on sign-out, and acquired safely from an interactive Blazor circuit,
+So that the app does not silently lose its EventStore connection whenever there is no `HttpContext`.
+
+**Acceptance Criteria:**
+
+**Given** `FrontComposerUserTokenStore`,
+**When** a token is stored,
+**Then** its expiry is retained, expired entries are evicted, and the currently-dead `Remove` path is wired into the sign-out endpoint. *(H2)*
+
+**Given** `FrontComposerAccessTokenProvider` running inside an interactive circuit (`HttpContext` null),
+**When** it acquires a token,
+**Then** it falls back to the `CircuitServicesAccessor`/token-store seam its siblings already have — or, if no circuit-safe source is configured, it fails fast at registration instead of throwing HFC2013 at read time. *(H2, M1)*
+
+**Given** any token path,
+**Then** no raw token value is logged, and expired/sign-out eviction and circuit-context acquisition are pinned by tests.
+*(Refines FR13; closes H2, M1.)*
+
+### Story 11.2: Projection realtime resilience
+
+As an operator,
+I want projection realtime to recover from outages instead of silently degrading to slow polling,
+So that live grids keep updating after a hub disconnect longer than the default retry ladder.
+
+**Acceptance Criteria:**
+
+**Given** the projection hub,
+**When** the connection drops for longer than the ~42 s default retry ladder,
+**Then** an unbounded jittered `IRetryPolicy` plus restart-on-`Closed` (gated by the fallback driver) reconnects, instead of dying permanently and silently degrading to 15 s polling. *(H6)*
+
+**Given** `ProjectionSubscriptionService.DisposeAsync`,
+**Then** its gate wait is bounded, the two polling drivers' disposal is aligned, `FrontComposerRegistry` live-list reads are locked, and the `ETagCacheService` seeding race is fixed (`Lazy<Task>`/semaphore, reset on failure). *(M2, M3, M4)*
+
+**Given** the realtime wire contract,
+**Then** hub method-name literals (`ProjectionChanged`, `JoinGroupScoped`, …) are pinned and `SignalRProjectionHubConnectionFactory` gains direct unit tests.
+*(Refines FR13; closes H6, M2, M3, M4.)*
+
+### Story 11.3: MCP cross-request lifecycle and operability
+
+As an AI agent,
+I want the MCP lifecycle tracker to work across separate requests and every fail-closed branch to leave a trace,
+So that a `subscribe → poll` sequence returns real transitions and operators can diagnose silent denials.
+
+**Acceptance Criteria:**
+
+**Given** `FrontComposerMcpLifecycleTracker`,
+**When** it is registered,
+**Then** it is split into a **Singleton state store + Scoped facade** (a naive Singleton flip is a captive-dependency error — it constructor-injects the Scoped admission service), and the test-side Singleton re-registrations that masked the bug are removed. *(H4, corrected per proposal §1)*
+
+**Given** an agent lifecycle `subscribe` then `poll` across two requests,
+**Then** real transitions are returned (cross-scope hosting test).
+
+**Given** the zero-signal fail-closed sites (`FrontComposerMcpProjectionReader` bare catch, tools-list, lifecycle auth),
+**Then** each logs exactly one sanitized `[LoggerMessage]` event, `BuildServiceProvider()` is removed from `AddFrontComposerMcp` (ASP0000), and API-key hashes are stored (or dev-only is documented). *(M9, M10, M12)*
+*(Refines FR16/FR18; closes H4, M9, M10, M12.)*
+
+### Story 11.4: Security-validation hardening
+
+As a FrontComposer maintainer,
+I want the open-redirect funnel and storage-key builders exhaustively tested and the wire formats pinned,
+So that a redirect-validation gap or storage-key collision cannot slip through untested.
+
+**Acceptance Criteria:**
+
+> Structure the story file as **three independently verifiable task groups** (redirect theory · storage-key convergence · wire-format pins).
+
+**Given** `ReturnPathValidator` (today with zero direct tests),
+**When** the security theory runs,
+**Then** it covers every documented attack class — protocol-relative, backslash prefixes, percent-decode bypass, traversal, BiDi/zero-width, the Unix file-scheme carve-out, and non-root base href. *(H7)*
+
+**Given** the two storage-key builders,
+**Then** they converge on the canonicalizing `FrontComposerStorageKey` semantics with an FsCheck equivalence property (whitespace/colon/NFD-NFC/mixed-case-email). *(H9)*
+
+**Given** the SignalR/HTTP wire DTOs,
+**Then** `ProjectionChangedDetail`, `CommandResult`, and `ProblemDetailsPayload` gain golden-JSON pins (or `[JsonPropertyName]`) and `CommandResultStatus` gets string constants. *(M11)*
+*(Security hardening — no security NFR yet exists to anchor it (flagged for the requirements inventory); closes H7, H9, M11.)*
+
+### Story 11.5: Dead-CSS remediation and visual-conformance guards
+
+As an operator,
+I want components whose styling is silently dead to actually render their styles, guarded so the defect class cannot regenerate,
+So that connection status (incl. the reconnect pulse), the column prioritizer, settings-dialog mobile controls, and density preview look as designed.
+
+**Acceptance Criteria:**
+
+**Given** the seven scoped-CSS files whose rules are dead because the class sits on a Fluent component (`FcProjectionConnectionStatus` — all rules incl. the reconnect pulse, `FcColumnPrioritizer` gear pinning, `FcSettingsDialog` mobile Done, `FcDensityPreviewPanel`, three DevMode files),
+**When** they are fixed via a raw scoped root + `::deep` or inline Style (Story 8.6 precedent),
+**Then** the intended styling applies, proven by rendered-DOM / computed-style evidence per E8-AI-1. *(M6)*
+
+**Given** the undefined/FAST-era tokens (`--error`, `--error-foreground-rest`),
+**Then** they are replaced with Fluent 2 tokens. *(M5)*
+
+**Given** three new Governance guards,
+**Then** every `wwwroot/css` file must be referenced by a `<link>`, a scoped-CSS-class-on-Fluent-component detector fails the build, and `error-` is added to the legacy-token regex.
+
+> **Guard-first:** build the three guards before/with the CSS fixes — bUnit cannot detect dead CSS or silent splats, so the defect class regenerates otherwise.
+*(Amends NFR6 visual a11y; closes M5, M6 + the unlinked-stylesheet and dead-scoped-CSS guard gaps.)*
+
+### Story 11.6: Testing harness failure modes
+
+As an adopter developer (starting with Hexalith.Tenants),
+I want the Testing harness to model rejection/timeout/stall and per-request query outcomes,
+So that adopters can genuinely test failure paths and paging/filter/sort of generated components.
+
+**Acceptance Criteria:**
+
+**Given** `TestCommandService`,
+**Then** it exposes configurable rejection / timeout / stall-at-`Syncing` outcomes; `TestQueryService` / `TestProjectionPageLoader` accept per-request callbacks (`SucceedWith(Func<QueryRequest, QueryResult<T>>)`) so paging/filter/sort are testable; `TestFaultInjectionProvider` actually injects (or is renamed to an evidence recorder). *(M21)*
+
+**Given** the Counter sample's authorization-policy toggles,
+**Then** they are promoted into the harness, and the constructor `GetAwaiter().GetResult()` is replaced with an async factory.
+
+**Given** the shipped Testing surface (currently 2 test files for 11 files),
+**Then** `Builders` / `Assertions` / fakes get direct surface tests and `PublicAPI.Shipped.txt` is updated intentionally.
+*(Refines FR22; closes M21 — the key Tenants-adoption unblock.)*
+
+### Story 11.7: Command/projection route-contract unification *(decision — Architect + Product)*
+
+As an operator,
+I want command activation from the palette/CTA to land on a page that actually exists,
+So that the "jump to any action" journey does not dead-end on an unresolvable route.
+
+**Acceptance Criteria:**
+
+**Given** the three route families — projection links `/{bc-lower}/{proj-kebab}`, palette/CTA command links (`CommandRouteBuilder.BuildRoute` → `/domain/{kebab}/{kebab}`), and generated command pages (`[Route("/commands/{BC}/{TypeName}")]`) — where **nothing currently resolves `/domain/…`**,
+**When** the route contract is decided,
+**Then** Architect + Product choose the canonical family: either `CommandPageEmitter` emits the `/domain/…` route (as a `[Route]` alias or replacement) or the palette/CTA/`EmptyStateCtaResolver` target the generated `/commands/…` route. *(H10 remainder; proposal §1 correction #3)*
+
+**Given** the decision is applied,
+**Then** an e2e pin asserts palette command activation lands on the generated page, and the route contract is recorded in a contract (`fc-*` or architecture.md §4), not only in the story.
+
+**Given** the contract-confirmation DoD,
+**When** the decision is still pending,
+**Then** it is a tracked/owned/dated blocking gate (**owner Architect + Product; assigned 2026-07-04; due at Epic 11 dev kickoff**) and no 11.x `create-story` starts before it.
+*(Refines FR14 / UX-DR4; closes the H10 remainder + the unresolvable-route finding — the single most user-visible open defect in the plan.)*
+
+### Story 11.8: Contracts kernel split *(major decision — Architect + PM)*
+
+As an adopter developer (Hexalith.Tenants first),
+I want the net10/Blazor surface split out of the netstandard Contracts kernel,
+So that referencing Contracts stops inheriting the pinned Fluent RC and the kernel becomes cleanly reusable.
+
+**Acceptance Criteria:**
+
+**Given** the net10/Blazor surface (`Typography`/`FcTypoToken`, `RenderFragment` contexts, `KeyboardEventArgs` members),
+**When** it is split into a net10-only `Contracts.UI` assembly,
+**Then** referencing `Contracts` no longer inherits the pinned Fluent RC. *(H11)*
+
+**Given** misplaced types,
+**Then** `InMemoryStorageService` → Testing, `InlinePopoverRegistry` impl → Shell (interface stays), `FcShellOptions` → Shell/options, and Fluxor action records (incl. the `TaskCompletionSource`-bearing `LoadPageAction`) → Shell; the 19-parameter `QueryRequest` is decomposed into a UI query + transport envelope via the existing HFC0001 deprecation pipeline. *(M24, M25)*
+
+**Given** this amends the documented multi-TFM decision,
+**Then** `project-context.md` + `architecture.md` §layers are updated, UX-DR1's documented home for `Typography`/`FcTypoToken` is corrected, and package-compat is planned (pre-v1.0 window).
+
+**Given** the contract-confirmation DoD,
+**When** the sign-off is still pending,
+**Then** it is a tracked/owned/dated blocking gate (**owner Architect + PM; assigned 2026-07-04; due at Story 11.8 start**).
+*(Amends NFR5/NFR12; closes H11, M24, M25.)*
+
+### Story 11.9: Shell layering and duplication consolidation
+
+As a FrontComposer maintainer,
+I want the real shell layering declared and the 2–7× duplicated helpers consolidated,
+So that hardening applies uniformly and folder dependency directions are pinned.
+
+**Acceptance Criteria:**
+
+**Given** shell layering,
+**Then** Telemetry is declared cross-cutting, connection/polling workers move to Infrastructure, `BuildRoute`/`ProjectionLabel` move off the nav component into `Routing/`, and the code converges on one non-Fluxor observer primitive (dropping `System.Reactive`, whose sole consumer is `BadgeCountService`). *(M18)*
+
+**Given** the duplicated helpers,
+**Then** extract `StorageScopeResolver` (6× `TryResolveScope`), `SnapshotPublisher<T>` (~7 hand-rolled pub/subs with uneven hardening), `ExceptionGuard.IsFatal` (3 filter variants), a single `HydrationState` enum (5 copies), and `FcJson` options (3 sites); consolidate `RoleBodyHelpers` escaping onto `GeneratedLiteral`. *(M19)*
+
+**Given** the declared layering,
+**Then** an architecture test pins folder dependency directions.
+*(closes M18, M19 clusters; depends only on the already-landed Minor batch — PR #48 — so it is backward, not forward.)*
+
+### Story 11.10: Convention-alignment program
+
+As a FrontComposer maintainer,
+I want one-type-per-file, LoggerMessage, and enforcement conventions aligned at scale,
+So that the codebase matches its own documented standards.
+
+**Acceptance Criteria:**
+
+> **This is a program, not one story — split at `create-story` time** into (a) mechanical one-type-per-file split, (b) LoggerMessage migration, (c) the enforcement/policy-decision story, or it will stall on its slowest concern.
+
+**Given** the worst multi-type files (`MigrationCommand.cs` 23 types, `SkillCorpus.cs` ~45 — move the LLM benchmark harness out of the runtime package, `DriftDetection.cs` 17, `InspectCommand.cs` 14, plus the Shell interface+impl+DTO bundles),
+**Then** they are split one-type-per-file (the Fluxor-action-group exception documented if retained). *(M14)*
+
+**Given** 206 direct log sites across 50 files in Shell,
+**Then** Warning-and-above and hot paths migrate to `[LoggerMessage]`. *(M15)*
+
+**Given** the inert CS1591 config for Contracts public folders (the `.editorconfig` re-raise is dead under the src-wide NoWarn),
+**Then** documented enforcement is put back in force; the AppHost blanket `NU1902-04` NoWarn is replaced with per-advisory `NuGetAuditSuppress` (CI-verifiable only); `FcHomeCard` aria-label + the UI host `lang="en"`/English strings are localized; `HFC2106_ThemeHydrationEmpty` is renamed (ID string unchanged; obsolete alias if the constant is public). *(M16, H12)*
+
+**Given** the no-third-party-analyzer policy,
+**When** Architect reviews elevating built-in analyzers (`AnalysisMode Recommended`),
+**Then** a decision is recorded — it adds no packages, but the burn-down cost must be owned.
+*(closes M14, M15, M16, H12 + the convention-drift cluster.)*
