@@ -104,9 +104,9 @@ Evidence records are public Testing package contracts:
 
 `RedactedEvidenceFormatter.Format(...)` serializes bounded assertion payloads and redacts:
 
-- configured tenant ID values,
-- configured user ID values,
-- token, secret, and password keyed values case-insensitively. Redaction is JSON-string-aware: a keyed string value is redacted through its closing quote, so values containing commas (for example `"password":"a,b,c"`) are fully redacted, not just up to the first comma. Non-string scalars are bounded by the next `,` or `}`.
+- configured tenant ID values and JSON property names,
+- configured user ID values and JSON property names,
+- token, secret, and password keyed values case-insensitively. Redaction is structural over the serialized JSON DOM, so keyed string values, numbers, booleans, nulls, nested objects, and arrays are replaced with `<redacted>` as a whole value. Values containing commas, braces, brackets, quotes, colons, backslashes, equals signs, semicolons, or URL/query-string punctuation are fully redacted.
 - oversized payloads beyond `MaxDiagnosticPayloadCharacters`, with the `...<truncated>` marker.
 
 Tests must not log raw command payloads, tenant IDs, user IDs, tokens, secrets, passwords, or external paths in failure messages.
@@ -141,12 +141,12 @@ The clean-consumer smoke project restores and builds from locally packed `Contra
 
 Passed:
 
-- `dotnet build Hexalith.FrontComposer.slnx -c Release -m:1 /nr:false` - passed with 0 warnings and 0 errors (re-verified after the Senior Developer Review redaction fix).
-- `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Testing.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Testing.Tests` - passed 23/23 through the xUnit v3 in-process runner. (Originally 22/22; the Senior Developer Review added `RedactedEvidenceFormatter_Format_RedactsSecretValuesContainingCommas`, which failed before the redaction fix and passes after it.)
+- `DiffEngine_Disabled=true dotnet build tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Release --no-restore -m:1 /nr:false` - passed with 0 warnings and 0 errors after the Story 10.5 structural redaction fix.
+- `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Testing.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Testing.Tests -noLogo` - passed 30/30 through the xUnit v3 in-process runner, including tenant/user property-name redaction, nested secret object/array redaction, punctuation-heavy secret strings, oversized payload truncation after redaction, command payload evidence, and `PackageBoundaryTests.PublicApi_ExportedTypes_MatchIntentionalBaseline`.
 
 Local blocker:
 
-- `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false --no-build -c Release` aborted before test execution in each assembly because VSTest cannot create its TCP listener in this sandbox: `System.Net.Sockets.SocketException (13): Permission denied`.
+- `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --no-restore --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1 /nr:false` remained locally blocked by VSTest socket creation (`System.Net.Sockets.SocketException (13): Permission denied`), with one CLI project still reporting `NU1900` despite `--no-restore`; CI remains authoritative for the broad solution lane.
 
 Focused VSTest note:
 

@@ -322,7 +322,8 @@ development_status:
   # Added 2026-07-01 via Correct Course (sprint-change-proposal-2026-07-01-epic-7-retro-follow-through.md).
   # Carries forward Epic 7 retro actions without reopening completed Stories 7.1-7.5.
   # epic-10 moved backlog -> in-progress on 2026-07-04 (create-story; first story of Tooling Governance Follow-Through)
-  epic-10: in-progress
+  # epic-10 moved in-progress -> done on 2026-07-05 (bmad-retrospective; all five Tooling Governance Follow-Through stories are done and retrospective completed in YOLO/autonomous mode)
+  epic-10: done
   # 10-1 moved backlog -> ready-for-dev on 2026-07-04 (create-story; mechanical story evidence reconciliation. Scope is tooling/process hardening: extend eng/validate-story-artifacts.py and review verifier paths so baseline-aware changed-file, File List, unrelated dirty-file, submodule-pointer, and checked-task evidence reconciliation mechanically gates review promotion. Preserve sentinel scan behavior, avoid parallel validators, keep unrelated pre-existing changes classified but unowned, and do not touch product runtime/generated output or submodules.)
   # 10-1 moved ready-for-dev -> in-progress on 2026-07-04 (dev-story; baseline 88f0342ccc868b7d1ee82e925922640895ea0dd0 captured; starting mechanical story evidence reconciliation implementation.)
   # 10-1 moved in-progress -> done on 2026-07-04 (story-automator review; auto-fix implemented the review-promotion gate in success_verifiers.py, wired the reconciliation gate into instructions.xml/checklist.md, completed Tasks 5 & 6; validator + verifier suite 7/7 green and validate-story-artifacts.py --story passes.)
@@ -343,7 +344,8 @@ development_status:
   10-4-hfcm9002-production-emission-decision: done
   # 10-5 moved backlog -> ready-for-dev on 2026-07-05 (create-story; Testing evidence redaction default-lane guard. Scope is privacy/test hardening for Hexalith.FrontComposer.Testing evidence: add default-lane redaction matrix coverage for tenant/user values, token/secret/password keys, oversized payloads, punctuation-heavy secret strings, and command evidence payloads; preserve useful non-secret assertion evidence, PublicAPI baseline discipline, current Testing host contract, no separate sanitizer framework, and no Shell/CLI/MCP/SourceTools/submodule scope.)
   10-5-testing-evidence-redaction-default-lane-guard: done
-  epic-10-retrospective: optional
+  # epic-10-retrospective moved optional -> done on 2026-07-05 (bmad-retrospective YOLO/autonomous; Epic 10 reviewed, Epic 7/Epic 8 follow-through closed, Epic 11 readiness constraints recorded, and verified documentation updates applied only where code/docs drift existed)
+  epic-10-retrospective: done
 
   # Epic 11: Architecture Review Remediation (post-MVP quality hardening)
   # Added 2026-07-04 via Correct Course (sprint-change-proposal-2026-07-04.md), triggered by the
@@ -382,15 +384,15 @@ action_items:
   - epic: 10
     action: "E10-AI-1: Make changed-file, story File List, and story-task reconciliation mechanical before story review completion; covers Epic 7 E7-AI-1 and Epic 8 follow-through"
     owner: "QA automation maintainer"
-    status: open
+    status: done
   - epic: 10
     action: "E10-AI-2: Audit adopter-facing CLI, diagnostics, and Testing docs for stale historical story ownership labels; retain provenance-only labels only where they do not confuse current ownership"
     owner: "Technical Writer"
-    status: open
+    status: done
   - epic: 10
     action: "E10-AI-3: Add CLI text-output parity coverage guidance for summaries, filtering, and diff budgets on future CLI stories"
     owner: "Test Architect"
-    status: open
+    status: done
   - epic: 10
     action: "E10-AI-4: Decide HFCM9002 production sidecar emission: either implement and pin a SourceTools emitter or keep/remove adopter-facing production promises"
     owner: "Architect + Product Owner"
@@ -398,7 +400,7 @@ action_items:
   - epic: 10
     action: "E10-AI-5: Keep Testing package evidence redaction cases in the default lane for tenant, user, token, secret, password, oversized, and punctuation-heavy values"
     owner: "Developer"
-    status: open
+    status: done
   - epic: 11
     action: "E11-AI-1: Decide the command/projection route-contract unification (Story 11.7). Nothing resolves the palette/CTA /domain/... command routes generated pages register /commands/{BC}/{TypeName}; pick the canonical family and add an e2e pin. Tracked/owned/dated blocking gate: no 11.x create-story starts before it is decided."
     owner: "Architect + Product"
@@ -426,7 +428,7 @@ action_items:
   - epic: process
     action: "Add a mechanical changed-file vs story File List and test-summary reconciliation check before dev-story review promotion and story-automator review approval"
     owner: "QA automation maintainer"
-    status: open
+    status: done
   - epic: process
     action: "Add a durable authoring-sentinel guard for BMAD/story/test markdown artifacts, allowing quoted examples but failing raw tool-call tag lines"
     owner: "Developer"
@@ -439,3 +441,19 @@ action_items:
     action: "Close the FC-DOC settings component page gap after Story 1.6 completion, or explicitly defer it with owner and date"
     owner: "Technical Writer"
     status: done
+  - epic: 10
+    action: "E10R-AI-1: Keep artifact_validation_failed as a hard review-completion blocker and track false positives as validator fixes rather than manual bypasses"
+    owner: "QA automation maintainer"
+    status: open
+  - epic: 10
+    action: "E10R-AI-2: Add contract-doc verification to post-story or post-epic sweeps whenever review fixes change implementation behavior"
+    owner: "Technical Writer"
+    status: open
+  - epic: 10
+    action: "E10R-AI-3: Carry Testing evidence privacy lessons into Epic 11.6, including property-name and dictionary-key cases plus external-path evidence where the harness emits paths"
+    owner: "Test Architect"
+    status: open
+  - epic: 10
+    action: "E10R-AI-4: Resolve the existing Epic 11 route-contract decision before starting 11.x story creation"
+    owner: "Architect + Product Owner"
+    status: open
