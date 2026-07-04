@@ -83,7 +83,8 @@
         bool activeContext = IsContextActive(manifest.BoundedContext, projections, entries);
         string? soleHref = SoleDestinationHref(projections, entries);
 
-        <FluentButton id="@anchorId"
+        <FluentButton @key="@($"fc-nav-tile-{manifest.BoundedContext}")"
+                      id="@anchorId"
                       Appearance="@ButtonAppearance.Subtle"
                       Class="@ContextTileClass(activeContext)"
                       Title="@(iconOnly ? LocalizeManifestName(manifest) : null)"
@@ -129,12 +130,13 @@
                 </FluentStack>
             }
         </FluentButton>
-        <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
+        <FluentTooltip @key="@($"fc-nav-tooltip-{manifest.BoundedContext}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
             @LocalizeManifestName(manifest)
         </FluentTooltip>
         @if (soleHref is null)
         {
-            <FluentMenu Trigger="@anchorId"
+            <FluentMenu @key="@($"fc-nav-flyout-{manifest.BoundedContext}")"
+                        Trigger="@anchorId"
                         PersistOnItemClick="false"
                         data-testid="@($"fc-nav-flyout-{manifest.BoundedContext}")"
                         role="menu"
@@ -149,7 +151,8 @@
                         bool projShowsNew = !discovery.SeenCapabilities.Contains(projCapabilityId) && count > 0;
                         bool activeProjection = IsHrefActive(route);
 
-                        <FluentMenuItem Role="@MenuItemRole.MenuItem"
+                        <FluentMenuItem @key="route"
+                                        Role="@MenuItemRole.MenuItem"
                                         IconStart="@ResolveNavEntryIcon(manifest.Icon, activeProjection)"
                                         OnClick="@(_ => HandleProjectionMenuItemClicked(manifest.BoundedContext, projectionFqn, route))"
                                         data-testid="@($"fc-nav-flyout-projection-{manifest.BoundedContext}-{label}")"
@@ -191,7 +194,8 @@
         bool activeContext = IsContextActive(orphanBc, [], entries);
         string? soleHref = SoleDestinationHref([], entries);
 
-        <FluentButton id="@anchorId"
+        <FluentButton @key="@($"fc-nav-tile-{orphanBc}")"
+                      id="@anchorId"
                       Appearance="@ButtonAppearance.Subtle"
                       Class="@ContextTileClass(activeContext)"
                       Title="@(iconOnly ? orphanBc : null)"
@@ -216,12 +220,13 @@
                 }
             </FluentStack>
         </FluentButton>
-        <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
+        <FluentTooltip @key="@($"fc-nav-tooltip-{orphanBc}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
             @orphanBc
         </FluentTooltip>
         @if (soleHref is null)
         {
-            <FluentMenu Trigger="@anchorId"
+            <FluentMenu @key="@($"fc-nav-flyout-{orphanBc}")"
+                        Trigger="@anchorId"
                         PersistOnItemClick="false"
                         data-testid="@($"fc-nav-flyout-{orphanBc}")"
                         role="menu"

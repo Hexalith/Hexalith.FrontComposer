@@ -85,14 +85,16 @@
                 {
                     if (card.IsReady)
                     {
-                        <FcHomeCard Card="card"
+                        <FcHomeCard @key="card.Manifest.BoundedContext"
+                                Card="card"
                                 SeenCapabilities="discovery.SeenCapabilities"
                                 HydrationState="discovery.HydrationState"
                                 OnActivated="HandleBoundedContextClickAsync" />
                     }
                     else
                     {
-                        <li class="fc-home-card fc-home-card-skeleton"
+                        <li @key="card.Manifest.BoundedContext"
+                            class="fc-home-card fc-home-card-skeleton"
                             data-testid="@($"fc-home-card-skeleton-{card.Manifest.BoundedContext}")">
                             <FluentSkeleton Width="100%" Height="120px"
                                             aria-busy="true"
@@ -108,7 +110,8 @@
                 aria-description="@Localizer["HomeSortedByUrgencyAriaDescription"].Value">
                 @foreach (HomeCardModel card in aggregated.OrderBy(static c => c.Manifest.Name, StringComparer.Ordinal))
                 {
-                    <FcHomeCard Card="card"
+                    <FcHomeCard @key="card.Manifest.BoundedContext"
+                                Card="card"
                                 SeenCapabilities="discovery.SeenCapabilities"
                                 HydrationState="discovery.HydrationState"
                                 OnActivated="HandleBoundedContextClickAsync" />
@@ -129,7 +132,8 @@
                 aria-description="@Localizer["HomeSortedByUrgencyAriaDescription"].Value">
                 @foreach (HomeCardModel card in urgent)
                 {
-                    <FcHomeCard Card="card"
+                    <FcHomeCard @key="card.Manifest.BoundedContext"
+                                Card="card"
                                 SeenCapabilities="discovery.SeenCapabilities"
                                 HydrationState="discovery.HydrationState"
                                 OnActivated="HandleBoundedContextClickAsync" />
@@ -143,7 +147,8 @@
                         <ul class="fc-home-cards fc-home-cards-other">
                             @foreach (HomeCardModel card in zeros)
                             {
-                                <FcHomeCard Card="card"
+                                <FcHomeCard @key="card.Manifest.BoundedContext"
+                                Card="card"
                                 SeenCapabilities="discovery.SeenCapabilities"
                                 HydrationState="discovery.HydrationState"
                                 OnActivated="HandleBoundedContextClickAsync" />
