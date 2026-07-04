@@ -18,11 +18,12 @@ export function subscribe(dotnetRef) {
     const mediaQuery = window.matchMedia(QUERY);
 
     const handler = event => {
-        dotnetRef.invokeMethodAsync('OnSystemThemeChangedAsync', event.matches);
+        // Swallow rejections from a circuit tearing down mid-call (matches fc-layout-breakpoints.js).
+        dotnetRef.invokeMethodAsync('OnSystemThemeChangedAsync', event.matches).catch(() => { });
     };
 
     // Emit the current value once so callers do not need a separate bootstrap round-trip.
-    dotnetRef.invokeMethodAsync('OnSystemThemeChangedAsync', mediaQuery.matches);
+    dotnetRef.invokeMethodAsync('OnSystemThemeChangedAsync', mediaQuery.matches).catch(() => { });
 
     mediaQuery.addEventListener('change', handler);
 

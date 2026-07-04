@@ -22,6 +22,7 @@ public partial class FcSystemThemeWatcher : ComponentBase, IAsyncDisposable {
     private IJSObjectReference? _module;
     private IJSObjectReference? _subscription;
     private DotNetObjectReference<FcSystemThemeWatcher>? _selfRef;
+    private bool _disposed;
 
     /// <summary>Injected JS runtime for module import + subscription.</summary>
     [Inject] private IJSRuntime JS { get; set; } = default!;
@@ -52,38 +53,89 @@ public partial class FcSystemThemeWatcher : ComponentBase, IAsyncDisposable {
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Mirrors the <see cref="FcLayoutBreakpointWatcher"/> disposal-race hardening: assign
+    /// <c>_selfRef</c> before the awaits so a mid-subscribe throw stays disposable, re-check
+    /// <c>_disposed</c> after each await so a racing <see cref="DisposeAsync"/> never leaves a live
+    /// matchMedia listener holding a disposed <see cref="DotNetObjectReference{TValue}"/>, and
+    /// tolerate circuit-teardown exceptions (<see cref="OperationCanceledException"/> /
+    /// <see cref="JSDisconnectedException"/>) that a plain <see cref="JSException"/> catch misses.
+    /// </remarks>
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (!firstRender) {
             return;
         }
 
+        _selfRef = DotNetObjectReference.Create(this);
+        IJSObjectReference? module = null;
+        IJSObjectReference? subscription = null;
         try {
-            _module = await JS.InvokeAsync<IJSObjectReference>("import", ModulePath).ConfigureAwait(false);
-            _selfRef = DotNetObjectReference.Create(this);
-            _subscription = await _module.InvokeAsync<IJSObjectReference>("subscribe", _selfRef).ConfigureAwait(false);
+            module = await JS.InvokeAsync<IJSObjectReference>("import", ModulePath).ConfigureAwait(false);
+            if (_disposed) {
+                await SafeDisposeAsync(module).ConfigureAwait(false);
+                return;
+            }
+
+            subscription = await module.InvokeAsync<IJSObjectReference>("subscribe", _selfRef).ConfigureAwait(false);
+            if (_disposed) {
+                await SafeUnsubscribeAsync(module, subscription).ConfigureAwait(false);
+                await SafeDisposeAsync(subscription).ConfigureAwait(false);
+                await SafeDisposeAsync(module).ConfigureAwait(false);
+                return;
+            }
+
+            _module = module;
+            _subscription = subscription;
+        }
+        catch (OperationCanceledException) {
+            // Circuit disposing mid-import — silent.
+            await SafeDisposeAsync(subscription).ConfigureAwait(false);
+            await SafeDisposeAsync(module).ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) {
+            // Circuit already gone — silent; System mode falls back to the initial paint.
+            await SafeDisposeAsync(subscription).ConfigureAwait(false);
+            await SafeDisposeAsync(module).ConfigureAwait(false);
         }
         catch (JSException) {
             // Non-fatal — System mode falls back to whatever the initial paint decided.
+            await SafeDisposeAsync(subscription).ConfigureAwait(false);
+            await SafeDisposeAsync(module).ConfigureAwait(false);
         }
     }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync() {
-        if (_module is not null && _subscription is not null) {
-            try { await _module.InvokeVoidAsync("unsubscribe", _subscription).ConfigureAwait(false); }
-            catch (JSDisconnectedException) { }
-            catch (JSException) { }
-        }
+        _disposed = true;
 
-        if (_subscription is not null) {
-            try { await _subscription.DisposeAsync().ConfigureAwait(false); } catch (JSDisconnectedException) { }
-        }
-
-        if (_module is not null) {
-            try { await _module.DisposeAsync().ConfigureAwait(false); } catch (JSDisconnectedException) { }
-        }
+        await SafeUnsubscribeAsync(_module, _subscription).ConfigureAwait(false);
+        await SafeDisposeAsync(_subscription).ConfigureAwait(false);
+        await SafeDisposeAsync(_module).ConfigureAwait(false);
 
         _selfRef?.Dispose();
         GC.SuppressFinalize(this);
+    }
+
+    private static async ValueTask SafeUnsubscribeAsync(IJSObjectReference? module, IJSObjectReference? subscription) {
+        if (module is null || subscription is null) {
+            return;
+        }
+
+        try {
+            await module.InvokeVoidAsync("unsubscribe", subscription).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { }
+        catch (JSDisconnectedException) { }
+        catch (JSException) { }
+    }
+
+    private static async ValueTask SafeDisposeAsync(IJSObjectReference? reference) {
+        if (reference is null) {
+            return;
+        }
+
+        try { await reference.DisposeAsync().ConfigureAwait(false); }
+        catch (OperationCanceledException) { }
+        catch (JSDisconnectedException) { }
     }
 }
