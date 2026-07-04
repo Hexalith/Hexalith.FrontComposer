@@ -363,6 +363,182 @@ public sealed class FrontComposerTestHostTests {
     }
 
     [Fact]
+    public void RedactedEvidenceFormatter_Format_RedactsConfiguredTenantAndUserInsideNestedPayloads() {
+        FrontComposerTestOptions options = new() {
+            TestTenantId = "tenant-private",
+            TestUserId = "user-private",
+            MaxDiagnosticPayloadCharacters = 1024,
+        };
+
+        string payload = RedactedEvidenceFormatter.Format(
+            new {
+                Context = new {
+                    TenantId = "tenant-private",
+                    UserId = "user-private",
+                    Items = new[] {
+                        new { Owner = "user-private", Tenant = "tenant-private" },
+                    },
+                },
+                Label = "safe-assertion-context",
+            },
+            options);
+
+        payload.ShouldNotContain("tenant-private");
+        payload.ShouldNotContain("user-private");
+        payload.ShouldContain("<tenant>");
+        payload.ShouldContain("<user>");
+        payload.ShouldContain("safe-assertion-context");
+    }
+
+    [Fact]
+    public void RedactedEvidenceFormatter_Format_RedactsConfiguredTenantAndUserInPropertyNames() {
+        FrontComposerTestOptions options = new() {
+            TestTenantId = "tenant-keyed",
+            TestUserId = "user-keyed",
+            MaxDiagnosticPayloadCharacters = 1024,
+        };
+
+        string payload = RedactedEvidenceFormatter.Format(
+            new {
+                ByTenant = new Dictionary<string, string> {
+                    ["tenant-keyed"] = "tenant-scoped-value",
+                },
+                ByUser = new Dictionary<string, int> {
+                    ["user-keyed"] = 5,
+                },
+                Label = "keyed-assertion-context",
+            },
+            options);
+
+        payload.ShouldNotContain("tenant-keyed");
+        payload.ShouldNotContain("user-keyed");
+        payload.ShouldContain("<tenant>");
+        payload.ShouldContain("<user>");
+        payload.ShouldContain("keyed-assertion-context");
+    }
+
+    [Fact]
+    public void RedactedEvidenceFormatter_Format_RedactsSecretKeysCaseInsensitivelyAcrossValueShapes() {
+        FrontComposerTestOptions options = new() { MaxDiagnosticPayloadCharacters = 2048 };
+
+        string payload = RedactedEvidenceFormatter.Format(
+            new {
+                ApiTOKEN = "string-token-value",
+                nestedSecret = 12345,
+                AdminPASSWORD = true,
+                NullPassword = (string?)null,
+                TokenObject = new {
+                    First = "object-secret-a",
+                    Second = "object-secret-b",
+                },
+                SecretArray = new object?[] { "array-secret-a", 99, false, null },
+                VisibleAmount = 77,
+            },
+            options);
+
+        payload.ShouldNotContain("string-token-value");
+        payload.ShouldNotContain("12345");
+        payload.ShouldNotContain("true");
+        payload.ShouldNotContain("object-secret-a");
+        payload.ShouldNotContain("object-secret-b");
+        payload.ShouldNotContain("array-secret-a");
+        payload.ShouldContain("77");
+    }
+
+    [Fact]
+    public void RedactedEvidenceFormatter_Format_RedactsPunctuationHeavySecretStringsCompletely() {
+        FrontComposerTestOptions options = new() { MaxDiagnosticPayloadCharacters = 2048 };
+        string secret = "alpha,beta{gamma}[delta]\"quoted\\path\":value=semi;url=https://example.test/path?token=a:b&secret=c";
+
+        string payload = RedactedEvidenceFormatter.Format(
+            new {
+                Token = secret,
+                ApiSecret = "prefix," + secret,
+                Password = "before:" + secret + ";after",
+                Safe = "punctuation-safe-value",
+            },
+            options);
+
+        payload.ShouldNotContain(secret);
+        payload.ShouldNotContain("alpha");
+        payload.ShouldNotContain("quoted");
+        payload.ShouldNotContain("example.test");
+        payload.ShouldContain("punctuation-safe-value");
+    }
+
+    [Fact]
+    public void RedactedEvidenceFormatter_Format_TruncatesOversizedPayloadAfterRedaction() {
+        FrontComposerTestOptions options = new() {
+            TestTenantId = "tenant-oversized",
+            TestUserId = "user-oversized",
+            MaxDiagnosticPayloadCharacters = 96,
+        };
+
+        string payload = RedactedEvidenceFormatter.Format(
+            new {
+                TenantId = "tenant-oversized",
+                UserId = "user-oversized",
+                Token = "oversized-token",
+                Secret = "oversized-secret",
+                Password = "oversized-password",
+                Description = new string('x', 400),
+            },
+            options);
+
+        payload.ShouldContain("...<truncated>");
+        payload.ShouldNotContain("tenant-oversized");
+        payload.ShouldNotContain("user-oversized");
+        payload.ShouldNotContain("oversized-token");
+        payload.ShouldNotContain("oversized-secret");
+        payload.ShouldNotContain("oversized-password");
+    }
+
+    [Fact]
+    public void RedactedEvidenceFormatter_Format_PreservesBenignAssertionValues() {
+        FrontComposerTestOptions options = new() { MaxDiagnosticPayloadCharacters = 512 };
+
+        string payload = RedactedEvidenceFormatter.Format(
+            new {
+                ProjectionType = "Counter",
+                Count = 12,
+                Status = "Accepted",
+                IsFresh = true,
+            },
+            options);
+
+        payload.ShouldContain("Counter");
+        payload.ShouldContain("12");
+        payload.ShouldContain("Accepted");
+        payload.ShouldContain("true");
+    }
+
+    [Fact]
+    public async Task TestCommandService_Dispatch_RedactsCommandPayloadEvidenceThroughFormatter() {
+        using TestHost host = new("tenant-command", "user-command");
+        ICommandService commandService = host.Services.GetRequiredService<ICommandService>();
+        RedactionMatrixCommand command = new() {
+            Tenant = "tenant-command",
+            User = "user-command",
+            Token = "command-token",
+            SecretDetails = new RedactionSecretDetails("nested-secret-a", "nested-secret-b"),
+            PasswordHistory = ["password-one", "password-two"],
+            Name = "safe-command-name",
+        };
+
+        _ = await commandService.DispatchAsync(command, Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        CommandDispatchEvidence evidence = host.ExposedCommandService.Evidence.Single();
+        evidence.RedactedPayload.ShouldNotContain("tenant-command");
+        evidence.RedactedPayload.ShouldNotContain("user-command");
+        evidence.RedactedPayload.ShouldNotContain("command-token");
+        evidence.RedactedPayload.ShouldNotContain("nested-secret-a");
+        evidence.RedactedPayload.ShouldNotContain("nested-secret-b");
+        evidence.RedactedPayload.ShouldNotContain("password-one");
+        evidence.RedactedPayload.ShouldNotContain("password-two");
+        evidence.RedactedPayload.ShouldContain("safe-command-name");
+    }
+
+    [Fact]
     public void FrontComposerTestHost_Dispose_RestoresAppliedCulture() {
         CultureInfo originalCulture = CultureInfo.CurrentCulture;
         CultureInfo originalUICulture = CultureInfo.CurrentUICulture;
@@ -483,4 +659,20 @@ public sealed class FrontComposerTestHostTests {
 
         public int Amount { get; init; }
     }
+
+    private sealed class RedactionMatrixCommand {
+        public string? Tenant { get; init; }
+
+        public string? User { get; init; }
+
+        public string? Token { get; init; }
+
+        public RedactionSecretDetails? SecretDetails { get; init; }
+
+        public IReadOnlyList<string> PasswordHistory { get; init; } = [];
+
+        public string? Name { get; init; }
+    }
+
+    private sealed record RedactionSecretDetails(string Primary, string Secondary);
 }

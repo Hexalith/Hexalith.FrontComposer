@@ -341,7 +341,8 @@ development_status:
   # 10-4 moved ready-for-dev -> in-progress on 2026-07-05 (dev-story; baseline 4ca6bbd214e62b2232f8cef272f78c9104b072e3 captured; starting HFCM9002 production-emission decision audit and synthetic-only boundary guard.)
   # 10-4 moved in-progress -> review on 2026-07-05 (dev-story; HFCM9002 production emission recorded as not approved due to absent explicit Product+Architecture approval. Added decision record, preserved synthetic/manual-only sidecar reader, added CLI docs/decision governance guard, verified CLI direct xUnit 43/43 and SourceTools HFCM governance 1/1. Standard solution lane is locally MSBuild socket-blocked before test execution.)
   10-4-hfcm9002-production-emission-decision: done
-  10-5-testing-evidence-redaction-default-lane-guard: backlog
+  # 10-5 moved backlog -> ready-for-dev on 2026-07-05 (create-story; Testing evidence redaction default-lane guard. Scope is privacy/test hardening for Hexalith.FrontComposer.Testing evidence: add default-lane redaction matrix coverage for tenant/user values, token/secret/password keys, oversized payloads, punctuation-heavy secret strings, and command evidence payloads; preserve useful non-secret assertion evidence, PublicAPI baseline discipline, current Testing host contract, no separate sanitizer framework, and no Shell/CLI/MCP/SourceTools/submodule scope.)
+  10-5-testing-evidence-redaction-default-lane-guard: done
   epic-10-retrospective: optional
 
   # Epic 11: Architecture Review Remediation (post-MVP quality hardening)

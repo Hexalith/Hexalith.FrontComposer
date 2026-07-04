@@ -1,5 +1,36 @@
 # Test Automation Summary
 
+## Story 10.5 - Testing evidence redaction default-lane guard
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Testing.Tests/FrontComposerTestHostTests.cs` - confirmed the default Testing lane includes redaction coverage for configured tenant/user IDs, token/secret/password keys, punctuation-heavy secret strings, oversized payloads, benign non-secret evidence, and `TestCommandService` command payload evidence.
+- [x] `tests/Hexalith.FrontComposer.Testing.Tests/FrontComposerTestHostTests.cs` - (Senior Developer Review, AI) added `RedactedEvidenceFormatter_Format_RedactsConfiguredTenantAndUserInPropertyNames` pinning that configured tenant/user IDs are redacted when they appear as JSON property names (for example dictionary keys), closing a regression from the structural rewrite.
+
+### API Tests
+- [x] Not applicable - Story 10.5 hardens the Testing package evidence formatter/fakes and does not introduce HTTP API endpoints.
+
+### E2E Tests
+- [x] `tests/Hexalith.FrontComposer.Testing.Tests/FrontComposerTestHostTests.cs` - repository E2E-style coverage for this package runs through the existing xUnit v3/bUnit Testing host lane rather than Playwright, because the story surface is a .NET test helper package with no browser UI workflow.
+
+### Coverage
+- API endpoints: 0/0 applicable.
+- UI browser workflows: 0/0 applicable.
+- Testing evidence redaction cases: 7/7 focused redaction/command-evidence tests present in the default Testing lane (added the property-name/dictionary-key redaction pin during Senior Developer Review). The full Testing package lane is 30/30 passing and includes `PackageBoundaryTests.PublicApi_ExportedTypes_MatchIntentionalBaseline`.
+
+### Validation
+- [x] `DiffEngine_Disabled=true dotnet build tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Release --no-restore -m:1 /nr:false` passed with 0 warnings and 0 errors.
+- [x] `DiffEngine_Disabled=true tests/Hexalith.FrontComposer.Testing.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Testing.Tests -noLogo` passed 30/30 (Senior Developer Review re-run after the property-name redaction fix).
+- [x] `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/10-5-testing-evidence-redaction-default-lane-guard.md` passed (exit 0) after the review fix.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no endpoint surface.
+- [x] E2E tests generated if UI exists: N/A for browser UI; the existing Testing-host xUnit lane is the applicable end-to-end automation surface for this package.
+- [x] Tests use standard xUnit v3, Shouldly, and bUnit-host APIs already used by the project.
+- [x] Tests cover happy path: benign evidence remains useful and command evidence remains available.
+- [x] Tests cover critical error/privacy cases: tenant/user values, token/secret/password keys, punctuation-heavy values, non-string sensitive values, nested sensitive values, arrays, nulls, and oversized truncation after redaction.
+- [x] Tests have clear descriptions, no hardcoded waits, and no order dependency.
+- [x] Test summary updated with coverage metrics and exact validation results.
+
 ## Story 10.4 - HFCM9002 production-emission decision
 
 ### Generated Tests

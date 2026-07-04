@@ -1,4 +1,6 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 
@@ -46,6 +48,9 @@ public sealed record FaultInjectionEvidence(
 /// Redacts bounded evidence for assertion messages, logs, and serialized artifacts.
 /// </summary>
 public static class RedactedEvidenceFormatter {
+    private static readonly JsonSerializerOptions RedactedJsonOptions = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+    private static readonly string[] SensitiveKeyFragments = ["token", "secret", "password"];
+
     /// <summary>
     /// Serializes an object to a bounded, redacted diagnostic string.
     /// </summary>
@@ -55,14 +60,14 @@ public static class RedactedEvidenceFormatter {
     public static string Format(object? value, FrontComposerTestOptions options) {
         ArgumentNullException.ThrowIfNull(options);
 
-        string payload = value is null ? "<null>" : JsonSerializer.Serialize(value);
-        string redacted = payload
-            .Replace(options.TestTenantId, "<tenant>", StringComparison.Ordinal)
-            .Replace(options.TestUserId, "<user>", StringComparison.Ordinal);
+        string redacted = value is null
+            ? "<null>"
+            : RedactNode(JsonSerializer.SerializeToNode(value))?.ToJsonString(RedactedJsonOptions) ?? "null";
 
-        redacted = RedactKey(redacted, "token");
-        redacted = RedactKey(redacted, "secret");
-        redacted = RedactKey(redacted, "password");
+        // Replace configured tenant/user identifiers across the whole payload, including JSON
+        // property names (for example dictionary keys), so the identifiers cannot leak through
+        // object keys that structural node traversal never inspects as values.
+        redacted = RedactConfiguredValues(redacted, options);
 
         if (redacted.Length <= options.MaxDiagnosticPayloadCharacters) {
             return redacted;
@@ -71,55 +76,47 @@ public static class RedactedEvidenceFormatter {
         return redacted[..options.MaxDiagnosticPayloadCharacters] + "...<truncated>";
     }
 
-    private static string RedactKey(string value, string key) {
-        const string replacement = "\"<redacted>\"";
-        int index = value.IndexOf(key, StringComparison.OrdinalIgnoreCase);
-        while (index >= 0) {
-            int colon = value.IndexOf(':', index);
-            if (colon < 0) {
-                return value;
-            }
-
-            int valueStart = colon + 1;
-            int end = ValueEnd(value, valueStart);
-            if (end < 0) {
-                return value[..valueStart] + replacement;
-            }
-
-            value = value[..valueStart] + replacement + value[end..];
-            index = value.IndexOf(key, valueStart + replacement.Length, StringComparison.OrdinalIgnoreCase);
+    private static JsonNode? RedactNode(JsonNode? node, string? propertyName = null) {
+        if (node is null) {
+            return null;
         }
 
-        return value;
+        if (IsSensitiveKey(propertyName)) {
+            return JsonValue.Create("<redacted>");
+        }
+
+        if (node is JsonObject obj) {
+            foreach (string key in obj.Select(property => property.Key).ToArray()) {
+                JsonNode? current = obj[key];
+                JsonNode? redacted = RedactNode(current, key);
+                if (!ReferenceEquals(current, redacted)) {
+                    obj[key] = redacted;
+                }
+            }
+
+            return obj;
+        }
+
+        if (node is JsonArray array) {
+            for (int i = 0; i < array.Count; i++) {
+                JsonNode? current = array[i];
+                JsonNode? redacted = RedactNode(current);
+                if (!ReferenceEquals(current, redacted)) {
+                    array[i] = redacted;
+                }
+            }
+
+            return array;
+        }
+
+        return node;
     }
 
-    // Finds the exclusive end of the JSON value that starts at valueStart so the whole
-    // value is redacted. String values are bounded by their closing quote (commas inside
-    // the value must not terminate redaction); other scalars stop at the next ',' or '}'.
-    private static int ValueEnd(string value, int valueStart) {
-        if (valueStart < value.Length && value[valueStart] == '"') {
-            int cursor = valueStart + 1;
-            while (cursor < value.Length) {
-                if (value[cursor] == '\\') {
-                    cursor += 2;
-                    continue;
-                }
+    private static bool IsSensitiveKey(string? key)
+        => key is not null && SensitiveKeyFragments.Any(fragment => key.Contains(fragment, StringComparison.OrdinalIgnoreCase));
 
-                if (value[cursor] == '"') {
-                    return cursor + 1;
-                }
-
-                cursor++;
-            }
-
-            return value.Length;
-        }
-
-        int end = value.IndexOf(',', valueStart);
-        if (end < 0) {
-            end = value.IndexOf('}', valueStart);
-        }
-
-        return end;
-    }
+    private static string RedactConfiguredValues(string value, FrontComposerTestOptions options)
+        => value
+            .Replace(options.TestTenantId, "<tenant>", StringComparison.Ordinal)
+            .Replace(options.TestUserId, "<user>", StringComparison.Ordinal);
 }
