@@ -1,5 +1,36 @@
 # Test Automation Summary
 
+## Story 10.4 - HFCM9002 production-emission decision
+
+### Generated Tests
+- [x] `tests/e2e/specs/hfcm9002-production-emission-decision.spec.ts` - added focused Playwright repository-governance and CLI process-boundary coverage for the HFCM9002 production-emission decision.
+- [x] `tests/e2e/package.json` - added `test:story-10-4` for the focused Chromium lane with `PLAYWRIGHT_SKIP_WEBSERVER=1`.
+
+### API Tests
+- [x] Not applicable - Story 10.4 changes CLI/docs governance and does not introduce HTTP API endpoints.
+
+### E2E Tests
+- [x] `tests/e2e/specs/hfcm9002-production-emission-decision.spec.ts` - verifies the not-approved decision record, adopter-facing docs boundary, synthetic sidecar JSON/text behavior, fail-on-findings behavior, and hostile sidecar path redaction.
+
+### Coverage
+- API endpoints: 0/0 applicable.
+- UI runtime features: 0/0 applicable because Story 10.4 is CLI/docs governance.
+- HFCM9002 governance/process cases: 4/4 authored and 4/4 passing. The suite covers the decision artifact, normal-build/adopter-build wording guards, synthetic manual-only HFCM9002 text/JSON output, `--fail-on-findings`, and `__sidecar__/...` hostile-path redaction.
+
+### Validation
+- [x] `npm --prefix tests/e2e run typecheck` passed.
+- [x] `npm --prefix tests/e2e run test:story-10-4` passed 4/4.
+- [x] The Playwright runner uses `PLAYWRIGHT_SKIP_WEBSERVER=1` because Story 10.4 does not require the Counter sample host.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no endpoint surface.
+- [x] E2E tests generated for the existing CLI/docs governance surface.
+- [x] Tests use standard Playwright and Node subprocess/filesystem APIs already used by repository CLI/docs specs.
+- [x] Tests cover happy paths: recorded not-approved decision, explicit synthetic-only docs wording, and valid synthetic sidecar output.
+- [x] Tests cover critical error cases: accidental adopter/normal-build production sidecar promises, `--fail-on-findings` manual-only promotion, and hostile sidecar path redaction.
+- [x] Tests have clear descriptions, no hardcoded waits, and no order dependency.
+- [x] Test summary updated with coverage metrics and exact validation results.
+
 ## Story 10.3 - CLI text-output parity guard
 
 ### Generated Tests

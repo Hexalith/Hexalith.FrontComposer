@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
@@ -394,6 +395,48 @@ public sealed class MigrationCommandTests {
         using var document = JsonDocument.Parse(output.ToString());
         document.RootElement.GetProperty("summary").GetProperty("manualOnly").GetInt32().ShouldBe(0);
         document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
+    }
+
+    [Fact]
+    public void Hfcm9002Docs_KeepSyntheticOnlyBoundaryUnlessDecisionApprovesProductionEmission() {
+        DirectoryInfo root = ProjectRoot();
+        string decision = File.ReadAllText(
+            Path.Combine(root.FullName, "_bmad-output", "contracts", "hfcm9002-production-emission-decision-2026-07-05.md"),
+            Encoding.UTF8);
+
+        decision.ShouldContain("Decision: production emission not approved");
+        decision.ShouldContain("Owners: Architect + Product Owner");
+        decision.ShouldContain("Date: 2026-07-05");
+        decision.ShouldContain("Reviewed source documents");
+
+        bool productionEmissionApproved = Regex.IsMatch(
+            decision,
+            @"(?im)^Decision:\s+production emission approved\s*$");
+        productionEmissionApproved.ShouldBeFalse("Story 10.4 treats absent explicit Product + Architecture approval as not approved.");
+
+        string cliReadme = ReadProjectFile(root, "src/Hexalith.FrontComposer.Cli/README.md");
+        string migrateContract = ReadProjectFile(root, "_bmad-output/contracts/fc-cli-migrate-contract-2026-06-05.md");
+        cliReadme.ShouldContain("adopter builds do not yet produce production");
+        cliReadme.ShouldContain("not a promise that normal builds");
+        migrateContract.ShouldContain("There is no");
+        migrateContract.ShouldContain("production SourceTools `HFCM9002` sidecar emitter");
+        migrateContract.ShouldContain("No new production SourceTools `HFCM9002` sidecar emitter");
+
+        foreach (string relativePath in new[] {
+            "src/Hexalith.FrontComposer.Cli/README.md",
+            "_bmad-output/contracts/fc-cli-migrate-contract-2026-06-05.md",
+            "_bmad-output/project-docs/api-contracts.md",
+            "docs/migrations/9.1-to-9.2.md",
+            "docs/diagnostics/migration-findings.json",
+        }) {
+            string content = ReadProjectFile(root, relativePath);
+            content.ShouldNotMatch(
+                @"(?is)\badopter builds\s+(?:now\s+)?(?:emit|generate|produce)\b.{0,160}\bHFCM9002\b",
+                $"Do not let {relativePath} promise normal adopter-build HFCM9002 sidecars while production emission is not approved.");
+            content.ShouldNotMatch(
+                @"(?is)\bnormal builds\s+(?:now\s+)?(?:emit|generate|produce)\b.{0,160}\bHFCM9002\b",
+                $"Do not let {relativePath} promise normal-build HFCM9002 sidecars while production emission is not approved.");
+        }
     }
 
     [Fact]
@@ -987,5 +1030,22 @@ public sealed class MigrationCommandTests {
 
         int exitCode = await CliApplication.RunAsync(args, output, error, CancellationToken.None).ConfigureAwait(false);
         return (exitCode, output.ToString(), error.ToString());
+    }
+
+    private static string ReadProjectFile(DirectoryInfo root, string relativePath)
+        => File.ReadAllText(Path.Combine(root.FullName, relativePath.Replace('/', Path.DirectorySeparatorChar)), Encoding.UTF8);
+
+    private static DirectoryInfo ProjectRoot() {
+        DirectoryInfo? current = new(AppContext.BaseDirectory);
+        int depth = 0;
+        while (current is not null && !File.Exists(Path.Combine(current.FullName, "Hexalith.FrontComposer.slnx"))) {
+            current = current.Parent;
+            if (++depth > 16) {
+                break;
+            }
+        }
+
+        _ = current.ShouldNotBeNull("Could not locate repository root.");
+        return current;
     }
 }
