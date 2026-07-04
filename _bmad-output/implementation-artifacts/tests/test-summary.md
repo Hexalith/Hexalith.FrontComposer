@@ -1,5 +1,36 @@
 # Test Automation Summary
 
+## Story 10.2 - Adopter-facing historical-label cleanup
+
+### Generated Tests
+- [x] `tests/e2e/specs/adopter-historical-label-cleanup.spec.ts` - added focused Playwright documentation-governance coverage for the Story 10.2 adopter-facing cleanup.
+- [x] `tests/e2e/package.json` - added `test:story-10-2` for the focused Chromium lane with `PLAYWRIGHT_SKIP_WEBSERVER=1`.
+
+### API Tests
+- [x] Not applicable - Story 10.2 changes documentation/governance surfaces and does not introduce HTTP API endpoints.
+
+### E2E Tests
+- [x] `tests/e2e/specs/adopter-historical-label-cleanup.spec.ts` - repository E2E coverage reads the published adopter docs and retained registry/provenance surfaces directly, matching the existing contract-docs Playwright pattern.
+
+### Coverage
+- API endpoints: 0/0 applicable.
+- UI runtime features: 0/0 applicable because Story 10.2 is docs/governance-only.
+- Documentation governance cases: 3/3 authored and 3/3 passing. The suite covers current-contract wording across four adopter pages, preservation of 9.1/9.2 version and migration API facts, and AC2 retention of Story 9 provenance in metadata/internal registry surfaces only.
+
+### Validation
+- [x] `npm run test:story-10-2` passed 3/3.
+- [x] `npm run typecheck` passed.
+- [ ] Existing required docs and broad solution blockers remain as recorded in the Story 10.2 Test Evidence: full `pwsh ./eng/validate-docs.ps1 -SkipDocFx` is blocked by pre-existing snippet/MSBuild failures, and the solution `dotnet test` lane is socket/NuGet-audit blocked locally.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no endpoint surface.
+- [x] E2E tests generated for the existing documentation governance surface.
+- [x] Tests use standard Playwright and Node filesystem APIs already used by repository contract-docs specs.
+- [x] Tests cover the happy path: adopter-facing docs name current contracts/features.
+- [x] Tests cover critical error cases: stale Story 9 ownership labels in visible body copy, accidental replacement of product version/API facts, and accidental removal of allowed provenance metadata.
+- [x] Tests have clear descriptions, no hardcoded waits, and no order dependency.
+- [x] Test summary updated with coverage metrics and exact validation results.
+
 ## Story 10.1 - Mechanical story evidence reconciliation
 
 ### Generated Tests

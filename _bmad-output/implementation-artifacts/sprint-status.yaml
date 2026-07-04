@@ -327,7 +327,11 @@ development_status:
   # 10-1 moved ready-for-dev -> in-progress on 2026-07-04 (dev-story; baseline 88f0342ccc868b7d1ee82e925922640895ea0dd0 captured; starting mechanical story evidence reconciliation implementation.)
   # 10-1 moved in-progress -> done on 2026-07-04 (story-automator review; auto-fix implemented the review-promotion gate in success_verifiers.py, wired the reconciliation gate into instructions.xml/checklist.md, completed Tasks 5 & 6; validator + verifier suite 7/7 green and validate-story-artifacts.py --story passes.)
   10-1-mechanical-story-evidence-reconciliation: done
-  10-2-adopter-facing-historical-label-cleanup: backlog
+  # 10-2 moved backlog -> ready-for-dev on 2026-07-04 (create-story; adopter-facing historical-label cleanup. Scope is docs/metadata reconciliation for CLI, migration, diagnostics, Testing README, and published how-to/reference pages: replace visible stale Story 9 ownership labels with current contract/feature wording, preserve product version labels and non-adopter-facing provenance, keep HFCM9002 synthetic/manual-only until Story 10.4, update docs validation fingerprints only when owned inputs change, and do not touch runtime/generated source/submodules.)
+  # 10-2 moved ready-for-dev -> in-progress on 2026-07-04 (dev-story; baseline 86b6a92ddea32c67de589da710133f9e1f77f76e captured; starting adopter-facing historical-label cleanup.)
+  # 10-2 moved in-progress -> review on 2026-07-04 (dev-story; stale adopter-facing Story 9 labels replaced in migration how-to, 9.1-to-9.2 migration guide, CLI reference, and diagnostics reference index; migration producer fingerprint updated. Targeted stale-copy scan passed; docs validation without snippet build passed; full snippet docs lane blocked by existing MSBuild restore/project-reference graph failure before snippet compilation; solution lane socket/NuGet-audit blocked locally.)
+  # 10-2 moved review -> done on 2026-07-04 (story-automator-review; adversarial review auto-fixed one AC1 miss - stale Story 9-5 ownership label in adopter-facing docs/concepts/source-generation-and-mcp-split.md reworded to feature language, Playwright spec extended to guard it, retained-provenance audit record completed. validate-story-artifacts exits 0; docs validation (SkipDocFx/SkipSnippetBuild) passed; Story 10.2 Playwright spec 3/3. 0 CRITICAL issues.)
+  10-2-adopter-facing-historical-label-cleanup: done
   10-3-cli-text-output-parity-guard: backlog
   10-4-hfcm9002-production-emission-decision: backlog
   10-5-testing-evidence-redaction-default-lane-guard: backlog

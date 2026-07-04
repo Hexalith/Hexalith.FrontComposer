@@ -31,7 +31,7 @@ New code:
 services.AddFrontComposerDevMode();
 ```
 
-Why it changed: Story 9-2 moved CLI migration reports to dry-run/apply semantics and Story 9-4 reserved the related HFC governance rows.
+Why it changed: the CLI migration contract moved migration reports to dry-run/apply semantics, and the HFC diagnostic governance contract reserves the related rows.
 
 Affected packages: `Hexalith.FrontComposer.Cli`, `Hexalith.FrontComposer.SourceTools`, `Hexalith.FrontComposer.Shell`.
 

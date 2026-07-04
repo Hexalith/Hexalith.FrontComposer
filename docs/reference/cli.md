@@ -45,4 +45,4 @@ Selection and paths:
 Migration source reads support UTF-8, UTF-8 BOM, UTF-16 LE/BE, and UTF-32 LE/BE. Unknown encodings and files larger than 16 MiB fail closed with sanitized guidance. Ctrl+C requests cancellation; a second Ctrl+C restores default process termination behavior. SIGTERM-specific handling remains outside the v1 local developer workflow contract.
 <!-- hfc:reference:end -->
 
-See [migration guidance](../how-to/migration-guides.md), [generated-output paths](generated-output.md), and Story 9-2 migration stubs under [`docs/migrations`](../migrations/index.md).
+See [migration guidance](../how-to/migration-guides.md), [generated-output paths](generated-output.md), and versioned migration stubs under [`docs/migrations`](../migrations/index.md).

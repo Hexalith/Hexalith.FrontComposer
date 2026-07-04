@@ -14,4 +14,4 @@ slug: concepts/source-generation-and-mcp-split/
 
 FrontComposer uses domain attributes as the source of truth, then generates UI, state, diagnostics, CLI evidence, and MCP-safe reference material from that model.
 
-Human documentation explains sequence and tradeoffs. Agent documentation needs stable reference sections, sanitized examples, and reproducible fingerprints. Story 9-5 keeps both needs in one Markdown source by validating narrative/reference markers and deriving MCP slices during docs validation.
+Human documentation explains sequence and tradeoffs. Agent documentation needs stable reference sections, sanitized examples, and reproducible fingerprints. The single-source docs model keeps both needs in one Markdown source by validating narrative/reference markers and deriving MCP slices during docs validation.
