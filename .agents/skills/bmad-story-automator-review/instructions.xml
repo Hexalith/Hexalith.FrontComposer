@@ -176,11 +176,18 @@
   <step n="5" goal="Update story status and sync sprint tracking">
     <!-- Determine new status based on CRITICAL issues only (v3.0) -->
     <!-- HIGH/MEDIUM/LOW are tracked as action items but don't block automation -->
-    <check if="0 CRITICAL issues remain after fixes">
+    <!-- Mechanical reconciliation gate (Story 10.1): a failing validator blocks done even with 0 CRITICAL issues -->
+    <action>Before setting status to `done`, run the baseline-aware validator from the project root:
+      `python3 eng/validate-story-artifacts.py --story {{story_path}}`. Treat a non-zero exit as a failed mechanical
+      reconciliation gate and record its exact output. story-automator's `review_completion` verifier enforces the
+      same gate automatically and returns `artifact_validation_failed` (distinct from `workflow_not_complete`), so a
+      `done` sprint/story status cannot bypass a failed validator.</action>
+    <action>Set {{gate_passed}} = true when the validator exits 0, false otherwise.</action>
+    <check if="0 CRITICAL issues remain after fixes AND {{gate_passed}} == true">
       <action>Set {{new_status}} = "done"</action>
       <action>Update story Status field to "done"</action>
     </check>
-    <check if="1+ CRITICAL issues remain after fixes">
+    <check if="1+ CRITICAL issues remain after fixes OR {{gate_passed}} == false">
       <action>Set {{new_status}} = "in-progress"</action>
       <action>Update story Status field to "in-progress"</action>
     </check>

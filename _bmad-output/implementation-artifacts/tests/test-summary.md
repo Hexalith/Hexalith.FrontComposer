@@ -1,5 +1,36 @@
 # Test Automation Summary
 
+## Story 10.1 - Mechanical story evidence reconciliation
+
+### Generated Tests
+- [x] `eng/tests/test_validate_story_artifacts.py` - added focused review-verifier coverage proving an incomplete review reports `workflow_not_complete` separately from the red `artifact_validation_failed` gate case.
+
+### API Tests
+- [x] Not applicable - Story 10.1 changes repository governance tooling and story-automator verification behavior, not HTTP API endpoints.
+
+### E2E Tests
+- [x] `eng/tests/test_validate_story_artifacts.py` - standard-library integration tests exercise temporary git repositories and the story-automator review verifier path end to end for the tooling workflow.
+
+### Coverage
+- API endpoints: 0/0 applicable.
+- UI features: 0/0 applicable.
+- Governance/tooling regression cases: 8/8 authored and 8/8 passing. The review-promotion gate was implemented in `.agents/skills/bmad-story-automator/src/story_automator/core/success_verifiers.py` during the 2026-07-04 Senior Developer Review (the `.agents` files were writable), so `review_completion` now runs `eng/validate-story-artifacts.py` and returns `artifact_validation_failed` before accepting a `done` review. The review also added `test_dotfile_file_list_entry_reconciles_without_stripping_leading_dot` after fixing a leading-dot parsing bug and a brittle bare-basename task-evidence check in the validator.
+
+### Validation
+- [x] `python3 -m py_compile eng/validate-story-artifacts.py eng/tests/test_validate_story_artifacts.py` passed.
+- [x] `python3 -m unittest eng.tests.test_validate_story_artifacts.StoryArtifactValidatorTests` passed 5/5.
+- [x] `python3 -m unittest eng.tests.test_validate_story_artifacts.ReviewVerifierTests.test_incomplete_review_reports_workflow_not_complete` passed 1/1.
+- [x] `python3 -m unittest eng.tests.test_validate_story_artifacts` passed 8/8 after the review-promotion gate was implemented. `ReviewVerifierTests.test_artifact_validation_failure_prevents_done_review_completion` now passes because `review_completion` invokes `eng/validate-story-artifacts.py` and returns `artifact_validation_failed` before accepting a `done` review.
+- [x] Implementation fix landed in `.agents/skills/bmad-story-automator/src/story_automator/core/success_verifiers.py` (`_artifact_validation_gate`) during the 2026-07-04 Senior Developer Review; the earlier dev-story sandbox write blocker did not apply in the review session.
+
+### Checklist
+- [x] API tests generated if applicable: N/A, no endpoint surface.
+- [x] E2E/integration tests generated for the existing governance workflow surface.
+- [x] Tests use standard Python `unittest` and subprocess APIs already used in this repo tooling lane.
+- [x] Tests cover happy path taxonomy for incomplete reviews and critical error cases for File List drift, stale checked tasks, documented unrelated files, and submodule-pointer paths.
+- [x] Tests have clear descriptions, no hardcoded waits, and no order dependency.
+- [x] Test summary updated with coverage metrics and the exact remaining implementation blocker.
+
 ## Story 9.2 - Wire `FcNewItemIndicator` producer and generated-grid consumer
 
 ### Generated Tests

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 from typing import Any, Callable
 
@@ -118,6 +120,17 @@ def review_completion(
     story_status = find_frontmatter_value_case(story_file, "Status") if story_file else ""
     for source in review_contract["sourceOrder"]:
         if source == "sprint-status.yaml" and sprint.status.lower() in done_values:
+            gate = _artifact_validation_gate(project_root, story_file)
+            if gate is not None:
+                gate.update(
+                    {
+                        "story": selected_story,
+                        "sprint_status": sprint.status,
+                        "story_file_status": story_status or "unknown",
+                        "source": "sprint-status.yaml",
+                    }
+                )
+                return gate
             return {
                 "verified": True,
                 "story": selected_story,
@@ -126,6 +139,17 @@ def review_completion(
                 "source": "sprint-status.yaml",
             }
         if source == "story-file" and story_status.lower() in done_values:
+            gate = _artifact_validation_gate(project_root, story_file)
+            if gate is not None:
+                gate.update(
+                    {
+                        "story": selected_story,
+                        "sprint_status": sprint.status,
+                        "story_file_status": story_status,
+                        "source": "story-file",
+                    }
+                )
+                return gate
             payload: dict[str, object] = {
                 "verified": True,
                 "story": selected_story,
@@ -142,6 +166,40 @@ def review_completion(
         "sprint_status": sprint.status,
         "story_file_status": story_status or "unknown",
         "reason": "workflow_not_complete",
+    }
+
+
+def _artifact_validation_gate(project_root: str, story_file: Path | None) -> dict[str, object] | None:
+    """Run the mechanical story-artifact validator before a done review is accepted.
+
+    Returns a failure payload when the validator reports drift so a story that already
+    reads ``done`` cannot bypass the reconciliation gate. Returns ``None`` when the
+    validator passes or cannot be located (nothing to gate on).
+    """
+    if story_file is None:
+        return None
+    root = Path(project_root)
+    validator = root / "eng" / "validate-story-artifacts.py"
+    if not validator.is_file():
+        return None
+    try:
+        story_arg = story_file.resolve().relative_to(root.resolve()).as_posix()
+    except ValueError:
+        story_arg = str(story_file)
+    result = subprocess.run(
+        [sys.executable, str(validator), "--project-root", str(root), "--story", story_arg],
+        cwd=str(root),
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode == 0:
+        return None
+    output = (result.stdout + result.stderr).strip()
+    return {
+        "verified": False,
+        "reason": "artifact_validation_failed",
+        "artifactValidationOutput": output,
     }
 
 

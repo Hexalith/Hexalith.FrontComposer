@@ -321,8 +321,12 @@ development_status:
   # Epic 10: Tooling Governance Follow-Through (post-MVP quality hardening)
   # Added 2026-07-01 via Correct Course (sprint-change-proposal-2026-07-01-epic-7-retro-follow-through.md).
   # Carries forward Epic 7 retro actions without reopening completed Stories 7.1-7.5.
-  epic-10: backlog
-  10-1-mechanical-story-evidence-reconciliation: backlog
+  # epic-10 moved backlog -> in-progress on 2026-07-04 (create-story; first story of Tooling Governance Follow-Through)
+  epic-10: in-progress
+  # 10-1 moved backlog -> ready-for-dev on 2026-07-04 (create-story; mechanical story evidence reconciliation. Scope is tooling/process hardening: extend eng/validate-story-artifacts.py and review verifier paths so baseline-aware changed-file, File List, unrelated dirty-file, submodule-pointer, and checked-task evidence reconciliation mechanically gates review promotion. Preserve sentinel scan behavior, avoid parallel validators, keep unrelated pre-existing changes classified but unowned, and do not touch product runtime/generated output or submodules.)
+  # 10-1 moved ready-for-dev -> in-progress on 2026-07-04 (dev-story; baseline 88f0342ccc868b7d1ee82e925922640895ea0dd0 captured; starting mechanical story evidence reconciliation implementation.)
+  # 10-1 moved in-progress -> done on 2026-07-04 (story-automator review; auto-fix implemented the review-promotion gate in success_verifiers.py, wired the reconciliation gate into instructions.xml/checklist.md, completed Tasks 5 & 6; validator + verifier suite 7/7 green and validate-story-artifacts.py --story passes.)
+  10-1-mechanical-story-evidence-reconciliation: done
   10-2-adopter-facing-historical-label-cleanup: backlog
   10-3-cli-text-output-parity-guard: backlog
   10-4-hfcm9002-production-emission-decision: backlog
