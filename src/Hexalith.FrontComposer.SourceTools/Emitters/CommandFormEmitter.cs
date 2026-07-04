@@ -937,8 +937,14 @@ public static class CommandFormEmitter {
         string isRequired = field.IsRequired ? "true" : "false";
         string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
 
+        // Nullable<T> exposes no ToString(IFormatProvider) overload, so lift through `?.` to bind
+        // the culture-aware overload on the underlying numeric type (null renders as empty input).
+        string modelValueExpression = field.IsNullable
+            ? "_model." + propertyName + "?.ToString(CultureInfo.CurrentCulture)"
+            : "_model." + propertyName + ".ToString(CultureInfo.CurrentCulture)";
+
         _ = sb.AppendLine("            __b.OpenComponent<FluentTextInput>(cseq++);");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _" + propertyName + "String ?? _model." + propertyName + ".ToString(CultureInfo.CurrentCulture));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _" + propertyName + "String ?? " + modelValueExpression + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<string?>(this, v => On" + propertyName + "Changed(v)));");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
@@ -1160,9 +1166,11 @@ public static class CommandFormEmitter {
     /// Escapes a string for embedding in a C# double-quoted literal. Delegates to Roslyn's
     /// <see cref="Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(string, bool)"/>
     /// so Unicode control characters, lone surrogates, and all the standard escape sequences
-    /// are handled correctly. Patch 2026-04-16 P-05.
+    /// are handled correctly. Patch 2026-04-16 P-05; routed through the single
+    /// <see cref="GeneratedLiteral.Escape"/> helper 2026-07-04 because the previous
+    /// <c>FormatLiteral(quote: false)</c> call did not escape embedded double quotes.
     /// </summary>
-    private static string EscapeString(string value) => Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(value, quote: false);
+    private static string EscapeString(string value) => GeneratedLiteral.Escape(value);
 
     private static string BuildLifecycleCommandId(string typeName) {
         string source = typeName.EndsWith("Command", StringComparison.Ordinal)

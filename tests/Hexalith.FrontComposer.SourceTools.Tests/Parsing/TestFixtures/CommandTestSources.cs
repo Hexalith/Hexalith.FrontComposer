@@ -32,6 +32,21 @@ public class PlaceOrderCommand
     public DateTime OrderedAt { get; set; }
 }";
 
+    internal const string NullableNumericCommand = @"
+using System;
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+[BoundedContext(""Orders"")]
+public class AdjustOrderCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+    public int? Quantity { get; set; }
+    public decimal? DiscountAmount { get; set; }
+}";
+
     internal const string RecordPositionalCommand = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
 

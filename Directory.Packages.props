@@ -13,7 +13,7 @@
   <Import Project="$(Hexalith3BuildPackageProps)" Condition="'$(HexalithVersionsLoaded)' != 'true'" />
   <ItemGroup Label="Roslyn">
     <!-- Roslyn analyzers require an SDK/compiler host at least as new as these packages.
-         global.json pins the repo to SDK 10.0.300.
+         global.json pins the repo SDK (10.0.301 at the time of writing — global.json is authoritative).
          Verify compiler-host compatibility after SDK feature-band bumps.
          PrivateAssets="all" is set in the project file, not here. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="5.3.0" />

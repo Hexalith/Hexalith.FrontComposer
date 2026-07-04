@@ -142,18 +142,9 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 return;
             }
 
-            try {
-                await _connection.LeaveGroupAsync(key.ProjectionType, key.TenantId, key.Scope, cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                throw;
-            }
-            catch (Exception) {
-                // Best-effort transport leave; the test suite already exercises a
-                // throw-on-leave fixture. Re-throw to preserve existing semantics for callers
-                // that observe transport failure.
-                throw;
-            }
+            // Transport leave failures propagate to callers (a throw-on-leave fixture pins this);
+            // on failure the group intentionally stays in _activeGroups so a retry can leave again.
+            await _connection.LeaveGroupAsync(key.ProjectionType, key.TenantId, key.Scope, cancellationToken).ConfigureAwait(false);
             _ = _activeGroups.TryRemove(key, out _);
         }
         finally {
