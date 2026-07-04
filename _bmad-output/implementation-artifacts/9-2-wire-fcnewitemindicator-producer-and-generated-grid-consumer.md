@@ -217,7 +217,7 @@ GPT-5 Codex
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - Story 9.2 context was created as blocked-by-contract because Story 9.1 confirmed the required payload is currently absent.
 - Sprint status was intentionally not advanced to `ready-for-dev`; doing so would contradict the FC-NIP contract's "review-by before Story 9.2 leaves backlog" gate.
-- Dev-story implementation halted at the Story 9.2 Blocking Gate. No producer, generated-grid consumer, SourceTools output, public API, or test code was changed because the required typed framework-controlled row-identity payload is still absent.
+- Dev-story implementation halted at the Story 9.2 Blocking Gate. During the dev-story phase, no producer, generated-grid consumer, SourceTools output, public API, or test code was changed because the required typed framework-controlled row-identity payload is still absent. (The later QA phase added negative guard tests only; see the QA bullets below and the Senior Developer Review.)
 - Story status and sprint status remain blocked/backlog until the upstream FC-NIP row-identity payload contract is supplied and pinned.
 - QA generated tests only; production producer and generated-grid consumer code remain unchanged because the blocking FC-NIP payload contract is still unresolved.
 - Added test coverage for aggregate-id-only input, generated metadata fabrication, and Story 9.2 no-smuggling source evidence.
@@ -234,3 +234,30 @@ GPT-5 Codex
 
 - 2026-07-04: Revalidated the FC-NIP implementation gate, confirmed the upstream row-identity payload is still absent, recorded focused test evidence and VSTest blocker, and halted implementation per the story's blocking condition.
 - 2026-07-04: QA-generated Story 9.2 negative tests and Playwright contract evidence, updated the test automation summary, and kept the story blocked because no framework-controlled row-identity payload exists.
+- 2026-07-04: Adversarial senior-developer review (auto-fix mode) confirmed the block is legitimate, verified the added guard tests are real, flagged undocumented submodule-pointer bumps and a scope-overstating commit message in `c23a1890`, clarified a contradictory completion note, and kept status `blocked-by-contract` / sprint `backlog`. See "Senior Developer Review (AI)".
+
+## Senior Developer Review (AI)
+
+Reviewer: Administrator (adversarial automated review) on 2026-07-04
+Outcome: **Changes Requested (documentation / commit hygiene)** — the story correctly remains `blocked-by-contract`.
+
+### Block legitimacy: CONFIRMED
+
+- `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md` is `Status: confirmed with upstream blocking gap`; its **Blocking Follow-Up** is unresolved ("Story 9.2 remains blocked by design until the row-identity producer payload is supplied by a framework-controlled seam").
+- Verified in source that the required framework-controlled payload does not exist: `EventStorePendingCommandStatusQuery` emits terminal observations with `MessageId` only (`src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStorePendingCommandStatusQuery.cs:64`), and `CommandFormEmitter` still registers only `CorrelationId`, `MessageId`, and `CommandTypeName` (`src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:595-608`).
+- ACs 1–4 are intentionally unimplemented; the single `[x]` subtask ("stop implementation, keep this story blocked, and do not add best-effort producer code") is honestly completed. No falsely-checked tasks and no false AC claims. The block is valid, not a cop-out.
+
+### Test evidence: VERIFIED REAL
+
+- The three added tests are genuine assertions (not placeholders) that pin the current no-metadata-smuggling behavior. Asserted source strings were cross-checked and match `CommandFormEmitter.cs` and `EventStorePendingCommandStatusQuery.cs`, and the `PendingCommandOutcomeObservation` properties the Shell test reads exist (`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:28-37`). The Dev Agent Record direct-xUnit pass counts are credible; VSTest/Playwright web-server socket blockers match the known environment baseline.
+
+### Findings
+
+- **[HIGH] Undocumented, approval-gated submodule pointer bumps in `c23a1890`.** `references/Hexalith.EventStore` (`b8bf0e0` → `aaac942`) and `references/Hexalith.Tenants` (`e7b3597` → `b7ae7bd`) were committed but are absent from the File List, Change Log, and Completion Notes. This violates this story's own Anti-Pattern ("Do not modify files inside `references/Hexalith.*` submodules without explicit approval") and the submodule discipline in `CLAUDE.md`. **Not auto-reverted:** `c23a1890` is already on `origin/main` and reverting submodule pointers is approval-gated — a maintainer must decide to either accept-and-document the bump or land a follow-up commit restoring `b8bf0e0` / `e7b3597`.
+- **[MEDIUM] Completion Notes contradicted git on "test code".** The dev-story note stated no test code changed while the QA notes said tests were added; git confirms three test files changed. The dev-story note has been scoped to the dev-story phase to remove the contradiction.
+- **[LOW] Commit message overstates scope.** `c23a1890` ("add tests and documentation for FcNewItemIndicator producer and generated-grid consumer") contains no producer or generated-grid consumer code — only negative guard tests and story documentation. Already pushed; not amended, to avoid rewriting published history. Use accurate messages for blocked stories going forward.
+- **[LOW] Unrelated orchestration drift bundled into the feature commit.** `_bmad-output/story-automator/orchestration-9-20260704-182122.md` was committed alongside the story despite this story's Git Intelligence note to keep orchestration drift out of Story 9.2 deliverables.
+
+### Outcome
+
+Status remains `blocked-by-contract`; sprint status remains `backlog`. No CRITICAL issues (no falsely-completed tasks, no false AC claims). The auto-fix pass applied documentation-only clarifications; the submodule-pointer and commit-message items are flagged for a maintainer because they touch already-pushed history / approval-gated submodules and cannot be auto-fixed safely.
