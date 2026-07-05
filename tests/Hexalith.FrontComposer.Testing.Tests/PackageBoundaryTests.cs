@@ -9,6 +9,8 @@ using Xunit;
 namespace Hexalith.FrontComposer.Testing.Tests;
 
 public sealed class PackageBoundaryTests {
+    private const string FluentV5Version = "5.0.0-rc.4-26180.1";
+
     [Fact]
     public void PublicApi_ExportedTypes_MatchIntentionalBaseline() {
         string root = FindRepoRoot();
@@ -83,6 +85,8 @@ public sealed class PackageBoundaryTests {
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Hexalith.FrontComposer.Testing" Version="{{packageVersion}}" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="{{FluentV5Version}}" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="{{FluentV5Version}}" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="xunit.v3.assert" Version="3.2.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
@@ -130,6 +134,10 @@ public sealed class ConsumerSmokeTests
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-m:1", "/nr:false").ConfigureAwait(true);
+
+        string assets = await File.ReadAllTextAsync(Path.Combine(consumer, "obj", "project.assets.json"), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components/" + FluentV5Version + "\"");
+        assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components/4.");
     }
 
     private static string ReadNuspec(ZipArchive archive) {
