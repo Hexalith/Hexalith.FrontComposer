@@ -286,9 +286,9 @@ public sealed class CiGovernanceTests {
         workflow.ShouldNotContain("Require bootstrap tag");
         workflow.ShouldNotContain("Release owner approval gate");
         workflow.ShouldNotContain("ATTESTATION_UNSUPPORTED");
-        workflow.ShouldContain("actions/attest-build-provenance@v2");
+        workflow.ShouldContain("actions/attest-build-provenance@v4");
         workflow.ShouldNotContain("|| true");
-        workflow.IndexOf("actions/attest-build-provenance@v2", StringComparison.Ordinal)
+        workflow.IndexOf("actions/attest-build-provenance@v4", StringComparison.Ordinal)
             .ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
 
         releaseConfig.ShouldContain("@semantic-release/commit-analyzer");

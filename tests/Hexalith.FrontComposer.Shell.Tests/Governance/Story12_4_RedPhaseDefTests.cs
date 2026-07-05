@@ -12,7 +12,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 // tests are GREEN and the per-method Quarantined trait + frontcomposer-quarantine
 // metadata comments have been removed — they now run as ordinary regression pins:
 //
-//   Def14  -> release.yml wires `actions/attest-build-provenance@v2` before the
+//   Def14  -> release.yml wires `actions/attest-build-provenance@v4` before the
 //             live publish + restores `attestations: write` / `id-token: write`
 //             (minimal structural wiring; the build-step reordering needed for the
 //             attestation to FUNCTION at runtime remains tracked in deferred-work.md).
@@ -38,7 +38,7 @@ public sealed class Story12_4_RedPhaseDefTests {
         // release readiness is claimed") requires an actual generation step. The story
         // currently reaches AC9 only via AC10's `fallback-approved` path, leaving AC9
         // structurally unreachable for production. This test pins the contract that
-        // closing Def14 requires wiring `actions/attest-build-provenance@v2` before
+        // closing Def14 requires wiring `actions/attest-build-provenance@v4` before
         // `Run semantic-release (live publish)` and binding the attestation bundle into
         // the sealed manifest.
         //
@@ -50,9 +50,9 @@ public sealed class Story12_4_RedPhaseDefTests {
         string root = CiGovernanceTests.RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
 
-        string attestStep = CiGovernanceTests.FindStepBlockContaining(workflow, "actions/attest-build-provenance@v2");
+        string attestStep = CiGovernanceTests.FindStepBlockContaining(workflow, "actions/attest-build-provenance@v4");
         attestStep.ShouldNotBeNullOrEmpty(
-            "AC9/Def14: release.yml must include a workflow STEP whose `uses:` (or `run:` body) invokes actions/attest-build-provenance@v2. A reference inside a comment does not count.");
+            "AC9/Def14: release.yml must include a workflow STEP whose `uses:` (or `run:` body) invokes actions/attest-build-provenance@v4. A reference inside a comment does not count.");
 
         attestStep.Contains("if: false", StringComparison.Ordinal).ShouldBeFalse(
             "AC9/Def14: the attest-build-provenance step must not be conditionally disabled (`if: false`).");
