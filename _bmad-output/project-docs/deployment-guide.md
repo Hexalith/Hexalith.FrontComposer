@@ -4,7 +4,15 @@
 
 ## What gets shipped
 
-FrontComposer is a library/tooling product. Its release artifacts are **signed NuGet packages** (`.nupkg`) + **symbol packages** (`.snupkg`) published to nuget.org, plus a GitHub Release carrying signed packages and a full **release-evidence** bundle. The expected package set is pinned in [eng/release-package-inventory.json](eng/release-package-inventory.json) and verified during release.
+FrontComposer is a library/tooling product. Its release artifacts are **NuGet packages** (`.nupkg`) + **symbol packages** (`.snupkg`) published to nuget.org, plus a GitHub Release carrying those packages and an advisory **release-evidence** bundle. The expected package set is pinned in [eng/release-package-inventory.json](eng/release-package-inventory.json) and verified during release.
+
+> **Current vs FR24 target (REL-1, 2026-07-05).** The live pipeline uses the deliberate 2026-07-03
+> **auto-publish-from-`main`** model. REL-1 added an **advisory FR24 evidence layer** (test-results,
+> inventory, SBOM, checksums, sealed manifest, advisory readiness) in [.github/workflows/release.yml](.github/workflows/release.yml)
+> **without** re-adding approval gates or dry-run. **Deferred FR24 targets (why `REL-AI-1` stays open):**
+> certificate **signing + RFC 3161 timestamp** (AC2), **publish gating** via `classify-release
+> --require-publishable` / dry-run / owner approval (AC4–5), and **package-consumer validation** (AC6).
+> Packages are currently published **unsigned**; provenance is via GitHub build-provenance attestation.
 
 There are **no Dockerfiles / container images** for FrontComposer's own projects (unlike the `Hexalith.EventStore` submodule). The only orchestration is the local `samples/Counter` Aspire AppHost, which is a sample — not a deployed artifact.
 
@@ -13,7 +21,7 @@ There are **no Dockerfiles / container images** for FrontComposer's own projects
 | Workflow | Trigger | Purpose |
 |---|---|---|
 | `ci.yml` | push / PR to `main` | commitlint · build (Gate 1 netstandard2.0 Contracts, Gate 2 solution) · CLI pack+smoke · Governance & Contract tests · docs validation · unit+bUnit (coverage) · a11y/visual (Playwright) |
-| `release.yml` | push to `main` (+ manual) | semantic-release pipeline (below) |
+| `release.yml` | push to `main` | semantic-release auto-publish + advisory FR24 evidence layer (below) |
 | `nightly.yml` | schedule | nightly checks (incl. skill-corpus prompt benchmark) |
 | `ide-parity-revalidation.yml` | schedule / drift | revalidates `docs/ide-parity-matrix.json` against IDE behavior |
 | `mutation-property-nightly.yml` | schedule | Stryker mutation + FsCheck property suites |
@@ -33,39 +41,42 @@ Releases are fully automated from commit messages on `main` ([.releaserc.json](.
 | `feat!:` or `BREAKING CHANGE:` footer | major |
 | `docs:` / `refactor:` / `test:` / `chore:` / `build:` / `ci:` / `style:` | none |
 
-Plugins: `commit-analyzer` → `release-notes-generator` → `changelog` → `exec` (build/pack/sign/publish) → `github` (release + assets) → `git` (commits `CHANGELOG.md` with `chore(release): ${version} [skip ci]`).
+Plugins: `commit-analyzer` → `release-notes-generator` → `changelog` → `exec` (pack/publish) → `github` (release + assets) → `git` (commits `CHANGELOG.md` with `chore(release): ${version} [skip ci]`).
 
-## The release pipeline (`@semantic-release/exec`)
+## The release pipeline — current behavior (auto-publish + advisory evidence)
 
-### `prepareCmd` (build → sign → evidence)
+### semantic-release (`@semantic-release/exec`, [.releaserc.json](.releaserc.json))
 
-1. `dotnet build -c Release -p:Version=<next>` then `dotnet pack --no-build -c Release --include-symbols --include-source -o ./nupkgs`.
-2. **SBOM:** `dotnet CycloneDX Hexalith.FrontComposer.slnx -o ./release-evidence/sbom --json`.
-3. **Package inventory:** `python eng/release_evidence.py inventory --expected eng/release-package-inventory.json` (verifies the exact set of packages produced).
-4. **Sign:** `dotnet nuget sign ./nupkgs/*.nupkg` with `$NUGET_SIGNING_CERTIFICATE_PATH` / `…_PASSWORD` / `…_TIMESTAMPER` → `./nupkgs-signed`, then `dotnet nuget verify`.
-5. **Attestation (optional):** when `RELEASE_ATTESTATION_STATUS=attested`, `gh attestation verify … --signer-workflow Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml`.
-6. **Evidence chain:** release-budget snapshot → `checksums` → `prepare-manifest` → `seal-manifest` → partial-publish placeholders → `verify-manifest`. All written under `release-evidence/`.
+- **`prepareCmd`:** `python3 eng/pack_release_packages.py --version ${nextRelease.version} --output ./nupkgs` — packs the inventory package set (`.nupkg` + `.snupkg`). No signing step today.
+- **`publishCmd`:** `dotnet nuget push ./nupkgs/*.nupkg` then `./nupkgs/*.snupkg` to `https://api.nuget.org/v3/index.json` with `$NUGET_API_KEY --skip-duplicate`. Publish runs automatically on push to `main`; there is no dry-run or approval gate.
 
-### `publishCmd` (guarded publish)
+### FR24 evidence layer ([.github/workflows/release.yml](.github/workflows/release.yml), REL-1)
 
-1. **Dry-run guard:** `RELEASE_DRY_RUN` defaults to **true**; a dry run runs `classify-release --dry-run-clean-exit` and **halts before any publish side effect** (defense-in-depth so `@semantic-release/github`/`git` never fire on a dry run).
-2. **Concurrency probes:** queries GitHub for a prior `v<next>` tag and other in-flight `release.yml` runs targeting the same version; fails closed on ambiguity (`RELEASE_CONCURRENT_SAME_VERSION=true`).
-3. **Readiness classification:** `classify-release --require-publishable` gates on manifest, test-results, ref protection, fork status, owner approval, attestation status.
-4. **Publish:** `dotnet nuget push ./nupkgs-signed/*.nupkg` then `./nupkgs/*.snupkg` to `https://api.nuget.org/v3/index.json` with `$NUGET_API_KEY --skip-duplicate`. A push failure records a `partial-publish-incident` and exits non-zero.
+Orchestrated in the workflow around the unchanged publish, all **advisory / best-effort** (evidence failures never gate or block the auto-publish):
 
-### GitHub Release assets (`@semantic-release/github`)
+1. **Before publish:** run tests per project → `release_evidence.py test-results` (`release-evidence/test-results.json`); `release_evidence.py inventory` (`package-inventory.json`); `attest-build-provenance` over the inventory.
+2. **After publish** (over the produced `./nupkgs`): CycloneDX **SBOM** (`sbom.json`) → `release_evidence.py checksums` (`checksums.json`) → `prepare-manifest` → `seal-manifest` (`sealed-manifest.json`) → `verify-manifest` (`manifest-verification.json`) → **advisory** `classify-release` **without** `--require-publishable` (`release-readiness.json`).
+3. **Archive:** `gh release upload <tag> release-evidence/*.json` attaches the bundle to the GitHub Release; `upload-artifact` archives `release-evidence/**` (30-day retention, `if-no-files-found: error`).
 
-Signed `.nupkg` + `.snupkg`, `checksums.json`, `sealed-manifest.json`, `release-verification.json`, `release-readiness.json`, `test-results.json`, release-budget summaries, `signing-verification.txt`, SBOM JSON, attestation bundle, partial-publish records, prior-release probe.
+### Deferred FR24 targets — why `REL-AI-1` stays open
 
-## Required release environment
+| Target | AC | Status |
+|---|---|---|
+| Certificate signing + RFC 3161 timestamp (`dotnet nuget sign` / `verify --all`) | AC2 | **Deferred** — needs a code-signing cert + secrets (Release Owner) |
+| Publish gating: `classify-release --require-publishable`, dry-run default, owner approval, partial-publish incident | AC4–5 | **Out of scope** — owner chose to keep the 2026-07-03 auto-publish model |
+| Package-consumer validation (clean consumer restores local packages) | AC6 | **Not yet implemented** — follow-up |
+| Release Owner records evidence paths from a real run | AC8 | **Pending** — the evidence layer must run in CI once and its paths be recorded |
+
+The evidence tooling (`eng/release_evidence.py`) is complete and covers signing/gating/manifest classification; those axes are simply **not wired into the live pipeline** under the current model.
+
+## Required release environment (current)
 
 | Variable | Purpose |
 |---|---|
 | `NUGET_API_KEY` | nuget.org push |
-| `NUGET_SIGNING_CERTIFICATE_PATH` / `_PASSWORD` / `NUGET_SIGNING_TIMESTAMPER` | package signing |
-| `RELEASE_DRY_RUN` | `true` (default) blocks publish; set `false` to actually publish |
-| `RELEASE_ATTESTATION_STATUS` (+ fallback approval vars) | controls GitHub attestation gate |
-| `GITHUB_REPOSITORY`, `GITHUB_RUN_ID`, `GITHUB_REF`, `GITHUB_REF_PROTECTED`, `RELEASE_FROM_FORK`, `RELEASE_OWNER_APPROVED`, … | classification inputs |
+| `GITHUB_TOKEN` | GitHub Release + evidence asset upload |
+
+Signing (`NUGET_SIGNING_CERTIFICATE_*`), dry-run/approval (`RELEASE_DRY_RUN`, `RELEASE_OWNER_APPROVED`), and attestation-gate variables are part of the **deferred** FR24 gate and are not consumed by the current pipeline.
 
 ## Consuming the packages
 
@@ -77,4 +88,4 @@ Downstream apps add the FrontComposer NuGet packages, annotate domain types with
 2. Green CI: build Gates 1–2, Governance + Contract tests, docs validation, unit+bUnit lane.
 3. No stale pact diff; public-API baseline updated intentionally if the Testing surface changed.
 4. `eng/release-package-inventory.json` matches the packages you intend to ship.
-5. Signing cert + NuGet key configured; decide `RELEASE_DRY_RUN` (`true` to rehearse).
+5. `NUGET_API_KEY` configured. Publish is automatic on merge to `main` — there is no dry-run rehearsal in the current model (see deferred FR24 targets).

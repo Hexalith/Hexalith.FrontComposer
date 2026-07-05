@@ -165,9 +165,31 @@ Failure: the command is rejected as duplicate or invalid. The form preserves use
 - Story 11.0 route-contract decision must account for module workspace tabs so palette/CTA command activation lands on real routes.
 - FC-NIP fresh-row indicators remain blocked until row identity is confirmed; broad row marking or diff-based inference is not allowed.
 
-## Open Questions
+## IA Decision Gate — FC-IA-1 (module-tab route encoding + projection-flyout IA)
 
-1. Should every module workspace have a required default tab name such as **Overview**, **Search**, or the module plural name?
-2. Should module tab selection be encoded in the route path, query string, or an internal router state with shareable links?
-3. Should the shell rail keep a secondary projection flyout at all, or should projections be reachable only after opening the module workspace?
-4. Which module should serve as the first visual reference implementation: Parties, Tenants, or another adopter module?
+**Status: signed off 2026-07-05.** Recorded in
+`_bmad-output/contracts/fc-ia-1-module-tab-ia-decision-2026-07-05.md` and referenced by Story 11.7. The
+gate no longer blocks navigation-route work.
+
+Added by correct course 2026-07-05. The four IA questions below were a **blocking decision gate**:
+Story 11.7 (command/projection route-contract implementation) and any other navigation/module-tab route
+story could **not** move to ready-for-dev until FC-IA-1 was recorded as a Product/UX-signed-off decision.
+Owner **Product/UX + Architect**, assigned **2026-07-05**, due **before Epic 11 route/navigation dev
+kickoff**. The recommended answers below were accepted as-is on 2026-07-05 and are now the recorded
+decision.
+
+1. **Required default tab.** Recommended: **Yes** — each module workspace opens on a required default
+   tab. Provisional name = the module plural label (e.g. "Parties"), fallback "Overview". Preserves the
+   one-entry-per-module rule.
+2. **Tab selection encoding.** Recommended: **route-path segment** (`/{module}/{tab}`) — deep-linkable
+   and shareable, consistent with the Story 11.0 path contract
+   `/commands/{BoundedContext}/{CommandTypeName}`. Not query string; not internal-only router state.
+3. **Projection flyout.** Recommended: **keep as strictly secondary** — the rail flyout routes into
+   module workspace tabs and never becomes a second primary IA. This reconciles the Epic 8 projection
+   flyout with the one-entry-per-module spine.
+4. **First reference module.** Recommended (provisional): **Tenants** (already mid Fluent v5
+   conversion); Parties acceptable if Product prefers a domain-richer exemplar.
+
+**Closure rule (met):** FC-IA-1 is signed off — Product/UX accepted answers 1–4 on 2026-07-05, recorded
+in `_bmad-output/contracts/fc-ia-1-module-tab-ia-decision-2026-07-05.md`, and Story 11.7 references the
+decision. Amending answer 4 (reference module) does not reopen answers 1–3.

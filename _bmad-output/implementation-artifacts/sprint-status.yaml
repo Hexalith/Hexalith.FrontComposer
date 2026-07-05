@@ -387,6 +387,10 @@ development_status:
   11-18-loggermessage-migration-for-warnings-and-hot-paths: backlog
   11-19-enforcement-and-policy-alignment: backlog
   epic-11-retrospective: optional
+  # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
+  # rel-1 moved backlog -> in-progress on 2026-07-05 (dev-story; owner decision: keep Jul 3 auto-publish model, add FR24 evidence only. baseline 2d1a1290. Signing deferred; REL-AI-1 stays open.)
+  # rel-1 moved in-progress -> review on 2026-07-05 (dev-story; added advisory FR24 evidence layer to release.yml + requiring governance test (CiGovernanceTests 41/41 via direct xUnit runner, Release build 0/0), reconciled deployment-guide. Evidence-only increment on feat/rel-1-release-evidence-gate; AC2 signing / AC4-5 gating / AC6 consumer-validation / AC8 evidence-recording deferred. CI authoritative for workflow execution.)
+  rel-1-release-evidence-gate-before-v1-rc: review
 
 action_items:
   - epic: 2
@@ -446,6 +450,7 @@ action_items:
     due: "before v1.0 release candidate"
     status: open
     implementation_story: "REL-1"
+    progress: "2026-07-05 (REL-1 review): advisory FR24 evidence layer wired into release.yml (evidence-only model per owner decision — auto-publish kept, no gating); requiring governance test added; CiGovernanceTests 41/41 locally. STILL OPEN — remaining: AC2 certificate signing, AC4-5 publish gating, AC6 package-consumer validation, and AC8 Release Owner running the workflow on a real release to record evidence paths."
     evidence_required:
       - "validated package inventory"
       - "signed .nupkg verification with timestamp"
@@ -556,3 +561,20 @@ action_items:
     action: "E10R-AI-4: Resolve the existing Epic 11 route-contract decision before starting 11.x story creation"
     owner: "Architect + Product Owner"
     status: done
+  - epic: 11
+    action: "FC-IA-1: Record the module-tab route encoding and projection-flyout IA decision (UX open questions 1-4) with Product/UX sign-off before Story 11.7 or any navigation/module-tab route story moves to ready-for-dev."
+    owner: "Product/UX + Architect"
+    assigned: "2026-07-05"
+    due: "before Epic 11 route/navigation dev kickoff"
+    status: done
+    closed: "2026-07-05"
+    decision:
+      - "required default tab = module plural label, fallback Overview"
+      - "tab encoding = route-path segment /{module}/{tab} (consistent with /commands/{BoundedContext}/{CommandTypeName})"
+      - "projection flyout kept as strictly secondary, routing into module workspace tabs"
+      - "first reference module = Tenants (provisional; Parties acceptable)"
+    evidence:
+      - "_bmad-output/contracts/fc-ia-1-module-tab-ia-decision-2026-07-05.md records the approved IA decision (recommended answers accepted as-is)."
+      - "epics.md Story 11.7 first AC references the FC-IA-1 module-tab contract alongside FC-ROUTE."
+      - "ux-experience-2026-07-05.md IA Decision Gate section marks FC-IA-1 signed off 2026-07-05."
+    closure_rule: "Closed: Product/UX recorded final answers (open questions 1-4) and Story 11.7 references the decision."

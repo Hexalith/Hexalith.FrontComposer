@@ -52,6 +52,33 @@ jobs:
           restore-keys: |
             nuget-${{ runner.os }}-
 
+      # REL-1 (2026-07-05, evidence-only model): seed release-evidence so the final
+      # upload never produces an empty forensic artifact even if a later step fails.
+      - name: Seed release evidence directory
+        if: always()
+        env:
+          RUN_META_EVENT_NAME: ${{ github.event_name }}
+          RUN_META_REF: ${{ github.ref }}
+          RUN_META_RUN_ID: ${{ github.run_id }}
+          RUN_META_RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_META_SHA: ${{ github.sha }}
+        run: |
+          mkdir -p release-evidence
+          python3 - <<'PYEOF'
+          import json, os
+          metadata = {
+              "decision_contract": "frontcomposer.release-run-metadata.v1",
+              "event_name": os.environ.get("RUN_META_EVENT_NAME", ""),
+              "ref": os.environ.get("RUN_META_REF", ""),
+              "run_id": os.environ.get("RUN_META_RUN_ID", ""),
+              "run_attempt": os.environ.get("RUN_META_RUN_ATTEMPT", ""),
+              "sha": os.environ.get("RUN_META_SHA", ""),
+          }
+          with open("release-evidence/run-metadata.json", "w", encoding="utf-8", newline="\n") as fh:
+              json.dump(metadata, fh, sort_keys=True, separators=(",", ":"))
+              fh.write("\n")
+          PYEOF
+
       - name: Run release tests
         shell: bash
         env:
@@ -74,10 +101,18 @@ jobs:
               --logger "trx;LogFileName=${name}.trx"
           done <<< "$TEST_PROJECTS"
 
+      # REL-1 (2026-07-05): record test-evidence BEFORE publish so a failed/skipped
+      # lane is captured in the FR24 bundle even though the auto-publish proceeds.
+      - name: Record release test evidence
+        run: python3 eng/release_evidence.py test-results --results-dir ./TestResults --output release-evidence/test-results.json
+
       - name: Install release tooling
         env:
           HUSKY: 0
         run: npm ci
+
+      - name: Install CycloneDX .NET tool
+        run: dotnet tool install --global CycloneDX --version 5.*
 
       - name: Validate package inventory before release
         run: python3 eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output release-evidence/package-inventory.json
@@ -102,3 +137,124 @@ jobs:
             nupkgs/*.nupkg
             nupkgs/*.snupkg
           if-no-files-found: warn
+
+      # ------------------------------------------------------------------------
+      # FR24 release evidence (REL-1, 2026-07-05 — EVIDENCE-ONLY, ADVISORY).
+      # These steps produce and archive auditable FR24 evidence over the packages
+      # semantic-release published. They are intentionally best-effort/non-blocking
+      # (`|| echo ::warning::`) so evidence generation NEVER gates or destabilizes
+      # the 2026-07-03 auto-publish-from-main model. Signing/certificate work is
+      # deferred (owner decision 2026-07-05); classification is advisory only
+      # (no publishable gate). REL-AI-1 stays open until the Release Owner runs
+      # this on a real release and records the evidence paths.
+      # ------------------------------------------------------------------------
+      - name: Generate SBOM
+        if: always()
+        run: |
+          set -uo pipefail
+          mkdir -p release-evidence
+          dotnet CycloneDX Hexalith.FrontComposer.slnx -o release-evidence -fn sbom.json -j \
+            || echo "::warning::SBOM generation returned non-zero; sbom.json may be absent (refine CycloneDX .slnx invocation)."
+
+      - name: Record FR24 release evidence bundle
+        if: always()
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          set -uo pipefail
+          mkdir -p release-evidence
+          if [ ! -d nupkgs ] || ! ls nupkgs/*.nupkg >/dev/null 2>&1; then
+            echo "No release packages produced this run (no releasable commits); skipping package evidence." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          tag="$(git describe --tags --abbrev=0 2>/dev/null || echo '')"
+          version="${tag#v}"
+          if [ -f release-evidence/sbom.json ]; then
+            sbom_hash="$(sha256sum release-evidence/sbom.json | cut -d' ' -f1)"
+          else
+            sbom_hash=""
+          fi
+          python3 eng/release_evidence.py checksums \
+            --root . \
+            --pattern 'nupkgs/*.nupkg' \
+            --pattern 'nupkgs/*.snupkg' \
+            --pattern 'release-evidence/sbom.json' \
+            --pattern 'release-evidence/test-results.json' \
+            --pattern 'release-evidence/package-inventory.json' \
+            --output release-evidence/checksums.json \
+            || echo "::warning::checksums evidence returned non-zero."
+          python3 eng/release_evidence.py prepare-manifest \
+            --inventory release-evidence/package-inventory.json \
+            --checksums release-evidence/checksums.json \
+            --version "$version" \
+            --tag "$tag" \
+            --sbom-hash "$sbom_hash" \
+            --output release-evidence/pre-manifest.json \
+            || echo "::warning::prepare-manifest returned non-zero."
+          python3 eng/release_evidence.py seal-manifest \
+            --manifest release-evidence/pre-manifest.json \
+            --output release-evidence/sealed-manifest.json \
+            || echo "::warning::seal-manifest returned non-zero."
+          python3 eng/release_evidence.py verify-manifest \
+            --manifest release-evidence/sealed-manifest.json \
+            --root . \
+            --output release-evidence/manifest-verification.json \
+            || echo "::warning::verify-manifest reported an inconsistency; see manifest-verification.json."
+
+      - name: Classify release readiness (advisory)
+        if: always()
+        run: |
+          set -uo pipefail
+          if [ ! -f release-evidence/sealed-manifest.json ]; then
+            echo "No sealed manifest this run; skipping advisory classification." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 eng/release_evidence.py classify-release \
+            --root . \
+            --evidence-root ./release-evidence \
+            --manifest ./release-evidence/sealed-manifest.json \
+            --test-results ./release-evidence/test-results.json \
+            --output ./release-evidence/release-readiness.json \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --ref "$GITHUB_REF" \
+            --ref-protected "${GITHUB_REF_PROTECTED:-false}" \
+            || echo "::warning::advisory classify-release returned non-zero; see release-readiness.json (informational, does not gate publish)."
+          echo "Advisory FR24 release-readiness classification recorded (informational; does not gate the auto-publish model)." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Summarize release evidence artifacts
+        if: always()
+        run: |
+          {
+            echo '## FR24 release evidence artifacts'
+            echo
+            if [ -d release-evidence ]; then
+              find release-evidence -maxdepth 4 -type f | sort | sed 's#^#- #'
+            else
+              echo '- release-evidence directory was not created.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attach release evidence to GitHub Release
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          if [ ! -d nupkgs ] || ! ls nupkgs/*.nupkg >/dev/null 2>&1; then
+            echo "No release produced this run; nothing to attach." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          tag="$(git describe --tags --abbrev=0 2>/dev/null || echo '')"
+          if [ -n "$tag" ]; then
+            gh release upload "$tag" release-evidence/*.json --clobber \
+              || echo "::warning::attaching release evidence to GitHub Release $tag returned non-zero."
+          fi
+
+      - name: Upload release evidence artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-evidence/**
+          if-no-files-found: error
+          retention-days: 30
