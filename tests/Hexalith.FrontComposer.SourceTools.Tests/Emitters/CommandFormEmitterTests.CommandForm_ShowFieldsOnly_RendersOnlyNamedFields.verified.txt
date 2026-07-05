@@ -49,6 +49,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     /// <summary>Story 2-5 Task 5.3: fired once after the form's EditContext is constructed so the renderer can wire validation gates and abandonment protection.</summary>
     [Parameter] public EventCallback<EditContext> OnEditContextReady { get; set; }
 
+    [CascadingParameter] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentity { get; set; }
+
     [Inject] private IState<IncrementCommandLifecycleState> LifecycleState { get; set; } = default!;
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
     [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;
@@ -284,20 +286,22 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 },
                 cancellationToken: cts.Token);
 
-            // Story 3.3 P6 — generator-known framework metadata is limited to CorrelationId,
-            // MessageId, and CommandTypeName at form-emit time. ProjectionTypeName / LaneKey /
-            // EntityKey / ExpectedStatusSlot / PriorStatusSlot would require runtime context
-            // that the source generator does not have; adopters that need framework-controlled
-            // entity-key fallback matching must populate them via a custom dispatch hook. The
-            // MessageId path remains the primary resolution route because EventStore echoes the
-            // ULID in projection rows.
+            // Story 9.2 — form-emit-time metadata remains limited to CorrelationId, MessageId,
+            // and CommandTypeName. Row identity is registered only when a generated/runtime row
+            // context cascades PendingCommandRowIdentity; raw command payloads and form values
+            // must not populate ProjectionTypeName / LaneKey / EntityKey / status slots.
             global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationResult? pendingRegistration = null;
             if (string.Equals(result.Status, "Accepted", StringComparison.OrdinalIgnoreCase))
             {
                 pendingRegistration = PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(
                     CorrelationId: correlationId,
                     MessageId: result.MessageId,
-                    CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand)));
+                    CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand),
+                    ProjectionTypeName: PendingCommandRowIdentity?.ProjectionTypeName,
+                    LaneKey: PendingCommandRowIdentity?.LaneKey,
+                    EntityKey: PendingCommandRowIdentity?.EntityKey,
+                    ExpectedStatusSlot: PendingCommandRowIdentity?.ExpectedStatusSlot,
+                    PriorStatusSlot: PendingCommandRowIdentity?.PriorStatusSlot));
                 if (pendingRegistration.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId
                     or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidCorrelationId
                     or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata)

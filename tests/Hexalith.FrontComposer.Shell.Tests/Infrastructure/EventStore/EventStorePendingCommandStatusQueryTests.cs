@@ -49,6 +49,7 @@ public sealed class EventStorePendingCommandStatusQueryTests {
             observation.Source.ShouldBe(PendingCommandOutcomeSource.IdempotencyStatusQuery);
             observation.Outcome.ShouldBe(expectedOutcome.Value);
             observation.MessageId.ShouldBe(MessageId);
+            observation.ObservedAt.ShouldBe(new DateTimeOffset(2026, 6, 4, 0, 0, 0, TimeSpan.Zero));
         }
 
         handler.Requests.Single().Method.ShouldBe(HttpMethod.Get);
@@ -98,6 +99,7 @@ public sealed class EventStorePendingCommandStatusQueryTests {
         observation.LaneKey.ShouldBeNull();
         observation.EntityKey.ShouldBeNull();
         observation.ExpectedStatusSlot.ShouldBeNull();
+        observation.ObservedAt.ShouldBe(new DateTimeOffset(2026, 6, 4, 0, 0, 0, TimeSpan.Zero));
     }
 
     [Theory]

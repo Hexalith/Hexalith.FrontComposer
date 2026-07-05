@@ -7,7 +7,7 @@ unblocked: 2026-07-05
 
 # Story 9.2: Wire `FcNewItemIndicator` producer and generated-grid consumer
 
-Status: in-progress
+Status: review
 
 <!-- Note: The FC-NIP contract is unblocked at the decision level. Implementation still must prove the approved runtime metadata path before adding producer behavior. -->
 
@@ -40,41 +40,41 @@ Required implementation constraints:
 
 ## Tasks / Subtasks
 
-- [ ] Re-validate the FC-NIP implementation gate before making code changes. (AC: 1)
+- [x] Re-validate the FC-NIP implementation gate before making code changes. (AC: 1)
   - [x] Read `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md` and confirm the follow-up is resolved by a contract-level artifact.
   - [x] Confirm the approved source is FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context.
-  - [ ] During implementation, prove the source-level wiring supplies non-empty `ProjectionTypeName`, lane/view key, exact row `EntityKey`, command `MessageId`, and required status-slot metadata before calling `INewItemIndicatorStateService.Add(...)`.
-  - [ ] If the implementation cannot prove that source-level wiring, stop implementation and do not add best-effort producer code.
+  - [x] During implementation, prove the source-level wiring supplies non-empty `ProjectionTypeName`, lane/view key, exact row `EntityKey`, command `MessageId`, and required status-slot metadata before calling the indicator Add operation.
+  - [x] If the implementation cannot prove that source-level wiring, stop implementation and do not add best-effort producer code. Source-level wiring was proven, so the stop condition did not trigger.
 
-- [ ] Wire the producer from the command outcome path only after the payload exists. (AC: 1, 3)
-  - [ ] Prefer the existing pending-command outcome path: `PendingCommandOutcomeObservation` -> `PendingCommandOutcomeResolver` -> `PendingCommandStateService`.
-  - [ ] Preserve `MessageId`-first terminal resolution and the existing unknown/ambiguous no-mutation behavior.
-  - [ ] Add `INewItemIndicatorStateService.Add(new NewItemIndicatorEntry(...))` only for terminal outcomes that include proven row identity and a matching generated-grid lane.
-  - [ ] Enforce producer-side first-wins semantics by de-duplicating terminal outcomes by `MessageId`; do not call `Add(...)` again for duplicate observations because `NewItemIndicatorStateService` is last-wins for the same `(ViewKey, EntityKey)` and would reset the TTL.
-  - [ ] Use the trusted terminal observation timestamp when supplied; otherwise use the injected `TimeProvider` at Add time.
+- [x] Wire the producer from the command outcome path only after the payload exists. (AC: 1, 3)
+  - [x] Prefer the existing pending-command outcome path: `PendingCommandOutcomeObservation` -> `PendingCommandOutcomeResolver` -> `PendingCommandStateService`.
+  - [x] Preserve `MessageId`-first terminal resolution and the existing unknown/ambiguous no-mutation behavior.
+  - [x] Add `INewItemIndicatorStateService.Add(new NewItemIndicatorEntry(...))` only for terminal outcomes that include proven row identity and a matching generated-grid lane.
+  - [x] Enforce producer-side first-wins semantics by de-duplicating terminal outcomes by `MessageId`; do not call the indicator Add operation again for duplicate observations because `NewItemIndicatorStateService` is last-wins for the same `(ViewKey, EntityKey)` and would reset the TTL.
+  - [x] Use the trusted terminal observation timestamp when supplied; otherwise use the injected `TimeProvider` at Add time.
 
-- [ ] Populate or consume framework row metadata without breaking generated command semantics. (AC: 1)
-  - [ ] If generated command forms are changed, update `CommandFormEmitter` so accepted pending registrations populate `ProjectionTypeName`, `LaneKey`, `EntityKey`, `ExpectedStatusSlot`, and `PriorStatusSlot` only from framework-controlled runtime context.
-  - [ ] Keep the generated form comment honest: if runtime row context is still unavailable, do not remove the Story 3.3 guardrail that says SourceTools only knows correlation id, message id, and command type at form-emit time.
-  - [ ] Do not add EventStore references to `Contracts` or `SourceTools`.
+- [x] Populate or consume framework row metadata without breaking generated command semantics. (AC: 1)
+  - [x] If generated command forms are changed, update `CommandFormEmitter` so accepted pending registrations populate `ProjectionTypeName`, `LaneKey`, `EntityKey`, `ExpectedStatusSlot`, and `PriorStatusSlot` only from framework-controlled runtime context.
+  - [x] Keep the generated form comment honest: if runtime row context is still unavailable, do not remove the Story 3.3 guardrail that says SourceTools only knows correlation id, message id, and command type at form-emit time.
+  - [x] Do not add EventStore references to `Contracts` or `SourceTools`.
 
-- [ ] Render the generated-grid consumer for matching lanes only. (AC: 2, 3)
-  - [ ] Add production rendering where generated grid views or a shell-level grid wrapper read `INewItemIndicatorStateService.Snapshot(_viewKey)`.
-  - [ ] Render one `FcNewItemIndicator` per matching entry or a deliberate consolidated indicator if Product/UX approves; keep localized copy through `FcShellResources`.
-  - [ ] Set stable keys from `EntityKey` so repeated renders do not duplicate visible indicators.
-  - [ ] Dismiss indicators on materialization by calling `DismissMaterialized(viewKey, entityKey)` from the grid path that can prove the row is present.
-  - [ ] Preserve existing dismissal on filter changes, TTL, and tenant/user scope transitions.
+- [x] Render the generated-grid consumer for matching lanes only. (AC: 2, 3)
+  - [x] Add production rendering where generated grid views or a shell-level grid wrapper read the indicator snapshot for the current view key.
+  - [x] Render one `FcNewItemIndicator` per matching entry or a deliberate consolidated indicator if Product/UX approves; keep localized copy through `FcShellResources`.
+  - [x] Set stable keys from `EntityKey` so repeated renders do not duplicate visible indicators.
+  - [x] Dismiss indicators on materialization by calling `DismissMaterialized(viewKey, entityKey)` from the grid path that can prove the row is present.
+  - [x] Preserve existing dismissal on filter changes, TTL, and tenant/user scope transitions.
 
-- [ ] Update SourceTools output and public surface evidence only if output changes. (AC: 2, 4)
-  - [ ] Regenerate affected Verify `.verified.txt` snapshots intentionally.
-  - [ ] Extend SourceTools emitter tests for generated-grid consumer output.
-  - [ ] Update `FcTblPackageBoundaryTests` / `PublicAPI.FcTbl.Shipped.txt` only for intentional public FC-TBL surface changes.
+- [x] Update SourceTools output and public surface evidence only if output changes. (AC: 2, 4)
+  - [x] Regenerate affected Verify `.verified.txt` snapshots intentionally.
+  - [x] Extend SourceTools emitter tests for generated-grid consumer output.
+  - [x] Update FC-TBL package-boundary tests and shipped public API baselines only for intentional public FC-TBL surface changes. No FC-TBL public surface changed, so no package-boundary or public API baseline update was required.
 
-- [ ] Add focused runtime and regression coverage. (AC: 1, 2, 3, 4)
-  - [ ] Add resolver/producer tests that prove valid payloads add exactly one indicator and duplicate terminal observations do not reset TTL.
-  - [ ] Add negative tests for absent `EntityKey`, absent lane/view key, ambiguous metadata, projection-nudge-only input, and aggregate-id-only input.
-  - [ ] Extend `FcNewItemIndicatorLaneIntegrationTests` or generated-grid tests so production generated-grid rendering replaces the current test-only `LaneHost` stand-in.
-  - [ ] Run focused Shell pending-command/DataGrid tests and focused SourceTools emitter/snapshot tests.
+- [x] Add focused runtime and regression coverage. (AC: 1, 2, 3, 4)
+  - [x] Add resolver/producer tests that prove valid payloads add exactly one indicator and duplicate terminal observations do not reset TTL.
+  - [x] Add negative tests for absent `EntityKey`, absent lane/view key, ambiguous metadata, projection-nudge-only input, and aggregate-id-only input.
+  - [x] Extend `FcNewItemIndicatorLaneIntegrationTests` or generated-grid tests so production generated-grid rendering replaces the current test-only `LaneHost` stand-in.
+  - [x] Run focused Shell pending-command/DataGrid tests and focused SourceTools emitter/snapshot tests.
 
 ## Dev Notes
 
@@ -216,6 +216,8 @@ GPT-5 Codex
 - 2026-07-04: QA generate-e2e-tests added focused negative automation for Story 9.2's blocked seams: EventStore status `AggregateId` is ignored as FC-NIP row identity, generated command forms do not fabricate `ProjectionTypeName`/`LaneKey`/`EntityKey`/status-slot metadata, and the Playwright FC-NIP contract spec pins the Story 9.2 blocked gate plus source-level no-smuggling evidence.
 - 2026-07-04: QA validation evidence: direct xUnit v3 fallback passed `EventStorePendingCommandStatusQueryTests` 21/21 and `CommandFormEmitterTests` 34/34; `PLAYWRIGHT_SKIP_WEBSERVER=1 npx playwright test specs/fc-nip-row-identity-contract.spec.ts --project=chromium` passed 4/4. VSTest focused commands, the filtered solution `dotnet test` command, and the initial Playwright web-server run remain socket-blocked with `System.Net.Sockets.SocketException (13): Permission denied`.
 - 2026-07-05: Create-story repair reloaded the current approved FC-NIP contract, planning artifacts, Hexalith LLM/UX rules, project context, Story 9.1 intelligence, source seams, relevant tests, NuGet package pages, and sprint status; stale blocked-outcome language was superseded and sprint status aligned to `ready-for-dev`.
+- 2026-07-05: Dev-story implementation added `PendingCommandRowIdentity`, generated grid-to-command row metadata cascading, pending-command outcome producer wiring, EventStore terminal observation timestamps, generated-grid `FcNewItemIndicator` rendering/dismissal hooks, SourceTools approval snapshot updates, and focused runtime/regression tests.
+- 2026-07-05: Verification passed focused Shell producer/EventStore/generated-grid lane 34/34, broad SourceTools generated-grid approval lane 55/55, and full SourceTools project 1051/1051. Full Shell project passed 2054/2055 and failed only `CiGovernanceTests.HexalithDependencyMode_DefaultsToProjectReferencesForDebugAndPackagesForRelease` because `references/Hexalith.Builds/Props/Directory.Packages.props` currently pins `Hexalith.EventStore.Aspire` `3.35.0` while the governance assertion still expects `3.33.4`.
 
 ### Completion Notes List
 
@@ -224,18 +226,63 @@ GPT-5 Codex
 - Story 9.2 context was originally created as blocked-by-contract because Story 9.1 confirmed the required payload was absent.
 - 2026-07-05 update: the contract-level blocker is resolved by approving FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context. The implementation ACs remain open.
 - Historical dev-story implementation halted at the Story 9.2 Blocking Gate before the 2026-07-05 contract update. During that earlier phase, no producer, generated-grid consumer, SourceTools output, public API, or test code was changed because the required typed framework-controlled row-identity payload had not yet been approved. The decision-level blocker is now resolved; implementation still must prove source-level runtime metadata wiring before adding producer behavior.
-- Story status and sprint status are `ready-for-dev`; dev-story should move the sprint entry to `in-progress` when implementation starts.
-- QA generated negative guard tests only; production producer and generated-grid consumer code remain unchanged. Those tests should be treated as guardrails against EventStore `AggregateId`, projection-nudge, and compile-time command metadata smuggling while the approved runtime wiring is implemented.
+- Before this implementation pass, story status and sprint status were `ready-for-dev`; this dev-story pass moved both to `review`.
+- The earlier QA phase generated negative guard tests only; at that time production producer and generated-grid consumer code remained unchanged. Those tests remain guardrails against EventStore `AggregateId`, projection-nudge, and compile-time command metadata smuggling now that the approved runtime wiring is implemented.
 - Added test coverage for aggregate-id-only input, generated metadata fabrication, and Story 9.2 no-smuggling source evidence.
+- Implemented the approved runtime metadata seam by cascading `PendingCommandRowIdentity` from generated grids into generated command forms; forms forward only this framework-controlled context into pending registrations and do not fabricate row identity from compile-time command metadata.
+- Wired the producer in `PendingCommandOutcomeResolver` after `MessageId`-first terminal resolution. Indicators are added only for confirmed/idempotently confirmed resolved entries with complete row metadata, first terminal observations win, duplicate terminal observations do not reset TTL, and trusted EventStore timestamps flow through `PendingCommandOutcomeObservation.ObservedAt`.
+- Wired generated grids to render `FcNewItemIndicator` from `INewItemIndicatorStateService.Snapshot(_viewKey)`, key indicators by `EntityKey`, dismiss materialized rows from stable generated row keys, and dismiss lane snapshots on filter/lane changes. TTL and scope-boundary dismissal continue to use existing state-service semantics.
+- No EventStore references were added to `Contracts` or `SourceTools`; EventStore remains a status/timestamp source by `MessageId`, not a row-identity source.
+- No FC-TBL public surface changed; `FcTblPackageBoundaryTests` and `PublicAPI.FcTbl.Shipped.txt` were intentionally untouched.
+- Full Shell project verification has one unrelated dependency-governance failure: expected `Hexalith.EventStore.Aspire` `3.33.4`, actual `3.35.0` in the existing `references/Hexalith.Builds` package pins.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- `_bmad-output/implementation-artifacts/tests/test-summary.md`
+- `_bmad-output/implementation-artifacts/tests/test-summary.md` - pre-existing earlier QA evidence from the blocked-phase guard pass.
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRowIdentity.cs`
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStorePendingCommandStatusQuery.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStorePendingCommandStatusQueryTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandOutcomeResolverTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs`
-- `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.BasicProjection_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.DescriptionWithEscapeEdgeCases_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.DisplayNameOverrides_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.EnumAndBadgeMappings_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.GuidTruncation_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.NullableProperties_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueNoEnumProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardWrongShapeProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.StatusOverviewProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.WhenStateTypoProjection_Approval.verified.txt`
+- `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts` - pre-existing earlier QA evidence from the blocked-phase guard pass.
+
+### Documented Unrelated Workspace State
+
+- `_bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md` - unrelated Epic 11 contract-decision artifact present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `_bmad-output/contracts/fc-route-generated-command-route-contract-2026-07-05.md` - unrelated Epic 11 route-contract artifact present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `_bmad-output/implementation-artifacts/11-0-command-projection-route-contract-decision-gate.md` - unrelated Epic 11 story artifact present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `_bmad-output/planning-artifacts/architecture.md` - unrelated planning drift present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `_bmad-output/planning-artifacts/epics.md` - unrelated planning drift present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `_bmad-output/planning-artifacts/prd.md` - unrelated planning drift present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `_bmad-output/planning-artifacts/prds/prd-frontcomposer-2026-07-05/prd.md` - unrelated planning drift present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-e11-contracts-kernel-split.md` - unrelated Epic 11 planning artifact present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-e11-route-contract-decision.md` - unrelated Epic 11 planning artifact present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `_bmad-output/project-context.md` - unrelated planning/context drift present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `_bmad-output/project-docs/architecture.md` - unrelated planning/context drift present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `references/Hexalith.Builds` - unrelated submodule/package-pin drift present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
+- `references/Hexalith.Memories` - unrelated submodule pointer drift present in the dirty worktree; not part of Story 9.2 FC-NIP implementation.
 
 #### Submodule pointer bumps (accepted — see "Escalation Resolution" in the Senior Developer Review)
 
@@ -252,6 +299,7 @@ These `references/Hexalith.*` submodule pointers moved during the Story 9.2 comm
 - 2026-07-04: Re-review escalation resolved by maintainer decision (option 1 — accept/document), followed by a second maintainer decision to accept/document fresh submodule drift. Accepted the `references/Hexalith.EventStore` (`b8bf0e0` → `aaac942` → `b779298` → `ad93f7d`, v3.33.6) and `references/Hexalith.Tenants` (`e7b3597` → `b7ae7bd` → `3aaf2cf`, v2.2.0-5-g3aaf2cf) pointer bumps at current worktree values; did **not** restore the old pinned commits. Documented both pointers in the File List and recorded the full pointer history. Story remained `blocked-by-contract`; sprint remained `backlog` at that time.
 - 2026-07-05: FC-NIP contract-level blocker resolved; story moved to `ready-for-dev` for a future implementation pass. No producer, generated-grid consumer, SourceTools output, or public API code changed in this unblock step.
 - 2026-07-05: Create-story repair aligned stale blocked-review notes with the approved contract source, kept historical review findings as superseded traceability, and updated sprint status to `ready-for-dev`.
+- 2026-07-05: Dev-story implementation wired the approved FC-NIP producer and generated-grid consumer, updated SourceTools approval snapshots, added focused producer/grid/EventStore regression coverage, and moved the story to `review`. Required focused lanes pass; full Shell project has one unrelated dependency-governance failure recorded above.
 
 ## Current Create-Story Validation (2026-07-05)
 

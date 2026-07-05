@@ -1,7 +1,7 @@
 ---
 project_name: 'Hexalith.FrontComposer'
 user_name: 'Administrator'
-date: '2026-06-21'
+date: '2026-07-05'
 sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow_rules', 'critical_rules']
 status: 'complete'
 rule_count: 77
@@ -21,9 +21,12 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Solution format:** `Hexalith.FrontComposer.slnx` only. Do not create or use `.sln`
 - **Central package management:** `Directory.Packages.props` owns all package versions; never add
   `Version=` to `.csproj`
-- **Multi-TFM split:** `Contracts` targets `net10.0;netstandard2.0`; `SourceTools` targets
-  `netstandard2.0`; most other projects target `net10.0`. Guard net10/Fluent-only code with
-  `#if NET10_0_OR_GREATER`
+- **Contracts kernel split (approved Story 11.8, 2026-07-05):** the v1.0 target is a
+  `netstandard2.0`-clean `Contracts` kernel plus a net10-only `Contracts.UI` assembly for
+  Blazor/Fluent rendering contracts. `SourceTools` remains `netstandard2.0` and references only
+  `Contracts`; most runtime projects target `net10.0`. Until Story 11.11 completes the move, guard
+  existing net10/Fluent-only code with `#if NET10_0_OR_GREATER` and do not add new UI/runtime types
+  to `Contracts`
 - **Roslyn:** `Microsoft.CodeAnalysis.*` **5.3.0**; SourceTools is a Roslyn component and must remain
   compiler-host compatible
 - **Blazor UI:** `Microsoft.FluentUI.AspNetCore.Components` **`5.0.0-rc.3-26138.1`**; exact RC pin.
@@ -40,8 +43,10 @@ _This file contains critical rules and patterns that AI agents must follow when 
   BenchmarkDotNet **0.15.8**
 - **E2E:** Playwright **1.61.0**, TypeScript **6.0.3**, Node engine `>=24.0.0`
 - **Release tooling:** semantic-release **25.0.5**, commitlint **21.0.2**, Husky **9.1.7**
-- **Packages:** six publishable NuGet packages: `Cli`, `Contracts`, `Mcp`, `Schema`, `Shell`,
-  `Testing`. `AppHost` and `SourceTools` are intentionally non-packable
+- **Packages:** current publishable NuGet packages are `Cli`, `Contracts`, `Mcp`, `Schema`, `Shell`,
+  and `Testing`; Story 11.11 may add `Contracts.UI` as the approved split package. `AppHost` and
+  `SourceTools` are intentionally non-packable, and Story 11.14 owns package-compat docs/inventory
+  before v1.0
 
 ## Critical Implementation Rules
 
@@ -67,8 +72,9 @@ _This file contains critical rules and patterns that AI agents must follow when 
   break the build today. They ARE expected on public-API surfaces (`Contracts/{Attributes,
   Rendering,Mcp,Conformance}`, where `.editorconfig` re-raises CS1591 to `warning`) because that's
   the v1.0 API-freeze target; owned `PublicAPI*.Shipped.txt` baselines pin strict public surfaces
-- **Multi-TFM guard:** net10/FluentUI-only code in a multi-targeted project (Contracts) must sit
-  behind `#if NET10_0_OR_GREATER` (e.g. `Typography.cs`) so the netstandard2.0 analyzer build stays clean
+- **Contracts kernel guard:** do not add new net10/Blazor/FluentUI dependencies to the `Contracts`
+  kernel. Existing pre-split UI code in `Contracts` must remain behind `#if NET10_0_OR_GREATER` until
+  Story 11.11 moves it to `Contracts.UI`, keeping the netstandard2.0 analyzer build clean
 - **Formatting:** 4-space indent, **CRLF**, UTF-8, final newline, trim trailing whitespace
 
 ### Source-Generator Rules (Producer — `Hexalith.FrontComposer.SourceTools`)
@@ -231,10 +237,11 @@ _This file contains critical rules and patterns that AI agents must follow when 
   ("escalate once mature") but TWAE promotes them to build-breakers; `CA1014` is disabled (`none`)
 - **Centralized package versions** — never add `Version=` to a `.csproj`; edit
   `Directory.Packages.props` (`PrivateAssets="all"` on analyzer/Roslyn refs lives in the project file)
-- **Dependency direction points DOWN to `Contracts`** — `SourceTools` references **only** `Contracts`
-  (to stay netstandard2.0-clean); `Schema`/`Shell` → Contracts; `Mcp` → Contracts + Schema;
-  `Cli`/`Testing` are leaves. Never add a reference that pulls net10-only deps into `SourceTools` or
-  the netstandard2.0 face of `Contracts`
+- **Dependency direction points DOWN to the `Contracts` kernel** — `SourceTools` references **only**
+  `Contracts` (to stay netstandard2.0-clean); `Schema` and `Mcp` stay on kernel contracts; Shell/UI
+  consumers may reference `Contracts.UI` only after Story 11.11 creates it; `Cli`/`Testing` are leaves.
+  Never add a reference that pulls net10-only deps into `SourceTools` or the netstandard2.0 face of
+  `Contracts`
 - **Package validation** is opt-in via `EnableFrontComposerPackageValidation=true` (baseline `0.1.0`,
   `Directory.Build.targets`) — used at release to catch breaking API/package changes
 - **No third-party CLI framework** — the `frontcomposer` CLI uses a bespoke option parser + the fixed
@@ -298,7 +305,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
 **Always:**
 - **Always `ConfigureAwait(false)`** on awaits (CA2007 → build error via TWAE)
 - **Always run tests with `DiffEngine_Disabled=true`** (else Verify hangs)
-- **Always guard net10/FluentUI code with `#if NET10_0_OR_GREATER`** in multi-targeted projects
+- **Always keep net10/FluentUI code out of the `Contracts` kernel target**; pre-split code still in a
+  multi-targeted project stays behind `#if NET10_0_OR_GREATER` until Story 11.11 moves it
 - **Always update `.verified.txt` snapshots, owned `PublicAPI*.Shipped.txt` baselines, and pacts intentionally** —
   CI fails on stale ones
 - **Always build Release clean** (`TreatWarningsAsErrors=true`) and run `/bmad-code-review` before a
@@ -330,4 +338,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
   canonicalization, test lanes, or release pipeline change.
 - Remove rules that become obvious over time.
 
-Last Updated: 2026-06-02
+Last Updated: 2026-07-05

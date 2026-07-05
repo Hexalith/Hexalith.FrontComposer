@@ -140,6 +140,9 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionFallbackRefreshScheduler ProjectionFallbackRefreshScheduler { get; set; } = default!;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.State.PendingCommands.INewItemIndicatorStateService NewItemIndicators { get; set; } = default!;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    [Inject]");
             _ = sb.AppendLine("    private TimeProvider TimeProvider { get; set; } = default!;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    [CascadingParameter]");
@@ -547,14 +550,35 @@ public static class RazorEmitter {
         _ = sb.AppendLine("                IsReadOnly: isFieldReadOnly,");
         _ = sb.AppendLine("                Hints: null,");
         _ = sb.AppendLine("                Description: description);");
-        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<" + model.TypeName + ", TField>>(0);");
-        _ = sb.AppendLine("            builder.AddAttribute(1, \"Parent\", row);");
-        _ = sb.AppendLine("            builder.AddAttribute(2, \"Value\", value);");
-        _ = sb.AppendLine("            builder.AddAttribute(3, \"Field\", __field);");
-        _ = sb.AppendLine("            builder.AddAttribute(4, \"RenderContext\", __renderContext);");
-        _ = sb.AppendLine("            builder.AddAttribute(5, \"ProjectionRole\", " + roleExpr + ");");
-        _ = sb.AppendLine("            builder.AddAttribute(6, \"RenderDefault\", renderDefault);");
-        _ = sb.AppendLine("            builder.CloseComponent();");
+        bool emitsRowIdentityCascade = RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)
+            && RoleBodyHelpers.ResolveItemKeyAccessorExpression(model) != "(object)x";
+        if (emitsRowIdentityCascade) {
+            _ = sb.AppendLine("            var __pendingCommandRowIdentity = PendingCommandRowIdentityFor(row);");
+            _ = sb.AppendLine("            builder.OpenComponent<global::Microsoft.AspNetCore.Components.CascadingValue<global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity?>>(0);");
+            _ = sb.AppendLine("            builder.AddAttribute(1, \"Value\", __pendingCommandRowIdentity);");
+            _ = sb.AppendLine("            builder.AddAttribute(2, \"ChildContent\", (global::Microsoft.AspNetCore.Components.RenderFragment)(__cascadeBuilder =>");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                __cascadeBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<" + model.TypeName + ", TField>>(0);");
+            _ = sb.AppendLine("                __cascadeBuilder.AddAttribute(1, \"Parent\", row);");
+            _ = sb.AppendLine("                __cascadeBuilder.AddAttribute(2, \"Value\", value);");
+            _ = sb.AppendLine("                __cascadeBuilder.AddAttribute(3, \"Field\", __field);");
+            _ = sb.AppendLine("                __cascadeBuilder.AddAttribute(4, \"RenderContext\", __renderContext);");
+            _ = sb.AppendLine("                __cascadeBuilder.AddAttribute(5, \"ProjectionRole\", " + roleExpr + ");");
+            _ = sb.AppendLine("                __cascadeBuilder.AddAttribute(6, \"RenderDefault\", renderDefault);");
+            _ = sb.AppendLine("                __cascadeBuilder.CloseComponent();");
+            _ = sb.AppendLine("            }));");
+            _ = sb.AppendLine("            builder.CloseComponent();");
+        }
+        else {
+            _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<" + model.TypeName + ", TField>>(0);");
+            _ = sb.AppendLine("            builder.AddAttribute(1, \"Parent\", row);");
+            _ = sb.AppendLine("            builder.AddAttribute(2, \"Value\", value);");
+            _ = sb.AppendLine("            builder.AddAttribute(3, \"Field\", __field);");
+            _ = sb.AppendLine("            builder.AddAttribute(4, \"RenderContext\", __renderContext);");
+            _ = sb.AppendLine("            builder.AddAttribute(5, \"ProjectionRole\", " + roleExpr + ");");
+            _ = sb.AppendLine("            builder.AddAttribute(6, \"RenderDefault\", renderDefault);");
+            _ = sb.AppendLine("            builder.CloseComponent();");
+        }
         _ = sb.AppendLine("        };");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
@@ -784,7 +808,15 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("    private void OnStateChanged(object? sender, EventArgs e)");
-        _ = sb.AppendLine("        => InvokeAsync(StateHasChanged);");
+        if (isGrid) {
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        DismissMaterializedIndicators(" + model.TypeName + "State.Value.Items);");
+            _ = sb.AppendLine("        _ = InvokeAsync(StateHasChanged);");
+            _ = sb.AppendLine("    }");
+        }
+        else {
+            _ = sb.AppendLine("        => InvokeAsync(StateHasChanged);");
+        }
         _ = sb.AppendLine();
 
         if (isGrid) {
@@ -878,6 +910,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("                    typed.Add(typedItem);");
             _ = sb.AppendLine("                }");
             _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            DismissMaterializedIndicators(typed);");
             _ = sb.AppendLine("            int totalCount = LoadedPageState.Value.TotalCountByKey.TryGetValue(_viewKey, out var c) ? c : typed.Count;");
             _ = sb.AppendLine("            return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeName + "> { Items = typed, TotalItemCount = totalCount };");
             _ = sb.AppendLine("        }");
@@ -1003,6 +1036,75 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        return separator > 0 && separator < _viewKey.Length - 1 ? _viewKey[(separator + 1)..] : _viewKey;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+        bool hasStableRowKey = RoleBodyHelpers.ResolveItemKeyAccessorExpression(model) != "(object)x";
+        _ = sb.AppendLine("    private static string? EntityKeyFromItem(" + model.TypeName + " row)");
+        _ = sb.AppendLine("    {");
+        if (hasStableRowKey) {
+            _ = sb.AppendLine("        object? key = _itemKeyAccessor(row);");
+            _ = sb.AppendLine("        return key switch");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            null => null,");
+            _ = sb.AppendLine("            string value when !string.IsNullOrWhiteSpace(value) => value,");
+            _ = sb.AppendLine("            string => null,");
+            _ = sb.AppendLine("            System.IFormattable formattable => formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture),");
+            _ = sb.AppendLine("            _ => key.ToString(),");
+            _ = sb.AppendLine("        };");
+        }
+        else {
+            _ = sb.AppendLine("        return null;");
+        }
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        string? statusProperty = RoleBodyHelpers.ResolveStatusEnumProperty(model);
+        ColumnModel? statusColumn = RoleBodyHelpers.ResolveStatusEnumColumn(model);
+        _ = sb.AppendLine("    private static string? ExpectedStatusSlotFromItem(" + model.TypeName + " row)");
+        if (statusProperty is not null && statusColumn is not null) {
+            _ = sb.AppendLine("        => " + (statusColumn.IsNullable
+                ? "row." + statusProperty + "?.ToString()"
+                : "row." + statusProperty + ".ToString()") + ";");
+        }
+        else {
+            _ = sb.AppendLine("        => null;");
+        }
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private static global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentityFor(" + model.TypeName + " row)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        string? entityKey = EntityKeyFromItem(row);");
+        _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(entityKey))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return null;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        return new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity(");
+        _ = sb.AppendLine("            ProjectionTypeFromViewKey(),");
+        _ = sb.AppendLine("            _viewKey,");
+        _ = sb.AppendLine("            entityKey,");
+        _ = sb.AppendLine("            ExpectedStatusSlotFromItem(row));");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void DismissMaterializedIndicators(System.Collections.Generic.IEnumerable<" + model.TypeName + ">? items)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (items is null) { return; }");
+        _ = sb.AppendLine("        foreach (var item in items)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            string? entityKey = EntityKeyFromItem(item);");
+        _ = sb.AppendLine("            if (!string.IsNullOrWhiteSpace(entityKey))");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                NewItemIndicators.DismissMaterialized(_viewKey, entityKey);");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, ref int seq)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        foreach (var entry in NewItemIndicators.Snapshot(_viewKey))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(seq++);");
+        _ = sb.AppendLine("            builder.SetKey(entry.EntityKey);");
+        _ = sb.AppendLine("            builder.CloseComponent();");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("    private void RegisterVisibleProjectionLane()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(RenderContext?.TenantId))");
@@ -1018,6 +1120,11 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        if (string.Equals(_registeredProjectionFallbackLaneKey, laneKey, StringComparison.Ordinal))");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        if (_registeredProjectionFallbackLaneKey is not null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            NewItemIndicators.DismissForFilterChange(_viewKey);");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        _projectionFallbackLaneRegistration?.Dispose();");
@@ -1390,6 +1497,9 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemsCount\", state.Items.Count);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"AnyRealFilterActive\", anyRealFilterActive);");
         _ = sb.AppendLine("        builder.CloseComponent();");
+        _ = sb.AppendLine();
+
+        _ = sb.AppendLine("        RenderNewItemIndicators(builder, ref seq);");
         _ = sb.AppendLine();
 
         // Story 4-4 T2.7 / D9 — unfiltered row count above the grid (filter-summary path is owned by Story 4-3).

@@ -127,6 +127,7 @@ public abstract class GeneratedComponentTestBase : BunitContext {
             Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector,
             Hexalith.FrontComposer.Shell.Services.Auth.NoOpAuthRedirector>();
         _ = Services.AddScoped<IPendingCommandStateService, PendingCommandStateService>();
+        _ = Services.AddScoped<INewItemIndicatorStateService, NewItemIndicatorStateService>();
         _ = Services.AddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
 
         // Story 6-2 T4 — generated views inject IProjectionTemplateRegistry; bUnit tests use the

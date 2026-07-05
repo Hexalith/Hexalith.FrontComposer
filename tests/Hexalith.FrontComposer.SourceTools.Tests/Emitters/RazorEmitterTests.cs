@@ -80,6 +80,58 @@ public class RazorEmitterTests {
     }
 
     [Fact]
+    public void EmittedGrid_RendersNewItemIndicatorsFromStateSnapshot() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(
+                Col("Id", "Id", TypeCategory.Text),
+                Col("Name", "Name", TypeCategory.Text))));
+
+        string source = RazorEmitter.Emit(model);
+
+        source.ShouldContain("private global::Hexalith.FrontComposer.Shell.State.PendingCommands.INewItemIndicatorStateService NewItemIndicators { get; set; } = default!;");
+        source.ShouldContain("private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, ref int seq)");
+        source.ShouldContain("foreach (var entry in NewItemIndicators.Snapshot(_viewKey))");
+        source.ShouldContain("builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(seq++);");
+        source.ShouldContain("builder.SetKey(entry.EntityKey);");
+        source.ShouldContain("RenderNewItemIndicators(builder, ref seq);");
+    }
+
+    [Fact]
+    public void EmittedGrid_DismissesIndicatorsOnMaterializedRowsAndLaneChanges() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(
+                Col("Id", "Id", TypeCategory.Text),
+                Col("Name", "Name", TypeCategory.Text))));
+
+        string source = RazorEmitter.Emit(model);
+
+        source.ShouldContain("DismissMaterializedIndicators(OrderProjectionState.Value.Items);");
+        source.ShouldContain("DismissMaterializedIndicators(typed);");
+        source.ShouldContain("NewItemIndicators.DismissMaterialized(_viewKey, entityKey);");
+        source.ShouldContain("if (_registeredProjectionFallbackLaneKey is not null)");
+        source.ShouldContain("NewItemIndicators.DismissForFilterChange(_viewKey);");
+    }
+
+    [Fact]
+    public void EmittedGrid_CascadesPendingCommandRowIdentityThroughFieldSlots() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(
+                Col("Id", "Id", TypeCategory.Text),
+                Col("Status", "Status", TypeCategory.Enum))));
+
+        string source = RazorEmitter.Emit(model);
+
+        source.ShouldContain("private static global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentityFor(OrderProjection row)");
+        source.ShouldContain("return new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity(");
+        source.ShouldContain("ProjectionTypeFromViewKey(),");
+        source.ShouldContain("_viewKey,");
+        source.ShouldContain("ExpectedStatusSlotFromItem(row));");
+        source.ShouldContain("var __pendingCommandRowIdentity = PendingCommandRowIdentityFor(row);");
+        source.ShouldContain("builder.OpenComponent<global::Microsoft.AspNetCore.Components.CascadingValue<global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity?>>(0);");
+        source.ShouldContain("__cascadeBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<OrderProjection, TField>>(0);");
+    }
+
+    [Fact]
     public void EmittedCode_EscapesStatusOverviewRouteLiteral() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         var model = new RazorModel(

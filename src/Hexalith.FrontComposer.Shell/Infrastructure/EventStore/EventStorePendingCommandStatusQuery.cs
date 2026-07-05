@@ -61,7 +61,8 @@ public sealed class EventStorePendingCommandStatusQuery(
             EventStoreCommandStatus.Completed => new PendingCommandOutcomeObservation(
                 Source: PendingCommandOutcomeSource.IdempotencyStatusQuery,
                 Outcome: PendingCommandTerminalOutcome.Confirmed,
-                MessageId: pendingCommand.MessageId),
+                MessageId: pendingCommand.MessageId,
+                ObservedAt: status.Timestamp),
             EventStoreCommandStatus.Rejected => new PendingCommandOutcomeObservation(
                 Source: PendingCommandOutcomeSource.IdempotencyStatusQuery,
                 Outcome: PendingCommandTerminalOutcome.Rejected,
@@ -69,14 +70,16 @@ public sealed class EventStorePendingCommandStatusQuery(
                 RejectionTitle: BoundText(status.RejectionEventType) ?? "Command rejected",
                 RejectionDetail: BoundText(status.FailureReason)
                     ?? BoundText(status.RejectionEventType)
-                    ?? "The command was rejected by EventStore."),
+                    ?? "The command was rejected by EventStore.",
+                ObservedAt: status.Timestamp),
             EventStoreCommandStatus.PublishFailed => new PendingCommandOutcomeObservation(
                 Source: PendingCommandOutcomeSource.IdempotencyStatusQuery,
                 Outcome: PendingCommandTerminalOutcome.NeedsReview,
                 MessageId: pendingCommand.MessageId,
                 RejectionTitle: "Command publish failed",
                 RejectionDetail: BoundText(status.FailureReason)
-                    ?? "EventStore reported PublishFailed for the accepted command."),
+                    ?? "EventStore reported PublishFailed for the accepted command.",
+                ObservedAt: status.Timestamp),
             EventStoreCommandStatus.TimedOut => new PendingCommandOutcomeObservation(
                 Source: PendingCommandOutcomeSource.IdempotencyStatusQuery,
                 Outcome: PendingCommandTerminalOutcome.NeedsReview,
@@ -84,7 +87,8 @@ public sealed class EventStorePendingCommandStatusQuery(
                 RejectionTitle: "Command timed out",
                 RejectionDetail: BoundText(status.FailureReason)
                     ?? BoundText(status.TimeoutDuration)
-                    ?? "EventStore reported TimedOut for the accepted command."),
+                    ?? "EventStore reported TimedOut for the accepted command.",
+                ObservedAt: status.Timestamp),
             _ => throw ProtocolFailure(pendingCommand.MessageId, "UnknownStatus"),
         };
     }

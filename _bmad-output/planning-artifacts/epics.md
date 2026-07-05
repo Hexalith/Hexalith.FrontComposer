@@ -79,14 +79,14 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - NFR2: ULIDs (26-char Crockford base32) via `IUlidFactory` — never GUIDs — for `messageId`/`correlationId`.
 - NFR3: Incremental-cache invariant — pure, fully-equatable IR; no `ISymbol` escapes the parse stage; `EquatableArray<T>` for collections.
 - NFR4: Schema fingerprint determinism — `CanonicalSchemaMaterial` pins `JavaScriptEncoder.Create(UnicodeRanges.All)`, STJ source-gen context, `AbsentValueSentinel="<absent>"`, `StringComparer.Ordinal`; changing any invalidates all baselines.
-- NFR5: Multi-TFM — Contracts & SourceTools target `net10.0`+`netstandard2.0`; net10/FluentUI code guarded by `#if NET10_0_OR_GREATER`.
+- NFR5: Contracts kernel split — `SourceTools` and the `Contracts` kernel stay netstandard2.0-clean; net10/Blazor/Fluent rendering contracts move to `Contracts.UI`; pre-split net10/FluentUI code remains guarded by `#if NET10_0_OR_GREATER` until Story 11.11 moves it.
 - NFR6: **Accessibility (WCAG)** — `aria-label`/`role`/`aria-live`/`data-testid` on every interactive element; focus visibility, reduced-motion and forced-colors fallbacks; override-accessibility diagnostics HFC1050–HFC1055.
 - NFR7: Generated-output path is a public contract (`GeneratedOutputPathContract.Template`) validated in Debug **and** Release.
 - NFR8: Ships as signed NuGet packages (`.nupkg`+`.snupkg`); semantic-release from Conventional Commits; no Dockerfiles/containers.
 - NFR9: Fluxor single-writer discipline per slice (ADR-007); scoped-lifetime discipline for storage/effects/auth/tenant accessors (ADR-030).
 - NFR10: Test discipline — solution-level `dotnet test` + trait filters, `DiffEngine_Disabled=true`, Governance + Contract lanes blocking; committed `.verified.txt`, `PublicAPI.Shipped.txt`, pacts updated intentionally.
 - NFR11: Telemetry via `FrontComposerActivitySource` (OpenTelemetry `ActivitySource`).
-- NFR12: Dependency direction points down to `Contracts`; `SourceTools` references only `Contracts` to stay netstandard2.0-clean.
+- NFR12: Dependency direction points down to the `Contracts` kernel; `SourceTools` references only `Contracts` to stay netstandard2.0-clean, while Shell/UI consumers may reference `Contracts.UI` after Story 11.11.
 - NFR13: **Confirmed (2026-06-21)** Trim/AOT readiness — `PublishTrimmed`/`PublishAot` enable the HFC1070 advisory; reflection projection catalog needs an `IActionQueueProjectionCatalog` override.
 - NFR14: Root-declared Hexalith submodules live under `references/Hexalith.*`; initialize only those root `.gitmodules` entries, never recurse into nested submodules, and never modify submodule files without explicit approval. Debug/source builds consume Hexalith libraries through local `ProjectReference`s, while Release/package builds consume published NuGet packages.
 
@@ -181,12 +181,14 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 **Release Governance Gate RG-1 (FR24):** the Release Owner must capture expected package inventory,
 signed `.nupkg`/`.snupkg` evidence, SBOM, checksums, release manifest/evidence chain, GitHub Release
 assets or dry-run evidence, and package-consumer validation before the v1.0 release candidate. If
-workflow or product-code changes are required to produce that evidence, create a focused implementation
-story before publication.
+workflow, release-helper, governance-test, or product-code changes are required to produce that evidence,
+create a focused release-governance implementation story (`REL-1` or the team's equivalent) before RC
+publication. The story must close the gap between `.releaserc.json`, `.github/workflows/release.yml`,
+`eng/release_evidence.py`, governance tests, release docs, and package-consumer validation evidence.
 
 **Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic) · AR11 (FC-NIP) → Epic 9 · AR12 (FC-TOOL-GOV) → Epic 10.
 **Cross-cutting NFRs** (NFR1–NFR13) apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. **NFR11 (telemetry)** is owned cross-cutting (not per-AC traced) — emitting through `FrontComposerActivitySource` on the Shell command-lifecycle/projection paths and the MCP tool/resource paths.
-**Epic 11 (Architecture Review Remediation)** refines the FRs noted above (FR13 · FR14 · FR22) and **amends cross-cutting NFRs**: NFR5/NFR12 (Contracts kernel split — pending Architect+PM sign-off) and NFR6 (visual-conformance guards). Its split stories trace primarily to the 2026-07-04 architecture-quality-review findings (H1–H12 / M-series), not to net-new FRs. Story 11.0 is a pre-implementation route-contract decision gate required before Story 11.1+ creation. See the Epic 11 section.
+**Epic 11 (Architecture Review Remediation)** refines the FRs noted above (FR13 · FR14 · FR22) and **amends cross-cutting NFRs**: NFR5/NFR12 (Contracts kernel split approved by Story 11.8) and NFR6 (visual-conformance guards). Its split stories trace primarily to the 2026-07-04 architecture-quality-review findings (H1-H12 / M-series), not to net-new FRs. Story 11.0 is a completed route-contract decision gate; Story 11.8 is a completed package-boundary decision gate. See the Epic 11 section.
 
 ## Epic List
 
@@ -293,9 +295,9 @@ unblock), a unified command/projection route contract (so palette command activa
 that exists), a leaner Contracts kernel, and consolidated shell layering + convention alignment.
 Remediation-framed, but each story is justified by operator/adopter/security impact.
 **Refines:** FR13 (11.1 circuit-safe auth, 11.2 realtime resilience), FR14 (11.0 route decision + 11.7 command-route implementation), FR22 (11.6 testing-harness failure modes) · **Amends NFRs:** NFR5/NFR12 (11.8/11.11-11.14 Contracts kernel split path), NFR6 (11.5 visual-conformance guards) · **Introduces:** architecture-review-finding requirements H1–H12 / M-series · **no net-new user-facing FRs**
-**Standalone:** each story ships independently after the pre-epic route decision gate; risk-ordered (11.0 → 11.1 → 11.2 → 11.4 → 11.3 → 11.5 → 11.6 → 11.7 → 11.9/11.15/11.16 → 11.17/11.18/11.19 → 11.8/11.11-11.14 last); independent of Epics 9/10; does not reopen completed Epics 1–8.
+**Standalone:** each implementation story ships independently after the completed decision gates; risk-ordered (11.0 → 11.1 → 11.2 → 11.4 → 11.3 → 11.5 → 11.6 → 11.7 → 11.9/11.15/11.16 → 11.17/11.18/11.19 → 11.8/11.11-11.14 last); independent of Epics 9/10; does not reopen completed Epics 1–8.
 **Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), triggered by `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`. A Minor-scope quick-win fix batch was applied in-tree under the same proposal (PR #48).
-**Decisions (contract-confirmation DoD — tracked, owned, dated blocking gates):** **11.0** route-contract decision → **Architect + Product**, assigned 2026-07-05, due **before Epic 11 dev kickoff** (no Story 11.1+ `create-story` before it is done; it owns the only user-visible broken journey); **11.8** Contracts kernel split decision and compatibility plan → **Architect + PM**, assigned 2026-07-04, due **before Story 11.11 starts** (pre-v1.0 window; implementation ordered last).
+**Decisions (contract-confirmation DoD — tracked, owned, dated blocking gates):** **11.0** route-contract decision → **Architect + Product**, assigned 2026-07-05, resolved 2026-07-05 with `/commands/{BoundedContext}/{CommandTypeName}`; **11.8** Contracts kernel split decision and compatibility plan → **Architect + PM**, assigned 2026-07-04, resolved 2026-07-05 with the approved `Contracts` kernel + `Contracts.UI` target. Stories 11.11-11.14 implement and evidence the package-boundary change last in the pre-v1.0 window.
 
 > **Out of scope (fast-follow, not an epic):** `<AuditTimeline>` and `<ConsequencePreview>` rich
 > components (AR10) — approved fallbacks stand; tracked for a later cycle.
@@ -1176,8 +1178,16 @@ question; warning/info extensions) emitted by the generator (`[ProjectionBadge]`
 > resolves the accepted-deferred Story 2.6 AC1(b) gap by giving the row-level new-item producer a current
 > backlog home. It does not reopen completed Epics 2 or 3, and it must not fabricate row identity from the
 > current projection nudge seam.
+> Story 9.1 is done as of 2026-07-05: the approved source is FrontComposer-owned pending-command row
+> metadata populated from generated grid/command runtime context. Story 9.2 remains the implementation and
+> release-evidence gate.
 
 ### Story 9.1: Confirm the FC-NIP row-identity producer contract
+
+Decision status: **done 2026-07-05**. Approved payload source is FrontComposer-owned pending-command row
+metadata populated from generated grid/command runtime context. EventStore status remains lifecycle/status by
+`MessageId`; it is not the row-identity source. Contract:
+`_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md`.
 
 As a FrontComposer maintainer,
 I want a confirmed row-identity payload contract for fresh-row indicators,
@@ -1335,16 +1345,23 @@ and punctuation-heavy string secret values.
 > dead scoped CSS, parameter-splat surfaces, cross-request lifetimes) each gain a durable Governance test.
 > Suggested order: 11.0 → 11.1 → 11.2 → 11.4 → 11.3 → 11.5 → 11.6 → 11.7 → 11.9/11.15/11.16 → 11.17/11.18/11.19 → 11.8/11.11-11.14 last.
 > Story creation order is authoritative. Do not infer the next story from file order or numeric sort.
-> Story 11.0 blocks all Story 11.1+ `create-story` work. Story 11.8 blocks only Stories 11.11-11.14.
+> Story 11.0 is done as of 2026-07-05 and unblocks Story 11.1+ `create-story` work. Story 11.8 is done as of 2026-07-05; Stories 11.11-11.14 remain deliberately ordered last and must implement/evidence the approved package-boundary plan.
 > After Story 11.7, create lower-risk remediation in the stated order before package-boundary stories.
 >
-> **Decision gates (contract-confirmation DoD, 2026-06-21 amendment — tracked, owned, dated):** **Story 11.0**
-> (command/projection route contract) — owner **Architect + Product**, assigned **2026-07-05**, due **before Epic 11
-> dev kickoff** (no Story 11.1+ `create-story` may start before it is done). **Story 11.8** (Contracts kernel split
-> decision and compatibility plan, amends the multi-TFM decision) — owner **Architect + PM**, assigned **2026-07-04**,
-> due **before Story 11.11 starts** (pre-v1.0 window; implementation deliberately ordered last).
+> **Decision gates (contract-confirmation DoD, 2026-06-21 amendment - tracked, owned, dated):** **Story 11.0**
+> (command/projection route contract) - owner **Architect + Product**, assigned **2026-07-05**, resolved
+> **2026-07-05** with `/commands/{BoundedContext}/{CommandTypeName}` as the canonical generated command route
+> family, recorded in `_bmad-output/contracts/fc-route-generated-command-route-contract-2026-07-05.md`.
+> **Story 11.8** (Contracts kernel split
+> decision and compatibility plan, amends the multi-TFM decision) - owner **Architect + PM**, assigned **2026-07-04**,
+> resolved **2026-07-05** by approving the split and recording package-compat requirements in
+> `_bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md`.
 
 ### Story 11.0: Command/projection route-contract decision gate
+
+Decision status: **done 2026-07-05**. Canonical generated command route family is
+`/commands/{BoundedContext}/{CommandTypeName}`. Contract:
+`_bmad-output/contracts/fc-route-generated-command-route-contract-2026-07-05.md`.
 
 As a Product Owner and Architect,
 I want the command route family selected before Epic 11 implementation starts,
@@ -1502,7 +1519,7 @@ So that the "jump to any action" journey does not dead-end on an unresolvable ro
 
 **Acceptance Criteria:**
 
-**Given** Story 11.0 has selected the canonical command route family,
+**Given** Story 11.0 has selected `/commands/{BoundedContext}/{CommandTypeName}` as the canonical generated command route family,
 **When** palette command entries, projection empty-state CTAs, and generated command pages are rendered,
 **Then** every generated command activation targets a route that exists and uses the selected route contract. *(H10 remainder; proposal §1 correction #3.)*
 
@@ -1516,6 +1533,12 @@ So that the "jump to any action" journey does not dead-end on an unresolvable ro
 *(Refines FR14 / UX-DR4; closes the H10 remainder + the unresolvable-route finding — the single most user-visible open defect in the plan.)*
 
 ### Story 11.8: Contracts kernel split decision and compatibility plan
+
+Decision status: **done 2026-07-05**. Approved package-boundary target: keep `Contracts` as the
+netstandard2.0-clean wire/attribute/schema/diagnostic kernel, move the net10/Blazor/Fluent rendering
+surface to `Contracts.UI`, and complete package compatibility/public API/deprecation evidence in the
+pre-v1.0 window before Stories 11.11-11.14 are marked done. Contract:
+`_bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md`.
 
 As an Architect and Product Manager,
 I want the Contracts kernel split and compatibility path explicitly approved,

@@ -17,6 +17,7 @@ using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 using Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -137,6 +138,60 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         });
 
         await Verify(NormalizeGridMarkup(cut.Markup));
+    }
+
+    [Fact]
+    public async Task CounterProjectionView_NewItemIndicator_RendersForLaneAndDismissesWhenRowMaterializes() {
+        UseFakeTime(s_fixedNow);
+
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        INewItemIndicatorStateService indicators = Services.GetRequiredService<INewItemIndicatorStateService>();
+        const string ViewKey = "Counter:Counter.Domain.CounterProjection";
+        const string IndicatorSelector = "[data-testid=\"fc-new-item-indicator\"]";
+
+        indicators.Add(new NewItemIndicatorEntry(ViewKey, "counter-1", MessageId: "message-1", CreatedAt: s_fixedNow));
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            "counter-nip-initial",
+            [
+                new CounterProjection
+                {
+                    Id = "counter-2",
+                    Count = 2,
+                    LastUpdated = s_lastUpdated,
+                },
+            ]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+
+        await cut.WaitForAssertionAsync(() => {
+            AngleSharp.Dom.IElement indicator = cut.Find(IndicatorSelector);
+            indicator.GetAttribute("role").ShouldBe("status");
+            indicator.GetAttribute("aria-live").ShouldBe("polite");
+            indicator.TextContent.Trim().ShouldBe("New item. It may not match current filters yet.");
+        });
+
+        await cut.InvokeAsync(() => dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            "counter-nip-materialized",
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 1,
+                    LastUpdated = s_lastUpdated,
+                },
+                new CounterProjection
+                {
+                    Id = "counter-2",
+                    Count = 2,
+                    LastUpdated = s_lastUpdated,
+                },
+            ])));
+
+        await cut.WaitForAssertionAsync(() => {
+            cut.FindAll(IndicatorSelector).ShouldBeEmpty();
+            indicators.Snapshot(ViewKey).ShouldBeEmpty();
+        });
     }
 
     [Fact]

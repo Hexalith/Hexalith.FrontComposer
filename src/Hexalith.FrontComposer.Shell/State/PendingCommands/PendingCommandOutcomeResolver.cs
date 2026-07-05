@@ -35,7 +35,8 @@ public sealed record PendingCommandOutcomeObservation(
     string? ExpectedStatusSlot = null,
     string? RejectionTitle = null,
     string? RejectionDetail = null,
-    string? RejectionDataImpact = null);
+    string? RejectionDataImpact = null,
+    DateTimeOffset? ObservedAt = null);
 
 /// <summary>Result returned by the shared pending-command outcome resolver.</summary>
 public sealed record PendingCommandOutcomeResolutionResult(
@@ -62,12 +63,18 @@ public interface IPendingCommandOutcomeResolver {
 /// <inheritdoc />
 public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolver {
     private readonly IPendingCommandStateService _pendingCommands;
+    private readonly INewItemIndicatorStateService? _newItemIndicators;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<PendingCommandOutcomeResolver> _logger;
 
     public PendingCommandOutcomeResolver(
         IPendingCommandStateService pendingCommands,
-        ILogger<PendingCommandOutcomeResolver>? logger = null) {
+        ILogger<PendingCommandOutcomeResolver>? logger = null,
+        INewItemIndicatorStateService? newItemIndicators = null,
+        TimeProvider? timeProvider = null) {
         _pendingCommands = pendingCommands ?? throw new ArgumentNullException(nameof(pendingCommands));
+        _newItemIndicators = newItemIndicators;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _logger = logger ?? NullLogger<PendingCommandOutcomeResolver>.Instance;
     }
 
@@ -76,9 +83,11 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
         ArgumentNullException.ThrowIfNull(observation);
 
         if (!string.IsNullOrWhiteSpace(observation.MessageId)) {
-            return PendingCommandOutcomeResolutionResult.From(_pendingCommands.ResolveTerminal(ToTerminalObservation(
-                observation,
-                observation.MessageId)));
+            PendingCommandOutcomeResolutionResult result = PendingCommandOutcomeResolutionResult.From(_pendingCommands.ResolveTerminal(ToTerminalObservation(
+                    observation,
+                    observation.MessageId)));
+            PublishNewItemIndicatorIfEligible(observation, result);
+            return result;
         }
 
         // P2-P10 — both anchors absent means the upstream payload is structurally broken; warn so
@@ -89,6 +98,14 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
                 "Pending command outcome dropped because both MessageId and EntityKey were absent. Source={Source} Outcome={Outcome}",
                 observation.Source,
                 observation.Outcome);
+            return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
+        }
+
+        if (string.IsNullOrWhiteSpace(observation.ProjectionTypeName)
+            || string.IsNullOrWhiteSpace(observation.LaneKey)) {
+            _logger.LogDebug(
+                "Pending command outcome ignored because fallback row identity metadata was incomplete. Source={Source}",
+                observation.Source);
             return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
         }
 
@@ -111,9 +128,11 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
             return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.AmbiguousMatch);
         }
 
-        return PendingCommandOutcomeResolutionResult.From(_pendingCommands.ResolveTerminal(ToTerminalObservation(
-            observation,
-            matches[0].MessageId)));
+        PendingCommandOutcomeResolutionResult resolved = PendingCommandOutcomeResolutionResult.From(_pendingCommands.ResolveTerminal(ToTerminalObservation(
+                observation,
+                matches[0].MessageId)));
+        PublishNewItemIndicatorIfEligible(observation, resolved);
+        return resolved;
     }
 
     private static PendingCommandTerminalObservation ToTerminalObservation(
@@ -140,4 +159,33 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
     private static bool OptionalEquals(string? entryValue, string? observationValue) =>
         string.IsNullOrWhiteSpace(observationValue)
         || string.Equals(entryValue, observationValue, StringComparison.Ordinal);
+
+    private void PublishNewItemIndicatorIfEligible(
+        PendingCommandOutcomeObservation observation,
+        PendingCommandOutcomeResolutionResult result) {
+        if (_newItemIndicators is null
+            || result is not { Status: PendingCommandOutcomeResolutionStatus.Resolved, Entry: { } entry }
+            || !IsConfirmedOutcome(observation.Outcome)) {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(entry.ProjectionTypeName)
+            || string.IsNullOrWhiteSpace(entry.LaneKey)
+            || string.IsNullOrWhiteSpace(entry.EntityKey)
+            || string.IsNullOrWhiteSpace(entry.MessageId)) {
+            _logger.LogDebug(
+                "New-item indicator skipped because pending command row metadata is incomplete. MessageId={MessageId}",
+                entry.MessageId);
+            return;
+        }
+
+        _newItemIndicators.Add(new NewItemIndicatorEntry(
+            entry.LaneKey,
+            entry.EntityKey,
+            entry.MessageId,
+            observation.ObservedAt ?? _timeProvider.GetUtcNow()));
+    }
+
+    private static bool IsConfirmedOutcome(PendingCommandTerminalOutcome outcome) =>
+        outcome is PendingCommandTerminalOutcome.Confirmed or PendingCommandTerminalOutcome.IdempotentConfirmed;
 }

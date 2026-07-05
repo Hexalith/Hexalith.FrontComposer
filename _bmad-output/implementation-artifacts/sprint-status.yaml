@@ -318,7 +318,8 @@ development_status:
   9-1-confirm-the-fc-nip-row-identity-producer-contract: done
   # 9-2 moved backlog -> ready-for-dev on 2026-07-05 (create-story; FC-NIP payload source is approved by the 2026-07-05 contract update: FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context. Scope remains implementation-open: prove runtime metadata before producer Add(...), preserve EventStore status as MessageId-only lifecycle source, render FcNewItemIndicator from generated-grid/shell grid consumer for matching lanes, keep no-diffing/no-broad-marking/no-AggregateId-smuggling guards, and update Verify/public-surface evidence only for intentional SourceTools output or FC-TBL surface changes.)
   # 9-2 moved ready-for-dev -> in-progress on 2026-07-05 (dev-story; baseline 60521f918556ff65c7b81651a6c6267eb85b0699 captured; starting FC-NIP producer and generated-grid consumer wiring.)
-  9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: in-progress
+  # 9-2 moved in-progress -> review on 2026-07-05 (dev-story; wired FC-NIP row metadata from generated grid runtime context into pending command registrations, produced indicators only from MessageId-first terminal outcomes with complete identity, rendered/dismissed generated-grid indicators, updated SourceTools approvals, and verified focused Shell + full SourceTools lanes. Full Shell project has one unrelated EventStore.Aspire package-version governance mismatch: expected 3.33.4, actual 3.35.0.)
+  9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: review
 
   # Epic 10: Tooling Governance Follow-Through (post-MVP quality hardening)
   # Added 2026-07-01 via Correct Course (sprint-change-proposal-2026-07-01-epic-7-retro-follow-through.md).
@@ -352,12 +353,17 @@ development_status:
   # Epic 11: Architecture Review Remediation (post-MVP quality hardening)
   # Added 2026-07-04 via Correct Course (sprint-change-proposal-2026-07-04.md), then restructured
   # 2026-07-05 via Correct Course readiness remediation (sprint-change-proposal-2026-07-05.md).
-  # Story 11.0 is the route-contract decision gate and blocks Story 11.1+ create-story work until done.
-  # Story 11.8 is the Contracts-kernel split decision/compatibility plan and gates 11.11-11.14.
+  # Story 11.0 route-contract decision completed on 2026-07-05:
+  # canonical generated command route family is /commands/{BoundedContext}/{CommandTypeName}
+  # (contract: _bmad-output/contracts/fc-route-generated-command-route-contract-2026-07-05.md).
+  # Story 11.8 Contracts-kernel split decision completed on 2026-07-05:
+  # approved netstandard2.0-clean Contracts kernel + net10-only Contracts.UI target
+  # (contract: _bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md).
   # Suggested order: 11.0 -> 11.1 -> 11.2 -> 11.4 -> 11.3 -> 11.5 -> 11.6 -> 11.7 -> 11.9/11.15/11.16 -> 11.17/11.18/11.19 -> 11.8/11.11-11.14.
   # Story creation order is authoritative: do not infer the next story from file order or numeric sort.
   epic-11: backlog
-  11-0-route-contract-decision-gate: backlog
+  # 11-0 moved backlog -> done on 2026-07-05 (correct-course; selected /commands/{BoundedContext}/{CommandTypeName} as the canonical generated command route family, recorded FC-ROUTE contract, and unblocked Story 11.1+ create-story work. Story 11.7 remains the implementation story and must align palette/CTA activation plus e2e route pin to the contract.)
+  11-0-route-contract-decision-gate: done
   11-1-token-lifecycle-and-circuit-safe-eventstore-auth: backlog
   11-2-projection-realtime-resilience: backlog
   11-3-mcp-cross-request-lifecycle-and-operability: backlog
@@ -365,7 +371,8 @@ development_status:
   11-5-dead-css-remediation-and-visual-conformance-guards: backlog
   11-6-testing-harness-failure-modes: backlog
   11-7-route-contract-implementation: backlog
-  11-8-contracts-kernel-split-decision-and-compatibility-plan: backlog
+  # 11-8 moved backlog -> done on 2026-07-05 (correct-course; approved the Contracts kernel split, amended the multi-TFM decision, recorded package-compat/public-API/deprecation requirements, and kept Stories 11.11-11.14 deliberately ordered last for pre-v1.0 implementation evidence.)
+  11-8-contracts-kernel-split-decision-and-compatibility-plan: done
   11-9-shell-layering-declaration-and-route-label-relocation: backlog
   11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface: backlog
   11-12-relocate-runtime-and-testing-owned-types-out-of-contracts: backlog
@@ -416,13 +423,13 @@ action_items:
     owner: "Architect + Product"
     assigned: "2026-07-05"
     due: "before Epic 11 dev kickoff"
-    status: open
+    status: done
   - epic: 11
     action: "E11-AI-2: Sign off the Contracts kernel split (Story 11.8). Amends the documented multi-TFM decision (project-context.md / architecture.md); plan package-compat in the pre-v1.0 window. Deliberately ordered last."
     owner: "Architect + PM"
     assigned: "2026-07-04"
     due: "before Story 11.11 starts (pre-v1.0)"
-    status: open
+    status: done
   - epic: 11
     action: "E11-AI-3: Complete/promote the draft PRD, create canonical architecture and UX planning artifacts, and rerun readiness before Epic 11 implementation starts."
     owner: "Product Owner + Developer"
@@ -435,12 +442,24 @@ action_items:
     assigned: "2026-07-05"
     due: "before v1.0 release candidate"
     status: open
+    implementation_story: "REL-1"
+    evidence_required:
+      - "validated package inventory"
+      - "signed .nupkg verification with timestamp"
+      - "required .snupkg symbol packages"
+      - "SBOM"
+      - "checksums"
+      - "sealed release manifest and verify-manifest output"
+      - "release-readiness classification"
+      - "GitHub Release assets or dry-run asset evidence"
+      - "package-consumer validation"
+    closure_rule: "Move to done only after Release Owner records evidence paths or approved fallback with reopen criteria."
   - epic: prd
     action: "PRD-AI-1: Resolve, route, or explicitly accept PRD open questions and assumptions; update PRD status only after Product approval."
     owner: "Product Owner"
     assigned: "2026-07-05"
     due: "before final v1.0 readiness approval"
-    status: open
+    status: done
   - epic: 8
     action: "E8-AI-4: Require the Shell accent-as-thread governance guard in every future chrome/story verification record"
     owner: "Architect"
@@ -484,4 +503,4 @@ action_items:
   - epic: 10
     action: "E10R-AI-4: Resolve the existing Epic 11 route-contract decision before starting 11.x story creation"
     owner: "Architect + Product Owner"
-    status: open
+    status: done

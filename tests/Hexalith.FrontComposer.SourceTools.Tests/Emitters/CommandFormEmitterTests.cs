@@ -235,7 +235,7 @@ public class CommandFormEmitterTests {
         source.ShouldContain("PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(");
         source.ShouldContain("CorrelationId: correlationId,");
         source.ShouldContain("MessageId: result.MessageId,");
-        source.ShouldContain("CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand)");
+        source.ShouldContain("CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand),");
 
         int dispatchResultIndex = source.IndexOf("var result = await CommandService.DispatchAsync(", StringComparison.Ordinal);
         int registerIndex = source.IndexOf("PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(", StringComparison.Ordinal);
@@ -252,15 +252,15 @@ public class CommandFormEmitterTests {
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        source.ShouldContain("generator-known framework metadata is limited to CorrelationId,");
-        source.ShouldContain("ProjectionTypeName / LaneKey /");
-        source.ShouldContain("EntityKey / ExpectedStatusSlot / PriorStatusSlot would require runtime context");
-        source.ShouldContain("CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand)));");
-        source.ShouldNotContain("ProjectionTypeName:");
-        source.ShouldNotContain("LaneKey:");
-        source.ShouldNotContain("EntityKey:");
-        source.ShouldNotContain("ExpectedStatusSlot:");
-        source.ShouldNotContain("PriorStatusSlot:");
+        source.ShouldContain("[CascadingParameter] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentity { get; set; }");
+        source.ShouldContain("Row identity is registered only when a generated/runtime row");
+        source.ShouldContain("ProjectionTypeName: PendingCommandRowIdentity?.ProjectionTypeName,");
+        source.ShouldContain("LaneKey: PendingCommandRowIdentity?.LaneKey,");
+        source.ShouldContain("EntityKey: PendingCommandRowIdentity?.EntityKey,");
+        source.ShouldContain("ExpectedStatusSlot: PendingCommandRowIdentity?.ExpectedStatusSlot,");
+        source.ShouldContain("PriorStatusSlot: PendingCommandRowIdentity?.PriorStatusSlot));");
+        source.ShouldNotContain("ProjectionTypeName: typeof(");
+        source.ShouldNotContain("EntityKey: _model");
     }
 
     [Fact]

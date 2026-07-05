@@ -54,6 +54,9 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
     private global::Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionFallbackRefreshScheduler ProjectionFallbackRefreshScheduler { get; set; } = default!;
 
     [Inject]
+    private global::Hexalith.FrontComposer.Shell.State.PendingCommands.INewItemIndicatorStateService NewItemIndicators { get; set; } = default!;
+
+    [Inject]
     private TimeProvider TimeProvider { get; set; } = default!;
 
     [CascadingParameter]
@@ -313,13 +316,20 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
                 IsReadOnly: isFieldReadOnly,
                 Hints: null,
                 Description: description);
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<StatusOverviewProjection, TField>>(0);
-            builder.AddAttribute(1, "Parent", row);
-            builder.AddAttribute(2, "Value", value);
-            builder.AddAttribute(3, "Field", __field);
-            builder.AddAttribute(4, "RenderContext", __renderContext);
-            builder.AddAttribute(5, "ProjectionRole", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.StatusOverview);
-            builder.AddAttribute(6, "RenderDefault", renderDefault);
+            var __pendingCommandRowIdentity = PendingCommandRowIdentityFor(row);
+            builder.OpenComponent<global::Microsoft.AspNetCore.Components.CascadingValue<global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity?>>(0);
+            builder.AddAttribute(1, "Value", __pendingCommandRowIdentity);
+            builder.AddAttribute(2, "ChildContent", (global::Microsoft.AspNetCore.Components.RenderFragment)(__cascadeBuilder =>
+            {
+                __cascadeBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<StatusOverviewProjection, TField>>(0);
+                __cascadeBuilder.AddAttribute(1, "Parent", row);
+                __cascadeBuilder.AddAttribute(2, "Value", value);
+                __cascadeBuilder.AddAttribute(3, "Field", __field);
+                __cascadeBuilder.AddAttribute(4, "RenderContext", __renderContext);
+                __cascadeBuilder.AddAttribute(5, "ProjectionRole", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.StatusOverview);
+                __cascadeBuilder.AddAttribute(6, "RenderDefault", renderDefault);
+                __cascadeBuilder.CloseComponent();
+            }));
             builder.CloseComponent();
         };
     }
@@ -335,7 +345,10 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
     }
 
     private void OnStateChanged(object? sender, EventArgs e)
-        => InvokeAsync(StateHasChanged);
+    {
+        DismissMaterializedIndicators(StatusOverviewProjectionState.Value.Items);
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -414,6 +427,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
                     typed.Add(typedItem);
                 }
             }
+            DismissMaterializedIndicators(typed);
             int totalCount = LoadedPageState.Value.TotalCountByKey.TryGetValue(_viewKey, out var c) ? c : typed.Count;
             return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<StatusOverviewProjection> { Items = typed, TotalItemCount = totalCount };
         }
@@ -503,6 +517,60 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         return separator > 0 && separator < _viewKey.Length - 1 ? _viewKey[(separator + 1)..] : _viewKey;
     }
 
+    private static string? EntityKeyFromItem(StatusOverviewProjection row)
+    {
+        object? key = _itemKeyAccessor(row);
+        return key switch
+        {
+            null => null,
+            string value when !string.IsNullOrWhiteSpace(value) => value,
+            string => null,
+            System.IFormattable formattable => formattable.ToString(null, System.Globalization.CultureInfo.InvariantCulture),
+            _ => key.ToString(),
+        };
+    }
+
+    private static string? ExpectedStatusSlotFromItem(StatusOverviewProjection row)
+        => row.Status.ToString();
+
+    private static global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentityFor(StatusOverviewProjection row)
+    {
+        string? entityKey = EntityKeyFromItem(row);
+        if (string.IsNullOrWhiteSpace(entityKey))
+        {
+            return null;
+        }
+
+        return new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity(
+            ProjectionTypeFromViewKey(),
+            _viewKey,
+            entityKey,
+            ExpectedStatusSlotFromItem(row));
+    }
+
+    private void DismissMaterializedIndicators(System.Collections.Generic.IEnumerable<StatusOverviewProjection>? items)
+    {
+        if (items is null) { return; }
+        foreach (var item in items)
+        {
+            string? entityKey = EntityKeyFromItem(item);
+            if (!string.IsNullOrWhiteSpace(entityKey))
+            {
+                NewItemIndicators.DismissMaterialized(_viewKey, entityKey);
+            }
+        }
+    }
+
+    private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, ref int seq)
+    {
+        foreach (var entry in NewItemIndicators.Snapshot(_viewKey))
+        {
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(seq++);
+            builder.SetKey(entry.EntityKey);
+            builder.CloseComponent();
+        }
+    }
+
     private void RegisterVisibleProjectionLane()
     {
         if (string.IsNullOrWhiteSpace(RenderContext?.TenantId))
@@ -518,6 +586,11 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         if (string.Equals(_registeredProjectionFallbackLaneKey, laneKey, StringComparison.Ordinal))
         {
             return;
+        }
+
+        if (_registeredProjectionFallbackLaneKey is not null)
+        {
+            NewItemIndicators.DismissForFilterChange(_viewKey);
         }
 
         _projectionFallbackLaneRegistration?.Dispose();
@@ -1047,6 +1120,8 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         builder.AddAttribute(seq++, "ItemsCount", state.Items.Count);
         builder.AddAttribute(seq++, "AnyRealFilterActive", anyRealFilterActive);
         builder.CloseComponent();
+
+        RenderNewItemIndicators(builder, ref seq);
 
         builder.OpenElement(seq++, "span");
         builder.AddAttribute(seq++, "class", "fc-row-count");

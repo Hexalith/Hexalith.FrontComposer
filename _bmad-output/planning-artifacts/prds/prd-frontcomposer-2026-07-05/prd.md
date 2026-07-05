@@ -1,6 +1,6 @@
 ---
 title: Hexalith.FrontComposer Product Requirements Document
-status: draft
+status: approved-for-v1-readiness
 created: 2026-07-05
 updated: 2026-07-05
 ---
@@ -95,13 +95,13 @@ Status labels are part of each requirement's downstream contract.
 | FR | Status | Owner / gate |
 | --- | --- | --- |
 | FR-1 to FR-12 | Baseline / release verification | Framework maintainer verifies generated projection, shell, grid, freshness, and realtime behavior do not regress. |
-| FR-13 | Readiness gap / V1 gate | Product + Architecture approve FC-NIP row identity payload before Story 9.2 producer/consumer wiring. |
+| FR-13 | Decision resolved / V1 implementation gate | Product + Architecture approved the FC-NIP payload source on 2026-07-05; Story 9.2 implements producer/consumer wiring and must prove runtime metadata before release. |
 | FR-14 to FR-23 | Baseline / release verification | Framework maintainer verifies command lifecycle, MCP, CLI, Testing, and documentation surfaces remain covered. |
 | FR-24 | Release governance / V1 gate | Release owner proves signed packages, symbols, SBOM, checksums, release manifest, and GitHub Release assets. |
 | FR-25 | Baseline plus change-control gate | Framework maintainer owns public API, schema, CLI JSON, generated-output, and diagnostic compatibility evidence. |
-| FR-26 | Readiness gap / V1 gate | Epic 9 owns row-level fresh-item producer wiring after the FC-NIP payload decision. |
+| FR-26 | Readiness implementation gate | Epic 9 owns row-level fresh-item producer wiring through the approved FC-NIP payload source; Story 9.2 owns producer/consumer evidence before release. |
 | FR-27 | Readiness gap | Epic 10 owns tooling-governance follow-through and explicit release evidence for tooling changes. |
-| FR-28 | V1 gate | Epic 11.0 and 11.8 must complete before dependent Epic 11 implementation stories are created. |
+| FR-28 | V1 gate | Epic 11.0 and 11.8 decision gates are complete; dependent Epic 11 implementation stories must follow the recorded contracts and ordering. |
 | FR-29 | Readiness gap | Epic 11 owns architecture-review remediation stories split by defect class and validated before release. |
 
 ### 5.1 Source Generation And Contract Vocabulary
@@ -232,8 +232,8 @@ The product must not infer row-level fresh indicators from projection nudges tha
 
 **Consequences:**
 - `FcNewItemIndicator` remains a confirmed component.
-- Automatic row marking is deferred until command outcome context carries `EntityKey` or an approved equivalent.
-- Story 9.1 must record the approved row identity payload source before Story 9.2 implements producer/consumer wiring.
+- Automatic row marking uses only the approved FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context.
+- Story 9.1 recorded the approved row identity payload source in `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md`; Story 9.2 implements and proves the producer/consumer wiring.
 
 ### 5.4 Command Authoring, Lifecycle, And Safety
 
@@ -362,12 +362,12 @@ Public API baselines, schema contracts, CLI JSON schemas, generated-output paths
 
 #### FR-26: Complete FC-NIP producer wiring
 
-FrontComposer must complete row-level fresh-item producer/consumer wiring only after the FC-NIP payload source is approved.
+FrontComposer must complete row-level fresh-item producer/consumer wiring only through the approved FC-NIP payload source.
 
 **Consequences:**
 - Fresh-row indicators are never inferred from SignalR nudges or unrelated projection refreshes.
-- Accepted payload sources are limited to EventStore status, command outcome metadata, projection materialization event, or another Product/Architecture-approved source recorded by Story 9.1.
-- Story 9.2 remains blocked until the decision is recorded.
+- The approved payload source is FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context; EventStore status remains a lifecycle/status source by `MessageId`, not row identity.
+- Story 9.2 must prove complete runtime metadata and producer/consumer behavior before release.
 
 #### FR-27: Complete tooling-governance follow-through
 
@@ -384,7 +384,7 @@ Epic 11 implementation must not start dependent stories until route-contract and
 
 **Consequences:**
 - Story 11.0 selects the canonical generated command route family before any Story 11.1+ create-story work starts.
-- Story 11.8 records the Contracts kernel split decision, package compatibility posture, public API impact, and deprecation/migration plan before Stories 11.11-11.14 start.
+- Story 11.8 records the approved Contracts kernel split decision, package compatibility posture, public API impact, and deprecation/migration plan before Stories 11.11-11.14 start.
 - Sprint status and story-creation workflows follow the suggested Epic 11 order rather than naive file order.
 
 #### FR-29: Remediate architecture-review release risks
@@ -435,9 +435,9 @@ FrontComposer must complete the Epic 11 architecture remediation stories that ad
 
 - **Epic 9:** FC-NIP row identity decision and fresh-row indicator producer/consumer wiring.
 - **Epic 10:** tooling-governance follow-through for evidence, labels, CLI parity, migration-emission decisioning, and Testing redaction.
-- **Epic 11.0 gate:** command/projection route-contract decision before any Story 11.1+ create-story work.
-- **Epic 11.8 gate:** Contracts kernel split decision and compatibility plan before Stories 11.11-11.14.
-- **Epic 11 remediation:** token lifecycle, realtime resilience, MCP lifecycle, security-validation tests, dead CSS and visual-conformance guards, Testing harness failure modes, route-contract implementation, Contracts/UI migration if approved, shell layering, helper consolidation, one-type-per-file, `LoggerMessage`, and enforcement-policy alignment.
+- **Epic 11.0 gate:** resolved command/projection route-contract decision before Story 11.1+ implementation work.
+- **Epic 11.8 gate:** resolved Contracts kernel split decision and compatibility plan before Stories 11.11-11.14.
+- **Epic 11 remediation:** token lifecycle, realtime resilience, MCP lifecycle, security-validation tests, dead CSS and visual-conformance guards, Testing harness failure modes, route-contract implementation, approved Contracts/UI migration, shell layering, helper consolidation, one-type-per-file, `LoggerMessage`, and enforcement-policy alignment.
 
 ### 8.3 Out Of Scope For V1
 
@@ -471,8 +471,8 @@ FrontComposer must complete the Epic 11 architecture remediation stories that ad
 ## 10. Risks And Mitigations
 
 - **Risk: PRD traceability started from reverse-engineered artifacts.** Mitigation: keep source intake explicit, mirror this PRD to `_bmad-output/planning-artifacts/prd.md`, and reconcile it against `epics.md`, project docs, approved correction proposals, and readiness reports before finalization.
-- **Risk: Epic 11 decision gates block downstream execution.** Mitigation: Story 11.0 selects the route contract before Story 11.1+ creation; Story 11.8 records the Contracts split decision before Stories 11.11-11.14.
-- **Risk: Contracts kernel leaks UI/runtime dependencies into consumers.** Mitigation: treat Contracts kernel split as a v1.0 architecture decision with package-compat planning and default to deferral if compatibility evidence is incomplete.
+- **Risk: Epic 11 decision gates block downstream execution.** Mitigation: Story 11.0 selected the route contract on 2026-07-05; Story 11.8 approved the Contracts split on 2026-07-05. Implementation remains ordered so lower-risk remediation precedes Stories 11.11-11.14.
+- **Risk: Contracts kernel leaks UI/runtime dependencies into consumers.** Mitigation: implement the approved Contracts kernel split in the pre-v1.0 window, with package-compat planning, public API baseline changes, migration/deprecation notes, and release inventory updates before package-boundary work is marked done.
 - **Risk: MCP lifecycle and projection realtime issues create silent degradation.** Mitigation: classify cross-request MCP lifecycle and SignalR reconnect remediation as release-readiness work, not optional cleanup.
 - **Risk: Release evidence remains implicit.** Mitigation: assign FR-24 to the release owner and require signed package, symbol, SBOM, checksum, release manifest, and GitHub Release evidence before publication.
 - **Risk: UX requirements remain too compact for visual stories.** Mitigation: accept `_bmad-output/planning-artifacts/ux-design.md` as the v1.0 UX traceability artifact and require story-local design notes where layout choices are not already captured.
@@ -485,6 +485,7 @@ FrontComposer must complete the Epic 11 architecture remediation stories that ad
 - MCP tool/resource schemas and Schema Fingerprints are public interoperability contracts.
 - Testing package public API is baseline-locked.
 - Release package inventory is an explicit publication contract.
+- The approved `Contracts.UI` split is a package/public-API boundary change and must be evidenced before v1.0.
 - Breaking changes require versioning, migration/deprecation notes, docs, and baseline updates.
 
 ## 12. Decision And Gate Register
@@ -493,14 +494,23 @@ FrontComposer must complete the Epic 11 architecture remediation stories that ad
 | --- | --- | --- | --- | --- |
 | D-1 | Canonical PRD path | Product Owner | Resolved: `_bmad-output/planning-artifacts/prd.md` is the readiness-discoverable canonical copy; `_bmad-output/planning-artifacts/prds/prd-frontcomposer-2026-07-05/prd.md` remains the BMad run copy. | None. |
 | D-2 | Architecture and UX discovery | Product Owner | Resolved: `_bmad-output/planning-artifacts/architecture.md` and `_bmad-output/planning-artifacts/ux-design.md` are canonical planning sources; `_bmad-output/project-docs` remains source depth. | None. |
-| D-3 | Generated command route family | Product + Architecture | Open Story 11.0 gate; no default route is approved in this PRD. | Blocks Story 11.1+ create-story work and Story 11.7 route implementation. |
-| D-4 | FC-NIP row identity payload source | Product + Architecture | Open Story 9.1 gate; automatic row marking remains disabled unless payload evidence exists. | Blocks Story 9.2 producer/consumer wiring. |
-| D-5 | Contracts kernel split release posture | Architecture + PM | Open Story 11.8 gate; default is defer the split if package compatibility, public API, migration, and deprecation evidence are incomplete. | Blocks Stories 11.11-11.14. |
-| D-6 | FR-24 release-evidence ownership | Release owner | Resolved: FR-24 is release governance and must be explicitly evidenced or mapped to a release-governance story. | Blocks v1.0 publication. |
+| D-3 | Generated command route family | Product + Architecture | Resolved 2026-07-05: canonical generated command route family is `/commands/{BoundedContext}/{CommandTypeName}`; contract recorded in `_bmad-output/contracts/fc-route-generated-command-route-contract-2026-07-05.md`. | Story 11.0 is done. Story 11.7 implements the contract and adds the e2e route-activation pin. |
+| D-4 | FC-NIP row identity payload source | Product + Architecture | Resolved 2026-07-05: approved source is FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context; EventStore status remains lifecycle/status by `MessageId`, not row identity. Contract: `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md`. | Story 9.2 implements and proves runtime metadata plus producer/consumer behavior; no remaining decision gate. |
+| D-5 | Contracts kernel split release posture | Architecture + PM | Resolved 2026-07-05: approve the split. Target shape is a netstandard2.0-clean `Contracts` kernel plus net10-only `Contracts.UI` for Blazor/Fluent rendering contracts; package-compat, public API baselines, deprecation/migration notes, release inventory, and docs are pre-v1.0 deliverables. | Story 11.8 is done. Stories 11.11-11.14 implement and evidence the approved package-boundary change, deliberately ordered last. |
+| D-6 | FR-24 release-evidence ownership | Release owner | Resolved: FR-24 is release governance and is tracked by `sprint-status.yaml` action `REL-AI-1`; if release workflow or product-code changes are required, create a focused implementation story before RC. | Blocks v1.0 publication. |
 | D-7 | Success metric targets | Product Owner + Release owner | Resolved in §9 with minimum v1.0 evidence targets. | None unless targets are changed. |
 | D-8 | Standalone UX spec need | Product + UX | Resolved for v1.0: `ux-design.md` is sufficient for traceability; stories with visual/layout choices need story-local design notes. | Blocks only stories whose visual decisions are not captured elsewhere. |
+| D-9 | Final PRD status approval | Product Owner | Resolved 2026-07-05: Product approved D-1 through D-8 and the accepted assumption dispositions; PRD status promoted to `approved-for-v1-readiness`. | None. |
+
+### 12.1 Open Question Disposition
+
+All PRD open questions identified by the 2026-07-05 readiness follow-up are now resolved, routed, or explicitly accepted:
+
+- Canonical PRD path, architecture/UX discovery, generated command route family, Contracts split release posture, release-evidence ownership, success metric targets, and standalone UX source need are resolved in D-1, D-2, D-3, D-5, D-6, D-7, and D-8.
+- FC-NIP row identity payload source is resolved in D-4. Story 9.2 remains the implementation evidence gate, not a decision gate.
+- Final PRD status approval is resolved through D-9; Product approval promoted the PRD to `approved-for-v1-readiness`.
 
 ## 13. Assumptions Index
 
-- **A1 (§2.4, §5.6):** The v1.0 Testing harness must cover realistic failure and policy states, not only happy-path command/query outcomes.
-- **A2 (§4):** v1.0 readiness is judged primarily by package-consumer safety and Hexalith domain-module adoption, not by a public web launch funnel.
+- **A1 (§2.4, §5.6):** The v1.0 Testing harness must cover realistic failure and policy states, not only happy-path command/query outcomes. **Disposition:** accepted as a v1.0 requirement and routed to FR-22 / Story 11.6 testing-harness failure modes.
+- **A2 (§4):** v1.0 readiness is judged primarily by package-consumer safety and Hexalith domain-module adoption, not by a public web launch funnel. **Disposition:** accepted as the v1.0 product-form-factor assumption; validated by SM-1 and SM-2 rather than a separate implementation story.

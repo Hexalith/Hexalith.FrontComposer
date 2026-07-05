@@ -53,6 +53,9 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     private global::Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionFallbackRefreshScheduler ProjectionFallbackRefreshScheduler { get; set; } = default!;
 
     [Inject]
+    private global::Hexalith.FrontComposer.Shell.State.PendingCommands.INewItemIndicatorStateService NewItemIndicators { get; set; } = default!;
+
+    [Inject]
     private TimeProvider TimeProvider { get; set; } = default!;
 
     [CascadingParameter]
@@ -247,7 +250,10 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     }
 
     private void OnStateChanged(object? sender, EventArgs e)
-        => InvokeAsync(StateHasChanged);
+    {
+        DismissMaterializedIndicators(OrderProjectionState.Value.Items);
+        _ = InvokeAsync(StateHasChanged);
+    }
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -326,6 +332,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     typed.Add(typedItem);
                 }
             }
+            DismissMaterializedIndicators(typed);
             int totalCount = LoadedPageState.Value.TotalCountByKey.TryGetValue(_viewKey, out var c) ? c : typed.Count;
             return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<OrderProjection> { Items = typed, TotalItemCount = totalCount };
         }
@@ -398,6 +405,52 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         return separator > 0 && separator < _viewKey.Length - 1 ? _viewKey[(separator + 1)..] : _viewKey;
     }
 
+    private static string? EntityKeyFromItem(OrderProjection row)
+    {
+        return null;
+    }
+
+    private static string? ExpectedStatusSlotFromItem(OrderProjection row)
+        => row.Status.ToString();
+
+    private static global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentityFor(OrderProjection row)
+    {
+        string? entityKey = EntityKeyFromItem(row);
+        if (string.IsNullOrWhiteSpace(entityKey))
+        {
+            return null;
+        }
+
+        return new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity(
+            ProjectionTypeFromViewKey(),
+            _viewKey,
+            entityKey,
+            ExpectedStatusSlotFromItem(row));
+    }
+
+    private void DismissMaterializedIndicators(System.Collections.Generic.IEnumerable<OrderProjection>? items)
+    {
+        if (items is null) { return; }
+        foreach (var item in items)
+        {
+            string? entityKey = EntityKeyFromItem(item);
+            if (!string.IsNullOrWhiteSpace(entityKey))
+            {
+                NewItemIndicators.DismissMaterialized(_viewKey, entityKey);
+            }
+        }
+    }
+
+    private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, ref int seq)
+    {
+        foreach (var entry in NewItemIndicators.Snapshot(_viewKey))
+        {
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(seq++);
+            builder.SetKey(entry.EntityKey);
+            builder.CloseComponent();
+        }
+    }
+
     private void RegisterVisibleProjectionLane()
     {
         if (string.IsNullOrWhiteSpace(RenderContext?.TenantId))
@@ -413,6 +466,11 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         if (string.Equals(_registeredProjectionFallbackLaneKey, laneKey, StringComparison.Ordinal))
         {
             return;
+        }
+
+        if (_registeredProjectionFallbackLaneKey is not null)
+        {
+            NewItemIndicators.DismissForFilterChange(_viewKey);
         }
 
         _projectionFallbackLaneRegistration?.Dispose();
@@ -829,6 +887,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         builder.AddAttribute(seq++, "ItemsCount", state.Items.Count);
         builder.AddAttribute(seq++, "AnyRealFilterActive", anyRealFilterActive);
         builder.CloseComponent();
+
+        RenderNewItemIndicators(builder, ref seq);
 
         builder.OpenElement(seq++, "span");
         builder.AddAttribute(seq++, "class", "fc-row-count");

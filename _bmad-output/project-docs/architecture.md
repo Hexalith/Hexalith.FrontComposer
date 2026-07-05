@@ -4,21 +4,24 @@
 
 ## 1. Executive summary
 
-FrontComposer is a **source-generation-driven Blazor application framework**. Its architecture is organized around one idea: a leaf **contracts kernel** defines a vocabulary of attributes and types; a **Roslyn incremental generator** reads domain types annotated with that vocabulary and emits all the boilerplate (Blazor views, command forms, Fluxor state, DI registration, MCP manifest); and several **consumers** (the Blazor shell, the MCP server, the CLI) use the generated artifacts at runtime/build-time. The producer and all consumers are bound together by **schema fingerprints** (v1 supports canonical-JSON and SourceTools-blob SHA-256 algorithms) so incompatibilities are detected as **drift** rather than failing silently.
+FrontComposer is a **source-generation-driven Blazor application framework**. Its architecture is organized around one idea: a leaf **contracts kernel** defines the netstandard-safe vocabulary of attributes and types, while the Story 11.8 decision moves Blazor/Fluent rendering contracts to a net10-only `Contracts.UI` assembly; a **Roslyn incremental generator** reads domain types annotated with that vocabulary and emits all the boilerplate (Blazor views, command forms, Fluxor state, DI registration, MCP manifest); and several **consumers** (the Blazor shell, the MCP server, the CLI) use the generated artifacts at runtime/build-time. The producer and all consumers are bound together by **schema fingerprints** (v1 supports canonical-JSON and SourceTools-blob SHA-256 algorithms) so incompatibilities are detected as **drift** rather than failing silently.
 
 ## 2. Layered structure
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
-│ LAYER 0 — Contracts kernel  (net10.0 + netstandard2.0, no project deps)    │
+│ LAYER 0 — Contracts kernel  (target: netstandard2.0, no UI deps)           │
 │   Hexalith.FrontComposer.Contracts                                         │
 │   • Attributes ([Projection],[Command],[BoundedContext],[ProjectionRole]…) │
 │   • Communication (ICommandService, IQueryService, lifecycle)              │
-│   • Rendering model (Typography, ProjectionContext, slot/template/view)    │
 │   • Registration (IFrontComposerRegistry, DomainManifest)                  │
 │   • MCP descriptors (McpManifest, McpCommandDescriptor…)                   │
 │   • Schema (SchemaFingerprint, baseline, delta) + FcDiagnosticIds          │
 │   Hexalith.FrontComposer.Schema  → SchemaMigrationDeltaAnalyzer            │
+│                                                                            │
+│ LAYER 0A — Contracts.UI  (target: net10.0, Blazor/Fluent contracts)        │
+│   • Typography/FcTypoToken, RenderFragment contexts, KeyboardEventArgs      │
+│   • Projection slot/template/view rendering contracts                       │
 ├──────────────────────────────────────────────────────────────────────────┤
 │ LAYER 1 — Producer  (netstandard2.0 analyzer)                              │
 │   Hexalith.FrontComposer.SourceTools → FrontComposerGenerator              │
@@ -38,7 +41,7 @@ FrontComposer is a **source-generation-driven Blazor application framework**. It
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-**Dependency direction:** everything points *down* to `Contracts`. `SourceTools` references only `Contracts` (so it stays netstandard2.0). `Schema` references `Contracts`. `Shell` references `Contracts`. `Mcp` references `Contracts` + `Schema`. `Cli` and `Testing` are effectively leaves at the consumer layer (`Cli` has no project refs; `Testing` wires the runtime fakes).
+**Dependency direction:** everything points *down* to the `Contracts` kernel. `SourceTools` references only `Contracts` (so it stays netstandard2.0). `Schema` references `Contracts`. `Mcp` references `Contracts` + `Schema`. Shell/UI-facing consumers may reference `Contracts.UI` after Story 11.11 creates it; that package must not flow back into SourceTools, Schema, or the netstandard kernel. `Cli` and `Testing` are effectively leaves at the consumer layer (`Cli` has no project refs; `Testing` wires the runtime fakes).
 
 ## 3. The generation pipeline (Layer 1 detail)
 
@@ -310,7 +313,7 @@ This is the "MCP boundary" described in `docs/concepts/source-generation-and-mcp
 | **Identity** | NUlid | ULIDs (26-char Crockford base32), never GUIDs, for `messageId`/`correlationId`. |
 | **Schema integrity** | `CanonicalSchemaMaterial` (SHA-256 canonical JSON) | Pins `JavaScriptEncoder.Create(UnicodeRanges.All)` + a STJ source-gen context; `AbsentValueSentinel = "<absent>"`; `StringComparer.Ordinal` everywhere. Changing any of these invalidates all stored fingerprints. |
 | **Incremental caching** | Pure equatable IR + `EquatableArray<T>` | No Roslyn symbols in IR; full structural `Equals`/`GetHashCode`. |
-| **Multi-TFM split** | `#if NET10_0_OR_GREATER` | FluentUI-dependent code (e.g. `Typography.cs`) is guarded so the netstandard2.0 analyzer build stays clean. |
+| **Contracts kernel split** | `Contracts` kernel + net10-only `Contracts.UI` | Story 11.8 approves moving Blazor/Fluent rendering contracts out of the kernel. Until Story 11.11 lands, existing FluentUI-dependent code stays guarded with `#if NET10_0_OR_GREATER` so the netstandard2.0 analyzer build remains clean. |
 | **Generated path** | `GeneratedOutputPathContract.Template` | `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{Type}.g.razor.cs` is a public contract validated in Debug *and* Release. |
 | **Diagnostics** | `FcDiagnosticIds` / `DiagnosticDescriptors` | Build-time `HFC1xxx`, runtime `HFC2xxx`; new IDs declared with full XML docs. |
 | **Telemetry** | `FrontComposerActivitySource` | OpenTelemetry `ActivitySource`. |
@@ -323,6 +326,7 @@ This is the "MCP boundary" described in `docs/concepts/source-generation-and-mcp
 - **ADR-007:** Fluxor single-writer discipline per state slice.
 - **ADR-030:** Scoped lifetime discipline for storage/effects/auth/tenant accessors.
 - **Drift pipeline must not depend on `CompilationProvider`** (decision "P12") — only the trim/AOT advisory legitimately combines it, isolated in its own output.
+- **Story 11.8 (2026-07-05):** Contracts kernel split approved. Move net10/Blazor/Fluent rendering surface to `Contracts.UI`, keep `Contracts` as the wire/attribute/schema/diagnostic kernel, and complete package-compat/public-API/deprecation evidence before v1.0.
 - **Custom inline SVG icon factory** (`FcFluentIcons`) instead of the FluentUI icons NuGet (no v5-compatible release at authoring time).
 - **No third-party CLI framework** — the CLI uses a bespoke option parser and a fixed generated-output path contract.
 
