@@ -7,7 +7,7 @@ unblocked: 2026-07-05
 
 # Story 9.2: Wire `FcNewItemIndicator` producer and generated-grid consumer
 
-Status: review
+Status: done
 
 <!-- Note: The FC-NIP contract is unblocked at the decision level. Implementation still must prove the approved runtime metadata path before adding producer behavior. -->
 
@@ -422,3 +422,27 @@ Reviewer: Administrator — adversarial automated review (Blind Hunter + Edge Ca
 - **`ExpectedStatusSlot` populated from the row's current status** (Blind Hunter, Low) — DISMISSED (no production impact). All production observation producers leave the observation `ExpectedStatusSlot` null, so `OptionalEquals` short-circuits true and the value never participates in matching; naming nuance only.
 - **`FcNewItemIndicatorLaneIntegrationTests` `LaneHost` stand-in not replaced** (Acceptance Auditor, Low) — DISMISSED. The subtask's "…or generated-grid tests" branch is satisfied by the new Counter generated-grid rendering/dismissal test; not a falsely-completed task.
 - **Resolver no-`MessageId` fallback tightened** (Acceptance Auditor, informational) — DISMISSED (verified safe). Requiring `ProjectionTypeName` + `LaneKey` before a fallback match aligns with the anti-pattern against AggregateId-as-EntityKey; no production producer uses the fallback path.
+
+## Code Review (Adversarial Re-Review) — 2026-07-05 (second pass)
+
+Reviewer: Administrator — fresh independent adversarial re-review (Blind Hunter + Edge Case Hunter + Acceptance Auditor, Opus 4.8), baseline `60521f9`, working-tree diff (post-patch state of the first 2026-07-05 review). Requested as a **fresh independent pass** that also verifies the two previously-applied patches still hold. **Acceptance Auditor: all 4 ACs MET, no falsely-completed tasks, File List integrity verified.** Triage: 1 decision-needed, 0 patch, 6 defer, 5 dismissed.
+
+Both previously-applied patches independently re-verified against source: the `DateTimeOffset.MinValue` guard (`PendingCommandOutcomeResolver.cs:189`) and the non-vacuous Governance guard (`CiGovernanceTests.cs:135`) are present and correct. No regression from the first review's post-patch state.
+
+### Review Findings
+
+- [x] [Review][Decision] **RESOLVED 2026-07-05 → keep broad (accepted, no code change; maintainer choice, matches first-review Decision #3)** — `DismissForFilterChange` over-triggers on sort / page-size / search changes; the emitted `RegisterVisibleProjectionLane` composes `laneKey` from `SortColumn`/`SortDescending`/`take`/`searchQuery`/`filters`, and any change wipes all new-item indicators for the view (`RazorEmitter.cs` emitter ~L1119-1128 → emitted lane-key + `NewItemIndicators.DismissForFilterChange(_viewKey)`). A strict reading of AC3 lists only "the filter changes" as a dismiss trigger; sort and page-size do not change filter membership. **Previously adjudicated 2026-07-05 (first-review Decision #3) as "keep broad — any re-query invalidates new relevance."** Re-surfaced by the independent Edge Case Hunter. **Decide:** (a) keep broad (status quo / prior decision — indicators self-correct via the fallback re-query); or (b) narrow the dismiss trigger to actual filter deltas only.
+- [x] [Review][Defer] **Per-cell `CascadingValue<PendingCommandRowIdentity?>` allocation** [`src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:553`] — deferred, acknowledged tech-debt: `IsFixed="true"` is unsafe under grid virtualization; the safe per-row hoist is an emitter refactor that regenerates 11+ `.verified.txt` snapshots. Carried forward from the first review.
+- [x] [Review][Defer] **`CreatedAt` ordering mixes trusted server `ObservedAt` with local clock** [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:182`] — deferred, cosmetic: under EventStore↔host clock skew, badge sort order in `Snapshot.OrderBy(CreatedAt)` can be slightly off; TTL is driven by the local timer regardless. No correctness impact.
+- [x] [Review][Defer] **Spurious indicator lingers ≤10s for an already-visible row / `IdempotentConfirmed` replay** [`PendingCommandOutcomeResolver.cs:194`] — deferred, self-heals in the 10s TTL. Matches first-review Decision #2 (accepted as-is).
+- [x] [Review][Defer] **New-outside-filter indicator may not render promptly** [`PendingCommandOutcomeResolver.cs:182` / `NewItemIndicatorStateService.Add`] — deferred: `Add` raises no re-render, so a badge appears only on the next grid render; in practice the confirming lifecycle transition dispatches a Fluxor action that re-renders. Latent, usually masked.
+- [x] [Review][Defer] **Producer covers only the polling/status-query path** [`PendingCommandPollingCoordinator` sole caller] — deferred: `LiveNudgeRefresh`/`ReconnectReconciliation` observation sources are not currently wired to construct observations, so the producer covers the real EventStore-confirmation path exactly as the Implementation Gate directs. No current gap; future nudge-driven terminal resolution would need wiring.
+- [x] [Review][Defer] **Governance guard weakened from exact pin to presence-only** [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:135`] — deferred, intentional/documented and out of FC-NIP scope: the guard no longer detects an unexpected `Hexalith.EventStore.Aspire` version drift (only presence). Adjudicated in first-review Decision #1 (accept the loosening).
+
+### Dismissed after verification (5)
+
+- **`_viewKey` unguarded → `PendingCommandRowIdentity` ctor throws mid-render** (Blind Hunter, Medium) — DISMISSED. `_viewKey` is emitted as a compile-time `private const string` (`"<bc>:<typeFqn>"`, always non-empty); `ProjectionTypeFromViewKey()` returns the non-empty suffix or the whole const, so the ctor's `ThrowIfNullOrWhiteSpace` guards are unreachable at runtime. Confirmed in the committed approval snapshots.
+- **`SetKey(EntityKey)` duplicate-key render crash** (Blind Hunter, Medium) — DISMISSED. `NewItemIndicatorStateService` stores entries in a `Dictionary<(ViewKey, EntityKey), …>` with last-wins replacement, so `Snapshot(viewKey)` yields at most one entry per `EntityKey`; sibling keys cannot collide. Two commands on the same entity → single entry.
+- **Indicator mutation off the render sync context races `Snapshot`** (Blind Hunter, concurrency) — DISMISSED. Every `NewItemIndicatorStateService` operation runs under `_gate` and `Snapshot` materializes a defensive copy under the lock; cross-thread `DismissMaterialized`/`Add` is safe.
+- **Resolver fallback tightened (EntityKey/Projection-only no longer resolves)** (Blind Hunter, Low/info) — DISMISSED (by design). Requiring `ProjectionTypeName` + `LaneKey` before a fallback match is the intended anti-AggregateId hardening, codified by the new negative tests. No production producer uses the fallback path.
+- **Indicator dropped on `LifecycleDispatchFailed` path** (Edge Case Hunter, Low) — DISMISSED (defensible/rare). If `_lifecycle.Transition` throws, the terminal status persists but returns `LifecycleDispatchFailed` (not `Resolved`), so no indicator is added; suppressing a "new item" badge when the lifecycle dispatch failed is acceptable, and the path is rare.
