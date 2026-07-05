@@ -392,6 +392,10 @@ development_status:
   11-18-loggermessage-migration-for-warnings-and-hot-paths: backlog
   11-19-enforcement-and-policy-alignment: backlog
   epic-11-retrospective: optional
+  # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
+  # rel-1 moved backlog -> in-progress on 2026-07-05 (dev-story; owner decision: keep Jul 3 auto-publish model, add FR24 evidence only. baseline 2d1a1290. Signing deferred; REL-AI-1 stays open.)
+  # rel-1 moved in-progress -> review on 2026-07-05 (dev-story; added advisory FR24 evidence layer to release.yml + requiring governance test (CiGovernanceTests 41/41 via direct xUnit runner, Release build 0/0), reconciled deployment-guide. Evidence-only increment on feat/rel-1-release-evidence-gate; AC2 signing / AC4-5 gating / AC6 consumer-validation / AC8 evidence-recording deferred. CI authoritative for workflow execution.)
+  rel-1-release-evidence-gate-before-v1-rc: review
 
 action_items:
   - epic: 2
