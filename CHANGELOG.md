@@ -1,3 +1,10 @@
+# [1.3.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.2.0...v1.3.0) (2026-07-05)
+
+
+### Features
+
+* Update adapter configuration and review model in policy.toml; update Hexalith.Memories subproject reference ([30e5823](https://github.com/Hexalith/Hexalith.FrontComposer/commit/30e58238ce9268e4f4d99e5c104fdcabed18c4e9))
+
 # [1.2.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.1.0...v1.2.0) (2026-07-05)
 
 
