@@ -1,3 +1,10 @@
+# [1.1.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.0.0...v1.1.0) (2026-07-05)
+
+
+### Features
+
+* Add UX design validation report, PRD addendum, and detailed UX artifacts ([b42ab49](https://github.com/Hexalith/Hexalith.FrontComposer/commit/b42ab4919e74f51798d44777c4075b66bf51b557))
+
 # 1.0.0 (2026-07-05)
 
 
