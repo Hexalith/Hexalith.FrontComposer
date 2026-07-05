@@ -316,7 +316,8 @@ development_status:
   # 9-1 moved in-progress -> review on 2026-07-04 (dev-story; FC-NIP row-identity producer contract confirmed with upstream blocking gap, architecture ownership wording pinned, and focused SourceTools governance guard added. Focused SourceTools test project build 0/0 and FC-NIP guard 2/2 passed via direct xUnit v3 in-process runner. Broad solution build/test and DocFX lanes are locally blocked by NuGet network denial, existing CLI Roslyn package conflict, DocFX build-host socket, and VSTest socket restrictions.)
   # 9-1 moved review -> done on 2026-07-04 (story-automator review; APPROVED, 0 CRITICAL/0 HIGH. All 3 ACs + all [x] tasks independently verified against source. Auto-fixed: contract duplicate-behavior corrected to match last-wins consumer seam, both governance guards hardened against markdown reflow, blocking follow-up review-by clarified. FC-NIP guard 2/2 + Playwright 3/3 + typecheck re-verified green. validate-story-artifacts.py blocked by a concurrent GPT-5 Codex session live-editing unrelated build/dependency files (Directory.Packages.props, .slnx, UI.csproj, Shell.Tests, tsconfig, release.yml) NOT owned by Story 9.1.)
   9-1-confirm-the-fc-nip-row-identity-producer-contract: done
-  9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: backlog
+  # 9-2 moved backlog -> ready-for-dev on 2026-07-05 (create-story; FC-NIP payload source is approved by the 2026-07-05 contract update: FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context. Scope remains implementation-open: prove runtime metadata before producer Add(...), preserve EventStore status as MessageId-only lifecycle source, render FcNewItemIndicator from generated-grid/shell grid consumer for matching lanes, keep no-diffing/no-broad-marking/no-AggregateId-smuggling guards, and update Verify/public-surface evidence only for intentional SourceTools output or FC-TBL surface changes.)
+  9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: ready-for-dev
 
   # Epic 10: Tooling Governance Follow-Through (post-MVP quality hardening)
   # Added 2026-07-01 via Correct Course (sprint-change-proposal-2026-07-01-epic-7-retro-follow-through.md).
@@ -384,11 +385,11 @@ action_items:
   - epic: 8
     action: "E8-AI-1: Add a reusable visual-component checklist that requires rendered-DOM or computed-style proof for Fluent component layout/CSS changes before review promotion"
     owner: "Test Architect"
-    status: open
+    status: done
   - epic: 8
     action: "E8-AI-2: Synchronize shell/navigation public reference metadata with Story 8.3 and Story 8.5 and record future doc-drift sweeps"
     owner: "Technical Writer"
-    status: open
+    status: done
   - epic: 10
     action: "E10-AI-1: Make changed-file, story File List, and story-task reconciliation mechanical before story review completion; covers Epic 7 E7-AI-1 and Epic 8 follow-through"
     owner: "QA automation maintainer"

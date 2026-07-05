@@ -13,4 +13,5 @@ Before moving a story from review to done:
    - CLI fallback: `--unrelated <path> --reason <text>`
 5. Keep unrelated dirty files visible in validator output; do not add them to the story File List as story-owned changes.
 6. Record test-count deltas and any pre-existing failing lanes.
-7. Do not promote the story until File List, task claims, and verification evidence agree.
+7. If the story or review fix changes a public component surface, route contract, CLI output, diagnostic metadata, or adopter-facing behavior, complete the doc-drift sweep checklist and record the result in the story evidence.
+8. Do not promote the story until File List, task claims, documentation sweep, and verification evidence agree.

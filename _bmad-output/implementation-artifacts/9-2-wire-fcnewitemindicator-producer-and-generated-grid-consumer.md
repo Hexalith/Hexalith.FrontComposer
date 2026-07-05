@@ -153,7 +153,7 @@ Likely tests:
 
 ### Latest Technical Information
 
-No package, framework, or external API upgrade is part of Story 9.2. Use the repository-pinned stack from `_bmad-output/project-context.md`: .NET SDK `10.0.301`, Fluent UI Blazor `5.0.0-rc.3-26138.1`, Fluxor `6.9.0`, xUnit v3 `3.2.2`, bUnit `2.8.4-preview`, Verify `31.20.0`, and Playwright `1.61.0`. The current blocker is a missing local/cross-repo typed payload, not stale package knowledge.
+No package, framework, or external API upgrade is part of Story 9.2. Use the repository-pinned stack from `_bmad-output/project-context.md`: .NET SDK `10.0.301`, Fluent UI Blazor `5.0.0-rc.3-26138.1`, Fluxor `6.9.0`, xUnit v3 `3.2.2`, bUnit `2.8.4-preview`, Verify `31.20.0`, and Playwright `1.61.0`. Official NuGet package checks on 2026-07-05 did not change the story scope: implement against the pinned repository stack and do not introduce dependency upgrades as part of FC-NIP wiring. The remaining risk is source-level runtime metadata wiring, not stale package knowledge.
 
 ### Previous Story Intelligence
 
@@ -175,7 +175,7 @@ The current worktree had an unrelated modified `_bmad-output/story-automator/orc
 
 - Story file location: `_bmad-output/implementation-artifacts/9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer.md`.
 - Sprint-status key: `9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer`.
-- Sprint status may move out of `backlog` only when the implementation pass starts. This contract update makes the story eligible for implementation but does not implement the ACs.
+- Create-story status is `ready-for-dev`; dev-story should move the sprint entry to `in-progress` when implementation starts. This contract update makes the story eligible for implementation but does not implement the ACs.
 
 ### References
 
@@ -183,7 +183,7 @@ The current worktree had an unrelated modified `_bmad-output/story-automator/orc
 - Source: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-01.md` - Epic 9 correct-course source of record.
 - Source: `_bmad-output/planning-artifacts/implementation-readiness-report-2026-07-04.md` - Epic 9 readiness watch item and 9.1-before-9.2 gate.
 - Source: `_bmad-output/implementation-artifacts/9-1-confirm-the-fc-nip-row-identity-producer-contract.md` - previous story intelligence and review findings.
-- Source: `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md` - FC-NIP contract and blocking follow-up.
+- Source: `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md` - FC-NIP contract, approved payload source, and resolved follow-up.
 - Source: `_bmad-output/contracts/fc-tbl-table-api-contract-2026-06-04.md` - confirmed FC-TBL component surface and open row-identity producer item.
 - Source: `_bmad-output/contracts/fc-cmd-pending-identity-correlation-contract-2026-06-04.md` - FC-CMD identity/correlation scope and FC-NIP out-of-scope note.
 - Source: `_bmad-output/project-docs/architecture.md` - runtime composition and FC-NIP statement.
@@ -214,6 +214,7 @@ GPT-5 Codex
 - 2026-07-04: Test evidence: `DiffEngine_Disabled=true dotnet test ...Shell.Tests.csproj ... -m:1 /nr:false` and `DiffEngine_Disabled=true dotnet test ...SourceTools.Tests.csproj ... -m:1 /nr:false` built the focused projects but VSTest aborted before execution with `System.Net.Sockets.SocketException (13): Permission denied`; in-process xUnit fallback passed `Shell.Tests` focused seam lane 52/52 and `SourceTools.Tests` `CommandFormEmitterTests` lane 33/33.
 - 2026-07-04: QA generate-e2e-tests added focused negative automation for Story 9.2's blocked seams: EventStore status `AggregateId` is ignored as FC-NIP row identity, generated command forms do not fabricate `ProjectionTypeName`/`LaneKey`/`EntityKey`/status-slot metadata, and the Playwright FC-NIP contract spec pins the Story 9.2 blocked gate plus source-level no-smuggling evidence.
 - 2026-07-04: QA validation evidence: direct xUnit v3 fallback passed `EventStorePendingCommandStatusQueryTests` 21/21 and `CommandFormEmitterTests` 34/34; `PLAYWRIGHT_SKIP_WEBSERVER=1 npx playwright test specs/fc-nip-row-identity-contract.spec.ts --project=chromium` passed 4/4. VSTest focused commands, the filtered solution `dotnet test` command, and the initial Playwright web-server run remain socket-blocked with `System.Net.Sockets.SocketException (13): Permission denied`.
+- 2026-07-05: Create-story repair reloaded the current approved FC-NIP contract, planning artifacts, Hexalith LLM/UX rules, project context, Story 9.1 intelligence, source seams, relevant tests, NuGet package pages, and sprint status; stale blocked-outcome language was superseded and sprint status aligned to `ready-for-dev`.
 
 ### Completion Notes List
 
@@ -221,14 +222,15 @@ GPT-5 Codex
 - Ultimate context engine analysis completed - comprehensive developer guide created.
 - Story 9.2 context was originally created as blocked-by-contract because Story 9.1 confirmed the required payload was absent.
 - 2026-07-05 update: the contract-level blocker is resolved by approving FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context. The implementation ACs remain open.
-- Dev-story implementation halted at the Story 9.2 Blocking Gate. During the dev-story phase, no producer, generated-grid consumer, SourceTools output, public API, or test code was changed because the required typed framework-controlled row-identity payload is still absent. (The later QA phase added negative guard tests only; see the QA bullets below and the Senior Developer Review.)
-- Story status is `ready-for-dev`; sprint status should be advanced by the implementation workflow when the implementation pass starts.
-- QA generated tests only; production producer and generated-grid consumer code remain unchanged because the blocking FC-NIP payload contract is still unresolved.
+- Historical dev-story implementation halted at the Story 9.2 Blocking Gate before the 2026-07-05 contract update. During that earlier phase, no producer, generated-grid consumer, SourceTools output, public API, or test code was changed because the required typed framework-controlled row-identity payload had not yet been approved. The decision-level blocker is now resolved; implementation still must prove source-level runtime metadata wiring before adding producer behavior.
+- Story status and sprint status are `ready-for-dev`; dev-story should move the sprint entry to `in-progress` when implementation starts.
+- QA generated negative guard tests only; production producer and generated-grid consumer code remain unchanged. Those tests should be treated as guardrails against EventStore `AggregateId`, projection-nudge, and compile-time command metadata smuggling while the approved runtime wiring is implemented.
 - Added test coverage for aggregate-id-only input, generated metadata fabrication, and Story 9.2 no-smuggling source evidence.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `_bmad-output/implementation-artifacts/tests/test-summary.md`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStorePendingCommandStatusQueryTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs`
@@ -248,8 +250,21 @@ These `references/Hexalith.*` submodule pointers moved during the Story 9.2 comm
 - 2026-07-04: Adversarial senior-developer review (auto-fix mode) confirmed the block is legitimate, verified the added guard tests are real, flagged undocumented submodule-pointer bumps and a scope-overstating commit message in `c23a1890`, clarified a contradictory completion note, and kept status `blocked-by-contract` / sprint `backlog`. See "Senior Developer Review (AI)".
 - 2026-07-04: Re-review escalation resolved by maintainer decision (option 1 — accept/document), followed by a second maintainer decision to accept/document fresh submodule drift. Accepted the `references/Hexalith.EventStore` (`b8bf0e0` → `aaac942` → `b779298` → `ad93f7d`, v3.33.6) and `references/Hexalith.Tenants` (`e7b3597` → `b7ae7bd` → `3aaf2cf`, v2.2.0-5-g3aaf2cf) pointer bumps at current worktree values; did **not** restore the old pinned commits. Documented both pointers in the File List and recorded the full pointer history. Story remained `blocked-by-contract`; sprint remained `backlog` at that time.
 - 2026-07-05: FC-NIP contract-level blocker resolved; story moved to `ready-for-dev` for a future implementation pass. No producer, generated-grid consumer, SourceTools output, or public API code changed in this unblock step.
+- 2026-07-05: Create-story repair aligned stale blocked-review notes with the approved contract source, kept historical review findings as superseded traceability, and updated sprint status to `ready-for-dev`.
 
-## Senior Developer Review (AI)
+## Current Create-Story Validation (2026-07-05)
+
+Outcome: **Ready for Dev**. The 2026-07-05 FC-NIP contract update approves FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context as the Story 9.2 payload source. The story remains intentionally unimplemented, but it is no longer blocked at the decision level.
+
+Validation findings:
+
+- The current contract status is `approved payload source for Story 9.2 implementation`; the old `confirmed with upstream blocking gap` status is superseded.
+- The implementation gate remains strict: do not call `INewItemIndicatorStateService.Add(...)` until source-level wiring proves non-empty `ProjectionTypeName`, lane/view key, exact row `EntityKey`, command `MessageId`, and needed status-slot metadata.
+- The EventStore status path still emits terminal observations with `MessageId` only and must remain lifecycle/status-only for this story.
+- The generated command form emitter still registers only `CorrelationId`, `MessageId`, and `CommandTypeName`; Story 9.2 may add runtime hooks, but must not fabricate row/lane metadata at form-emit time.
+- `FcNewItemIndicatorLaneIntegrationTests` still use a test-only `LaneHost`; Story 9.2 must replace that stand-in with production generated-grid or shell-level grid rendering evidence.
+
+## Historical Senior Developer Review (AI, Superseded By 2026-07-05 Contract Update)
 
 Reviewer: Administrator (adversarial automated review) on 2026-07-04
 Outcome: **Changes Requested (documentation / commit hygiene)** — the story correctly remains `blocked-by-contract`.

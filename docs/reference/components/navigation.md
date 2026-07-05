@@ -3,7 +3,7 @@ title: "Navigation"
 description: "The registry-driven FrontComposer navigation rail: one tile per registered domain, projection flyouts, count and New badges, and labelled or icon-only rail widths."
 genre: reference
 audience: adopter
-ownerStory: 1-5-produce-the-fc-doc-component-documentation-contract
+ownerStory: 8-5-icon-label-navigation-rail-and-projection-flyout
 status: published
 reviewed: 2026-06-25
 uid: frontcomposer.reference.components.navigation

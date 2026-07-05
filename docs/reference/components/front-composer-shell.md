@@ -3,7 +3,7 @@ title: "FrontComposerShell"
 description: "The framework-owned application shell: Header / Navigation / Content / Footer regions, skip links, theme toggle, settings, and command palette."
 genre: reference
 audience: adopter
-ownerStory: 1-5-produce-the-fc-doc-component-documentation-contract
+ownerStory: 8-3-brand-logo-cell-in-header-start
 status: published
 reviewed: 2026-06-25
 uid: frontcomposer.reference.components.frontcomposershell
