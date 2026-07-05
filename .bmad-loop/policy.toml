@@ -38,7 +38,7 @@ enabled = true
 trigger = "recommended"
 
 [adapter]
-name = "claude"              # claude | codex | gemini | <custom .bmad-loop/profiles/*.toml>
+name = "codex"               # default for all stages: dev + sweep-triage run on codex
 model = ""                   # empty = CLI default model
 cleanup_session_on_finish = true  # kill the run's tmux session when it finishes (false keeps it for inspection)
 # extra_args replaces the profile's default permission-bypass flags when set:
@@ -62,6 +62,17 @@ cleanup_session_on_finish = true  # kill the run's tmux session when it finishes
 # stop_without_result_nudges = 5     # e.g. a multi-turn review needs more nudges than dev
 # [adapter.triage]
 # model = "opus"
+
+# --- Active per-stage assignment (customized) ---
+# Default [adapter] name = "codex" -> dev + sweep-triage run on codex.
+# Review runs on claude for an independent, cross-model second opinion.
+# NOTE: bmad-loop has NO cross-CLI failover/fallback. A stalled or failed stage
+# is retried on the SAME adapter (bounded by limits.max_dev_attempts /
+# limits.max_review_cycles), then escalated to a human — it never auto-switches
+# to the other CLI. "codex falls back to claude and vice versa" is not a
+# configurable behavior; each stage is bound to exactly one client.
+[adapter.review]
+name = "claude"
 
 [sweep]
 # Deferred-work sweep: triage + execute open deferred-work.md entries.
