@@ -1,4 +1,5 @@
 ---
+baseline_commit: 60521f918556ff65c7b81651a6c6267eb85b0699
 unblocked_by: "_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md#approved-payload-source"
 created: 2026-07-04
 unblocked: 2026-07-05
@@ -6,7 +7,7 @@ unblocked: 2026-07-05
 
 # Story 9.2: Wire `FcNewItemIndicator` producer and generated-grid consumer
 
-Status: ready-for-dev
+Status: in-progress
 
 <!-- Note: The FC-NIP contract is unblocked at the decision level. Implementation still must prove the approved runtime metadata path before adding producer behavior. -->
 
