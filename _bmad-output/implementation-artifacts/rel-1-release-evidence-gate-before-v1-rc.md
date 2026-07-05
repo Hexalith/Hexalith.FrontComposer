@@ -2,14 +2,16 @@
 created: 2026-07-05
 owner: Release Owner + Developer + QA/Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-rel-ai-1-release-evidence-gate.md
-status: ready-for-dev
+status: review
+baseline_commit: 2d1a1290aaf62c10c4db6e70ab36c9e4d8622703
 approval: approved-by-administrator-2026-07-05
 amendmentApproval: approved-by-administrator-2026-07-05
+releaseModelDecision: "2026-07-05 — keep the Jul 3 auto-publish-from-main model; add FR24 evidence only (no approval gates, no dry-run). Signing/cert deferred; attestation provenance + advisory classify only. Reverses REL-1's original gated-dispatch AC scope by owner decision."
 ---
 
 # REL-1: Implement FR24 Release Evidence Gate Before v1.0 RC
 
-Status: ready-for-dev
+Status: review (evidence-only increment; signing/gating/consumer-validation deferred — `REL-AI-1` stays open)
 
 Approval: approved by Administrator on 2026-07-05.
 
@@ -85,20 +87,36 @@ evidence paths or an approved fallback with reopen criteria.
 
 ## Tasks
 
-- [ ] Update `.releaserc.json` and/or release scripts so prepare/publish produce the FR24 evidence chain
-      before any publish side effect.
-- [ ] Update `.github/workflows/release.yml` to run trusted release evidence steps with safe dry-run and
-      approval behavior.
-- [ ] Reuse `eng/release_evidence.py` commands for inventory, checksums, manifest, verification,
-      readiness classification, partial-publish incident handling, and release-budget evidence.
-- [ ] Add package-consumer validation using locally packed artifacts as a NuGet source.
-- [ ] Flip release governance tests from "full gate absent" to "full gate required".
-- [ ] Reconcile release/deployment docs so they distinguish current release behavior from the FR24
-      target until the gate is implemented; after implementation, update them with actual evidence
-      paths, approval/fallback inputs, dry-run behavior, operator commands, and package-consumer
-      validation output.
-- [ ] Run the relevant governance tests and a release dry-run evidence pass.
-- [ ] Record evidence paths or approved fallback in sprint status before closing `REL-AI-1`.
+**Scope note (owner decision 2026-07-05):** the release model was kept as the deliberate 2026-07-03
+**auto-publish-from-`main`** path; REL-1 was rescoped to add an **advisory FR24 evidence layer only**
+(no approval gates, no dry-run, signing deferred). Tasks below reflect that scope.
+
+Done (evidence-only):
+
+- [x] Add the FR24 evidence chain to `.github/workflows/release.yml` as advisory/best-effort steps
+      around the unchanged auto-publish (test-results, inventory, SBOM, checksums, prepare/seal/verify
+      manifest, advisory `classify-release`, evidence upload + GitHub Release attach). `.releaserc.json`
+      kept evidence-free so the auto-publish model-guard tests stay valid.
+- [x] Reuse `eng/release_evidence.py` commands for inventory, checksums, manifest, verification, and
+      readiness classification.
+- [x] Add a governance test (`ReleaseWorkflow_ProducesAdvisoryFr24EvidenceBundleWithoutGating`) that
+      **requires** the evidence layer while asserting it stays advisory and does not reintroduce
+      dispatch/approval/dry-run gating; the two auto-publish model-guard tests are retained unchanged.
+- [x] Reconcile `_bmad-output/project-docs/deployment-guide.md` to describe the current evidence-only
+      behavior and an explicit "deferred FR24 targets" delta.
+- [x] Run the governance lane locally: `CiGovernanceTests` 41/41 via the direct xUnit v3 runner
+      (Release build 0/0). CI is authoritative for the release-workflow *execution*.
+
+Deferred / out of scope (owner decision) — keep `REL-AI-1` OPEN:
+
+- [ ] **AC2 signing:** `dotnet nuget sign` + `dotnet nuget verify --all` (needs a code-signing cert +
+      secrets; Release Owner).
+- [ ] **AC4–5 gating:** `classify-release --require-publishable`, dry-run default, owner approval, and
+      partial-publish incident wiring — intentionally not added under the auto-publish model.
+- [ ] **AC6 package-consumer validation:** clean consumer restores locally packed artifacts.
+- [ ] **AC8 evidence recording:** Release Owner runs the workflow on a real release and records the
+      evidence paths (test-results, inventory, SBOM, checksums, sealed manifest, readiness) before
+      `REL-AI-1` can close.
 
 ## Implementation Notes
 
@@ -113,12 +131,46 @@ evidence paths or an approved fallback with reopen criteria.
 
 ### Agent Model Used
 
-TBD
+claude-opus-4-8 (bmad-dev-story)
 
 ### Completion Notes
 
-Pending implementation.
+Implemented the **evidence-only** increment of REL-1 per the owner's 2026-07-05 decision (keep the
+2026-07-03 auto-publish-from-`main` model; add FR24 evidence only; defer signing).
+
+- Discovered the FR24 evidence tooling (`eng/release_evidence.py` + fixtures) is already complete and
+  that a fully gated release workflow exists in history at `ef2823b~1` (deliberately streamlined to the
+  minimal auto-publish path on 2026-07-03). Surfaced the conflict; owner chose "keep auto-publish, add
+  evidence only".
+- Added the advisory FR24 evidence layer to `.github/workflows/release.yml` around the unchanged
+  publish. Evidence steps are best-effort (`|| echo ::warning::`) so they never gate/destabilize the
+  auto-publish model. Kept `.releaserc.json` unchanged (evidence-free), preserving the two auto-publish
+  model-guard governance tests.
+- Added `ReleaseWorkflow_ProducesAdvisoryFr24EvidenceBundleWithoutGating` to require the evidence layer
+  and assert it stays advisory (no `--require-publishable`, no `workflow_dispatch:`, no `RELEASE_DRY_RUN`,
+  no `|| true`).
+- Reconciled `deployment-guide.md` (current evidence-only behavior + deferred FR24 delta).
+
+**Verification:** Release build of `Hexalith.FrontComposer.Shell.Tests` = 0 warnings / 0 errors;
+`CiGovernanceTests` = **41/41 pass** via the direct xUnit v3 in-process runner (VSTest sockets blocked
+locally per repo norm). The `release.yml` YAML parses (20 steps). **CI is authoritative for the
+release-workflow execution** — the SBOM/CycloneDX `.slnx` invocation, manifest plumbing, and evidence
+upload can only be exercised in GitHub Actions on a real release.
+
+**`REL-AI-1` remains OPEN.** Reopen/close criteria: AC2 signing, AC4–5 gating, AC6 package-consumer
+validation, and AC8 (Release Owner runs the workflow once and records evidence paths).
 
 ### File List
 
-Pending implementation.
+- `.github/workflows/release.yml` (modified — added advisory FR24 evidence layer; auto-publish unchanged)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` (modified — added
+  `ReleaseWorkflow_ProducesAdvisoryFr24EvidenceBundleWithoutGating`)
+- `_bmad-output/project-docs/deployment-guide.md` (modified — reconciled to evidence-only reality)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — REL-1 status; REL-AI-1 note)
+- `_bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md` (this story)
+
+## Change Log
+
+- 2026-07-05: Implemented evidence-only FR24 layer (advisory, non-gating) in `release.yml`; added
+  requiring governance test; reconciled deployment-guide; verified `CiGovernanceTests` 41/41 locally.
+  Signing/gating/consumer-validation deferred by owner decision; `REL-AI-1` stays open.

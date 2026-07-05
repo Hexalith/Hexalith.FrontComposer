@@ -830,6 +830,43 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void ReleaseWorkflow_ProducesAdvisoryFr24EvidenceBundleWithoutGating() {
+        // REL-1 (2026-07-05, evidence-only model): the release workflow must produce an
+        // auditable FR24 evidence bundle (test-results, SBOM, checksums, sealed manifest,
+        // advisory readiness classification) over the published packages. This ADDS an
+        // evidence layer WITHOUT reintroducing the gated-dispatch/approval/dry-run model
+        // that the 2026-07-03 streamline deliberately removed — the two model-guard tests
+        // above remain the source of truth for triggers and publish behavior.
+        string root = RepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+
+        // Required FR24 evidence commands, all orchestrated in the workflow (never in
+        // .releaserc.json, which the model-guard tests keep evidence-free).
+        workflow.ShouldContain("release_evidence.py test-results");
+        workflow.ShouldContain("release_evidence.py checksums");
+        workflow.ShouldContain("release_evidence.py prepare-manifest");
+        workflow.ShouldContain("release_evidence.py seal-manifest");
+        workflow.ShouldContain("release_evidence.py verify-manifest");
+        workflow.ShouldContain("release_evidence.py classify-release");
+        workflow.ShouldContain("CycloneDX");
+        workflow.ShouldContain("release-evidence/test-results.json");
+        workflow.ShouldContain("Upload release evidence artifact");
+        workflow.ShouldContain("release-evidence/**");
+
+        // Test-evidence must be recorded before publish so a failed/skipped lane is
+        // captured even though the auto-publish proceeds.
+        workflow.IndexOf("release_evidence.py test-results", StringComparison.Ordinal)
+            .ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
+
+        // Evidence is ADVISORY: classification must not carry --require-publishable, and
+        // the workflow must not reintroduce dispatch/approval/dry-run gating.
+        workflow.ShouldNotContain("--require-publishable");
+        workflow.ShouldNotContain("workflow_dispatch:");
+        workflow.ShouldNotContain("RELEASE_DRY_RUN");
+        workflow.ShouldNotContain("|| true");
+    }
+
+    [Fact]
     public void ReleaseEvidenceScript_EmitsApprovalMatrixAndPackageSetFingerprint() {
         // CR-12-4-D7 (round-5): the AC26 approval matrix must be a machine-readable
         // top-level field of the classify-release output. CR-12-4-D8 (round-5): the

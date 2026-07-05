@@ -820,6 +820,33 @@ So that transient faults recover without manual resubmission.
 **When** present,
 **Then** `FcPendingCommandSummary` lists them in an `aria-live` region. *(NFR6)*
 
+### Command FR subclause traceability (PRD FR-14 / FR-15 / FR-16)
+
+Added by correct course 2026-07-05 to make the partial-trace subclauses explicit. Epics 3 and 4 are
+done and these behaviors are implemented; this addendum pins each subclause to its owning story and
+named symbol. Before v1.0 RC classification, the owning story's evidence/change-log must cite the exact
+passing test method(s), or add a short AC-refinement note. This addendum does not reopen any done story.
+
+| PRD subclause | Owning story | Implementation symbol | AC status | Evidence action before RC |
+| --- | --- | --- | --- | --- |
+| FR-14 unsupported field types render placeholders, do not break the form | 3.1 | `FcFieldPlaceholder` + HFC1002 | In AC | Cite generator/`CommandRenderer*` test. |
+| FR-14 supported field-type parsing | 3.1 / 3.2 | generated `CommandForm` parsers | Implicit | Cite `Generated/Level1FormatRuntimeTests.cs`, `CommandRendererTestFixtures.cs`. |
+| FR-14 nullable numeric fields compile + round-trip culture-aware | 3.1 | nullable-numeric codegen (PR #48 minor batch) | Implicit | Cite `Generated/Level1FormatRuntimeTests.cs`. |
+| FR-14 form state preserved on retryable pre-accept failures | 4.5 | retry/degraded path | Implicit | Cite retry test + `FcFormAbandonmentGuardTests`. |
+| FR-14 `MessageId` is a ULID reused across pre-accept retry attempts | 3.3 + 4.5 | FC-CMD identity + `IUlidFactory` | Implicit | Cite `LifecycleStateServiceTests` / pending-command tests. |
+| FR-15 Submitting / Acknowledged / Syncing / Confirmed / Rejected | 3.4 | `FcLifecycleWrapper` | In AC | Covered. |
+| FR-15 IdempotentConfirmed, NeedsReview, Warning | 3.4 (+ runtime) | `ILifecycleStateService` + `LifecycleStateService` | Implicit — states exist, not named in AC | Add AC-refinement note naming these terminals; cite `FcLifecycleWrapperRejectionTests` / `FcLifecycleWrapperThresholdTests`. |
+| FR-15 Degraded / accepted-HTTP is not projection-confirmed | 3.5 / 3.6 | `GET /api/v1/commands/status/{id}` confirmed-stable | In AC | Covered (3.5 + 3.6 budgets). |
+| FR-16 `[RequiresPolicy]` evaluated before `BeforeSubmit` and again after for protected commands | 4.4 | `AuthorizingCommandServiceDecorator` + `CommandDispatchAuthorizationGate` | Implicit — sequencing not named | Add AC-refinement note pinning before/after sequencing; cite `RequiresPolicyAttributeTests` + authorization tests. |
+| FR-16 service boundary enforces authorization | 4.4 | `AuthorizingCommandServiceDecorator` | In AC | Covered. |
+| FR-16 FC-CNC v1 blocks later local submits (no queue/batch) | 4.3 | FC-CNC one-at-a-time | In AC | Covered. |
+| FR-16 destructive confirmation / abandonment guard | 4.1 / 4.2 | `FcDestructiveConfirmationDialog` / `FcFormAbandonmentGuard` | In AC | Covered. |
+
+Two AC-refinement notes are the only story-text changes: (1) name `IdempotentConfirmed` / `NeedsReview`
+/ `Warning` as surfaced lifecycle terminals in Story 3.4's evidence; (2) name the `[RequiresPolicy]`
+before/after `BeforeSubmit` sequencing in Story 4.4's evidence. Both reference existing code and tests;
+neither changes implemented behavior.
+
 ## Epic 5: AI-Agent (MCP) Surface
 
 An AI agent can discover generated commands as MCP tools, read projections and skill docs as resources, poll lifecycle, and operate within fail-closed security with schema negotiation. Covers FR4, FR16, FR17, FR18, FR19.
@@ -1387,6 +1414,10 @@ and punctuation-heavy string secret values.
 > decision and compatibility plan, amends the multi-TFM decision) - owner **Architect + PM**, assigned **2026-07-04**,
 > resolved **2026-07-05** by approving the split and recording package-compat requirements in
 > `_bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md`.
+> **IA gate FC-IA-1** (module-tab route encoding + projection-flyout IA) - owner **Product/UX +
+> Architect**, assigned **2026-07-05**, due **before Epic 11 route/navigation dev kickoff**. Recorded in
+> `ux-experience-2026-07-05.md` (IA Decision Gate - FC-IA-1). Story 11.7 and any navigation/module-tab
+> route story stay blocked until FC-IA-1 is Product/UX-signed-off.
 
 ### Epic 11 Implementation Order
 
@@ -1401,7 +1432,9 @@ and punctuation-heavy string secret values.
 | 7 | 11.6 Testing harness failure modes | Required for adopter failure-path testing. |
 | 8 | 11.7 command/projection route implementation | Requires 11.0 done. |
 | 9 | 11.9 / 11.15 / 11.16 consolidation stories | Lower-risk remediation group. |
-| 10 | 11.17 / 11.18 / 11.19 | Split before ready-for-dev; do not implement as broad bundles. |
+| 10a | 11.17a–d one-type-per-file split (CLI · SourceTools · MCP/runtime · Shell) | Per-package child stories; each names its validation lane. |
+| 10b | 11.18a–c LoggerMessage migration (fail-closed/security · warning+ · hot-path) | Security-adjacent child first; each names its lane. |
+| 10c | 11.19a–d enforcement/policy alignment (CS1591 · NuGet audit · l10n+rename · analyzer-elevation decision) | Three child stories + one decision gate; no global warning/analyzer disable. |
 | 11 | 11.8 Contracts split decision | Done 2026-07-05; historical gate, not an implementation candidate. |
 | 12 | 11.11 / 11.12 / 11.13 / 11.14 | Implement last; package-boundary and public-API evidence required. |
 
@@ -1578,7 +1611,7 @@ So that the "jump to any action" journey does not dead-end on an unresolvable ro
 
 **Acceptance Criteria:**
 
-**Given** Story 11.0 has selected `/commands/{BoundedContext}/{CommandTypeName}` as the canonical generated command route family,
+**Given** Story 11.0 has selected `/commands/{BoundedContext}/{CommandTypeName}` as the canonical generated command route family, and FC-IA-1 has fixed module-page/tab routes to `/{module}/{tab}` with the projection flyout strictly secondary (`_bmad-output/contracts/fc-ia-1-module-tab-ia-decision-2026-07-05.md`),
 **When** palette command entries, projection empty-state CTAs, and generated command pages are rendered,
 **Then** every generated command activation targets a route that exists and uses the selected route contract. *(H10 remainder; proposal §1 correction #3.)*
 
@@ -1587,7 +1620,8 @@ So that the "jump to any action" journey does not dead-end on an unresolvable ro
 **Then** an e2e pin asserts palette command activation lands on the generated page, and the route contract is recorded in a contract (`fc-*` or architecture.md §4), not only in the story.
 
 **Given** the contract-confirmation DoD,
-**When** Story 11.0 is not done,
+**When** Story 11.0 is not done **or** the FC-IA-1 module-tab route encoding / projection-flyout IA gate
+is not Product/UX-signed-off,
 **Then** this story remains blocked and may not move to ready-for-dev.
 *(Refines FR14 / UX-DR4; closes the H10 remainder + the unresolvable-route finding — the single most user-visible open defect in the plan.)*
 
@@ -1761,6 +1795,28 @@ So that hardening fixes do not depend on remembering every copy.
 > split by package or defect class into independently reviewable implementation stories with their own
 > validation lanes.
 
+**Decomposition (correct course 2026-07-05).** Split by package into independently reviewable child
+stories. Each keeps the parent constraint: mechanical only — behavior and public-API shape unchanged
+except intentional file organization and any documented API-baseline update. A durable one-type-per-file
+Governance guard (the "multi-type file" blind-spot guard class) is added or extended so the convention
+is enforced, not merely applied.
+
+- **11.17a — CLI package split.** `MigrationCommand.cs` (23 types), `InspectCommand.cs` (14 types) →
+  one-type-per-file. Validation lane: CLI in-process xUnit lane + `frontcomposer.cli.inspect.v1` /
+  `frontcomposer.cli.migrate.v1` contract pins + CLI `PublicAPI.Shipped.txt` unchanged.
+- **11.17b — SourceTools package split.** `DriftDetection.cs` (17 types) → one-type-per-file.
+  Validation lane: SourceTools drift lane + HFC parity + generated-output byte stability (P12
+  no-`CompilationProvider` isolation preserved).
+- **11.17c — MCP/runtime split + benchmark-harness relocation.** `SkillCorpus.cs` (~45 types) →
+  one-type-per-file, and move the LLM benchmark harness out of the runtime package into
+  `Shell.Tests.Bench` (`[Trait("Category","Performance")]`). Validation lane: MCP in-process lane +
+  Testing package-boundary tests + `Shell.Tests.Bench` builds; the runtime package no longer ships the
+  benchmark harness.
+- **11.17d — Shell interface+impl+DTO bundle split.** Shell multi-type files (interface + impl + DTO
+  bundles) → one-type-per-file, retaining the documented Fluxor action-group exception. Validation
+  lane: focused Shell one-type-per-file Governance guard + broad Shell non-Contract lane +
+  `PublicAPI.FcTbl.Shipped.txt` unchanged.
+
 As a FrontComposer maintainer,
 I want the worst multi-type files split mechanically,
 So that the codebase matches the documented one-type-per-file convention before broader refactors.
@@ -1780,6 +1836,20 @@ So that the codebase matches the documented one-type-per-file convention before 
 > Split-before-dev: this section is a decomposition parent. Do not move it to ready-for-dev until it is
 > split by package or defect class into independently reviewable implementation stories with their own
 > validation lanes.
+
+**Decomposition (correct course 2026-07-05).** Split by defect class, security-adjacent work first.
+Each child preserves the parent's sanitization constraint: no raw token, tenant-secret, payload, stack
+trace, or sensitive identifier is emitted.
+
+- **11.18a — Fail-closed / security log sites (first).** MCP + Shell fail-closed branches →
+  `[LoggerMessage]`. Validation lane: MCP + Shell Governance sanitized-logging lane (ties to
+  NFR6/NFR10); sanitization tests prove no sensitive value is emitted.
+- **11.18b — Warning-and-above log sites.** All Warning+ severity sites across the 50 Shell files →
+  `[LoggerMessage]`. Validation lane: Shell unit lane + a guard that Warning+ sites use
+  source-generated logging.
+- **11.18c — Hot-path log sites.** Command-lifecycle, projection-refresh, and polling hot-path sites →
+  `[LoggerMessage]`. Validation lane: LoggerMessage guard; remaining direct calls are below the
+  migration threshold or documented intentional.
 
 As a FrontComposer maintainer,
 I want warnings and hot logging paths migrated to source-generated logging,
@@ -1804,6 +1874,24 @@ So that logging follows the project's performance and analyzer conventions.
 > Split-before-dev: this section is a decomposition parent. Do not move it to ready-for-dev until it is
 > split by package or defect class into independently reviewable implementation stories with their own
 > validation lanes.
+
+**Decomposition (correct course 2026-07-05).** Split by defect class. Each child names its validation
+lane and does not disable warnings or analyzer findings globally.
+
+- **11.19a — Doc-comment (CS1591) enforcement realignment.** Restore documented CS1591 enforcement on
+  the Contracts public API-freeze folders (the `.editorconfig` re-raise is currently dead under the
+  src-wide NoWarn). Validation lane: Release build under `TreatWarningsAsErrors=true` + a guard proving
+  CS1591 is enforced on the API-freeze surface.
+- **11.19b — AppHost NuGet audit suppression.** Replace the blanket `NU1902-04` NoWarn with
+  per-advisory `NuGetAuditSuppress` (CI-verifiable). Validation lane: CI audit lane / Governance test.
+- **11.19c — Localization + identifier alignment.** Localize the `FcHomeCard` aria-label and the UI
+  host `lang="en"`/English strings; rename `HFC2106_ThemeHydrationEmpty` (ID string unchanged; obsolete
+  alias if the constant is public). Validation lane: Shell localization/Governance lane +
+  diagnostic-catalog parity.
+- **11.19d — Analyzer-elevation decision gate.** Architect records the `AnalysisMode Recommended`
+  decision (adds no packages; burn-down cost owned). This is a decision gate, not broad implementation;
+  any resulting implementation stories name their validation lane. Recorded under
+  `_bmad-output/contracts/`.
 
 As a release owner,
 I want documented enforcement policies to match what the build and governance lanes actually enforce,
