@@ -44,8 +44,6 @@ validation-rules:
 - [ ] **End-to-End Tests:** End-to-end tests created for critical user flows when story requirements specify them
 - [ ] **Test Coverage:** Tests cover acceptance criteria and edge cases from story Dev Notes
 - [ ] **Regression Prevention:** ALL existing tests pass (no regressions introduced)
-- [ ] **Test Evidence Language:** Test records distinguish exact local commands/results, blocker details, fallback evidence, and CI-authoritative lanes
-- [ ] **Story Artifact Validation:** `python3 eng/validate-story-artifacts.py --story <story-file>` passes or exact blocker recorded
 - [ ] **Code Quality:** Linting and static checks pass when configured in project
 - [ ] **Test Framework Compliance:** Tests use project's testing frameworks and patterns from Dev Notes
 

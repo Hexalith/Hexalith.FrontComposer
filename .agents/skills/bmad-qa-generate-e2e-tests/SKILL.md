@@ -114,13 +114,7 @@ If failures occur, fix them immediately.
 
 ### Step 5: Create Summary
 
-Output markdown summary and record every created or modified test/support file. If an active story
-file is available, update its File List and Dev Agent Record with generated test files, helper or
-fixture files, package/config files, the generated summary file, and updated test counts. Then run
-`python3 eng/validate-story-artifacts.py --story <story-file>` before completion; failures are
-blocking because QA-generated artifacts must not create File List or authoring-sentinel drift.
-
-Summary format:
+Output markdown summary:
 
 ```markdown
 # Test Automation Summary

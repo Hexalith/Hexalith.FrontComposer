@@ -457,3 +457,5 @@ artifacts/docs/
 nr.db
 nr.db-wal
 nr.db-shm
+.bmad-loop/runs/
+.bmad-loop/cache/
