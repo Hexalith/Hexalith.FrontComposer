@@ -9,7 +9,7 @@ const REPO_ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 test.describe('Story 9.1: FC-NIP row identity producer contract', () => {
   test.skip(({ browserName }) => browserName !== 'chromium', 'Contract E2E coverage runs once in Chromium.');
 
-  test('pins the minimum row-identity payload and blocks producer wiring without typed identity', async () => {
+  test('pins the minimum row-identity payload and approved producer source', async () => {
     const contract = await readRepoFile('_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md');
 
     for (const candidate of [
@@ -37,11 +37,14 @@ test.describe('Story 9.1: FC-NIP row identity producer contract', () => {
       expect(contract, `${payloadField} payload field is missing`).toContain(payloadField);
     }
 
-    expect(contract).toContain('Story 9.2 remains blocked');
-    expect(contract).toContain('Owner:');
-    expect(contract).toContain('Date:');
+    expect(contract).toContain('approved payload source');
+    expect(contract).toContain('Approved Payload Source');
+    expect(contract).toContain('FrontComposer-owned pending-command row metadata');
+    expect(contract).toContain('Story 9.2 is unblocked');
+    expect(contract).toContain('Resolution date:');
     expect(contract).toContain('AggregateId is insufficient');
     expect(contract).toContain('Do not use EventStore ResultPayload');
+    expect(contract).toContain('EventStore command status remains a lifecycle/status source by `MessageId`');
   });
 
   test('preserves the no-guessing guardrails for fresh-row indicators', async () => {
@@ -75,7 +78,7 @@ test.describe('Story 9.1: FC-NIP row identity producer contract', () => {
     expect(dataGrid).toContain('current projection nudge does not include row identity');
   });
 
-  test('pins Story 9.2 blocked gate and current no-smuggling source evidence', async () => {
+  test('pins Story 9.2 ready gate and current no-smuggling source evidence', async () => {
     const story = await readRepoFile(
       '_bmad-output/implementation-artifacts/9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer.md',
     );
@@ -86,8 +89,9 @@ test.describe('Story 9.1: FC-NIP row identity producer contract', () => {
       'src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs',
     );
 
-    expect(story).toContain('Status: blocked-by-contract');
-    expect(story).toContain('Story 9.2 is not ready for code implementation');
+    expect(story).toContain('Status: ready-for-dev');
+    expect(story).toContain('Story 9.2 is ready for a focused implementation pass');
+    expect(story).toContain('FrontComposer-owned pending-command row metadata');
     expect(story).toContain('do not add best-effort producer code');
     expect(story).toContain('EventStorePendingCommandStatusQuery` currently reads EventStore status by pending `MessageId`');
     expect(story).toContain('CommandFormEmitter` currently registers pending commands with `CorrelationId`, `MessageId`, and `CommandTypeName` only');

@@ -56,10 +56,16 @@ The shell owns an always-rendered account menu backed by framework-owned server 
 - Prefer Fluent layout primitives for design-system-owned layout.
 - Use rendered-DOM, computed-style, bUnit, e2e, or governance-test evidence for visual and accessibility-sensitive changes.
 
+## Story Design Notes
+
+For visual or layout-sensitive stories, the story file must cite the richer design source used:
+`epics.md` UX-DRs, architecture section 4, component inventory, an approved sprint-change proposal, or
+a story-local design note. This concise UX artifact is sufficient for readiness discovery, but not
+automatically sufficient for pixel or layout decisions.
+
 ## Related Planning Artifacts
 
 - `_bmad-output/planning-artifacts/prd.md`
 - `_bmad-output/planning-artifacts/architecture.md`
 - `_bmad-output/planning-artifacts/epics.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05.md`
-

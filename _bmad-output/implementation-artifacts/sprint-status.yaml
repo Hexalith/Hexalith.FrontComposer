@@ -353,6 +353,7 @@ development_status:
   # Story 11.0 is the route-contract decision gate and blocks Story 11.1+ create-story work until done.
   # Story 11.8 is the Contracts-kernel split decision/compatibility plan and gates 11.11-11.14.
   # Suggested order: 11.0 -> 11.1 -> 11.2 -> 11.4 -> 11.3 -> 11.5 -> 11.6 -> 11.7 -> 11.9/11.15/11.16 -> 11.17/11.18/11.19 -> 11.8/11.11-11.14.
+  # Story creation order is authoritative: do not infer the next story from file order or numeric sort.
   epic-11: backlog
   11-0-route-contract-decision-gate: backlog
   11-1-token-lifecycle-and-circuit-safe-eventstore-auth: backlog
@@ -425,6 +426,18 @@ action_items:
     owner: "Product Owner + Developer"
     assigned: "2026-07-05"
     due: "before Epic 11 dev kickoff"
+    status: done
+  - epic: release
+    action: "REL-AI-1: Own FR24 release evidence gate for signed packages, symbols, SBOM, checksums, package inventory, release manifest/evidence chain, GitHub Release assets, and package-consumer validation before v1.0 RC."
+    owner: "Release Owner"
+    assigned: "2026-07-05"
+    due: "before v1.0 release candidate"
+    status: open
+  - epic: prd
+    action: "PRD-AI-1: Resolve, route, or explicitly accept PRD open questions and assumptions; update PRD status only after Product approval."
+    owner: "Product Owner"
+    assigned: "2026-07-05"
+    due: "before final v1.0 readiness approval"
     status: open
   - epic: 8
     action: "E8-AI-4: Require the Shell accent-as-thread governance guard in every future chrome/story verification record"

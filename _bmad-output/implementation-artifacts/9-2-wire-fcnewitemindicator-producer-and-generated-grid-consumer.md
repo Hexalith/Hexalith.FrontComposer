@@ -1,13 +1,14 @@
 ---
-blocked_by: "_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md#blocking-follow-up"
+unblocked_by: "_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md#approved-payload-source"
 created: 2026-07-04
+unblocked: 2026-07-05
 ---
 
 # Story 9.2: Wire `FcNewItemIndicator` producer and generated-grid consumer
 
-Status: blocked-by-contract
+Status: ready-for-dev
 
-<!-- Note: Story context is created, but implementation must not start until the FC-NIP blocking follow-up is resolved. -->
+<!-- Note: The FC-NIP contract is unblocked at the decision level. Implementation still must prove the approved runtime metadata path before adding producer behavior. -->
 
 ## Story
 
@@ -25,22 +26,24 @@ so that live command results are discoverable in projection grids.
 
 4. Given SourceTools output changes, then generated Verify snapshots and FC-TBL public-surface tests are updated intentionally.
 
-## Blocking Gate
+## Implementation Gate
 
-Story 9.2 is not ready for code implementation in the current repository state. Story 9.1 confirmed the FC-NIP contract with an upstream blocking gap: the current FrontComposer and pinned EventStore seams do not prove a framework-controlled row-identity payload end to end. The required follow-up must be resolved before this story moves to `ready-for-dev` or `in-progress`.
+Story 9.2 is ready for a focused implementation pass against the FC-NIP contract decision updated on 2026-07-05. The approved payload source is FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context. EventStore command status remains a lifecycle/status source by `MessageId`; it is not the row-identity source.
 
-Required unblocker:
+Required implementation constraints:
 
-- Define and pin a typed command outcome or projection metadata payload carrying `ProjectionTypeName`, lane/view key, exact row `EntityKey`, command `MessageId`, and any status-slot metadata required for FC-NIP.
-- If EventStore supplies the payload, document it as a bounded typed contract; do not hide it in optional domain-defined `ResultPayload`.
-- Verify the payload can be produced without diffing visible rows, marking every row in a lane, treating projection nudges as row identity, or assuming EventStore `AggregateId` is a universal FrontComposer row `EntityKey`.
+- Populate `ProjectionTypeName`, lane/view key, exact row `EntityKey`, command `MessageId`, and any required status-slot metadata only from framework-controlled runtime context.
+- Use the existing pending-command carrier path: `PendingCommandRegistration` -> `PendingCommandEntry` -> `PendingCommandOutcomeObservation` -> Story 9.2 producer.
+- Do not hide FC-NIP row identity in optional EventStore/domain-defined `ResultPayload`.
+- Verify the payload is produced without diffing visible rows, marking every row in a lane, treating projection nudges as row identity, or assuming EventStore `AggregateId` is a universal FrontComposer row `EntityKey`.
 
 ## Tasks / Subtasks
 
 - [ ] Re-validate the FC-NIP implementation gate before making code changes. (AC: 1)
-  - [ ] Read `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md` and confirm the Blocking Follow-Up is resolved by a source-level or contract-level artifact.
-  - [ ] Confirm a framework-controlled payload supplies non-empty `ProjectionTypeName`, lane/view key, exact row `EntityKey`, command `MessageId`, and required status-slot metadata.
-  - [x] If the payload is still absent or ambiguous, stop implementation, keep this story blocked, and do not add best-effort producer code.
+  - [x] Read `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md` and confirm the follow-up is resolved by a contract-level artifact.
+  - [x] Confirm the approved source is FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context.
+  - [ ] During implementation, prove the source-level wiring supplies non-empty `ProjectionTypeName`, lane/view key, exact row `EntityKey`, command `MessageId`, and required status-slot metadata before calling `INewItemIndicatorStateService.Add(...)`.
+  - [ ] If the implementation cannot prove that source-level wiring, stop implementation and do not add best-effort producer code.
 
 - [ ] Wire the producer from the command outcome path only after the payload exists. (AC: 1, 3)
   - [ ] Prefer the existing pending-command outcome path: `PendingCommandOutcomeObservation` -> `PendingCommandOutcomeResolver` -> `PendingCommandStateService`.
@@ -76,9 +79,9 @@ Required unblocker:
 
 ### Story Context
 
-Epic 9 resolves the accepted-deferred Story 2.6 AC1(b) gap: "new-item indicator marks fresh rows." Story 9.1 confirmed the component/state primitive and the required row-identity payload, but it also recorded that the current upstream seams are insufficient. Story 9.2 may implement only after that gap is resolved.
+Epic 9 resolves the accepted-deferred Story 2.6 AC1(b) gap: "new-item indicator marks fresh rows." Story 9.1 confirmed the component/state primitive and the required row-identity payload. The 2026-07-05 FC-NIP contract update approves FrontComposer-owned pending-command row metadata as the payload source, so Story 9.2 may now implement against that decision.
 
-This story file is intentionally blocked because the source of record says "Story 9.2 remains blocked by design until the row-identity producer payload is supplied by a framework-controlled seam." Treat this as a hard implementation precondition, not a warning.
+This story is not complete. It is ready for a focused implementation pass that must first prove source-level metadata population from generated grid/command runtime context.
 
 ### Current State To Preserve
 
@@ -91,7 +94,7 @@ This story file is intentionally blocked because the source of record says "Stor
 - `PendingCommandOutcomeObservation` already carries optional `ProjectionTypeName`, `LaneKey`, `EntityKey`, and `ExpectedStatusSlot`.
 - `PendingCommandOutcomeResolver` resolves by `MessageId` first. Without `MessageId`, it falls back to `EntityKey` plus optional projection/lane/status metadata only when exactly one pending command matches. It returns `Unknown` or `AmbiguousMatch` without state mutation otherwise.
 - `EventStorePendingCommandStatusQuery` currently reads EventStore status by pending `MessageId` and emits terminal observations with `MessageId` only. It does not forward `AggregateId`, projection type, lane/view key, or status-slot metadata.
-- `CommandFormEmitter` currently registers pending commands with `CorrelationId`, `MessageId`, and `CommandTypeName` only. Its emitted comment explicitly states that `ProjectionTypeName`, `LaneKey`, `EntityKey`, `ExpectedStatusSlot`, and `PriorStatusSlot` require runtime context the source generator does not have.
+- `CommandFormEmitter` currently registers pending commands with `CorrelationId`, `MessageId`, and `CommandTypeName` only. Its emitted comment explicitly states that `ProjectionTypeName`, `LaneKey`, `EntityKey`, `ExpectedStatusSlot`, and `PriorStatusSlot` require runtime context the source generator does not have. Story 9.2 may change generated/runtime wiring to capture approved runtime context, but it must not fabricate row identity from compile-time command metadata.
 - Generated grid views already have `_viewKey`, `CurrentGridSnapshot()`, `QueryFilters(...)`, `SearchQuery(...)`, `RegisterVisibleProjectionLane()`, and grid render hooks. Use these existing seams rather than inventing a parallel lane identity model.
 
 ### Anti-Patterns To Avoid
@@ -172,7 +175,7 @@ The current worktree had an unrelated modified `_bmad-output/story-automator/orc
 
 - Story file location: `_bmad-output/implementation-artifacts/9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer.md`.
 - Sprint-status key: `9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer`.
-- Sprint status should remain `backlog` until the FC-NIP blocking follow-up is resolved; there is no valid code path to implement the acceptance criteria in the current source state without violating the Story 9.1 contract.
+- Sprint status may move out of `backlog` only when the implementation pass starts. This contract update makes the story eligible for implementation but does not implement the ACs.
 
 ### References
 
@@ -203,7 +206,8 @@ GPT-5 Codex
 - 2026-07-04: Create-story analysis loaded BMAD workflow/config/project-context, Hexalith LLM instructions, sprint status, Epic 9 source, Story 9.1 story/review output, FC-NIP/FC-TBL/FC-CMD contracts, implementation-readiness report, architecture/component/source-tree docs, current pending-command/new-item/EventStore/SourceTools source files, relevant tests, and recent git history.
 - 2026-07-04: Discovery loaded `{epics_content}` from `_bmad-output/planning-artifacts/epics.md`; no planning-artifact PRD, architecture, or UX markdown matched the workflow patterns, so `_bmad-output/project-context.md` and `_bmad-output/project-docs/*.md` were used as architecture/project context.
 - 2026-07-04: Confirmed `sprint-status.yaml` has Epic 9 `in-progress`, Story 9.1 `done`, and Story 9.2 `backlog`.
-- 2026-07-04: Confirmed Story 9.1 contract status is "confirmed with upstream blocking gap" and explicitly says Story 9.2 remains blocked until the row-identity producer payload is supplied by a framework-controlled seam.
+- 2026-07-04: Confirmed Story 9.1 contract status was "confirmed with upstream blocking gap" and explicitly said Story 9.2 remained blocked until the row-identity producer payload was supplied by a framework-controlled seam.
+- 2026-07-05: FC-NIP contract updated to approve FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context as the payload source; Story 9.2 moved to `ready-for-dev` for a future implementation pass.
 - 2026-07-04: Validated this story context against the create-story checklist by adding explicit blocking status, no-guessing anti-patterns, current source seam state, likely file/test targets, and the duplicate-observation TTL footgun from Story 9.1 review.
 - 2026-07-04: Dev-story gate re-validation loaded BMAD workflow/config/project-context, the full Story 9.2 file, sprint status, and `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md`; the contract still has `Status: confirmed with upstream blocking gap` and its Blocking Follow-Up remains unresolved.
 - 2026-07-04: Source-level check confirmed the required framework-controlled row-identity payload is still absent: `PendingCommandRegistration`/`PendingCommandOutcomeObservation` only have optional metadata fields, `EventStorePendingCommandStatusQuery` emits terminal observations with `MessageId` only, and `CommandFormEmitter` still registers only `CorrelationId`, `MessageId`, and `CommandTypeName` while documenting that row/lane/status metadata requires runtime context.
@@ -215,10 +219,10 @@ GPT-5 Codex
 
 - Story context created by BMAD create-story workflow on 2026-07-04.
 - Ultimate context engine analysis completed - comprehensive developer guide created.
-- Story 9.2 context was created as blocked-by-contract because Story 9.1 confirmed the required payload is currently absent.
-- Sprint status was intentionally not advanced to `ready-for-dev`; doing so would contradict the FC-NIP contract's "review-by before Story 9.2 leaves backlog" gate.
+- Story 9.2 context was originally created as blocked-by-contract because Story 9.1 confirmed the required payload was absent.
+- 2026-07-05 update: the contract-level blocker is resolved by approving FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context. The implementation ACs remain open.
 - Dev-story implementation halted at the Story 9.2 Blocking Gate. During the dev-story phase, no producer, generated-grid consumer, SourceTools output, public API, or test code was changed because the required typed framework-controlled row-identity payload is still absent. (The later QA phase added negative guard tests only; see the QA bullets below and the Senior Developer Review.)
-- Story status and sprint status remain blocked/backlog until the upstream FC-NIP row-identity payload contract is supplied and pinned.
+- Story status is `ready-for-dev`; sprint status should be advanced by the implementation workflow when the implementation pass starts.
 - QA generated tests only; production producer and generated-grid consumer code remain unchanged because the blocking FC-NIP payload contract is still unresolved.
 - Added test coverage for aggregate-id-only input, generated metadata fabrication, and Story 9.2 no-smuggling source evidence.
 
@@ -242,7 +246,8 @@ These `references/Hexalith.*` submodule pointers moved during the Story 9.2 comm
 - 2026-07-04: Revalidated the FC-NIP implementation gate, confirmed the upstream row-identity payload is still absent, recorded focused test evidence and VSTest blocker, and halted implementation per the story's blocking condition.
 - 2026-07-04: QA-generated Story 9.2 negative tests and Playwright contract evidence, updated the test automation summary, and kept the story blocked because no framework-controlled row-identity payload exists.
 - 2026-07-04: Adversarial senior-developer review (auto-fix mode) confirmed the block is legitimate, verified the added guard tests are real, flagged undocumented submodule-pointer bumps and a scope-overstating commit message in `c23a1890`, clarified a contradictory completion note, and kept status `blocked-by-contract` / sprint `backlog`. See "Senior Developer Review (AI)".
-- 2026-07-04: Re-review escalation resolved by maintainer decision (option 1 — accept/document), followed by a second maintainer decision to accept/document fresh submodule drift. Accepted the `references/Hexalith.EventStore` (`b8bf0e0` → `aaac942` → `b779298` → `ad93f7d`, v3.33.6) and `references/Hexalith.Tenants` (`e7b3597` → `b7ae7bd` → `3aaf2cf`, v2.2.0-5-g3aaf2cf) pointer bumps at current worktree values; did **not** restore the old pinned commits. Documented both pointers in the File List and recorded the full pointer history. Story remains `blocked-by-contract`; sprint remains `backlog` (FC-NIP row-identity payload contract still unresolved).
+- 2026-07-04: Re-review escalation resolved by maintainer decision (option 1 — accept/document), followed by a second maintainer decision to accept/document fresh submodule drift. Accepted the `references/Hexalith.EventStore` (`b8bf0e0` → `aaac942` → `b779298` → `ad93f7d`, v3.33.6) and `references/Hexalith.Tenants` (`e7b3597` → `b7ae7bd` → `3aaf2cf`, v2.2.0-5-g3aaf2cf) pointer bumps at current worktree values; did **not** restore the old pinned commits. Documented both pointers in the File List and recorded the full pointer history. Story remained `blocked-by-contract`; sprint remained `backlog` at that time.
+- 2026-07-05: FC-NIP contract-level blocker resolved; story moved to `ready-for-dev` for a future implementation pass. No producer, generated-grid consumer, SourceTools output, or public API code changed in this unblock step.
 
 ## Senior Developer Review (AI)
 

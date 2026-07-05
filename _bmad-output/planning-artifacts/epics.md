@@ -173,6 +173,16 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 - FR20 (`frontcomposer inspect`): **Epic 7** + **Epic 10** (text-output parity guard)
 - FR21 (`frontcomposer migrate`): **Epic 7** + **Epic 10** (HFCM9002 production-emission decision)
 - FR22 (Testing library): **Epic 7** + **Epic 10** (default-lane redaction guard) + **Epic 11** (11.6 harness failure modes)
+- FR23 (component and skill documentation): **Epic 1** (1.5 component docs), **Epic 5** (skill resources), **Epic 7** (diagnostics/tooling docs), **Epic 10** (10.2/10.4 docs cleanup), and **Epic 11** (11.14 package-compat docs)
+- FR24 (signed package artifacts with evidence): **Release Governance Gate RG-1**, owner **Release Owner**, tracked in `sprint-status.yaml` action `REL-AI-1`
+- FR25 (public contracts and deprecation paths): **Epic 7**, **Epic 10**, and **Epic 11** (11.8, 11.11-11.14, 11.19)
+- FR26 (post-MVP hardening backlog): **Epic 9**, **Epic 10**, and **Epic 11**
+
+**Release Governance Gate RG-1 (FR24):** the Release Owner must capture expected package inventory,
+signed `.nupkg`/`.snupkg` evidence, SBOM, checksums, release manifest/evidence chain, GitHub Release
+assets or dry-run evidence, and package-consumer validation before the v1.0 release candidate. If
+workflow or product-code changes are required to produce that evidence, create a focused implementation
+story before publication.
 
 **Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic) · AR11 (FC-NIP) → Epic 9 · AR12 (FC-TOOL-GOV) → Epic 10.
 **Cross-cutting NFRs** (NFR1–NFR13) apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. **NFR11 (telemetry)** is owned cross-cutting (not per-AC traced) — emitting through `FrontComposerActivitySource` on the Shell command-lifecycle/projection paths and the MCP tool/resource paths.
@@ -1324,6 +1334,9 @@ and punctuation-heavy string secret values.
 > its Change Log (proposal success criterion), and the four blind-spot guard classes (unlinked stylesheets,
 > dead scoped CSS, parameter-splat surfaces, cross-request lifetimes) each gain a durable Governance test.
 > Suggested order: 11.0 → 11.1 → 11.2 → 11.4 → 11.3 → 11.5 → 11.6 → 11.7 → 11.9/11.15/11.16 → 11.17/11.18/11.19 → 11.8/11.11-11.14 last.
+> Story creation order is authoritative. Do not infer the next story from file order or numeric sort.
+> Story 11.0 blocks all Story 11.1+ `create-story` work. Story 11.8 blocks only Stories 11.11-11.14.
+> After Story 11.7, create lower-risk remediation in the stated order before package-boundary stories.
 >
 > **Decision gates (contract-confirmation DoD, 2026-06-21 amendment — tracked, owned, dated):** **Story 11.0**
 > (command/projection route contract) — owner **Architect + Product**, assigned **2026-07-05**, due **before Epic 11

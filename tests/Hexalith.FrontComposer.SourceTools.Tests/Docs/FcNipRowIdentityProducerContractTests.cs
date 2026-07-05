@@ -43,11 +43,14 @@ public sealed class FcNipRowIdentityProducerContractTests {
             contract.ShouldContain(payloadField);
         }
 
-        contract.ShouldContain("Story 9.2 remains blocked");
-        contract.ShouldContain("Owner:");
-        contract.ShouldContain("Date:");
+        contract.ShouldContain("approved payload source");
+        contract.ShouldContain("Approved Payload Source");
+        contract.ShouldContain("FrontComposer-owned pending-command row metadata");
+        contract.ShouldContain("Story 9.2 is unblocked");
+        contract.ShouldContain("Resolution date:");
         contract.ShouldContain("Do not use EventStore ResultPayload");
         contract.ShouldContain("AggregateId is insufficient");
+        contract.ShouldContain("EventStore command status remains a lifecycle/status source by `MessageId`");
     }
 
     [Fact]

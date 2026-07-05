@@ -37,7 +37,7 @@ Audience is mixed: consumer-facing module users and administrators. The shared e
 | Add/create surface | Toolbar action / empty-state CTA / command palette | Create a new domain aggregate item |
 | Command lifecycle surface | Submit command | Show transport, projection-confirmation, rejection, degraded, and needs-review states |
 
-[ASSUMPTION] Module tabs are route-backed or otherwise deep-linkable so command palette entries, browser refresh, support links, and tests can land on a specific module UX page without adding extra application-level menu entries.
+Module tabs are route-backed or otherwise deep-linkable so command palette entries, browser refresh, support links, CTAs, tests, and command-result links can land on a specific module UX page without adding extra application-level menu entries.
 
 Application-level navigation must not list every projection, command, or module subpage as a primary menu item. A module may expose counts, badges, or secondary flyout links only if they route into the module workspace/tab model and preserve the one-entry-per-module rule.
 
