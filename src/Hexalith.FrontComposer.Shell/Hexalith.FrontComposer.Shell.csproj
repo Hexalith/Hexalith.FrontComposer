@@ -3,6 +3,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>Hexalith.FrontComposer.Shell</PackageId>
     <IsTrimmable>true</IsTrimmable>
+    <!-- NU5104: Shell intentionally ships against the pinned Fluent UI v5 RC and System.Reactive RC
+         until upstream GA or the approved package-boundary split removes the prerelease surface. -->
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

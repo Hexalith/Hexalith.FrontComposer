@@ -83,7 +83,7 @@ jobs:
         run: python3 eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output release-evidence/package-inventory.json
 
       - name: Attest release evidence provenance
-        uses: actions/attest-build-provenance@v2
+        uses: actions/attest-build-provenance@v4
         with:
           subject-path: release-evidence/package-inventory.json
 

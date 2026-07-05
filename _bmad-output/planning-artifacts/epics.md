@@ -196,6 +196,15 @@ create a focused release-governance implementation story (`REL-1` or the team's 
 publication. The story must close the gap between `.releaserc.json`, `.github/workflows/release.yml`,
 `eng/release_evidence.py`, governance tests, release docs, and package-consumer validation evidence.
 
+### PRD V1 Readiness Coverage Addendum
+
+The legacy FR Coverage Map above is retained for brownfield continuity. The canonical PRD adds explicit
+v1-readiness requirements FR-27 through FR-29:
+
+- PRD FR-27 (tooling-governance follow-through): Epic 10.
+- PRD FR-28 (Epic 11 decision gates): Story 11.0 route-contract decision and Story 11.8 Contracts split decision.
+- PRD FR-29 (architecture-review release risks): Epic 11 implementation stories 11.1 through 11.19, with Stories 11.11 through 11.14 deliberately last.
+
 **Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic) · AR11 (FC-NIP) → Epic 9 · AR12 (FC-TOOL-GOV) → Epic 10.
 **Cross-cutting NFRs** (NFR1–NFR13) apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. **NFR11 (telemetry)** is owned cross-cutting (not per-AC traced) — emitting through `FrontComposerActivitySource` on the Shell command-lifecycle/projection paths and the MCP tool/resource paths.
 **Epic 11 (Architecture Review Remediation)** refines the FRs noted above (FR13 · FR14 · FR22) and **amends cross-cutting NFRs**: NFR5/NFR12 (Contracts kernel split approved by Story 11.8) and NFR6 (visual-conformance guards). Its split stories trace primarily to the 2026-07-04 architecture-quality-review findings (H1-H12 / M-series), not to net-new FRs. Story 11.0 is a completed route-contract decision gate; Story 11.8 is a completed package-boundary decision gate. See the Epic 11 section.
@@ -216,7 +225,8 @@ string ownership, `FC-DOC` component docs, and the Shell-integration spike (Stor
 An **operator** can browse domain read-models: registry-driven navigation, an urgency-sorted home
 directory, the command palette, and projections rendered from `[Projection]` types into a
 `FluentDataGrid` with filtering, expand-in-row detail, status badges, and column prioritization —
-fed live from EventStore over SignalR/HTTP. Confirms the `FC-TBL` table API.
+fed live from EventStore over SignalR/HTTP, with row-level fresh-item indicators delegated to
+Epic 9 / FC-NIP. Confirms the `FC-TBL` table API.
 **FRs covered:** FR1, FR5 (projection attributes), FR11, FR13 (read/query path), FR14
 **UX-DRs:** UX-DR1, UX-DR2, UX-DR3, UX-DR5, UX-DR6, UX-DR7
 **Standalone:** complete read-only operations console; builds on Epic 1, needs no command epic.
@@ -453,7 +463,7 @@ So that the shell remembers my display preferences across sessions.
 
 ## Epic 2: Read-Only Projection Experience *(the read-only MVP)*
 
-An operator can browse domain read-models through registry-driven navigation, an urgency-sorted home directory, the command palette, and projections rendered into a filterable, accessible `FluentDataGrid` fed live from EventStore. Covers FR1, FR5 (projection attributes), FR11, FR13 (read path), FR14; UX-DR1, 2, 3, 5, 6, 7; confirms FC-TBL.
+An operator can browse domain read-models through registry-driven navigation, an urgency-sorted home directory, the command palette, and projections rendered into a filterable, accessible `FluentDataGrid` fed live from EventStore, with row-level fresh-item indicators delegated to Epic 9 / FC-NIP. Covers FR1, FR5 (projection attributes), FR11, FR13 (read path), FR14; UX-DR1, 2, 3, 5, 6, 7; confirms FC-TBL.
 
 ### Story 2.1: Render a projection from a `[Projection]` type
 
@@ -513,7 +523,9 @@ So that I can narrow large read-models and always know the grid's state.
 
 **Given** status-enum columns mapped via `[ProjectionBadge]`,
 **When** rendered,
-**Then** `FcStatusBadge`/`FcDesaturatedBadge` render with a mandatory `aria-label`. *(UX-DR2, NFR6)*
+**Then** status members render as colored Fluent icons with hover and keyboard-focus tooltip labels plus
+an always-present `aria-label`; numeric count slots remain `FluentBadge` / `FcDesaturatedBadge` pills.
+*(UX-DR2, NFR6)*
 
 **Given** a query exceeding the slow-query threshold or the max-items cap,
 **When** rendered,
@@ -564,8 +576,14 @@ So that I see current data and know when the stream is degraded.
 **Acceptance Criteria:**
 
 **Given** an active projection subscription over SignalR,
-**When** the backend emits a change,
-**Then** the grid updates and a "new item" indicator marks fresh rows. *(FR13, FR14)*
+**When** the backend emits a projection change,
+**Then** the grid refreshes or reconciles the affected projection lane and surfaces read-path freshness
+without marking individual rows as new. *(PRD FR-12, UX-DR5)*
+
+**Given** automatic row-level fresh-item marking is required,
+**When** a command outcome carries the confirmed FC-NIP row metadata,
+**Then** Epic 9 / Story 9.2 owns producing and rendering `FcNewItemIndicator`; Story 2.6 does not infer
+row identity from projection nudges. *(PRD FR-13, FR-26)*
 
 **Given** the SignalR connection drops,
 **When** it reconnects,
@@ -707,9 +725,11 @@ So that slow commands degrade gracefully instead of hanging.
 **When** a command stays unconfirmed past the confirming→degraded threshold,
 **Then** the UI shows a degraded state while continuing to poll within the polling budget. *(AR8)*
 
-**Given** the budgets are unset,
-**When** Product/UX + EventStore review,
-**Then** the threshold and polling budget values are decided and recorded (deterministic, testable via `FakeTimeProvider`). *(NFR10)*
+**Given** the AR8 budgets confirmed on 2026-06-21,
+**When** Product/UX and EventStore evidence is reviewed,
+**Then** the implementation verifies the recorded values: confirming-to-degraded threshold `10_000` ms,
+polling cadence `1_000` ms, polling max `120_000` ms, Epic 3 retry budget `0`, and Epic 4 retry
+budget `1 x 250` ms, all deterministic and testable via `FakeTimeProvider`. *(NFR10)*
 
 ## Epic 4: Safe & Concurrent Command Execution
 
@@ -756,8 +776,9 @@ So that rapid sequences stay predictable while batching is deferred.
 **Acceptance Criteria:**
 
 **Given** an in-flight command,
-**When** I submit another,
-**Then** the one-at-a-time policy applies the approved fallback (queue/block per contract) rather than racing. *(AR7)*
+**When** I submit another local command,
+**Then** FC-CNC v1 blocks the later local submit with support-safe feedback rather than queueing,
+batching, or racing. *(AR7, PRD FR-16)*
 
 **Given** the FC-CNC contract,
 **When** reviewed,
@@ -1353,8 +1374,8 @@ and punctuation-heavy string secret values.
 > completed Epics 1–8; independent of Epics 9/10.** Each story references the review finding IDs it closes in
 > its Change Log (proposal success criterion), and the four blind-spot guard classes (unlinked stylesheets,
 > dead scoped CSS, parameter-splat surfaces, cross-request lifetimes) each gain a durable Governance test.
-> Suggested order: 11.0 → 11.1 → 11.2 → 11.4 → 11.3 → 11.5 → 11.6 → 11.7 → 11.9/11.15/11.16 → 11.17/11.18/11.19 → 11.8/11.11-11.14 last.
-> Story creation order is authoritative. Do not infer the next story from file order or numeric sort.
+> The Epic 11 implementation-order table below is authoritative. Do not infer the next story from file order,
+> numeric sort, or heading order.
 > Story 11.0 is done as of 2026-07-05 and unblocks Story 11.1+ `create-story` work. Story 11.8 is done as of 2026-07-05; Stories 11.11-11.14 remain deliberately ordered last and must implement/evidence the approved package-boundary plan.
 > After Story 11.7, create lower-risk remediation in the stated order before package-boundary stories.
 >
@@ -1366,6 +1387,25 @@ and punctuation-heavy string secret values.
 > decision and compatibility plan, amends the multi-TFM decision) - owner **Architect + PM**, assigned **2026-07-04**,
 > resolved **2026-07-05** by approving the split and recording package-compat requirements in
 > `_bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md`.
+
+### Epic 11 Implementation Order
+
+| Order | Story or group | Status / rule |
+| --- | --- | --- |
+| 1 | 11.0 route-contract decision | Done 2026-07-05; historical gate, not an implementation candidate. |
+| 2 | 11.1 token lifecycle and circuit-safe auth | Next implementation candidate after gates. |
+| 3 | 11.2 projection realtime resilience | Implement before lower-risk cleanup. |
+| 4 | 11.4 security-validation hardening | Implement as three independently verifiable task groups. |
+| 5 | 11.3 MCP cross-request lifecycle and operability | Implement after security validation setup. |
+| 6 | 11.5 dead CSS and visual-conformance guards | Guard-first. |
+| 7 | 11.6 Testing harness failure modes | Required for adopter failure-path testing. |
+| 8 | 11.7 command/projection route implementation | Requires 11.0 done. |
+| 9 | 11.9 / 11.15 / 11.16 consolidation stories | Lower-risk remediation group. |
+| 10 | 11.17 / 11.18 / 11.19 | Split before ready-for-dev; do not implement as broad bundles. |
+| 11 | 11.8 Contracts split decision | Done 2026-07-05; historical gate, not an implementation candidate. |
+| 12 | 11.11 / 11.12 / 11.13 / 11.14 | Implement last; package-boundary and public-API evidence required. |
+
+Story creation follows this table over heading order, numeric sort, or file order.
 
 ### Story 11.0: Command/projection route-contract decision gate
 
@@ -1475,7 +1515,7 @@ So that a redirect-validation gap or storage-key collision cannot slip through u
 **Given** the SignalR/HTTP wire DTOs,
 **When** they serialize to or deserialize from JSON,
 **Then** `ProjectionChangedDetail`, `CommandResult`, and `ProblemDetailsPayload` gain golden-JSON pins (or `[JsonPropertyName]`) and `CommandResultStatus` gets string constants. *(M11)*
-*(Security hardening — no security NFR yet exists to anchor it (flagged for the requirements inventory); closes H7, H9, M11.)*
+*(Anchored to PRD NFR-5 Security and NFR-6 Privacy/support safety; closes H7, H9, M11.)*
 
 ### Story 11.5: Dead-CSS remediation and visual-conformance guards
 
@@ -1514,7 +1554,8 @@ So that adopters can genuinely test failure paths and paging/filter/sort of gene
 
 **Given** the Counter sample's authorization-policy toggles,
 **When** those scenarios are promoted into the Testing harness,
-**Then** they are promoted into the harness, and the constructor `GetAwaiter().GetResult()` is replaced with an async factory.
+**Then** the harness exposes equivalent configurable authorization-policy states, and the constructor
+`GetAwaiter().GetResult()` is replaced with an async factory.
 
 **Given** the shipped Testing surface (currently 2 test files for 11 files),
 **When** builders, assertions, or fakes are changed,
@@ -1716,6 +1757,10 @@ So that hardening fixes do not depend on remembering every copy.
 
 ### Story 11.17: Mechanical one-type-per-file split
 
+> Split-before-dev: this section is a decomposition parent. Do not move it to ready-for-dev until it is
+> split by package or defect class into independently reviewable implementation stories with their own
+> validation lanes.
+
 As a FrontComposer maintainer,
 I want the worst multi-type files split mechanically,
 So that the codebase matches the documented one-type-per-file convention before broader refactors.
@@ -1731,6 +1776,10 @@ So that the codebase matches the documented one-type-per-file convention before 
 **Then** behavior and public API shape remain unchanged except for intentional file organization and any documented API baseline updates.
 
 ### Story 11.18: LoggerMessage migration for warnings and hot paths
+
+> Split-before-dev: this section is a decomposition parent. Do not move it to ready-for-dev until it is
+> split by package or defect class into independently reviewable implementation stories with their own
+> validation lanes.
 
 As a FrontComposer maintainer,
 I want warnings and hot logging paths migrated to source-generated logging,
@@ -1751,6 +1800,10 @@ So that logging follows the project's performance and analyzer conventions.
 **Then** remaining direct calls are either below the migration threshold or documented as intentional.
 
 ### Story 11.19: Enforcement and policy alignment
+
+> Split-before-dev: this section is a decomposition parent. Do not move it to ready-for-dev until it is
+> split by package or defect class into independently reviewable implementation stories with their own
+> validation lanes.
 
 As a release owner,
 I want documented enforcement policies to match what the build and governance lanes actually enforce,

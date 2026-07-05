@@ -4,6 +4,7 @@ owner: Release Owner + Developer + QA/Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-rel-ai-1-release-evidence-gate.md
 status: ready-for-dev
 approval: approved-by-administrator-2026-07-05
+amendmentApproval: approved-by-administrator-2026-07-05
 ---
 
 # REL-1: Implement FR24 Release Evidence Gate Before v1.0 RC
@@ -11,6 +12,8 @@ approval: approved-by-administrator-2026-07-05
 Status: ready-for-dev
 
 Approval: approved by Administrator on 2026-07-05.
+
+Amendment approval: documentation/live-workflow drift handling approved by Administrator on 2026-07-05.
 
 ## Story
 
@@ -35,6 +38,9 @@ pack-and-push path:
 - `eng/release_evidence.py` already contains reusable commands for package inventory, checksums,
   test-results, manifest preparation/sealing/verification, release-budget, partial-publish incident
   recording, and release classification.
+- `_bmad-output/project-docs/deployment-guide.md` currently describes the desired full release
+  pipeline as if it already exists. Treat that as documentation/live-workflow drift to reconcile, not
+  as evidence that the gate is implemented.
 
 This story implements the executable FR24 gate. `REL-AI-1` remains open until the Release Owner records
 evidence paths or an approved fallback with reopen criteria.
@@ -87,7 +93,10 @@ evidence paths or an approved fallback with reopen criteria.
       readiness classification, partial-publish incident handling, and release-budget evidence.
 - [ ] Add package-consumer validation using locally packed artifacts as a NuGet source.
 - [ ] Flip release governance tests from "full gate absent" to "full gate required".
-- [ ] Update release/deployment docs with the final evidence paths and operator commands.
+- [ ] Reconcile release/deployment docs so they distinguish current release behavior from the FR24
+      target until the gate is implemented; after implementation, update them with actual evidence
+      paths, approval/fallback inputs, dry-run behavior, operator commands, and package-consumer
+      validation output.
 - [ ] Run the relevant governance tests and a release dry-run evidence pass.
 - [ ] Record evidence paths or approved fallback in sprint status before closing `REL-AI-1`.
 

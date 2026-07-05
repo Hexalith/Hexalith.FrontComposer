@@ -8,6 +8,8 @@ status: approved
 scope: Moderate
 owner: Release Owner
 approval: approved-by-administrator-2026-07-05
+amended: "2026-07-05: clarified release documentation/live-workflow drift and added Proposal G."
+amendmentApproval: approved-by-administrator-2026-07-05
 ---
 
 # Sprint Change Proposal - REL-AI-1 Release Evidence Gate
@@ -100,6 +102,10 @@ Release implementation:
   classify-release.
 - `CiGovernanceTests` currently assert the absence of the full release gate and must be updated to
   require it.
+- `_bmad-output/project-docs/deployment-guide.md` already describes the desired signed-package,
+  SBOM, checksum, manifest, readiness, and GitHub Release asset flow as if it is implemented. That
+  documentation is ahead of the live workflow and must either be corrected to current state or
+  reconciled when `REL-1` implements the gate.
 
 ## Section 3 - Recommended Approach
 
@@ -337,7 +343,8 @@ Artifacts to create or update:
 - `eng/` release validation script or test fixture
 - release workflow
 - governance tests
-- release docs
+- release/deployment docs, including the current `_bmad-output/project-docs/deployment-guide.md`
+  overstatement of the full gate
 
 Proposed validation:
 
@@ -354,6 +361,33 @@ Record the command, package source path, produced package versions, and result f
 
 Rationale: FR24 is about package-consumer safety, not only publisher-side artifacts. This is also the
 catch point for Story 11.11-11.14 package-boundary changes.
+
+### Proposal G - Reconcile Release Documentation With Live Workflow State
+
+Artifacts to update:
+
+- `_bmad-output/project-docs/deployment-guide.md`
+- published release/deployment docs under `docs/`, if they repeat the same release-pipeline claims
+- `REL-1` completion notes and Release Owner evidence records
+
+OLD:
+
+```text
+Release documentation presents the full signed package, SBOM, checksums, manifest/evidence chain,
+readiness classification, and GitHub Release asset pipeline as the current release behavior.
+```
+
+NEW:
+
+```text
+Until `REL-1` lands, release documentation must distinguish current behavior from the required FR24
+target. After `REL-1` lands, the docs must name the actual commands, generated evidence paths,
+approval/fallback inputs, dry-run behavior, and package-consumer validation result expected before
+`REL-AI-1` can close.
+```
+
+Rationale: Release documentation is itself part of the evidence chain. It must not imply that the
+publication gate exists before the release workflow and governance tests enforce it.
 
 ## Section 5 - Implementation Handoff
 
@@ -375,8 +409,9 @@ Recommended sequence:
 5. Implement release workflow/config changes using existing `eng/release_evidence.py` commands.
 6. Add package-consumer validation.
 7. Flip governance tests to require the FR24 gate.
-8. Run release dry-run evidence generation.
-9. Release Owner records evidence paths and marks `REL-AI-1` done only if all required evidence exists.
+8. Reconcile release/deployment docs so current behavior and FR24 target behavior are not conflated.
+9. Run release dry-run evidence generation.
+10. Release Owner records evidence paths and marks `REL-AI-1` done only if all required evidence exists.
 
 Success criteria:
 
@@ -390,6 +425,10 @@ Success criteria:
 ## Section 6 - Approval State
 
 This proposal was approved by Administrator on 2026-07-05.
+
+This run amended the approved proposal to call out that deployment/release documentation already
+describes the target FR24 gate while the live workflow still implements the minimal pack-and-push path.
+Administrator approved this amendment on 2026-07-05.
 
 Approved planning changes were applied to `prd.md`, `epics.md`, and `sprint-status.yaml`.
 The focused release-governance implementation story was created at

@@ -97,7 +97,7 @@ Status labels are part of each requirement's downstream contract.
 | FR-1 to FR-12 | Baseline / release verification | Framework maintainer verifies generated projection, shell, grid, freshness, and realtime behavior do not regress. |
 | FR-13 | Decision resolved / V1 implementation gate | Product + Architecture approved the FC-NIP payload source on 2026-07-05; Story 9.2 implements producer/consumer wiring and must prove runtime metadata before release. |
 | FR-14 to FR-23 | Baseline / release verification | Framework maintainer verifies command lifecycle, MCP, CLI, Testing, and documentation surfaces remain covered. |
-| FR-24 | Release governance / V1 gate | Release owner proves signed packages, symbols, SBOM, checksums, release manifest, and GitHub Release assets. |
+| FR-24 | Release governance / V1 gate | Release owner proves signed packages, symbols, SBOM, checksums, release manifest/evidence chain, GitHub Release assets, and package-consumer validation. |
 | FR-25 | Baseline plus change-control gate | Framework maintainer owns public API, schema, CLI JSON, generated-output, and diagnostic compatibility evidence. |
 | FR-26 | Readiness implementation gate | Epic 9 owns row-level fresh-item producer wiring through the approved FC-NIP payload source; Story 9.2 owns producer/consumer evidence before release. |
 | FR-27 | Readiness gap | Epic 10 owns tooling-governance follow-through and explicit release evidence for tooling changes. |
@@ -344,12 +344,13 @@ FrontComposer must keep component docs, diagnostic docs, migration docs, and ski
 
 #### FR-24: Ship signed package artifacts with evidence
 
-FrontComposer must release the expected NuGet package set through semantic-release with signed packages, symbols, SBOM, evidence chain, and GitHub Release assets.
+FrontComposer must release the expected NuGet package set through semantic-release with signed packages, symbols, SBOM, checksums, sealed release manifest/evidence chain, GitHub Release assets, and package-consumer validation evidence.
 
 **Consequences:**
 - Conventional commits determine version bump.
-- Release dry-run defaults to safe non-publish behavior.
-- Package inventory and readiness classification gate publication.
+- Release dry-run defaults to safe non-publish behavior and cannot publish package or GitHub Release side effects.
+- Package inventory, signing/timestamp verification, symbol package presence, SBOM presence, checksum coverage, manifest verification, release-readiness classification, and package-consumer validation gate publication.
+- `REL-AI-1` can be marked done only when the Release Owner records evidence paths for every FR24 artifact or records an approved fallback with explicit reopen criteria.
 
 #### FR-25: Preserve public contracts and deprecation paths
 
@@ -474,7 +475,7 @@ FrontComposer must complete the Epic 11 architecture remediation stories that ad
 - **Risk: Epic 11 decision gates block downstream execution.** Mitigation: Story 11.0 selected the route contract on 2026-07-05; Story 11.8 approved the Contracts split on 2026-07-05. Implementation remains ordered so lower-risk remediation precedes Stories 11.11-11.14.
 - **Risk: Contracts kernel leaks UI/runtime dependencies into consumers.** Mitigation: implement the approved Contracts kernel split in the pre-v1.0 window, with package-compat planning, public API baseline changes, migration/deprecation notes, and release inventory updates before package-boundary work is marked done.
 - **Risk: MCP lifecycle and projection realtime issues create silent degradation.** Mitigation: classify cross-request MCP lifecycle and SignalR reconnect remediation as release-readiness work, not optional cleanup.
-- **Risk: Release evidence remains implicit.** Mitigation: assign FR-24 to the release owner and require signed package, symbol, SBOM, checksum, release manifest, and GitHub Release evidence before publication.
+- **Risk: Release evidence remains implicit.** Mitigation: assign FR-24 to the release owner and require signed package, symbol, SBOM, checksum, release manifest, GitHub Release, and package-consumer validation evidence before publication.
 - **Risk: UX requirements remain too compact for visual stories.** Mitigation: accept `_bmad-output/planning-artifacts/ux-design.md` as the v1.0 UX traceability artifact and require story-local design notes where layout choices are not already captured.
 
 ## 11. API Contracts / Public Surface
@@ -497,7 +498,7 @@ FrontComposer must complete the Epic 11 architecture remediation stories that ad
 | D-3 | Generated command route family | Product + Architecture | Resolved 2026-07-05: canonical generated command route family is `/commands/{BoundedContext}/{CommandTypeName}`; contract recorded in `_bmad-output/contracts/fc-route-generated-command-route-contract-2026-07-05.md`. | Story 11.0 is done. Story 11.7 implements the contract and adds the e2e route-activation pin. |
 | D-4 | FC-NIP row identity payload source | Product + Architecture | Resolved 2026-07-05: approved source is FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context; EventStore status remains lifecycle/status by `MessageId`, not row identity. Contract: `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md`. | Story 9.2 implements and proves runtime metadata plus producer/consumer behavior; no remaining decision gate. |
 | D-5 | Contracts kernel split release posture | Architecture + PM | Resolved 2026-07-05: approve the split. Target shape is a netstandard2.0-clean `Contracts` kernel plus net10-only `Contracts.UI` for Blazor/Fluent rendering contracts; package-compat, public API baselines, deprecation/migration notes, release inventory, and docs are pre-v1.0 deliverables. | Story 11.8 is done. Stories 11.11-11.14 implement and evidence the approved package-boundary change, deliberately ordered last. |
-| D-6 | FR-24 release-evidence ownership | Release owner | Resolved: FR-24 is release governance and is tracked by `sprint-status.yaml` action `REL-AI-1`; if release workflow or product-code changes are required, create a focused implementation story before RC. | Blocks v1.0 publication. |
+| D-6 | FR-24 release-evidence ownership | Release owner | Resolved: FR-24 is release governance and is tracked by `sprint-status.yaml` action `REL-AI-1`; approved 2026-07-05 to route focused release-governance story `REL-1` because release workflow/governance-test/package-consumer validation changes are required before RC. | Blocks v1.0 publication. |
 | D-7 | Success metric targets | Product Owner + Release owner | Resolved in §9 with minimum v1.0 evidence targets. | None unless targets are changed. |
 | D-8 | Standalone UX spec need | Product + UX | Resolved for v1.0: `ux-design.md` is sufficient for traceability; stories with visual/layout choices need story-local design notes. | Blocks only stories whose visual decisions are not captured elsewhere. |
 | D-9 | Final PRD status approval | Product Owner | Resolved 2026-07-05: Product approved D-1 through D-8 and the accepted assumption dispositions; PRD status promoted to `approved-for-v1-readiness`. | None. |
