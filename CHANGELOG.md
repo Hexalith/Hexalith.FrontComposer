@@ -1,3 +1,10 @@
+# [1.2.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.1.0...v1.2.0) (2026-07-05)
+
+
+### Features
+
+* Update Hexalith.Builds subproject reference and enhance CI governance tests ([#49](https://github.com/Hexalith/Hexalith.FrontComposer/issues/49)) ([e36b96a](https://github.com/Hexalith/Hexalith.FrontComposer/commit/e36b96a4a87db9cdd743de88d59cf475a614dfba))
+
 # [1.1.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.0.0...v1.1.0) (2026-07-05)
 
 
