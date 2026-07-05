@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PRD Validation: Hexalith.FrontComposer</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+    --grade-fair: #d97706;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  .grade { padding: 10px 18px; border-radius: 8px; font-weight: 600; color: white; font-size: 15px; white-space: nowrap; }
+  .grade-fair { background: var(--grade-fair); }
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0; }
+  .dimension-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin-bottom: 24px; }
+  .dim-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+  section.dimension { margin-bottom: 14px; }
+  section.dimension details { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  section summary { padding: 14px 20px; cursor: pointer; user-select: none; list-style: none; display: flex; align-items: center; gap: 12px; }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before { content: "▸"; display: inline-block; color: var(--muted); transition: transform 0.15s ease; }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 { display: inline; margin: 0; font-size: 16px; font-weight: 600; flex: 1; }
+  .verdict-pill { font-size: 11px; padding: 3px 10px; border-radius: 999px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: white; }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment p { margin: 0 0 10px; }
+  .findings-list { padding: 0 20px 4px; }
+  article.finding { padding: 14px 0; border-top: 1px solid var(--border); }
+  article.finding:first-child { border-top: none; }
+  article.finding header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .badge { font-size: 10.5px; padding: 3px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1.4; }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+  .mechanical { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin-top: 24px; font-size: 14px; }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  footer.report-footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="report-header">
+      <div class="title">
+        <h1>Hexalith.FrontComposer — Validation Report</h1>
+        <div class="subtitle">_bmad-output/planning-artifacts/prds/prd-frontcomposer-2026-07-05/prd.md</div>
+      </div>
+      <div class="grade grade-fair">Fair</div>
+    </header>
+
+    <div class="synthesis">
+      <p>This is a credible draft PRD for a complex brownfield developer framework: the product bet is concrete, the scope is honest, and most requirements are specific to FrontComposer rather than template filler. It is not yet green-light ready for v1.0 story creation because several release-shaping decisions remain open and the requirements do not consistently distinguish existing baseline from new remediation or v1.0-blocking work.</p>
+    </div>
+
+    <div class="dimension-summary">
+      <div class="dim-card"><div class="dim-name">Decision-readiness</div><div class="dim-verdict" style="color: var(--verdict-thin)">thin</div></div>
+      <div class="dim-card"><div class="dim-name">Substance over theater</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Strategic coherence</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+      <div class="dim-card"><div class="dim-name">Done-ness clarity</div><div class="dim-verdict" style="color: var(--verdict-thin)">thin</div></div>
+      <div class="dim-card"><div class="dim-name">Scope honesty</div><div class="dim-verdict" style="color: var(--verdict-strong)">strong</div></div>
+      <div class="dim-card"><div class="dim-name">Downstream usability</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+      <div class="dim-card"><div class="dim-name">Shape fit</div><div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div></div>
+    </div>
+
+    <section class="dimension">
+      <details open>
+        <summary><h2>Decision-readiness</h2><span class="verdict-pill verdict-thin">thin</span></summary>
+        <div class="dim-body"><div class="dim-judgment">
+          <p>The PRD makes the main thesis explicit in §1 and names real trade-offs and risks in §8, §10, §12, and §13 instead of smoothing over them.</p>
+          <p>The weakness is that the open decisions are phase-shaping, not minor. §12 asks whether this PRD is canonical, whether discovery paths should change, whether Epic 11.7 becomes a pre-epic gate, what route family is approved, what FC-NIP payload source is approved, whether the Contracts kernel split ships before v1.0, whether success metrics need quantitative targets, and whether a standalone UX spec is required.</p>
+        </div></div>
+        <div class="findings-list">
+          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Phase-blocking decisions are listed but not triaged</h3><span class="finding-location">§12, lines 447-454</span></header><div class="finding-note">The open questions have no owner, decision criterion, default, or deadline.</div><div class="finding-fix"><strong>Fix:</strong> Convert each phase-blocking question into a decision table with owner, required input, default if unresolved, and whether it blocks UX, architecture, or story creation.</div></article>
+          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Release-readiness assumptions are doing decision work</h3><span class="finding-location">§13, lines 460-462</span></header><div class="finding-note">A3, A4, and A5 state v1.0-blocking positions but remain assumptions.</div><div class="finding-fix"><strong>Fix:</strong> Promote accepted v1.0 blockers into explicit scope decisions, and leave only genuinely unconfirmed inferences in the Assumptions Index.</div></article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Substance over theater</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+        <div class="dim-body"><div class="dim-judgment"><p>The PRD is product-specific. The user journeys are not persona decoration, and the NFRs mostly avoid generic phrasing by naming FrontComposer-specific boundaries.</p></div></div>
+        <div class="findings-list">
+          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Some NFRs still use unbounded adjectives</h3><span class="finding-location">§6, lines 366-369</span></header><div class="finding-note">"Degrade visibly", "bounded", "sanitized structured logs", and "release gates as applicable" are directionally correct but not yet testable enough.</div><div class="finding-fix"><strong>Fix:</strong> Add target bounds or evidence requirements for reliability recovery, performance, observability redaction, and v1.0 test gates.</div></article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Strategic coherence</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+        <div class="dim-body"><div class="dim-judgment"><p>The PRD has a coherent thesis: one annotated domain surface should generate aligned operations UI, command lifecycle behavior, MCP affordances, tooling, and tests. The remaining issue is that most metrics are qualitative gates rather than concrete release targets.</p></div></div>
+        <div class="findings-list">
+          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Success metrics need release target values</h3><span class="finding-location">§9, lines 411-419; §12, line 453</span></header><div class="finding-note">SM-1 through SM-6 are directionally strong, but the PRD itself admits the quantitative targets are unresolved.</div><div class="finding-fix"><strong>Fix:</strong> Define the minimum passing evidence for each metric.</div></article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details open>
+        <summary><h2>Done-ness clarity</h2><span class="verdict-pill verdict-thin">thin</span></summary>
+        <div class="dim-body"><div class="dim-judgment"><p>Most FRs include concrete consequences, which is a good base for story creation. The thinness comes from the broadest requirements and NFRs, especially FR-26 and the Epic 11 inventory in §8.2.</p></div></div>
+        <div class="findings-list">
+          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">FR-26 is too broad to be acceptance-ready</h3><span class="finding-location">§5.7, lines 347-355; §8.2, lines 392-396</span></header><div class="finding-note">The requirement covers many independent readiness streams, from FC-NIP through shell layering and convention alignment.</div><div class="finding-fix"><strong>Fix:</strong> Split FR-26 into separate readiness requirements with one verifiable outcome each.</div></article>
+          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Several FR consequences rely on external labels instead of local criteria</h3><span class="finding-location">§5.3, lines 202 and 220; §10, lines 429-433</span></header><div class="finding-note">References such as "Epic 8 colored-icon status model", "Story 9.1", and "Epic 11 defects" are useful provenance but not self-contained acceptance criteria.</div><div class="finding-fix"><strong>Fix:</strong> Add a one-line local definition of the expected behavior, then keep the epic/story reference as provenance.</div></article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Scope honesty</h2><span class="verdict-pill verdict-strong">strong</span></summary>
+        <div class="dim-body"><div class="dim-judgment"><p>§2.3 names non-users, §8.3 names v1 exclusions, §12 lists open questions, §13 indexes assumptions, and the addendum explains the reverse-engineered source base. The PRD does not hide the uncomfortable state of Epic 11 or the readiness report.</p></div></div>
+        <div class="findings-list">
+          <article class="finding"><header><span class="badge badge-sev-low">low</span><h3 class="finding-title">Assumptions lack ownership and revisit conditions</h3><span class="finding-location">§13, lines 458-464</span></header><div class="finding-note">The index is complete, but release-facing assumptions need a path to closure.</div><div class="finding-fix"><strong>Fix:</strong> Add owner/revisit columns or move closure details into §12.</div></article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Downstream usability</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+        <div class="dim-body"><div class="dim-judgment"><p>FR IDs are contiguous, user journeys have named protagonists, the glossary defines key domain terms, success metrics reference FRs, and the addendum records source inventory. The main risk is extraction ambiguity for story creation.</p></div></div>
+        <div class="findings-list">
+          <article class="finding"><header><span class="badge badge-sev-high">high</span><h3 class="finding-title">Brownfield status is not encoded at requirement level</h3><span class="finding-location">§5, lines 95-355; §8, lines 380-396</span></header><div class="finding-note">Individual FRs do not mark existing, gap, v1-blocker, post-MVP, or validate-only status.</div><div class="finding-fix"><strong>Fix:</strong> Add status metadata per FR or consequence so downstream story generation can separate implementation, verification, remediation, and deferral work.</div></article>
+          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">External artifact references should resolve from the PRD</h3><span class="finding-location">§10 and addendum, lines 429-433; addendum lines 7-28</span></header><div class="finding-note">The addendum inventories source files, but the PRD body cites readiness and epic defects without local anchors or short summaries.</div><div class="finding-fix"><strong>Fix:</strong> Add links or explicit file references beside the cited defects and include enough detail for downstream readers who only source-extract the PRD.</div></article>
+        </div>
+      </details>
+    </section>
+
+    <section class="dimension">
+      <details>
+        <summary><h2>Shape fit</h2><span class="verdict-pill verdict-adequate">adequate</span></summary>
+        <div class="dim-body"><div class="dim-judgment"><p>The selected shape fits a brownfield, chain-top developer-framework PRD. Capability groups are the right organizing principle, with user journeys present where they clarify adoption, operations, MCP, compatibility, and testing workflows.</p></div></div>
+        <div class="findings-list">
+          <article class="finding"><header><span class="badge badge-sev-medium">medium</span><h3 class="finding-title">Existing baseline and readiness backlog need clearer visual separation</h3><span class="finding-location">§8.1-§8.2, lines 382-396</span></header><div class="finding-note">The scope section separates them, but §5 blends baseline features and remediation requirements under the same FR style.</div><div class="finding-fix"><strong>Fix:</strong> Add section-level or FR-level labels such as Baseline, Readiness Gap, V1 Blocker, and Deferred.</div></article>
+        </div>
+      </details>
+    </section>
+
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li>FR IDs are contiguous from FR-1 through FR-26.</li>
+        <li>UJ IDs are contiguous from UJ-1 through UJ-6 and each has a named protagonist.</li>
+        <li>Assumptions A1 through A7 appear inline and are indexed in §13.</li>
+        <li>Success metric IDs are contiguous for SM-1 through SM-6 plus SM-C1 through SM-C3.</li>
+        <li>No duplicate glossary terms were found.</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: .agents/skills/bmad-prd/assets/prd-validation-checklist.md</span>
+        <span>Generated: 2026-07-05T08:44:50+02:00</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

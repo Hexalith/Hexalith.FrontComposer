@@ -348,24 +348,31 @@ development_status:
   epic-10-retrospective: done
 
   # Epic 11: Architecture Review Remediation (post-MVP quality hardening)
-  # Added 2026-07-04 via Correct Course (sprint-change-proposal-2026-07-04.md), triggered by the
-  # full-repo architecture/quality review (_bmad-output/project-docs/architecture-quality-review-2026-07-04.md).
-  # A Minor-scope quick-win fix batch (UI-host FcPageHeader params, orphaned empty-state stylesheet,
-  # nullable-numeric codegen, GeneratedLiteral escaping incl. a latent quote bug, nav slug unification,
-  # theme-watcher disposal race, @key on reordering loops, hygiene) was applied directly under the
-  # proposal; stories below carry the Moderate/Major remainder. 11.7 and 11.8 need PM/Architect
-  # decisions before dev. Suggested order: 11.1 -> 11.2 -> 11.4 -> 11.3 -> 11.5 -> 11.6 -> 11.7 -> 11.9 -> 11.10 -> 11.8.
+  # Added 2026-07-04 via Correct Course (sprint-change-proposal-2026-07-04.md), then restructured
+  # 2026-07-05 via Correct Course readiness remediation (sprint-change-proposal-2026-07-05.md).
+  # Story 11.0 is the route-contract decision gate and blocks Story 11.1+ create-story work until done.
+  # Story 11.8 is the Contracts-kernel split decision/compatibility plan and gates 11.11-11.14.
+  # Suggested order: 11.0 -> 11.1 -> 11.2 -> 11.4 -> 11.3 -> 11.5 -> 11.6 -> 11.7 -> 11.9/11.15/11.16 -> 11.17/11.18/11.19 -> 11.8/11.11-11.14.
   epic-11: backlog
+  11-0-route-contract-decision-gate: backlog
   11-1-token-lifecycle-and-circuit-safe-eventstore-auth: backlog
   11-2-projection-realtime-resilience: backlog
   11-3-mcp-cross-request-lifecycle-and-operability: backlog
   11-4-security-validation-hardening: backlog
   11-5-dead-css-remediation-and-visual-conformance-guards: backlog
   11-6-testing-harness-failure-modes: backlog
-  11-7-route-contract-unification-decision: backlog
-  11-8-contracts-kernel-split: backlog
-  11-9-shell-layering-and-duplication-consolidation: backlog
-  11-10-convention-alignment-program: backlog
+  11-7-route-contract-implementation: backlog
+  11-8-contracts-kernel-split-decision-and-compatibility-plan: backlog
+  11-9-shell-layering-declaration-and-route-label-relocation: backlog
+  11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface: backlog
+  11-12-relocate-runtime-and-testing-owned-types-out-of-contracts: backlog
+  11-13-decompose-queryrequest-through-hfc0001-migration-path: backlog
+  11-14-update-architecture-context-ux-and-package-compat-docs: backlog
+  11-15-storage-scope-and-snapshot-publisher-consolidation: backlog
+  11-16-fatal-hydration-json-and-generated-literal-helper-consolidation: backlog
+  11-17-mechanical-one-type-per-file-split: backlog
+  11-18-loggermessage-migration-for-warnings-and-hot-paths: backlog
+  11-19-enforcement-and-policy-alignment: backlog
   epic-11-retrospective: optional
 
 action_items:
@@ -402,16 +409,22 @@ action_items:
     owner: "Developer"
     status: done
   - epic: 11
-    action: "E11-AI-1: Decide the command/projection route-contract unification (Story 11.7). Nothing resolves the palette/CTA /domain/... command routes generated pages register /commands/{BC}/{TypeName}; pick the canonical family and add an e2e pin. Tracked/owned/dated blocking gate: no 11.x create-story starts before it is decided."
+    action: "E11-AI-1: Complete Story 11.0 command/projection route-contract decision before any Story 11.1+ create-story work. Nothing resolves the palette/CTA /domain/... command routes while generated pages register /commands/{BC}/{TypeName}; pick the canonical family and record the contract before implementation."
     owner: "Architect + Product"
-    assigned: "2026-07-04"
-    due: "at Epic 11 dev kickoff"
+    assigned: "2026-07-05"
+    due: "before Epic 11 dev kickoff"
     status: open
   - epic: 11
     action: "E11-AI-2: Sign off the Contracts kernel split (Story 11.8). Amends the documented multi-TFM decision (project-context.md / architecture.md); plan package-compat in the pre-v1.0 window. Deliberately ordered last."
     owner: "Architect + PM"
     assigned: "2026-07-04"
-    due: "at Story 11.8 start (pre-v1.0)"
+    due: "before Story 11.11 starts (pre-v1.0)"
+    status: open
+  - epic: 11
+    action: "E11-AI-3: Complete/promote the draft PRD, create canonical architecture and UX planning artifacts, and rerun readiness before Epic 11 implementation starts."
+    owner: "Product Owner + Developer"
+    assigned: "2026-07-05"
+    due: "before Epic 11 dev kickoff"
     status: open
   - epic: 8
     action: "E8-AI-4: Require the Shell accent-as-thread governance guard in every future chrome/story verification record"

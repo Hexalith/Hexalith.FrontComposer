@@ -49,3 +49,29 @@
 - Keep mechanical changed-file vs story File List reconciliation before review promotion.
 - Track browser/visual lanes as named CI evidence when the local sandbox cannot bind sockets.
 - Sweep adopter-facing docs at epic close whenever public component surfaces or navigation behavior changed.
+
+## Run: 2026-07-05T06:42:46Z
+
+**Epic:** Hexalith.FrontComposer - Epic Breakdown
+**Stories:** 9.1, 9.2, 10.1, 10.2, 10.3, 10.4, 10.5
+
+### Patterns Observed
+- Epic 10 was mostly tooling governance follow-through: the successful path was narrow mechanical validators, explicit story artifact gates, and focused documentation updates rather than runtime rewrites.
+- Story 9.2 remained blocked by upstream contract/submodule decisions; documenting accepted pointer bumps did not make the story implementable while sprint-status correctly kept it backlog.
+- Monitor fallback remained useful after stale watchers; source-of-truth verification through story files, sprint-status, and commits was the reliable completion signal.
+- Retrospective automation worked for Epic 10 once all five Epic 10 stories were done.
+
+### Code Review Insights
+- Common issues: artifact/File List reconciliation, sprint-status reconciliation, stale adopter-facing labels, CLI output parity, diagnostics contract wording, and evidence redaction edge cases.
+- Average cycles to clean: most completed stories cleared in one review pass; Story 10.3 required additional review cycles because sprint-status stayed in review after the first pass.
+
+### Timing Estimates
+- create-story: a few minutes per story.
+- dev-story: moderate for validator/tooling changes, shorter for documentation cleanup once scope was pinned.
+- code-review: usually one longer adversarial pass, with extra time when sprint-status or artifact gates needed reconciliation.
+
+### Recommendations for Future Runs
+- Resolve Story 9.2's producer/consumer contract and submodule pointer decision before attempting another implementation pass.
+- Keep the review-promotion artifact validator as a hard gate; fix false positives in the validator rather than bypassing it manually.
+- Add post-review contract-doc sweeps whenever review fixes alter behavior, not only when story tasks explicitly mention documentation.
+- Carry the Testing evidence privacy cases forward into Epic 11.6, including property-name, dictionary-key, and external-path redaction evidence.
