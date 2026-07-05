@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-05T17:13:53+02:00
+# last_updated: 2026-07-05T20:02:20+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-05T17:13:53+02:00
+last_updated: 2026-07-05T20:02:20+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -364,10 +364,15 @@ development_status:
   # Suggested order: 11.0 -> 11.1 -> 11.2 -> 11.4 -> 11.3 -> 11.5 -> 11.6 -> 11.7 -> 11.9/11.15/11.16 -> 11.17/11.18/11.19 -> 11.8/11.11-11.14.
   # Story creation order is authoritative: do not infer the next story from file order or numeric sort.
   # epic-11 added backlog on 2026-07-04 (correct-course; Architecture Review Remediation, stories 11.1-11.10, from sprint-change-proposal-2026-07-04.md; Minor fix batch applied in-tree under the same proposal)
-  epic-11: backlog
+  # epic-11 moved backlog -> in-progress on 2026-07-05 (create-story; first Epic 11 implementation story, Story 11.1)
+  epic-11: in-progress
   # 11-0 moved backlog -> done on 2026-07-05 (correct-course; selected /commands/{BoundedContext}/{CommandTypeName} as the canonical generated command route family, recorded FC-ROUTE contract, and unblocked Story 11.1+ create-story work. Story 11.7 remains the implementation story and must align palette/CTA activation plus e2e route pin to the contract.)
   11-0-route-contract-decision-gate: done
-  11-1-token-lifecycle-and-circuit-safe-eventstore-auth: backlog
+  # 11-1 moved backlog -> ready-for-dev on 2026-07-05 (create-story; token lifecycle and circuit-safe EventStore auth)
+  # 11-1 moved ready-for-dev -> in-progress on 2026-07-05 (dev-story; baseline 8db8b17b2576c6ec41a3a22b247327a4064d32f4 captured; starting token lifecycle and circuit-safe EventStore auth implementation.)
+  # 11-1 moved in-progress -> review on 2026-07-05 (dev-story; token expiry, sign-out eviction, circuit-safe EventStore auth fallback, fail-fast validation, and auth/redaction tests complete.)
+  # 11-1 moved review -> done on 2026-07-05 (bmad-code-review; applied four review patches: OIDC base-auth now fails fast without a circuit-safe token source, SignalR reconnects capture the user token lookup context, stale-token cleanup removes only the observed expired entry, and sign-out token eviction happens only after SignOutAsync succeeds. Deferred pre-existing hard-coded OIDC token-relay scheme remains tracked in deferred-work.md. Focused review lane 81/81 and full Shell test project 2074/2074 passed.)
+  11-1-token-lifecycle-and-circuit-safe-eventstore-auth: done
   11-2-projection-realtime-resilience: backlog
   11-3-mcp-cross-request-lifecycle-and-operability: backlog
   11-4-security-validation-hardening: backlog

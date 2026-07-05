@@ -49,7 +49,8 @@ public sealed class FrontComposerServerSecurityServiceExtensionsTests {
     [Fact]
     public async Task GatewayAuthorizationHandler_AttachesBearerForAuthenticatedUserWithStoredToken() {
         FrontComposerUserTokenStore store = new();
-        store.Set("user-1", "access-token-1");
+        const string token = "access-token-1";
+        store.Set("user-1", token, DateTimeOffset.UtcNow.AddMinutes(5));
         HttpContextAccessor httpContextAccessor = new() {
             HttpContext = new DefaultHttpContext {
                 User = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "user-1")], "test")),
@@ -64,7 +65,8 @@ public sealed class FrontComposerServerSecurityServiceExtensionsTests {
         using HttpRequestMessage request = new(HttpMethod.Get, "https://gateway.test/resource");
         using HttpResponseMessage response = await invoker.SendAsync(request, TestContext.Current.CancellationToken);
 
-        inner.LastRequest!.Headers.Authorization.ShouldBe(new AuthenticationHeaderValue("Bearer", "access-token-1"));
+        inner.LastRequest!.Headers.Authorization!.Scheme.ShouldBe("Bearer");
+        (inner.LastRequest.Headers.Authorization.Parameter == token).ShouldBeTrue("the outbound request should receive the stored bearer token");
     }
 
     [Fact]
@@ -108,6 +110,22 @@ public sealed class FrontComposerServerSecurityServiceExtensionsTests {
         scope.ServiceProvider.GetRequiredService<AuthenticationStateProvider>()
             .ShouldBeOfType<ServerAuthenticationStateProvider>();
         // Token relay registered.
+        provider.GetRequiredService<FrontComposerUserTokenStore>().ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task AddHexalithFrontComposerServerSecurity_AllowsOidcCircuitTokenSource() {
+        ServiceCollection services = new();
+        _ = services.AddHexalithFrontComposer();
+        _ = services.AddHexalithFrontComposerServerSecurity(options => options.UseKeycloak(
+            new Uri("https://keycloak.test/realms/test"),
+            clientId: "client",
+            clientSecret: "secret",
+            tenantClaimType: "eventstore:tenant",
+            userClaimType: "sub"));
+
+        await using ServiceProvider provider = services.BuildServiceProvider();
+
         provider.GetRequiredService<FrontComposerUserTokenStore>().ShouldNotBeNull();
     }
 

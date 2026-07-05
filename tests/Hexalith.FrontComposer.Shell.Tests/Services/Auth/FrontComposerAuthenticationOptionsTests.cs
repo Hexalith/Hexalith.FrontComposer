@@ -76,6 +76,32 @@ public sealed class FrontComposerAuthenticationOptionsTests {
         result.Failures.ShouldContain(f => f.Contains(FcDiagnosticIds.HFC2014_GitHubTokenExchangeRequired, StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void Validate_Fails_WhenCustomBrokeredModeHasNoCircuitSafeTokenSource() {
+        FrontComposerAuthenticationOptions options = new();
+        options.CustomBrokered.Enabled = true;
+        options.TenantClaimTypes.Add("tenant_id");
+        options.UserClaimTypes.Add("sub");
+
+        ValidateOptionsResult result = Validate(options);
+
+        result.Failed.ShouldBeTrue();
+        result.Failures.ShouldContain(f => f.Contains(FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed, StringComparison.Ordinal));
+        result.Failures.ShouldNotContain(f => f.Contains("access_token", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Validate_Fails_WhenOidcModeHasNoCircuitSafeTokenSource() {
+        FrontComposerAuthenticationOptions options = ValidOidc();
+        options.TokenRelay.CircuitTokenSourceEnabled = false;
+
+        ValidateOptionsResult result = Validate(options);
+
+        result.Failed.ShouldBeTrue();
+        result.Failures.ShouldContain(f => f.Contains(FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed, StringComparison.Ordinal));
+        result.Failures.ShouldNotContain(f => f.Contains("access_token", StringComparison.Ordinal));
+    }
+
     // P30 — branch-coverage gap tests below.
 
     [Fact]
@@ -393,6 +419,7 @@ public sealed class FrontComposerAuthenticationOptionsTests {
         options.OpenIdConnect.Audience = "frontcomposer-api";
         options.TenantClaimTypes.Add("tenant_id");
         options.UserClaimTypes.Add("sub");
+        options.TokenRelay.CircuitTokenSourceEnabled = true;
         return options;
     }
 

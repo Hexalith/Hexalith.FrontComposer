@@ -6,6 +6,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
@@ -24,7 +25,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
     private readonly IProjectionFallbackRefreshScheduler _refreshScheduler;
     private readonly IProjectionChangeNotifier _notifier;
     private readonly ILogger<ProjectionSubscriptionService> _logger;
-    private readonly Func<CancellationToken, ValueTask<string?>>? _accessTokenProvider;
+    private readonly Func<CancellationToken, ValueTask<string?>>? _configuredAccessTokenProvider;
+    private readonly FrontComposerAccessTokenProvider? _frontComposerAccessTokenProvider;
     private readonly bool _requireAccessToken;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly ConcurrentDictionary<GroupKey, GroupState> _activeGroups = new();
@@ -36,6 +38,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
     private readonly PendingCommandPollingDriver? _commandPollingDriver;
     private readonly IReconnectionReconciliationCoordinator? _reconciliationCoordinator;
     private readonly IPendingCommandPollingCoordinator? _pendingCommandPolling;
+    private Func<CancellationToken, ValueTask<string?>>? _connectionAccessTokenProvider;
     /// <summary>P2-P19 — debounces concurrent live-nudge invocations so a burst of N nudges produces at most one in-flight `PollOnceAsync`.</summary>
     private int _pendingPollInFlight;
     private bool _disposed;
@@ -52,7 +55,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         IPendingCommandPollingCoordinator? pendingCommandPolling = null,
         IUserContextAccessor? userContextAccessor = null,
         IOptions<FcShellOptions>? shellOptions = null,
-        PendingCommandPollingDriver? commandPollingDriver = null) {
+        PendingCommandPollingDriver? commandPollingDriver = null,
+        FrontComposerAccessTokenProvider? frontComposerAccessTokenProvider = null) {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(connectionFactory);
         ArgumentNullException.ThrowIfNull(connectionState);
@@ -67,18 +71,16 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         _commandPollingDriver = commandPollingDriver;
         _reconciliationCoordinator = reconciliationCoordinator;
         _pendingCommandPolling = pendingCommandPolling;
+        _frontComposerAccessTokenProvider = frontComposerAccessTokenProvider;
         _userContextAccessor = userContextAccessor;
         _shellOptions = shellOptions;
         EventStoreOptions current = options.Value;
         _requireAccessToken = current.RequireAccessToken;
-        _accessTokenProvider = current.AccessTokenProvider is null
-            ? null
-            : cancellationToken => EventStoreAccessTokenGuard.GetRequiredTokenAsync(
-                current.AccessTokenProvider,
-                current.RequireAccessToken,
-                cancellationToken);
+        _configuredAccessTokenProvider = current.AccessTokenProvider;
         Uri hubUri = BuildHubUri(current.BaseAddress ?? throw new InvalidOperationException("EventStore BaseAddress is required."), current.ProjectionChangesHubPath);
-        _connection = connectionFactory.Create(hubUri, _accessTokenProvider);
+        _connection = connectionFactory.Create(
+            hubUri,
+            _configuredAccessTokenProvider is null ? null : GetConnectionAccessTokenAsync);
         _projectionChangedRegistration = _connection.OnProjectionChanged(OnProjectionChangedAsync);
         _projectionChangedDetailRegistration = _connection.OnProjectionChangedDetail(OnProjectionChangedDetailAsync);
         _connectionStateRegistration = _connection.OnConnectionStateChanged(OnConnectionStateChangedAsync);
@@ -475,15 +477,43 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
     }
 
     private async ValueTask EnsureRequiredAccessTokenAvailableAsync(CancellationToken cancellationToken) {
-        if (!_requireAccessToken) {
+        if (_configuredAccessTokenProvider is null) {
+            if (_requireAccessToken) {
+                throw new InvalidOperationException("EventStore access token provider is required.");
+            }
+
             return;
         }
 
-        if (_accessTokenProvider is null) {
-            throw new InvalidOperationException("EventStore access token provider is required.");
+        await EnsureConnectionAccessTokenProviderCapturedAsync(cancellationToken).ConfigureAwait(false);
+
+        if (_requireAccessToken) {
+            _ = await GetConnectionAccessTokenAsync(cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    private async ValueTask EnsureConnectionAccessTokenProviderCapturedAsync(CancellationToken cancellationToken) {
+        if (_connectionAccessTokenProvider is not null) {
+            return;
         }
 
-        _ = await _accessTokenProvider(cancellationToken).ConfigureAwait(false);
+        if (_frontComposerAccessTokenProvider is not null) {
+            Func<CancellationToken, ValueTask<string?>>? captured =
+                await _frontComposerAccessTokenProvider.CaptureCurrentUserAccessTokenProviderAsync(cancellationToken).ConfigureAwait(false);
+            if (captured is not null) {
+                _connectionAccessTokenProvider = captured;
+                return;
+            }
+        }
+
+        _connectionAccessTokenProvider = _configuredAccessTokenProvider;
+    }
+
+    private async ValueTask<string?> GetConnectionAccessTokenAsync(CancellationToken cancellationToken) {
+        Func<CancellationToken, ValueTask<string?>>? provider = _connectionAccessTokenProvider ?? _configuredAccessTokenProvider;
+        return provider is null
+            ? null
+            : await EventStoreAccessTokenGuard.GetRequiredTokenAsync(provider, _requireAccessToken, cancellationToken).ConfigureAwait(false);
     }
 
     private static GroupKey ValidateGroup(string projectionType, string tenantId, string? scope = null)

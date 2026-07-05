@@ -4,7 +4,9 @@ using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
@@ -78,6 +80,8 @@ public sealed class AuthRedactionStressTests {
 
         FrontComposerAccessTokenProvider sut = new(
             new HttpContextAccessor(),
+            new CircuitServicesAccessor(),
+            new FrontComposerUserTokenStore(),
             Microsoft.Extensions.Options.Options.Create(options),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<FrontComposerAccessTokenProvider>.Instance);
 
@@ -86,6 +90,33 @@ public sealed class AuthRedactionStressTests {
 
         ex.Message.ShouldNotContain(JwtShaped);
         ex.Message.ShouldNotContain("inner failure"); // sanitized — operators read the inner exception, not the message
+    }
+
+    [Fact]
+    public async Task CircuitTokenFallback_DoesNotLogJwtShapedAccessToken() {
+        FrontComposerUserTokenStore store = new(new FixedTimeProvider(new DateTimeOffset(2026, 7, 5, 12, 0, 0, TimeSpan.Zero)));
+        store.Set("alice", JwtShaped, new DateTimeOffset(2026, 7, 5, 12, 5, 0, TimeSpan.Zero));
+        CircuitServicesAccessor circuitServices = new() {
+            Services = new ServiceCollection()
+                .AddScoped<AuthenticationStateProvider>(_ => new StubAuthenticationStateProvider(
+                    Principal(new Claim("sub", "alice"))))
+                .BuildServiceProvider(),
+        };
+        FrontComposerAuthenticationOptions options = new();
+        options.OpenIdConnect.Enabled = true;
+        options.UserClaimTypes.Add("sub");
+        CapturingLogger<FrontComposerAccessTokenProvider> logger = new();
+        FrontComposerAccessTokenProvider sut = new(
+            new HttpContextAccessor(),
+            circuitServices,
+            store,
+            Microsoft.Extensions.Options.Options.Create(options),
+            logger);
+
+        string? token = await sut.GetAccessTokenAsync(TestContext.Current.CancellationToken);
+
+        (token == JwtShaped).ShouldBeTrue("the circuit fallback should return the stored token without logging it");
+        logger.Messages.ShouldNotContain(message => message.Contains(JwtShaped, StringComparison.Ordinal));
     }
 
     private static ClaimsPrincipalUserContextAccessor Build(
@@ -110,4 +141,13 @@ public sealed class AuthRedactionStressTests {
 
     private static ClaimsPrincipal Principal(params Claim[] claims)
         => new(new ClaimsIdentity(claims, authenticationType: "FakeOidc"));
+
+    private sealed class StubAuthenticationStateProvider(ClaimsPrincipal principal) : AuthenticationStateProvider {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => Task.FromResult(new AuthenticationState(principal));
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider {
+        public override DateTimeOffset GetUtcNow() => utcNow;
+    }
 }

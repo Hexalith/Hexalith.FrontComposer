@@ -41,7 +41,10 @@ public static class FrontComposerServerAuthenticationServiceExtensions {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configure);
 
-        _ = services.AddHexalithFrontComposerAuthentication(configure);
+        _ = services.AddHexalithFrontComposerAuthentication(options => {
+            configure(options);
+            options.TokenRelay.CircuitTokenSourceEnabled = true;
+        });
         _ = services.AddHexalithFrontComposerServerAuthenticationState();
         _ = services.AddHexalithFrontComposerTokenRelay();
 

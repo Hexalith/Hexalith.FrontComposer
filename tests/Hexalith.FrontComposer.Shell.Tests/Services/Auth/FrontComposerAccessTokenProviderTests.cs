@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -29,8 +30,8 @@ public sealed class FrontComposerAccessTokenProviderTests {
         string? first = await sut.GetAccessTokenAsync(TestContext.Current.CancellationToken);
         string? second = await sut.GetAccessTokenAsync(TestContext.Current.CancellationToken);
 
-        first.ShouldBe("token-1");
-        second.ShouldBe("token-2");
+        (first == "token-1").ShouldBeTrue("the first operation should receive the first host-provider token");
+        (second == "token-2").ShouldBeTrue("the second operation should receive a fresh host-provider token");
         calls.ShouldBe(2);
     }
 
@@ -100,21 +101,81 @@ public sealed class FrontComposerAccessTokenProviderTests {
     }
 
     [Fact]
-    public async Task GetAccessTokenAsync_ThrowsHFC2013_WhenHttpContextIsAbsent_AndHostProviderUnconfigured() {
-        // P26 — non-HTTP scope (background SignalR reconnect, hosted service) must surface
-        // a sanitized HFC2013 rather than NRE on null HttpContext.
-        FrontComposerAccessTokenProvider sut = Build(options => {
+    public async Task GetAccessTokenAsync_ReadsCircuitTokenStore_WhenHttpContextIsAbsent_AndHostProviderUnconfigured() {
+        FrontComposerUserTokenStore store = new(new FakeTimeProvider(new DateTimeOffset(2026, 7, 5, 12, 0, 0, TimeSpan.Zero)));
+        store.Set("user-1", "circuit-token", new DateTimeOffset(2026, 7, 5, 12, 5, 0, TimeSpan.Zero));
+        CircuitServicesAccessor circuitServices = new() {
+            Services = new ServiceCollection()
+                .AddScoped<AuthenticationStateProvider>(_ => new StubAuthenticationStateProvider(
+                    new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "user-1")], "Test"))))
+                .BuildServiceProvider(),
+        };
+        FrontComposerAccessTokenProvider sut = Build(
+            options => {
+                options.OpenIdConnect.Enabled = true;
+                options.OpenIdConnect.Authority = new Uri("https://identity.test/realms/demo");
+                options.OpenIdConnect.ClientId = "frontcomposer";
+                options.OpenIdConnect.ClientSecret = "secret";
+                options.OpenIdConnect.Audience = "api";
+                options.UserClaimTypes.Add("sub");
+            },
+            circuitServices: circuitServices,
+            tokenStore: store);
+
+        string? token = await sut.GetAccessTokenAsync(TestContext.Current.CancellationToken);
+
+        (token == "circuit-token").ShouldBeTrue("the EventStore provider should reuse the circuit-safe token store when HttpContext is absent");
+    }
+
+    [Fact]
+    public async Task GetAccessTokenAsync_UsesStableSubjectKey_ForCircuitTokenStoreLookup() {
+        FrontComposerUserTokenStore store = new(new FakeTimeProvider(new DateTimeOffset(2026, 7, 5, 12, 0, 0, TimeSpan.Zero)));
+        store.Set("subject-1", "subject-token", new DateTimeOffset(2026, 7, 5, 12, 5, 0, TimeSpan.Zero));
+        CircuitServicesAccessor circuitServices = new() {
+            Services = new ServiceCollection()
+                .AddScoped<AuthenticationStateProvider>(_ => new StubAuthenticationStateProvider(
+                    new ClaimsPrincipal(new ClaimsIdentity([
+                        new Claim("email", "alice@example.test"),
+                        new Claim("sub", "subject-1"),
+                    ], "Test"))))
+                .BuildServiceProvider(),
+        };
+        FrontComposerAccessTokenProvider sut = Build(
+            options => {
+                options.OpenIdConnect.Enabled = true;
+                options.OpenIdConnect.Authority = new Uri("https://identity.test/realms/demo");
+                options.OpenIdConnect.ClientId = "frontcomposer";
+                options.OpenIdConnect.ClientSecret = "secret";
+                options.OpenIdConnect.Audience = "api";
+                options.UserClaimTypes.Add("email");
+            },
+            circuitServices: circuitServices,
+            tokenStore: store);
+
+        string? token = await sut.GetAccessTokenAsync(TestContext.Current.CancellationToken);
+
+        (token == "subject-token").ShouldBeTrue("the provider should use the stable subject key for token-store lookup");
+    }
+
+    [Fact]
+    public async Task GetAccessTokenAsync_FailsWithSanitizedHFC2013_WhenNeitherHttpContextNorCircuitSourceHasToken() {
+        CapturingLogger<FrontComposerAccessTokenProvider> logger = new();
+        FrontComposerAccessTokenProvider sut = Build(
+            options => {
             options.OpenIdConnect.Enabled = true;
             options.OpenIdConnect.Authority = new Uri("https://identity.test/realms/demo");
             options.OpenIdConnect.ClientId = "frontcomposer";
             options.OpenIdConnect.ClientSecret = "secret";
             options.OpenIdConnect.Audience = "api";
-        });
+            },
+            logger);
 
         FrontComposerAuthenticationException ex = await Should.ThrowAsync<FrontComposerAuthenticationException>(
             () => sut.GetAccessTokenAsync(TestContext.Current.CancellationToken).AsTask());
 
         ex.DiagnosticId.ShouldBe(FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed);
+        ex.Message.ShouldNotContain("access_token");
+        logger.Messages.ShouldNotContain(message => message.Contains("access_token", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -132,11 +193,16 @@ public sealed class FrontComposerAccessTokenProviderTests {
         options.OpenIdConnect.Audience = "api";
         options.TenantClaimTypes.Add("tenant_id");
         options.UserClaimTypes.Add("sub");
-        FrontComposerAccessTokenProvider sut = new(http, Microsoft.Extensions.Options.Options.Create(options), NullLogger<FrontComposerAccessTokenProvider>.Instance);
+        FrontComposerAccessTokenProvider sut = new(
+            http,
+            new CircuitServicesAccessor(),
+            new FrontComposerUserTokenStore(),
+            Microsoft.Extensions.Options.Options.Create(options),
+            NullLogger<FrontComposerAccessTokenProvider>.Instance);
 
         string? token = await sut.GetAccessTokenAsync(TestContext.Current.CancellationToken);
 
-        token.ShouldBe("forwarded-token");
+        (token == "forwarded-token").ShouldBeTrue("the provider should return the saved HttpContext token");
     }
 
     [Fact]
@@ -152,6 +218,8 @@ public sealed class FrontComposerAccessTokenProviderTests {
         options.UserClaimTypes.Add("id");
         FrontComposerAccessTokenProvider sut = new(
             new HttpContextAccessor(),
+            new CircuitServicesAccessor(),
+            new FrontComposerUserTokenStore(),
             Microsoft.Extensions.Options.Options.Create(options),
             NullLogger<FrontComposerAccessTokenProvider>.Instance);
 
@@ -187,12 +255,27 @@ public sealed class FrontComposerAccessTokenProviderTests {
 
     private static FrontComposerAccessTokenProvider Build(
         Action<FrontComposerAuthenticationOptions> configure,
-        ILogger<FrontComposerAccessTokenProvider>? logger = null) {
+        ILogger<FrontComposerAccessTokenProvider>? logger = null,
+        CircuitServicesAccessor? circuitServices = null,
+        FrontComposerUserTokenStore? tokenStore = null) {
         FrontComposerAuthenticationOptions options = new();
         configure(options);
         return new FrontComposerAccessTokenProvider(
             new HttpContextAccessor(),
+            circuitServices ?? new CircuitServicesAccessor(),
+            tokenStore ?? new FrontComposerUserTokenStore(),
             Microsoft.Extensions.Options.Options.Create(options),
             logger ?? NullLogger<FrontComposerAccessTokenProvider>.Instance);
+    }
+
+    private sealed class StubAuthenticationStateProvider(ClaimsPrincipal principal) : AuthenticationStateProvider {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => Task.FromResult(new AuthenticationState(principal));
+    }
+
+    private sealed class FakeTimeProvider(DateTimeOffset utcNow) : TimeProvider {
+        private readonly DateTimeOffset _utcNow = utcNow;
+
+        public override DateTimeOffset GetUtcNow() => _utcNow;
     }
 }

@@ -1,12 +1,19 @@
+using System.Security.Claims;
+
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
+using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -87,6 +94,49 @@ public sealed class ProjectionSubscriptionServiceTests {
 
         // Joined once on subscribe and once on reconnect rejoin — the scope survives reconnect.
         connection.JoinedGroups.ShouldBe(["orders:acme:conv-1", "orders:acme:conv-1"]);
+    }
+
+    [Fact]
+    public async Task Subscribe_CapturesCircuitTokenProvider_ForSignalRReconnectAfterCircuitContextClears() {
+        DateTimeOffset now = new(2026, 7, 5, 12, 0, 0, TimeSpan.Zero);
+        FrontComposerUserTokenStore store = new(new FixedTimeProvider(now));
+        store.Set("user-1", "stored-token", now.AddMinutes(5));
+        CircuitServicesAccessor circuitServices = new() {
+            Services = new ServiceCollection()
+                .AddScoped<AuthenticationStateProvider>(_ => new StubAuthenticationStateProvider(
+                    new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "user-1")], "Test"))))
+                .BuildServiceProvider(),
+        };
+        FrontComposerAuthenticationOptions authOptions = new();
+        authOptions.CustomBrokered.Enabled = true;
+        authOptions.UserClaimTypes.Add("sub");
+        FrontComposerAccessTokenProvider tokenProvider = new(
+            new HttpContextAccessor(),
+            circuitServices,
+            store,
+            global::Microsoft.Extensions.Options.Options.Create(authOptions),
+            NullLogger<FrontComposerAccessTokenProvider>.Instance);
+        FakeProjectionHubConnection connection = new();
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = true,
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+                AccessTokenProvider = tokenProvider.GetAccessTokenAsync,
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(),
+            new TestRefreshScheduler(),
+            new TestNotifier(),
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            frontComposerAccessTokenProvider: tokenProvider);
+
+        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        circuitServices.Services = null;
+
+        string? token = await connection.AccessTokenProvider!(TestContext.Current.CancellationToken);
+
+        (token == "stored-token").ShouldBeTrue("SignalR reconnect token acquisition should not depend on ambient circuit services");
     }
 
     [Fact]
@@ -542,6 +592,7 @@ public sealed class ProjectionSubscriptionServiceTests {
     private sealed class FakeProjectionHubConnectionFactory(FakeProjectionHubConnection connection, string expectedHubUrl) : IProjectionHubConnectionFactory {
         public IProjectionHubConnection Create(Uri hubUri, Func<CancellationToken, ValueTask<string?>>? accessTokenProvider) {
             hubUri.ToString().ShouldBe(expectedHubUrl);
+            connection.AccessTokenProvider = accessTokenProvider;
             return connection;
         }
     }
@@ -554,6 +605,7 @@ public sealed class ProjectionSubscriptionServiceTests {
         public bool IsConnected { get; private set; }
         public int StartCount { get; private set; }
         public int StopCount { get; private set; }
+        public Func<CancellationToken, ValueTask<string?>>? AccessTokenProvider { get; set; }
         public Exception? StartException { get; init; }
         public Exception? JoinException { get; set; }
         public Exception? LeaveException { get; set; }
@@ -631,6 +683,15 @@ public sealed class ProjectionSubscriptionServiceTests {
 
         public Task RaiseStateAsync(ProjectionHubConnectionStateChanged change)
             => _stateHandler?.Invoke(change) ?? Task.CompletedTask;
+    }
+
+    private sealed class StubAuthenticationStateProvider(ClaimsPrincipal principal) : AuthenticationStateProvider {
+        public override Task<AuthenticationState> GetAuthenticationStateAsync()
+            => Task.FromResult(new AuthenticationState(principal));
+    }
+
+    private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider {
+        public override DateTimeOffset GetUtcNow() => utcNow;
     }
 
     private sealed class TestNotifier : IProjectionChangeNotifier {

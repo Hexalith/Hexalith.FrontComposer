@@ -27,6 +27,7 @@ internal sealed class FrontComposerAuthenticationOptionsValidator(IHostEnvironme
         ValidateClaimAliases(options.UserClaimTypes, nameof(options.UserClaimTypes), failures);
 
         ValidateTokenRelay(options, failures);
+        ValidateCircuitSafeTokenSource(options, failures);
         ValidateSchemeCollisions(options, failures);
 
         if (options.OpenIdConnect.Enabled) {
@@ -197,6 +198,33 @@ internal sealed class FrontComposerAuthenticationOptionsValidator(IHostEnvironme
                 "UserClaimTypes=" + string.Join(',', options.UserClaimTypes),
                 "#claim-aliases"));
         }
+    }
+
+    private static void ValidateCircuitSafeTokenSource(FrontComposerAuthenticationOptions options, List<string> failures) {
+        if (options.TokenRelay.HostAccessTokenProvider is not null) {
+            return;
+        }
+
+        if (options.SelectedProviderKind == FrontComposerAuthenticationProviderKind.OpenIdConnect
+            && options.TokenRelay.CircuitTokenSourceEnabled) {
+            return;
+        }
+
+        if (options.SelectedProviderKind == FrontComposerAuthenticationProviderKind.None) {
+            return;
+        }
+
+        if (options.SelectedProviderKind == FrontComposerAuthenticationProviderKind.GitHubOAuth
+            && !options.TokenRelay.AllowGitHubOAuthTokenRelay) {
+            return;
+        }
+
+        failures.Add(FailWithId(
+            FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed,
+            "EventStore token relay requires a circuit-safe token source for this provider mode.",
+            "Use AddHexalithFrontComposerServerSecurity for OIDC Blazor Server hosts, or set TokenRelay.HostAccessTokenProvider to a brokered server-side bearer-token provider.",
+            "No brokered host access-token provider is configured.",
+            "#token-relay"));
     }
 
     private static void ValidateSchemeCollisions(FrontComposerAuthenticationOptions options, List<string> failures) {

@@ -1,3 +1,5 @@
+using System.Security.Claims;
+
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -64,6 +66,9 @@ public static class FrontComposerAuthenticationServiceExtensions {
         if (setup.SelectedProviderKind != FrontComposerAuthenticationProviderKind.None) {
             _ = services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor, ClaimsPrincipalUserContextAccessor>());
             _ = services.Replace(ServiceDescriptor.Scoped<IAuthRedirector, FrontComposerAuthRedirector>());
+            services.TryAddSingleton(TimeProvider.System);
+            services.TryAddSingleton<FrontComposerUserTokenStore>();
+            services.TryAddSingleton<CircuitServicesAccessor>();
             services.TryAddSingleton<FrontComposerAccessTokenProvider>();
 
             // P32 (DN2) — always replace `EventStoreOptions.AccessTokenProvider` and log when an
@@ -118,10 +123,15 @@ public static class FrontComposerAuthenticationServiceExtensions {
         async Task signOut(HttpContext context) {
             string? returnUrl = context.Request.Query["returnUrl"];
             string sanitized = FrontComposerReturnUrl.Sanitize(returnUrl);
+            string? userId = ResolveStableUserId(context.User, options);
             await context.SignOutAsync(
                 GetSignInScheme(options),
                 new AuthenticationProperties { RedirectUri = sanitized })
                 .ConfigureAwait(false);
+
+            if (userId is not null) {
+                context.RequestServices.GetService<FrontComposerUserTokenStore>()?.Remove(userId);
+            }
         }
 
         _ = endpoints.MapGet(options.Redirect.LoginPath, challenge);
@@ -161,6 +171,7 @@ public static class FrontComposerAuthenticationServiceExtensions {
         target.TokenRelay.AuthenticationScheme = source.TokenRelay.AuthenticationScheme;
         target.TokenRelay.AllowGitHubOAuthTokenRelay = source.TokenRelay.AllowGitHubOAuthTokenRelay;
         target.TokenRelay.HostAccessTokenProvider = source.TokenRelay.HostAccessTokenProvider;
+        target.TokenRelay.CircuitTokenSourceEnabled = source.TokenRelay.CircuitTokenSourceEnabled;
 
         target.Cookie.ApplySecureDefaults = source.Cookie.ApplySecureDefaults;
     }
@@ -319,4 +330,24 @@ public static class FrontComposerAuthenticationServiceExtensions {
             FrontComposerAuthenticationProviderKind.CustomBrokered => options.CustomBrokered.SignInScheme,
             _ => "Hexalith.FrontComposer.Cookie",
         };
+
+    private static string? ResolveStableUserId(ClaimsPrincipal? user, FrontComposerAuthenticationOptions options) {
+        if (user?.Identity?.IsAuthenticated != true) {
+            return null;
+        }
+
+        string? stable = user.FindFirstValue("sub") ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!string.IsNullOrWhiteSpace(stable)) {
+            return stable;
+        }
+
+        foreach (string claimType in options.UserClaimTypes) {
+            string? value = user.FindFirstValue(claimType);
+            if (!string.IsNullOrWhiteSpace(value)) {
+                return value;
+            }
+        }
+
+        return null;
+    }
 }
