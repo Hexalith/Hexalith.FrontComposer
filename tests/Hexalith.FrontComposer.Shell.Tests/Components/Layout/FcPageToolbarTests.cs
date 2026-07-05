@@ -28,11 +28,14 @@ public sealed class FcPageToolbarTests : LayoutComponentTestBase {
 
         IRenderedComponent<FluentTextInput> search = cut.FindComponent<FluentTextInput>();
         search.Instance.TextInputType.ShouldBe(TextInputType.Search);
+        search.Instance.Id.ShouldBe("fc-page-toolbar-search-input");
         search.Instance.Value.ShouldBe("orders");
         search.Instance.Placeholder.ShouldBe("Search orders");
         search.Instance.AdditionalAttributes.ShouldNotBeNull();
-        search.Instance.AdditionalAttributes!["aria-label"].ShouldBe("Search orders");
         search.Instance.AdditionalAttributes!["data-testid"].ShouldBe("fc-page-toolbar-search");
+        IElement searchLabel = cut.Find("label[for='fc-page-toolbar-search-input']");
+        searchLabel.ClassList.ShouldContain("fc-sr-only");
+        searchLabel.TextContent.ShouldBe("Search orders");
 
         cut.FindAll("[data-testid='fc-page-toolbar-filter-trigger']").ShouldBeEmpty();
         cut.FindAll("[data-testid='fc-page-toolbar-view-trigger']").ShouldBeEmpty();

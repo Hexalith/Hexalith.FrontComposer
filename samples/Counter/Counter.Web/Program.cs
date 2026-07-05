@@ -40,6 +40,13 @@ builder.Services.AddHexalithFrontComposerQuickstart(
     o => {
         if (specimensEnabled) {
             _ = o.ScanAssemblies(typeof(FrontComposerTypeSpecimen).Assembly);
+            _ = o.ScanTypes(
+                typeof(PurgeSpecimenRecordCommandLifecycleFeature),
+                typeof(PurgeSpecimenRecordCommandReducers),
+                typeof(PolicyAllowedSpecimenCommandLifecycleFeature),
+                typeof(PolicyAllowedSpecimenCommandReducers),
+                typeof(PolicyDeniedSpecimenCommandLifecycleFeature),
+                typeof(PolicyDeniedSpecimenCommandReducers));
         }
         else {
             _ = o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly);

@@ -16,13 +16,14 @@
                  role="toolbar"
                  aria-label="@AriaLabel"
                  data-testid="@TestId">
-        <FluentTextInput Value="@SearchValue"
+        <label class="fc-sr-only" for="@SearchInputId">@SearchAriaLabel</label>
+        <FluentTextInput Id="@SearchInputId"
+                         Value="@SearchValue"
                          ValueChanged="@OnSearchValueChangedAsync"
                          TextInputType="TextInputType.Search"
                          Placeholder="@SearchPlaceholder"
                          Class="fc-page-toolbar-search"
                          Style="flex: 1 1 18rem; min-width: min(100%, 14rem); max-width: 32rem;"
-                         aria-label="@SearchAriaLabel"
                          data-testid="fc-page-toolbar-search" />
 
         @if (FilterContent is not null)

@@ -156,8 +156,11 @@ jobs:
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
         run: |
-          $requireProvider = '${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}' -eq 'true'
-          ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification:$requireProvider
+          # Provider verification is owned by Hexalith.EventStore, where PactNet can verify
+          # against the real provider host over loopback TCP. FrontComposer validates and
+          # uploads the consumer pacts plus the handoff instead of requiring a report it cannot
+          # produce in this repository.
+          ./eng/validate-contract-artifacts.ps1
 
       - name: 'Gate 2c: Fail on stale pact diff'
         shell: bash

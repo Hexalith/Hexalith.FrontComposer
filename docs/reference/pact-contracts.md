@@ -44,7 +44,7 @@ Provider verification belongs beside the `Hexalith.EventStore` provider host bec
 
 The handoff command shape is recorded in `provider-verification-handoff.md`. It must produce a bounded report artifact and use the committed pacts plus `provider-state-catalog.json`.
 
-CI is split deliberately: PRs run consumer pact generation, stale-pact detection, manifest validation, redaction scanning, and artifact upload. Pushes to `main` additionally require a provider verification report at `artifacts/contracts/provider-verification.json`; without that real TCP verifier output, the provider gate fails. Releases remain blocked unless the checked-in pacts verify against the pinned EventStore provider version.
+CI is split deliberately: FrontComposer runs consumer pact generation, stale-pact detection, manifest validation, redaction scanning, and artifact upload. Provider verification remains an EventStore-owned release prerequisite because the report must come from the provider host over a real loopback TCP endpoint; FrontComposer uploads the blocked handoff artifact when that report is absent.
 
 NFR55 release rule: a release is blocked unless the checked-in pacts verify against the pinned EventStore provider version, or a named contract-drift issue explicitly blocks the release.
 

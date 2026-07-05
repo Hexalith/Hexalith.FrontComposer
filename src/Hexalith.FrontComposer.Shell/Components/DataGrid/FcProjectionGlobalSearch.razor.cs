@@ -22,6 +22,7 @@ public partial class FcProjectionGlobalSearch : ComponentBase, IDisposable {
     private bool _hasAppliedInitialValue;
     private string _placeholder = string.Empty;
     private string _ariaLabel = string.Empty;
+    private string _inputId = "fc-global-search-input";
     private CancellationTokenSource? _pending;
 
     /// <summary>Stable per-view key.</summary>
@@ -53,7 +54,13 @@ public partial class FcProjectionGlobalSearch : ComponentBase, IDisposable {
 
         _placeholder = Localizer["GlobalSearchPlaceholder"].Value;
         _ariaLabel = Localizer["GlobalSearchAriaLabel"].Value;
+        _inputId = "fc-global-search-" + BuildIdSegment(ViewKey);
     }
+
+    private static string BuildIdSegment(string value)
+        => string.IsNullOrWhiteSpace(value)
+            ? "default"
+            : string.Concat(value.Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-'));
 
     private async Task OnValueChangedAsync(string? newValue) {
         _value = newValue ?? string.Empty;

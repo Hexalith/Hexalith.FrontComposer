@@ -31,6 +31,9 @@ public sealed partial class FcPageToolbar : ComponentBase
     /// <summary>Accessible name for the search input.</summary>
     [Parameter] public string SearchAriaLabel { get; set; } = "Search";
 
+    /// <summary>Stable id used to bind the hidden search label to the Fluent input host.</summary>
+    [Parameter] public string SearchInputId { get; set; } = "fc-page-toolbar-search-input";
+
     /// <summary>Visible label and accessible name for the filter trigger.</summary>
     [Parameter] public string FilterLabel { get; set; } = "Filters";
 

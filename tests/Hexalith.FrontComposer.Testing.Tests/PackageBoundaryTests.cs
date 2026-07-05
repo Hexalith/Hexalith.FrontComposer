@@ -85,7 +85,7 @@ public sealed class PackageBoundaryTests {
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="xunit.v3.assert" Version="3.2.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
   </ItemGroup>
 </Project>
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);

@@ -23,6 +23,7 @@ public partial class FcColumnFilterCell : ComponentBase, IDisposable {
     private bool _hasAppliedInitialValue;
     private string _placeholder = string.Empty;
     private string _ariaLabel = string.Empty;
+    private string _inputId = "fc-column-filter-input";
     private CancellationTokenSource? _pending;
 
     /// <summary>Stable per-view key used by the filter action.</summary>
@@ -64,7 +65,13 @@ public partial class FcColumnFilterCell : ComponentBase, IDisposable {
         string header = string.IsNullOrWhiteSpace(ColumnHeader) ? ColumnKey : ColumnHeader!;
         _placeholder = Localizer["ColumnFilterPlaceholderTemplate", header].Value;
         _ariaLabel = Localizer["ColumnFilterAriaLabelTemplate", header].Value;
+        _inputId = "fc-column-filter-" + BuildIdSegment(ViewKey) + "-" + BuildIdSegment(ColumnKey);
     }
+
+    private static string BuildIdSegment(string value)
+        => string.IsNullOrWhiteSpace(value)
+            ? "default"
+            : string.Concat(value.Select(c => char.IsAsciiLetterOrDigit(c) ? c : '-'));
 
     private async Task OnValueChangedAsync(string? newValue) {
         _value = newValue ?? string.Empty;
