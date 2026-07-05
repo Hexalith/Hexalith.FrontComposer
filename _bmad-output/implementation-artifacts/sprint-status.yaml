@@ -319,6 +319,8 @@ development_status:
   # 9-2 moved backlog -> ready-for-dev on 2026-07-05 (create-story; FC-NIP payload source is approved by the 2026-07-05 contract update: FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context. Scope remains implementation-open: prove runtime metadata before producer Add(...), preserve EventStore status as MessageId-only lifecycle source, render FcNewItemIndicator from generated-grid/shell grid consumer for matching lanes, keep no-diffing/no-broad-marking/no-AggregateId-smuggling guards, and update Verify/public-surface evidence only for intentional SourceTools output or FC-TBL surface changes.)
   # 9-2 moved ready-for-dev -> in-progress on 2026-07-05 (dev-story; baseline 60521f918556ff65c7b81651a6c6267eb85b0699 captured; starting FC-NIP producer and generated-grid consumer wiring.)
   # 9-2 moved in-progress -> review on 2026-07-05 (dev-story; wired FC-NIP row metadata from generated grid runtime context into pending command registrations, produced indicators only from MessageId-first terminal outcomes with complete identity, rendered/dismissed generated-grid indicators, updated SourceTools approvals, and verified focused Shell + full SourceTools lanes. Full Shell project has one unrelated EventStore.Aspire package-version governance mismatch: expected 3.33.4, actual 3.35.0.)
+  # 9-2 moved review -> in-progress on 2026-07-05 (bmad-code-review; adversarial 3-layer review — Blind Hunter + Edge Case Hunter + Acceptance Auditor. All 4 ACs MET, no falsely-completed tasks. Fixed integrity issue: CiGovernanceTests EventStore.Aspire pin guard was silently loosened in the exact test the Dev Record claimed it left failing (3.33.4 vs 3.35.0) — made non-vacuous (.ShouldNotBeNull then .Value.ShouldNotBeNullOrWhiteSpace), added to File List, Dev Record notes corrected; CiGovernanceTests 40/40 green. Applied resolver ObservedAt MinValue guard; PendingCommandOutcomeResolverTests 12/12 green; both projects 0-warning under TWAE. 2 High hunter findings refuted (const _viewKey rules out render-time throw; state service is fully lock-guarded). 1 Low/optional per-cell CascadingValue perf refactor kept as tracked tech-debt (IsFixed unsafe under grid virtualization; per-row hoist needs snapshot regen). Held at in-progress: optional item open + work uncommitted + broad slnx lane CI-authoritative/socket-blocked locally.)
+  # 9-2 moved in-progress -> review on 2026-07-05 (dev-story finalization; preserved the low/optional CascadingValue perf refactor as tracked tech-debt because FluentDataGrid has no true row-wrapper seam in the generated column model. Documented unrelated post-baseline drift separately, artifact validation passed, required filtered solution lane passed locally: Contracts 177/177, CLI 67/67, Shell 2050/2050, SourceTools 1045/1045, MCP 358/358, Testing 30/30; shell-chrome accent-surface guard passed 1/1.)
   9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: review
 
   # Epic 10: Tooling Governance Follow-Through (post-MVP quality hardening)
@@ -463,15 +465,34 @@ action_items:
   - epic: 8
     action: "E8-AI-4: Require the Shell accent-as-thread governance guard in every future chrome/story verification record"
     owner: "Architect"
-    status: open
+    status: done
+    closed: "2026-07-05"
+    evidence:
+      - "tests/README.md requires Shell chrome/visual verification records to name `FluentConformanceTests.Shell_chrome_styles_never_use_accent_as_surface_background`."
+      - ".agents/skills/bmad-dev-story/SKILL.md makes omission of the guard result or N/A rationale a blocking Definition-of-Done failure for Shell chrome or visual styling/layout stories."
+      - "_bmad-output/implementation-artifacts/visual-component-evidence-checklist.md includes the guard in the reusable story evidence template."
   - epic: 8
     action: "E8-AI-5: Track browser/visual evidence gaps as named CI responsibilities with owner, lane, and closure evidence"
     owner: "QA Engineer"
-    status: open
+    status: done
+    closed: "2026-07-05"
+    evidence:
+      - "_bmad-output/implementation-artifacts/browser-visual-ci-evidence-responsibilities.md names E8-CI-1 through E8-CI-3 with owner, lane/CI responsibility, expected artifact path, closure evidence, and row status."
+      - "docs/accessibility-verification/README.md contains the public Named CI Evidence Follow-Ups section for Epic 8 browser/visual gaps."
+      - "_bmad-output/implementation-artifacts/visual-component-evidence-checklist.md requires future visual stories with local browser blockers to cite a named responsibility ID, CI lane, owner, and artifact path when one exists."
+    closure_rule: "E8-AI-5 is closed because tracking exists; individual E8-CI rows close only with passing CI artifact evidence, an approved non-update decision, or an approved supersession decision."
   - epic: process
     action: "Standardize local-blocker vs CI-authoritative test evidence language in story records and test summaries, including VSTest socket/network blockers, xUnit in-process fallbacks, and Playwright/browser CI-gate handoffs"
     owner: "Test Architect"
-    status: open
+    status: done
+    closed: "2026-07-05"
+    evidence:
+      - "tests/README.md defines the standard lane table and local-blocker/fallback/CI-authority vocabulary."
+      - "_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md requires the same evidence fields before review-to-done promotion."
+      - ".agents/skills/bmad-dev-story/SKILL.md requires exact VSTest/MSBuild socket, NuGet/network, and Playwright/Kestrel/browser blocker language plus xUnit fallback and CI authority."
+      - ".agents/skills/bmad-story-automator-review/checklist.md validates that blocker/fallback/CI-authoritative lanes are separated."
+      - "_bmad-output/implementation-artifacts/tests/test-summary.md carries the standard table for future test-summary sections."
+      - "docs/accessibility-verification/README.md and visual-component-evidence-checklist.md define Playwright/browser CI-gate handoff fields."
   - epic: process
     action: "Add a mechanical changed-file vs story File List and test-summary reconciliation check before dev-story review promotion and story-automator review approval"
     owner: "QA automation maintainer"
@@ -479,11 +500,24 @@ action_items:
   - epic: process
     action: "Add a durable authoring-sentinel guard for BMAD/story/test markdown artifacts, allowing quoted examples but failing raw tool-call tag lines"
     owner: "Developer"
-    status: open
+    status: done
+    closed: "2026-07-05"
+    evidence:
+      - "eng/validate-story-artifacts.py scans _bmad-output and docs markdown for raw authoring/tool-call tag-only lines."
+      - "eng/tests/test_validate_story_artifacts.py covers raw tool_call failures plus blockquoted, inline-code, and fenced-code examples."
+      - "python3 -m unittest eng.tests.test_validate_story_artifacts passed 11 tests."
+      - "python3 eng/validate-story-artifacts.py passed the default artifact scan."
   - epic: 1
     action: "Drive residual FC-A11Y, FC-L10N, FC-DOC, and FC-SETTINGS wording decisions to confirmed or dated owned follow-up"
     owner: "FrontComposer + Product/UX + Tenants author"
-    status: open
+    status: done
+    closed: "2026-07-05"
+    evidence:
+      - "_bmad-output/contracts/fc-a11y-accessibility-primitives-2026-06-03.md confirms the three-layer automated ready-gate and routes visual/manual accessibility sign-off to Product/UX + Release Owner before v1.0 RC readiness classification."
+      - "_bmad-output/contracts/fc-l10n-shell-string-ownership-2026-06-03.md confirms density-preview sample strings are out of localization scope and domain labels are host-owned with no shell fallback."
+      - "_bmad-output/contracts/fc-doc-component-documentation-2026-06-03.md confirms the inline-summary + published-sibling link convention and records DataGrid/settings docs as authored."
+      - "_bmad-output/contracts/fc-settings-persistence-2026-06-03.md confirms the AC3 reading as one persistence writer per slice plus one DOM writer per side-effect."
+      - "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-epic-1-residual-wording-decisions.md records the correct-course decision and handoff."
   - epic: 1
     action: "Close the FC-DOC settings component page gap after Story 1.6 completion, or explicitly defer it with owner and date"
     owner: "Technical Writer"
@@ -491,15 +525,32 @@ action_items:
   - epic: 10
     action: "E10R-AI-1: Keep artifact_validation_failed as a hard review-completion blocker and track false positives as validator fixes rather than manual bypasses"
     owner: "QA automation maintainer"
-    status: open
+    status: done
+    closed: "2026-07-05"
+    evidence:
+      - "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-e10r-ai-1-artifact-validation-hard-blocker.md records the approved minor direct-adjustment scope."
+      - "_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md states that artifact_validation_failed is a hard blocker and false positives require validator fixes."
+      - ".agents/skills/bmad-story-automator-review/checklist.md distinguishes environmental command blockers from non-zero validator exits."
+      - ".agents/skills/bmad-story-automator-review/instructions.xml keeps false-positive handling out of the manual bypass path."
+      - ".agents/skills/bmad-story-automator/src/story_automator/core/success_verifiers.py returns artifact_validation_failed before accepting done status."
+      - "eng/tests/test_validate_story_artifacts.py preserves review_completion artifact_validation_failed regression coverage."
   - epic: 10
     action: "E10R-AI-2: Add contract-doc verification to post-story or post-epic sweeps whenever review fixes change implementation behavior"
     owner: "Technical Writer"
-    status: open
+    status: done
+    closed: "2026-07-05"
+    evidence:
+      - "_bmad-output/implementation-artifacts/doc-drift-sweep-checklist.md requires explicit contract-doc verification when review fixes change implementation behavior."
+      - "_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md makes behavior-changing review fixes a doc-drift trigger and requires contract-doc update/no-update evidence."
+      - "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-e10r-ai-2-contract-doc-verification.md records the correct-course decision and handoff."
   - epic: 10
     action: "E10R-AI-3: Carry Testing evidence privacy lessons into Epic 11.6, including property-name and dictionary-key cases plus external-path evidence where the harness emits paths"
     owner: "Test Architect"
-    status: open
+    status: done
+    closed: "2026-07-05"
+    evidence:
+      - "_bmad-output/planning-artifacts/epics.md Story 11.6 now requires property-name, dictionary-key, and external/local path evidence coverage when Testing harness changes emit evidence."
+      - "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-e10r-ai-3-testing-privacy-into-11-6.md records the correct-course analysis and handoff."
   - epic: 10
     action: "E10R-AI-4: Resolve the existing Epic 11 route-contract decision before starting 11.x story creation"
     owner: "Architect + Product Owner"

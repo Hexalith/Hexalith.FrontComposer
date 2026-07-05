@@ -93,7 +93,12 @@ function Normalize-Identity([string]$Value) {
 
 function Get-FileHashHex([string]$Path) {
     if (-not (Test-Path -LiteralPath $Path)) { return $null }
-    (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    $text = Get-Content -LiteralPath $Path -Raw
+    $normalized = $text -replace "`r`n", "`n"
+    $normalized = $normalized -replace "`r", "`n"
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($normalized)
+    $hash = [System.Security.Cryptography.SHA256]::HashData($bytes)
+    [System.Convert]::ToHexString($hash).ToLowerInvariant()
 }
 
 function Test-UnsafeText([string]$Text) {

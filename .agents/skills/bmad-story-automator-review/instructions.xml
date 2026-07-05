@@ -183,6 +183,7 @@
       same gate automatically and returns `artifact_validation_failed` (distinct from `workflow_not_complete`), so a
       `done` sprint/story status cannot bypass a failed validator.</action>
     <action>Set {{gate_passed}} = true when the validator exits 0, false otherwise.</action>
+    <action>If the validator exits non-zero and the result appears to be a false positive, keep {{new_status}} out of `done`; track and implement a validator fix with regression evidence, then rerun the validator. Do not manually bypass `artifact_validation_failed` by editing story status, sprint status, or review policy.</action>
     <check if="0 CRITICAL issues remain after fixes AND {{gate_passed}} == true">
       <action>Set {{new_status}} = "done"</action>
       <action>Update story Status field to "done"</action>

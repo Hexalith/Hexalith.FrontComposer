@@ -416,10 +416,15 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
     <action>Confirm Dev Agent Record or test summary includes standardized Test Evidence for each required lane:
       - required command attempted
       - local result: Passed, Failed, or Blocked with exact blocker
+      - blocker timing: before test execution, before browser assertions, or inside the test body
       - fallback evidence command/result when local exact lane is blocked
       - CI authority: Required, Advisory, or Not applicable
-      - blocker timing: before test execution or inside the test body
+      - VSTest/MSBuild socket or named-pipe blockers are local blockers only; record the exact `System.Net.Sockets.SocketException`/`MSB1025` text, use direct xUnit v3 in-process runner evidence as fallback, and keep CI authority Required for the exact VSTest/solution lane
+      - NuGet, package restore, or external network blockers must name the blocked URI/service and whether any `--no-restore`, cached, or focused fallback avoids that network dependency
+      - Playwright/Kestrel/browser blockers must state whether failure happened before browser assertions, name local typecheck/bUnit/direct xUnit fallback evidence, and hand off the browser/a11y/visual gate to CI with lane owner and expected artifact path
+      - do not mark a blocked exact lane as Passed because a fallback lane passed
     </action>
+    <action>If the story changes Shell chrome or visual styling/layout, confirm the Dev Agent Record or test summary names `FluentConformanceTests.Shell_chrome_styles_never_use_accent_as_surface_background` with Passed/Failed/Blocked result, exact blocker/fallback evidence/CI authority, or a short N/A rationale when the story is visual but does not touch Shell chrome. Treat omission as a blocking Definition-of-Done failure.</action>
     <action>Execute enhanced definition-of-done validation</action>
     <action>Update the story Status to: "review"</action>
 
@@ -432,6 +437,7 @@ Activation is complete. If `activation_steps_prepend` or `activation_steps_appen
       - End-to-end tests for critical flows added when story demands them
       - All tests pass (no regressions, new tests successful)
       - Test evidence distinguishes exact local results, blocker details, fallback evidence, and CI authority
+      - Shell chrome or visual styling/layout stories name the accent-as-thread governance guard result or N/A rationale
       - Code quality checks pass (linting, static analysis if configured)
       - File List includes every new/modified/deleted file (relative paths)
       - `eng/validate-story-artifacts.py` passes for raw authoring sentinels and changed-file vs File List reconciliation

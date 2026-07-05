@@ -132,7 +132,9 @@ public sealed class CiGovernanceTests {
         XElement eventStoreAspire = packages
             .Descendants("PackageVersion")
             .Single(e => string.Equals((string?)e.Attribute("Include"), "Hexalith.EventStore.Aspire", StringComparison.Ordinal));
-        eventStoreAspire.Attribute("Version")?.Value.ShouldNotBeNullOrWhiteSpace(
+        XAttribute versionAttribute = eventStoreAspire.Attribute("Version").ShouldNotBeNull(
+            "Release builds consume the centrally imported Hexalith.Builds package pin, so the governance guard must still find a Version attribute on Hexalith.EventStore.Aspire.");
+        versionAttribute.Value.ShouldNotBeNullOrWhiteSpace(
             "Release builds consume the centrally imported Hexalith.Builds package pin; this guard must not hard-code a sibling package patch version.");
     }
 

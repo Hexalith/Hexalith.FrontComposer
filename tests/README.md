@@ -69,6 +69,30 @@ Duration governance records inner-loop, full-CI, and nightly lane evidence with 
 
 Quarantine evidence is published as bounded TRX, JSON, and markdown summaries. Summaries keep only allowlisted fields such as test identity, outcome, attempt number, category, seed when present, and normalized relative paths. Raw dumps, bearer tokens, workflow commands, HTML/script fragments, tenant/user identifiers, command payload bodies, local absolute paths, and unbounded logs are redacted, escaped, truncated, or rejected before publication.
 
+### Evidence Language For Local Blockers
+
+Story records and test summaries use the same evidence vocabulary for local blockers and CI authority.
+Use a lane table whenever an exact lane cannot run locally:
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+| --- | --- | --- | --- | --- | --- |
+| Solution default | `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` | Passed / Failed / Blocked with exact blocker | Before test execution / before browser assertions / inside test body / N/A | Direct xUnit v3 in-process, focused lane, typecheck, bUnit, or N/A | Required / Advisory / Not applicable |
+
+Use these terms consistently:
+
+- **Local blocker** means the required command could not produce its intended signal in the current machine or sandbox.
+- **Fallback evidence** is local advisory evidence unless that fallback is the required lane for the story.
+- **CI authority Required** means protected CI must run the exact lane or browser/a11y/visual gate before the evidence gap is closed.
+- **CI authority Advisory** means CI is useful confirmation, but local evidence already covers the story acceptance boundary.
+- **CI authority Not applicable** means the lane does not apply to the story surface.
+
+VSTest/MSBuild socket or named-pipe failures must record the exact `System.Net.Sockets.SocketException`
+or `MSB1025` text and whether failure occurred before test execution. Direct xUnit v3 in-process runs are
+the local fallback, not proof that the blocked VSTest lane passed. NuGet/package/network failures must
+name the blocked service or URI and any cached, `--no-restore`, or focused fallback. Playwright,
+Kestrel, and browser-launch blockers must state whether browser assertions ran; if browser evidence is
+still required, name the CI lane, owner, and expected artifact path.
+
 ### LLM Benchmark And Release Evidence
 
 ```bash

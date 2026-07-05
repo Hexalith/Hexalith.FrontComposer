@@ -50,6 +50,7 @@ public sealed class PackageBoundaryTests {
         nuspec.ShouldContain("Hexalith.FrontComposer.Contracts");
         nuspec.ShouldContain("Hexalith.FrontComposer.Shell");
         nuspec.ShouldContain("bunit");
+        nuspec.ShouldContain("Microsoft.FluentUI.AspNetCore.Components");
         nuspec.ShouldNotContain("Hexalith.FrontComposer.Shell.Tests");
         nuspec.ShouldNotContain("NSubstitute");
         nuspec.ShouldNotContain("Shouldly");

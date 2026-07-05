@@ -21,7 +21,30 @@ DEFAULT_EXCLUDE_PATTERNS = (
     "docs/_site/**",
     "_bmad-output/story-automator/**",
 )
-SENTINEL_LINE = re.compile(r"^</?(?:content|invoke)(?:\s[^>]*)?>\s*$", re.IGNORECASE)
+AUTHORING_SENTINEL_TAGS = (
+    "argument",
+    "arguments",
+    "content",
+    "function",
+    "function_call",
+    "function_calls",
+    "invoke",
+    "parameter",
+    "parameters",
+    "tool",
+    "tool-call",
+    "tool-calls",
+    "tool_call",
+    "tool_calls",
+    "tool-use",
+    "tool_use",
+)
+SENTINEL_LINE = re.compile(
+    r"^</?(?:"
+    + "|".join(re.escape(tag) for tag in AUTHORING_SENTINEL_TAGS)
+    + r")(?:\s[^>]*)?>\s*$",
+    re.IGNORECASE,
+)
 FRONTMATTER_LINE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$")
 CHECKED_TASK = re.compile(r"^\s*-\s*\[x\]\s*(.+)$", re.IGNORECASE)
 DOCUMENTED_UNRELATED_HEADINGS = {
@@ -218,7 +241,7 @@ def scan_sentinels(root: Path, roots: list[str], excludes: list[str]) -> list[st
                     in_fence = True
                     fence_marker = marker
                 continue
-            if in_fence or "`" in stripped:
+            if in_fence or stripped.startswith(">"):
                 continue
             if SENTINEL_LINE.match(stripped):
                 failures.append(

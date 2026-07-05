@@ -2,8 +2,8 @@
 title: 'FC-SETTINGS — Theme/density settings-persistence contract'
 date: '2026-06-03'
 story: '1.6'
-status: 'confirmed'   # FR15/NFR6 behaviour + AC3 persistence/DOM single-writer fully verified by existing+new tests; ONE sub-item escalated — the literal AC3 wording "one effect owns persistence AND JS interop / each field mutated by exactly one action" (owner: FrontComposer pending). See Confirmation.
-owner: 'FrontComposer (pending)'   # only for the AC3 split-interpretation wording; the behaviour itself is confirmed
+status: 'confirmed'   # FR15/NFR6 behaviour + AC3 persistence/DOM single-writer reading fully verified and ratified
+owner: 'FrontComposer'
 supersedes: ''
 ---
 
@@ -15,9 +15,8 @@ supersedes: ''
 > already ships, fully wired and already covered by tests** at baseline `c88b362`. The job is therefore
 > to **confirm-and-pin** the three ACs against the real implementation, not to build new components.
 > This note **(1) names the settings-persistence contract** — *live-no-Apply + tenant/user-scoped
-> persistence + restore-on-init*; **(2) records the confirmed facts** for all three ACs; **(3) records
-> the one genuinely-open item** (the literal AC3 single-writer wording) escalated with a named owner;
-> and **(4) points at the standing enforcement** — the NFR17 tripwire plus the new per-slice
+> persistence + restore-on-init*; **(2) records the confirmed facts** for all three ACs; **(3) ratifies
+> the literal AC3 single-writer wording through the per-side-effect reading below**; and **(4) points at the standing enforcement** — the NFR17 tripwire plus the new per-slice
 > single-writer pin. Adopting this contract introduces **zero behaviour change and no `src/` change**:
 > it documents what the shell already does and pins how the persistence writers must stay owned.
 
@@ -81,8 +80,9 @@ ownership and theme-field single assignment are now enforced by
 call-site count (== 7), the `data-fc-density` single-DOM-writer lint, and the ADR-039 reducer-purity
 lint — all green.
 
-**AC3 (literal wording) — ESCALATED (owner: FrontComposer — pending).** Two AC3 phrasings are not
-literally true at the source and need a human ratification of the *reading* (not a redesign):
+**AC3 (literal wording) — CONFIRMED (2026-07-05).** Two AC3 phrasings are not literally true if read
+as "one code path mutates every setting-related state field," so the contract ratifies the
+per-side-effect reading already proven by source and tests:
 
 1. *"exactly one effect owns persistence **and** JS interop."* True for **theme** persistence + the
    change-driven `SetThemeAsync`; but theme DOM application is intentionally invoked from **three**
@@ -94,18 +94,10 @@ literally true at the source and need a human ratification of the *reading* (not
    (changed/cleared/hydrated/legacy). The single-writer discipline holds at the *side-effect* level,
    not the *state-field-per-action* level.
 
-Resolution does **not** block Story 1.6 — the behaviour ships, is tested, and is now pinned. This note
-records the recommended reading; a reviewer may ratify or refine the wording.
-
-### Follow-up tracking (2026-07-01)
-
-Correct-course follow-through from the Epic 1 retro records the literal AC3 wording decision as a
-tracked sprint action rather than untracked pending owner work: `sprint-status.yaml` now carries
-**"Drive residual FC-A11Y, FC-L10N, FC-DOC, and FC-SETTINGS wording decisions to confirmed or dated
-owned follow-up"** with owner **FrontComposer + Product/UX + Tenants author**. Until that action is
-closed, this contract keeps the behavior as `confirmed` and the wording nuance as explicitly
-escalated. The recommended reading remains: one persistence writer per slice plus one DOM writer per
-side-effect.
+This confirms the behavior and wording: one persistence writer per slice plus one DOM writer per
+side-effect. The sprint action **"Drive residual FC-A11Y, FC-L10N, FC-DOC, and FC-SETTINGS wording
+decisions to confirmed or dated owned follow-up"** is closed for FC-SETTINGS by this disposition. No
+dated follow-up is required.
 
 ## Surface confirmed by Story 1.6
 

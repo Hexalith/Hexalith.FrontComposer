@@ -2,8 +2,8 @@
 title: 'FC-A11Y — Accessibility-primitives ready-gate contract'
 date: '2026-06-03'
 story: '1.3'
-status: 'escalated'   # primitive set + HFC1050–HFC1055 enforcement agreed; governance sign-off pending (AC2 escalate-with-owner)
-owner: 'FrontComposer + Tenants author / Product/UX (pending)'
+status: 'confirmed-with-release-follow-up'   # automated three-layer story ready-gate confirmed; visual/manual release sign-off is dated below
+owner: 'FrontComposer + Product/UX + Release Owner'
 supersedes: ''
 ---
 
@@ -17,7 +17,8 @@ supersedes: ''
 > specimen lane runs in CI. This note therefore **(1) names the reusable FC-A11Y primitive set** as
 > the single, testable accessibility ready-gate every later story points at, **(2) records the
 > HFC1050–HFC1055 enforcement linkage** (override-time build-breakers) as the *agreed enforcement
-> mechanism*, and **(3) escalates the one open governance question** with a named owner per AC2.
+> mechanism*, and **(3) records the remaining visual/manual accessibility sign-off as a dated release
+> follow-up** instead of an unowned wording question.
 > Adopting FC-A11Y introduces **zero behaviour change**: the contract confirms and pins what the
 > shell already does; it re-implements nothing.
 
@@ -112,33 +113,31 @@ or diagnostics docs.
 
 ## Confirmation
 
-**Status: ESCALATED (owner: FrontComposer + Tenants author / Product/UX — pending).** No live
-confirmation from the named owner was available at implementation time. Per AC2, the contract is
-recorded as *escalated with a named owner*; the primitive set and the HFC1050–HFC1055 enforcement
-linkage are **agreed and shipped** (they already exist), and the following governance question is the
-only genuinely open item:
+**Status: CONFIRMED WITH DATED RELEASE FOLLOW-UP (2026-07-05).** The FC-A11Y story ready-gate is
+confirmed as the three automated layers named above:
 
-1. **Is "the bUnit shell-frame gate (Layer 1) + the HFC1050–HFC1055 override gate (Layer 2) + the
-   e2e axe lane (Layer 3)" the complete FC-A11Y ready-gate — or is a per-story manual a11y checklist
-   also required?** Recommended: the three automated layers *are* the testable ready-gate every
-   later story points at; a per-story manual checklist is **not** mandated (it would be advisory at
-   best and unenforceable). Confirm or override.
-2. **Who signs off visual-design accessibility** (contrast ratios, focus-ring visibility against
-   custom themes) that automated tooling cannot fully judge? Recommended owner: Product/UX, with the
-   Tenants author for tenant-theme contrast. Confirm.
+1. Layer 1 shell-frame bUnit invariants;
+2. Layer 2 HFC1050-HFC1055 override diagnostics, promoted by TWAE;
+3. Layer 3 CI-owned axe/browser specimen lane.
 
-Owner column per the readiness request (`frontcomposer-readiness-request-2026-06-03.md:23`, 🔴
-FC-A11Y row): **FrontComposer + Tenants author** (Product/UX for visual-design input). Resolution
-does **not** block Story 1.3 — the AC explicitly permits escalate-with-owner.
+No additional per-story manual accessibility checklist is required by default. A story may still add
+manual checks when it changes a surface that cannot be judged by the configured automated layers, but
+that is story-specific evidence, not a fourth baseline FC-A11Y gate.
 
-### Follow-up tracking (2026-07-01)
+The remaining visual/manual accessibility judgment is not left as pending wording. Product/UX and
+the Release Owner own the release-level sign-off for contrast, focus-ring visibility against custom
+themes, required assistive-technology pairings, and real-device acceptance evidence. Due date: before
+the v1.0 release-candidate readiness classification. Tracking artifact:
+`docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md`. This follow-up can
+block the release pack moving to `ready`; it does not block normal story Done when the three automated
+layers pass or when a story records a specific accepted constraint.
 
-Correct-course follow-through from the Epic 1 retro records this as a tracked sprint action rather
-than an untracked pending owner: `sprint-status.yaml` now carries **"Drive residual FC-A11Y,
-FC-L10N, FC-DOC, and FC-SETTINGS wording decisions to confirmed or dated owned follow-up"** with
-owner **FrontComposer + Product/UX + Tenants author**. Until that action is closed, this contract
-stays `status: escalated`; the shipped three-layer automated ready-gate remains the recommended
-default.
+### Follow-up tracking (2026-07-05)
+
+The sprint action **"Drive residual FC-A11Y, FC-L10N, FC-DOC, and FC-SETTINGS wording decisions to
+confirmed or dated owned follow-up"** is closed for FC-A11Y by this disposition. The automated
+ready-gate is confirmed; the non-automated visual/manual sign-off is dated and owned by Product/UX +
+Release Owner before v1.0 RC readiness classification.
 
 ## FC-DOC linkage (deferred to Story 1.5)
 

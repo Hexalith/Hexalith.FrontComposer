@@ -1,5 +1,20 @@
 # Test Automation Summary
 
+## Evidence Language Standard
+
+Story sections in this aggregate summary use the standard local-blocker vs CI-authoritative evidence
+language:
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+| --- | --- | --- | --- | --- | --- |
+| `<lane name>` | `<exact command>` | `Passed`, `Failed`, or `Blocked` with exact blocker | `Before test execution`, `Before browser assertions`, `Inside test body`, or `N/A` | `<direct xUnit v3 in-process, focused lane, typecheck, bUnit, or N/A>` | `Required`, `Advisory`, or `Not applicable` |
+
+For VSTest/MSBuild socket blockers, record the exact `System.Net.Sockets.SocketException` or `MSB1025`
+text and keep direct xUnit v3 in-process evidence as fallback unless xUnit is the required lane. For
+NuGet/package/network blockers, name the blocked service or URI. For Playwright/Kestrel/browser blockers,
+state whether browser assertions ran and name the CI browser/a11y/visual lane, owner, and expected artifact
+when CI remains authoritative.
+
 ## Story 10.5 - Testing evidence redaction default-lane guard
 
 ### Generated Tests

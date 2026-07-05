@@ -117,6 +117,16 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 > decisions close silently — the root cause of the FC-LYT / AR8 / UX-DR confirmation debt closed in
 > `sprint-change-proposal-2026-06-21`.
 
+> **Epic 1 residual wording disposition (2026-07-05).** The residual FC-A11Y / FC-L10N / FC-DOC /
+> FC-SETTINGS wording action is closed by
+> `sprint-change-proposal-2026-07-05-epic-1-residual-wording-decisions.md`. FC-L10N confirms that density
+> preview sample strings are out of localization scope and domain labels are host-owned with no shell
+> fallback. FC-DOC confirms the inline-summary + published-sibling link convention and records that
+> DataGrid/settings docs are authored. FC-SETTINGS confirms the AC3 reading as one persistence writer per
+> slice plus one DOM writer per side-effect. FC-A11Y confirms the three-layer automated story ready-gate
+> and routes visual/manual release sign-off to Product/UX + Release Owner, due before v1.0 RC readiness
+> classification.
+
 ### UX Design Requirements
 
 > **Confirmed 2026-06-21** (sprint-change-proposal-2026-06-21). Originally reverse-engineered from the
@@ -1509,6 +1519,14 @@ So that adopters can genuinely test failure paths and paging/filter/sort of gene
 **Given** the shipped Testing surface (currently 2 test files for 11 files),
 **When** builders, assertions, or fakes are changed,
 **Then** `Builders` / `Assertions` / fakes get direct surface tests and `PublicAPI.Shipped.txt` is updated intentionally.
+
+**Given** Story 10.5's Testing evidence privacy findings and the Testing host contract,
+**When** Story 11.6 changes fake services, per-request callbacks, builders, assertions, or fault/evidence
+paths that emit diagnostic or assertion evidence,
+**Then** the default Testing lane preserves redaction for configured tenant/user identifiers in JSON values
+and property names, including dictionary keys, preserves structural redaction of token/secret/password keyed
+values, and proves raw external/local paths are absent or replaced with bounded repository-relative or redacted
+markers wherever the harness emits paths.
 *(Refines FR22; closes M21 — the key Tenants-adoption unblock.)*
 
 ### Story 11.7: Command/projection route-contract implementation

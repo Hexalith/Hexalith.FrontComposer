@@ -60,8 +60,8 @@ into the real release pipeline and proves package-consumer validation before v1.
 | 4.4 Recommended path | [x] | Direct Adjustment with a release implementation handoff. |
 | 5.1-5.5 Proposal components | [x] | Captured below. |
 | 6.1-6.2 Final review | [x] | Proposal is actionable and scoped. |
-| 6.3 Approval | [!] | Pending Administrator approval. |
-| 6.4 Sprint status update | [!] | Apply after approval; do not mark `REL-AI-1` done until evidence paths exist. |
+| 6.3 Approval | [x] | Approved by Administrator on 2026-07-05. |
+| 6.4 Sprint status update | [x] | Applied to `sprint-status.yaml`; `REL-AI-1` remains open until evidence paths exist. |
 | 6.5 Handoff | [x] | Moderate scope: Release Owner + Developer + QA/Test Architect. |
 
 ### Epic Impact

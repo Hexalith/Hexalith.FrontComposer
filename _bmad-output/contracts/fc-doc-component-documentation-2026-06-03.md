@@ -2,8 +2,8 @@
 title: 'FC-DOC — Component-documentation contract'
 date: '2026-06-03'
 story: '1.5'
-status: 'escalated'   # required-section template + Gate-2d front-matter/placement/TOC/snippet rules + inline-summarize cross-link convention agreed and proven by published pages; settings page authored 2026-07-01; cross-link convention pending FrontComposer + Tenants-author sign-off
-owner: 'FrontComposer + Tenants author (pending)'
+status: 'confirmed'   # required-section template, Gate-2d rules, component status map, and inline-summarize cross-link convention are confirmed
+owner: 'FrontComposer + Technical Writer'
 supersedes: ''
 ---
 
@@ -24,8 +24,8 @@ supersedes: ''
 > doc points at, **(2) proves the contract is real** by authoring the validated anchor page
 > (`FrontComposerShell`) plus a second conforming page (`Navigation`) and wiring them into
 > `docs/toc.yml` without breaking the exactly-four-Diataxis-entries rule, **(3) records the component
-> status map** (the AC2 coverage record / tracked-gap-with-owner mechanism), and **(4) escalates the
-> two genuinely open items** with a named owner per AC3. Adopting FC-DOC introduces **zero behaviour
+> status map** (the AC2 coverage record / tracked-gap-with-owner mechanism), and **(4) confirms the
+> prior cross-link convention and settings-page scope decisions**. Adopting FC-DOC introduces **zero behaviour
 > change and no `src/` change**: it documents what the shell already does and pins how every future
 > component page must be authored. **Enforcement is Gate 2d (`validate-docs.ps1`) itself — there is no
 > bUnit "pin test" for this ready-gate the way 1.2–1.4 had; the docs validator *is* the gate.**
@@ -111,7 +111,7 @@ been authored as retrospective follow-through. The Settings surface landed in St
 `docs/reference/components/settings.md` was authored on 2026-07-01, closing the tracked settings
 documentation gap.
 
-### Cross-link convention (the genuinely open item — surfaced, not silently resolved)
+### Cross-link convention (confirmed 2026-07-05)
 
 `_bmad-output/contracts/*` are **NOT part of the published DocFX site**, so a published page **cannot**
 DocFX-xref them (DocFX resolves links within the site only). The FC-DOC contract therefore prescribes:
@@ -123,7 +123,9 @@ DocFX-xref them (DocFX resolves links within the site only). The FC-DOC contract
 - the **mapping from each published page → its governing `_bmad-output/contracts/*` source** is
   recorded in *this* FC-DOC contract (the traceability ledger below), **not** as a site link.
 
-This is flagged as the **one cross-link-convention item** for the owner to confirm or override.
+This convention is confirmed. Published component pages summarize the contract behavior inline and
+link only to published siblings; this ledger records the `_bmad-output/contracts/*` mapping that
+DocFX cannot publish as an xref.
 
 ### Page → governing-contract traceability ledger
 
@@ -140,24 +142,16 @@ FC-L10N each left open.
 
 ## Confirmation
 
-**Status: ESCALATED (owner: FrontComposer + Tenants author — pending).** No live confirmation from the
-named owner was available at implementation time. Per AC3, the contract is recorded as *escalated with
-a named owner*; the required-section template, the Gate-2d front-matter / placement / TOC / snippet
-rules, and the inline-summarize cross-link convention are **agreed and proven** (the anchor and
-`Navigation` pages are authored and pass Gate 2d), and the following are the only genuinely open items:
+**Status: CONFIRMED (2026-07-05).** The required-section template, Gate-2d front-matter / placement /
+TOC / snippet rules, component status map, and inline-summarize cross-link convention are confirmed.
 
-1. **Cross-link convention — confirm "summarize inline + link published siblings; record the
-   `_bmad-output` mapping in the FC-DOC ledger"?** Recommended and shipped (a published page cannot
-   xref `_bmad-output/contracts/*`). Confirm or override.
-2. **Settings page scope — closed 2026-07-01.** The previous "defer to Story 1.6" decision is no
-   longer open: Story 1.6 is done and `docs/reference/components/settings.md` has been authored.
-   DataGrid is also no longer deferred: FC-TBL was confirmed in Story 2.8 and
-   `docs/reference/components/datagrid.md` has been authored.
+The previous settings and DataGrid documentation questions are closed: Story 1.6 completed the
+settings UX and `docs/reference/components/settings.md` exists; FC-TBL was confirmed in Story 2.8
+and `docs/reference/components/datagrid.md` exists.
 
-Owner column per the readiness request (`frontcomposer-readiness-request-2026-06-03.md:23`, 🔴 FC-DOC
-row): **FrontComposer + Tenants author** ("component docs … every story's ready-gate"). Resolution
-does **not** block Story 1.5 — AC3 explicitly permits escalate-with-owner, and FC-LYT / FC-A11Y /
-FC-L10N all shipped `status: escalated` with a pending owner and passed review.
+The sprint action **"Drive residual FC-A11Y, FC-L10N, FC-DOC, and FC-SETTINGS wording decisions to
+confirmed or dated owned follow-up"** is closed for FC-DOC by this disposition. No dated follow-up is
+required.
 
 ## Surface confirmed / pinned by Story 1.5
 

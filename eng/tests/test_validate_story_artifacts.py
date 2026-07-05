@@ -56,6 +56,68 @@ def story_text(*, baseline: str, file_list: str = "", tasks: str = "- [ ] Pendin
 
 
 class StoryArtifactValidatorTests(unittest.TestCase):
+    def test_raw_tool_call_tag_line_fails_in_bmad_test_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(
+                root / "_bmad-output/implementation-artifacts/tests/test-summary.md",
+                """
+                # Test Summary
+
+                <tool_call name="functions.exec_command">
+                """,
+            )
+
+            result = run([sys.executable, str(VALIDATOR), "--project-root", str(root)], root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("raw authoring sentinel", result.stderr)
+            self.assertIn("_bmad-output/implementation-artifacts/tests/test-summary.md", result.stderr)
+            self.assertIn('<tool_call name="functions.exec_command">', result.stderr)
+
+    def test_raw_tool_call_tag_line_with_backtick_attribute_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                """
+                # Story 1.1: Validator fixture
+
+                <tool_call name="`functions.exec_command`">
+                """,
+            )
+
+            result = run([sys.executable, str(VALIDATOR), "--project-root", str(root)], root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("raw authoring sentinel", result.stderr)
+            self.assertIn('<tool_call name="`functions.exec_command`">', result.stderr)
+
+    def test_quoted_tool_call_examples_are_allowed_in_bmad_artifacts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                """
+                # Story 1.1: Validator fixture
+
+                > <tool_call name="functions.exec_command">
+
+                Example inline code: `<tool_call name="functions.exec_command">`
+
+                `<tool_call name="functions.exec_command">`
+
+                ```markdown
+                <tool_call name="functions.exec_command">
+                ```
+                """,
+            )
+
+            result = run([sys.executable, str(VALIDATOR), "--project-root", str(root)], root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("Story artifact validation passed.", result.stdout)
+
     def test_baseline_commit_from_frontmatter_detects_missing_file_list_entry(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

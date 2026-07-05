@@ -2,8 +2,8 @@
 title: 'FC-L10N — Shell-string ownership contract'
 date: '2026-06-03'
 story: '1.4'
-status: 'escalated'   # two-localizer split + supported-culture surface agreed; density-preview sample-string scope + domain-label fallback pending Tenants-author sign-off (AC3 escalate-with-owner)
-owner: 'FrontComposer + Tenants author (pending)'
+status: 'confirmed'   # two-localizer split, density-preview sample scope, and domain-label ownership are confirmed
+owner: 'FrontComposer + Tenants author'
 supersedes: ''
 ---
 
@@ -20,8 +20,8 @@ supersedes: ''
 > byte guards, and placeholder-count parity. This note therefore **(1) names the shell-vs-host/domain
 > string-ownership boundary** as the single FC-L10N contract every later story points at, **(2) records
 > the resolution mechanism** (resx BaseName convention + `IStringLocalizer<FcShellResources>` + the
-> `services.Replace` swap seam) and the supported-culture surface, and **(3) escalates the two genuinely
-> open boundary questions** with a named owner per AC3. Adopting FC-L10N introduces **zero behaviour
+> `services.Replace` swap seam) and the supported-culture surface, and **(3) confirms the two prior
+> boundary questions** so no unowned FC-L10N wording remains. Adopting FC-L10N introduces **zero behaviour
 > change**: the contract confirms and pins what the shell already does; it re-implements nothing.
 
 ## The contract
@@ -75,49 +75,31 @@ domain-owned field labels.
   resx-satellite + `SupportedCultures` addition; the layout/a11y CSS is already logical-property-clean
   for it. No RTL satellite ships in this story.
 
-## The "chrome" scope boundary (the genuinely open item)
+## The "chrome" scope boundary (confirmed 2026-07-05)
 
 The `FcDensityPreviewPanel` density preview uses **illustrative sample-data column titles**
 (`"Order"` / `"Customer"` / `"Status"`, hard-coded at `FcDensityPreviewPanel.razor:26-28`). These are
 demo/sample data — the Lorem-ipsum of a density preview — not framework chrome.
 
-**Recommended: out of scope.** Sample-data strings inside the settings density preview are
+**Confirmed: out of scope.** Sample-data strings inside the settings density preview are
 intentionally *not* localized, the same way Lorem-ipsum body text in a layout demo is not localized;
 they exist only to show row spacing at each density. They are **not** user-facing application chrome
-and resolve through no localizer by design. This is flagged as the one open boundary item for the
-Tenants author / Product/UX to confirm or override (see Confirmation).
+and resolve through no localizer by design.
 
 ## Confirmation
 
-**Status: ESCALATED (owner: FrontComposer + Tenants author — pending).** No live confirmation from
-the named owner was available at implementation time. Per AC3, the contract is recorded as *escalated
-with a named owner*; the two-localizer split, the resolution mechanism, and the supported-culture
-surface are **agreed and shipped** (they already exist and are tested), and the following are the only
-genuinely open items:
+**Status: CONFIRMED (2026-07-05).** The two-localizer split, resolution mechanism, supported-culture
+surface, and prior boundary questions are confirmed:
 
-1. **Density-preview sample strings (`"Order"/"Customer"/"Status"`) — in scope or out?** Recommended:
-   **out of scope** (illustrative sample data, not chrome). Confirm or override; if "in scope", the
-   fix is additive — bind each literal to a **new** `FcShellResources` key, adding the EN **and** FR
-   entries together plus its per-key theory row in `FcShellResourcesTests`.
-2. **Domain-label localization — host-owned with no shell fallback?** Recommended: the host owns
-   domain field/label text via `[Display(Name)]` or its own `IStringLocalizer<TCommand>`, and the
-   shell provides **no** fallback localizer for domain types (the generated form injects the host's
-   per-type localizer directly). Confirm that the host is expected to register its own
-   `IStringLocalizer<T>` for domain labels rather than the shell shipping a domain-label fallback.
+1. Density-preview sample strings (`"Order"` / `"Customer"` / `"Status"`) are out of scope for
+   FC-L10N because they are illustrative sample data inside a visual density preview, not shell
+   chrome or adopter-facing application text.
+2. Domain labels are host-owned through `[Display(Name)]` or the host's own `IStringLocalizer<T>`.
+   The shell intentionally does not ship a fallback localizer for domain types.
 
-Owner column per the readiness request (`frontcomposer-readiness-request-2026-06-03.md:23`, 🔴
-FC-L10N row): **FrontComposer + Tenants author**. Resolution does **not** block Story 1.4 — AC3
-explicitly permits escalate-with-owner.
-
-### Follow-up tracking (2026-07-01)
-
-Correct-course follow-through from the Epic 1 retro records the density-preview-string and
-domain-label-fallback questions as a tracked sprint action rather than untracked pending owner work:
-`sprint-status.yaml` now carries **"Drive residual FC-A11Y, FC-L10N, FC-DOC, and FC-SETTINGS wording
-decisions to confirmed or dated owned follow-up"** with owner **FrontComposer + Product/UX +
-Tenants author**. Until that action is closed, this contract stays `status: escalated`; the
-recommended default remains: shell chrome is shell-owned, domain labels are host-owned, and the shell
-does not supply a domain-label fallback localizer.
+The sprint action **"Drive residual FC-A11Y, FC-L10N, FC-DOC, and FC-SETTINGS wording decisions to
+confirmed or dated owned follow-up"** is closed for FC-L10N by this disposition. No dated follow-up is
+required.
 
 ## FC-DOC linkage (deferred to Story 1.5)
 

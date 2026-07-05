@@ -4,27 +4,27 @@
     {
       "story": "8-5-skill-corpus-and-build-time-agent-support",
       "path": "docs/skills/frontcomposer/index.md",
-      "sha256": "899b728ae4d31b3f98b4e1c71a697a82c8658301a58a2d5aa754570213f8c65c"
+      "sha256": "048baff44a66c798b951d521f08e878ce7700e45f4c0ae15bc4982de07cd4b1f"
     },
     {
       "story": "9-1-build-time-drift-detection",
       "path": "docs/diagnostics/samples/registry-drift-report.json",
-      "sha256": "c7aed347b3904d041899dbbb02ec29d66289184595fbe8c490b187e48e476c75"
+      "sha256": "f62c5595bd4bb39cdf11f98884df5155f09ee02ec1c32dba12715c93dc4116a8"
     },
     {
       "story": "9-2-cli-inspection-and-migration-tools",
       "path": "docs/migrations/9.1-to-9.2.md",
-      "sha256": "eedbe85ecad96fb896b54051e4d4cb00d45360b9ebbdc2ae8c85d209311fde85"
+      "sha256": "e0e60ce97dbbf4050c6e01ab97803abacdfaefeba8858140b690db4d1f8b173a"
     },
     {
       "story": "9-3-ide-parity-and-developer-experience",
       "path": "docs/ide-parity-matrix.md",
-      "sha256": "69a88d3ae19ac2f5ed3fb665f5be5418f0e7a7bd385a58d3a398c007debb1dcc"
+      "sha256": "e62f0bdfb41656e20dd52ee4ac7ff68354674759f42db62408c529ad1d73e079"
     },
     {
       "story": "9-4-diagnostic-id-system-and-deprecation-policy",
       "path": "docs/diagnostics/diagnostic-registry.json",
-      "sha256": "cc8c5599d85e4e05c8d0dff25ac07a3e2d14db5a6c90f16d2cdc34fa97e21264"
+      "sha256": "7cfd52563547fed24794e173d28684e40872b77984efad82b8dd4bed6c37b6b1"
     }
   ]
 }

@@ -183,7 +183,12 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
             entry.LaneKey,
             entry.EntityKey,
             entry.MessageId,
-            observation.ObservedAt ?? _timeProvider.GetUtcNow()));
+            // Treat a default/MinValue observation timestamp as absent: a non-nullable EventStore
+            // Timestamp DTO field that deserializes to default(DateTimeOffset) would otherwise be
+            // trusted as a real stamp and always sort first in Snapshot's OrderBy(CreatedAt).
+            observation.ObservedAt is { } observedAt && observedAt > DateTimeOffset.MinValue
+                ? observedAt
+                : _timeProvider.GetUtcNow()));
     }
 
     private static bool IsConfirmedOutcome(PendingCommandTerminalOutcome outcome) =>

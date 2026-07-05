@@ -10,10 +10,11 @@
 - [ ] MCP doc search performed (or web fallback) and references captured
 - [ ] Acceptance Criteria cross-checked against implementation
 - [ ] File List reviewed and validated for completeness
-- [ ] `python3 eng/validate-story-artifacts.py --story {{story_path}}` passed, or exact blocker recorded
-- [ ] Mechanical reconciliation gate enforced before `done`: a non-zero validator exit keeps the story `in-progress` regardless of CRITICAL count (matches `review_completion` `artifact_validation_failed`)
+- [ ] `python3 eng/validate-story-artifacts.py --story {{story_path}}` passed. If the command cannot execute, record the exact environmental blocker.
+- [ ] Mechanical reconciliation gate enforced before `done`: a non-zero validator exit is `artifact_validation_failed` and keeps the story `in-progress` regardless of CRITICAL count.
+- [ ] Any suspected validator false positive is tracked as a validator fix with regression evidence; it is not a manual bypass path.
 - [ ] Tests identified and mapped to ACs; gaps noted
-- [ ] Test evidence language verified: exact local commands/results, blockers, fallback evidence, and CI-authoritative lanes are clearly separated
+- [ ] Test evidence language verified: exact local commands/results, blocker timing, VSTest/socket or network blocker text, xUnit in-process fallback evidence, Playwright/browser CI-gate handoff, and CI-authoritative lanes are clearly separated
 - [ ] Code quality review performed on changed files
 - [ ] Security review performed on changed files and dependencies
 - [ ] Outcome decided (Approve/Changes Requested/Blocked)

@@ -106,10 +106,12 @@ When baselines change, include a rationale paragraph plus before/after screensho
 
 ## Named CI Evidence Follow-Ups
 
-When local browser execution is blocked, the story or retrospective must name the CI owner, lane, and
-artifact path expected to close the evidence gap. A generic "Playwright is socket-blocked locally" note
-is not enough for promotion when the story changes visual, hover/focus, touch, or screenshot-baseline
-behavior.
+When local browser execution is blocked, the story or retrospective must name the exact command, local
+result, blocker timing, fallback evidence, CI owner, CI lane, and artifact path expected to close the
+evidence gap. A generic "Playwright is socket-blocked locally" note is not enough for promotion when the
+story changes visual, hover/focus, touch, or screenshot-baseline behavior. If browser assertions did not
+run, local typecheck, bUnit, or direct xUnit evidence is fallback evidence only; CI remains authoritative
+for the browser/a11y/visual gate.
 
 | ID | Source | Lane | Owner | Closure evidence |
 | --- | --- | --- | --- | --- |
