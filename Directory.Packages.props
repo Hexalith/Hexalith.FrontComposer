@@ -44,9 +44,6 @@
          minor bump cannot silently drop the dependency. -->
     <PackageVersion Include="System.Reactive" Version="7.0.0-rc.1" />
   </ItemGroup>
-  <ItemGroup Label="Blazor">
-    <PackageVersion Include="Fluxor.Blazor.Web" Version="6.9.0" />
-  </ItemGroup>
   <ItemGroup Label="MCP">
     <PackageVersion Include="ModelContextProtocol.AspNetCore" Version="1.4.0" />
   </ItemGroup>
