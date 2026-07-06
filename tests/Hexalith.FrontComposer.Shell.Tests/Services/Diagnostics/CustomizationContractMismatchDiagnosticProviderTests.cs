@@ -24,7 +24,9 @@ public sealed class CustomizationContractMismatchDiagnosticProviderTests {
         diagnostic.ComponentTypeName.ShouldBe("Demo.CounterSlot");
         diagnostic.Role.ShouldBe("DetailRecord");
         diagnostic.FieldName.ShouldBe("Count");
+        diagnostic.Expected.ShouldContain("declared contract version 2.0.0");
         diagnostic.Expected.ShouldContain("2.0.0");
+        diagnostic.Got.ShouldContain("installed contract version 1.0.0");
         diagnostic.Got.ShouldContain("1.0.0");
         diagnostic.Got.ShouldContain("MajorMismatch");
         diagnostic.DocsLink.ShouldBe("https://hexalith.github.io/FrontComposer/diagnostics/HFC1041");

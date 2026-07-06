@@ -10,8 +10,12 @@ import { ShellPage, ViewportBreakpoints } from '../page-objects/shell.page.js';
 test.describe('Story 8.5: navigation rail responsive behavior @p0 @smoke', () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(() => {
-      window.localStorage.clear();
-      window.sessionStorage.clear();
+      const marker = '__frontcomposer_e2e_sidebar_storage_cleared';
+      if (window.sessionStorage.getItem(marker) !== 'true') {
+        window.localStorage.clear();
+        window.sessionStorage.clear();
+        window.sessionStorage.setItem(marker, 'true');
+      }
     });
   });
 
@@ -116,7 +120,8 @@ test.describe('Story 8.5: navigation rail responsive behavior @p0 @smoke', () =>
 
     await expect(shell.counterCategory).toBeVisible();
     await shell.counterCategory.click();
-    await expect(shell.counterFlyout).toBeVisible();
+    await expect(shell.counterFlyout).toHaveAttribute('role', 'menu');
+    await expect(shell.counterProjectionItem).toBeVisible();
     await expect(shell.counterProjectionItem).toHaveCount(1);
   });
 
@@ -131,13 +136,12 @@ test.describe('Story 8.5: navigation rail responsive behavior @p0 @smoke', () =>
 
     await shell.openCounterFlyoutWithKeyboard('Space');
 
-    await expect(shell.counterFlyout).toBeVisible();
     await expect(shell.counterFlyout).toHaveAttribute('role', 'menu');
     await expect(shell.counterProjectionItem).toBeVisible();
 
     await page.keyboard.press('Escape');
 
-    await expect(shell.counterFlyout).toBeHidden();
+    await expect(shell.counterProjectionItem).toBeHidden();
     await expect(page.locator(':focus')).toHaveAttribute('data-testid', 'fc-nav-context-Counter');
   });
 
@@ -178,19 +182,19 @@ test.describe('Story 8.5: navigation rail responsive behavior @p0 @smoke', () =>
       await page.goto('/counter/counter-projection');
       await shell.shellRoot.waitFor();
       await shell.counterCategory.click();
-      await expect(shell.counterFlyout).toBeVisible();
+      await expect(shell.counterProjectionItem).toBeVisible();
 
       await assertActiveRailUsesAccentThreadOnly(shell);
       await expectNoBlockingAxeViolations(page, {
         route: `Story 8.5 navigation rail ${theme}`,
         include: [
-          '[data-testid="fc-navigation-rail"]',
-          '[data-testid="fc-nav-flyout-Counter"]',
+          '[data-testid="fc-shell-navigation"] [data-testid="fc-navigation-rail"]',
+          '[data-testid="fc-shell-navigation"] [data-testid="fc-nav-flyout-Counter"]',
         ],
         requiredSelectors: [
-          '[data-testid="fc-navigation-rail"]',
-          '[data-testid="fc-nav-flyout-Counter"]',
-          '[data-testid="fc-nav-flyout-projection-Counter-CounterProjection"]',
+          '[data-testid="fc-shell-navigation"] [data-testid="fc-navigation-rail"]',
+          '[data-testid="fc-shell-navigation"] [data-testid="fc-nav-flyout-Counter"]',
+          '[data-testid="fc-shell-navigation"] [data-testid="fc-nav-flyout-projection-Counter-CounterProjection"]',
         ],
         artifactPath: testInfo.outputPath(`axe-story-8-5-nav-${theme.toLowerCase()}.json`),
       });

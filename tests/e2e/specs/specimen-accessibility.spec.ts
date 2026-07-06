@@ -202,10 +202,8 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
       await page.setViewportSize({ width: Math.floor(1280 / scale), height: 900 });
       await gotoSpecimen(page, route);
 
-      await page.getByTestId('fc-command-submit').scrollIntoViewIfNeeded();
-      await expect(page.getByTestId('fc-command-submit')).toBeInViewport();
-      await page.getByTestId('fc-multi-level-nav').scrollIntoViewIfNeeded();
-      await expect(page.getByTestId('fc-multi-level-nav')).toBeInViewport();
+      await scrollTestIdIntoView(page, 'fc-command-submit');
+      await scrollTestIdIntoView(page, 'fc-multi-level-nav');
       const horizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
       expect(horizontalOverflow).toBeLessThanOrEqual(24);
     });
@@ -215,6 +213,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     test(`visual baseline ${combination.theme} ${combination.density}`, async ({ page }) => {
       await page.goto(`/__frontcomposer/specimens/type?theme=${combination.theme}&density=${combination.density}`);
       await expect(page.getByTestId('fc-type-specimen')).toBeVisible();
+      await prepareSpecimenVisualBaseline(page);
       await expect(page).toHaveScreenshot(combination.artifact, {
         fullPage: true,
         animations: 'disabled',
@@ -303,6 +302,43 @@ const gotoSpecimen = async (page: import('@playwright/test').Page, route: Specim
     const count = await page.locator(selector).count();
     expect(count, `${route.path} missing ${selector}`).toBeGreaterThan(0);
   }
+};
+
+const prepareSpecimenVisualBaseline = async (page: import('@playwright/test').Page): Promise<void> => {
+  await page.addStyleTag({
+    content: `
+      .pa-3.fluent-layout-item {
+        overflow: visible !important;
+        height: auto !important;
+        max-height: none !important;
+      }
+
+      .fc-shell-root,
+      fluent-layout,
+      .fluent-layout {
+        height: auto !important;
+        min-height: auto !important;
+        overflow: visible !important;
+      }
+    `,
+  });
+
+  await page.evaluate(() => {
+    window.scrollTo(0, 0);
+    for (const element of document.querySelectorAll<HTMLElement>('.fluent-layout-item')) {
+      element.scrollTop = 0;
+    }
+  });
+  await expect(page.getByTestId('fc-type-specimen')).toBeInViewport();
+};
+
+const scrollTestIdIntoView = async (page: import('@playwright/test').Page, testId: string): Promise<void> => {
+  await expect(async () => {
+    const locator = page.getByTestId(testId);
+    await expect(locator).toHaveCount(1);
+    await locator.scrollIntoViewIfNeeded();
+    await expect(locator).toBeInViewport();
+  }).toPass({ timeout: 5_000 });
 };
 
 const tabUntilTestId = async (page: import('@playwright/test').Page, testId: string): Promise<void> => {

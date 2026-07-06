@@ -31,11 +31,10 @@ public sealed class FcPageToolbarTests : LayoutComponentTestBase {
         search.Instance.Id.ShouldBe("fc-page-toolbar-search-input");
         search.Instance.Value.ShouldBe("orders");
         search.Instance.Placeholder.ShouldBe("Search orders");
+        search.Instance.AriaLabel.ShouldBe("Search orders");
         search.Instance.AdditionalAttributes.ShouldNotBeNull();
         search.Instance.AdditionalAttributes!["data-testid"].ShouldBe("fc-page-toolbar-search");
-        IElement searchLabel = cut.Find("label[for='fc-page-toolbar-search-input']");
-        searchLabel.ClassList.ShouldContain("fc-sr-only");
-        searchLabel.TextContent.ShouldBe("Search orders");
+        cut.FindAll("label[for='fc-page-toolbar-search-input']").ShouldBeEmpty();
 
         cut.FindAll("[data-testid='fc-page-toolbar-filter-trigger']").ShouldBeEmpty();
         cut.FindAll("[data-testid='fc-page-toolbar-view-trigger']").ShouldBeEmpty();
@@ -66,14 +65,16 @@ public sealed class FcPageToolbarTests : LayoutComponentTestBase {
         IElement trigger = cut.Find("[data-testid='fc-page-toolbar-filter-trigger']");
         trigger.GetAttribute("aria-haspopup").ShouldBe("dialog");
         trigger.GetAttribute("aria-expanded").ShouldBe("false");
-        cut.FindAll("[data-testid='fc-page-toolbar-filter-popover']").ShouldBeEmpty();
+        trigger.GetAttribute("role").ShouldBe("button");
+        IRenderedComponent<FluentPopover> popover = cut.FindComponent<FluentPopover>();
+        popover.Instance.Opened.ShouldBeFalse();
 
         trigger.Click();
 
         trigger = cut.Find("[data-testid='fc-page-toolbar-filter-trigger']");
         trigger.GetAttribute("aria-expanded").ShouldBe("true");
 
-        IRenderedComponent<FluentPopover> popover = cut.FindComponent<FluentPopover>();
+        popover = cut.FindComponent<FluentPopover>();
         popover.Instance.AnchorId.ShouldBe("fc-page-toolbar-filter-trigger");
         popover.Instance.Opened.ShouldBeTrue();
         popover.Instance.AdditionalAttributes.ShouldNotBeNull();
@@ -93,6 +94,7 @@ public sealed class FcPageToolbarTests : LayoutComponentTestBase {
         IRenderedComponent<FluentMenuButton> menuButton = cut.FindComponent<FluentMenuButton>();
         menuButton.Instance.AdditionalAttributes.ShouldNotBeNull();
         menuButton.Instance.AdditionalAttributes!["data-testid"].ShouldBe("fc-page-toolbar-view-trigger");
+        menuButton.Instance.AdditionalAttributes!["role"].ShouldBe("button");
         menuButton.Markup.ShouldContain("View");
 
         cut.FindComponent<FluentMenu>().ShouldNotBeNull();

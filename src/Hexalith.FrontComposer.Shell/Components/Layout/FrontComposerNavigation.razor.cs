@@ -13,8 +13,10 @@ using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Microsoft.JSInterop;
 
 namespace Hexalith.FrontComposer.Shell.Components.Layout;
 
@@ -35,9 +37,13 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// </para>
 /// </remarks>
 public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable {
+    private const string MenuModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-menu.js";
+
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
 
     [Inject] private NavigationManager Navigation { get; set; } = default!;
+
+    [Inject] private IJSRuntime JS { get; set; } = default!;
 
     [Inject] private IState<FrontComposerNavigationState> NavState { get; set; } = default!;
 
@@ -51,6 +57,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     /// <see cref="NavigationManager.LocationChanged"/> subscription) so exactly one item highlights.
     /// </summary>
     private string? _activeNavHref;
+    private IJSObjectReference? _menuModule;
 
     private string RailWidth => ShouldRenderIconOnlyRail() ? "48px" : "72px";
 
@@ -166,6 +173,15 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     /// <inheritdoc />
     public new async ValueTask DisposeAsync() {
         Navigation.LocationChanged -= HandleLocationChanged;
+        if (_menuModule is not null) {
+            try {
+                await _menuModule.DisposeAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is JSDisconnectedException or ObjectDisposedException or OperationCanceledException) {
+                // Circuit is already gone.
+            }
+        }
+
         await base.DisposeAsync().ConfigureAwait(false);
         GC.SuppressFinalize(this);
     }
@@ -409,6 +425,9 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     private static string RailAnchorId(string boundedContext)
         => $"fc-rail-{boundedContext}";
 
+    private static string FlyoutMenuId(string boundedContext)
+        => $"fc-nav-flyout-menu-{Slug(boundedContext)}";
+
     private static string ContextTileClass(bool active)
         => active
             ? "fc-navigation-rail__tile fc-navigation-rail__tile--active"
@@ -495,6 +514,30 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
             Navigation.NavigateTo(soleDestinationHref);
         }
     }
+
+    private EventCallback<MouseEventArgs> ContextTileClickCallback(string boundedContext, string? soleDestinationHref) {
+        if (string.IsNullOrWhiteSpace(soleDestinationHref)) {
+            return default;
+        }
+
+        string href = soleDestinationHref;
+        return EventCallback.Factory.Create<MouseEventArgs>(
+            this,
+            _ => HandleContextTileActivated(boundedContext, href));
+    }
+
+    private async Task OpenContextFlyoutAsync(string menuId, string anchorId) {
+        try {
+            IJSObjectReference module = await EnsureMenuModuleAsync().ConfigureAwait(false);
+            _ = await module.InvokeAsync<bool>("openMenu", menuId, anchorId).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is JSDisconnectedException or ObjectDisposedException or OperationCanceledException or InvalidOperationException) {
+            // The native Fluent keyboard path remains available; ignore circuit teardown races.
+        }
+    }
+
+    private async Task<IJSObjectReference> EnsureMenuModuleAsync()
+        => _menuModule ??= await JS.InvokeAsync<IJSObjectReference>("import", MenuModulePath).ConfigureAwait(false);
 
     private void HandleProjectionMenuItemClicked(string boundedContext, string projectionFqn, string route) {
         HandleNavItemClicked(boundedContext, CapabilityIds.ForProjection(boundedContext, projectionFqn));

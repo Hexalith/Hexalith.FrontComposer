@@ -105,7 +105,8 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
     private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor> _templateSectionsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor[]
     {
         new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Body", "Body", "Body"),
-        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Row", "Row", "Row")
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Row", "Row", "Row"),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Detail", "Detail", "Detail")
     };
 
     private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateField(DashboardWrongShapeProjection row, string columnPropertyName)
@@ -227,6 +228,174 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
             builder.CloseElement();
             }
             builder.CloseElement();
+        };
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDetailSection(DashboardWrongShapeProjectionState state)
+    {
+        if (state.Items is null || state.Items.Count == 0)
+        {
+            return static _ => { };
+        }
+
+        return builder =>
+        {
+            int seq = 0;
+            global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);
+            object? _expandedItemKey = _expandedEntry?.ItemKey;
+            DashboardWrongShapeProjection? _expandedItem = null;
+            if (_expandedItemKey is not null)
+            {
+                foreach (var __candidate in state.Items)
+                {
+                    if (_itemKeyAccessor(__candidate).Equals(_expandedItemKey))
+                    {
+                        _expandedItem = __candidate;
+                        break;
+                    }
+                }
+            }
+            bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedItem is null;
+
+        // Story 4-5 — detail panel host; ChildContent is the factored EmitDetailRecordBody output.
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(seq++);
+        builder.AddAttribute(seq++, "ViewKey", _ephemeralViewKey);
+        builder.AddAttribute(seq++, "PanelId", _expandPanelId);
+        builder.AddAttribute(seq++, "HasExpanded", _expandedItem is not null);
+        builder.AddAttribute(seq++, "DetailPanelAriaLabel", FcShellLocalizer["ExpandInRowDetailPanelAriaLabelTemplate", _expandedItemKey?.ToString() ?? string.Empty].Value);
+        builder.AddAttribute(seq++, "SuppressedAnnouncement", _expandedItemHiddenByFilter ? FcShellLocalizer["ExpandInRowDetailSuppressedByFilterAnnouncement"].Value : null);
+        builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((RenderTreeBuilder builder) =>
+        {
+            if (_expandedItem is null) { return; }
+            int seq = 800;
+        var entity = _expandedItem;
+
+        builder.OpenComponent<FluentCard>(seq++);
+        builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
+        {
+            int fieldSeq = 800;
+
+            b.OpenElement(fieldSeq++, "div");
+            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(fieldSeq++);
+            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            {
+                labelBuilder.AddContent(0, "Id");
+            }));
+            b.CloseComponent();
+            if (HasProjectionSlot("Id"))
+            {
+                RenderSlotField(entity,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Id,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Id);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.Id);
+                }));
+                b.CloseComponent();
+            }
+            b.CloseElement();
+            b.OpenElement(fieldSeq++, "div");
+            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(fieldSeq++);
+            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            {
+                labelBuilder.AddContent(0, "Free Form Note");
+            }));
+            b.CloseComponent();
+            if (HasProjectionSlot("FreeFormNote"))
+            {
+                RenderSlotField(entity,
+                    fieldName: "FreeFormNote",
+                    displayName: "Free Form Note",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.FreeFormNote,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.FreeFormNote);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.FreeFormNote);
+                }));
+                b.CloseComponent();
+            }
+            b.CloseElement();
+            b.OpenElement(fieldSeq++, "div");
+            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(fieldSeq++);
+            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            {
+                labelBuilder.AddContent(0, "Recorded At");
+            }));
+            b.CloseComponent();
+            if (HasProjectionSlot("RecordedAt"))
+            {
+                RenderSlotField(entity,
+                    fieldName: "RecordedAt",
+                    displayName: "Recorded At",
+                    format: "d",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.RecordedAt,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.RecordedAt.ToString("d", CultureInfo.CurrentCulture));
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.RecordedAt.ToString("d", CultureInfo.CurrentCulture));
+                }));
+                b.CloseComponent();
+            }
+            b.CloseElement();
+        }));
+        builder.CloseComponent();
+        }));
+        builder.CloseComponent();
         };
     }
 
@@ -540,10 +709,10 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
     {
         if (ReconciliationSweepState.Value.MarkersByViewKey.TryGetValue(_viewKey, out var marker) && marker.ExpiresAt > TimeProvider.GetUtcNow())
         {
-            return "fc-datagrid-host fc-reconciliation-sweep";
+            return "fc-datagrid-host fc-projection-grid fc-reconciliation-sweep";
         }
 
-        return "fc-datagrid-host";
+        return "fc-datagrid-host fc-projection-grid";
     }
 
     private static bool AnyRealFilterActive(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)
@@ -1034,7 +1203,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
                 entityLabel: "Dashboard Wrong Shape",
                 entityPluralLabel: "dashboard wrong shapes",
                 defaultBody: defaultBody,
-                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : string.Equals(sectionName, "Detail", System.StringComparison.Ordinal) ? RenderTemplateDetailSection(state) : static _ => { },
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
@@ -1057,7 +1226,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
                 columns: _templateColumnsDescriptor,
                 sections: _templateSectionsDescriptor,
                 defaultBody: defaultBody,
-                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : string.Equals(sectionName, "Detail", System.StringComparison.Ordinal) ? RenderTemplateDetailSection(state) : static _ => { },
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 

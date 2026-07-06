@@ -229,7 +229,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             string markup = cut.Markup;
             markup.ShouldContain("data-fc-datagrid");
             markup.ShouldContain("fc-selected-template");
-            markup.ShouldContain("sections:2");
+            markup.ShouldContain("sections:3");
             markup.ShouldContain("1,234");
             markup.ShouldNotContain("fluent-data-grid");
         });

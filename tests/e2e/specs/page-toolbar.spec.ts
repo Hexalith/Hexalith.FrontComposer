@@ -27,11 +27,12 @@ test.describe('Story 8.6: reusable page toolbar @p1 @smoke', () => {
     await specimen.searchInput.blur();
     await expect(specimen.searchState).toContainText('Current search: urgent');
 
-    await expect(specimen.filterPopover).toHaveCount(0);
+    await expect(specimen.filterPopover).toHaveAttribute('opened', 'false');
     await expect(specimen.filterTrigger).toHaveAttribute('aria-expanded', 'false');
     await specimen.filterTrigger.click();
     await expect(specimen.filterTrigger).toHaveAttribute('aria-expanded', 'true');
-    await expect(specimen.filterPopover).toBeVisible();
+    await expect(specimen.filterPopover).toHaveAttribute('opened', 'true');
+    await expect(specimen.filterContent).toBeVisible();
     await expect(specimen.filterContent).toContainText('Status: Active');
 
     await specimen.viewTrigger.click();

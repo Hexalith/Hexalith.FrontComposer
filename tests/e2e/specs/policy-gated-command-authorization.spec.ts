@@ -42,11 +42,7 @@ test.describe('Story 4.4: policy-gated command authorization', () => {
     await expect(form.getByTestId('fc-confirmed')).toBeVisible();
   });
 
-  test('denied protected specimen command fails closed without leaking policy metadata', async ({
-    page,
-    lifecycle,
-    tenant,
-  }) => {
+  test('denied protected specimen command fails closed without leaking policy metadata', async ({ page, tenant }) => {
     expect(tenant.tenantId).toBeTruthy();
 
     await gotoTypeSpecimen(page);
@@ -56,9 +52,9 @@ test.describe('Story 4.4: policy-gated command authorization', () => {
     await expect(specimen).toContainText('Permission required');
     await expect(specimen).toContainText(`You do not have permission to ${DENIED_ACTION_LABEL}.`);
     await expect(policyForm(page, DENIED_FORM_LABEL)).toHaveCount(0);
+    await expect(page.getByTestId(`fc-lifecycle-${DENIED_COMMAND_ID}`)).toHaveCount(0);
     await expect(specimen).not.toContainText('Specimens.PolicyDenied');
     await expect(specimen).not.toContainText('PolicyDeniedSpecimenCommand');
-    await lifecycle.expectState(DENIED_COMMAND_ID, 'idle');
   });
 });
 

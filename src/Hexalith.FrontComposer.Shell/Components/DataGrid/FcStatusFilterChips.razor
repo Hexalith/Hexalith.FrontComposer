@@ -13,6 +13,7 @@
         string chipAriaLabel = Localizer["StatusFilterChipAriaLabelTemplate", label, stateLabel].Value;
         <FluentButton Appearance="ButtonAppearance.Subtle"
                       Class="fc-status-filter-chip"
+                      role="button"
                       aria-pressed="@(active ? "true" : "false")"
                       aria-label="@chipAriaLabel"
                       data-fc-status-chip="@slot"

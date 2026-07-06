@@ -21,7 +21,7 @@ export class PageToolbarSpecimenPage {
     this.page = page;
     this.root = page.getByTestId('fc-page-toolbar-specimen');
     this.toolbar = page.getByTestId('fc-page-toolbar');
-    this.searchInput = page.getByLabel('Search orders');
+    this.searchInput = page.getByTestId('fc-page-toolbar-search').locator('input');
     this.searchState = page.getByTestId('fc-page-toolbar-search-state');
     this.filterTrigger = page.getByTestId('fc-page-toolbar-filter-trigger');
     this.filterPopover = page.getByTestId('fc-page-toolbar-filter-popover');

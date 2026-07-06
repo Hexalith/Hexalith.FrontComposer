@@ -81,67 +81,65 @@
         int aggregateCount = AggregateBoundedContextCount(manifest, discovery.Counts);
         bool bcShowsNew = !discovery.SeenCapabilities.Contains(bcCapabilityId) && aggregateCount > 0;
         bool activeContext = IsContextActive(manifest.BoundedContext, projections, entries);
+        string menuId = FlyoutMenuId(manifest.BoundedContext);
         string? soleHref = SoleDestinationHref(projections, entries);
 
-        <FluentButton @key="@($"fc-nav-tile-{manifest.BoundedContext}")"
-                      id="@anchorId"
-                      Appearance="@ButtonAppearance.Subtle"
-                      Class="@ContextTileClass(activeContext)"
-                      Title="@(iconOnly ? LocalizeManifestName(manifest) : null)"
-                      aria-label="@(iconOnly ? LocalizeManifestName(manifest) : null)"
-                      aria-current="@(activeContext ? "page" : null)"
-                      data-testid="@($"fc-nav-context-{manifest.BoundedContext}")"
-                      data-active="@activeContext"
-                      tabindex="0"
-                      OnClick="@(_ => HandleContextTileActivated(manifest.BoundedContext, soleHref))">
-            <FluentStack Class="fc-navigation-rail__tile-content"
-                         Orientation="Orientation.Vertical"
-                         HorizontalAlignment="HorizontalAlignment.Center"
-                         VerticalAlignment="VerticalAlignment.Center"
-                         VerticalGap="2px"
-                         Width="100%">
-                <FluentIcon Value="@ResolveNavEntryIcon(manifest.Icon, activeContext)" Color="Color.Primary" />
-                @if (!iconOnly)
-                {
-                    <FluentText Class="fc-navigation-rail__label"
-                                Size="TextSize.Size200"
-                                Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@LocalizeManifestName(manifest)</FluentText>
-                }
-            </FluentStack>
-            @if (aggregateCount > 0 || bcShowsNew)
-            {
-                <FluentStack Class="fc-navigation-rail__tile-badges"
-                             Horizontal="true"
-                             HorizontalAlignment="HorizontalAlignment.End"
-                             VerticalAlignment="VerticalAlignment.Center"
-                             HorizontalGap="2px">
-                    @if (aggregateCount > 0)
-                    {
-                        <FluentBadge Appearance="@BadgeAppearance.Filled"
-                                     Color="@BadgeColor.Brand"
-                                     data-testid="@($"fc-rail-badge-{manifest.BoundedContext}")">@aggregateCount</FluentBadge>
-                    }
-                    @if (bcShowsNew)
-                    {
-                        <FluentBadge Appearance="@BadgeAppearance.Tint"
-                                     Color="@BadgeColor.Informative"
-                                     data-testid="@($"fc-rail-new-{manifest.BoundedContext}")">@Localizer["NewCapabilityBadgeText"].Value</FluentBadge>
-                    }
-                </FluentStack>
-            }
-        </FluentButton>
-        <FluentTooltip @key="@($"fc-nav-tooltip-{manifest.BoundedContext}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
-            @LocalizeManifestName(manifest)
-        </FluentTooltip>
         @if (soleHref is null)
         {
             <FluentMenu @key="@($"fc-nav-flyout-{manifest.BoundedContext}")"
-                        Trigger="@anchorId"
-                        PersistOnItemClick="false"
-                        data-testid="@($"fc-nav-flyout-{manifest.BoundedContext}")"
-                        role="menu"
-                        aria-label="@LocalizeManifestName(manifest)">
-                <FluentMenuList>
+                        id="@menuId"
+                        PersistOnItemClick="false">
+                <FluentMenuButton @key="@($"fc-nav-tile-{manifest.BoundedContext}")"
+                                  id="@anchorId"
+                                  Appearance="@ButtonAppearance.Subtle"
+                                  Class="@ContextTileClass(activeContext)"
+                                  Title="@(iconOnly ? LocalizeManifestName(manifest) : null)"
+                                  aria-label="@(iconOnly ? LocalizeManifestName(manifest) : null)"
+                                  aria-current="@(activeContext ? "page" : null)"
+                                  data-testid="@($"fc-nav-context-{manifest.BoundedContext}")"
+                                  data-active="@(activeContext ? "true" : "false")"
+                                  role="button"
+                                  tabindex="0"
+                                  OnClick="@(_ => OpenContextFlyoutAsync(menuId, anchorId))">
+                    <FluentStack Class="fc-navigation-rail__tile-content"
+                                 Orientation="Orientation.Vertical"
+                                 HorizontalAlignment="HorizontalAlignment.Center"
+                                 VerticalAlignment="VerticalAlignment.Center"
+                                 VerticalGap="2px"
+                                 Width="100%">
+                        <FluentIcon Value="@ResolveNavEntryIcon(manifest.Icon, activeContext)" Color="Color.Primary" />
+                        @if (!iconOnly)
+                        {
+                            <FluentText Class="fc-navigation-rail__label"
+                                        Size="TextSize.Size200"
+                                        Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@LocalizeManifestName(manifest)</FluentText>
+                        }
+                    </FluentStack>
+                    @if (aggregateCount > 0 || bcShowsNew)
+                    {
+                        <FluentStack Class="fc-navigation-rail__tile-badges"
+                                     Horizontal="true"
+                                     HorizontalAlignment="HorizontalAlignment.End"
+                                     VerticalAlignment="VerticalAlignment.Center"
+                                     HorizontalGap="2px">
+                            @if (aggregateCount > 0)
+                            {
+                                <FluentBadge Appearance="@BadgeAppearance.Filled"
+                                             Color="@BadgeColor.Brand"
+                                             data-testid="@($"fc-rail-badge-{manifest.BoundedContext}")">@aggregateCount</FluentBadge>
+                            }
+                            @if (bcShowsNew)
+                            {
+                                <FluentBadge Appearance="@BadgeAppearance.Tint"
+                                             Color="@BadgeColor.Informative"
+                                             data-testid="@($"fc-rail-new-{manifest.BoundedContext}")">@Localizer["NewCapabilityBadgeText"].Value</FluentBadge>
+                            }
+                        </FluentStack>
+                    }
+                </FluentMenuButton>
+                <FluentMenuList data-testid="@($"fc-nav-flyout-{manifest.BoundedContext}")"
+                                role="menu"
+                                aria-label="@LocalizeManifestName(manifest)">
                     @foreach (string projectionFqn in projections)
                     {
                         int count = LookupCount(projectionFqn, discovery.Counts);
@@ -185,6 +183,62 @@
                     }
                 </FluentMenuList>
             </FluentMenu>
+            <FluentTooltip @key="@($"fc-nav-tooltip-{manifest.BoundedContext}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
+                @LocalizeManifestName(manifest)
+            </FluentTooltip>
+        }
+        else
+        {
+            <FluentButton @key="@($"fc-nav-tile-{manifest.BoundedContext}")"
+                          id="@anchorId"
+                          Appearance="@ButtonAppearance.Subtle"
+                          Class="@ContextTileClass(activeContext)"
+                          Title="@(iconOnly ? LocalizeManifestName(manifest) : null)"
+                          aria-label="@(iconOnly ? LocalizeManifestName(manifest) : null)"
+                          aria-current="@(activeContext ? "page" : null)"
+                          data-testid="@($"fc-nav-context-{manifest.BoundedContext}")"
+                          data-active="@(activeContext ? "true" : "false")"
+                          tabindex="0"
+                          OnClick="@ContextTileClickCallback(manifest.BoundedContext, soleHref)">
+                <FluentStack Class="fc-navigation-rail__tile-content"
+                             Orientation="Orientation.Vertical"
+                             HorizontalAlignment="HorizontalAlignment.Center"
+                             VerticalAlignment="VerticalAlignment.Center"
+                             VerticalGap="2px"
+                             Width="100%">
+                    <FluentIcon Value="@ResolveNavEntryIcon(manifest.Icon, activeContext)" Color="Color.Primary" />
+                    @if (!iconOnly)
+                    {
+                        <FluentText Class="fc-navigation-rail__label"
+                                    Size="TextSize.Size200"
+                                    Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@LocalizeManifestName(manifest)</FluentText>
+                    }
+                </FluentStack>
+                @if (aggregateCount > 0 || bcShowsNew)
+                {
+                    <FluentStack Class="fc-navigation-rail__tile-badges"
+                                 Horizontal="true"
+                                 HorizontalAlignment="HorizontalAlignment.End"
+                                 VerticalAlignment="VerticalAlignment.Center"
+                                 HorizontalGap="2px">
+                        @if (aggregateCount > 0)
+                        {
+                            <FluentBadge Appearance="@BadgeAppearance.Filled"
+                                         Color="@BadgeColor.Brand"
+                                         data-testid="@($"fc-rail-badge-{manifest.BoundedContext}")">@aggregateCount</FluentBadge>
+                        }
+                        @if (bcShowsNew)
+                        {
+                            <FluentBadge Appearance="@BadgeAppearance.Tint"
+                                         Color="@BadgeColor.Informative"
+                                         data-testid="@($"fc-rail-new-{manifest.BoundedContext}")">@Localizer["NewCapabilityBadgeText"].Value</FluentBadge>
+                        }
+                    </FluentStack>
+                }
+            </FluentButton>
+            <FluentTooltip @key="@($"fc-nav-tooltip-{manifest.BoundedContext}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
+                @LocalizeManifestName(manifest)
+            </FluentTooltip>
         }
     }
     @foreach (string orphanBc in OrphanEntryContexts(navEntries))
@@ -192,52 +246,85 @@
         List<FrontComposerNavEntry> entries = EntriesForContext(navEntries, orphanBc);
         string anchorId = RailAnchorId(orphanBc);
         bool activeContext = IsContextActive(orphanBc, [], entries);
+        string menuId = FlyoutMenuId(orphanBc);
         string? soleHref = SoleDestinationHref([], entries);
 
-        <FluentButton @key="@($"fc-nav-tile-{orphanBc}")"
-                      id="@anchorId"
-                      Appearance="@ButtonAppearance.Subtle"
-                      Class="@ContextTileClass(activeContext)"
-                      Title="@(iconOnly ? orphanBc : null)"
-                      aria-label="@(iconOnly ? orphanBc : null)"
-                      aria-current="@(activeContext ? "page" : null)"
-                      data-testid="@($"fc-nav-context-{orphanBc}")"
-                      data-active="@activeContext"
-                      tabindex="0"
-                      OnClick="@(_ => HandleContextTileActivated(orphanBc, soleHref))">
-            <FluentStack Class="fc-navigation-rail__tile-content"
-                         Orientation="Orientation.Vertical"
-                         HorizontalAlignment="HorizontalAlignment.Center"
-                         VerticalAlignment="VerticalAlignment.Center"
-                         VerticalGap="2px"
-                         Width="100%">
-                <FluentIcon Value="@ResolveNavEntryIcon(null, activeContext)" Color="Color.Primary" />
-                @if (!iconOnly)
-                {
-                    <FluentText Class="fc-navigation-rail__label"
-                                Size="TextSize.Size200"
-                                Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@orphanBc</FluentText>
-                }
-            </FluentStack>
-        </FluentButton>
-        <FluentTooltip @key="@($"fc-nav-tooltip-{orphanBc}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
-            @orphanBc
-        </FluentTooltip>
         @if (soleHref is null)
         {
             <FluentMenu @key="@($"fc-nav-flyout-{orphanBc}")"
-                        Trigger="@anchorId"
-                        PersistOnItemClick="false"
-                        data-testid="@($"fc-nav-flyout-{orphanBc}")"
-                        role="menu"
-                        aria-label="@orphanBc">
-                <FluentMenuList>
+                        id="@menuId"
+                        PersistOnItemClick="false">
+                <FluentMenuButton @key="@($"fc-nav-tile-{orphanBc}")"
+                                  id="@anchorId"
+                                  Appearance="@ButtonAppearance.Subtle"
+                                  Class="@ContextTileClass(activeContext)"
+                                  Title="@(iconOnly ? orphanBc : null)"
+                                  aria-label="@(iconOnly ? orphanBc : null)"
+                                  aria-current="@(activeContext ? "page" : null)"
+                                  data-testid="@($"fc-nav-context-{orphanBc}")"
+                                  data-active="@(activeContext ? "true" : "false")"
+                                  role="button"
+                                  tabindex="0"
+                                  OnClick="@(_ => OpenContextFlyoutAsync(menuId, anchorId))">
+                    <FluentStack Class="fc-navigation-rail__tile-content"
+                                 Orientation="Orientation.Vertical"
+                                 HorizontalAlignment="HorizontalAlignment.Center"
+                                 VerticalAlignment="VerticalAlignment.Center"
+                                 VerticalGap="2px"
+                                 Width="100%">
+                        <FluentIcon Value="@ResolveNavEntryIcon(null, activeContext)" Color="Color.Primary" />
+                        @if (!iconOnly)
+                        {
+                            <FluentText Class="fc-navigation-rail__label"
+                                        Size="TextSize.Size200"
+                                        Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@orphanBc</FluentText>
+                        }
+                    </FluentStack>
+                </FluentMenuButton>
+                <FluentMenuList data-testid="@($"fc-nav-flyout-{orphanBc}")"
+                                role="menu"
+                                aria-label="@orphanBc">
                     @foreach (FrontComposerNavEntry entry in entries)
                     {
                         @navEntry(entry)
                     }
                 </FluentMenuList>
             </FluentMenu>
+            <FluentTooltip @key="@($"fc-nav-tooltip-{orphanBc}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
+                @orphanBc
+            </FluentTooltip>
+        }
+        else
+        {
+            <FluentButton @key="@($"fc-nav-tile-{orphanBc}")"
+                          id="@anchorId"
+                          Appearance="@ButtonAppearance.Subtle"
+                          Class="@ContextTileClass(activeContext)"
+                          Title="@(iconOnly ? orphanBc : null)"
+                          aria-label="@(iconOnly ? orphanBc : null)"
+                          aria-current="@(activeContext ? "page" : null)"
+                          data-testid="@($"fc-nav-context-{orphanBc}")"
+                          data-active="@(activeContext ? "true" : "false")"
+                          tabindex="0"
+                          OnClick="@ContextTileClickCallback(orphanBc, soleHref)">
+                <FluentStack Class="fc-navigation-rail__tile-content"
+                             Orientation="Orientation.Vertical"
+                             HorizontalAlignment="HorizontalAlignment.Center"
+                             VerticalAlignment="VerticalAlignment.Center"
+                             VerticalGap="2px"
+                             Width="100%">
+                    <FluentIcon Value="@ResolveNavEntryIcon(null, activeContext)" Color="Color.Primary" />
+                    @if (!iconOnly)
+                    {
+                        <FluentText Class="fc-navigation-rail__label"
+                                    Size="TextSize.Size200"
+                                    Weight="@(activeContext ? TextWeight.Semibold : TextWeight.Regular)">@orphanBc</FluentText>
+                    }
+                </FluentStack>
+            </FluentButton>
+            <FluentTooltip @key="@($"fc-nav-tooltip-{orphanBc}")" Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
+                @orphanBc
+            </FluentTooltip>
         }
     }
 </FluentStack>

@@ -91,6 +91,14 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
 
     private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;
 
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> _statusFilterSlots = new global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot[]
+    {
+        global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info,
+        global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning,
+        global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success,
+        global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral
+    };
+
     private readonly string _ephemeralViewKey = "Tickets:RoleSpecific.Tickets.StatusOverviewProjection:" + System.Guid.NewGuid().ToString("N");
 
     private readonly string _expandPanelId = "fc-expand-panel-Tickets-RoleSpecific-Tickets-StatusOverviewProjection-" + System.Guid.NewGuid().ToString("N");
@@ -511,6 +519,73 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
                 ? query
                 : null;
 
+    private static System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> ActiveStatusSlots(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)
+    {
+        if (snapshot is null
+            || !snapshot.Filters.TryGetValue(global::Hexalith.FrontComposer.Contracts.Rendering.ReservedFilterKeys.StatusKey, out var csv)
+            || string.IsNullOrWhiteSpace(csv))
+        {
+            return System.Array.Empty<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot>();
+        }
+
+        var slots = new System.Collections.Generic.List<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot>();
+        foreach (string part in csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            if (System.Enum.TryParse<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot>(part, ignoreCase: false, out var slot))
+            {
+                slots.Add(slot);
+            }
+        }
+
+        return slots;
+    }
+
+    private static System.Collections.Generic.IReadOnlyList<StatusOverviewProjection> TemplateItems(System.Collections.Generic.IReadOnlyList<StatusOverviewProjection>? items, global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)
+    {
+        System.Collections.Generic.IReadOnlyList<StatusOverviewProjection> source = items ?? System.Array.Empty<StatusOverviewProjection>();
+        var activeSlots = ActiveStatusSlots(snapshot);
+        if (activeSlots.Count == 0)
+        {
+            return source;
+        }
+
+        var activeSet = new System.Collections.Generic.HashSet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot>(activeSlots);
+        return source.Where(row => RowMatchesActiveStatus(row, activeSet)).ToList();
+    }
+
+    private static System.Collections.Generic.IEnumerable<StatusOverviewProjection> StatusFilteredItems(System.Collections.Generic.IEnumerable<StatusOverviewProjection> items, global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)
+    {
+        var activeSlots = ActiveStatusSlots(snapshot);
+        if (activeSlots.Count == 0)
+        {
+            return items;
+        }
+
+        var activeSet = new System.Collections.Generic.HashSet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot>(activeSlots);
+        return items.Where(row => RowMatchesActiveStatus(row, activeSet));
+    }
+
+    private static bool RowMatchesActiveStatus(StatusOverviewProjection row, System.Collections.Generic.ISet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> activeSlots)
+    {
+        global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot? __StatusSlot = StatusSlotForStatus(row.Status.ToString());
+        if (__StatusSlot.HasValue && activeSlots.Contains(__StatusSlot.Value))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot? StatusSlotForStatus(string? value)
+        => value switch
+        {
+            "Open" => global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info,
+            "InProgress" => global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning,
+            "Resolved" => global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success,
+            "Closed" => global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral,
+            _ => null,
+        };
+
     private static string ProjectionTypeFromViewKey()
     {
         int separator = _viewKey.IndexOf(':');
@@ -611,10 +686,10 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
     {
         if (ReconciliationSweepState.Value.MarkersByViewKey.TryGetValue(_viewKey, out var marker) && marker.ExpiresAt > TimeProvider.GetUtcNow())
         {
-            return "fc-datagrid-host fc-reconciliation-sweep";
+            return "fc-datagrid-host fc-projection-grid fc-reconciliation-sweep";
         }
 
-        return "fc-datagrid-host";
+        return "fc-datagrid-host fc-projection-grid";
     }
 
     private static bool AnyRealFilterActive(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)
@@ -1111,6 +1186,12 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
 
         builder.AddMarkupContent(seq++, "<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
 
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcStatusFilterChips>(seq++);
+        builder.AddAttribute(seq++, "ViewKey", _viewKey);
+        builder.AddAttribute(seq++, "AvailableSlots", _statusFilterSlots);
+        builder.AddAttribute(seq++, "ActiveSlots", ActiveStatusSlots(gridSnapshot));
+        builder.CloseComponent();
+
         builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);
         builder.AddAttribute(seq++, "ViewKey", _viewKey);
         builder.CloseComponent();
@@ -1140,7 +1221,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
                 projectionType: typeof(StatusOverviewProjection),
                 boundedContext: "Tickets",
                 role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.StatusOverview,
-                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<StatusOverviewProjection>)System.Array.Empty<StatusOverviewProjection>(),
+                items: TemplateItems(state.Items, gridSnapshot),
                 renderContext: RenderContext,
                 columns: _templateColumnsDescriptor,
                 sections: _templateSectionsDescriptor,
@@ -1167,7 +1248,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
                 boundedContext: "Tickets",
                 role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.StatusOverview,
                 renderContext: RenderContext,
-                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<StatusOverviewProjection>)System.Array.Empty<StatusOverviewProjection>(),
+                items: TemplateItems(state.Items, gridSnapshot),
                 columns: _templateColumnsDescriptor,
                 sections: _templateSectionsDescriptor,
                 defaultBody: defaultBody,

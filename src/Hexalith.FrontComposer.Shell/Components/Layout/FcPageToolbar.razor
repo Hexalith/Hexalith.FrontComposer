@@ -16,12 +16,12 @@
                  role="toolbar"
                  aria-label="@AriaLabel"
                  data-testid="@TestId">
-        <label class="fc-sr-only" for="@SearchInputId">@SearchAriaLabel</label>
         <FluentTextInput Id="@SearchInputId"
                          Value="@SearchValue"
                          ValueChanged="@OnSearchValueChangedAsync"
                          TextInputType="TextInputType.Search"
                          Placeholder="@SearchPlaceholder"
+                         AriaLabel="@SearchAriaLabel"
                          Class="fc-page-toolbar-search"
                          Style="flex: 1 1 18rem; min-width: min(100%, 14rem); max-width: 32rem;"
                          data-testid="fc-page-toolbar-search" />
@@ -34,33 +34,31 @@
                           aria-label="@FilterLabel"
                           aria-haspopup="dialog"
                           aria-expanded="@(_filterOpen ? "true" : "false")"
+                          role="button"
                           data-testid="fc-page-toolbar-filter-trigger">
                 @FilterLabel
             </FluentButton>
 
-            @if (_filterOpen)
-            {
-                <FluentPopover AnchorId="@FilterTriggerId"
-                               Opened="true"
-                               OpenedChanged="@OnFilterOpenChangedAsync"
-                               role="dialog"
-                               aria-labelledby="@FilterTitleId"
-                               data-testid="fc-page-toolbar-filter-popover">
-                    <FluentStack Orientation="Orientation.Vertical"
-                                 VerticalGap="8px"
-                                 Class="fc-page-toolbar-filter-panel"
-                                 Style="min-width: 16rem;">
-                        <FluentText Id="@FilterTitleId"
-                                    As="TextTag.Paragraph"
-                                    Size="TextSize.Size300"
-                                    Weight="TextWeight.Semibold"
-                                    Style="margin: 0;">
-                            @FilterLabel
-                        </FluentText>
-                        @FilterContent
-                    </FluentStack>
-                </FluentPopover>
-            }
+            <FluentPopover AnchorId="@FilterTriggerId"
+                           Opened="@_filterOpen"
+                           OpenedChanged="@OnFilterOpenChangedAsync"
+                           role="dialog"
+                           aria-labelledby="@FilterTitleId"
+                           data-testid="fc-page-toolbar-filter-popover">
+                <FluentStack Orientation="Orientation.Vertical"
+                             VerticalGap="8px"
+                             Class="fc-page-toolbar-filter-panel"
+                             Style="min-width: 16rem;">
+                    <FluentText Id="@FilterTitleId"
+                                As="TextTag.Paragraph"
+                                Size="TextSize.Size300"
+                                Weight="TextWeight.Semibold"
+                                Style="margin: 0;">
+                        @FilterLabel
+                    </FluentText>
+                    @FilterContent
+                </FluentStack>
+            </FluentPopover>
         }
 
         @if (ViewMenuContent is not null)
@@ -68,6 +66,7 @@
             <FluentMenu data-testid="fc-page-toolbar-view-menu">
                 <FluentMenuButton Appearance="ButtonAppearance.Subtle"
                                   aria-label="@ViewMenuLabel"
+                                  role="button"
                                   data-testid="fc-page-toolbar-view-trigger">
                     @ViewMenuLabel
                 </FluentMenuButton>

@@ -54,6 +54,11 @@ public sealed class ProjectionResourceAdapterTests {
         TextResourceContents text = result.Contents.Single().ShouldBeOfType<TextResourceContents>();
         text.Uri.ShouldBe(descriptor.ProtocolUri);
         text.MimeType.ShouldBe("text/plain");
+        if (string.IsNullOrWhiteSpace(uri) || uri == "not a uri") {
+            text.Text.ShouldContain("malformed_resource");
+            text.Text.ShouldContain("Projection resource request is invalid.");
+        }
+
         text.Text.ShouldNotContain("eyJabc");
         text.Text.ShouldNotContain("secret");
         text.Text.ShouldNotContain("MissingProjection");
@@ -98,17 +103,18 @@ public sealed class ProjectionResourceAdapterTests {
     }
 
     [Fact]
-    public void ProtocolResource_AdvertisesExactCanonicalDescriptorAndRejectsTemplates() {
+    public void ProtocolResource_AdvertisesExactCanonicalDescriptorAndDirectResourceTemplate() {
         McpResourceDescriptor descriptor = Descriptor();
         FrontComposerMcpResource resource = new(descriptor);
 
         resource.ProtocolResource.Uri.ShouldBe(descriptor.ProtocolUri);
         resource.ProtocolResource.MimeType.ShouldBe("text/markdown");
+        resource.ProtocolResourceTemplate.UriTemplate.ShouldBe(descriptor.ProtocolUri);
+        resource.ProtocolResourceTemplate.IsTemplated.ShouldBeFalse();
+        resource.ProtocolResourceTemplate.AsResource().ShouldNotBeNull().Uri.ShouldBe(descriptor.ProtocolUri);
         resource.Metadata.Single().ShouldBeSameAs(descriptor);
         resource.IsMatch(descriptor.ProtocolUri).ShouldBeTrue();
         resource.IsMatch(descriptor.ProtocolUri.ToLowerInvariant()).ShouldBeFalse();
-        Should.Throw<NotSupportedException>(() => _ = resource.ProtocolResourceTemplate)
-            .Message.ShouldContain("resource templates");
     }
 
     private static ServiceProvider BuildServices(

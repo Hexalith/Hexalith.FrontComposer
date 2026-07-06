@@ -66,7 +66,8 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
     await incrementForm.getByRole('button', { name: 'Increment', exact: true }).click();
     await expect(incrementForm.getByText(/Submitting/u)).toBeVisible();
     await lifecycle.expectState(INCREMENT_COMMAND_ID, 'confirmed');
-    await expect(incrementForm.getByTestId('fc-confirmed')).toBeVisible();
+    await expect(page.getByText('IncrementCommand: confirmed.', { exact: true })).toBeVisible();
+    await expect(incrementForm).toBeHidden();
   });
 });
 

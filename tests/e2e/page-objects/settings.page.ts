@@ -90,11 +90,11 @@ export class SettingsPage {
   }
 
   async expandThemeSection(): Promise<void> {
-    await this.page.getByRole('button', { name: 'Theme' }).click();
+    await this.dialogBody.getByRole('button', { name: 'Theme', exact: true }).click();
   }
 
   async expandPreviewSection(): Promise<void> {
-    await this.page.getByRole('button', { name: 'Preview' }).click();
+    await this.dialogBody.getByRole('button', { name: 'Preview', exact: true }).click();
   }
 
   /** Clears persisted shell preferences via the dialog's Restore defaults action. */

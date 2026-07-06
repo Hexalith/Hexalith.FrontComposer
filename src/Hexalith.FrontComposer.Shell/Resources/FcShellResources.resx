@@ -623,7 +623,7 @@
     <comment>Story 6-6 P1 — diagnostic panel section label for the safe-degrade behavior.</comment>
   </data>
   <data name="CustomizationDiagnosticPanelDocsLinkLabel" xml:space="preserve">
-    <value>Diagnostic docs</value>
+    <value>Diagnostic documentation</value>
     <comment>Story 6-6 P1 — diagnostic panel link text for the documentation URL.</comment>
   </data>
   <data name="CustomizationDiagnosticPanelRetryLabel" xml:space="preserve">

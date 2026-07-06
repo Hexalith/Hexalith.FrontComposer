@@ -39,12 +39,12 @@ export class ShellPage {
     this.page = page;
     this.shellRoot = page.locator('.fc-shell-root[data-fc-interactive="true"]');
     this.navigationPane = page.getByTestId('fc-shell-navigation');
-    this.fullNav = page.locator('[data-testid="fc-navigation-rail"][data-rail-width="72"]');
-    this.collapsedRail = page.locator('[data-testid="fc-navigation-rail"][data-rail-width="48"]');
+    this.fullNav = this.navigationPane.locator('[data-testid="fc-navigation-rail"][data-rail-width="72"]');
+    this.collapsedRail = this.navigationPane.locator('[data-testid="fc-navigation-rail"][data-rail-width="48"]');
     this.hamburgerToggle = page.getByTestId('fc-hamburger-toggle');
-    this.counterCategory = page.getByTestId('fc-nav-context-Counter');
-    this.counterFlyout = page.getByTestId('fc-nav-flyout-Counter');
-    this.counterProjectionItem = page.getByTestId('fc-nav-flyout-projection-Counter-CounterProjection');
+    this.counterCategory = this.navigationPane.getByTestId('fc-nav-context-Counter');
+    this.counterFlyout = this.navigationPane.getByTestId('fc-nav-flyout-Counter');
+    this.counterProjectionItem = this.navigationPane.getByTestId('fc-nav-flyout-projection-Counter-CounterProjection');
   }
 
   /**
@@ -81,6 +81,6 @@ export class ShellPage {
   async openCounterFlyoutWithKeyboard(key: 'Enter' | 'Space'): Promise<void> {
     await this.counterCategory.focus();
     await this.page.keyboard.press(key);
-    await this.counterFlyout.waitFor({ state: 'visible' });
+    await this.counterProjectionItem.waitFor({ state: 'visible' });
   }
 }

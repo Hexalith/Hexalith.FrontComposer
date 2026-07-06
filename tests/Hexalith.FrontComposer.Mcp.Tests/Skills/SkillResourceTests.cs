@@ -54,11 +54,12 @@ public sealed class SkillResourceTests {
 
         resource.ProtocolResource.Uri.ShouldBe("frontcomposer://skills/index");
         resource.ProtocolResource.MimeType.ShouldBe("text/markdown");
+        resource.ProtocolResourceTemplate.UriTemplate.ShouldBe("frontcomposer://skills/index");
+        resource.ProtocolResourceTemplate.IsTemplated.ShouldBeFalse();
+        resource.ProtocolResourceTemplate.AsResource().ShouldNotBeNull().Uri.ShouldBe("frontcomposer://skills/index");
         resource.Metadata.ShouldContain(resource.Descriptor);
         resource.IsMatch("frontcomposer://skills/index").ShouldBeTrue();
         resource.IsMatch("frontcomposer://skills/Index").ShouldBeFalse();
-        Should.Throw<NotSupportedException>(() => _ = resource.ProtocolResourceTemplate)
-            .Message.ShouldContain("URI templates");
     }
 
     [Fact]

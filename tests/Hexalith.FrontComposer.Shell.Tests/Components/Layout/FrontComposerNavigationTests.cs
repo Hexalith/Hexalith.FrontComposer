@@ -120,10 +120,10 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() => {
             IRenderedComponent<FluentMenu> menu = cut.FindComponents<FluentMenu>()
-                .Single(m => m.Instance.Trigger == "fc-rail-Counter");
-            menu.Instance.AdditionalAttributes.ShouldNotBeNull();
-            menu.Instance.AdditionalAttributes!["data-testid"].ShouldBe("fc-nav-flyout-Counter");
-            menu.Instance.AdditionalAttributes!["role"].ShouldBe("menu");
+                .Single(m => m.Markup.Contains("id=\"fc-rail-Counter\"", StringComparison.Ordinal));
+            IElement flyout = menu.Find("[data-testid=\"fc-nav-flyout-Counter\"]");
+            flyout.LocalName.ShouldBe("fluent-menu-list");
+            flyout.GetAttribute("role").ShouldBe("menu");
 
             cut.Markup.ShouldContain("data-testid=\"fc-nav-flyout-projection-Counter-CounterView\"");
             cut.Markup.ShouldContain("data-testid=\"fc-nav-entry-Counter-counter-audit\"");
@@ -201,7 +201,7 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
             cut.Markup.ShouldContain("data-testid=\"fc-nav-context-Tenants\"");
             cut.Markup.ShouldNotContain("data-testid=\"fc-nav-flyout-Tenants\"");
             cut.FindComponents<FluentMenu>()
-                .Where(m => m.Instance.Trigger == "fc-rail-Tenants")
+                .Where(m => m.Markup.Contains("id=\"fc-rail-Tenants\"", StringComparison.Ordinal))
                 .ShouldBeEmpty();
         });
 
@@ -226,7 +226,7 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() => {
             IRenderedComponent<FluentMenu> menu = cut.FindComponents<FluentMenu>()
-                .Single(m => m.Instance.Trigger == "fc-rail-Counter");
+                .Single(m => m.Markup.Contains("id=\"fc-rail-Counter\"", StringComparison.Ordinal));
             _ = menu.FindComponent<FluentMenuList>();
         });
     }

@@ -1090,6 +1090,14 @@ public sealed class InvalidSkillCorpusException : Exception {
 public sealed class FrontComposerSkillMcpResource(
     SkillResourceDescriptor descriptor,
     FrontComposerSkillResourceProvider provider) : McpServerResource, IMcpServerPrimitive {
+    private readonly ResourceTemplate _resourceTemplate = new() {
+        UriTemplate = descriptor.ResourceUri,
+        Name = descriptor.Id,
+        Title = descriptor.Title,
+        Description = descriptor.Description,
+        MimeType = descriptor.ContentType,
+    };
+
     private readonly Resource _resource = new() {
         Uri = descriptor.ResourceUri,
         Name = descriptor.Id,
@@ -1105,7 +1113,7 @@ public sealed class FrontComposerSkillMcpResource(
     string IMcpServerPrimitive.Id => descriptor.ResourceUri;
 
     public override ResourceTemplate ProtocolResourceTemplate
-        => throw new NotSupportedException("FrontComposer skill resources do not expose URI templates in v1.");
+        => _resourceTemplate;
 
     public override IReadOnlyList<object> Metadata { get; } = [descriptor];
 

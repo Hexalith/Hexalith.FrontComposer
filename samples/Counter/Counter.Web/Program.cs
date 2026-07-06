@@ -15,6 +15,7 @@ using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
@@ -78,6 +79,9 @@ if (specimensEnabled) {
         o.KnownPolicies.Add("Specimens.PolicyAllowed");
         o.KnownPolicies.Add("Specimens.PolicyDenied");
     });
+    if (builder.Environment.IsEnvironment("Test")) {
+        builder.Services.Replace(ServiceDescriptor.Scoped<AuthenticationStateProvider, CounterSpecimenAuthenticationStateProvider>());
+    }
 }
 
 if (specimensEnabled) {
