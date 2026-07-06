@@ -10,6 +10,9 @@ using Hexalith.Tenants.UI.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsEnvironment("Test")) {
+    builder.WebHost.UseStaticWebAssets();
+}
 
 builder.Host.UseDefaultServiceProvider(o => o.ValidateScopes = true);
 

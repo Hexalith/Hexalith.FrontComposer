@@ -19,6 +19,10 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+if (builder.Environment.IsEnvironment("Test")) {
+    builder.WebHost.UseStaticWebAssets();
+}
+
 bool specimensEnabled = FrontComposerSpecimenRoutes.IsEnabled(builder.Configuration, builder.Environment);
 bool mcpEnabled = builder.Environment.IsDevelopment()
     || builder.Environment.IsEnvironment("Test");
