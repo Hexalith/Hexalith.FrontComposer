@@ -9,6 +9,7 @@ test.describe('Story 3.4: command lifecycle UI', () => {
     expect(tenant.tenantId).toBeTruthy();
 
     await page.goto('/counter');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
     await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
 
     const commandId = 'batch-increment';

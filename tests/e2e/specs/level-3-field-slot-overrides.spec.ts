@@ -67,6 +67,7 @@ test.describe('Story 6.2: Level 3 field-slot overrides', () => {
 
   test('registered count slot replaces only the selected field while adjacent fields still render', async ({ page }) => {
     await page.goto('/counter');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
     await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
 
     const form = page.locator('.fc-command-form[aria-label="Batch Increment command form"]');

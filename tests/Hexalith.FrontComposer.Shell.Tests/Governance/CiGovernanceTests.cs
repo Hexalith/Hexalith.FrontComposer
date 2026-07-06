@@ -12,6 +12,28 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 [Trait("Category", "Governance")]
 public sealed class CiGovernanceTests {
     [Fact]
+    public void CommitlintJob_BlocksPrTitlesAndCommitMessagesUsedBySemanticRelease() {
+        string root = RepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
+
+        string commitlintJob = workflow[workflow.IndexOf("  commitlint:", StringComparison.Ordinal)..];
+        string commitlintJobHeader = commitlintJob[..commitlintJob.IndexOf("    steps:", StringComparison.Ordinal)];
+        commitlintJobHeader.ShouldNotContain("continue-on-error: true");
+
+        string prTitleStep = ExtractNamedStep(workflow, "Validate PR title");
+        prTitleStep.ShouldContain("github.event_name == 'pull_request'");
+        prTitleStep.ShouldContain("echo \"$PR_TITLE\" | npx commitlint");
+
+        string prCommitsStep = ExtractNamedStep(workflow, "Validate PR commits");
+        prCommitsStep.ShouldContain("github.event_name == 'pull_request'");
+        prCommitsStep.ShouldContain("npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose");
+
+        string mainCommitStep = ExtractNamedStep(workflow, "Validate latest main commit");
+        mainCommitStep.ShouldContain("github.event_name == 'push'");
+        mainCommitStep.ShouldContain("npx commitlint --last --verbose");
+    }
+
+    [Fact]
     public void BuildAndTestJob_IsBlockingAndHasGovernanceTelemetryGate() {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));

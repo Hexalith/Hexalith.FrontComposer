@@ -70,6 +70,7 @@ test.describe('Story 3.6: command lifecycle budgets', () => {
 
 const gotoCounter = async (page: Page): Promise<void> => {
   await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
   await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
 };
 

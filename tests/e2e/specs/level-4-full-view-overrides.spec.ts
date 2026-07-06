@@ -69,6 +69,7 @@ test.describe('Story 6.3: Level 4 full-view overrides', () => {
     page,
   }) => {
     await page.goto('/counter');
+    await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
     await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
 
     const form = page.locator('.fc-command-form[aria-label="Batch Increment command form"]');

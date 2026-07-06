@@ -97,6 +97,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private IJSObjectReference? _keyboardModule;
     private DotNetObjectReference<FrontComposerShell>? _selfRef;
     private bool _themeBootstrapped;
+    private bool _interactiveReady;
     private bool _locationTrackingRegistered;
     private readonly object _locationTrackingSync = new();
     private bool _sessionRestoreAttempted;
@@ -298,6 +299,11 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         .ToString();
 
     /// <summary>
+    /// E2E-observable marker that flips only after Blazor has attached interactive event handlers.
+    /// </summary>
+    protected string InteractiveReadyAttribute => _interactiveReady ? "true" : "false";
+
+    /// <summary>
     /// Whether the shell should render the Navigation area. Adopter-supplied content always wins;
     /// framework auto-navigation appears when at least one manifest has projections OR a domain has
     /// registered explicit navigation entries.
@@ -439,6 +445,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
+            _interactiveReady = true;
+            _ = InvokeAsync(StateHasChanged);
             await ApplyThemeAsync().ConfigureAwait(false);
             await RegisterBeforeUnloadAsync().ConfigureAwait(false);
             await RegisterKeyboardInteropAsync().ConfigureAwait(false);

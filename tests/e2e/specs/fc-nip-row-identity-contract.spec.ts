@@ -78,7 +78,7 @@ test.describe('Story 9.1: FC-NIP row identity producer contract', () => {
     expect(dataGrid).toContain('current projection nudge does not include row identity');
   });
 
-  test('pins Story 9.2 ready gate and current no-smuggling source evidence', async () => {
+  test('pins Story 9.2 implementation and current no-smuggling source evidence', async () => {
     const story = await readRepoFile(
       '_bmad-output/implementation-artifacts/9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer.md',
     );
@@ -89,12 +89,12 @@ test.describe('Story 9.1: FC-NIP row identity producer contract', () => {
       'src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs',
     );
 
-    expect(story).toContain('Status: ready-for-dev');
-    expect(story).toContain('Story 9.2 is ready for a focused implementation pass');
+    expect(story).toContain('Status: done');
     expect(story).toContain('FrontComposer-owned pending-command row metadata');
-    expect(story).toContain('do not add best-effort producer code');
+    expect(story).toContain('Source-level wiring was proven');
+    expect(story).toContain('Do not hide FC-NIP row identity in optional EventStore/domain-defined `ResultPayload`');
     expect(story).toContain('EventStorePendingCommandStatusQuery` currently reads EventStore status by pending `MessageId`');
-    expect(story).toContain('CommandFormEmitter` currently registers pending commands with `CorrelationId`, `MessageId`, and `CommandTypeName` only');
+    expect(story).toContain('CommandFormEmitter` so accepted pending registrations populate `ProjectionTypeName`, `LaneKey`, `EntityKey`, `ExpectedStatusSlot`, and `PriorStatusSlot` only from framework-controlled runtime context');
 
     expect(eventStoreStatusQuery).toContain('MessageId: pendingCommand.MessageId');
     expect(eventStoreStatusQuery).toContain('string? AggregateId');
@@ -103,13 +103,13 @@ test.describe('Story 9.1: FC-NIP row identity producer contract', () => {
     expect(eventStoreStatusQuery).not.toContain('LaneKey:');
     expect(eventStoreStatusQuery).not.toContain('ExpectedStatusSlot:');
 
-    expect(commandFormEmitter).toContain('generator-known framework metadata is limited to CorrelationId,');
-    expect(commandFormEmitter).toContain('MessageId, and CommandTypeName at form-emit time');
     expect(commandFormEmitter).toContain('CommandTypeName: typeof(');
-    expect(commandFormEmitter).not.toContain('ProjectionTypeName:');
-    expect(commandFormEmitter).not.toContain('LaneKey:');
-    expect(commandFormEmitter).not.toContain('EntityKey:');
-    expect(commandFormEmitter).not.toContain('ExpectedStatusSlot:');
+    expect(commandFormEmitter).toContain('ProjectionTypeName: PendingCommandRowIdentity?.ProjectionTypeName');
+    expect(commandFormEmitter).toContain('LaneKey: PendingCommandRowIdentity?.LaneKey');
+    expect(commandFormEmitter).toContain('EntityKey: PendingCommandRowIdentity?.EntityKey');
+    expect(commandFormEmitter).toContain('ExpectedStatusSlot: PendingCommandRowIdentity?.ExpectedStatusSlot');
+    expect(commandFormEmitter).not.toContain('EntityKey: status.AggregateId');
+    expect(commandFormEmitter).not.toContain('ResultPayload');
   });
 });
 

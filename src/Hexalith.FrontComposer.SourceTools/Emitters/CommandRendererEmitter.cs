@@ -635,6 +635,8 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.OpenComponent<FluentButton>(seq++);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Id\", _triggerButtonId);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Type\", ButtonType.Button);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"role\", \"button\");");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"aria-label\", \"" + displayLabelEscaped + "\");");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Appearance\", ButtonAppearance.Outline);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Disabled\", " + (hasAuthorizationPolicy ? "(_externalSubmit is null) || AuthorizationTriggerDisabled()" : "_externalSubmit is null") + ");");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"IconStart\", ResolveIcon());");
@@ -660,6 +662,8 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.OpenComponent<FluentButton>(seq++);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Id\", _triggerButtonId);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Type\", ButtonType.Button);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"role\", \"button\");");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"aria-label\", \"" + displayLabelEscaped + "\");");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Appearance\", ButtonAppearance.Outline);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"IconStart\", ResolveIcon());");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Label\", \"" + displayLabelEscaped + "\");");
@@ -689,6 +693,8 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                    __popover.CloseComponent();");
             _ = sb.AppendLine("                    __popover.OpenComponent<FluentButton>(pseq++);");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"Type\", ButtonType.Button);");
+            _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"role\", \"button\");");
+            _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"aria-label\", \"Cancel\");");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"Appearance\", ButtonAppearance.Outline);");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"Label\", \"Cancel\");");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"OnClick\", EventCallback.Factory.Create<MouseEventArgs>(this, _ => ClosePopoverAsync()));");

@@ -5,27 +5,24 @@ export class CounterPage {
   readonly heading: Locator;
   readonly currentValue: Locator;
   readonly incrementButton: Locator;
-  readonly decrementButton: Locator;
+  readonly configureLink: Locator;
 
   constructor(page: Page) {
     this.page = page;
     this.heading = page.getByRole('heading', { name: /counter/i });
-    this.currentValue = page.getByTestId('fc-counter-value');
-    this.incrementButton = page.getByTestId('fc-counter-increment');
-    this.decrementButton = page.getByTestId('fc-counter-decrement');
+    this.currentValue = page.locator("[data-fc-field='Count']").first();
+    this.incrementButton = page.locator('#fc-trigger-Counter-Domain-IncrementCommand');
+    this.configureLink = page.getByRole('link', { name: 'Configure Counter' });
   }
 
   async goto(): Promise<void> {
     await this.page.goto('/counter');
+    await this.page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
     await this.heading.waitFor();
   }
 
   async increment(times = 1): Promise<void> {
     for (let i = 0; i < times; i++) await this.incrementButton.click();
-  }
-
-  async decrement(times = 1): Promise<void> {
-    for (let i = 0; i < times; i++) await this.decrementButton.click();
   }
 
   async value(): Promise<number> {

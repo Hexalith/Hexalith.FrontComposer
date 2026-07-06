@@ -29,6 +29,7 @@
 </HeadContent>
 
 <div class="fc-shell-root" style="--fc-accent-base-color: @AccentColor;" tabindex="0" @ref="_shellRoot"
+     data-fc-interactive="@InteractiveReadyAttribute"
      @onkeydown="HandleGlobalKeyDown">
     <Fluxor.Blazor.Web.StoreInitializer />
     <a class="fc-skip-link" href="#fc-main-content">@Localizer["SkipToContentLabel"].Value</a>

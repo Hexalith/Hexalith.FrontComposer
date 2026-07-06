@@ -39,8 +39,17 @@ builder.Services.AddFluentUIComponents();
 builder.Services.AddHexalithFrontComposerQuickstart(
     o => {
         if (specimensEnabled) {
-            _ = o.ScanAssemblies(typeof(FrontComposerTypeSpecimen).Assembly);
             _ = o.ScanTypes(
+                typeof(CounterProjectionEffects),
+                typeof(CounterProjectionSeedFeature),
+                typeof(SpecimenStatusProjectionSeedFeature),
+                typeof(SpecimenFormattingProjectionSeedFeature),
+                typeof(IncrementCommandLifecycleFeature),
+                typeof(IncrementCommandReducers),
+                typeof(BatchIncrementCommandLifecycleFeature),
+                typeof(BatchIncrementCommandReducers),
+                typeof(ConfigureCounterCommandLifecycleFeature),
+                typeof(ConfigureCounterCommandReducers),
                 typeof(PurgeSpecimenRecordCommandLifecycleFeature),
                 typeof(PurgeSpecimenRecordCommandReducers),
                 typeof(PolicyAllowedSpecimenCommandLifecycleFeature),

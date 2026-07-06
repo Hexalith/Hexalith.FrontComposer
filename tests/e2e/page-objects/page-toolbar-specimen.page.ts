@@ -37,6 +37,7 @@ export class PageToolbarSpecimenPage {
 
   async goto(): Promise<void> {
     await this.page.goto('/__frontcomposer/specimens/page-toolbar');
+    await this.page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
     await this.root.waitFor();
   }
 }

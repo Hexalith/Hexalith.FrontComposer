@@ -17,9 +17,9 @@ jobs:
   commitlint:
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # DIVERGENCE 3: Advisory mode -- gates report but do not block merges during Epic 1.
-    # TODO(Epic 2): Remove continue-on-error to harden gates to blocking.
-    continue-on-error: true
+    # semantic-release derives versions and release notes from these messages.
+    # Keep this blocking so feature-looking PR titles cannot merge without a
+    # release-triggering Conventional Commit header.
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:

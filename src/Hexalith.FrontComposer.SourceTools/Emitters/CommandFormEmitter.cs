@@ -815,6 +815,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("            __b.OpenComponent<FluentButton>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Type\", ButtonType.Submit);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"role\", \"button\");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-label\", \"" + escapedButtonLabel + "\");");
         _ = sb.AppendLine("            // Enable submit in Idle, Confirmed, or Rejected (terminals allow retry) -- patch P3.");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Disabled\",");
         if (hasAuthorizationPolicy) {
@@ -918,7 +920,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.OpenComponent<FluentTextInput>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<string?>(this, v => " + valueAssignment + "));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
+        _ = sb.AppendLine("            string " + propertyName + "Label = ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + ");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
         if (inputType is not null) {
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"TextInputType\", TextInputType." + inputType + ");");
@@ -950,7 +955,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.OpenComponent<FluentTextInput>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _" + propertyName + "String ?? " + modelValueExpression + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<string?>(this, v => On" + propertyName + "Changed(v)));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
+        _ = sb.AppendLine("            string " + propertyName + "Label = ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + ");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"TextInputType\", TextInputType.Number);");
         if (decimalMode) {
@@ -969,7 +977,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.OpenComponent<FluentSwitch>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<bool>(this, v => _model." + propertyName + " = v));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
+        _ = sb.AppendLine("            string " + propertyName + "Label = ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + ");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
 
@@ -989,7 +1000,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.OpenComponent<FluentDatePicker<" + genericArg + ">>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + genericArg + ">(this, v => _model." + propertyName + " = v));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
+        _ = sb.AppendLine("            string " + propertyName + "Label = ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + ");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
 
@@ -1003,7 +1017,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Items\", (System.Collections.Generic.IEnumerable<" + enumFqn + ">)System.Enum.GetValues<" + enumFqn + ">());");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + enumFqn + ">(this, v => _model." + propertyName + " = v));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
+        _ = sb.AppendLine("            string " + propertyName + "Label = ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + ");");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"AriaLabel\", " + propertyName + "Label);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Name\", \"" + propertyName + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"OptionText\", (Func<" + enumFqn + ", string>)(e => HumanizeEnumLabel(e.ToString() ?? string.Empty)));");
         _ = sb.AppendLine("            __b.CloseComponent();");
     }

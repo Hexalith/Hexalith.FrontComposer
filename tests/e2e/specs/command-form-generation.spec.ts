@@ -173,6 +173,7 @@ test.describe('Story 3.3: FC-CMD pending identity and correlation contract', () 
 
 const gotoCounter = async (page: Page): Promise<void> => {
   await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
   await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
 };
 

@@ -71,6 +71,7 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
 
 const gotoCounter = async (page: Page): Promise<void> => {
   await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
   await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
 };
 

@@ -37,7 +37,7 @@ export class ShellPage {
 
   constructor(page: Page) {
     this.page = page;
-    this.shellRoot = page.locator('.fc-shell-root');
+    this.shellRoot = page.locator('.fc-shell-root[data-fc-interactive="true"]');
     this.navigationPane = page.getByTestId('fc-shell-navigation');
     this.fullNav = page.locator('[data-testid="fc-navigation-rail"][data-rail-width="72"]');
     this.collapsedRail = page.locator('[data-testid="fc-navigation-rail"][data-rail-width="48"]');

@@ -14,7 +14,7 @@ test.describe('smoke: attribute -> generator -> render pipeline', () => {
     // Then the generated command controls are rendered
     await expect(counter.heading).toBeVisible();
     await expect(counter.incrementButton).toBeVisible();
-    await expect(counter.decrementButton).toBeVisible();
+    await expect(counter.configureLink).toBeVisible();
     await expect(counter.currentValue).toBeVisible();
   });
 

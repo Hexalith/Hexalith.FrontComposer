@@ -84,6 +84,7 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
 
 const gotoConfigureCounter = async (page: Page): Promise<void> => {
   await page.goto('/counter');
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
   await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
 
   await page.getByRole('link', { name: 'Configure Counter' }).click();
