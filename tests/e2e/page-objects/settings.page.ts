@@ -64,6 +64,9 @@ export class SettingsPage {
 
   /** Opens the dialog via the header settings button (one of the two AC1 entry points). */
   async openViaButton(): Promise<void> {
+    await expect(this.page.locator('.fc-shell-root[data-fc-interactive="true"]')).toBeVisible();
+    await expect(this.settingsButton).toBeVisible();
+    await expect(this.settingsButton).toBeEnabled();
     await this.settingsButton.click();
     await this.dialogBody.waitFor();
   }

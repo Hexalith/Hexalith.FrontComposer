@@ -23,11 +23,12 @@
     {
         <FluentButton Appearance="@ButtonAppearance.Subtle"
                       Title="@Localizer["HamburgerToggleAriaLabel"].Value"
+                      Style="color: var(--colorNeutralForeground1);"
                       role="button"
                       aria-label="@Localizer["HamburgerToggleAriaLabel"].Value"
                       data-testid="fc-hamburger-toggle"
                       OnClick="ToggleSidebar">
-            <FluentIcon Value="@FcFluentIcons.Navigation20()" Color="Color.Primary" />
+            <FluentIcon Value="@FcFluentIcons.Navigation20()" Color="Color.Default" />
         </FluentButton>
     }
     else

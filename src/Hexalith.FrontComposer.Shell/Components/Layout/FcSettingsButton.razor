@@ -11,10 +11,11 @@
 
 <FluentButton Appearance="@ButtonAppearance.Subtle"
               IconOnly="true"
+              Style="color: var(--colorNeutralForeground1);"
               Title="@Localizer["SettingsTriggerAriaLabel"].Value"
               role="button"
               aria-label="@Localizer["SettingsTriggerAriaLabel"].Value"
               data-testid="fc-settings-button"
               OnClick="OpenDialogAsync">
-    <FluentIcon Value="@FcFluentIcons.Settings20()" Color="Color.Primary" />
+    <FluentIcon Value="@FcFluentIcons.Settings20()" Color="Color.Default" />
 </FluentButton>

@@ -195,20 +195,24 @@ const readChromeSnapshot = async (page: Page): Promise<ChromeSnapshot> => page.e
   const title = textElement('Hexalith FrontComposer');
   const footerText = textElement(`Hexalith FrontComposer \u00a9 ${new Date().getFullYear()}`);
   const action = resolveElement('[data-testid="fc-settings-button"]');
+  const actionGlyph = action.querySelector('svg, [role="img"]');
   const header = nearestChrome(title, 'borderBlockEndWidth');
   const footer = nearestChrome(footerText, 'borderBlockStartWidth');
   const headerStyles = getComputedStyle(header);
   const footerStyles = getComputedStyle(footer);
   const titleStyles = getComputedStyle(title);
-  const actionStyles = getComputedStyle(action);
+  const actionStyles = getComputedStyle(actionGlyph ?? action);
+  const actionColor = actionStyles.getPropertyValue('fill') !== 'none' && actionStyles.getPropertyValue('fill') !== ''
+    ? actionStyles.getPropertyValue('fill')
+    : actionStyles.color;
   const neutralBackground = resolveColor(header, 'backgroundColor', 'var(--colorNeutralBackground2)');
   const neutralForeground = resolveColor(header, 'color', 'var(--colorNeutralForeground1)');
   const neutralStroke = resolveColor(header, 'color', 'var(--colorNeutralStroke2)');
   const accentBackground = resolveColor(header, 'backgroundColor', 'var(--fc-accent-base-color)');
 
   return {
-    actionColor: actionStyles.color,
-    actionContrast: contrastRatio(actionStyles.color, headerStyles.backgroundColor),
+    actionColor,
+    actionContrast: contrastRatio(actionColor, headerStyles.backgroundColor),
     accentBackground,
     footerBackground: footerStyles.backgroundColor,
     footerBorderColor: footerStyles.borderBlockStartColor,

@@ -10,9 +10,10 @@
 
 <FluentButton Appearance="@ButtonAppearance.Subtle"
               IconOnly="true"
+              Style="color: var(--colorNeutralForeground1);"
               role="button"
               aria-label="@Localizer["PaletteTriggerAriaLabel"].Value"
               data-testid="fc-palette-trigger"
               OnClick="OpenAsync">
-    <FluentIcon Value="@FcFluentIcons.Search20()" Color="Color.Primary" />
+    <FluentIcon Value="@FcFluentIcons.Search20()" Color="Color.Default" />
 </FluentButton>
