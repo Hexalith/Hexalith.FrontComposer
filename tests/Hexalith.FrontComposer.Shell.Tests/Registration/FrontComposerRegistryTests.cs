@@ -2,10 +2,12 @@ using Counter.Domain;
 
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Registration;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Shouldly;
 
@@ -120,6 +122,51 @@ public class FrontComposerRegistryTests {
         manifests.Count.ShouldBe(1);
         manifests[0].BoundedContext.ShouldBe("Counter");
         manifests[0].Projections.ShouldContain("Counter.Domain.CounterProjection");
+    }
+
+    [Fact]
+    public void GetManifests_ReturnsSnapshot_NotLiveBackingList() {
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        registry.RegisterDomain(new DomainManifest("Counter", "Counter", ["Counter.Projection"], ["Counter.CommandA"]));
+
+        IReadOnlyList<DomainManifest> snapshot = registry.GetManifests();
+        registry.RegisterDomain(new DomainManifest("Counter", "Counter", ["Counter.OtherProjection"], ["Counter.CommandB"]));
+
+        snapshot[0].Commands.ShouldBe(["Counter.CommandA"]);
+        registry.GetManifests()[0].Commands.ShouldContain("Counter.CommandB");
+    }
+
+    [Fact]
+    public void RegisterDomain_MergeWithNullIncomingCollections_DoesNotThrow() {
+        // H-F3 — the merge branch (second registration of a bounded context) must tolerate null
+        // incoming Projections / Commands the same way Clone and ValidateManifests do; the previous
+        // code threw ArgumentNullException from Concat under the registry lock at host startup.
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        registry.RegisterDomain(new DomainManifest("Counter", "Counter", ["Counter.Projection"], ["Counter.CommandA"]));
+
+        Should.NotThrow(() => registry.RegisterDomain(new DomainManifest("Counter", "Counter", null!, null!)));
+
+        DomainManifest merged = registry.GetManifests().Single(m => m.BoundedContext == "Counter");
+        merged.Projections.ShouldBe(["Counter.Projection"]);
+        merged.Commands.ShouldBe(["Counter.CommandA"]);
+    }
+
+    [Fact]
+    public void Registry_ReadsUseSnapshotsDuringConcurrentRegistration() {
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+
+        Parallel.For(0, 200, i => {
+            registry.RegisterDomain(new DomainManifest(
+                "Counter",
+                "Counter",
+                [$"Counter.Projection{i}"],
+                [$"Counter.Command{i}"]));
+            _ = registry.GetManifests();
+            _ = registry.GetNavEntries();
+            _ = registry.HasFullPageRoute($"Counter.Command{i}");
+        });
+
+        registry.GetManifests()[0].Commands.Count.ShouldBe(200);
     }
 
     private sealed class CollectingLoggerProvider : ILoggerProvider {

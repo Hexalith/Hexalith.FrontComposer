@@ -94,6 +94,31 @@ public sealed class ProjectionFallbackPollingDriverTests {
         scheduler.TriggerCount.ShouldBe(countAtDispose);
     }
 
+    [Fact]
+    public async Task DisposeAsync_WhenSchedulerIgnoresCancellation_CompletesWithinBoundedWait() {
+        TestableConnectionState state = new();
+        BlockingScheduler scheduler = new();
+        IOptionsMonitor<FcShellOptions> options = Microsoft.Extensions.Options.Options.Create(
+            new FcShellOptions { ProjectionFallbackPollingIntervalSeconds = 1 }).ToMonitor();
+        ProjectionFallbackPollingDriver sut = new(
+            state,
+            scheduler,
+            options,
+            NullLogger<ProjectionFallbackPollingDriver>.Instance);
+        sut.Start();
+
+        state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "Closed"));
+        await scheduler.WaitForStartAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Task dispose = sut.DisposeAsync().AsTask();
+        Task completed = await Task.WhenAny(
+            dispose,
+            Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken)).ConfigureAwait(true);
+
+        completed.ShouldBe(dispose);
+        await dispose.ConfigureAwait(true);
+    }
+
     private sealed class TestableConnectionState : IProjectionConnectionState {
         private readonly object _sync = new();
         private readonly List<Action<ProjectionConnectionSnapshot>> _handlers = [];
@@ -185,6 +210,29 @@ public sealed class ProjectionFallbackPollingDriverTests {
                 throw new TimeoutException($"TestScheduler did not reach {minimum} triggers within {timeout}.");
             }
         }
+
+        private sealed class Reg : IDisposable {
+            public void Dispose() {
+            }
+        }
+    }
+
+    private sealed class BlockingScheduler : IProjectionFallbackRefreshScheduler {
+        private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<int> _neverCompletes = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public IDisposable RegisterLane(ProjectionFallbackLane lane) => new Reg();
+
+        public Task<int> TriggerFallbackOnceAsync(CancellationToken cancellationToken = default) {
+            _ = _started.TrySetResult();
+            return _neverCompletes.Task;
+        }
+
+        public Task<int> TriggerNudgeRefreshAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default)
+            => Task.FromResult(0);
+
+        public Task WaitForStartAsync(CancellationToken cancellationToken)
+            => _started.Task.WaitAsync(cancellationToken);
 
         private sealed class Reg : IDisposable {
             public void Dispose() {

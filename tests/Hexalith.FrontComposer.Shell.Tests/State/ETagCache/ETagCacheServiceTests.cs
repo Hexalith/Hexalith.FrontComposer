@@ -125,6 +125,66 @@ public class ETagCacheServiceTests {
     }
 
     [Fact]
+    public async Task SetAsync_WhenInitialSeedEnumerationFails_RetriesSeedingOnNextWrite() {
+        FailingKeysStorage storage = new(failuresBeforeSuccess: 1);
+        await storage.SetAsync(
+            "acme:alice:etag:projection-page:Foo:s0-t25",
+            NewEntry(eTag: "\"a\"") with { CachedAtUtcTicks = 1, LastAccessedUtcTicks = 1 },
+            CancellationToken.None);
+        ETagCacheService cache = new(
+            storage,
+            new TestOptionsMonitor(new FcShellOptions { MaxETagCacheEntries = 2 }),
+            TimeProvider.System,
+            NullLogger<ETagCacheService>.Instance);
+
+        await cache.SetAsync(
+            "acme:alice:etag:projection-page:Foo:s25-t25",
+            NewEntry(eTag: "\"b\"") with { CachedAtUtcTicks = 2, LastAccessedUtcTicks = 2 },
+            CancellationToken.None);
+        await cache.SetAsync(
+            "acme:alice:etag:projection-page:Foo:s50-t25",
+            NewEntry(eTag: "\"c\"") with { CachedAtUtcTicks = 3, LastAccessedUtcTicks = 3 },
+            CancellationToken.None);
+
+        storage.GetKeysCalls.ShouldBe(2);
+        ETagCacheEntry? oldest = await storage.GetAsync<ETagCacheEntry>(
+            "acme:alice:etag:projection-page:Foo:s0-t25",
+            CancellationToken.None);
+        oldest.ShouldBeNull();
+        cache.TrackedKeyCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task SetAsync_WhenOnePersistedKeyReadFails_StillSeedsRemainingKeys() {
+        // H-F5 — a single corrupt/failing persisted entry must not strand the keys enumerated
+        // after it outside LRU accounting; seeding skips the bad key but still tracks the rest.
+        const string failingKey = "acme:alice:etag:projection-page:Foo:s0-t25";
+        PartiallyFailingStorage storage = new(failingKey);
+        await storage.SetAsync(
+            failingKey,
+            NewEntry(eTag: "\"a\"") with { CachedAtUtcTicks = 1, LastAccessedUtcTicks = 1 },
+            CancellationToken.None);
+        await storage.SetAsync(
+            "acme:alice:etag:projection-page:Foo:s1-t25",
+            NewEntry(eTag: "\"b\"") with { CachedAtUtcTicks = 2, LastAccessedUtcTicks = 2 },
+            CancellationToken.None);
+        ETagCacheService cache = new(
+            storage,
+            new TestOptionsMonitor(new FcShellOptions { MaxETagCacheEntries = 10 }),
+            TimeProvider.System,
+            NullLogger<ETagCacheService>.Instance);
+
+        await cache.SetAsync(
+            "acme:alice:etag:projection-page:Foo:s2-t25",
+            NewEntry(eTag: "\"c\"") with { CachedAtUtcTicks = 3, LastAccessedUtcTicks = 3 },
+            CancellationToken.None);
+
+        // s1 (readable persisted, enumerated after the failing s0) + s2 (just written) are tracked;
+        // only the failing s0 is skipped. Before the fix the failing s0 aborted the whole seed pass.
+        cache.TrackedKeyCount.ShouldBe(2);
+    }
+
+    [Fact]
     public void TryBuildKey_RejectsMalformedPrefixedDiscriminator() {
         ETagCacheService cache = NewCache(out _);
 
@@ -178,6 +238,82 @@ public class ETagCacheServiceTests {
 
         public Task<System.Collections.Generic.IReadOnlyList<string>> GetKeysAsync(string prefix, CancellationToken cancellationToken = default)
             => Task.FromResult<System.Collections.Generic.IReadOnlyList<string>>(System.Array.Empty<string>());
+
+        public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class FailingKeysStorage(int failuresBeforeSuccess) : IStorageService {
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, object> _store = new(System.StringComparer.Ordinal);
+        private int _remainingFailures = failuresBeforeSuccess;
+        private int _getKeysCalls;
+
+        public int GetKeysCalls => System.Threading.Volatile.Read(ref _getKeysCalls);
+
+        public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default) {
+            if (_store.TryGetValue(key, out object? value)) {
+                return Task.FromResult((T?)value);
+            }
+
+            return Task.FromResult<T?>(default);
+        }
+
+        public Task SetAsync<T>(string key, T value, CancellationToken cancellationToken = default) {
+            _store[key] = value!;
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(string key, CancellationToken cancellationToken = default) {
+            _ = _store.TryRemove(key, out _);
+            return Task.CompletedTask;
+        }
+
+        public Task<System.Collections.Generic.IReadOnlyList<string>> GetKeysAsync(string prefix, CancellationToken cancellationToken = default) {
+            _ = System.Threading.Interlocked.Increment(ref _getKeysCalls);
+            if (System.Threading.Interlocked.Decrement(ref _remainingFailures) >= 0) {
+                throw new System.InvalidOperationException("enumeration unavailable");
+            }
+
+            System.Collections.Generic.IReadOnlyList<string> keys = _store.Keys
+                .Where(key => key.StartsWith(prefix, System.StringComparison.Ordinal))
+                .ToArray();
+            return Task.FromResult(keys);
+        }
+
+        public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    private sealed class PartiallyFailingStorage(string failingKey) : IStorageService {
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, object> _store = new(System.StringComparer.Ordinal);
+
+        public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default) {
+            if (string.Equals(key, failingKey, System.StringComparison.Ordinal)) {
+                throw new System.InvalidOperationException("corrupt entry");
+            }
+
+            return _store.TryGetValue(key, out object? value)
+                ? Task.FromResult((T?)value)
+                : Task.FromResult<T?>(default);
+        }
+
+        public Task SetAsync<T>(string key, T value, CancellationToken cancellationToken = default) {
+            _store[key] = value!;
+            return Task.CompletedTask;
+        }
+
+        public Task RemoveAsync(string key, CancellationToken cancellationToken = default) {
+            _ = _store.TryRemove(key, out _);
+            return Task.CompletedTask;
+        }
+
+        public Task<System.Collections.Generic.IReadOnlyList<string>> GetKeysAsync(string prefix, CancellationToken cancellationToken = default) {
+            // Enumerate in ordinal order so the failing key is returned before the readable ones,
+            // deterministically pinning the "keep seeding after a failure" behavior.
+            System.Collections.Generic.IReadOnlyList<string> keys = _store.Keys
+                .Where(key => key.StartsWith(prefix, System.StringComparison.Ordinal))
+                .OrderBy(key => key, System.StringComparer.Ordinal)
+                .ToArray();
+            return Task.FromResult(keys);
+        }
 
         public Task FlushAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
     }
