@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.6.0...v1.6.1) (2026-07-06)
+
+
+### Bug Fixes
+
+* **shell:** improve header action contrast ([7fd8204](https://github.com/Hexalith/Hexalith.FrontComposer/commit/7fd820410f2daeda2ef51709ebbfbbb5bd14aa4e))
+
 # [1.6.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.5.0...v1.6.0) (2026-07-06)
 
 
