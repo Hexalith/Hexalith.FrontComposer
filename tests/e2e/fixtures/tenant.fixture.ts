@@ -11,7 +11,7 @@ export type TenantFixtures = {
 
 export const tenantTest = base.extend<TenantFixtures>({
   tenant: async ({}, use) => {
-    const tenantId = process.env.DEFAULT_TENANT_ID ?? 'demo-tenant';
+    const tenantId = process.env.DEFAULT_TENANT_ID ?? 'counter-demo';
     const userId = process.env.DEFAULT_USER_ID ?? 'demo-user';
     await use({ tenantId, userId });
   },

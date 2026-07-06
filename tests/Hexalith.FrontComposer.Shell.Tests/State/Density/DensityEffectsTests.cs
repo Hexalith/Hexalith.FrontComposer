@@ -125,6 +125,27 @@ public class DensityEffectsTests {
     }
 
     [Fact]
+    public async Task HandleAppInitialized_BrowserStorageUnavailable_DefersHydrationForStorageReady() {
+        string key = StorageKeys.BuildKey(TestTenant, TestUser, "density");
+        IStorageService storage = Substitute.For<IStorageService>();
+        storage.GetKeysAsync(key, Arg.Any<CancellationToken>())
+            .Returns(Task.FromException<IReadOnlyList<string>>(
+                new InvalidOperationException("JavaScript interop calls cannot be issued at this time.")));
+        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
+        IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
+
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options, FakeDensityState());
+
+        await sut.HandleAppInitialized(new AppInitializedAction("corr-init"), dispatcher);
+
+        dispatcher.Received(1).Dispatch(Arg.Any<DensityHydratingAction>());
+        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(Arg.Any<DensityHydratedAction>());
+        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(Arg.Any<DensityHydratedCompletedAction>());
+    }
+
+    [Fact]
     public async Task HandleViewportTierChanged_DispatchesEffectiveDensityRecomputed() {
         // D7 — cross-feature handler re-resolves and emits an intra-feature recompute action when
         // the computed density differs from the current EffectiveDensity. Pre-seed UserPreference =

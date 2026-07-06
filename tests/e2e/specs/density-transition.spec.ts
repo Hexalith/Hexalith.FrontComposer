@@ -11,7 +11,7 @@ import { ShellPage, ViewportBreakpoints } from '../page-objects/shell.page.js';
 
 const SETTINGS_BUTTON = '[data-testid="fc-settings-button"]';
 const SETTINGS_DIALOG = '[data-testid="fc-settings-dialog"]';
-const DENSITY_RADIO_COMPACT = 'input[type="radio"][value="Compact"]';
+const DENSITY_RADIO_COMPACT = 'fluent-radio[value="Compact"]';
 
 test.describe('Story 3-3: display density and user settings @p0 @smoke', () => {
   test('settings button opens dialog at desktop @p1', async ({ page, tenant }) => {
@@ -39,7 +39,8 @@ test.describe('Story 3-3: display density and user settings @p0 @smoke', () => {
     // Open settings + select Compact.
     await page.locator(SETTINGS_BUTTON).click();
     await expect(page.locator(SETTINGS_DIALOG)).toBeVisible();
-    await page.locator(DENSITY_RADIO_COMPACT).check();
+    await page.locator(DENSITY_RADIO_COMPACT).focus();
+    await page.keyboard.press('Space');
 
     // Body cascade reflects the user choice at Desktop (AC6).
     await expect.poll(() => page.evaluate(() => document.body.dataset.fcDensity)).toBe('compact');

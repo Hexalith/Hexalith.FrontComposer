@@ -47,23 +47,23 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
 
     await lifecycle.expectState(BATCH_COMMAND_ID, 'syncing');
 
-    await page.getByRole('button', { name: 'Increment' }).click();
+    await page.getByRole('button', { name: 'Increment', exact: true }).click();
     const incrementForm = commandForm(page, 'Increment command form');
     await expect(incrementForm).toBeVisible();
     await fillField(incrementForm, 'Amount', '7');
-    await incrementForm.getByRole('button', { name: 'Increment' }).click();
+    await incrementForm.getByRole('button', { name: 'Increment', exact: true }).click();
 
     await expect(incrementForm).toContainText('Command already in progress');
     await expect(incrementForm).toContainText('A command is still waiting for confirmation.');
     await expect(incrementForm).not.toContainText(/queued|retried|submitted/iu);
     await expectFieldValue(incrementForm, 'Amount', '7');
-    await expect(incrementForm.getByRole('button', { name: 'Increment' })).toBeEnabled();
+    await expect(incrementForm.getByRole('button', { name: 'Increment', exact: true })).toBeEnabled();
     await lifecycle.expectState(INCREMENT_COMMAND_ID, 'idle');
     await lifecycle.expectState(BATCH_COMMAND_ID, 'syncing');
 
     await lifecycle.expectState(BATCH_COMMAND_ID, 'confirmed');
 
-    await incrementForm.getByRole('button', { name: 'Increment' }).click();
+    await incrementForm.getByRole('button', { name: 'Increment', exact: true }).click();
     await expect(incrementForm.getByText(/Submitting/u)).toBeVisible();
     await lifecycle.expectState(INCREMENT_COMMAND_ID, 'confirmed');
     await expect(incrementForm.getByTestId('fc-confirmed')).toBeVisible();

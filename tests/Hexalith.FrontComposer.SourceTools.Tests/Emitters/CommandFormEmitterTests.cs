@@ -392,7 +392,22 @@ public class CommandFormEmitterTests {
         source.ShouldContain("_AmountString");
         source.ShouldContain("_AmountParseError");
         source.ShouldContain("OnAmountChanged(string? value)");
+        source.ShouldContain("__b.OpenElement(cseq++, \"input\")");
+        source.ShouldContain("EventCallback.Factory.Create<ChangeEventArgs>(this, e => OnAmountChanged(e.Value?.ToString()))");
+        source.ShouldContain("NotifyClientFieldChanged(\"Amount\")");
         source.ShouldContain("int.TryParse(value,");
+    }
+
+    [Fact]
+    public void Emit_TextFieldEmitsRawInputHandler() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Note", "String", FormFieldTypeCategory.TextInput, "Note", true, false, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("__b.OpenElement(cseq++, \"input\")");
+        source.ShouldContain("EventCallback.Factory.Create<ChangeEventArgs>(this, e => { _model.Note = e.Value?.ToString(); NotifyClientFieldChanged(\"Note\"); })");
+        source.ShouldContain("NotifyClientFieldChanged(\"Note\")");
     }
 
     [Fact]
@@ -458,6 +473,8 @@ public class CommandFormEmitterTests {
         source.ShouldContain("private string? _submittedCorrelationId;");
         source.ShouldContain("string.Equals(currentCorrelationId, _submittedCorrelationId, StringComparison.Ordinal)");
         source.ShouldContain("_submittedCorrelationId = correlationId;");
+        source.ShouldContain("IsDirty = false;");
+        source.ShouldContain("_editContext?.MarkAsUnmodified();");
     }
 
     [Fact]

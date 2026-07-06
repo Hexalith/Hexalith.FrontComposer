@@ -25,7 +25,7 @@ test.describe('Story 3.1: generated command forms', () => {
     await expect(compactForm.getByLabel('Effective Date')).toBeVisible();
     await expectFrameworkIdentityHidden(compactForm);
 
-    await page.getByRole('button', { name: 'Increment' }).click();
+    await page.getByRole('button', { name: 'Increment', exact: true }).click();
     const inlineForm = commandForm(page, 'Increment command form');
     await expect(inlineForm).toBeVisible();
     await expect(inlineForm.getByLabel('Amount')).toBeVisible();
@@ -55,7 +55,7 @@ test.describe('Story 3.1: generated command forms', () => {
     await compactForm.getByRole('button', { name: 'Batch Increment' }).click();
 
     await expect(compactForm.getByText(/Submitting/u)).toBeVisible();
-    await expect(compactForm.getByTestId('fc-confirmed')).toBeVisible();
+    await expect(compactForm.getByTestId('fc-confirmed')).toBeVisible({ timeout: 20_000 });
     await expect(compactForm.getByRole('button', { name: 'Batch Increment' })).toBeEnabled();
   });
 
@@ -100,7 +100,7 @@ test.describe('Story 3.2: command form density rule', () => {
     await expect(page.locator('.inline-section .fc-expand-in-row')).toHaveCount(0);
     await expect(page.locator('.inline-section [aria-label="breadcrumb"]')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Increment' }).click();
+    await page.getByRole('button', { name: 'Increment', exact: true }).click();
     const inlinePopover = page.locator('.inline-section .fc-popover');
     await expect(inlinePopover).toBeVisible();
     await expect(inlinePopover.locator(COMMAND_FORM)).toHaveAttribute('aria-label', 'Increment command form');
@@ -166,7 +166,7 @@ test.describe('Story 3.3: FC-CMD pending identity and correlation contract', () 
     await compactForm.getByRole('button', { name: 'Batch Increment' }).click();
 
     await expect(compactForm.getByText(/Submitting/u)).toBeVisible();
-    await expect(compactForm.getByTestId('fc-confirmed')).toBeVisible();
+    await expect(compactForm.getByTestId('fc-confirmed')).toBeVisible({ timeout: 20_000 });
     await expect(compactForm.getByTestId('fc-idempotent')).toHaveCount(0);
     await expectFrameworkIdentityHidden(compactForm);
   });

@@ -125,6 +125,11 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
             return;
         }
 
+        if (EditContext is not null && !EditContext.IsModified()) {
+            ResetFirstEditAnchor();
+            return;
+        }
+
         FcShellOptions opts = ShellOptions.CurrentValue;
         double elapsedSeconds = (Time.GetUtcNow() - _firstEditAt.Value).TotalSeconds;
         if (elapsedSeconds < opts.FormAbandonmentThresholdSeconds) {
@@ -196,6 +201,22 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
     private void UnsubscribeFromEditContext() {
         _subscribedEditContext?.OnFieldChanged -= OnFirstEdit;
         _subscribedEditContext = null;
+    }
+
+    private void ResetFirstEditAnchor() {
+        _firstEditAt = null;
+        _showingWarning = false;
+        _pendingTarget = null;
+
+        if (_disposed != 0 || EditContext is null) {
+            return;
+        }
+
+        if (!ReferenceEquals(_subscribedEditContext, EditContext)) {
+            UnsubscribeFromEditContext();
+            _subscribedEditContext = EditContext;
+            _subscribedEditContext.OnFieldChanged += OnFirstEdit;
+        }
     }
 
     /// <inheritdoc />

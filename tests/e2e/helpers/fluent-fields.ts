@@ -6,13 +6,33 @@ export const fieldByLabel = (root: Locator, label: string): Locator =>
 export const fieldEditorByLabel = (root: Locator, label: string): Locator =>
   fieldByLabel(root, label).locator('input, textarea').first();
 
-export const fillFieldByLabel = async (root: Locator, label: string, value: string): Promise<void> => {
-  const field = fieldByLabel(root, label);
-  const editor = field.locator('input, textarea').first();
+const waitForGeneratedFormReady = async (root: Locator): Promise<void> => {
+  const isGeneratedCommandForm = await root
+    .evaluate((element) => element.classList.contains('fc-command-form'))
+    .catch(() => false);
 
-  if (await editor.count()) {
+  if (isGeneratedCommandForm) {
+    await expect(root).toHaveAttribute('data-fc-interactive', 'true');
+  }
+};
+
+export const fillFieldByLabel = async (root: Locator, label: string, value: string): Promise<void> => {
+  await waitForGeneratedFormReady(root);
+
+  const field = fieldByLabel(root, label);
+  const tagName = await field.evaluate((element) => element.tagName.toLowerCase());
+
+  if (tagName.startsWith('fluent-')) {
+    const editor = field.locator('input, textarea').first();
+    await editor.waitFor({ state: 'visible' });
     await editor.fill(value);
     await editor.blur();
+    await field.evaluate((element, nextValue) => {
+      const host = element as HTMLInputElement;
+      host.value = nextValue;
+      host.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+      host.dispatchEvent(new Event('change', { bubbles: true, composed: true }));
+    }, value);
     return;
   }
 
@@ -21,10 +41,14 @@ export const fillFieldByLabel = async (root: Locator, label: string, value: stri
 };
 
 export const expectFieldValue = async (root: Locator, label: string, value: string): Promise<void> => {
-  const field = fieldByLabel(root, label);
-  const editor = field.locator('input, textarea').first();
+  await waitForGeneratedFormReady(root);
 
-  if (await editor.count()) {
+  const field = fieldByLabel(root, label);
+  const tagName = await field.evaluate((element) => element.tagName.toLowerCase());
+
+  if (tagName.startsWith('fluent-')) {
+    const editor = field.locator('input, textarea').first();
+    await editor.waitFor({ state: 'visible' });
     await expect(editor).toHaveValue(value);
     return;
   }

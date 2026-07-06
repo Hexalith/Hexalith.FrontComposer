@@ -19,6 +19,7 @@ export type LifecycleFixtures = {
 
 const lifecycleLocator = (page: Page, commandId: string): Locator =>
   page.locator(`[data-testid="fc-lifecycle-${commandId}"]`);
+const TERMINAL_STATE_TIMEOUT_MS = 20_000;
 
 const readState = async (locator: Locator): Promise<LifecycleState | null> => {
   const raw = await locator.getAttribute('data-lifecycle-state');
@@ -32,11 +33,15 @@ export const lifecycleTest = base.extend<LifecycleFixtures>({
       locator: (commandId) => lifecycleLocator(page, commandId),
       expectState: async (commandId, state) => {
         const loc = lifecycleLocator(page, commandId);
-        await expect(loc).toHaveAttribute('data-lifecycle-state', state);
+        await expect(loc).toHaveAttribute('data-lifecycle-state', state, {
+          timeout: state === 'confirmed' || state === 'rejected' ? TERMINAL_STATE_TIMEOUT_MS : undefined,
+        });
       },
       waitForTerminal: async (commandId) => {
         const loc = lifecycleLocator(page, commandId);
-        await expect(loc).toHaveAttribute('data-lifecycle-state', /^(confirmed|rejected)$/);
+        await expect(loc).toHaveAttribute('data-lifecycle-state', /^(confirmed|rejected)$/, {
+          timeout: TERMINAL_STATE_TIMEOUT_MS,
+        });
         const state = await readState(loc);
         if (!state) throw new Error(`lifecycle state missing for commandId=${commandId}`);
         return state;

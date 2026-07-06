@@ -320,6 +320,8 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                 builder.OpenComponent<FluentButton>(seq++);
                 builder.AddAttribute(seq++, "Id", _triggerButtonId);
                 builder.AddAttribute(seq++, "Type", ButtonType.Button);
+                builder.AddAttribute(seq++, "role", "button");
+                builder.AddAttribute(seq++, "aria-label", "Demo");
                 builder.AddAttribute(seq++, "Appearance", ButtonAppearance.Outline);
                 builder.AddAttribute(seq++, "IconStart", ResolveIcon());
                 builder.AddAttribute(seq++, "Label", "Demo");
@@ -346,6 +348,8 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                     __popover.CloseComponent();
                     __popover.OpenComponent<FluentButton>(pseq++);
                     __popover.AddAttribute(pseq++, "Type", ButtonType.Button);
+                    __popover.AddAttribute(pseq++, "role", "button");
+                    __popover.AddAttribute(pseq++, "aria-label", "Cancel");
                     __popover.AddAttribute(pseq++, "Appearance", ButtonAppearance.Outline);
                     __popover.AddAttribute(pseq++, "Label", "Cancel");
                     __popover.AddAttribute(pseq++, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => ClosePopoverAsync()));
@@ -390,14 +394,10 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                 {
                     builder.OpenElement(seq++, "nav");
                     builder.AddAttribute(seq++, "aria-label", "breadcrumb");
-                    builder.OpenComponent<FluentLink>(seq++);
-                    builder.AddAttribute(seq++, "Href", GetBreadcrumbReturnPath());
-                    builder.AddAttribute(seq++, "Appearance", LinkAppearance.Subtle);
-                    builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__link =>
-                    {
-                        __link.AddContent(0, GetBreadcrumbBoundedContext());
-                    }));
-                    builder.CloseComponent();
+                    builder.OpenElement(seq++, "a");
+                    builder.AddAttribute(seq++, "href", GetBreadcrumbReturnPath());
+                    builder.AddContent(seq++, GetBreadcrumbBoundedContext());
+                    builder.CloseElement();
                     builder.AddContent(seq++, " > Demo");
                     builder.CloseElement();
                 }

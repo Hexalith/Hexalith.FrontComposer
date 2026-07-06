@@ -64,12 +64,13 @@ public sealed class DensityEffects(
     public async Task HandleAppInitialized(AppInitializedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        await HydrateAsync(dispatcher).ConfigureAwait(false);
+        await HydrateAsync(dispatcher, useBootstrapTierCap: true).ConfigureAwait(false);
     }
 
     /// <summary>
-    /// Re-runs hydrate on <see cref="StorageReadyAction"/> iff density hydration state is still
-    /// <see cref="DensityHydrationState.Idle"/> (Story 3-6 D19).
+    /// Re-runs hydrate on <see cref="StorageReadyAction"/> iff density hydration has not completed
+    /// yet (Story 3-6 D19). A prerender-time browser-storage failure leaves the state Hydrating so
+    /// the first interactive storage-ready signal can read real localStorage.
     /// </summary>
     /// <param name="action">The storage-ready action.</param>
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
@@ -78,14 +79,14 @@ public sealed class DensityEffects(
     public async Task HandleStorageReady(StorageReadyAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        if (densityState.Value.HydrationState != DensityHydrationState.Idle) {
+        if (densityState.Value.HydrationState == DensityHydrationState.Hydrated) {
             return;
         }
 
-        await HydrateAsync(dispatcher).ConfigureAwait(false);
+        await HydrateAsync(dispatcher, useBootstrapTierCap: false).ConfigureAwait(false);
     }
 
-    private async Task HydrateAsync(IDispatcher dispatcher) {
+    private async Task HydrateAsync(IDispatcher dispatcher, bool useBootstrapTierCap) {
         if (!TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
             return;
         }
@@ -109,6 +110,15 @@ public sealed class DensityEffects(
             return;
         }
         catch (Exception ex) {
+            if (IsBrowserStorageUnavailable(ex)) {
+                logger.LogInformation(
+                    ex,
+                    "{DiagnosticId}: Density hydration deferred until browser storage is available. Reason={Reason}.",
+                    FcDiagnosticIds.HFC2106_ThemeHydrationEmpty,
+                    "BrowserStorageUnavailable");
+                return;
+            }
+
             logger.LogInformation(
                 ex,
                 "{DiagnosticId}: Density hydration errored — bootstrap defaults apply until the viewport watcher emits. Reason={Reason}.",
@@ -120,7 +130,7 @@ public sealed class DensityEffects(
             stored,
             options.Value.DefaultDensity,
             DensitySurface.Default,
-            GetHydrationTier());
+            GetHydrationTier(useBootstrapTierCap));
 
         dispatcher.Dispatch(new DensityHydratedAction(stored, resolvedEffective));
         dispatcher.Dispatch(new DensityHydratedCompletedAction());
@@ -220,12 +230,12 @@ public sealed class DensityEffects(
         return true;
     }
 
-    private ViewportTier GetHydrationTier() {
+    private ViewportTier GetHydrationTier(bool useBootstrapTierCap) {
         // AppInitialized runs before FcLayoutBreakpointWatcher pushes its first measured tier from JS.
         // The pre-reducer Desktop value is therefore a placeholder during bootstrap; cap to Tablet so
         // touch-sized Comfortable density wins until the real viewport measurement arrives.
         ViewportTier tier = navigationState.Value.CurrentViewport;
-        return tier == ViewportTier.Desktop
+        return useBootstrapTierCap && tier == ViewportTier.Desktop
             ? ViewportTier.Tablet
             : tier;
     }
@@ -251,6 +261,10 @@ public sealed class DensityEffects(
 
         return new(true, null);
     }
+
+    private static bool IsBrowserStorageUnavailable(Exception ex)
+        => ex is InvalidOperationException invalid
+            && invalid.Message.Contains("JavaScript interop calls cannot be issued at this time", StringComparison.Ordinal);
 
     private readonly record struct HydratedDensityPreference(bool KeyExists, DensityLevel? UserPreference);
 }

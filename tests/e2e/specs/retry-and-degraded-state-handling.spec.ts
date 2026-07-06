@@ -50,7 +50,11 @@ test.describe('Story 4.5: retry and degraded-state handling', () => {
 
     const form = batchIncrementForm(page);
     await fillFieldByLabel(form, 'Amount', '2');
-    await fillFieldByLabel(form, 'Note', 'QA story 4.5 pending summary redaction token=secret tenant=demo-tenant');
+    await fillFieldByLabel(
+      form,
+      'Note',
+      `QA story 4.5 pending summary redaction token=secret tenant=${tenant.tenantId}`,
+    );
     await form.getByRole('button', { name: 'Batch Increment' }).click();
 
     await lifecycle.expectState(COMMAND_ID, 'syncing');

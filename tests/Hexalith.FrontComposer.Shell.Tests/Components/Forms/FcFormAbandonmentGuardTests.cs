@@ -71,6 +71,40 @@ public sealed class FcFormAbandonmentGuardTests : BunitContext {
     }
 
     [Fact]
+    public async Task Marked_unmodified_navigation_does_not_prevent_and_rearms_on_later_edit() {
+        TestModel model = new() { Name = "" };
+        EditContext editContext = new(model);
+        (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext);
+
+        editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
+        _time.Advance(TimeSpan.FromSeconds(31));
+        editContext.MarkAsUnmodified();
+
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext cleanContext = BuildLocationChangingContext("/saved");
+        await InvokeNavigationChangingAsync(cut, guard, cleanContext);
+
+        DidPreventNavigation(cleanContext).ShouldBeFalse();
+        GetFirstEditAt(guard).ShouldBeNull();
+        cut.FindAll("[data-testid='fc-form-abandonment-warning']").ShouldBeEmpty();
+
+        editContext.NotifyFieldChanged(editContext.Field(nameof(TestModel.Name)));
+        DateTimeOffset rearmedAt = GetFirstEditAt(guard)!.Value;
+        rearmedAt.ShouldBe(_time.GetUtcNow());
+
+        _time.Advance(TimeSpan.FromSeconds(29));
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext earlyContext = BuildLocationChangingContext("/too-soon");
+        await InvokeNavigationChangingAsync(cut, guard, earlyContext);
+
+        DidPreventNavigation(earlyContext).ShouldBeFalse();
+
+        _time.Advance(TimeSpan.FromSeconds(2));
+        Microsoft.AspNetCore.Components.Routing.LocationChangingContext dirtyContext = BuildLocationChangingContext("/dirty-again");
+        await InvokeNavigationChangingAsync(cut, guard, dirtyContext);
+
+        DidPreventNavigation(dirtyContext).ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Null_EditContext_navigation_does_not_prevent_or_show_warning() {
         (FcFormAbandonmentGuard guard, IRenderedComponent<FcFormAbandonmentGuard> cut) = RenderGuardWithCut(editContext: null);
 

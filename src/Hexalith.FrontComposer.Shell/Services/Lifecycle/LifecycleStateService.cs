@@ -241,17 +241,15 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             applied = newState;
             entry.State = newState;
             entry.LastUpdated = now;
+            entry.OriginalTransitionAt = now;
+            originalAt = now;
             if (messageId is not null) {
                 entry.MessageId = messageId;
             }
 
-            originalAt = entry.OriginalTransitionAt;
-
             if (newState == CommandLifecycleState.Idle) {
                 entry.MessageId = null;
                 entry.OutcomeNotifications = 0;
-                entry.OriginalTransitionAt = now;
-                originalAt = now;
             }
 
             if (IsTerminal(newState)) {

@@ -320,6 +320,8 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                 builder.OpenComponent<FluentButton>(seq++);
                 builder.AddAttribute(seq++, "Id", _triggerButtonId);
                 builder.AddAttribute(seq++, "Type", ButtonType.Button);
+                builder.AddAttribute(seq++, "role", "button");
+                builder.AddAttribute(seq++, "aria-label", "Demo");
                 builder.AddAttribute(seq++, "Appearance", ButtonAppearance.Outline);
                 builder.AddAttribute(seq++, "Disabled", _externalSubmit is null);
                 builder.AddAttribute(seq++, "IconStart", ResolveIcon());
@@ -374,14 +376,10 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                 {
                     builder.OpenElement(seq++, "nav");
                     builder.AddAttribute(seq++, "aria-label", "breadcrumb");
-                    builder.OpenComponent<FluentLink>(seq++);
-                    builder.AddAttribute(seq++, "Href", GetBreadcrumbReturnPath());
-                    builder.AddAttribute(seq++, "Appearance", LinkAppearance.Subtle);
-                    builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__link =>
-                    {
-                        __link.AddContent(0, GetBreadcrumbBoundedContext());
-                    }));
-                    builder.CloseComponent();
+                    builder.OpenElement(seq++, "a");
+                    builder.AddAttribute(seq++, "href", GetBreadcrumbReturnPath());
+                    builder.AddContent(seq++, GetBreadcrumbBoundedContext());
+                    builder.CloseElement();
                     builder.AddContent(seq++, " > Demo");
                     builder.CloseElement();
                 }

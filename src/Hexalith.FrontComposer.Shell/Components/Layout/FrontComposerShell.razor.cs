@@ -3,6 +3,7 @@ using Fluxor.Blazor.Web.Components;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
@@ -212,6 +213,12 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     /// <summary>Injected storage service whose drain is flushed on beforeunload.</summary>
     [Inject] private IStorageService Storage { get; set; } = default!;
+
+    /// <summary>Injected user context accessor used to detect when scoped browser storage is available.</summary>
+    [Inject] private IUserContextAccessor UserContextAccessor { get; set; } = default!;
+
+    /// <summary>Injected ULID factory for storage-readiness correlation identifiers.</summary>
+    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
 
     /// <summary>Injected JS runtime for loading the beforeunload module.</summary>
     [Inject] private IJSRuntime JS { get; set; } = default!;
@@ -445,15 +452,16 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            _interactiveReady = true;
-            _ = InvokeAsync(StateHasChanged);
             await ApplyThemeAsync().ConfigureAwait(false);
             await RegisterBeforeUnloadAsync().ConfigureAwait(false);
             await RegisterKeyboardInteropAsync().ConfigureAwait(false);
             RegisterLocationTracking();
+            DispatchStorageReadyIfScopeAvailable();
             SyncCurrentBoundedContext(NavigationManager.Uri);
             await Registrar.RegisterShellDefaultsAsync().ConfigureAwait(false);
             _initialRenderUri = NavigationManager.Uri;
+            _interactiveReady = true;
+            _ = InvokeAsync(StateHasChanged);
         }
 
         TryRestoreSession();
@@ -524,6 +532,19 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
         path = path.Trim('/');
         return path.Length == 0 || string.Equals(path, "home", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void DispatchStorageReadyIfScopeAvailable() {
+        if (NavigationState.Value.StorageReady) {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(UserContextAccessor.TenantId)
+            || string.IsNullOrWhiteSpace(UserContextAccessor.UserId)) {
+            return;
+        }
+
+        Dispatcher.Dispatch(new StorageReadyAction(UlidFactory.NewUlid()));
     }
 
     private bool IsBoundedContextRegistered(string boundedContext) {

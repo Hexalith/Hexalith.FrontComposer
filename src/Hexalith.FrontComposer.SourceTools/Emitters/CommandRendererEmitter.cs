@@ -782,14 +782,10 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                {");
         _ = sb.AppendLine("                    builder.OpenElement(seq++, \"nav\");");
         _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"aria-label\", \"breadcrumb\");");
-        _ = sb.AppendLine("                    builder.OpenComponent<FluentLink>(seq++);");
-        _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Href\", GetBreadcrumbReturnPath());");
-        _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Appearance\", LinkAppearance.Subtle);");
-        _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__link =>");
-        _ = sb.AppendLine("                    {");
-        _ = sb.AppendLine("                        __link.AddContent(0, GetBreadcrumbBoundedContext());");
-        _ = sb.AppendLine("                    }));");
-        _ = sb.AppendLine("                    builder.CloseComponent();");
+        _ = sb.AppendLine("                    builder.OpenElement(seq++, \"a\");");
+        _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"href\", GetBreadcrumbReturnPath());");
+        _ = sb.AppendLine("                    builder.AddContent(seq++, GetBreadcrumbBoundedContext());");
+        _ = sb.AppendLine("                    builder.CloseElement();");
         _ = sb.AppendLine("                    builder.AddContent(seq++, \" > " + displayLabelEscaped + "\");");
         _ = sb.AppendLine("                    builder.CloseElement();");
         _ = sb.AppendLine("                }");

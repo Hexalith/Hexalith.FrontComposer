@@ -1,4 +1,4 @@
-import type { Locator, Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 
 import type { TenantContext } from '../fixtures/tenant.fixture.js';
 import { ViewportBreakpoints } from './shell.page.js';
@@ -46,10 +46,10 @@ export class SettingsPage {
     this.page = page;
     this.settingsButton = page.getByTestId('fc-settings-button');
     this.dialogBody = page.getByTestId('fc-settings-dialog');
-    this.dialog = page.locator('fluent-dialog', { has: this.dialogBody });
+    this.dialog = page.getByRole('alertdialog');
     this.themeSection = page.locator('#fc-theme-section');
     // FcThemeToggle renders a FluentMenuButton carrying Title="Change theme" (ThemeToggleAriaLabel).
-    this.themeToggleButton = this.dialog.getByTitle('Change theme');
+    this.themeToggleButton = page.getByTitle('Change theme').nth(1);
     this.densityPreview = page.getByTestId('fc-density-preview');
     this.restoreDefaultsButton = page.getByTestId('fc-settings-reset');
     // FcDensityAnnouncer: visually-hidden role="status" region (aria-atomic distinguishes it).
@@ -59,7 +59,7 @@ export class SettingsPage {
   }
 
   densityRadio(value: DensityValue): Locator {
-    return this.page.locator(`input[type="radio"][value="${value}"]`);
+    return this.page.locator(`fluent-radio[value="${value}"]`);
   }
 
   /** Opens the dialog via the header settings button (one of the two AC1 entry points). */
@@ -74,13 +74,27 @@ export class SettingsPage {
    */
   async openViaShortcut(): Promise<void> {
     const accelerator = process.platform === 'darwin' ? 'Meta+Comma' : 'Control+Comma';
+    await this.page.locator('.fc-shell-root[data-fc-interactive="true"]').focus();
     await this.page.keyboard.press(accelerator);
     await this.dialogBody.waitFor();
   }
 
   /** Selects a density level via the live (no-Apply) radio group. */
   async selectDensity(value: DensityValue): Promise<void> {
-    await this.densityRadio(value).check();
+    await this.densityRadio(value).focus();
+    await this.page.keyboard.press('Space');
+  }
+
+  async expectDensitySelected(value: DensityValue): Promise<void> {
+    await expect.poll(() => this.densityRadio(value).evaluate((radio) => (radio as HTMLInputElement).checked)).toBe(true);
+  }
+
+  async expandThemeSection(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Theme' }).click();
+  }
+
+  async expandPreviewSection(): Promise<void> {
+    await this.page.getByRole('button', { name: 'Preview' }).click();
   }
 
   /** Clears persisted shell preferences via the dialog's Restore defaults action. */
@@ -90,6 +104,7 @@ export class SettingsPage {
 
   /** Selects a theme via the embedded FcThemeToggle menu. */
   async selectTheme(label: ThemeLabel): Promise<void> {
+    await this.expandThemeSection();
     await this.themeToggleButton.click();
     await this.page.getByRole('menuitem', { name: label, exact: true }).click();
   }

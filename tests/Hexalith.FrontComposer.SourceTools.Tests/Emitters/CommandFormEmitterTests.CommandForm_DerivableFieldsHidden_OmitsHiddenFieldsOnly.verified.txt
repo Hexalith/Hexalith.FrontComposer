@@ -73,6 +73,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     private CancellationTokenSource? _cts;
     private bool _disposed;
     private bool _externalSubmitRegistered;
+    private bool _interactiveReady;
     private string? _submittedCorrelationId;
     private static readonly global::Hexalith.FrontComposer.Contracts.Communication.ICommandValidationFieldAllowlist _serverValidationAllowlist = new global::Hexalith.FrontComposer.Shell.Services.Validation.ReflectionCommandValidationFieldAllowlist<Counter.Domain.IncrementCommand>();
     /// <summary>Indicates the form has been modified since creation. Used by later stories to warn on navigation.</summary>
@@ -126,6 +127,11 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         _serverValidationMessages?.Clear(e.FieldIdentifier);
     }
 
+    private void NotifyClientFieldChanged(string propertyName) {
+        if (_editContext is null) return;
+        _editContext.NotifyFieldChanged(new FieldIdentifier(_model, propertyName));
+    }
+
     private CommandLifecycleState _previousLifecycleState = CommandLifecycleState.Idle;
     private void OnStateChanged(object? sender, EventArgs e) {
         // Story 2-2 ADR-016: surface Confirmed transition to the renderer via OnConfirmed callback.
@@ -138,6 +144,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             && OnConfirmed.HasDelegate
             && !string.IsNullOrEmpty(_submittedCorrelationId)
             && string.Equals(currentCorrelationId, _submittedCorrelationId, StringComparison.Ordinal)) {
+            IsDirty = false;
+            _editContext?.MarkAsUnmodified();
             _ = OnConfirmed.InvokeAsync(null);
         }
         _previousLifecycleState = current;
@@ -150,6 +158,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             _externalSubmitRegistered = true;
             // Story 2-2 ADR-016 rule 6 + Decision D36 — supply the renderer with a synthetic-submit invoker.
             RegisterExternalSubmit(() => _ = OnValidSubmitAsync());
+        }
+        if (firstRender && !_interactiveReady) {
+            _interactiveReady = true;
+            _ = InvokeAsync(StateHasChanged);
         }
     }
 
@@ -270,19 +282,23 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         {
             var result = await CommandService.DispatchAsync(
                 _model,
-                onLifecycleChange: (state, _) =>
+                onLifecycleChange: (state, messageId) =>
                 {
                     // Guard against callbacks arriving after form disposal or cancellation (patch P10).
                     if (_disposed || cts.IsCancellationRequested) return;
-                    switch (state)
+                    _ = InvokeAsync(() =>
                     {
-                        case CommandLifecycleState.Syncing:
-                            Dispatcher.Dispatch(new IncrementCommandActions.SyncingAction(correlationId));
-                            break;
-                        case CommandLifecycleState.Confirmed:
-                            Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));
-                            break;
-                    }
+                        if (_disposed || cts.IsCancellationRequested) return;
+                        switch (state)
+                        {
+                            case CommandLifecycleState.Syncing:
+                                Dispatcher.Dispatch(new IncrementCommandActions.SyncingAction(correlationId));
+                                break;
+                            case CommandLifecycleState.Confirmed:
+                                Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));
+                                break;
+                        }
+                    });
                 },
                 cancellationToken: cts.Token);
 
@@ -415,6 +431,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         builder.OpenElement(seq++, "div");
         // AC3 density: Comfortable by default (patch P13).
         builder.AddAttribute(seq++, "class", "fc-command-form fc-density-comfortable");
+        builder.AddAttribute(seq++, "data-fc-interactive", _interactiveReady ? "true" : "false");
         builder.AddAttribute(seq++, "aria-label", "Send IncrementCommand command form");
 
         builder.OpenComponent<FcLifecycleWrapper>(seq++);
@@ -483,34 +500,66 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             if ((!DerivableFieldsHidden || !IsDerivableField("TenantId"))
                 && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, "TenantId") >= 0))
             {
-            __b.OpenComponent<FluentTextInput>(cseq++);
-            __b.AddAttribute(cseq++, "Value", _model.TenantId);
-            __b.AddAttribute(cseq++, "ValueChanged", EventCallback.Factory.Create<string?>(this, v => _model.TenantId = v ?? string.Empty));
-            __b.AddAttribute(cseq++, "Label", ResolveLabel("TenantId", "Tenant Id", false));
-            __b.AddAttribute(cseq++, "Required", true);
-            __b.CloseComponent();
+            string TenantIdLabel = ResolveLabel("TenantId", "Tenant Id", false);
+            __b.OpenElement(cseq++, "label");
+            __b.AddAttribute(cseq++, "class", "fc-command-field");
+            __b.OpenElement(cseq++, "span");
+            __b.AddAttribute(cseq++, "class", "fc-command-field-label");
+            __b.AddContent(cseq++, TenantIdLabel);
+            if (true) { __b.AddContent(cseq++, " *"); }
+            __b.CloseElement();
+            __b.OpenElement(cseq++, "input");
+            __b.AddAttribute(cseq++, "class", "fc-command-input");
+            __b.AddAttribute(cseq++, "value", _model.TenantId);
+            __b.AddAttribute(cseq++, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this, e => { _model.TenantId = e.Value?.ToString() ?? string.Empty; NotifyClientFieldChanged("TenantId"); }));
+            __b.SetUpdatesAttributeName("value");
+            __b.AddAttribute(cseq++, "aria-label", TenantIdLabel);
+            __b.AddAttribute(cseq++, "name", "TenantId");
+            __b.AddAttribute(cseq++, "required", true);
+            __b.AddAttribute(cseq++, "type", "text");
+            __b.CloseElement();
+            __b.CloseElement();
             }
 
             // Field: Amount
             if ((!DerivableFieldsHidden || !IsDerivableField("Amount"))
                 && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, "Amount") >= 0))
             {
-            __b.OpenComponent<FluentTextInput>(cseq++);
-            __b.AddAttribute(cseq++, "Value", _AmountString ?? _model.Amount.ToString(CultureInfo.CurrentCulture));
-            __b.AddAttribute(cseq++, "ValueChanged", EventCallback.Factory.Create<string?>(this, v => OnAmountChanged(v)));
-            __b.AddAttribute(cseq++, "Label", ResolveLabel("Amount", "Amount", false));
-            __b.AddAttribute(cseq++, "Required", true);
-            __b.AddAttribute(cseq++, "TextInputType", TextInputType.Number);
+            string AmountLabel = ResolveLabel("Amount", "Amount", false);
+            __b.OpenElement(cseq++, "label");
+            __b.AddAttribute(cseq++, "class", "fc-command-field");
+            __b.OpenElement(cseq++, "span");
+            __b.AddAttribute(cseq++, "class", "fc-command-field-label");
+            __b.AddContent(cseq++, AmountLabel);
+            if (true) { __b.AddContent(cseq++, " *"); }
+            __b.CloseElement();
+            __b.OpenElement(cseq++, "input");
+            __b.AddAttribute(cseq++, "class", "fc-command-input");
+            __b.AddAttribute(cseq++, "value", _AmountString ?? _model.Amount.ToString(CultureInfo.CurrentCulture));
+            __b.AddAttribute(cseq++, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this, e => OnAmountChanged(e.Value?.ToString())));
+            __b.SetUpdatesAttributeName("value");
+            __b.AddAttribute(cseq++, "aria-label", AmountLabel);
+            __b.AddAttribute(cseq++, "name", "Amount");
+            __b.AddAttribute(cseq++, "required", true);
+            __b.AddAttribute(cseq++, "type", "text");
+            __b.AddAttribute(cseq++, "inputmode", "numeric");
+            __b.AddAttribute(cseq++, "aria-invalid", !string.IsNullOrEmpty(_AmountParseError));
+            __b.CloseElement();
             if (!string.IsNullOrEmpty(_AmountParseError))
             {
-                __b.AddAttribute(cseq++, "Message", _AmountParseError);
-                __b.AddAttribute(cseq++, "MessageState", MessageState.Error);
+                __b.OpenElement(cseq++, "div");
+                __b.AddAttribute(cseq++, "class", "fc-command-field-message");
+                __b.AddAttribute(cseq++, "role", "alert");
+                __b.AddContent(cseq++, _AmountParseError);
+                __b.CloseElement();
             }
-            __b.CloseComponent();
+            __b.CloseElement();
             }
 
             __b.OpenComponent<FluentButton>(cseq++);
             __b.AddAttribute(cseq++, "Type", ButtonType.Submit);
+            __b.AddAttribute(cseq++, "role", "button");
+            __b.AddAttribute(cseq++, "aria-label", "Send IncrementCommand");
             // Enable submit in Idle, Confirmed, or Rejected (terminals allow retry) -- patch P3.
             __b.AddAttribute(cseq++, "Disabled",
                 LifecycleState.Value.State != CommandLifecycleState.Idle
@@ -574,6 +623,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         if (string.IsNullOrWhiteSpace(value))
         {
             _AmountParseError = "A number is required.";
+            NotifyClientFieldChanged("Amount");
             return;
         }
         if (int.TryParse(value, NumberStyles.Integer | NumberStyles.AllowLeadingSign | NumberStyles.AllowTrailingWhite | NumberStyles.AllowLeadingWhite, CultureInfo.CurrentCulture, out var parsed))
@@ -585,6 +635,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         {
             _AmountParseError = "Invalid number format.";
         }
+        NotifyClientFieldChanged("Amount");
     }
 }
 
