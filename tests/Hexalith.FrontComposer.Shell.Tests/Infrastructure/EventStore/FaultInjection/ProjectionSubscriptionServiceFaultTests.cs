@@ -161,6 +161,30 @@ public sealed class ProjectionSubscriptionServiceFaultTests {
     }
 
     [Fact]
+    public async Task DisposeDuringBlockedSubscribe_CompletesWithinBoundedWait() {
+        await using FaultInjectingProjectionHubConnection harness = new();
+        ProjectionSubscriptionService sut = CreateSut(harness);
+        harness.BlockUntil(HarnessCheckpoint.Start);
+        Task subscribe = sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        await harness.WaitForAsync(HarnessCheckpoint.Start, cancellationToken: TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        try {
+            Task dispose = sut.DisposeAsync().AsTask();
+            Task completed = await Task.WhenAny(
+                dispose,
+                Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken)).ConfigureAwait(true);
+
+            completed.ShouldBe(dispose);
+            await dispose.ConfigureAwait(true);
+        }
+        finally {
+            harness.Release(HarnessCheckpoint.Start);
+        }
+
+        _ = await Record.ExceptionAsync(async () => await subscribe.ConfigureAwait(true)).ConfigureAwait(true);
+    }
+
+    [Fact]
     public async Task DuplicateSubscribeDuringReconnect_SafelyDeduplicates_NoExtraJoin() {
         // Story 5-3 deferred — duplicate Subscribe while a reconnect is in flight must not
         // double-join the group.

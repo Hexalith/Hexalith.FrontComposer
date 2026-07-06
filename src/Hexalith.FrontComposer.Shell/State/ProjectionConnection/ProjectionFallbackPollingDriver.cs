@@ -16,6 +16,8 @@ namespace Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 /// (defense in depth — the driver does not retain unrelated polling state).
 /// </summary>
 public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
+    private static readonly TimeSpan DisposeWaitTimeout = TimeSpan.FromSeconds(2);
+
     private readonly IProjectionConnectionState _connectionState;
     private readonly IProjectionFallbackRefreshScheduler _scheduler;
     private readonly IOptionsMonitor<FcShellOptions> _options;
@@ -87,17 +89,39 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
             }
         }
 
+        bool loopCompleted = true;
         if (loop is not null) {
             try {
-                await loop.ConfigureAwait(false);
+                await loop.WaitAsync(DisposeWaitTimeout).ConfigureAwait(false);
+            }
+            catch (TimeoutException) {
+                loopCompleted = false;
+                _logger.LogWarning(
+                    "Projection fallback polling driver disposal timed out waiting for the in-flight loop. FailureCategory={FailureCategory}",
+                    nameof(TimeoutException));
             }
             catch (Exception ex) when (ex is not OutOfMemoryException) {
                 // Loop already logs failures; swallow to keep disposal safe.
+                _logger.LogWarning(
+                    "Projection fallback polling driver disposal observed an in-flight loop failure. FailureCategory={FailureCategory}",
+                    ex.GetType().Name);
             }
         }
 
-        loopCts?.Dispose();
-        _disposalCts.Dispose();
+        if (loopCompleted) {
+            loopCts?.Dispose();
+            _disposalCts.Dispose();
+        }
+        else {
+            _ = loop!.ContinueWith(
+                _ => {
+                    loopCts?.Dispose();
+                    _disposalCts.Dispose();
+                },
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
     }
 
     private void OnConnectionChanged(ProjectionConnectionSnapshot snapshot) {

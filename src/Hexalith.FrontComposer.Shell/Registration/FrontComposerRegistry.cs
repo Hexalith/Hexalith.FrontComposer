@@ -10,6 +10,7 @@ namespace Hexalith.FrontComposer.Shell.Registration;
 /// Domain registrations from <see cref="DomainRegistrationAction"/> are applied on construction.
 /// </summary>
 internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerNavEntryRegistry, IFrontComposerFullPageRouteRegistry, IFrontComposerCommandWriteAccessRegistry, IFrontComposerCommandPolicyRegistry {
+    private readonly object _sync = new();
     private readonly List<DomainManifest> _manifests = [];
     private readonly List<(string Name, string BoundedContext)> _navGroups = [];
     private readonly List<FrontComposerNavEntry> _navEntries = [];
@@ -50,7 +51,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     /// </remarks>
     /// <exception cref="InvalidOperationException">Thrown with <see cref="FcDiagnosticIds.HFC1601_ManifestInvalid"/> when a command has no FullPage route — unreachable today.</exception>
     private void ValidateManifests() {
-        foreach (DomainManifest manifest in _manifests) {
+        foreach (DomainManifest manifest in SnapshotManifestReferences()) {
             // Defensive: a custom IFrontComposerRegistry consumer could theoretically register a
             // DomainManifest with a null Commands collection. The DomainManifest record declares
             // Commands non-nullable but nothing enforces it at runtime construction paths outside
@@ -69,20 +70,29 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     }
 
     /// <inheritdoc />
-    public void AddNavGroup(string name, string boundedContext) => _navGroups.Add((name, boundedContext));
+    public void AddNavGroup(string name, string boundedContext) {
+        lock (_sync) {
+            _navGroups.Add((name, boundedContext));
+        }
+    }
 
     /// <inheritdoc />
     public void AddNavEntry(FrontComposerNavEntry entry) {
         ArgumentNullException.ThrowIfNull(entry);
-        _navEntries.Add(entry);
+        lock (_sync) {
+            _navEntries.Add(entry);
+        }
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<FrontComposerNavEntry> GetNavEntries()
-        => [.. _navEntries.OrderBy(static e => e.Order).ThenBy(static e => e.Title, StringComparer.Ordinal)];
+    public IReadOnlyList<FrontComposerNavEntry> GetNavEntries() {
+        lock (_sync) {
+            return [.. _navEntries.OrderBy(static e => e.Order).ThenBy(static e => e.Title, StringComparer.Ordinal)];
+        }
+    }
 
     /// <inheritdoc />
-    public IReadOnlyList<DomainManifest> GetManifests() => _manifests;
+    public IReadOnlyList<DomainManifest> GetManifests() => SnapshotManifests();
 
     /// <summary>
     /// Story 4-6 / Pass-3 review DN1-c — default heuristic: a command is treated as writable
@@ -112,7 +122,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             return false;
         }
 
-        foreach (DomainManifest manifest in _manifests) {
+        foreach (DomainManifest manifest in SnapshotManifestReferences()) {
             if (manifest.Commands.Contains(commandTypeName, StringComparer.Ordinal)) {
                 return true;
             }
@@ -135,7 +145,7 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         // throw InvalidOperationException("Collection was modified") mid-enumeration. The
         // dispatch gate, palette filter, and CTA resolver all call this on the hot path, and
         // RegisterDomain runs during host startup hosted-service execution.
-        DomainManifest[] snapshot = [.. _manifests];
+        DomainManifest[] snapshot = SnapshotManifestReferences();
 
         foreach (DomainManifest manifest in snapshot) {
             if (!manifest.CommandPolicies.TryGetValue(trimmedKey, out string? candidate)
@@ -162,35 +172,54 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
 
     /// <inheritdoc />
     public void RegisterDomain(DomainManifest manifest) {
-        int existingIndex = _manifests.FindIndex(m => string.Equals(m.BoundedContext, manifest.BoundedContext, StringComparison.Ordinal));
-        if (existingIndex < 0) {
-            _manifests.Add(Clone(manifest));
-            return;
+        lock (_sync) {
+            int existingIndex = _manifests.FindIndex(m => string.Equals(m.BoundedContext, manifest.BoundedContext, StringComparison.Ordinal));
+            if (existingIndex < 0) {
+                _manifests.Add(Clone(manifest));
+                return;
+            }
+
+            DomainManifest existing = _manifests[existingIndex];
+            string name = ChooseName(existing.Name, manifest.Name, existing.BoundedContext);
+
+            // Preserve the existing manifest's display metadata (Icon / NameKey / Resource) and fall back
+            // to the incoming manifest's when the existing one left them unset, so a later registration can
+            // supply the rail icon or localization pointer without a prior registration clobbering it. A
+            // `with` expression carries every other field (including any future addition) untouched.
+            // Null-coalesce the incoming collections to match the hardening in Clone / ValidateManifests:
+            // a custom registry consumer or hand-rolled manifest can leave Projections / Commands null,
+            // and Concat would otherwise throw under _sync during host startup on the second registration.
+            _manifests[existingIndex] = existing with {
+                Name = name,
+                Projections = [.. existing.Projections.Concat(manifest.Projections ?? []).Distinct(StringComparer.Ordinal)],
+                Commands = [.. existing.Commands.Concat(manifest.Commands ?? []).Distinct(StringComparer.Ordinal)],
+                CommandPolicies = MergeCommandPolicies(existing.CommandPolicies, manifest.CommandPolicies),
+                Icon = existing.Icon ?? manifest.Icon,
+                NameKey = existing.NameKey ?? manifest.NameKey,
+                Resource = existing.Resource ?? manifest.Resource,
+            };
         }
+    }
 
-        DomainManifest existing = _manifests[existingIndex];
-        string name = ChooseName(existing.Name, manifest.Name, existing.BoundedContext);
+    private DomainManifest[] SnapshotManifests() {
+        lock (_sync) {
+            return [.. _manifests.Select(Clone)];
+        }
+    }
 
-        // Preserve the existing manifest's display metadata (Icon / NameKey / Resource) and fall back
-        // to the incoming manifest's when the existing one left them unset, so a later registration can
-        // supply the rail icon or localization pointer without a prior registration clobbering it. A
-        // `with` expression carries every other field (including any future addition) untouched.
-        _manifests[existingIndex] = existing with {
-            Name = name,
-            Projections = [.. existing.Projections.Concat(manifest.Projections).Distinct(StringComparer.Ordinal)],
-            Commands = [.. existing.Commands.Concat(manifest.Commands).Distinct(StringComparer.Ordinal)],
-            CommandPolicies = MergeCommandPolicies(existing.CommandPolicies, manifest.CommandPolicies),
-            Icon = existing.Icon ?? manifest.Icon,
-            NameKey = existing.NameKey ?? manifest.NameKey,
-            Resource = existing.Resource ?? manifest.Resource,
-        };
+    private DomainManifest[] SnapshotManifestReferences() {
+        lock (_sync) {
+            return [.. _manifests];
+        }
     }
 
     private static DomainManifest Clone(DomainManifest manifest)
         => manifest with {
-            Projections = [.. manifest.Projections],
-            Commands = [.. manifest.Commands],
-            CommandPolicies = new Dictionary<string, string>(manifest.CommandPolicies, StringComparer.Ordinal),
+            Projections = manifest.Projections is null ? [] : [.. manifest.Projections],
+            Commands = manifest.Commands is null ? [] : [.. manifest.Commands],
+            CommandPolicies = manifest.CommandPolicies is null
+                ? new Dictionary<string, string>(StringComparer.Ordinal)
+                : new Dictionary<string, string>(manifest.CommandPolicies, StringComparer.Ordinal),
         };
 
     private IReadOnlyDictionary<string, string> MergeCommandPolicies(
