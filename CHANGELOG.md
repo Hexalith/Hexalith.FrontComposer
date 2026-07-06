@@ -1,3 +1,13 @@
+# [1.5.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.4.0...v1.5.0) (2026-07-06)
+
+
+### Features
+
+* add HttpClient service and refactor form field handling in tests ([310b26c](https://github.com/Hexalith/Hexalith.FrontComposer/commit/310b26cb68a146eae1ea78f0942334f3b42a0f99))
+* add support for static web assets in test environment and include Fluent UI script in App.razor ([c0bba42](https://github.com/Hexalith/Hexalith.FrontComposer/commit/c0bba428195990e7d55650a1abdc9f5fae7a5136))
+* Enhance IncrementCommandForm with interactive field notifications and improved rendering ([e0bee30](https://github.com/Hexalith/Hexalith.FrontComposer/commit/e0bee309b1e1e4a98fc974bde37fa421a53abcf7))
+* Implement IDisposable in FcPendingCommandSummary and add event for PendingCommandState changes; enhance dialog title rendering and update tests ([2a8fd7c](https://github.com/Hexalith/Hexalith.FrontComposer/commit/2a8fd7c1b74665710c361df290cadfa3e7b67896))
+
 # [1.4.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.3.0...v1.4.0) (2026-07-05)
 
 
