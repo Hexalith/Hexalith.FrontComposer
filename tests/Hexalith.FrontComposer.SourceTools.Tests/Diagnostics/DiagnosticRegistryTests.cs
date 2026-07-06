@@ -1645,9 +1645,16 @@ public sealed partial class DiagnosticRegistryTests {
             int j = rng.Next(i + 1);
             (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
         }
-        // The shuffle MUST actually reorder; otherwise the determinism claim is vacuous.
-        (!shuffled.SequenceEqual(sortedInput)).ShouldBeTrue(
-            $"surface '{surface}' shuffle produced the original order; Fisher-Yates should permute non-trivially.");
+        // Fisher-Yates can legally produce the identity permutation, especially for
+        // short lists. Force a visible non-identity permutation so this guard stays
+        // non-vacuous without turning valid random output into a CI flake.
+        if (shuffled.SequenceEqual(sortedInput)) {
+            int swapIndex = Array.FindIndex(shuffled, 1, value => !Ordinal.Equals(value, shuffled[0]));
+            if (swapIndex < 0) {
+                return;
+            }
+            (shuffled[0], shuffled[swapIndex]) = (shuffled[swapIndex], shuffled[0]);
+        }
         string[] resorted = shuffled.OrderBy(s => s, Ordinal).ToArray();
         resorted.ShouldBe(sortedInput,
             $"surface '{surface}' is not stable under ordinal sort: shuffled+resorted differs from canonical order.");

@@ -855,8 +855,10 @@ public sealed class CiGovernanceTests {
 
         // Test-evidence must be recorded before publish so a failed/skipped lane is
         // captured even though the auto-publish proceeds.
+        workflow.ShouldContain("- name: Record release test evidence\n        if: always()");
         workflow.IndexOf("release_evidence.py test-results", StringComparison.Ordinal)
             .ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
+        workflow.ShouldContain("- name: Install CycloneDX .NET tool\n        if: always()");
 
         // Evidence is ADVISORY: classification must not carry --require-publishable, and
         // the workflow must not reintroduce dispatch/approval/dry-run gating.

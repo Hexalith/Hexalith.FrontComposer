@@ -104,6 +104,7 @@ jobs:
       # REL-1 (2026-07-05): record test-evidence BEFORE publish so a failed/skipped
       # lane is captured in the FR24 bundle even though the auto-publish proceeds.
       - name: Record release test evidence
+        if: always()
         run: python3 eng/release_evidence.py test-results --results-dir ./TestResults --output release-evidence/test-results.json
 
       - name: Install release tooling
@@ -112,6 +113,7 @@ jobs:
         run: npm ci
 
       - name: Install CycloneDX .NET tool
+        if: always()
         run: dotnet tool install --global CycloneDX --version 5.*
 
       - name: Validate package inventory before release
