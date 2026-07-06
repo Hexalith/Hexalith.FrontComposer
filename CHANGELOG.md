@@ -1,3 +1,11 @@
+# [1.6.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.5.0...v1.6.0) (2026-07-06)
+
+
+### Features
+
+* Enhance Status Overview and When State Typo projections with filtering capabilities ([16f1ff4](https://github.com/Hexalith/Hexalith.FrontComposer/commit/16f1ff4197843ee580584da9746172285789c0ac))
+* Refactor projection templates to use tables for rendering and enhance detail section handling; update styles and tests for improved functionality ([7cba197](https://github.com/Hexalith/Hexalith.FrontComposer/commit/7cba19794617d917a260a08e853e4f06af458f65))
+
 # [1.5.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.4.0...v1.5.0) (2026-07-06)
 
 
