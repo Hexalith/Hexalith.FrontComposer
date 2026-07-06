@@ -10,6 +10,8 @@ namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 /// mutation remains owned by <see cref="IPendingCommandPollingCoordinator"/>.
 /// </summary>
 public sealed class PendingCommandPollingDriver : IAsyncDisposable {
+    private static readonly TimeSpan DisposeWaitTimeout = TimeSpan.FromSeconds(2);
+
     private readonly IPendingCommandPollingCoordinator _coordinator;
     private readonly IOptionsMonitor<FcShellOptions> _options;
     private readonly TimeProvider _timeProvider;
@@ -18,6 +20,7 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
     private readonly object _sync = new();
     private IDisposable? _optionsChangeRegistration;
     private ITimer? _timer;
+    private Task? _pollTask;
     private int _pollInFlight;
     private int _disposed;
 
@@ -54,9 +57,9 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
     }
 
     /// <inheritdoc />
-    public ValueTask DisposeAsync() {
+    public async ValueTask DisposeAsync() {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) {
-            return ValueTask.CompletedTask;
+            return;
         }
 
         try {
@@ -67,18 +70,29 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
 
         ITimer? timer;
         IDisposable? optionsRegistration;
+        Task? pollTask;
         lock (_sync) {
             timer = _timer;
             _timer = null;
             optionsRegistration = _optionsChangeRegistration;
             _optionsChangeRegistration = null;
+            pollTask = _pollTask;
         }
 
         optionsRegistration?.Dispose();
         timer?.Dispose();
 
-        _disposalCts.Dispose();
-        return ValueTask.CompletedTask;
+        bool pollCompleted = await WaitForInFlightPollAsync(pollTask).ConfigureAwait(false);
+        if (pollCompleted) {
+            _disposalCts.Dispose();
+        }
+        else {
+            _ = pollTask!.ContinueWith(
+                _ => _disposalCts.Dispose(),
+                CancellationToken.None,
+                TaskContinuationOptions.ExecuteSynchronously,
+                TaskScheduler.Default);
+        }
     }
 
     private void ApplyInterval() {
@@ -114,7 +128,15 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
             return;
         }
 
-        _ = PollOnceSafelyAsync();
+        lock (_sync) {
+            if (_disposed != 0) {
+                _ = Interlocked.Exchange(ref _pollInFlight, 0);
+                return;
+            }
+
+            Task pollTask = PollOnceSafelyAsync();
+            _pollTask = pollTask;
+        }
     }
 
     private async Task PollOnceSafelyAsync() {
@@ -130,6 +152,29 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
         }
         finally {
             _ = Interlocked.Exchange(ref _pollInFlight, 0);
+        }
+    }
+
+    private async Task<bool> WaitForInFlightPollAsync(Task? pollTask) {
+        if (pollTask is null) {
+            return true;
+        }
+
+        try {
+            await pollTask.WaitAsync(DisposeWaitTimeout).ConfigureAwait(false);
+            return true;
+        }
+        catch (TimeoutException) {
+            _logger.LogWarning(
+                "Pending command polling driver disposal timed out waiting for the in-flight poll. FailureCategory={FailureCategory}",
+                nameof(TimeoutException));
+            return false;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) {
+            _logger.LogWarning(
+                "Pending command polling driver disposal observed an in-flight poll failure. FailureCategory={FailureCategory}",
+                ex.GetType().Name);
+            return true;
         }
     }
 }

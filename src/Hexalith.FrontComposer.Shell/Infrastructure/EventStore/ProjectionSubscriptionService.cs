@@ -20,6 +20,10 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 /// Default SignalR-backed projection subscription service.
 /// </summary>
 internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscription, IAsyncDisposable {
+    private static readonly TimeSpan GateWaitTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan DisposalWaitTimeout = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan ClosedRestartTimeout = TimeSpan.FromSeconds(10);
+
     private readonly IProjectionHubConnection _connection;
     private readonly IProjectionConnectionState _connectionState;
     private readonly IProjectionFallbackRefreshScheduler _refreshScheduler;
@@ -41,6 +45,9 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
     private Func<CancellationToken, ValueTask<string?>>? _connectionAccessTokenProvider;
     /// <summary>P2-P19 — debounces concurrent live-nudge invocations so a burst of N nudges produces at most one in-flight `PollOnceAsync`.</summary>
     private int _pendingPollInFlight;
+    private int _closedRestartInFlight;
+    private int _restartConnectedStateSuppression;
+    private int _disposeStarted;
     private bool _disposed;
 
     public ProjectionSubscriptionService(
@@ -56,7 +63,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         IUserContextAccessor? userContextAccessor = null,
         IOptions<FcShellOptions>? shellOptions = null,
         PendingCommandPollingDriver? commandPollingDriver = null,
-        FrontComposerAccessTokenProvider? frontComposerAccessTokenProvider = null) {
+        FrontComposerAccessTokenProvider? frontComposerAccessTokenProvider = null,
+        IOptionsMonitor<FcShellOptions>? shellOptionsMonitor = null) {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(connectionFactory);
         ArgumentNullException.ThrowIfNull(connectionState);
@@ -74,6 +82,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         _frontComposerAccessTokenProvider = frontComposerAccessTokenProvider;
         _userContextAccessor = userContextAccessor;
         _shellOptions = shellOptions;
+        _shellOptionsMonitor = shellOptionsMonitor;
         EventStoreOptions current = options.Value;
         _requireAccessToken = current.RequireAccessToken;
         _configuredAccessTokenProvider = current.AccessTokenProvider;
@@ -93,6 +102,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
 
     private readonly IUserContextAccessor? _userContextAccessor;
     private readonly IOptions<FcShellOptions>? _shellOptions;
+    private readonly IOptionsMonitor<FcShellOptions>? _shellOptionsMonitor;
 
     public Task SubscribeAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default)
         => SubscribeAsync(projectionType, tenantId, scope: null, cancellationToken);
@@ -120,7 +130,9 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 }
             }
 
+            ThrowIfDisposed();
             await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, key.Scope, cancellationToken).ConfigureAwait(false);
+            ThrowIfDisposed();
             _ = _activeGroups.TryAdd(key, new GroupState(GroupHealth.Active, context));
         }
         finally {
@@ -155,6 +167,10 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
     }
 
     public async ValueTask DisposeAsync() {
+        if (Interlocked.Exchange(ref _disposeStarted, 1) != 0) {
+            return;
+        }
+
         // Signal disposal to background rejoin/nudge tasks before taking the gate so they can
         // observe cancellation while we wait for the gate.
         try {
@@ -164,33 +180,57 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             // Already disposed; nothing to do.
         }
 
-        await _gate.WaitAsync().ConfigureAwait(false);
+        bool gateAcquired = await _gate.WaitAsync(GateWaitTimeout).ConfigureAwait(false);
+        if (!gateAcquired) {
+            _logger.LogWarning(
+                "EventStore projection subscription disposal timed out waiting for the operation gate. FailureCategory={FailureCategory}",
+                "Timeout");
+        }
+
         try {
             if (_disposed) {
                 return;
             }
 
             _disposed = true;
-            _activeGroups.Clear();
             _projectionChangedRegistration.Dispose();
             _projectionChangedDetailRegistration.Dispose();
             _connectionStateRegistration.Dispose();
             if (_fallbackDriver is not null) {
-                await _fallbackDriver.DisposeAsync().ConfigureAwait(false);
+                await DisposeBoundedAsync(
+                    static driver => driver.DisposeAsync(),
+                    _fallbackDriver,
+                    nameof(ProjectionFallbackPollingDriver)).ConfigureAwait(false);
             }
             if (_commandPollingDriver is not null) {
-                await _commandPollingDriver.DisposeAsync().ConfigureAwait(false);
+                await DisposeBoundedAsync(
+                    static driver => driver.DisposeAsync(),
+                    _commandPollingDriver,
+                    nameof(PendingCommandPollingDriver)).ConfigureAwait(false);
             }
 
-            await _connection.StopAsync(CancellationToken.None).ConfigureAwait(false);
-            await _connection.DisposeAsync().ConfigureAwait(false);
+            if (gateAcquired) {
+                _activeGroups.Clear();
+                await RunBoundedDisposalOperationAsync(
+                    nameof(IProjectionHubConnection.StopAsync),
+                    token => _connection.StopAsync(token)).ConfigureAwait(false);
+                await DisposeBoundedAsync(
+                    static connection => connection.DisposeAsync(),
+                    _connection,
+                    nameof(IProjectionHubConnection)).ConfigureAwait(false);
+            }
         }
         catch (Exception ex) {
             _logger.LogWarning("EventStore projection subscription disposal failed. FailureCategory={FailureCategory}", ex.GetType().Name);
         }
         finally {
-            _ = _gate.Release();
-            _disposalCts.Dispose();
+            if (gateAcquired) {
+                _ = _gate.Release();
+            }
+
+            if (gateAcquired) {
+                _disposalCts.Dispose();
+            }
         }
     }
 
@@ -324,6 +364,10 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
 
         switch (change.State) {
             case ProjectionHubConnectionState.Connected:
+                if (Interlocked.CompareExchange(ref _restartConnectedStateSuppression, 0, 1) == 1) {
+                    break;
+                }
+
                 _connectionState.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
                 break;
 
@@ -335,84 +379,260 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 break;
 
             case ProjectionHubConnectionState.Reconnected:
-                // DN3 — rejoin runs in the handler chain (so tests and adopters can observe
-                // completion deterministically) but takes the gate with a bounded timeout and the
-                // service disposal token. A blocked subscribe/unsubscribe on the same gate cannot
-                // hang rejoin indefinitely; disposal cancels the sweep promptly.
-                await RejoinActiveGroupsAsync(_disposalCts.Token).ConfigureAwait(false);
-                _refreshScheduler.SetReconciliationGroupHealth(SnapshotGroupHealth());
-                // DN5=a — Apply Connected unconditionally; per-group degradation surfaces through
-                // GroupHealth.Degraded (Story 5-3 P9) and per-lane reconciliation failures.
-                _connectionState.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
-                // P7 — re-check disposal/cancellation between rejoin completion and reconcile.
-                if (_reconciliationCoordinator is null) {
-                    // P8 — log once when DI did not provide the coordinator so a regression is
-                    // visible instead of silently no-op'ing reconciliation.
-                    _logger.LogInformation(
-                        "Projection reconciliation coordinator is not registered. Reconnect catch-up will not run.");
-                    break;
-                }
-
-                if (_disposed || _disposalCts.IsCancellationRequested) {
-                    break;
-                }
-
-                try {
-                    // P6 — wrap the coordinator call so a buggy reconciliation cannot escape into
-                    // the SignalR hub state-changed dispatcher (which would terminate the callback
-                    // chain and prevent further state transitions from propagating).
-                    _ = await _reconciliationCoordinator.ReconcileAsync(_disposalCts.Token).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (_disposalCts.IsCancellationRequested) {
-                    // Expected on disposal.
-                }
-                catch (Exception ex) when (ex is not OutOfMemoryException) {
-                    _logger.LogWarning(
-                        "Reconnection reconciliation threw out of the hub callback. FailureCategory={FailureCategory}",
-                        ex.GetType().Name);
-                }
-
+                await HandleReconnectedEpochAsync(_disposalCts.Token).ConfigureAwait(false);
                 break;
 
             case ProjectionHubConnectionState.Closed:
-                // P19 — preserve sticky InitialStartFailed category set inside SubscribeAsync.
-                // Once a non-null failure category exists in the current Disconnected state, a
-                // follow-up Closed event must not overwrite it with a less-specific category.
+                // P19 — preserve sticky InitialStartFailed category set inside SubscribeAsync,
+                // but do not suppress the Story 11.2 recovery attempt. A later Closed event after
+                // RestartFailed/RejoinSkipped is exactly the next recovery signal.
                 ProjectionConnectionSnapshot currentSnapshot = _connectionState.Current;
-                if (currentSnapshot.Status is ProjectionConnectionStatus.Disconnected
-                    && !string.IsNullOrEmpty(currentSnapshot.LastFailureCategory)) {
-                    break;
+                if (currentSnapshot.Status is not ProjectionConnectionStatus.Disconnected
+                    || string.IsNullOrEmpty(currentSnapshot.LastFailureCategory)) {
+                    _connectionState.Apply(new ProjectionConnectionTransition(
+                        ProjectionConnectionStatus.Disconnected,
+                        FailureCategory: change.Exception?.GetType().Name ?? "Closed"));
                 }
 
-                _connectionState.Apply(new ProjectionConnectionTransition(
-                    ProjectionConnectionStatus.Disconnected,
-                    FailureCategory: change.Exception?.GetType().Name ?? "Closed"));
+                await RestartClosedConnectionAsync().ConfigureAwait(false);
                 break;
         }
     }
 
-    private async Task RejoinActiveGroupsAsync(CancellationToken cancellationToken) {
-        try {
-            await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+    private async Task HandleReconnectedEpochAsync(CancellationToken cancellationToken) {
+        // DN3 — rejoin runs in the handler chain (so tests and adopters can observe
+        // completion deterministically) but takes the gate with a bounded timeout and the
+        // service disposal token. A blocked subscribe/unsubscribe on the same gate cannot
+        // hang rejoin indefinitely; disposal cancels the sweep promptly.
+        bool rejoined = await RejoinActiveGroupsAsync(cancellationToken).ConfigureAwait(false);
+        if (!rejoined) {
+            if (!_disposed && !cancellationToken.IsCancellationRequested) {
+                _connectionState.Apply(new ProjectionConnectionTransition(
+                    ProjectionConnectionStatus.Disconnected,
+                    FailureCategory: "RejoinSkipped"));
+            }
+
+            return;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+
+        await CompleteReconnectedEpochAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task CompleteReconnectedEpochAsync(CancellationToken cancellationToken) {
+        // H-F6 — do not apply a Connected transition or reconcile once disposal has begun; the
+        // gate-free rejoin -> epoch handoff can race a concurrent DisposeAsync that already tore
+        // the service down, leaving the shared connection state stuck reporting Connected.
+        if (_disposed) {
+            return;
+        }
+
+        _refreshScheduler.SetReconciliationGroupHealth(SnapshotGroupHealth());
+        // DN5=a — Apply Connected unconditionally; per-group degradation surfaces through
+        // GroupHealth.Degraded (Story 5-3 P9) and per-lane reconciliation failures.
+        _connectionState.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
+        // P7 — re-check disposal/cancellation between rejoin completion and reconcile.
+        if (_reconciliationCoordinator is null) {
+            // P8 — log once when DI did not provide the coordinator so a regression is
+            // visible instead of silently no-op'ing reconciliation.
+            _logger.LogInformation(
+                "Projection reconciliation coordinator is not registered. Reconnect catch-up will not run.");
+            return;
+        }
+
+        if (_disposed || cancellationToken.IsCancellationRequested) {
             return;
         }
 
         try {
+            // P6 — wrap the coordinator call so a buggy reconciliation cannot escape into
+            // the SignalR hub state-changed dispatcher (which would terminate the callback
+            // chain and prevent further state transitions from propagating).
+            _ = await _reconciliationCoordinator.ReconcileAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            // Expected on disposal.
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) {
+            _logger.LogWarning(
+                "Reconnection reconciliation threw out of the hub callback. FailureCategory={FailureCategory}",
+                ex.GetType().Name);
+        }
+    }
+
+    private async Task RestartClosedConnectionAsync() {
+        if (!CanRestartClosedConnection()) {
+            return;
+        }
+
+        if (Interlocked.CompareExchange(ref _closedRestartInFlight, 1, 0) != 0) {
+            return;
+        }
+
+        try {
+            while (CanRestartClosedConnection()) {
+                using CancellationTokenSource restartCts = CancellationTokenSource.CreateLinkedTokenSource(_disposalCts.Token);
+                restartCts.CancelAfter(ClosedRestartTimeout);
+                CancellationToken token = restartCts.Token;
+
+                bool gateAcquired = await _gate.WaitAsync(GateWaitTimeout, token).ConfigureAwait(false);
+                if (!gateAcquired) {
+                    _logger.LogWarning(
+                        "EventStore projection hub closed-restart skipped because the operation gate was unavailable. FailureCategory={FailureCategory}",
+                        "Timeout");
+                    await DelayClosedRestartRetryAsync(token).ConfigureAwait(false);
+                    continue;
+                }
+
+                bool shouldRetry = false;
+                bool completeEpoch = false;
+                try {
+                    if (!CanRestartClosedConnection()) {
+                        return;
+                    }
+
+                    await EnsureRequiredAccessTokenAvailableAsync(token).ConfigureAwait(false);
+                    if (!_connection.IsConnected) {
+                        _ = Interlocked.Exchange(ref _restartConnectedStateSuppression, 1);
+                        try {
+                            await _connection.StartAsync(token).ConfigureAwait(false);
+                        }
+                        catch {
+                            _ = Interlocked.Exchange(ref _restartConnectedStateSuppression, 0);
+                            throw;
+                        }
+
+                        _ = Interlocked.Exchange(ref _restartConnectedStateSuppression, 0);
+                    }
+
+                    if (await RejoinActiveGroupsCoreAsync(token).ConfigureAwait(false)) {
+                        // H-F4 — run the reconcile epoch only after releasing the gate so a
+                        // closed-restart recovery does not block concurrent Subscribe/Unsubscribe
+                        // for the reconcile duration (mirrors the Reconnected path).
+                        completeEpoch = true;
+                    }
+                    else {
+                        _connectionState.Apply(new ProjectionConnectionTransition(
+                            ProjectionConnectionStatus.Disconnected,
+                            FailureCategory: "RejoinSkipped"));
+                        shouldRetry = true;
+                    }
+                }
+                catch (OperationCanceledException) when (_disposalCts.IsCancellationRequested) {
+                    throw;
+                }
+                catch (OperationCanceledException) when (token.IsCancellationRequested) {
+                    // H-F1 — a single restart attempt hit the per-attempt timeout (not disposal);
+                    // keep retrying instead of abandoning the unbounded restart loop, otherwise a
+                    // slow server permanently disables realtime recovery.
+                    _connectionState.Apply(new ProjectionConnectionTransition(
+                        ProjectionConnectionStatus.Disconnected,
+                        FailureCategory: "RestartTimeout"));
+                    _logger.LogWarning(
+                        "EventStore projection hub closed-restart attempt timed out. FailureCategory={FailureCategory}",
+                        "Timeout");
+                    shouldRetry = true;
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                    _connectionState.Apply(new ProjectionConnectionTransition(
+                        ProjectionConnectionStatus.Disconnected,
+                        FailureCategory: "RestartFailed"));
+                    _logger.LogWarning(
+                        "EventStore projection hub closed-restart failed. FailureCategory={FailureCategory}",
+                        ex.GetType().Name);
+                    shouldRetry = true;
+                }
+                finally {
+                    _ = _gate.Release();
+                }
+
+                if (completeEpoch) {
+                    await CompleteReconnectedEpochAsync(token).ConfigureAwait(false);
+                    return;
+                }
+
+                // H-F1 — after a per-attempt timeout the 10s wait already provided backoff and
+                // `token` is cancelled, so skip the extra retry delay and loop again immediately.
+                if (shouldRetry && !token.IsCancellationRequested) {
+                    await DelayClosedRestartRetryAsync(token).ConfigureAwait(false);
+                }
+            }
+        }
+        catch (OperationCanceledException ex) when (_disposalCts.IsCancellationRequested) {
+            _logger.LogWarning(
+                "EventStore projection hub closed-restart canceled during disposal. FailureCategory={FailureCategory}",
+                ex.GetType().Name);
+        }
+        catch (OperationCanceledException ex) {
+            _connectionState.Apply(new ProjectionConnectionTransition(
+                ProjectionConnectionStatus.Disconnected,
+                FailureCategory: "RestartCanceled"));
+            _logger.LogWarning(
+                "EventStore projection hub closed-restart timed out or was canceled. FailureCategory={FailureCategory}",
+                ex.GetType().Name);
+        }
+        catch (ObjectDisposedException ex) {
+            // H-F6 — concurrent disposal disposed the linked disposal CancellationTokenSource
+            // mid-restart (the loop re-entered the body on a stale not-disposed read, then
+            // CreateLinkedTokenSource(_disposalCts.Token) observed the disposed source). Treat it
+            // as a clean teardown so the "no exception escapes the callback" invariant is upheld
+            // here rather than only by the factory's outer per-handler guard.
+            _logger.LogWarning(
+                "EventStore projection hub closed-restart canceled during disposal. FailureCategory={FailureCategory}",
+                ex.GetType().Name);
+        }
+        finally {
+            _ = Interlocked.Exchange(ref _closedRestartInFlight, 0);
+        }
+    }
+
+    private bool CanRestartClosedConnection()
+        => !_disposed
+            && _fallbackDriver is not null
+            && CurrentShellOptions().ProjectionFallbackPollingIntervalSeconds > 0
+            && !_activeGroups.IsEmpty;
+
+    private async Task<bool> RejoinActiveGroupsAsync(CancellationToken cancellationToken) {
+        bool gateAcquired;
+        try {
+            gateAcquired = await _gate.WaitAsync(GateWaitTimeout, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            return false;
+        }
+
+        if (!gateAcquired) {
+            _logger.LogWarning(
+                "Projection reconnect rejoin skipped because the operation gate was unavailable. FailureCategory={FailureCategory}",
+                "Timeout");
+            return false;
+        }
+
+        try {
             if (_disposed) {
-                return;
+                return false;
             }
 
-            foreach (GroupKey key in _activeGroups.Keys.OrderBy(static key => key.ProjectionType, StringComparer.Ordinal)) {
+            return await RejoinActiveGroupsCoreAsync(cancellationToken).ConfigureAwait(false);
+        }
+        finally {
+            _ = _gate.Release();
+        }
+    }
+
+    private async Task<bool> RejoinActiveGroupsCoreAsync(CancellationToken cancellationToken) {
+        if (_disposed) {
+            return false;
+        }
+
+        foreach (GroupKey key in _activeGroups.Keys.OrderBy(static key => key.ProjectionType, StringComparer.Ordinal)) {
                 if (cancellationToken.IsCancellationRequested) {
-                    return;
+                    return false;
                 }
 
                 // P13 — re-check connection per-Join so a mid-loop disconnect stops the sweep
                 // instead of flooding logs with RejoinFailed for every remaining group.
                 if (!_connection.IsConnected) {
-                    break;
+                    return false;
                 }
 
                 using Activity? activity = FrontComposerTelemetry.StartProjectionRejoin(
@@ -441,7 +661,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                     FrontComposerTelemetry.SetOutcome(activity, "active");
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-                    return;
+                    return false;
                 }
                 catch (Exception ex) when (ex is not OutOfMemoryException) {
                     // DN2 — mark degraded; nudges skip until the next successful rejoin.
@@ -455,10 +675,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                     FrontComposerLog.ProjectionRejoinFailed(_logger, key.ProjectionType, ex.GetType().Name);
                 }
             }
-        }
-        finally {
-            _ = _gate.Release();
-        }
+
+        return true;
     }
 
     private IReadOnlyDictionary<ProjectionFallbackGroupKey, bool> SnapshotGroupHealth() {
@@ -535,7 +753,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         return FrontComposerTenantContextAccessor
             .Resolve(
                 _userContextAccessor,
-                _shellOptions?.Value ?? new FcShellOptions(),
+                CurrentShellOptions(),
                 _logger,
                 requestedTenant,
                 operationKind)
@@ -552,7 +770,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         // TenantMismatch (HFC2017) instead of StaleTenantContext (HFC2019)).
         TenantContextResult current = FrontComposerTenantContextAccessor.Resolve(
             _userContextAccessor,
-            _shellOptions?.Value ?? new FcShellOptions(),
+            CurrentShellOptions(),
             _logger,
             requestedTenant: null,
             operationKind);
@@ -581,6 +799,80 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
 
     private static Uri BuildHubUri(Uri baseAddress, string path)
         => new(baseAddress, path);
+
+    private FcShellOptions CurrentShellOptions()
+        => _shellOptionsMonitor?.CurrentValue ?? _shellOptions?.Value ?? new FcShellOptions();
+
+    private async Task DelayClosedRestartRetryAsync(CancellationToken cancellationToken) {
+        try {
+            await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (!_disposalCts.IsCancellationRequested) {
+            // H-F5 — the per-attempt restart timeout (ClosedRestartTimeout, not disposal) fired
+            // while backing off. Swallow it so the unbounded restart loop re-evaluates and retries
+            // on the next iteration instead of the OperationCanceledException escaping to the outer
+            // handler, which would apply RestartCanceled and permanently abandon realtime recovery.
+            // This closes the H-F1 failure class reached through the retry-delay path (both the
+            // gate-unavailable and rejoin-skip callers) rather than only through StartAsync/rejoin.
+        }
+    }
+
+    private async Task RunBoundedDisposalOperationAsync(
+        string operationName,
+        Func<CancellationToken, Task> operation) {
+        using CancellationTokenSource timeout = new(DisposalWaitTimeout);
+        try {
+            await operation(timeout.Token).WaitAsync(DisposalWaitTimeout).ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            _logger.LogWarning(
+                "EventStore projection subscription disposal operation timed out. Operation={Operation}, FailureCategory={FailureCategory}",
+                operationName,
+                nameof(TimeoutException));
+        }
+        catch (OperationCanceledException) {
+            // H-F7 — the bounded-disposal timeout token cancelled the operation itself (StopAsync
+            // observed timeout.Token before the WaitAsync deadline), so this is the timeout path,
+            // not a generic failure. Log it as a timeout to keep disposal diagnostics accurate.
+            _logger.LogWarning(
+                "EventStore projection subscription disposal operation timed out. Operation={Operation}, FailureCategory={FailureCategory}",
+                operationName,
+                nameof(TimeoutException));
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) {
+            _logger.LogWarning(
+                "EventStore projection subscription disposal operation failed. Operation={Operation}, FailureCategory={FailureCategory}",
+                operationName,
+                ex.GetType().Name);
+        }
+    }
+
+    private async Task DisposeBoundedAsync<T>(
+        Func<T, ValueTask> disposeAsync,
+        T instance,
+        string operationName) {
+        try {
+            ValueTask dispose = disposeAsync(instance);
+            if (dispose.IsCompletedSuccessfully) {
+                await dispose.ConfigureAwait(false);
+                return;
+            }
+
+            await dispose.AsTask().WaitAsync(DisposalWaitTimeout).ConfigureAwait(false);
+        }
+        catch (TimeoutException) {
+            _logger.LogWarning(
+                "EventStore projection subscription disposal operation timed out. Operation={Operation}, FailureCategory={FailureCategory}",
+                operationName,
+                nameof(TimeoutException));
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) {
+            _logger.LogWarning(
+                "EventStore projection subscription disposal operation failed. Operation={Operation}, FailureCategory={FailureCategory}",
+                operationName,
+                ex.GetType().Name);
+        }
+    }
 
     private readonly record struct GroupKey(string ProjectionType, string TenantId, string? Scope);
 

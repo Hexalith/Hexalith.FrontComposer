@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 using Shouldly;
 
@@ -94,6 +95,92 @@ public sealed class ProjectionSubscriptionServiceTests {
 
         // Joined once on subscribe and once on reconnect rejoin — the scope survives reconnect.
         connection.JoinedGroups.ShouldBe(["orders:acme:conv-1", "orders:acme:conv-1"]);
+    }
+
+    [Fact]
+    public async Task Closed_WithFallbackEnabled_RestartsAndRejoinsActiveGroups() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        TestProjectionConnectionState state = new();
+        TestRefreshScheduler refresh = new();
+        FcShellOptions shellOptions = new() { ProjectionFallbackPollingIntervalSeconds = 15 };
+        ProjectionFallbackPollingDriver fallbackDriver = new(
+            state,
+            refresh,
+            new TestOptionsMonitor(shellOptions),
+            NullLogger<ProjectionFallbackPollingDriver>.Instance);
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            state,
+            refresh,
+            notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            fallbackDriver: fallbackDriver,
+            shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions));
+
+        try {
+            await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+            connection.JoinedGroups.Clear();
+
+            await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(
+                ProjectionHubConnectionState.Closed,
+                new IOException("transport")));
+
+            connection.StartCount.ShouldBe(2);
+            connection.JoinedGroups.ShouldBe(["orders:acme"]);
+            state.Current.Status.ShouldBe(ProjectionConnectionStatus.Connected);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
+    }
+
+    [Fact]
+    public async Task Closed_WithFallbackDisabled_DoesNotRestart() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        TestProjectionConnectionState state = new();
+        TestRefreshScheduler refresh = new();
+        FcShellOptions shellOptions = new() { ProjectionFallbackPollingIntervalSeconds = 0 };
+        ProjectionFallbackPollingDriver fallbackDriver = new(
+            state,
+            refresh,
+            new TestOptionsMonitor(shellOptions),
+            NullLogger<ProjectionFallbackPollingDriver>.Instance);
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            state,
+            refresh,
+            notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            fallbackDriver: fallbackDriver,
+            shellOptions: global::Microsoft.Extensions.Options.Options.Create(shellOptions));
+
+        try {
+            await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+            connection.JoinedGroups.Clear();
+
+            await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(
+                ProjectionHubConnectionState.Closed,
+                new IOException("transport")));
+
+            connection.StartCount.ShouldBe(1);
+            connection.JoinedGroups.ShouldBeEmpty();
+            state.Current.Status.ShouldBe(ProjectionConnectionStatus.Disconnected);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
     }
 
     [Fact]
@@ -606,7 +693,7 @@ public sealed class ProjectionSubscriptionServiceTests {
         public int StartCount { get; private set; }
         public int StopCount { get; private set; }
         public Func<CancellationToken, ValueTask<string?>>? AccessTokenProvider { get; set; }
-        public Exception? StartException { get; init; }
+        public Exception? StartException { get; set; }
         public Exception? JoinException { get; set; }
         public Exception? LeaveException { get; set; }
         public List<string> JoinedGroups { get; } = [];
@@ -628,14 +715,16 @@ public sealed class ProjectionSubscriptionServiceTests {
             return new Registration(() => _stateHandler = null);
         }
 
-        public Task StartAsync(CancellationToken cancellationToken) {
+        public async Task StartAsync(CancellationToken cancellationToken) {
             StartCount++;
             if (StartException is not null) {
                 throw StartException;
             }
 
             IsConnected = true;
-            return Task.CompletedTask;
+            if (_stateHandler is not null) {
+                await _stateHandler(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Connected)).ConfigureAwait(false);
+            }
         }
 
         public Task JoinGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken)
@@ -681,8 +770,10 @@ public sealed class ProjectionSubscriptionServiceTests {
         public Task RaiseDetailAsync(ProjectionChangedDetail detail)
             => _detailHandler?.Invoke(detail) ?? Task.CompletedTask;
 
-        public Task RaiseStateAsync(ProjectionHubConnectionStateChanged change)
-            => _stateHandler?.Invoke(change) ?? Task.CompletedTask;
+        public Task RaiseStateAsync(ProjectionHubConnectionStateChanged change) {
+            IsConnected = change.State is ProjectionHubConnectionState.Connected or ProjectionHubConnectionState.Reconnected;
+            return _stateHandler?.Invoke(change) ?? Task.CompletedTask;
+        }
     }
 
     private sealed class StubAuthenticationStateProvider(ClaimsPrincipal principal) : AuthenticationStateProvider {
@@ -804,6 +895,14 @@ public sealed class ProjectionSubscriptionServiceTests {
             Calls++;
             return Task.FromResult(1);
         }
+    }
+
+    private sealed class TestOptionsMonitor(FcShellOptions value) : IOptionsMonitor<FcShellOptions> {
+        public FcShellOptions CurrentValue => value;
+
+        public FcShellOptions Get(string? name) => value;
+
+        public IDisposable? OnChange(Action<FcShellOptions, string?> listener) => new Registration(() => { });
     }
 
     private sealed class MutableUserContextAccessor(string? tenantId, string? userId) : IUserContextAccessor {

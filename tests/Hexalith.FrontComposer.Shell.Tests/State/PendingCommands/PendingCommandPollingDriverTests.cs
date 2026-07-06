@@ -73,6 +73,29 @@ public sealed class PendingCommandPollingDriverTests {
         }
     }
 
+    [Fact]
+    public async Task DisposeAsync_WhenPollIgnoresCancellation_CompletesWithinBoundedWait() {
+        FakeTimeProvider time = new(new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero));
+        BlockingPendingPolling pending = new();
+        PendingCommandPollingDriver sut = new(
+            pending,
+            new StaticOptionsMonitor(new FcShellOptions { PendingCommandPollingIntervalMs = 1_000 }),
+            time,
+            NullLogger<PendingCommandPollingDriver>.Instance);
+        sut.Start();
+
+        time.Advance(TimeSpan.FromSeconds(1));
+        await pending.WaitForStartAsync(TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        Task dispose = sut.DisposeAsync().AsTask();
+        Task completed = await Task.WhenAny(
+            dispose,
+            Task.Delay(TimeSpan.FromSeconds(3), TestContext.Current.CancellationToken)).ConfigureAwait(true);
+
+        completed.ShouldBe(dispose);
+        await dispose.ConfigureAwait(true);
+    }
+
     private sealed class TestPendingPolling : IPendingCommandPollingCoordinator {
         private readonly TaskCompletionSource _firstCall = new(TaskCreationOptions.RunContinuationsAsynchronously);
         private int _calls;
@@ -96,6 +119,19 @@ public sealed class PendingCommandPollingDriverTests {
             using CancellationTokenSource cts = new(TimeSpan.FromSeconds(2));
             await _firstCall.Task.WaitAsync(cts.Token).ConfigureAwait(false);
         }
+    }
+
+    private sealed class BlockingPendingPolling : IPendingCommandPollingCoordinator {
+        private readonly TaskCompletionSource _started = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<int> _neverCompletes = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public Task<int> PollOnceAsync(CancellationToken cancellationToken = default) {
+            _ = _started.TrySetResult();
+            return _neverCompletes.Task;
+        }
+
+        public Task WaitForStartAsync(CancellationToken cancellationToken)
+            => _started.Task.WaitAsync(cancellationToken);
     }
 
     private sealed class StaticOptionsMonitor(FcShellOptions value) : IOptionsMonitor<FcShellOptions> {

@@ -17,7 +17,7 @@ internal sealed class SignalRProjectionHubConnectionFactory(
                 options.AccessTokenProvider = async () => await accessTokenProvider(CancellationToken.None).ConfigureAwait(false);
             }
         });
-        _ = builder.WithAutomaticReconnect();
+        _ = builder.WithAutomaticReconnect(new ProjectionHubRetryPolicy());
         return new SignalRProjectionHubConnection(builder.Build(), _logger);
     }
 
@@ -44,7 +44,7 @@ internal sealed class SignalRProjectionHubConnectionFactory(
         public bool IsConnected => _connection.State == HubConnectionState.Connected;
 
         public IDisposable OnProjectionChanged(Func<string, string, Task> handler)
-            => _connection.On("ProjectionChanged", handler);
+            => _connection.On(ProjectionHubWireContract.ProjectionChanged, handler);
 
         public IDisposable OnProjectionChangedDetail(Func<ProjectionChangedDetail, Task> handler) {
             ArgumentNullException.ThrowIfNull(handler);
@@ -53,7 +53,7 @@ internal sealed class SignalRProjectionHubConnectionFactory(
             // surface it as the FrontComposer-local DTO. The wire shape matches EventStore's
             // IProjectionChangedClient.ProjectionChangedDetail(type, tenant, scope, metadata).
             return _connection.On<string, string, string?, Dictionary<string, string>>(
-                "ProjectionChangedDetail",
+                ProjectionHubWireContract.ProjectionChangedDetail,
                 (projectionType, tenantId, scope, metadata) => handler(
                     new ProjectionChangedDetail(
                         projectionType,
@@ -81,20 +81,20 @@ internal sealed class SignalRProjectionHubConnectionFactory(
         }
 
         public Task JoinGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken)
-            => _connection.InvokeAsync("JoinGroup", projectionType, tenantId, cancellationToken);
+            => _connection.InvokeAsync(ProjectionHubWireContract.JoinGroup, projectionType, tenantId, cancellationToken);
 
         public Task JoinGroupAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken)
             => string.IsNullOrWhiteSpace(scope)
-                ? _connection.InvokeAsync("JoinGroup", projectionType, tenantId, cancellationToken)
-                : _connection.InvokeAsync("JoinGroupScoped", projectionType, tenantId, scope, cancellationToken);
+                ? _connection.InvokeAsync(ProjectionHubWireContract.JoinGroup, projectionType, tenantId, cancellationToken)
+                : _connection.InvokeAsync(ProjectionHubWireContract.JoinGroupScoped, projectionType, tenantId, scope, cancellationToken);
 
         public Task LeaveGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken)
-            => _connection.InvokeAsync("LeaveGroup", projectionType, tenantId, cancellationToken);
+            => _connection.InvokeAsync(ProjectionHubWireContract.LeaveGroup, projectionType, tenantId, cancellationToken);
 
         public Task LeaveGroupAsync(string projectionType, string tenantId, string? scope, CancellationToken cancellationToken)
             => string.IsNullOrWhiteSpace(scope)
-                ? _connection.InvokeAsync("LeaveGroup", projectionType, tenantId, cancellationToken)
-                : _connection.InvokeAsync("LeaveGroupScoped", projectionType, tenantId, scope, cancellationToken);
+                ? _connection.InvokeAsync(ProjectionHubWireContract.LeaveGroup, projectionType, tenantId, cancellationToken)
+                : _connection.InvokeAsync(ProjectionHubWireContract.LeaveGroupScoped, projectionType, tenantId, scope, cancellationToken);
 
         public Task StopAsync(CancellationToken cancellationToken)
             => _connection.StopAsync(cancellationToken);

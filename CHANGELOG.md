@@ -1,3 +1,26 @@
+# [1.4.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.3.0...v1.4.0) (2026-07-05)
+
+
+### Bug Fixes
+
+* **auth:** harden EventStore token relay lifecycle ([faedff0](https://github.com/Hexalith/Hexalith.FrontComposer/commit/faedff03a9490d38af821ccd32c0175d9681ffb4))
+* **references:** update subproject commits for Hexalith.EventStore and Hexalith.Memories ([b8229a5](https://github.com/Hexalith/Hexalith.FrontComposer/commit/b8229a533ff668d9df97bf1889f4f3c9943c9dd8))
+* **shell:** derive nav routes from the canonical kebab slug contract ([daaa3d7](https://github.com/Hexalith/Hexalith.FrontComposer/commit/daaa3d7699989b01e37645cbc5456c023dc2045a))
+* **shell:** harden system theme watcher against disposal races ([276597c](https://github.com/Hexalith/Hexalith.FrontComposer/commit/276597ce5ca402e9f7421bd64da489c59abdc04a))
+* **shell:** link projection empty-state stylesheet globally ([4c98670](https://github.com/Hexalith/Hexalith.FrontComposer/commit/4c9867084b678686c2ac6885d24e9fedb3541176))
+* **sourcetools:** harden generated-code emission ([cb481aa](https://github.com/Hexalith/Hexalith.FrontComposer/commit/cb481aa831ac490838e60c2745aa5a4badc8eba7))
+* **ui:** render page headers with real FcPageHeader parameters ([535823d](https://github.com/Hexalith/Hexalith.FrontComposer/commit/535823ddf15d3793e4cdbf4d3ea90a6c5f132a99))
+
+
+### Features
+
+* Update Hexalith.Builds subproject reference and enhance CI governance tests ([cdf4048](https://github.com/Hexalith/Hexalith.FrontComposer/commit/cdf40484ca044504a32d0499f7ab966d18734f34))
+
+
+### Performance Improvements
+
+* **shell:** key reordering home and navigation loops ([ce3ed65](https://github.com/Hexalith/Hexalith.FrontComposer/commit/ce3ed654b4f664aecf4000fa157c478a7c0204af))
+
 # [1.3.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.2.0...v1.3.0) (2026-07-05)
 
 

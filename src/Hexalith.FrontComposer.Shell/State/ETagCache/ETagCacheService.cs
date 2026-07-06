@@ -41,6 +41,7 @@ public sealed class ETagCacheService : IETagCache {
     private readonly TimeProvider _time;
     private readonly ILogger<ETagCacheService> _logger;
     private readonly ConcurrentDictionary<string, long> _lru = new(System.StringComparer.Ordinal);
+    private readonly SemaphoreSlim _lruSeedGate = new(1, 1);
     private int _lruSeeded;
 
     /// <summary>
@@ -299,10 +300,29 @@ public sealed class ETagCacheService : IETagCache {
     }
 
     private async Task EnsurePersistedLruSeededAsync(CancellationToken cancellationToken) {
-        if (Interlocked.Exchange(ref _lruSeeded, 1) != 0) {
+        if (Volatile.Read(ref _lruSeeded) != 0) {
             return;
         }
 
+        await _lruSeedGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            if (Volatile.Read(ref _lruSeeded) != 0) {
+                return;
+            }
+
+            bool seeded = await TrySeedPersistedLruAsync(cancellationToken).ConfigureAwait(false);
+            Volatile.Write(ref _lruSeeded, seeded ? 1 : 0);
+        }
+        catch (OperationCanceledException) {
+            Volatile.Write(ref _lruSeeded, 0);
+            throw;
+        }
+        finally {
+            _ = _lruSeedGate.Release();
+        }
+    }
+
+    private async Task<bool> TrySeedPersistedLruAsync(CancellationToken cancellationToken) {
         IReadOnlyList<string> keys;
         try {
             keys = await _storage.GetKeysAsync(string.Empty, cancellationToken).ConfigureAwait(false);
@@ -311,10 +331,13 @@ public sealed class ETagCacheService : IETagCache {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "ETagCacheService: failed to enumerate persisted keys for cache LRU seeding.");
-            return;
+            _logger.LogWarning(
+                "ETagCacheService: failed to enumerate persisted keys for cache LRU seeding. FailureCategory={FailureCategory}",
+                ex.GetType().Name);
+            return false;
         }
 
+        bool anyFailed = false;
         foreach (string key in keys) {
             if (!key.Contains(":etag:", StringComparison.Ordinal)) {
                 continue;
@@ -333,12 +356,18 @@ public sealed class ETagCacheService : IETagCache {
                 throw;
             }
             catch (Exception ex) {
+                // Skip this key but keep seeding the rest — a single corrupt/failing entry must not
+                // strand every later key outside LRU accounting (leaving them un-evictable). anyFailed
+                // keeps the seed gate retryable so a transient per-key fault re-seeds on the next call.
+                anyFailed = true;
                 _logger.LogWarning(
-                    ex,
-                    "ETagCacheService: failed to seed LRU timestamp for redacted key {KeyHash}.",
-                    RedactKey(key));
+                    "ETagCacheService: failed to seed LRU timestamp for redacted key {KeyHash}. FailureCategory={FailureCategory}",
+                    RedactKey(key),
+                    ex.GetType().Name);
             }
         }
+
+        return !anyFailed;
     }
 
     private async Task EvictIfOverCapAsync(int cap, CancellationToken cancellationToken) {
