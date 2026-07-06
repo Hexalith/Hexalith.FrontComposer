@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
+import { fillFieldByLabel } from '../helpers/fluent-fields.js';
 
 const COMMAND_ID = 'batch-increment';
 const CONTRACT_PATH = '../../_bmad-output/contracts/fc-cmd-retry-degraded-state-contract-2026-06-05.md';
@@ -48,8 +49,8 @@ test.describe('Story 4.5: retry and degraded-state handling', () => {
     await gotoCounter(page);
 
     const form = batchIncrementForm(page);
-    await form.getByLabel('Amount').fill('2');
-    await form.getByLabel('Note').fill('QA story 4.5 pending summary redaction token=secret tenant=demo-tenant');
+    await fillFieldByLabel(form, 'Amount', '2');
+    await fillFieldByLabel(form, 'Note', 'QA story 4.5 pending summary redaction token=secret tenant=demo-tenant');
     await form.getByRole('button', { name: 'Batch Increment' }).click();
 
     await lifecycle.expectState(COMMAND_ID, 'syncing');

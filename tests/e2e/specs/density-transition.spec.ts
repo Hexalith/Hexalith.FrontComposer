@@ -10,7 +10,7 @@ import { expect, test } from '../fixtures/index.js';
 import { ShellPage, ViewportBreakpoints } from '../page-objects/shell.page.js';
 
 const SETTINGS_BUTTON = '[data-testid="fc-settings-button"]';
-const SETTINGS_DIALOG = '[role="dialog"]';
+const SETTINGS_DIALOG = '[data-testid="fc-settings-dialog"]';
 const DENSITY_RADIO_COMPACT = 'input[type="radio"][value="Compact"]';
 
 test.describe('Story 3-3: display density and user settings @p0 @smoke', () => {

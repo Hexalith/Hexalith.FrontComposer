@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
+import { fillFieldByLabel } from '../helpers/fluent-fields.js';
 import { getSpecimenRoute } from '../helpers/specimen-manifest.js';
 
 const COMMAND_ID = 'purge-specimen-record';
@@ -115,10 +116,8 @@ const destructiveForm = (page: Page): Locator =>
 const destructiveDialog = (page: Page): Locator => page.getByTestId('fc-destructive-dialog');
 
 const fillDestructiveFields = async (form: Locator, recordId: string, reason: string): Promise<void> => {
-  await form.getByLabel('Record Id').fill(recordId);
-  await form.getByLabel('Record Id').blur();
-  await form.getByLabel('Reason').fill(reason);
-  await form.getByLabel('Reason').blur();
+  await fillFieldByLabel(form, 'Record Id', recordId);
+  await fillFieldByLabel(form, 'Reason', reason);
 };
 
 const submitDestructiveCommand = async (form: Locator): Promise<void> => {

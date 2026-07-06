@@ -1,4 +1,5 @@
 import { expect, test } from '../fixtures/index.js';
+import { fillFieldByLabel } from '../helpers/fluent-fields.js';
 
 test.describe('Story 3.4: command lifecycle UI', () => {
   test('generated compact command surfaces submitting -> acknowledged -> syncing -> confirmed', async ({
@@ -19,8 +20,8 @@ test.describe('Story 3.4: command lifecycle UI', () => {
 
     const form = page.locator('.fc-command-form[aria-label="Batch Increment command form"]');
     await expect(form).toBeVisible();
-    await form.getByLabel('Amount').fill('2');
-    await form.getByLabel('Note').fill('QA story 3.4 browser lifecycle');
+    await fillFieldByLabel(form, 'Amount', '2');
+    await fillFieldByLabel(form, 'Note', 'QA story 3.4 browser lifecycle');
     await form.getByRole('button', { name: 'Batch Increment' }).click();
 
     await lifecycle.expectState(commandId, 'submitting');

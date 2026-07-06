@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
+import { expectFieldValue, fillFieldByLabel } from '../helpers/fluent-fields.js';
 
 const COMMAND_FORM = '.fc-command-form';
 const FULL_PAGE_ROUTE = /\/commands\/Counter\/ConfigureCounterCommand/;
@@ -58,19 +59,19 @@ test.describe('Story 4.2: unsaved full-page command form abandonment guard', () 
     const warning = abandonmentWarning(page);
     await expect(warning).toBeVisible();
     await expect(page).toHaveURL(FULL_PAGE_ROUTE);
-    await expect(form.getByLabel('Name')).toHaveValue('QA unsaved counter');
+    await expectFieldValue(form, 'Name', 'QA unsaved counter');
 
     await page.getByTestId('fc-form-abandonment-stay').click();
     await expect(warning).toHaveCount(0);
     await expect(page).toHaveURL(FULL_PAGE_ROUTE);
-    await expect(form.getByLabel('Name')).toHaveValue('QA unsaved counter');
+    await expectFieldValue(form, 'Name', 'QA unsaved counter');
 
     await counterBreadcrumbLink(page).click();
     await expect(warning).toBeVisible();
     await page.getByTestId('fc-form-abandonment-stay').press('Escape');
     await expect(warning).toHaveCount(0);
     await expect(page).toHaveURL(FULL_PAGE_ROUTE);
-    await expect(form.getByLabel('Name')).toHaveValue('QA unsaved counter');
+    await expectFieldValue(form, 'Name', 'QA unsaved counter');
 
     await counterBreadcrumbLink(page).click();
     await expect(warning).toBeVisible();
@@ -102,9 +103,7 @@ const abandonmentWarning = (page: Page): Locator =>
   page.getByTestId('fc-form-abandonment-warning');
 
 const fillField = async (root: Locator, label: string, value: string): Promise<void> => {
-  const field = root.getByLabel(label);
-  await field.fill(value);
-  await field.blur();
+  await fillFieldByLabel(root, label, value);
 };
 
 const waitForConfiguredAbandonmentThreshold = async (page: Page): Promise<void> => {

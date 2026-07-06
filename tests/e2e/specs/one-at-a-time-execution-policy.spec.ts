@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
+import { expectFieldValue, fillFieldByLabel } from '../helpers/fluent-fields.js';
 
 const BATCH_COMMAND_ID = 'batch-increment';
 const INCREMENT_COMMAND_ID = 'increment';
@@ -55,7 +56,7 @@ test.describe('Story 4.3: one-at-a-time execution policy', () => {
     await expect(incrementForm).toContainText('Command already in progress');
     await expect(incrementForm).toContainText('A command is still waiting for confirmation.');
     await expect(incrementForm).not.toContainText(/queued|retried|submitted/iu);
-    await expect(incrementForm.getByLabel('Amount')).toHaveValue('7');
+    await expectFieldValue(incrementForm, 'Amount', '7');
     await expect(incrementForm.getByRole('button', { name: 'Increment' })).toBeEnabled();
     await lifecycle.expectState(INCREMENT_COMMAND_ID, 'idle');
     await lifecycle.expectState(BATCH_COMMAND_ID, 'syncing');
@@ -79,7 +80,5 @@ const commandForm = (page: Page, ariaLabel: string): Locator =>
   page.locator(`${COMMAND_FORM}[aria-label="${ariaLabel}"]`);
 
 const fillField = async (root: Locator, label: string, value: string): Promise<void> => {
-  const field = root.getByLabel(label);
-  await field.fill(value);
-  await field.blur();
+  await fillFieldByLabel(root, label, value);
 };

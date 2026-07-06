@@ -35,6 +35,7 @@ builder.Host.UseDefaultServiceProvider(o => o.ValidateScopes = true);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddHttpClient();
 builder.Services.AddFluentUIComponents();
 
 // Story 3-1 D28 — Quickstart chains AddLocalization + AddHexalithShellLocalization +

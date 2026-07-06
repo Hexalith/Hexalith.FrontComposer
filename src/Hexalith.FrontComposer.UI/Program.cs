@@ -19,6 +19,7 @@ builder.Host.UseDefaultServiceProvider(o => o.ValidateScopes = true);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
+builder.Services.AddHttpClient();
 builder.Services.AddFluentUIComponents();
 builder.Services.AddHttpContextAccessor();
 

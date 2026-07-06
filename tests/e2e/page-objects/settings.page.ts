@@ -45,8 +45,8 @@ export class SettingsPage {
   constructor(page: Page) {
     this.page = page;
     this.settingsButton = page.getByTestId('fc-settings-button');
-    this.dialog = page.locator('[role="dialog"]');
     this.dialogBody = page.getByTestId('fc-settings-dialog');
+    this.dialog = page.locator('fluent-dialog', { has: this.dialogBody });
     this.themeSection = page.locator('#fc-theme-section');
     // FcThemeToggle renders a FluentMenuButton carrying Title="Change theme" (ThemeToggleAriaLabel).
     this.themeToggleButton = this.dialog.getByTitle('Change theme');

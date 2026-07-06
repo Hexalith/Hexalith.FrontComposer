@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
+import { fillFieldByLabel } from '../helpers/fluent-fields.js';
 
 const COMMAND_FORM = '.fc-command-form';
 
@@ -181,9 +182,7 @@ const commandForm = (page: Page, ariaLabel: string): Locator =>
   page.locator(`${COMMAND_FORM}[aria-label="${ariaLabel}"]`);
 
 const fillField = async (root: Locator, label: string, value: string): Promise<void> => {
-  const field = root.getByLabel(label);
-  await field.fill(value);
-  await field.blur();
+  await fillFieldByLabel(root, label, value);
 };
 
 const expectFrameworkIdentityHidden = async (root: Locator): Promise<void> => {
