@@ -37,6 +37,39 @@
     background: var(--colorSubtleBackgroundHover);
 }
 
+.fc-status-filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: calc(var(--fc-spacing-unit, 4px) * 2);
+    margin-block: calc(var(--fc-spacing-unit, 4px) * 2);
+}
+
+.fc-status-filter-chip {
+    border: 1px solid var(--colorNeutralStroke1, #d1d1d1);
+    border-radius: 999px;
+    background: var(--colorSubtleBackground, transparent);
+    color: var(--colorNeutralForeground1, #242424);
+    cursor: pointer;
+    font: inherit;
+    min-height: 28px;
+    padding: 2px 10px;
+}
+
+.fc-status-filter-chip:hover {
+    background: var(--colorSubtleBackgroundHover, rgba(0, 0, 0, 0.04));
+}
+
+.fc-status-filter-chip:focus-visible {
+    outline: 2px solid var(--colorStrokeFocus2, #000);
+    outline-offset: 2px;
+}
+
+.fc-status-filter-chip[data-fc-chip-active="true"] {
+    background: var(--colorBrandBackground, #0f6cbd);
+    border-color: var(--colorBrandBackground, #0f6cbd);
+    color: var(--colorNeutralForegroundOnBrand, #fff);
+}
+
 /* Highlight the currently-expanded row. CSS variable so adopters can theme without
    patching the Shell. Reduced-motion users get an instant transition. */
 .fc-row-expanded {

@@ -22,6 +22,18 @@ public sealed class RazorEmitterVirtualizationTests {
     private static ColumnModel Col(string name, string? header = null, TypeCategory cat = TypeCategory.Text)
         => new(name, header ?? name, cat, null, false, _emptyBadges);
 
+    private static ColumnModel BadgeCol()
+        => new(
+            "Status",
+            "Status",
+            TypeCategory.Enum,
+            null,
+            false,
+            new EquatableArray<BadgeMappingEntry>(ImmutableArray.Create(
+                new BadgeMappingEntry("Ready", "Success"),
+                new BadgeMappingEntry("NeedsReview", "Warning"))),
+            new EquatableArray<string>(ImmutableArray.Create("Ready", "NeedsReview")));
+
     private static RazorModel Model(params ColumnModel[] cols)
         => new("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(cols)));
@@ -53,6 +65,23 @@ public sealed class RazorEmitterVirtualizationTests {
         gridBlock.ShouldContain("\"Class\", \"fc-projection-grid\"");
         gridBlock.ShouldContain("\"GenerateHeader\", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky");
         gridBlock.ShouldContain("\"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density)");
+        src.ShouldContain("return \"fc-datagrid-host fc-projection-grid\";");
+    }
+
+    [Fact]
+    public void EmitsStatusFilterChipsForBadgeMappedProjection() {
+        string src = RazorEmitter.Emit(Model(Col("Id"), BadgeCol()));
+
+        src.ShouldContain("private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> _statusFilterSlots");
+        src.ShouldContain("global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success");
+        src.ShouldContain("global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning");
+        src.ShouldContain("FcStatusFilterChips");
+        src.ShouldContain("\"AvailableSlots\", _statusFilterSlots");
+        src.ShouldContain("\"ActiveSlots\", ActiveStatusSlots(gridSnapshot)");
+        src.ShouldContain("ReservedFilterKeys.StatusKey");
+        src.ShouldContain("private static System.Collections.Generic.IReadOnlyList<OrderProjection> TemplateItems(System.Collections.Generic.IReadOnlyList<OrderProjection>? items, global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+        src.ShouldContain("items: TemplateItems(state.Items, gridSnapshot)");
+        src.ShouldContain("var __detailItems = TemplateItems(state.Items, CurrentGridSnapshot());");
     }
 
     [Theory]

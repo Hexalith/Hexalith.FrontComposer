@@ -75,6 +75,15 @@ public sealed class RazorEmitterExpandInRowTests {
     }
 
     [Fact]
+    public void DefaultGridStrategy_ExposesDetailAsTemplateSection() {
+        string src = RazorEmitter.Emit(Model(ProjectionRenderStrategy.Default, Col("Id"), Col("Name")));
+
+        src.ShouldContain("new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor(\"Detail\", \"Detail\", \"Detail\")");
+        src.ShouldContain("private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDetailSection(OrderProjectionState state)");
+        src.ShouldContain("string.Equals(sectionName, \"Detail\", System.StringComparison.Ordinal) ? RenderTemplateDetailSection(state) : static _ => { }");
+    }
+
+    [Fact]
     public void DefaultGridStrategy_EmitsClickToggleAndDisposeCollapseDispatches() {
         string src = RazorEmitter.Emit(Model(ProjectionRenderStrategy.Default, Col("Id"), Col("Name")));
 

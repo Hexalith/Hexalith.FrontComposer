@@ -73,6 +73,7 @@ test.describe('FC-TBL generated table contract', () => {
 
 const gotoSpecimen = async (page: import('@playwright/test').Page, route: SpecimenRoute): Promise<void> => {
   await page.goto(route.path);
+  await page.locator('.fc-shell-root[data-fc-interactive="true"]').waitFor();
   await expect(page.locator(route.readySelector), `${route.path} missing ready marker`).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.body.dataset.fcDensity)).toBe('compact');
 };

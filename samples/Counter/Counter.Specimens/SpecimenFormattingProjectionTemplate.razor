@@ -1,8 +1,28 @@
 @namespace Counter.Specimens
 @using Counter.Specimens.Domain
+@using System.Globalization
 
-<div class="fc-specimen-generated-template">
-    @foreach (SpecimenFormattingProjection row in Context.Items) {
-        @Context.RowRenderer(row)
-    }
-</div>
+@{
+    CultureInfo __fcPreviousCulture = CultureInfo.CurrentCulture;
+    CultureInfo __fcPreviousUiCulture = CultureInfo.CurrentUICulture;
+    CultureInfo __fcSpecimenCulture = CultureInfo.GetCultureInfo("fr-FR");
+    CultureInfo.CurrentCulture = __fcSpecimenCulture;
+    CultureInfo.CurrentUICulture = __fcSpecimenCulture;
+}
+
+<table class="fc-specimen-generated-template">
+    <tbody>
+        @foreach (SpecimenFormattingProjection row in Context.Items) {
+            <tr>
+                <td>@Context.RowRenderer(row)</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@Context.SectionRenderer("Detail")
+
+@{
+    CultureInfo.CurrentCulture = __fcPreviousCulture;
+    CultureInfo.CurrentUICulture = __fcPreviousUiCulture;
+}

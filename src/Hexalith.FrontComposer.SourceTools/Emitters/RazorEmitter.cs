@@ -209,6 +209,16 @@ public static class RazorEmitter {
             or ProjectionRenderStrategy.StatusOverview
             or ProjectionRenderStrategy.Dashboard;
 
+    private static bool EmitsTemplateDetailSection(ProjectionRenderStrategy strategy)
+        => strategy is ProjectionRenderStrategy.Default
+            or ProjectionRenderStrategy.ActionQueue
+            or ProjectionRenderStrategy.Dashboard;
+
+    private static string TemplateDetailSectionFallback(RazorModel model)
+        => EmitsTemplateDetailSection(model.Strategy)
+            ? "string.Equals(sectionName, \"Detail\", System.StringComparison.Ordinal) ? RenderTemplateDetailSection(state) : static _ => { }"
+            : "static _ => { }";
+
     private static bool HasBadgeMappings(RazorModel model) {
         foreach (ColumnModel col in model.Columns) {
             if (col.BadgeMappings.Count > 0) {
@@ -217,6 +227,20 @@ public static class RazorEmitter {
         }
 
         return false;
+    }
+
+    private static string[] OrderedBadgeSlotNames(RazorModel model) {
+        List<string> slots = [];
+        HashSet<string> seen = new(StringComparer.Ordinal);
+        foreach (ColumnModel col in model.Columns) {
+            foreach (BadgeMappingEntry mapping in col.BadgeMappings) {
+                if (seen.Add(mapping.Slot)) {
+                    slots.Add(mapping.Slot);
+                }
+            }
+        }
+
+        return [.. slots];
     }
 
     private static bool NeedsShellLocalizer(RazorModel model)
@@ -303,6 +327,18 @@ public static class RazorEmitter {
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;");
             _ = sb.AppendLine();
+            if (HasBadgeMappings(model)) {
+                string[] slots = OrderedBadgeSlotNames(model);
+                _ = sb.AppendLine("    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> _statusFilterSlots = new global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot[]");
+                _ = sb.AppendLine("    {");
+                for (int i = 0; i < slots.Length; i++) {
+                    string trailingComma = i == slots.Length - 1 ? string.Empty : ",";
+                    _ = sb.AppendLine("        global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot." + slots[i] + trailingComma);
+                }
+
+                _ = sb.AppendLine("    };");
+                _ = sb.AppendLine();
+            }
 
             // Story 4-5 T2.5 / D22 — per-component-instance ephemeral view-key. Format extends
             // Story 2-2 D30 with a Guid suffix so two browser tabs of the same projection do not
@@ -368,9 +404,10 @@ public static class RazorEmitter {
         // through the typed template Context so adopters can rearrange section layout while
         // letting the framework render individual fields via the FieldRenderer delegate.
         EmitTemplateColumnDescriptors(sb, model);
-        EmitTemplateSectionDescriptors(sb);
+        EmitTemplateSectionDescriptors(sb, model);
         EmitTemplateFieldRenderer(sb, model);
         EmitTemplateRowRenderer(sb, model);
+        EmitTemplateDetailSectionRenderer(sb, model);
         EmitSlotFieldRenderer(sb, model);
     }
 
@@ -396,11 +433,15 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
     }
 
-    private static void EmitTemplateSectionDescriptors(StringBuilder sb) {
+    private static void EmitTemplateSectionDescriptors(StringBuilder sb, RazorModel model) {
         _ = sb.AppendLine("    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor> _templateSectionsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor[]");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor(\"Body\", \"Body\", \"Body\"),");
-        _ = sb.AppendLine("        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor(\"Row\", \"Row\", \"Row\")");
+        _ = sb.AppendLine("        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor(\"Row\", \"Row\", \"Row\")" + (EmitsTemplateDetailSection(model.Strategy) ? "," : string.Empty));
+        if (EmitsTemplateDetailSection(model.Strategy)) {
+            _ = sb.AppendLine("        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor(\"Detail\", \"Detail\", \"Detail\")");
+        }
+
         _ = sb.AppendLine("    };");
         _ = sb.AppendLine();
     }
@@ -498,6 +539,55 @@ public static class RazorEmitter {
         }
 
         _ = sb.AppendLine("            builder.CloseElement();");
+        _ = sb.AppendLine("        };");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+    }
+
+    private static void EmitTemplateDetailSectionRenderer(StringBuilder sb, RazorModel model) {
+        if (!EmitsTemplateDetailSection(model.Strategy)) {
+            return;
+        }
+
+        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDetailSection(" + model.TypeName + "State state)");
+        _ = sb.AppendLine("    {");
+        if (HasBadgeMappings(model)) {
+            _ = sb.AppendLine("        var __detailItems = TemplateItems(state.Items, CurrentGridSnapshot());");
+        }
+
+        string detailItemsExpression = HasBadgeMappings(model) ? "__detailItems" : "state.Items";
+        string emptyDetailItemsCondition = HasBadgeMappings(model)
+            ? "__detailItems.Count == 0"
+            : "state.Items is null || state.Items.Count == 0";
+        _ = sb.AppendLine("        if (" + emptyDetailItemsCondition + ")");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return static _ => { };");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        return builder =>");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            int seq = 0;");
+        if (HasRelativeTimeColumns(model)) {
+            _ = sb.AppendLine("            var relativeNow = TimeProvider.GetUtcNow();");
+        }
+
+        _ = sb.AppendLine("            global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
+        _ = sb.AppendLine("            object? _expandedItemKey = _expandedEntry?.ItemKey;");
+        _ = sb.AppendLine("            " + model.TypeName + "? _expandedItem = null;");
+        _ = sb.AppendLine("            if (_expandedItemKey is not null)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                foreach (var __candidate in " + detailItemsExpression + ")");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    if (_itemKeyAccessor(__candidate).Equals(_expandedItemKey))");
+        _ = sb.AppendLine("                    {");
+        _ = sb.AppendLine("                        _expandedItem = __candidate;");
+        _ = sb.AppendLine("                        break;");
+        _ = sb.AppendLine("                    }");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedItem is null;");
+        _ = sb.AppendLine();
+        ProjectionRoleBodyEmitter.EmitExpandInRowDetailPanel(sb, model);
         _ = sb.AppendLine("        };");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
@@ -1030,6 +1120,92 @@ public static class RazorEmitter {
         _ = sb.AppendLine("                ? query");
         _ = sb.AppendLine("                : null;");
         _ = sb.AppendLine();
+        if (HasBadgeMappings(model)) {
+            _ = sb.AppendLine("    private static System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> ActiveStatusSlots(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (snapshot is null");
+            _ = sb.AppendLine("            || !snapshot.Filters.TryGetValue(global::Hexalith.FrontComposer.Contracts.Rendering.ReservedFilterKeys.StatusKey, out var csv)");
+            _ = sb.AppendLine("            || string.IsNullOrWhiteSpace(csv))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return System.Array.Empty<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot>();");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        var slots = new System.Collections.Generic.List<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot>();");
+            _ = sb.AppendLine("        foreach (string part in csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            if (System.Enum.TryParse<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot>(part, ignoreCase: false, out var slot))");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                slots.Add(slot);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        return slots;");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private static System.Collections.Generic.IReadOnlyList<" + model.TypeName + "> TemplateItems(System.Collections.Generic.IReadOnlyList<" + model.TypeName + ">? items, global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        System.Collections.Generic.IReadOnlyList<" + model.TypeName + "> source = items ?? System.Array.Empty<" + model.TypeName + ">();");
+            _ = sb.AppendLine("        var activeSlots = ActiveStatusSlots(snapshot);");
+            _ = sb.AppendLine("        if (activeSlots.Count == 0)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return source;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        var activeSet = new System.Collections.Generic.HashSet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot>(activeSlots);");
+            _ = sb.AppendLine("        return source.Where(row => RowMatchesActiveStatus(row, activeSet)).ToList();");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private static System.Collections.Generic.IEnumerable<" + model.TypeName + "> StatusFilteredItems(System.Collections.Generic.IEnumerable<" + model.TypeName + "> items, global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        var activeSlots = ActiveStatusSlots(snapshot);");
+            _ = sb.AppendLine("        if (activeSlots.Count == 0)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return items;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        var activeSet = new System.Collections.Generic.HashSet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot>(activeSlots);");
+            _ = sb.AppendLine("        return items.Where(row => RowMatchesActiveStatus(row, activeSet));");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private static bool RowMatchesActiveStatus(" + model.TypeName + " row, System.Collections.Generic.ISet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> activeSlots)");
+            _ = sb.AppendLine("    {");
+            foreach (ColumnModel col in model.Columns) {
+                if (col.BadgeMappings.Count == 0) {
+                    continue;
+                }
+
+                string valueExpression = col.IsNullable
+                    ? "row." + col.PropertyName + ".HasValue ? row." + col.PropertyName + ".Value.ToString() : null"
+                    : "row." + col.PropertyName + ".ToString()";
+                string slotLocal = "__" + col.PropertyName + "Slot";
+                _ = sb.AppendLine("        global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot? " + slotLocal + " = StatusSlotFor" + col.PropertyName + "(" + valueExpression + ");");
+                _ = sb.AppendLine("        if (" + slotLocal + ".HasValue && activeSlots.Contains(" + slotLocal + ".Value))");
+                _ = sb.AppendLine("        {");
+                _ = sb.AppendLine("            return true;");
+                _ = sb.AppendLine("        }");
+                _ = sb.AppendLine();
+            }
+
+            _ = sb.AppendLine("        return false;");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            foreach (ColumnModel col in model.Columns) {
+                if (col.BadgeMappings.Count == 0) {
+                    continue;
+                }
+
+                _ = sb.AppendLine("    private static global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot? StatusSlotFor" + col.PropertyName + "(string? value)");
+                _ = sb.AppendLine("        => value switch");
+                _ = sb.AppendLine("        {");
+                foreach (BadgeMappingEntry mapping in col.BadgeMappings) {
+                    _ = sb.AppendLine("            \"" + RoleBodyHelpers.EscapeString(mapping.EnumMemberName) + "\" => global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot." + mapping.Slot + ",");
+                }
+
+                _ = sb.AppendLine("            _ => null,");
+                _ = sb.AppendLine("        };");
+                _ = sb.AppendLine();
+            }
+        }
         _ = sb.AppendLine("    private static string ProjectionTypeFromViewKey()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        int separator = _viewKey.IndexOf(':');");
@@ -1145,10 +1321,10 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (ReconciliationSweepState.Value.MarkersByViewKey.TryGetValue(_viewKey, out var marker) && marker.ExpiresAt > TimeProvider.GetUtcNow())");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            return \"fc-datagrid-host fc-reconciliation-sweep\";");
+        _ = sb.AppendLine("            return \"fc-datagrid-host fc-projection-grid fc-reconciliation-sweep\";");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("        return \"fc-datagrid-host\";");
+        _ = sb.AppendLine("        return \"fc-datagrid-host fc-projection-grid\";");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private static bool AnyRealFilterActive(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
@@ -1409,6 +1585,10 @@ public static class RazorEmitter {
             ? "(string?)null"
             : "\"" + RoleBodyHelpers.EscapeString(model.BoundedContext!) + "\"";
 
+        string contextItemsExpression = isGrid && HasBadgeMappings(model)
+            ? "TemplateItems(state.Items, gridSnapshot)"
+            : "state.Items ?? (System.Collections.Generic.IReadOnlyList<" + model.TypeName + ">)System.Array.Empty<" + model.TypeName + ">()";
+
         _ = sb.AppendLine("        var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(" + model.TypeName + "), " + roleExpr + ");");
         _ = sb.AppendLine("        if (__viewOverrideDescriptor is not null)");
         _ = sb.AppendLine("        {");
@@ -1416,7 +1596,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("                projectionType: typeof(" + model.TypeName + "),");
         _ = sb.AppendLine("                boundedContext: " + boundedContextLiteral + ",");
         _ = sb.AppendLine("                role: " + roleExpr + ",");
-        _ = sb.AppendLine("                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<" + model.TypeName + ">)System.Array.Empty<" + model.TypeName + ">(),");
+        _ = sb.AppendLine("                items: " + contextItemsExpression + ",");
         _ = sb.AppendLine("                renderContext: RenderContext,");
         _ = sb.AppendLine("                columns: _templateColumnsDescriptor,");
         _ = sb.AppendLine("                sections: _templateSectionsDescriptor,");
@@ -1427,7 +1607,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("                entityLabel: \"" + RoleBodyHelpers.EscapeString(ResolveEntityLabel(model)) + "\",");
         _ = sb.AppendLine("                entityPluralLabel: \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\",");
         _ = sb.AppendLine("                defaultBody: defaultBody,");
-        _ = sb.AppendLine("                sectionRenderer: sectionName => string.Equals(sectionName, \"Body\", System.StringComparison.Ordinal) ? defaultBody : static _ => { },");
+        _ = sb.AppendLine("                sectionRenderer: sectionName => string.Equals(sectionName, \"Body\", System.StringComparison.Ordinal) ? defaultBody : " + TemplateDetailSectionFallback(model) + ",");
         _ = sb.AppendLine("                rowRenderer: RenderTemplateRow,");
         _ = sb.AppendLine("                fieldRenderer: RenderTemplateField);");
         _ = sb.AppendLine();
@@ -1448,11 +1628,11 @@ public static class RazorEmitter {
         _ = sb.AppendLine("                boundedContext: " + boundedContextLiteral + ",");
         _ = sb.AppendLine("                role: " + roleExpr + ",");
         _ = sb.AppendLine("                renderContext: RenderContext,");
-        _ = sb.AppendLine("                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<" + model.TypeName + ">)System.Array.Empty<" + model.TypeName + ">(),");
+        _ = sb.AppendLine("                items: " + contextItemsExpression + ",");
         _ = sb.AppendLine("                columns: _templateColumnsDescriptor,");
         _ = sb.AppendLine("                sections: _templateSectionsDescriptor,");
         _ = sb.AppendLine("                defaultBody: defaultBody,");
-        _ = sb.AppendLine("                sectionRenderer: sectionName => string.Equals(sectionName, \"Body\", System.StringComparison.Ordinal) ? defaultBody : static _ => { },");
+        _ = sb.AppendLine("                sectionRenderer: sectionName => string.Equals(sectionName, \"Body\", System.StringComparison.Ordinal) ? defaultBody : " + TemplateDetailSectionFallback(model) + ",");
         _ = sb.AppendLine("                rowRenderer: RenderTemplateRow,");
         _ = sb.AppendLine("                fieldRenderer: RenderTemplateField);");
         _ = sb.AppendLine();
@@ -1487,6 +1667,14 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
 
         // Story 4-4 T2.4 — banners ABOVE the grid (below 4-3's filter surface).
+        if (HasBadgeMappings(model)) {
+            _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcStatusFilterChips>(seq++);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"AvailableSlots\", _statusFilterSlots);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ActiveSlots\", ActiveStatusSlots(gridSnapshot));");
+            _ = sb.AppendLine("        builder.CloseComponent();");
+            _ = sb.AppendLine();
+        }
         _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
         _ = sb.AppendLine("        builder.CloseComponent();");

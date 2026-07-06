@@ -39,7 +39,7 @@ public sealed class RazorEmitterBannersTests {
         src.ShouldContain("<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
         src.ShouldContain("\"data-fc-datagrid\", _viewKey");
         src.ShouldContain("\"onscroll\"");
-        src.ShouldContain("\"fc-datagrid-host\"");
+        src.ShouldContain("\"fc-datagrid-host fc-projection-grid\"");
     }
 
     [Fact]

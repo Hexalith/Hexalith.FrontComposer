@@ -416,6 +416,16 @@ public static class ProjectionRoleBodyEmitter {
         bool emitRowContextActionColumn = false,
         string? defaultSortPropertyName = null,
         bool emitExpandableRows = false) {
+        bool hasBadgeMappings = HasBadgeMappings(model);
+        string effectiveItemsExpression = hasBadgeMappings ? "_gridItems" : filteredItemsExpression;
+        string expansionItemsExpression = hasBadgeMappings ? "_statusFilteredItems" : "state.Items";
+
+        if (hasBadgeMappings) {
+            _ = sb.AppendLine("        var _statusFilteredItems = StatusFilteredItems(" + filteredItemsExpression + ", gridSnapshot).ToList();");
+            _ = sb.AppendLine("        var _gridItems = _statusFilteredItems.AsQueryable();");
+            _ = sb.AppendLine();
+        }
+
         // Story 4-5 T2.1 / D2 / D4 / D6 / D19 / D22 / AC1 / AC2 / AC8 — the host view computes
         // the per-render expansion state OUTSIDE the FluentDataGrid emission so RowClass /
         // OnRowClick / the trailing TemplateColumn can read coherent fields. Three locals are
@@ -429,7 +439,7 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine("        " + model.TypeName + "? _expandedItem = null;");
             _ = sb.AppendLine("        if (_expandedItemKey is not null)");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            foreach (var __candidate in state.Items)");
+            _ = sb.AppendLine("            foreach (var __candidate in " + expansionItemsExpression + ")");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                if (_itemKeyAccessor(__candidate).Equals(_expandedItemKey))");
             _ = sb.AppendLine("                {");
@@ -459,7 +469,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        else");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Items\", " + filteredItemsExpression + ");");
+            _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Items\", " + effectiveItemsExpression + ");");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Virtualize\", true);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DisplayMode\", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);");
@@ -517,6 +527,16 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine();
             EmitExpandInRowDetailPanel(sb, model);
         }
+    }
+
+    private static bool HasBadgeMappings(RazorModel model) {
+        foreach (ColumnModel col in model.Columns) {
+            if (col.BadgeMappings.Count > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

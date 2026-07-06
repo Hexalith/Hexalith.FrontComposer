@@ -1,6 +1,4 @@
 #pragma warning disable CA2007
-using System.Reflection;
-
 using Bunit;
 
 using Fluxor;
@@ -47,11 +45,10 @@ public sealed class FcStatusFilterChipsTests : BunitContext {
             .Add(c => c.AvailableSlots, available)
             .Add(c => c.ActiveSlots, active));
 
-        // FluentBadge's @onclick is wired on the <fluent-badge> web component, which bUnit's synthetic
-        // event pipeline does not surface (the production click fires via DOM/JS). Invoke the bound
-        // handler directly to pin the toggle → action contract, mirroring the debounce-cell harness.
-        await cut.InvokeAsync(() => InvokeSlotClickedAsync(cut.Instance, BadgeSlot.Success));
+        await cut.InvokeAsync(() => cut.Find("[data-fc-status-chip=\"Success\"]").Click());
 
+        cut.Find("[data-fc-status-chip=\"Success\"]").GetAttribute("aria-pressed").ShouldBe("true");
+        cut.Find("[data-fc-status-chip=\"Success\"]").GetAttribute("data-fc-chip-active").ShouldBe("true");
         _dispatcher.Received(1).Dispatch(ArgEx.Is<StatusFilterToggledAction>(action =>
             action.ViewKey == ViewKeyValue && action.SlotName == "Success"));
     }
@@ -71,16 +68,5 @@ public sealed class FcStatusFilterChipsTests : BunitContext {
         cut.Markup.ShouldContain("data-testid=\"fc-status-filter-chips\"");
         cut.Find("[data-fc-status-chip=\"Success\"]").GetAttribute("aria-pressed").ShouldBe("true");
         cut.Find("[data-fc-status-chip=\"Warning\"]").GetAttribute("aria-pressed").ShouldBe("false");
-    }
-
-    private static Task InvokeSlotClickedAsync(object component, BadgeSlot slot) {
-        MethodInfo? method = component.GetType().GetMethod(
-            "OnSlotClickedAsync",
-            BindingFlags.Instance | BindingFlags.NonPublic);
-
-        method.ShouldNotBeNull();
-        object? result = method!.Invoke(component, [slot]);
-        result.ShouldBeAssignableTo<Task>();
-        return (Task)result!;
     }
 }

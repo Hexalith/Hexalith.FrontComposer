@@ -31,7 +31,7 @@
     },
     {
       "name": "data-formatting",
-      "path": "/__frontcomposer/specimens/data-formatting",
+      "path": "/__frontcomposer/specimens/data-formatting?culture=fr&ui-culture=en",
       "readySelector": "[data-testid='fc-data-formatting-specimen'][data-specimen-ready='true']",
       "landmarkRoot": "[data-testid='fc-data-formatting-specimen']",
       "requiredSections": [

@@ -11,8 +11,8 @@ namespace Hexalith.FrontComposer.Shell.Components.DataGrid;
 
 /// <summary>
 /// Story 4-3 T1.2 / D5 / D15 / AC2 — status-chip strip. Reads the <c>__status</c> reserved key
-/// from the supplied <paramref name="ActiveSlots"/> and renders one <c>FluentBadge</c> per
-/// available slot with the appearance toggled via the Story 4-2 <c>SlotAppearanceTable</c>.
+/// from the supplied <paramref name="ActiveSlots"/> and renders one button per available slot
+/// with the appearance toggled via the Story 4-2 <c>SlotAppearanceTable</c>.
 /// Click dispatches <see cref="StatusFilterToggledAction"/>.
 /// </summary>
 public partial class FcStatusFilterChips : ComponentBase {
@@ -47,8 +47,12 @@ public partial class FcStatusFilterChips : ComponentBase {
     }
 
     private Task OnSlotClickedAsync(BadgeSlot slot) {
+        if (!_activeSet.Add(slot)) {
+            _ = _activeSet.Remove(slot);
+        }
+
         Dispatcher.Dispatch(new StatusFilterToggledAction(ViewKey, slot.ToString()));
-        return Task.CompletedTask;
+        return InvokeAsync(StateHasChanged);
     }
 
     private static string HumanizeSlotName(BadgeSlot slot) => slot.ToString();

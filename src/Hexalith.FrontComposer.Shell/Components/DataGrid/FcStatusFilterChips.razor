@@ -2,25 +2,24 @@
 @using Hexalith.FrontComposer.Contracts.Attributes
 @using Microsoft.FluentUI.AspNetCore.Components
 
-@* Story 4-3 T1.2 / D5 / D15 / AC2 — chip strip rendered above the grid. Each chip is a
-   FluentBadge wired to StatusFilterToggledAction with Appearance toggling between Filled
-   (active) and Tint (inactive). *@
+@* Story 4-3 T1.2 / D5 / D15 / AC2 — chip strip rendered above the grid. *@
 
-<div role="group" aria-label="@_groupAriaLabel" data-testid="fc-status-filter-chips">
+<div class="fc-status-filter-chips" role="group" aria-label="@_groupAriaLabel" data-testid="fc-status-filter-chips">
     @foreach (BadgeSlot slot in AvailableSlots) {
         bool active = _activeSet.Contains(slot);
         (BadgeColor color, _) = Components.Badges.SlotAppearanceTable.Resolve(slot);
         string label = HumanizeSlotName(slot);
         string stateLabel = Localizer[active ? "StatusFilterChipActiveLabel" : "StatusFilterChipInactiveLabel"].Value;
         string chipAriaLabel = Localizer["StatusFilterChipAriaLabelTemplate", label, stateLabel].Value;
-        <FluentBadge Color="@color"
-                     Appearance="@(active ? BadgeAppearance.Filled : BadgeAppearance.Tint)"
-                     aria-pressed="@(active ? "true" : "false")"
-                     aria-label="@chipAriaLabel"
-                     data-fc-status-chip="@slot"
-                     data-fc-chip-active="@(active ? "true" : "false")"
-                     @onclick="@(() => OnSlotClickedAsync(slot))">
+        <FluentButton Appearance="ButtonAppearance.Subtle"
+                      Class="fc-status-filter-chip"
+                      aria-pressed="@(active ? "true" : "false")"
+                      aria-label="@chipAriaLabel"
+                      data-fc-status-chip="@slot"
+                      data-fc-status-chip-color="@color.ToString().ToLowerInvariant()"
+                      data-fc-chip-active="@(active ? "true" : "false")"
+                      OnClick="@(() => OnSlotClickedAsync(slot))">
             @label
-        </FluentBadge>
+        </FluentButton>
     }
 </div>

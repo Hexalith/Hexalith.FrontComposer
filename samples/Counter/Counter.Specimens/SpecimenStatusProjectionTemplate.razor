@@ -1,8 +1,14 @@
 @namespace Counter.Specimens
 @using Counter.Specimens.Domain
 
-<div class="fc-specimen-generated-template">
-    @foreach (SpecimenStatusProjection row in Context.Items) {
-        @Context.RowRenderer(row)
-    }
-</div>
+<table class="fc-specimen-generated-template">
+    <tbody>
+        @foreach (SpecimenStatusProjection row in Context.Items) {
+            <tr>
+                <td>@Context.RowRenderer(row)</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@Context.SectionRenderer("Detail")
