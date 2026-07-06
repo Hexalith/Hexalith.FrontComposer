@@ -41,7 +41,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Testing:** xUnit v3 **3.2.2**, bUnit **2.8.4-preview**, Verify/Verify.XunitV3 **31.20.0**,
   NSubstitute **6.0.0-rc.1**, Shouldly **4.3.0**, FsCheck.Xunit.v3 **3.3.3**, PactNet **5.0.1**,
   BenchmarkDotNet **0.15.8**
-- **E2E:** Playwright **1.61.0**, TypeScript **6.0.3**, Node engine `>=24.0.0`
+- **E2E:** Playwright **1.61.1**, TypeScript **6.0.3**, Node engine `>=24.0.0`,
+  npm `>=10`; `tests/e2e/.nvmrc` pins Node `24`
 - **Release tooling:** semantic-release **25.0.5**, commitlint **21.0.2**, Husky **9.1.7**
 - **Packages:** current publishable NuGet packages are `Cli`, `Contracts`, `Mcp`, `Schema`, `Shell`,
   and `Testing`; Story 11.11 may add `Contracts.UI` as the approved split package. `AppHost` and
@@ -222,7 +223,9 @@ _This file contains critical rules and patterns that AI agents must follow when 
   intentional contract changes
 - **Benchmarks** live ONLY in the separate `Shell.Tests.Bench` exe under
   `[Trait("Category","Performance")]`; use `FakeTimeProvider` for deterministic timer-driven tests
-- **e2e (a11y/visual):** Playwright workspace in `tests/e2e` (`npm ci` → `npm run test:a11y`); builds
+- **e2e (a11y/visual):** Playwright workspace in `tests/e2e` (`nvm use` or Node `>=24` →
+  `npm ci` → `npx playwright install --with-deps chromium` for CI parity → `npm run test:a11y`;
+  use `npm run install:browsers` only when local Firefox/WebKit projects are needed). The lane builds
   the `samples/Counter/Counter.Web` specimen host with `Hexalith__FrontComposer__Specimens__Enabled=true`
 - **All configured tests must pass before a change is done**
 

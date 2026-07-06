@@ -3,7 +3,7 @@
     "schemaVersion": "1.0",
     "matrixName": "Hexalith FrontComposer IDE Parity Matrix",
     "lastValidated": "2026-05-09",
-    "dotnetSdk": "10.0.300",
+    "dotnetSdk": "10.0.301",
     "sourceToolsPackage": "Hexalith.FrontComposer.SourceTools local v0.1 story-9-3",
     "generatedOutputPathContractVersion": "v1",
     "generatedOutputPathContract": "obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs",

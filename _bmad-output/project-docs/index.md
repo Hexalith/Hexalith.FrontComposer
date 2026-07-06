@@ -9,7 +9,7 @@
 
 - **Name:** Hexalith.FrontComposer — *"the Hexalith Blazor Front Shell."*
 - **Type:** Monolith (one `.slnx` solution); primary `library`/framework + developer tooling, with **source-generator**, **Blazor-UI**, **MCP-server**, and **CLI** facets.
-- **Primary language / runtime:** C# on **.NET 10** (SDK `10.0.300`).
+- **Primary language / runtime:** C# on **.NET 10** (SDK `10.0.301`).
 - **Architecture:** Source-generation-driven & layered — a contracts kernel → a Roslyn incremental generator → runtime consumers (Blazor shell, MCP server, CLI), bound by schema fingerprints. See [architecture.md](./architecture.md).
 - **In one line:** annotate domain types with `[Projection]`/`[Command]` → the generator emits Blazor views, command forms, Fluxor state, DI registration, and an MCP manifest → the shell composes the UI and the MCP server exposes it to AI agents.
 
@@ -55,7 +55,7 @@
 1. Clone, then initialize **root-declared** submodules under `references/`: `git submodule update --init`
    (do **not** recurse into nested submodules).
 2. `dotnet restore Hexalith.FrontComposer.slnx` → `dotnet build … -c Release`.
-3. Run the default test lane (command above). For a11y/visual: `cd tests/e2e && npm ci && npm run test:a11y`.
+3. Run the default test lane (command above). For a11y/visual: `cd tests/e2e && nvm use && npm ci && npx playwright install --with-deps chromium && npm run test:a11y`.
 4. Explore the `samples/Counter` Aspire sample to see a generated shell end-to-end.
 5. Read [development-guide.md](./development-guide.md) and [contribution-guide.md](./contribution-guide.md) before changing the generator or the published `docs/` site.
 

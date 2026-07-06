@@ -6,8 +6,9 @@
 
 | Tool | Version / note |
 |---|---|
-| .NET SDK | **`10.0.300`** (pinned in [global.json](global.json), `rollForward: latestPatch`) |
-| Node.js | LTS — for commitlint, husky, and the Playwright e2e workspace |
+| .NET SDK | **`10.0.301`** (pinned in [global.json](global.json), `rollForward: latestPatch`) |
+| Node.js | **`>=24.0.0`** for the Playwright e2e workspace; `tests/e2e/.nvmrc` pins Node `24` |
+| npm | **`>=10`** for the e2e workspace dependencies |
 | PowerShell (`pwsh`) | for the `eng/*.ps1` validation scripts and the docs gate |
 | dotnet local tools | `dotnet tool restore` (provides DocFX for the docs gate) |
 | Playwright | only for the accessibility/visual e2e lane (`tests/e2e`) |
@@ -70,13 +71,16 @@ DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.SourceTools.Te
 
 ```bash
 cd tests/e2e
+nvm use        # optional, but recommended; reads tests/e2e/.nvmrc (Node 24)
 npm ci
 npx playwright install --with-deps chromium
 npm run typecheck
 npm run test:a11y          # accessibility + keyboard + media + zoom + visual specimen gate
 ```
 
-The e2e lane builds the `samples/Counter/Counter.Web` specimen host with `Hexalith__FrontComposer__Specimens__Enabled=true` and `ASPNETCORE_ENVIRONMENT=Test`. Root convenience scripts in [package.json](package.json): `npm run test:e2e`, `test:e2e:a11y`, `test:e2e:visual(:update)`, `test:e2e:ui`, `test:e2e:report`.
+CI installs Chromium only for the accessibility/visual lane. The Playwright config also declares Firefox and WebKit projects for local cross-browser checks; install those optional browser payloads with `npm run install:browsers` from `tests/e2e` or `npm run test:e2e:install` from the repository root.
+
+The e2e lane builds the `samples/Counter/Counter.Web` specimen host with `Hexalith__FrontComposer__Specimens__Enabled=true` and `ASPNETCORE_ENVIRONMENT=Test`. Root convenience scripts in [package.json](package.json): `npm run test:e2e:install`, `test:e2e`, `test:e2e:a11y`, `test:e2e:visual(:update)`, `test:e2e:ui`, `test:e2e:report`.
 
 ## Using the CLI locally
 

@@ -36,7 +36,7 @@ The `frontcomposer` **CLI** (`Hexalith.FrontComposer.Cli`) lets you `inspect` th
 
 | Category | Technology | Version | Notes |
 |---|---|---|---|
-| Runtime / SDK | .NET | 10 (SDK `10.0.300`, `rollForward: latestPatch`) | pinned in [global.json](global.json) |
+| Runtime / SDK | .NET | 10 (SDK `10.0.301`, `rollForward: latestPatch`) | pinned in [global.json](global.json) |
 | Language | C# `latest` | — | `Nullable`, `ImplicitUsings` enabled; **`TreatWarningsAsErrors=true`** ([Directory.Build.props](Directory.Build.props)) |
 | Target frameworks | `net10.0`; `net10.0` + `netstandard2.0` | — | Contracts & SourceTools multi-target so the Roslyn analyzer host (netstandard2.0) can reference contracts |
 | UI | Microsoft.FluentUI.AspNetCore.Components (FluentUI v5) | `5.0.0-rc.3-26138.1` | exact pin (ADR-003); v5 RC |
