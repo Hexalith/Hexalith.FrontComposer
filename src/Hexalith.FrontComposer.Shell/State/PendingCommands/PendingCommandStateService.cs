@@ -28,6 +28,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     private (string? Tenant, string? User)? _scopeSnapshot;
     private bool _disposed;
 
+    public event EventHandler? Changed;
+
     public PendingCommandStateService(
         IOptions<FcShellOptions> options,
         ILifecycleStateService lifecycle,
@@ -127,6 +129,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             DispatchEvictedLifecycle(evictionList);
         }
 
+        NotifyChanged();
         return PendingCommandRegistrationResult.Registered(registered, evicted);
     }
 
@@ -192,9 +195,11 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 terminal.MessageId,
                 terminal.CorrelationId);
             FrontComposerTelemetry.SetOutcome(duplicateActivity, "duplicate_ignored");
+            NotifyChanged();
             return PendingCommandResolutionResult.DuplicateIgnored(terminal);
         }
 
+        NotifyChanged();
         using Activity? activity = FrontComposerTelemetry.StartPendingCommandOutcome(
             terminal.Status.ToString(),
             terminal.CommandTypeName,
@@ -282,6 +287,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             "Pending command state cleared. Reason={Reason} OutstandingPendingCount={Count}",
             reason,
             outstanding.Count);
+        NotifyChanged();
     }
 
     /// <inheritdoc />
@@ -417,6 +423,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             return true;
         }
     }
+
+    private void NotifyChanged() => Changed?.Invoke(this, EventArgs.Empty);
 
     private void EnforceScopeBoundary() {
         if (_userContext is null) {

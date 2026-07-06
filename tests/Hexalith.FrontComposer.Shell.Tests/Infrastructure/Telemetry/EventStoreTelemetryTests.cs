@@ -82,11 +82,11 @@ public sealed class EventStoreTelemetryTests {
         using var capture = ActivityCapture.Start();
 
         QueryRequest request = new(
-            ProjectionType: "orders",
+            ProjectionType: "telemetry-protocol-drift-orders",
             TenantId: "tenant-secret",
             Domain: "orders",
             AggregateId: "order-1",
-            QueryType: "GetOrders",
+            QueryType: "TelemetryProtocolDriftRetryProbe",
             CacheDiscriminator: "discriminator-1",
             CachePayloadVersion: 1);
 
@@ -98,10 +98,19 @@ public sealed class EventStoreTelemetryTests {
 
         requestCount.ShouldBe(2);
         Activity outerActivity = capture.AllOf(FrontComposerTelemetry.QueryExecuteOperation)
-            .Single(a => string.Equals(
-                a.GetTagItem(FrontComposerTelemetry.OutcomeTag) as string,
-                "protocol_drift_retry",
-                StringComparison.Ordinal));
+            .Single(a =>
+                string.Equals(
+                    a.GetTagItem(FrontComposerTelemetry.ProjectionTypeTag) as string,
+                    "telemetry-protocol-drift-orders",
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    a.GetTagItem(FrontComposerTelemetry.QueryTypeTag) as string,
+                    "TelemetryProtocolDriftRetryProbe",
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    a.GetTagItem(FrontComposerTelemetry.OutcomeTag) as string,
+                    "protocol_drift_retry",
+                    StringComparison.Ordinal));
         outerActivity.GetTagItem(FrontComposerTelemetry.OutcomeTag).ShouldBe("protocol_drift_retry");
     }
 

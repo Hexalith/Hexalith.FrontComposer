@@ -32,6 +32,7 @@ public sealed class FcDestructiveConfirmationDialogTests : BunitContext {
         cut.Markup.ShouldContain("Delete Order?");
         cut.Markup.ShouldContain("This action cannot be undone.");
         cut.Markup.ShouldContain("Delete Order");
+        cut.Find(".fc-destructive-dialog-title").TextContent.ShouldBe("Delete Order?");
     }
 
     [Fact]

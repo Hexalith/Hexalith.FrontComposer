@@ -603,6 +603,10 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SyncingAction(correlationId));");
         _ = sb.AppendLine("                                break;");
         _ = sb.AppendLine("                            case CommandLifecycleState.Confirmed:");
+        _ = sb.AppendLine("                                if (!string.IsNullOrWhiteSpace(messageId))");
+        _ = sb.AppendLine("                                {");
+        _ = sb.AppendLine("                                    _ = PendingCommandState.ResolveTerminal(global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalObservation.Confirmed(messageId));");
+        _ = sb.AppendLine("                                }");
         _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ConfirmedAction(correlationId));");
         _ = sb.AppendLine("                                break;");
         _ = sb.AppendLine("                        }");
@@ -781,7 +785,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.CloseComponent();");
         _ = sb.AppendLine();
         _ = sb.AppendLine("            __b.OpenComponent<FluentValidationSummary>(cseq++);");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Model\", (object)_model);");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"EditContext\", _editContext);");
         _ = sb.AppendLine("            __b.CloseComponent();");
         _ = sb.AppendLine();
         _ = sb.AppendLine("            if (_serverFormLevelErrors.Count > 0)");
@@ -839,16 +843,18 @@ public static class CommandFormEmitter {
         if (hasAuthorizationPolicy) {
             // Wrap the lifecycle group in explicit parens so a future reorder of the && chain cannot
             // silently flip the gate semantics (Pass-2 P17 / B1 / E1 / A26).
-            _ = sb.AppendLine("                (LifecycleState.Value.State != CommandLifecycleState.Idle");
+            _ = sb.AppendLine("                !_interactiveReady");
+            _ = sb.AppendLine("                || (LifecycleState.Value.State != CommandLifecycleState.Idle");
             _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Confirmed");
             _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Rejected)");
             _ = sb.AppendLine("                || !_authorizationPresentationReady");
             _ = sb.AppendLine("                || !_authorizationPresentationAllowed);");
         }
         else {
-            _ = sb.AppendLine("                LifecycleState.Value.State != CommandLifecycleState.Idle");
+            _ = sb.AppendLine("                !_interactiveReady");
+            _ = sb.AppendLine("                || (LifecycleState.Value.State != CommandLifecycleState.Idle");
             _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Confirmed");
-            _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Rejected);");
+            _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Rejected));");
         }
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__btn =>");
         _ = sb.AppendLine("            {");
@@ -954,7 +960,6 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.SetUpdatesAttributeName(\"value\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-label\", " + propertyName + "Label);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"name\", \"" + propertyName + "\");");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"required\", " + isRequired + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"type\", \"" + inputTypeAttribute + "\");");
 
         if (placeholder is not null) {
@@ -992,7 +997,6 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.SetUpdatesAttributeName(\"value\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-label\", " + propertyName + "Label);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"name\", \"" + propertyName + "\");");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"required\", " + isRequired + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"type\", \"text\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"inputmode\", \"" + (decimalMode ? "decimal" : "numeric") + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"aria-invalid\", !string.IsNullOrEmpty(_" + propertyName + "ParseError));");

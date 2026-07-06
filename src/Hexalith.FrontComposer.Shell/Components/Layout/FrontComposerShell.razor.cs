@@ -498,6 +498,10 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             return;
         }
 
+        if (string.IsNullOrWhiteSpace(snapshot.LastActiveRoute)) {
+            return;
+        }
+
         _sessionRestoreAttempted = true;
         if (!SessionRouteHelper.TryNormalizePersistedRoute(snapshot.LastActiveRoute, NavigationManager, out string candidate)) {
             return;

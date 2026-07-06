@@ -6,7 +6,7 @@ export const fieldByLabel = (root: Locator, label: string): Locator =>
 export const fieldEditorByLabel = (root: Locator, label: string): Locator =>
   fieldByLabel(root, label).locator('input, textarea').first();
 
-const waitForGeneratedFormReady = async (root: Locator): Promise<void> => {
+export const waitForGeneratedFormReady = async (root: Locator): Promise<void> => {
   const isGeneratedCommandForm = await root
     .evaluate((element) => element.classList.contains('fc-command-form'))
     .catch(() => false);

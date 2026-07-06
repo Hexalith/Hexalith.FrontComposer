@@ -89,6 +89,8 @@ public class CommandFormEmitterTests {
         source.ShouldContain("OpenComponent<EditForm>");
         source.ShouldContain("OpenComponent<DataAnnotationsValidator>");
         source.ShouldContain("OpenComponent<FluentValidationSummary>");
+        source.ShouldContain("__b.AddAttribute(cseq++, \"EditContext\", _editContext);");
+        source.ShouldNotContain("__b.AddAttribute(cseq++, \"Model\", (object)_model);");
     }
 
     [Fact]
@@ -96,6 +98,7 @@ public class CommandFormEmitterTests {
         CommandFormModel form = BuildForm(System.Array.Empty<FormFieldModel>());
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
+        source.ShouldContain("!_interactiveReady");
         source.ShouldContain("LifecycleState.Value.State != CommandLifecycleState.Idle");
     }
 
@@ -111,6 +114,27 @@ public class CommandFormEmitterTests {
         source.ShouldContain("IncrementCommandActions.SyncingAction(correlationId)");
         source.ShouldContain("IncrementCommandActions.ConfirmedAction(correlationId)");
         source.ShouldContain("IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode)");
+    }
+
+    [Fact]
+    public void Emit_TerminalLifecycleCallbackResolvesPendingCommandState() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("if (!string.IsNullOrWhiteSpace(messageId))");
+        source.ShouldContain("PendingCommandState.ResolveTerminal(global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalObservation.Confirmed(messageId));");
+
+        int resolveIndex = source.IndexOf(
+            "PendingCommandState.ResolveTerminal(global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalObservation.Confirmed(messageId));",
+            StringComparison.Ordinal);
+        int dispatchIndex = source.IndexOf(
+            "Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));",
+            StringComparison.Ordinal);
+
+        resolveIndex.ShouldBeGreaterThan(0);
+        dispatchIndex.ShouldBeGreaterThan(resolveIndex);
     }
 
     [Fact]
@@ -395,6 +419,7 @@ public class CommandFormEmitterTests {
         source.ShouldContain("__b.OpenElement(cseq++, \"input\")");
         source.ShouldContain("EventCallback.Factory.Create<ChangeEventArgs>(this, e => OnAmountChanged(e.Value?.ToString()))");
         source.ShouldContain("NotifyClientFieldChanged(\"Amount\")");
+        source.ShouldNotContain("__b.AddAttribute(cseq++, \"required\"");
         source.ShouldContain("int.TryParse(value,");
     }
 
@@ -408,6 +433,7 @@ public class CommandFormEmitterTests {
         source.ShouldContain("__b.OpenElement(cseq++, \"input\")");
         source.ShouldContain("EventCallback.Factory.Create<ChangeEventArgs>(this, e => { _model.Note = e.Value?.ToString(); NotifyClientFieldChanged(\"Note\"); })");
         source.ShouldContain("NotifyClientFieldChanged(\"Note\")");
+        source.ShouldNotContain("__b.AddAttribute(cseq++, \"required\"");
     }
 
     [Fact]

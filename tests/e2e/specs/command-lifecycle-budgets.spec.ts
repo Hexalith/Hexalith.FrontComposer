@@ -57,7 +57,7 @@ test.describe('Story 3.6: command lifecycle budgets', () => {
       const actionPrompt = form.getByTestId('fc-action-prompt');
       await expect(actionPrompt).toBeVisible({ timeout: 8_000 });
       await expect(actionPrompt).toContainText("Action needed: the system hasn't confirmed your submission");
-      await expect(actionPrompt.getByRole('button', { name: 'Start over' })).toBeVisible();
+      await expect(actionPrompt.getByTestId('fc-refresh-action')).toBeVisible();
       await expect(lifecycle.locator(COMMAND_ID)).toHaveAttribute('data-lifecycle-state', 'syncing');
       await expect(form).toBeVisible();
 

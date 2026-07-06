@@ -295,6 +295,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                                 Dispatcher.Dispatch(new IncrementCommandActions.SyncingAction(correlationId));
                                 break;
                             case CommandLifecycleState.Confirmed:
+                                if (!string.IsNullOrWhiteSpace(messageId))
+                                {
+                                    _ = PendingCommandState.ResolveTerminal(global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalObservation.Confirmed(messageId));
+                                }
                                 Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));
                                 break;
                         }
@@ -453,7 +457,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             __b.CloseComponent();
 
             __b.OpenComponent<FluentValidationSummary>(cseq++);
-            __b.AddAttribute(cseq++, "Model", (object)_model);
+            __b.AddAttribute(cseq++, "EditContext", _editContext);
             __b.CloseComponent();
 
             if (_serverFormLevelErrors.Count > 0)
@@ -515,7 +519,6 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             __b.SetUpdatesAttributeName("value");
             __b.AddAttribute(cseq++, "aria-label", TenantIdLabel);
             __b.AddAttribute(cseq++, "name", "TenantId");
-            __b.AddAttribute(cseq++, "required", true);
             __b.AddAttribute(cseq++, "type", "text");
             __b.CloseElement();
             __b.CloseElement();
@@ -540,7 +543,6 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             __b.SetUpdatesAttributeName("value");
             __b.AddAttribute(cseq++, "aria-label", AmountLabel);
             __b.AddAttribute(cseq++, "name", "Amount");
-            __b.AddAttribute(cseq++, "required", true);
             __b.AddAttribute(cseq++, "type", "text");
             __b.AddAttribute(cseq++, "inputmode", "numeric");
             __b.AddAttribute(cseq++, "aria-invalid", !string.IsNullOrEmpty(_AmountParseError));
@@ -562,9 +564,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             __b.AddAttribute(cseq++, "aria-label", "Send IncrementCommand");
             // Enable submit in Idle, Confirmed, or Rejected (terminals allow retry) -- patch P3.
             __b.AddAttribute(cseq++, "Disabled",
-                LifecycleState.Value.State != CommandLifecycleState.Idle
+                !_interactiveReady
+                || (LifecycleState.Value.State != CommandLifecycleState.Idle
                 && LifecycleState.Value.State != CommandLifecycleState.Confirmed
-                && LifecycleState.Value.State != CommandLifecycleState.Rejected);
+                && LifecycleState.Value.State != CommandLifecycleState.Rejected));
             __b.AddAttribute(cseq++, "ChildContent", (RenderFragment)(__btn =>
             {
                 int bseq = 0;

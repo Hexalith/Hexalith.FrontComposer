@@ -1,7 +1,7 @@
 import type { Locator, Page } from '@playwright/test';
 
 import { expect, test } from '../fixtures/index.js';
-import { fillFieldByLabel } from '../helpers/fluent-fields.js';
+import { fillFieldByLabel, waitForGeneratedFormReady } from '../helpers/fluent-fields.js';
 import { getSpecimenRoute } from '../helpers/specimen-manifest.js';
 
 const COMMAND_ID = 'purge-specimen-record';
@@ -121,5 +121,6 @@ const fillDestructiveFields = async (form: Locator, recordId: string, reason: st
 };
 
 const submitDestructiveCommand = async (form: Locator): Promise<void> => {
+  await waitForGeneratedFormReady(form);
   await form.getByRole('button', { name: ACTION_LABEL }).click();
 };

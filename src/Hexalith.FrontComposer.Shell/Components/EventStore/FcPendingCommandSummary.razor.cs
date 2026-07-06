@@ -9,7 +9,7 @@ using Microsoft.Extensions.Localization;
 namespace Hexalith.FrontComposer.Shell.Components.EventStore;
 
 /// <summary>Bounded circuit-scoped summary of pending commands resolved after degraded connectivity.</summary>
-public partial class FcPendingCommandSummary : ComponentBase {
+public partial class FcPendingCommandSummary : ComponentBase, IDisposable {
     [Inject]
     private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
 
@@ -22,6 +22,8 @@ public partial class FcPendingCommandSummary : ComponentBase {
 
     [Parameter]
     public int MaxDetails { get; set; } = 5;
+
+    private bool _disposed;
 
     private IReadOnlyList<PendingCommandEntry> EffectiveEntries =>
         Entries.Count > 0 || PendingCommandState is null
@@ -117,6 +119,31 @@ public partial class FcPendingCommandSummary : ComponentBase {
                 title,
                 detail,
                 dataImpact);
+    }
+
+    protected override void OnInitialized() {
+        if (PendingCommandState is not null) {
+            PendingCommandState.Changed += OnPendingCommandStateChanged;
+        }
+    }
+
+    public void Dispose() {
+        _disposed = true;
+        if (PendingCommandState is not null) {
+            PendingCommandState.Changed -= OnPendingCommandStateChanged;
+        }
+    }
+
+    private void OnPendingCommandStateChanged(object? sender, EventArgs e) {
+        if (_disposed) {
+            return;
+        }
+
+        _ = InvokeAsync(() => {
+            if (!_disposed) {
+                StateHasChanged();
+            }
+        });
     }
 
     /// <summary>P2-P13 — strip trailing periods and Unicode whitespace (incl. NBSP) before re-templating.</summary>
