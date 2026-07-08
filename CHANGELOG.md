@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.8.0...v1.8.1) (2026-07-08)
+
+
+### Bug Fixes
+
+* update subproject commits for Hexalith references ([c505baa](https://github.com/Hexalith/Hexalith.FrontComposer/commit/c505baa9b99fa01eb0a9a09e0b4d324ed40d44c9))
+
 # [1.8.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.7.0...v1.8.0) (2026-07-08)
 
 
