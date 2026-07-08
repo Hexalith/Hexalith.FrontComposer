@@ -142,7 +142,7 @@ public sealed class EventStoreCommandClient(
 
                 CommandResult result = new(
                     messageId,
-                    "Accepted",
+                    CommandResultStatus.Accepted,
                     responseCorrelationId,
                     classification.Location,
                     classification.RetryAfter);

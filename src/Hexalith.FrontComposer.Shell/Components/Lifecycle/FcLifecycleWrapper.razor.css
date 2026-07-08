@@ -33,7 +33,7 @@
     }
 }
 
-.fc-lifecycle-still-syncing {
+.fc-lifecycle-wrapper ::deep .fc-lifecycle-still-syncing {
     margin-top: calc(var(--fc-spacing-unit, 4px) * 2);
     display: inline-block;
 }

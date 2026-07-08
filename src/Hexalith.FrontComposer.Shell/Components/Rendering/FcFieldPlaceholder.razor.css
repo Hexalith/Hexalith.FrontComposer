@@ -5,7 +5,7 @@
 }
 
 .fc-field-placeholder-dev {
-    border-color: var(--error-foreground-rest, #cc0000) !important;
+    border-color: var(--colorPaletteRedBorder2, #d13438) !important;
 }
 
 ::deep .fc-monospace {

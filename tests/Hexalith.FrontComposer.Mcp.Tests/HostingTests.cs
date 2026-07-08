@@ -1,7 +1,9 @@
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Extensions;
+using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.Mcp.Skills;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
@@ -52,10 +54,14 @@ public sealed class HostingTests {
         _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
         _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
 
-        Should.Throw<FrontComposerMcpException>(() => services.AddFrontComposerMcp(options => {
+        _ = services.AddFrontComposerMcp(options => {
             options.Manifests.Add(CreateManifest("billing.invoice.create"));
             options.Manifests.Add(CreateManifest("BILLING.INVOICE.CREATE"));
-        })).Category.ShouldBe(FrontComposerMcpFailureCategory.DuplicateDescriptor);
+        });
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        Should.Throw<FrontComposerMcpException>(() => provider.GetRequiredService<FrontComposerMcpDescriptorRegistry>())
+            .Category.ShouldBe(FrontComposerMcpFailureCategory.DuplicateDescriptor);
     }
 
     [Theory]
@@ -67,11 +73,13 @@ public sealed class HostingTests {
         _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
         _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
 
-        InvalidOperationException ex = Should.Throw<InvalidOperationException>(() =>
-            services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest(
+        _ = services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest(
                 "billing.invoice.create",
-                DescriptorUri: descriptorUri))));
+                DescriptorUri: descriptorUri)));
 
+        using ServiceProvider provider = services.BuildServiceProvider();
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(() =>
+            provider.GetRequiredService<IOptions<McpServerOptions>>().Value);
         ex.Message.ShouldContain("URI collision");
         ex.Message.ShouldContain("frontcomposer://skills/");
     }
@@ -126,11 +134,103 @@ public sealed class HostingTests {
         var services = new ServiceCollection();
         _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
         _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
-        OptionsValidationException ex = Should.Throw<OptionsValidationException>(() => services.AddFrontComposerMcp(options => {
+        _ = services.AddFrontComposerMcp(options => {
             options.Manifests.Add(CreateManifest("billing.invoice.create"));
             options.MaxProjectionCellCharacters = 0;
-        }));
+        });
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        OptionsValidationException ex = Should.Throw<OptionsValidationException>(() =>
+            provider.GetRequiredService<IOptions<FrontComposerMcpOptions>>().Value);
         ex.Failures.ShouldContain(f => f.Contains("Projection Markdown render limits", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void AddFrontComposerMcp_RegistersLifecycleStoreAsSingletonAndFacadeAsScoped() {
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+
+        _ = services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest("billing.invoice.create")));
+
+        services.Single(d => d.ServiceType == typeof(FrontComposerMcpLifecycleStore)).Lifetime.ShouldBe(ServiceLifetime.Singleton);
+        services.Single(d => d.ServiceType == typeof(FrontComposerMcpLifecycleTracker)).Lifetime.ShouldBe(ServiceLifetime.Scoped);
+        services.Single(d => d.ServiceType == typeof(IFrontComposerMcpAgentContextAccessor)).Lifetime.ShouldBe(ServiceLifetime.Scoped);
+        services.Single(d => d.ServiceType == typeof(FrontComposerMcpCommandInvoker)).Lifetime.ShouldBe(ServiceLifetime.Scoped);
+        services.Single(d => d.ServiceType == typeof(FrontComposerMcpProjectionReader)).Lifetime.ShouldBe(ServiceLifetime.Scoped);
+        services.Single(d => d.ServiceType == typeof(FrontComposerMcpToolAdmissionService)).Lifetime.ShouldBe(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void AddFrontComposerMcp_DoesNotInstantiateServicesThroughTemporaryProvider() {
+        int skillProviderConstructions = 0;
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddSingleton(_ => {
+            skillProviderConstructions++;
+            return new FrontComposerSkillResourceProvider(new SkillCorpusSnapshot([], []));
+        });
+
+        _ = services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest("billing.invoice.create")));
+
+        skillProviderConstructions.ShouldBe(0);
+        using ServiceProvider provider = services.BuildServiceProvider();
+        _ = provider.GetRequiredService<IOptions<McpServerOptions>>().Value;
+        skillProviderConstructions.ShouldBe(1);
+    }
+
+    [Theory]
+    [InlineData("frontcomposer://lifecycle")]
+    [InlineData("https://user:secret@example.test/lifecycle/")]
+    [InlineData("file:///tmp/frontcomposer/lifecycle/")]
+    [InlineData("http://example.test/lifecycle/")]
+    public void AddFrontComposerMcp_ValidatesLifecycleUriPrefix(string lifecycleUriPrefix) {
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddFrontComposerMcp(options => {
+            options.Manifests.Add(CreateManifest("billing.invoice.create"));
+            options.LifecycleUriPrefix = lifecycleUriPrefix;
+        });
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        OptionsValidationException ex = Should.Throw<OptionsValidationException>(() =>
+            provider.GetRequiredService<IOptions<FrontComposerMcpOptions>>().Value);
+        ex.Failures.ShouldContain(f => f.Contains(nameof(FrontComposerMcpOptions.LifecycleUriPrefix), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void MapFrontComposerMcp_MaterializesSdkResourcesAndRejectsReservedSkillUriCollisionAtStartup() {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        _ = builder.Services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = builder.Services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = builder.Services.AddFrontComposerMcp(options => options.Manifests.Add(CreateManifest(
+            "billing.invoice.create",
+            DescriptorUri: "frontcomposer://skills/manifest")));
+        using WebApplication app = builder.Build();
+
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(() => app.MapFrontComposerMcp());
+
+        ex.Message.ShouldContain("URI collision");
+        ex.Message.ShouldContain("frontcomposer://skills/");
+    }
+
+    [Fact]
+    public void AddFrontComposerMcp_ValidatesLifecycleRetryBounds() {
+        var services = new ServiceCollection();
+        _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+        _ = services.AddFrontComposerMcp(options => {
+            options.Manifests.Add(CreateManifest("billing.invoice.create"));
+            options.MinLifecycleRetryAfterMs = 1000;
+            options.DefaultLifecycleRetryAfterMs = 100;
+        });
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        OptionsValidationException ex = Should.Throw<OptionsValidationException>(() =>
+            provider.GetRequiredService<IOptions<FrontComposerMcpOptions>>().Value);
+        ex.Failures.ShouldContain(f => f.Contains("Lifecycle bounds", StringComparison.Ordinal));
     }
 
     [Fact]

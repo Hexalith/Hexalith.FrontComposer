@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Shell.Components.EventStore;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
+using Hexalith.FrontComposer.Shell.Tests.Components;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -55,6 +56,28 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
             cut.Find("[data-testid='fc-projection-connection-status']").GetAttribute("aria-live").ShouldBe("polite");
             cut.FindAll("[role='dialog']").ShouldBeEmpty();
         });
+    }
+
+    [Fact]
+    public void ReconnectingStatus_RendersPulseClassUnderReachableScopedHost() {
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+
+        _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Reconnecting, "TimeoutException"));
+
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement host = cut.Find(".fc-projection-connection-status-host");
+            AngleSharp.Dom.IElement status = cut.Find("[data-testid='fc-projection-connection-status']");
+            host.QuerySelector("[data-testid='fc-projection-connection-status']").ShouldNotBeNull();
+            status.ClassList.Contains("fc-projection-connection-status").ShouldBeTrue();
+            status.ClassList.Contains("fc-projection-connection-status-pulse").ShouldBeTrue();
+        });
+
+        string css = VisualReachabilityTestSupport.ReadShellComponentCss(
+            "EventStore",
+            "FcProjectionConnectionStatus.razor.css");
+        css.ShouldContain(".fc-projection-connection-status-host ::deep .fc-projection-connection-status");
+        css.ShouldContain(".fc-projection-connection-status-host ::deep .fc-projection-connection-status-pulse");
+        css.ShouldContain("@media (prefers-reduced-motion: reduce)");
     }
 
     [Fact]

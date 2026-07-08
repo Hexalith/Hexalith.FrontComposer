@@ -93,7 +93,8 @@ public sealed class CommandInvokerTests {
         CapturingInvokerLogger logger = new();
         _ = services.AddSingleton<ILogger<FrontComposerMcpCommandInvoker>>(logger);
         _ = services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
-        _ = services.AddSingleton<FrontComposerMcpLifecycleTracker>();
+        _ = services.AddSingleton<FrontComposerMcpLifecycleStore>();
+        _ = services.AddScoped<FrontComposerMcpLifecycleTracker>();
         ServiceProvider provider = services.BuildServiceProvider();
         FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 

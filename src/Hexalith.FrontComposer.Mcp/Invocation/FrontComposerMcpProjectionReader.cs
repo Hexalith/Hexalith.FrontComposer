@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Mcp.Rendering;
 using Hexalith.FrontComposer.Mcp.Schema;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Mcp.Invocation;
@@ -18,7 +19,8 @@ public sealed class FrontComposerMcpProjectionReader(
     IFrontComposerMcpAgentContextAccessor agentContextAccessor,
     IServiceProvider services,
     IOptions<FrontComposerMcpOptions> options,
-    IFrontComposerMcpProjectionRenderer? renderer = null) {
+    IFrontComposerMcpProjectionRenderer? renderer = null,
+    ILogger<FrontComposerMcpProjectionReader>? logger = null) {
     private static readonly IFrontComposerMcpProjectionRenderer DefaultRenderer = new DefaultFrontComposerMcpProjectionRenderer();
 
     public async Task<FrontComposerMcpResult> ReadAsync(string uri, CancellationToken cancellationToken = default) {
@@ -115,7 +117,11 @@ public sealed class FrontComposerMcpProjectionReader(
         catch (FrontComposerMcpException ex) {
             return FrontComposerMcpProjectionFailureMapper.ToResult(ex.Category);
         }
-        catch {
+        catch (Exception ex) {
+            FrontComposerMcpLog.ProjectionReaderFailedClosed(
+                logger,
+                FrontComposerMcpFailureCategory.DownstreamFailed,
+                ex.GetType().FullName ?? "Exception");
             return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.DownstreamFailed);
         }
     }

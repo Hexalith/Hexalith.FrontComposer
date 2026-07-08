@@ -1,12 +1,8 @@
 /* Story 3-5 Task 3.6 (D8 / UX-DR26 / ADR-012) — zero-override strategy: every value comes from
    Fluent UI v5 design tokens. */
 
-/* Vertical stacking + the density-coupled inter-section gap now live on the <FluentStack> wrapper
-   (architecture.md §4.3: Orientation=Vertical, VerticalGap=calc(var(--fc-spacing-unit) * 4)).
-   Only the non-flex page padding remains here. */
-.fc-home-directory {
-    padding: calc(var(--fc-spacing-unit, 4px) * 4);
-}
+/* Vertical stacking, the density-coupled inter-section gap, and root padding now live on the
+   <FluentStack> wrapper through component parameters / inline style (architecture.md §4.3). */
 
 .fc-home-header h1 {
     font-size: var(--fontSizeBase500);

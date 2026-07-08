@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Mcp.Skills;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using ModelContextProtocol.Protocol;
@@ -38,6 +39,8 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         services.TryAddScoped<FrontComposerMcpProjectionReader>();
         services.TryAddScoped<ISchemaBaselineProvider, InMemorySchemaBaselineProvider>();
         services.TryAddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
+        services.TryAddSingleton<FrontComposerMcpApiKeyCredentialStore>();
+        services.TryAddSingleton<FrontComposerMcpLifecycleStore>();
         services.TryAddScoped<FrontComposerMcpLifecycleTracker>();
         // P-3: resource visibility revalidation is mandatory. Hosts MUST register a real gate
         // that re-checks tenant/policy visibility before query and before render. The probe
@@ -73,42 +76,11 @@ public static class FrontComposerMcpServiceCollectionExtensions {
                 "explicitly for sample/dev hosts.");
         }
 
-        // The MCP SDK's WithTools/WithResources takes a static enumerable, so the descriptor list
-        // is materialized once at AddFrontComposerMcp time. Adopters MUST call AddFrontComposerMcp
-        // AFTER all options Configure(...) calls; later mutations to FrontComposerMcpOptions are
-        // not reflected in the SDK-side tool catalog. The IValidateOptions guard above runs at
-        // probe time so misconfiguration fails fast with a deterministic message.
-        using ServiceProvider probe = services.BuildServiceProvider();
-
-        FrontComposerMcpDescriptorRegistry registry = probe.GetRequiredService<FrontComposerMcpDescriptorRegistry>();
-        FrontComposerSkillResourceProvider skillProvider = probe.GetRequiredService<FrontComposerSkillResourceProvider>();
-
-        // P-24: reject overlap between manifest projection URIs and skill resource URIs at
-        // registration time so an adopter cannot accidentally shadow framework skill docs (or
-        // vice versa) by naming a bounded context "skills".
-        HashSet<string> manifestUris = new(StringComparer.Ordinal);
-        foreach (Hexalith.FrontComposer.Contracts.Mcp.McpResourceDescriptor descriptor in registry.Resources) {
-            _ = manifestUris.Add(descriptor.ProtocolUri);
-        }
-
-        foreach (string manifestUri in manifestUris) {
-            if (manifestUri.StartsWith("frontcomposer://skills/", StringComparison.OrdinalIgnoreCase)) {
-                throw new InvalidOperationException(
-                    $"AddFrontComposerMcp detected a URI collision between a manifest projection resource and a skill resource ('{manifestUri}'). " +
-                    "Skill resource URIs are reserved under the 'frontcomposer://skills/' prefix; rename the colliding projection resource.");
-            }
-        }
-
-        IEnumerable<ModelContextProtocol.Server.McpServerResource> resources = registry.Resources
-            .Select(r => (ModelContextProtocol.Server.McpServerResource)new FrontComposerMcpResource(r))
-            .Concat(skillProvider.CreateMcpResources())
-            .ToArray();
-
         _ = services.AddMcpServer()
             .WithHttpTransport()
             .WithListToolsHandler(ListToolsAsync)
-            .WithCallToolHandler(CallToolAsync)
-            .WithResources(resources);
+            .WithCallToolHandler(CallToolAsync);
+        _ = services.AddSingleton<IConfigureOptions<McpServerOptions>, FrontComposerMcpServerOptionsConfigurator>();
 
         return services;
     }
@@ -120,8 +92,9 @@ public static class FrontComposerMcpServiceCollectionExtensions {
             return new ListToolsResult { Tools = [] };
         }
 
-        FrontComposerMcpToolAdmissionService admission = request.Services.GetRequiredService<FrontComposerMcpToolAdmissionService>();
+        ILogger<FrontComposerMcpOptions>? logger = request.Services.GetService<ILogger<FrontComposerMcpOptions>>();
         try {
+            FrontComposerMcpToolAdmissionService admission = request.Services.GetRequiredService<FrontComposerMcpToolAdmissionService>();
             McpVisibleToolCatalog catalog = await admission.BuildVisibleCatalogAsync(cancellationToken).ConfigureAwait(false);
             FrontComposerMcpOptions options = request.Services.GetRequiredService<IOptions<FrontComposerMcpOptions>>().Value;
             return new ListToolsResult {
@@ -131,15 +104,23 @@ public static class FrontComposerMcpServiceCollectionExtensions {
                 ],
             };
         }
-        catch (FrontComposerMcpException) {
+        catch (FrontComposerMcpException ex) {
             // AC10/AC11: do not surface AuthFailed/TenantMissing as a distinct error to MCP clients —
             // the unified hidden/unknown public surface returns an empty list.
+            FrontComposerMcpLog.ToolsListFailedClosed(
+                logger,
+                ex.Category,
+                ex.GetType().FullName ?? nameof(FrontComposerMcpException));
             return new ListToolsResult { Tools = [] };
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             // A host context accessor can fail outside the FrontComposerMcpException taxonomy.
             // tools/list must still fail closed as an empty catalog instead of leaking exception
             // text or creating a protocol-visible error.
+            FrontComposerMcpLog.ToolsListFailedClosed(
+                logger,
+                FrontComposerMcpFailureCategory.DownstreamFailed,
+                ex.GetType().FullName ?? "Exception");
             return new ListToolsResult { Tools = [] };
         }
     }
@@ -164,12 +145,20 @@ public static class FrontComposerMcpServiceCollectionExtensions {
                 _ = request.Services.GetRequiredService<IFrontComposerMcpAgentContextAccessor>().GetContext();
             }
             catch (FrontComposerMcpException ex) {
+                FrontComposerMcpLog.LifecyclePrecheckFailedClosed(
+                    request.Services.GetService<ILogger<FrontComposerMcpOptions>>(),
+                    ex.Category,
+                    ex.GetType().FullName ?? nameof(FrontComposerMcpException));
                 return FrontComposerMcpProtocolMapper.ToCallToolResult(FrontComposerMcpResult.Failure(ex.Category));
             }
-            catch (Exception) {
+            catch (Exception ex) {
                 // P42: any non-FrontComposerMcpException from GetContext() (e.g., ArgumentException
                 // or InvalidOperationException from the host accessor) collapses to a sanitized
                 // AuthFailed category so stack traces don't leak through the MCP transport.
+                FrontComposerMcpLog.LifecyclePrecheckFailedClosed(
+                    request.Services.GetService<ILogger<FrontComposerMcpOptions>>(),
+                    FrontComposerMcpFailureCategory.AuthFailed,
+                    ex.GetType().FullName ?? "Exception");
                 return FrontComposerMcpProtocolMapper.ToCallToolResult(
                     FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.AuthFailed));
             }
@@ -261,12 +250,13 @@ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontC
         if (string.IsNullOrWhiteSpace(options.LifecycleUriPrefix)
             || !options.LifecycleUriPrefix.EndsWith("/", StringComparison.Ordinal)
             || !Uri.TryCreate(options.LifecycleUriPrefix, UriKind.Absolute, out Uri? prefixUri)
+            || prefixUri.Scheme is not "frontcomposer" and not "https"
             || !string.IsNullOrEmpty(prefixUri.Query)
             || !string.IsNullOrEmpty(prefixUri.Fragment)
             // P47: reject embedded credentials (https://user:pass@host/) so they cannot leak
             // into emitted lifecycle.uri response strings.
             || !string.IsNullOrEmpty(prefixUri.UserInfo)) {
-            errors.Add($"{nameof(FrontComposerMcpOptions.LifecycleUriPrefix)} must be a non-empty absolute URI ending with '/' and free of query/fragment/userinfo.");
+            errors.Add($"{nameof(FrontComposerMcpOptions.LifecycleUriPrefix)} must be a non-empty frontcomposer:// or https:// absolute URI ending with '/' and free of query/fragment/userinfo.");
         }
 
         if (options.DefaultLifecycleRetryAfterMs <= 0

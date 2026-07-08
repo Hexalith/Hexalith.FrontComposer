@@ -13,6 +13,7 @@ using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.State.Density;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
+using Hexalith.FrontComposer.Shell.Tests.Components;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -112,6 +113,22 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase {
             density.Value.EffectiveDensity.ShouldBe(DensityLevel.Compact, "Reset must fall through to the Desktop factory default.");
             theme.Value.CurrentTheme.ShouldBe(ThemeValue.System, "Reset must restore System theme (D13).");
         });
+    }
+
+    [Fact]
+    public void DoneButton_RendersStableClassReachedThroughFooterDeepSelector() {
+        IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
+
+        AngleSharp.Dom.IElement footer = cut.Find(".fc-settings-footer");
+        AngleSharp.Dom.IElement done = cut.Find("[data-testid=\"fc-settings-done\"]");
+        footer.QuerySelector("[data-testid=\"fc-settings-done\"]").ShouldNotBeNull();
+        done.ClassList.Contains("fc-settings-done").ShouldBeTrue();
+
+        string css = VisualReachabilityTestSupport.ReadShellComponentCss(
+            "Layout",
+            "FcSettingsDialog.razor.css");
+        css.ShouldContain(".fc-settings-footer ::deep .fc-settings-done");
+        css.ShouldContain("@media (max-width: 480px)");
     }
 
     [Fact]

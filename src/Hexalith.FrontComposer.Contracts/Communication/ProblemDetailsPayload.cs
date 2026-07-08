@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Hexalith.FrontComposer.Contracts.Communication;
 
 /// <summary>
@@ -18,15 +20,29 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// <param name="ValidationErrors">Field-keyed error message lists; never null. Empty when absent.</param>
 /// <param name="GlobalErrors">Form-level error messages without a field association; never null.</param>
 public sealed record ProblemDetailsPayload(
+    [property: JsonPropertyName("title")]
     string? Title,
+    [property: JsonPropertyName("detail")]
     string? Detail,
+    [property: JsonPropertyName("status")]
     int? Status,
+    [property: JsonPropertyName("entityLabel")]
     string? EntityLabel,
     IReadOnlyDictionary<string, IReadOnlyList<string>> ValidationErrors,
     IReadOnlyList<string> GlobalErrors) {
+    /// <summary>Field-keyed error message lists; never null. Empty when absent.</summary>
+    [JsonPropertyName("validationErrors")]
+    public IReadOnlyDictionary<string, IReadOnlyList<string>> ValidationErrors { get; init; }
+        = ValidationErrors ?? new Dictionary<string, IReadOnlyList<string>>(System.StringComparer.Ordinal);
+
+    /// <summary>Form-level error messages without a field association; never null.</summary>
+    [JsonPropertyName("globalErrors")]
+    public IReadOnlyList<string> GlobalErrors { get; init; } = GlobalErrors ?? System.Array.Empty<string>();
+
     /// <summary>
     /// Gets typed command rejection metadata extracted from bounded ProblemDetails extension members.
     /// </summary>
+    [JsonPropertyName("rejectionDetails")]
     public CommandRejectionDetails? RejectionDetails { get; init; }
 
     /// <summary>An empty payload, used when the server returned no parseable body.</summary>

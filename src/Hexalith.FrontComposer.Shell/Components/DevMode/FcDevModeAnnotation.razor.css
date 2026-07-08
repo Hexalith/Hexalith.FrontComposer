@@ -1,5 +1,5 @@
-.fc-devmode-annotation,
-.fc-devmode-unsupported {
+.fc-devmode-annotation-host ::deep .fc-devmode-annotation,
+.fc-devmode-annotation-host ::deep .fc-devmode-unsupported {
     position: relative;
     z-index: 20;
     border: 0;
@@ -9,13 +9,13 @@
     cursor: pointer;
 }
 
-.fc-devmode-annotation {
+.fc-devmode-annotation-host ::deep .fc-devmode-annotation {
     outline: 1px dotted var(--colorBrandStroke1);
     outline-offset: 2px;
 }
 
-.fc-devmode-unsupported {
-    outline: 2px dashed var(--error);
+.fc-devmode-annotation-host ::deep .fc-devmode-unsupported {
+    outline: 2px dashed var(--colorPaletteRedBorder2, #d13438);
     outline-offset: 2px;
 }
 

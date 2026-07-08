@@ -5,6 +5,7 @@ using Bunit;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Layout;
+using Hexalith.FrontComposer.Shell.Tests.Components;
 
 using Shouldly;
 
@@ -29,5 +30,22 @@ public sealed class FcDensityPreviewPanelTests : LayoutComponentTestBase {
                 $"data-fc-density=\"{expectedAttributeValue}\"",
                 Case.Sensitive,
                 $"Preview panel wrapper must carry data-fc-density=\"{expectedAttributeValue}\" (D14)."));
+    }
+
+    [Fact]
+    public void PreviewStack_RendersStableClassReachedThroughWrapperDeepSelector() {
+        IRenderedComponent<FcDensityPreviewPanel> cut = Render<FcDensityPreviewPanel>(p => p
+            .Add(c => c.Density, DensityLevel.Comfortable));
+
+        AngleSharp.Dom.IElement wrapper = cut.Find(".fc-density-preview-wrapper");
+        AngleSharp.Dom.IElement preview = cut.Find("[data-testid=\"fc-density-preview\"]");
+        wrapper.QuerySelector("[data-testid=\"fc-density-preview\"]").ShouldNotBeNull();
+        preview.ClassList.Contains("fc-density-preview").ShouldBeTrue();
+        preview.GetAttribute("data-fc-density").ShouldBe("comfortable");
+
+        string css = VisualReachabilityTestSupport.ReadShellComponentCss(
+            "Layout",
+            "FcDensityPreviewPanel.razor.css");
+        css.ShouldContain(".fc-density-preview-wrapper ::deep .fc-density-preview");
     }
 }

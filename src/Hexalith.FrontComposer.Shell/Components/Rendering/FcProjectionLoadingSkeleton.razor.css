@@ -5,20 +5,20 @@
 /* Horizontal stacking, 12px gap, and centered alignment now live on the <FluentStack> wrapper
    (architecture.md §4.3: Orientation=Horizontal, VerticalAlignment=Center, HorizontalGap=12px).
    Only the non-flex row padding remains here. */
-.fc-projection-skeleton-row {
+.fc-projection-skeleton ::deep .fc-projection-skeleton-row {
     padding: 6px 0;
 }
 
-.fc-projection-skeleton-header {
+.fc-projection-skeleton-grid ::deep .fc-projection-skeleton-header {
     padding-bottom: 10px;
     border-bottom: 1px solid var(--colorNeutralStroke1, #e0e0e0);
     margin-bottom: 6px;
 }
 
-.fc-projection-skeleton-card .fc-projection-skeleton-row {
+.fc-projection-skeleton-card ::deep .fc-projection-skeleton-row {
     padding: 8px 0;
 }
 
-.fc-projection-skeleton-timeline .fc-projection-skeleton-row {
+.fc-projection-skeleton-timeline ::deep .fc-projection-skeleton-row {
     padding: 10px 0;
 }

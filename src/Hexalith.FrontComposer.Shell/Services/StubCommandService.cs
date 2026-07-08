@@ -118,6 +118,6 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
             TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
             TaskScheduler.Default);
 
-        return new CommandResult(messageId, "Accepted");
+        return new CommandResult(messageId, CommandResultStatus.Accepted);
     }
 }

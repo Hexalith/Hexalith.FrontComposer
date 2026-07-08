@@ -61,13 +61,13 @@ public sealed class TestCommandService : ICommandServiceWithLifecycle {
             _pageContext.CommandName,
             messageId,
             correlationId,
-            "Accepted",
+            CommandResultStatus.Accepted,
             states,
             _options.TimeProvider.GetUtcNow(),
             RedactedEvidenceFormatter.Format(command, _options));
         EnqueueBounded(evidence);
 
-        return Task.FromResult(new CommandResult(messageId, "Accepted", correlationId));
+        return Task.FromResult(new CommandResult(messageId, CommandResultStatus.Accepted, correlationId));
     }
 
     /// <summary>Clears evidence retained by this fake service.</summary>

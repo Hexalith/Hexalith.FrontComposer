@@ -346,6 +346,29 @@ public sealed class AuthContextAccessorTests {
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
     }
 
+    [Fact]
+    public void ApiKeyCredentialStore_MatchesCurrentOptionsAndHonorsRotation() {
+        const string rawKey = "super-secret-api-key";
+        FrontComposerMcpOptions options = new();
+        options.ApiKeys[rawKey] = new("tenant-a", "agent-a");
+        var store = new FrontComposerMcpApiKeyCredentialStore(Options.Create(options));
+
+        FrontComposerMcpApiKeyIdentity? valid = store.Match(rawKey);
+        FrontComposerMcpApiKeyIdentity? invalid = store.Match("wrong-key");
+
+        _ = valid.ShouldNotBeNull();
+        valid.TenantId.ShouldBe("tenant-a");
+        invalid.ShouldBeNull();
+        options.ApiKeys.Remove(rawKey).ShouldBeTrue();
+        options.ApiKeys["rotated-api-key"] = new("tenant-b", "agent-b");
+
+        store.Match(rawKey).ShouldBeNull();
+        FrontComposerMcpApiKeyIdentity? rotated = store.Match("rotated-api-key");
+        _ = rotated.ShouldNotBeNull();
+        rotated.TenantId.ShouldBe("tenant-b");
+        rotated.UserId.ShouldBe("agent-b");
+    }
+
     private static IFrontComposerMcpAgentContextAccessor BuildAccessor(
         out HttpContext http,
         Action<FrontComposerMcpOptions>? configure) {

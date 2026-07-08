@@ -44,6 +44,16 @@ public sealed class FluentConformanceTests {
         + "focus-stroke|stroke-width|disabled-opacity)[a-z0-9-]*",
         RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    // Matches undefined FAST-era error token aliases that no longer track Fluent UI Blazor v5 themes.
+    // `--error` is accepted by older FAST components, while `--error-background*` /
+    // `--error-foreground*` and bare `error-background*` / `error-foreground*` spellings appeared in
+    // pre-v5 component variables. Fluent 2 equivalents use --colorPaletteRed* or
+    // --colorStatusDanger* tokens.
+    private static readonly Regex LegacyErrorToken = new(
+        "(?<![-\\w])--error(?:-(?:background|foreground)[a-z0-9-]*)?(?![-\\w])"
+        + "|(?<![-\\w])error-(?:background|foreground)[a-z0-9-]*(?![-\\w])",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
     // Matches a background/background-color declaration whose value references the Shell accent bridge
     // variables. Requiring the literal `background`/`background-color` keyword is what leaves the allowed
     // thread uses untouched (color, border, outline, focus rings, box-shadow active-nav bars, links, primary
@@ -73,6 +83,39 @@ public sealed class FluentConformanceTests {
     private static readonly Regex FluentIconTag = new(
         "<FluentIcon\\b(?<attributes>[^>]*)>",
         RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+    private static readonly Regex ShellStylesheetPathProperty = new(
+        "protected\\s+string\\s+(?<property>[A-Za-z0-9_]+StylesheetPath)\\s*=>\\s*NavigationManager\\s*"
+        + "\\.\\s*ToAbsoluteUri\\(\\s*\"_content/Hexalith\\.FrontComposer\\.Shell/css/(?<file>[^\"]+\\.css)\"\\s*\\)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+    private static readonly Regex ShellHeadStylesheetLink = new(
+        "<link\\b[^>]*\\bhref=\"@(?<property>[A-Za-z0-9_]+StylesheetPath)\"",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+    private static readonly Regex FluentComponentOpeningTag = new(
+        "<Fluent[A-Za-z0-9_]+\\b(?<attributes>[^>]*)>",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+    private static readonly Regex ComponentClassAttribute = new(
+        "\\b(?:Class|class)\\s*=\\s*\"(?<value>[^\"]+)\"",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+    private static readonly Regex CssClassToken = new(
+        "(?<![-\\w])(?<class>[A-Za-z_][A-Za-z0-9_-]*)(?![-\\w])",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    private static readonly Regex CssComments = new(
+        "/\\*.*?\\*/",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+    private static readonly Regex CssRuleSelectors = new(
+        "(?<selectors>[^{}]+)\\{",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+
+    private static readonly Regex CssClassSelector = new(
+        "(?<![-\\w])\\.(?<class>[A-Za-z_][A-Za-z0-9_-]*)",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
     [Fact]
     public void Shell_components_use_fluent_v5_only_except_documented_carveouts() {
@@ -112,6 +155,103 @@ public sealed class FluentConformanceTests {
         string[] migrationBacklog = [];
 
         AssertNoLegacyTokens(root, migrationBacklog);
+    }
+
+    [Fact]
+    public void Shell_wwwroot_css_files_are_linked_through_frontcomposer_shell() {
+        string repoRoot = RepositoryRoot();
+        string shellRoot = Path.Combine(repoRoot, "src", "Hexalith.FrontComposer.Shell");
+        string cssRoot = Path.Combine(shellRoot, "wwwroot", "css");
+        string shellMarkupPath = Path.Combine(shellRoot, "Components", "Layout", "FrontComposerShell.razor");
+        string shellCodePath = Path.Combine(shellRoot, "Components", "Layout", "FrontComposerShell.razor.cs");
+
+        Directory.Exists(cssRoot).ShouldBeTrue($"Shell CSS root not found: {cssRoot}");
+        File.Exists(shellMarkupPath).ShouldBeTrue($"FrontComposerShell markup not found: {shellMarkupPath}");
+        File.Exists(shellCodePath).ShouldBeTrue($"FrontComposerShell code-behind not found: {shellCodePath}");
+
+        string[] cssFiles = Directory
+            .EnumerateFiles(cssRoot, "*.css", SearchOption.TopDirectoryOnly)
+            .Select(Path.GetFileName)
+            .OfType<string>()
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        cssFiles.ShouldNotBeEmpty($"no Shell wwwroot/css files found under {cssRoot}");
+
+        string code = File.ReadAllText(shellCodePath);
+        Dictionary<string, string> filesByProperty = ShellStylesheetPathProperty
+            .Matches(code)
+            .ToDictionary(
+                match => match.Groups["property"].Value,
+                match => match.Groups["file"].Value,
+                StringComparer.Ordinal);
+
+        string markup = File.ReadAllText(shellMarkupPath);
+        HashSet<string> linkedProperties = ShellHeadStylesheetLink
+            .Matches(markup)
+            .Select(match => match.Groups["property"].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        List<string> missingPathProperties = [];
+        List<string> missingHeadLinks = [];
+        foreach (string cssFile in cssFiles) {
+            string? property = filesByProperty
+                .FirstOrDefault(kv => string.Equals(kv.Value, cssFile, StringComparison.Ordinal))
+                .Key;
+
+            if (string.IsNullOrEmpty(property)) {
+                missingPathProperties.Add(cssFile);
+                continue;
+            }
+
+            if (!linkedProperties.Contains(property)) {
+                missingHeadLinks.Add($"{cssFile} via {property}");
+            }
+        }
+
+        missingPathProperties.ShouldBeEmpty(
+            "Every Shell wwwroot/css/*.css static web asset must have an authoritative "
+            + $"FrontComposerShell path property. Missing path properties for: {string.Join("; ", missingPathProperties)}");
+        missingHeadLinks.ShouldBeEmpty(
+            "Every Shell wwwroot/css/*.css static web asset must be linked from FrontComposerShell "
+            + $"HeadContent through its path property. Missing links for: {string.Join("; ", missingHeadLinks)}");
+    }
+
+    [Fact]
+    public void Shell_scoped_css_does_not_target_classes_only_on_fluent_component_roots() {
+        string repoRoot = RepositoryRoot();
+        string root = Path.Combine(repoRoot, "src", "Hexalith.FrontComposer.Shell", "Components");
+        Directory.Exists(root).ShouldBeTrue($"Scoped-CSS scan root not found: {root}");
+
+        EnumerationOptions options = new() {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            IgnoreInaccessible = true,
+        };
+
+        string[] cssFiles = Directory
+            .EnumerateFiles(root, "*.razor.css", options)
+            .Where(f => !IsBuildOutput(f))
+            .ToArray();
+        cssFiles.ShouldNotBeEmpty($"no .razor.css files found under {root}");
+
+        List<string> offenders = [];
+        foreach (string cssFile in cssFiles) {
+            string razorFile = cssFile[..^".css".Length];
+            if (!File.Exists(razorFile)) {
+                continue;
+            }
+
+            string relative = Path.GetRelativePath(repoRoot, razorFile).Replace('\\', '/');
+            offenders.AddRange(FindDeadScopedCssOnFluentRoots(
+                File.ReadAllText(razorFile),
+                File.ReadAllText(cssFile),
+                relative));
+        }
+
+        offenders.ShouldBeEmpty(
+            "A class assigned directly to a Fluent component root is not scoped by Blazor CSS isolation. "
+            + "Move the style to a raw scoped wrapper, target the Fluent descendant through `::deep` from "
+            + $"a raw root, or use a Fluent component parameter/inline style. Offenders: {string.Join("; ", offenders)}");
     }
 
     [Fact]
@@ -229,6 +369,53 @@ public sealed class FluentConformanceTests {
     [InlineData("background-image: linear-gradient(var(--fc-color-accent), transparent);")]
     public void Accent_surface_guard_allows_thread_declarations(string declaration) {
         AccentSurfaceBackgroundDeclaration.IsMatch(declaration).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData("outline: 2px dashed var(--error);")]
+    [InlineData("background: var(--error-background);")]
+    [InlineData("background: var(--error-background-hover, #a4262c);")]
+    [InlineData("color: var(--error-foreground-rest);")]
+    [InlineData("--button-foreground-primary: var(--error-foreground-on-color, #fff);")]
+    [InlineData("--button-fill-primary: var(error-background-rest);")]
+    [InlineData("color: error-foreground-rest;")]
+    public void Legacy_token_guard_flags_error_tokens(string declaration) {
+        LegacyErrorToken.IsMatch(declaration).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("outline: 2px dashed var(--colorPaletteRedBorder2);")]
+    [InlineData("background: var(--colorPaletteRedBackground3);")]
+    [InlineData("color: var(--colorStatusDangerForeground1);")]
+    [InlineData("MessageBarIntent.Error")]
+    [InlineData("--fc-color-danger: var(--colorStatusDangerForeground1);")]
+    [InlineData("data-error-code=\"HFC1002\"")]
+    public void Legacy_token_guard_allows_fluent2_error_semantics(string declaration) {
+        LegacyErrorToken.IsMatch(declaration).ShouldBeFalse();
+    }
+
+    [Theory]
+    [InlineData(
+        "<FluentButton Class=\"dead-root\" />",
+        ".dead-root { min-height: 32px; }",
+        true)]
+    [InlineData(
+        "<div class=\"host\"><FluentButton Class=\"reachable-root\" /></div>",
+        ".host ::deep .reachable-root { min-height: 32px; }",
+        false)]
+    [InlineData(
+        "<FluentButton Class=\"global-hook\" />",
+        ".other-hook { min-height: 32px; }",
+        false)]
+    [InlineData(
+        "<div class=\"raw-root\"></div>",
+        ".raw-root { min-height: 32px; }",
+        false)]
+    public void Scoped_css_guard_detects_dead_fluent_root_classes(
+        string razor,
+        string css,
+        bool expectedOffender) {
+        FindDeadScopedCssOnFluentRoots(razor, css, "Fixture.razor").Any().ShouldBe(expectedOffender);
     }
 
     [Fact]
@@ -385,7 +572,8 @@ public sealed class FluentConformanceTests {
 
         foreach (string file in styleFiles) {
             string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
-            bool usesLegacyToken = LegacyFluentToken.IsMatch(File.ReadAllText(file));
+            string content = File.ReadAllText(file);
+            bool usesLegacyToken = LegacyFluentToken.IsMatch(content) || LegacyErrorToken.IsMatch(content);
 
             if (allowed.Contains(relative)) {
                 if (!usesLegacyToken) {
@@ -403,7 +591,7 @@ public sealed class FluentConformanceTests {
         offenders.ShouldBeEmpty(
             "UI styles must express typography/color/spacing via Fluent 2 tokens (--colorNeutralForeground*, "
             + "--fontSizeBase*, --lineHeightBase*) or Fluent component parameters — never legacy Fluent v4 / "
-            + "FAST tokens (--type-ramp-*, --neutral-*, --accent-*, --palette-*, …). See architecture.md §4.1. "
+            + "FAST tokens (--type-ramp-*, --neutral-*, --accent-*, --palette-*, --error*, …). See architecture.md §4.1. "
             + $"Legacy tokens found in: {string.Join("; ", offenders)}");
 
         migrated.ShouldBeEmpty(
@@ -469,6 +657,68 @@ public sealed class FluentConformanceTests {
         string normalized = file.Replace('\\', '/');
         return normalized.Contains("/bin/", StringComparison.Ordinal)
             || normalized.Contains("/obj/", StringComparison.Ordinal);
+    }
+
+    private static IReadOnlyList<string> FindDeadScopedCssOnFluentRoots(
+        string razor,
+        string css,
+        string displayPath) {
+        HashSet<string> localScopedClasses = FindPlainScopedCssClasses(css);
+        if (localScopedClasses.Count == 0) {
+            return [];
+        }
+
+        List<string> offenders = [];
+        foreach (Match tagMatch in FluentComponentOpeningTag.Matches(razor)) {
+            Match classMatch = ComponentClassAttribute.Match(tagMatch.Groups["attributes"].Value);
+            if (!classMatch.Success) {
+                continue;
+            }
+
+            string classValue = classMatch.Groups["value"].Value;
+            if (classValue.Contains('@', StringComparison.Ordinal)) {
+                continue;
+            }
+
+            int line = razor.Take(tagMatch.Index).Count(c => c == '\n') + 1;
+            foreach (string className in SplitStaticCssClasses(classValue)) {
+                if (localScopedClasses.Contains(className)) {
+                    offenders.Add($"{displayPath}:{line} `{className}`");
+                }
+            }
+        }
+
+        return offenders;
+    }
+
+    private static HashSet<string> FindPlainScopedCssClasses(string css) {
+        string uncommented = CssComments.Replace(css, string.Empty);
+        HashSet<string> classes = new(StringComparer.Ordinal);
+
+        foreach (Match rule in CssRuleSelectors.Matches(uncommented)) {
+            string selectors = rule.Groups["selectors"].Value;
+            foreach (string selector in selectors.Split(',')) {
+                string trimmed = selector.Trim();
+                if (trimmed.Length == 0
+                    || trimmed.StartsWith("@", StringComparison.Ordinal)
+                    || trimmed.Contains("::deep", StringComparison.Ordinal)
+                    || trimmed.Contains(":global", StringComparison.Ordinal)) {
+                    continue;
+                }
+
+                foreach (Match classMatch in CssClassSelector.Matches(trimmed)) {
+                    classes.Add(classMatch.Groups["class"].Value);
+                }
+            }
+        }
+
+        return classes;
+    }
+
+    private static IEnumerable<string> SplitStaticCssClasses(string classValue) {
+        foreach (Match match in CssClassToken.Matches(classValue)) {
+            yield return match.Groups["class"].Value;
+        }
     }
 
     private static string RepositoryRoot() {

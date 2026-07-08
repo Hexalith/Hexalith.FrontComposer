@@ -4,10 +4,10 @@
     outline: none;
 }
 
-/* Story 2-5 D11 — destructive button uses Fluent's danger palette (CSS custom properties
-   Fluent emits for the `Error` role). Keeps the Primary-appearance pill shape; only color differs. */
+/* Story 2-5 D11 — destructive button uses Fluent 2 red palette tokens.
+   Keeps the Primary-appearance pill shape; only color differs. */
 ::deep .fc-destructive-confirm {
-    --button-fill-primary: var(--error-background, #d13438);
-    --button-fill-primary-hover: var(--error-background-hover, #a4262c);
-    --button-foreground-primary: var(--error-foreground-on-color, #ffffff);
+    --button-fill-primary: var(--colorPaletteRedBackground3, #d13438);
+    --button-fill-primary-hover: var(--colorPaletteDarkRedBackground2, #a4262c);
+    --button-foreground-primary: var(--colorNeutralForegroundInverted, #ffffff);
 }

@@ -48,8 +48,8 @@
     overflow-wrap: anywhere;
 }
 
-.fc-devmode-copy-button,
-.fc-devmode-icon-button {
+.fc-devmode-drawer ::deep .fc-devmode-copy-button,
+.fc-devmode-drawer ::deep .fc-devmode-icon-button {
     min-height: 32px;
 }
 
@@ -57,7 +57,7 @@
     min-height: 1.25rem;
 }
 
-.fc-devmode-source {
+.fc-devmode-drawer ::deep .fc-devmode-source {
     width: 100%;
     min-height: 12rem;
     resize: vertical;

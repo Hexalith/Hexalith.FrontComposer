@@ -169,6 +169,89 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await page.screenshot({ path: testInfo.outputPath('focus-type-command-submit.png'), fullPage: false });
   });
 
+  test('story 11.5 scoped Fluent-root visual hooks are reachable', async ({ page }) => {
+    const route = getSpecimenRoute('type');
+    await page.setViewportSize({ width: 420, height: 900 });
+    await gotoSpecimen(page, route);
+
+    await page.getByTestId('fc-settings-button').click();
+    await expect(page.getByTestId('fc-settings-dialog')).toBeVisible();
+    await page.getByRole('button', { name: /^(Aperçu|Preview)$/u }).click();
+
+    const preview = page.getByTestId('fc-density-preview');
+    await expect(preview).toBeVisible();
+    const previewStyles = await preview.evaluate((element) => {
+      const styles = getComputedStyle(element);
+      return {
+        borderStyle: styles.borderTopStyle,
+        paddingTop: Number.parseFloat(styles.paddingTop),
+      };
+    });
+    expect(previewStyles.borderStyle).not.toBe('none');
+    expect(previewStyles.paddingTop).toBeGreaterThan(0);
+
+    const footerBox = await page.locator('.fc-settings-footer').boundingBox();
+    const doneBox = await page.getByTestId('fc-settings-done').boundingBox();
+    expect(footerBox).not.toBeNull();
+    expect(doneBox).not.toBeNull();
+    expect(doneBox!.width).toBeGreaterThan(footerBox!.width * 0.9);
+
+    const pulseProof = await page.evaluate(() => {
+      const collectRules = (rules: CSSRuleList): CSSRule[] => {
+        const collected: CSSRule[] = [];
+        for (const rule of Array.from(rules)) {
+          collected.push(rule);
+          if ('cssRules' in rule) {
+            collected.push(...collectRules((rule as CSSGroupingRule).cssRules));
+          }
+        }
+
+        return collected;
+      };
+
+      const styleRules = Array.from(document.styleSheets)
+        .flatMap((sheet) => {
+          try {
+            return collectRules(sheet.cssRules);
+          } catch {
+            return [];
+          }
+        })
+        .filter((rule): rule is CSSStyleRule => rule instanceof CSSStyleRule);
+
+      const selector = styleRules
+        .map((rule) => rule.selectorText)
+        .find((text) => text.includes('.fc-projection-connection-status-host')
+          && text.includes('.fc-projection-connection-status-pulse'));
+      const scopeAttribute = selector?.match(/\.fc-projection-connection-status-host\[([^\]=]+)(?:=[^\]]+)?\]/u)?.[1];
+      if (!scopeAttribute) {
+        throw new Error('Projection connection status scoped selector was not present in the browser CSSOM.');
+      }
+
+      const host = document.createElement('div');
+      host.className = 'fc-projection-connection-status-host';
+      host.setAttribute(scopeAttribute, '');
+      const pulse = document.createElement('div');
+      pulse.className = 'fc-projection-connection-status fc-projection-connection-status-pulse';
+      host.append(pulse);
+      document.body.append(host);
+      try {
+        const styles = getComputedStyle(pulse);
+        return {
+          animationName: styles.animationName,
+          animationDuration: styles.animationDuration,
+          reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+        };
+      } finally {
+        host.remove();
+      }
+    });
+
+    expect(pulseProof.reducedMotion).toBe(true);
+    expect(pulseProof.animationName).toBe('none');
+    expect(pulseProof.animationDuration).toBe('0s');
+  });
+
   test('forced-colors and reduced-motion states are active and perceivable', async ({ browser }) => {
     const context = await browser.newContext({
       baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:5070',

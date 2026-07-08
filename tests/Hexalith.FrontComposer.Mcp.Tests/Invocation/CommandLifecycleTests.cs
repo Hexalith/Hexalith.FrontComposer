@@ -83,12 +83,11 @@ public sealed class CommandLifecycleTests {
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
-        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
         FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
 
         // The fake dispatcher already drove the entry to Confirmed via captured callbacks. A later
         // non-terminal observation must not regress the surfaced state (AC18).
-        lifecycle.Transition(CorrelationId, CommandLifecycleState.Syncing, MessageId);
+        RecordObserved(provider, CommandLifecycleState.Syncing, MessageId);
 
         FrontComposerMcpResult snapshot = await tracker.ReadAsync(
             Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
@@ -106,12 +105,11 @@ public sealed class CommandLifecycleTests {
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
-        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
         FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
 
         // Two extra Confirmed observations must not duplicate the success outcome.
-        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
-        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId);
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId);
 
         FrontComposerMcpResult snapshot = await tracker.ReadAsync(
             Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
@@ -217,8 +215,7 @@ public sealed class CommandLifecycleTests {
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
-        provider.GetRequiredService<ILifecycleStateService>()
-            .Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, idempotencyResolved: true);
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId, idempotencyResolved: true);
         FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
 
         FrontComposerMcpResult result = await tracker.ReadAsync(
@@ -283,11 +280,10 @@ public sealed class CommandLifecycleTests {
             TestContext.Current.CancellationToken);
         fakeTime.Advance(TimeSpan.FromMilliseconds(50));
 
-        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
         FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
 
         // Real Confirmed arrives after the synthetic timeout has already terminalized the entry.
-        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId);
 
         FrontComposerMcpResult result = await tracker.ReadAsync(
             Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
@@ -584,7 +580,6 @@ public sealed class CommandLifecycleTests {
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
-        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
         FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
 
         FrontComposerMcpResult before = await tracker.ReadAsync(
@@ -593,7 +588,7 @@ public sealed class CommandLifecycleTests {
         int beforeCount = before.StructuredContent!["transitions"]!.AsArray().Count;
 
         for (int i = 0; i < 5; i++) {
-            lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
+            RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId);
         }
 
         FrontComposerMcpResult after = await tracker.ReadAsync(
@@ -655,14 +650,13 @@ public sealed class CommandLifecycleTests {
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
-        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
         FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
 
-        lifecycle.Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId);
+        RecordObserved(provider, CommandLifecycleState.Rejected, MessageId);
         // Replay (idempotent re-delivery of the rejection) must not regress.
-        lifecycle.Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId);
+        RecordObserved(provider, CommandLifecycleState.Rejected, MessageId);
         // A late Confirmed cannot upgrade the rejection (terminal regression guard).
-        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId);
 
         FrontComposerMcpResult result1 = await tracker.ReadAsync(
             Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
@@ -687,12 +681,11 @@ public sealed class CommandLifecycleTests {
             "Billing.PayInvoiceCommand.Execute",
             Args("""{"Amount":42}"""),
             TestContext.Current.CancellationToken);
-        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
         FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
 
-        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, idempotencyResolved: true);
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId, idempotencyResolved: true);
         // Replay re-delivery should not regress the IdempotentConfirmed outcome.
-        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, idempotencyResolved: true);
+        RecordObserved(provider, CommandLifecycleState.Confirmed, MessageId, idempotencyResolved: true);
 
         FrontComposerMcpResult result = await tracker.ReadAsync(
             Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
@@ -739,7 +732,7 @@ public sealed class CommandLifecycleTests {
         ServiceCollection services = new();
         _ = services.AddSingleton<ICommandService>(commandService);
         _ = services.AddSingleton<IQueryService, FastQueryService>();
-        _ = services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
+        _ = services.AddScoped<ILifecycleStateService, RecordingLifecycleStateService>();
         _ = services.AddSingleton(ulidFactory ?? new FixedUlidFactory());
         if (timeProvider is not null) {
             _ = services.AddSingleton(timeProvider);
@@ -750,9 +743,10 @@ public sealed class CommandLifecycleTests {
             configureOptions?.Invoke(o);
         });
         _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
-        _ = services.AddSingleton<FrontComposerMcpToolAdmissionService>();
-        _ = services.AddSingleton<FrontComposerMcpLifecycleTracker>();
-        _ = services.AddSingleton<FrontComposerMcpProjectionReader>();
+        _ = services.AddScoped<FrontComposerMcpToolAdmissionService>();
+        _ = services.AddSingleton<FrontComposerMcpLifecycleStore>();
+        _ = services.AddScoped<FrontComposerMcpLifecycleTracker>();
+        _ = services.AddScoped<FrontComposerMcpProjectionReader>();
         _ = services.AddSingleton(tenantGate ?? new AllowAllMcpTenantToolGate());
         _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         if (policyGate is not null) {
@@ -789,6 +783,22 @@ public sealed class CommandLifecycleTests {
 
     private static Dictionary<string, JsonElement> Args(string json)
         => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
+
+    private static void RecordObserved(
+        ServiceProvider provider,
+        CommandLifecycleState state,
+        string? messageId,
+        bool idempotencyResolved = false) {
+        FrontComposerMcpLifecycleStore store = provider.GetRequiredService<FrontComposerMcpLifecycleStore>();
+        store.TryRecordObservedTransition(new CommandLifecycleTransition(
+            CorrelationId,
+            CommandLifecycleState.Idle,
+            state,
+            messageId,
+            DateTimeOffset.Parse("2026-05-02T00:00:00Z"),
+            DateTimeOffset.Parse("2026-05-02T00:00:00Z"),
+            idempotencyResolved)).ShouldBeTrue();
+    }
 
     public sealed class PayInvoiceCommand {
         public string MessageId { get; set; } = "";

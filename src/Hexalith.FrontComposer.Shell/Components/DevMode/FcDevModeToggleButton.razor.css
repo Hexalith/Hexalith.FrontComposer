@@ -1,4 +1,4 @@
-.fc-devmode-toggle {
+.fc-devmode-toggle-host ::deep .fc-devmode-toggle {
     width: 32px;
     height: 32px;
     border: 1px solid var(--colorNeutralStroke1);
@@ -11,7 +11,7 @@
     justify-content: center;
 }
 
-.fc-devmode-toggle:focus-visible {
+.fc-devmode-toggle-host ::deep .fc-devmode-toggle:focus-visible {
     outline: 2px solid var(--colorStrokeFocus2);
     outline-offset: 2px;
 }

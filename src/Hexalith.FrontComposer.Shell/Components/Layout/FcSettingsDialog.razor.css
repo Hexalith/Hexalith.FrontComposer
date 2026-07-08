@@ -24,7 +24,7 @@
     gap: 4px;
 }
 
-.fc-settings-done {
+.fc-settings-footer ::deep .fc-settings-done {
     flex: 0 0 auto;
 }
 
@@ -39,7 +39,7 @@
         flex-direction: column-reverse;
     }
 
-    .fc-settings-done {
+    .fc-settings-footer ::deep .fc-settings-done {
         width: 100%;
     }
 }

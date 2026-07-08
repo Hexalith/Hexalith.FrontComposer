@@ -6,6 +6,7 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.DataGrid;
+using Hexalith.FrontComposer.Shell.Tests.Components;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -64,6 +65,23 @@ public sealed class FcColumnPrioritizerTests : BunitContext {
         (gear.GetAttribute("aria-label") ?? string.Empty).ShouldContain("Hidden columns: 3");
         gear.GetAttribute("aria-haspopup").ShouldBe("dialog");
         gear.GetAttribute("aria-expanded").ShouldBe("false");
+    }
+
+    [Fact]
+    public void Gear_RendersStableClassReachedThroughScopedRootDeepSelector() {
+        IRenderedComponent<FcColumnPrioritizer> cut = RenderPrioritizer(
+            MakeColumns(16),
+            hidden: new[] { "Col11", "Col12", "Col13" });
+
+        AngleSharp.Dom.IElement root = cut.Find(".fc-column-prioritizer");
+        AngleSharp.Dom.IElement gear = cut.Find("[data-testid=\"fc-column-prioritizer-gear\"]");
+        root.QuerySelector("[data-testid=\"fc-column-prioritizer-gear\"]").ShouldNotBeNull();
+        gear.ClassList.Contains("fc-column-prioritizer-gear").ShouldBeTrue();
+
+        string css = VisualReachabilityTestSupport.ReadShellComponentCss(
+            "DataGrid",
+            "FcColumnPrioritizer.razor.css");
+        css.ShouldContain(".fc-column-prioritizer ::deep .fc-column-prioritizer-gear");
     }
 
     [Fact]

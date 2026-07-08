@@ -147,7 +147,11 @@ public sealed class McpCommandToolAdapterTests {
     [InlineData("unexpected")]
     public async Task ListToolsHandler_InvalidContext_ReturnsEmptyToolListWithoutProtocolError(string failure) {
         MutableAgentContextAccessor accessor = new();
-        await using ServiceProvider provider = BuildMcpHandlerServices(new LifecycleAwareCommandService(), accessor);
+        CapturingLogger<FrontComposerMcpOptions> logger = new();
+        await using ServiceProvider provider = BuildMcpHandlerServices(
+            new LifecycleAwareCommandService(),
+            accessor,
+            services => services.AddSingleton<ILogger<FrontComposerMcpOptions>>(logger));
         using IServiceScope scope = provider.CreateScope();
 
         accessor.ThrowAuthFailed = string.Equals(failure, "auth", StringComparison.Ordinal);
@@ -158,6 +162,17 @@ public sealed class McpCommandToolAdapterTests {
             TestContext.Current.CancellationToken);
 
         result.Tools.ShouldBeEmpty();
+        LogEntry entry = logger.Entries.Single();
+        entry.Message.ShouldContain("MCP tools/list failed closed");
+        entry.Message.ShouldContain(failure switch {
+            "auth" => FrontComposerMcpFailureCategory.AuthFailed.ToString(),
+            "tenant" => FrontComposerMcpFailureCategory.TenantMissing.ToString(),
+            _ => FrontComposerMcpFailureCategory.DownstreamFailed.ToString(),
+        });
+        entry.Message.ShouldNotContain("tenant-a");
+        entry.Message.ShouldNotContain("agent-a");
+        entry.Message.ShouldNotContain("super-secret");
+        entry.Exception.ShouldBeNull();
     }
 
     [Fact]
@@ -190,11 +205,40 @@ public sealed class McpCommandToolAdapterTests {
             TestContext.Current.CancellationToken);
 
         result.Tools.Select(t => t.Name).ShouldBe(["frontcomposer.lifecycle.subscribe"]);
-        logger.Entries.Single().Message.ShouldContain("bounded context Billing");
+        logger.Entries.Single().Message.ShouldContain("bounded context sha256:");
+        logger.Entries.Single().Message.ShouldNotContain("Billing");
         logger.Entries.Single().Message.ShouldNotContain("tenant-a");
         logger.Entries.Single().Message.ShouldNotContain("agent-a");
         logger.Entries.Single().Message.ShouldNotContain("super-secret");
         logger.Entries.Single().Exception.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task ListToolsHandler_PolicyGateException_IsSanitizedAndTreatedAsHidden() {
+        CapturingLogger<FrontComposerMcpToolAdmissionService> logger = new();
+        await using ServiceProvider provider = BuildMcpHandlerServices(
+            new LifecycleAwareCommandService(),
+            configureServices: services => {
+                _ = services.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new ThrowingPolicyGate());
+                _ = services.AddSingleton<ILogger<FrontComposerMcpToolAdmissionService>>(logger);
+            },
+            manifest: Manifest("ApproveInvoicePolicy", "Billing\nsuper-secret-tenant"));
+        using IServiceScope scope = provider.CreateScope();
+
+        ListToolsResult result = await InvokeListToolsHandlerAsync(
+            ListRequest(scope.ServiceProvider),
+            TestContext.Current.CancellationToken);
+
+        result.Tools.Select(t => t.Name).ShouldBe(["frontcomposer.lifecycle.subscribe"]);
+        LogEntry entry = logger.Entries.Single();
+        entry.Message.ShouldContain("MCP policy gate failed closed");
+        entry.Message.ShouldContain("bounded context sha256:");
+        entry.Message.ShouldContain(nameof(InvalidOperationException));
+        entry.Message.ShouldNotContain("Billing");
+        entry.Message.ShouldNotContain("super-secret-tenant");
+        entry.Message.ShouldNotContain("tenant-a");
+        entry.Message.ShouldNotContain("agent-a");
+        entry.Exception.ShouldBeNull();
     }
 
     [Fact]
@@ -271,7 +315,11 @@ public sealed class McpCommandToolAdapterTests {
         // leaking the exception message — proving the catch-all branch keeps the redaction contract.
         LifecycleAwareCommandService dispatcher = new();
         MutableAgentContextAccessor accessor = new();
-        await using ServiceProvider provider = BuildMcpHandlerServices(dispatcher, accessor);
+        CapturingLogger<FrontComposerMcpOptions> logger = new();
+        await using ServiceProvider provider = BuildMcpHandlerServices(
+            dispatcher,
+            accessor,
+            services => services.AddSingleton<ILogger<FrontComposerMcpOptions>>(logger));
         using IServiceScope scope = provider.CreateScope();
 
         _ = await InvokeCallToolHandlerAsync(
@@ -291,6 +339,14 @@ public sealed class McpCommandToolAdapterTests {
         TextContentBlock text = result.Content.Single().ShouldBeOfType<TextContentBlock>();
         text.Text.ShouldBe("Request failed.");
         text.Text.ShouldNotContain("super-secret-tenant");
+        LogEntry entry = logger.Entries.Single();
+        entry.Message.ShouldContain("MCP lifecycle precheck failed closed");
+        entry.Message.ShouldContain(FrontComposerMcpFailureCategory.AuthFailed.ToString());
+        entry.Message.ShouldContain(nameof(InvalidOperationException));
+        entry.Message.ShouldNotContain("super-secret-tenant");
+        entry.Message.ShouldNotContain("agent-a");
+        entry.Message.ShouldNotContain("01JZ0R5K9N8W4Y7V3Q2P6C1A0D");
+        entry.Exception.ShouldBeNull();
         dispatcher.DispatchCount.ShouldBe(1);
     }
 
@@ -326,6 +382,70 @@ public sealed class McpCommandToolAdapterTests {
         structured.ToString().ShouldNotContain("42");
     }
 
+    [Theory]
+    [InlineData("correlationId", "01JZ0R5K9N8W4Y7V3Q2P6C1A0D")]
+    [InlineData("messageId", "01JZ0R5K9N8W4Y7V3Q2P6C1A0C")]
+    public async Task CallToolHandler_LifecycleReadAcrossRequestScopes_ReturnsSharedStoreSnapshot(string handleName, string handleValue) {
+        LifecycleAwareCommandService dispatcher = new();
+        await using ServiceProvider provider = BuildMcpHandlerServices(dispatcher);
+
+        using (IServiceScope commandScope = provider.CreateScope()) {
+            CallToolResult acknowledgement = await InvokeCallToolHandlerAsync(
+                CallRequest(commandScope.ServiceProvider, "Billing.PayInvoiceCommand.Execute", Args("""{"Amount":42}""")),
+                TestContext.Current.CancellationToken);
+            acknowledgement.IsError.GetValueOrDefault().ShouldBeFalse();
+        }
+
+        using IServiceScope lifecycleScope = provider.CreateScope();
+        CallToolResult snapshot = await InvokeCallToolHandlerAsync(
+            CallRequest(
+                lifecycleScope.ServiceProvider,
+                "frontcomposer.lifecycle.subscribe",
+                Args($$"""{"{{handleName}}":"{{handleValue}}"}""")),
+            TestContext.Current.CancellationToken);
+
+        snapshot.IsError.GetValueOrDefault().ShouldBeFalse();
+        JsonElement structured = snapshot.StructuredContent.ShouldNotBeNull();
+        structured.GetProperty("state").GetString().ShouldBe("Confirmed");
+        structured.GetProperty("terminal").GetBoolean().ShouldBeTrue();
+        structured.GetProperty("messageId").GetString().ShouldBe("01JZ0R5K9N8W4Y7V3Q2P6C1A0C");
+        structured.GetProperty("correlationId").GetString().ShouldBe("01JZ0R5K9N8W4Y7V3Q2P6C1A0D");
+        dispatcher.DispatchCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task CallToolHandler_LifecycleReadAcrossRequestScopes_AfterTenantLossReturnsHiddenUnknownShape() {
+        LifecycleAwareCommandService dispatcher = new();
+        MutableTenantToolGate tenantGate = new() { Visible = true };
+        await using ServiceProvider provider = BuildMcpHandlerServices(
+            dispatcher,
+            configureServices: services => services.AddSingleton<IFrontComposerMcpTenantToolGate>(tenantGate));
+
+        using (IServiceScope commandScope = provider.CreateScope()) {
+            CallToolResult acknowledgement = await InvokeCallToolHandlerAsync(
+                CallRequest(commandScope.ServiceProvider, "Billing.PayInvoiceCommand.Execute", Args("""{"Amount":42}""")),
+                TestContext.Current.CancellationToken);
+            acknowledgement.IsError.GetValueOrDefault().ShouldBeFalse();
+        }
+
+        tenantGate.Visible = false;
+        using IServiceScope lifecycleScope = provider.CreateScope();
+        CallToolResult result = await InvokeCallToolHandlerAsync(
+            CallRequest(
+                lifecycleScope.ServiceProvider,
+                "frontcomposer.lifecycle.subscribe",
+                Args("""{"correlationId":"01JZ0R5K9N8W4Y7V3Q2P6C1A0D"}""")),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.GetValueOrDefault().ShouldBeTrue();
+        JsonElement structured = result.StructuredContent.ShouldNotBeNull();
+        structured.GetProperty("category").GetString().ShouldBe("unknown_tool");
+        structured.ToString().ShouldNotContain("01JZ0R5K9N8W4Y7V3Q2P6C1A0D");
+        structured.ToString().ShouldNotContain("01JZ0R5K9N8W4Y7V3Q2P6C1A0C");
+        structured.ToString().ShouldNotContain("tenant-a");
+        dispatcher.DispatchCount.ShouldBe(1);
+    }
+
     private static ServiceProvider BuildServices(ICommandService dispatcher, IUlidFactory ulids) {
         ServiceCollection services = [];
         _ = services.AddSingleton(dispatcher);
@@ -344,21 +464,23 @@ public sealed class McpCommandToolAdapterTests {
     private static ServiceProvider BuildMcpHandlerServices(
         LifecycleAwareCommandService dispatcher,
         MutableAgentContextAccessor? accessor = null,
-        Action<IServiceCollection>? configureServices = null) {
+        Action<IServiceCollection>? configureServices = null,
+        McpManifest? manifest = null) {
         ServiceCollection services = [];
         _ = services.AddSingleton<ICommandService>(dispatcher);
         _ = services.AddSingleton<IQueryService, NoopQueryService>();
-        _ = services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
+        _ = services.AddScoped<ILifecycleStateService, RecordingLifecycleStateService>();
         _ = services.AddSingleton<IUlidFactory, CountingUlidFactory>();
         _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
         _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         _ = services.AddSingleton<IFrontComposerMcpAgentContextAccessor>(accessor ?? new MutableAgentContextAccessor());
         _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(manifest ?? Manifest()));
         _ = services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         _ = services.AddScoped<FrontComposerMcpToolAdmissionService>();
         _ = services.AddScoped<IFrontComposerMcpVisibleToolCatalogProvider>(sp => sp.GetRequiredService<FrontComposerMcpToolAdmissionService>());
         _ = services.AddScoped<FrontComposerMcpCommandInvoker>();
+        _ = services.AddSingleton<FrontComposerMcpLifecycleStore>();
         _ = services.AddScoped<FrontComposerMcpLifecycleTracker>();
         configureServices?.Invoke(services);
         return services.BuildServiceProvider();
@@ -440,17 +562,17 @@ public sealed class McpCommandToolAdapterTests {
     private static Dictionary<string, JsonElement> Args(string json)
         => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
 
-    private static McpManifest Manifest()
-        => new("frontcomposer.mcp.v1", [Descriptor()], []);
+    private static McpManifest Manifest(string? authorizationPolicyName = null, string boundedContext = "Billing")
+        => new("frontcomposer.mcp.v1", [Descriptor(authorizationPolicyName, boundedContext)], []);
 
-    private static McpCommandDescriptor Descriptor()
+    private static McpCommandDescriptor Descriptor(string? authorizationPolicyName = null, string boundedContext = "Billing")
         => new(
             "Billing.PayInvoiceCommand.Execute",
             typeof(PayInvoiceCommand).FullName!,
-            "Billing",
+            boundedContext,
             "Pay invoice",
             "Pays an invoice.",
-            null,
+            authorizationPolicyName,
             [
                 new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false),
                 new McpParameterDescriptor("UnsupportedPayload", "Object", "object", false, true, "Unsupported payload", null, [], true),
@@ -645,6 +767,24 @@ public sealed class McpCommandToolAdapterTests {
             FrontComposerMcpAgentContext context,
             CancellationToken cancellationToken)
             => throw new InvalidOperationException("super-secret tenant-a agent-a policy failure");
+    }
+
+    private sealed class ThrowingPolicyGate : IFrontComposerMcpCommandPolicyGate {
+        public ValueTask<bool> EvaluateAsync(
+            string policyName,
+            FrontComposerMcpAgentContext context,
+            CancellationToken cancellationToken)
+            => throw new InvalidOperationException("super-secret policy failure for tenant-a and agent-a");
+    }
+
+    private sealed class MutableTenantToolGate : IFrontComposerMcpTenantToolGate {
+        public bool Visible { get; set; }
+
+        public ValueTask<bool> IsVisibleAsync(
+            McpCommandDescriptor descriptor,
+            FrontComposerMcpAgentContext context,
+            CancellationToken cancellationToken)
+            => ValueTask.FromResult(Visible);
     }
 
     private sealed class CapturingLogger<T> : ILogger<T> {

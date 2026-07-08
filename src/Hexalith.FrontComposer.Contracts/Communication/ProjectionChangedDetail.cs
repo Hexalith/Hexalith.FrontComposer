@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Hexalith.FrontComposer.Contracts.Communication;
 
 /// <summary>
@@ -22,7 +24,15 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// </param>
 /// <param name="Metadata">Opaque, bounded metadata key/value pairs carried alongside the change.</param>
 public sealed record ProjectionChangedDetail(
+    [property: JsonPropertyName("projectionType")]
     string ProjectionType,
+    [property: JsonPropertyName("tenantId")]
     string TenantId,
+    [property: JsonPropertyName("groupScope")]
     string? GroupScope,
-    IReadOnlyDictionary<string, string> Metadata);
+    IReadOnlyDictionary<string, string> Metadata) {
+    /// <summary>Opaque, bounded metadata key/value pairs; never null. Empty when absent.</summary>
+    [JsonPropertyName("metadata")]
+    public IReadOnlyDictionary<string, string> Metadata { get; init; }
+        = Metadata ?? new Dictionary<string, string>(System.StringComparer.Ordinal);
+}

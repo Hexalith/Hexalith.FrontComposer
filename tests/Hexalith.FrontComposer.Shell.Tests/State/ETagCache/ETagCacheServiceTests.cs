@@ -30,12 +30,20 @@ public class ETagCacheServiceTests {
     [InlineData("acme", null, "projection-page:Foo:s0-t25")]
     [InlineData("acme", "alice", null)]
     [InlineData("acme", "alice", "user-input:hostile")]
-    [InlineData("ac:me", "alice", "projection-page:Foo:s0-t25")]
-    [InlineData("acme", "ali:ce", "projection-page:Foo:s0-t25")]
     public void TryBuildKey_RejectsInvalidIdentitiesOrDiscriminators(string? tenantId, string? userId, string? discriminator) {
         ETagCacheService cache = NewCache(out _);
 
         cache.TryBuildKey(tenantId, userId, discriminator, out _).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TryBuildKey_CanonicalizesTenantAndUserSegments() {
+        ETagCacheService cache = NewCache(out _);
+
+        bool ok = cache.TryBuildKey(" ac:me ", " ALICE:OPS@Example.COM ", "projection-page:Foo:s0-t25", out string key);
+
+        ok.ShouldBeTrue();
+        key.ShouldBe("ac%3Ame:alice%3Aops%40example.com:etag:projection-page:Foo:s0-t25");
     }
 
     [Fact]
@@ -182,6 +190,30 @@ public class ETagCacheServiceTests {
         // s1 (readable persisted, enumerated after the failing s0) + s2 (just written) are tracked;
         // only the failing s0 is skipped. Before the fix the failing s0 aborted the whole seed pass.
         cache.TrackedKeyCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task RemoveByProjectionTypeAsync_UsesCanonicalTenantUserPrefix() {
+        ETagCacheService cache = NewCache(out InMemoryStorageService storage);
+        cache.TryBuildKey(" ac:me ", " ALICE@Example.COM ", "projection-page:Foo:s0-t25", out string key).ShouldBeTrue();
+        await cache.SetAsync(key, NewEntry(eTag: "\"v1\""), CancellationToken.None);
+
+        await cache.RemoveByProjectionTypeAsync(" ac:me ", " ALICE@Example.COM ", "Foo", CancellationToken.None);
+
+        ETagCacheEntry? loaded = await storage.GetAsync<ETagCacheEntry>(key, CancellationToken.None);
+        loaded.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task RemoveByProjectionTypeAsync_WhenIdentityFailsCanonicalization_SkipsWithoutThrowing() {
+        // F2 — a non-blank identifier that is not valid Unicode (an unpaired surrogate) passes the
+        // IsNullOrWhiteSpace guard but throws ArgumentException inside StorageKeys canonicalization
+        // (NFC normalization). Family invalidation must degrade to a logged skip, mirroring
+        // TryBuildKey's fail-closed catch, rather than faulting the caller.
+        ETagCacheService cache = NewCache(out _);
+
+        await Should.NotThrowAsync(() => cache.RemoveByProjectionTypeAsync(
+            "acme\uD800", "alice", "Foo", CancellationToken.None));
     }
 
     [Fact]

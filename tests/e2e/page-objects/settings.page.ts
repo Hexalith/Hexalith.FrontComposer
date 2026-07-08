@@ -29,7 +29,8 @@ export type ThemeLabel = 'Light' | 'Dark' | 'System';
  *
  * Persistence is asserted through observable surfaces only: body[data-fc-density] for the full
  * persist -> flush -> hydrate -> DOM loop, and the scoped localStorage keys
- * {tenantId}:{userId}:{theme|density} for the write side (StorageKeys.BuildKey + LocalStorageService).
+ * {tenant}:{user}:{theme|density} for the write side (StorageKeys.BuildKey + LocalStorageService),
+ * where tenant/user segments are trimmed, NFC-normalized, URL-encoded, and email users are lower-cased.
  */
 export class SettingsPage {
   readonly page: Page;
@@ -119,7 +120,40 @@ export class SettingsPage {
 
   /** Builds the scoped persistence key matching StorageKeys.BuildKey(tenantId, userId, feature). */
   static storageKey(tenant: TenantContext, feature: 'theme' | 'density'): string {
-    return `${tenant.tenantId}:${tenant.userId}:${feature}`;
+    return `${SettingsPage.tenantSegment(tenant.tenantId)}:${SettingsPage.userSegment(tenant.userId)}:${feature}`;
+  }
+
+  private static tenantSegment(value: string): string {
+    return SettingsPage.escapeDataString(SettingsPage.dotnetTrim(value).normalize('NFC'));
+  }
+
+  private static userSegment(value: string): string {
+    const normalized = SettingsPage.dotnetTrim(value).normalize('NFC');
+    return SettingsPage.escapeDataString(normalized.includes('@') ? normalized.toLowerCase() : normalized);
+  }
+
+  /**
+   * Mirrors .NET `Uri.EscapeDataString` (RFC 3986 unreserved set): `encodeURIComponent`
+   * leaves `!'()*` unescaped, so encode them explicitly to keep this helper byte-identical
+   * to FrontComposerStorageKey canonicalization.
+   */
+  private static escapeDataString(value: string): string {
+    return encodeURIComponent(value).replace(
+      /[!'()*]/g,
+      (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+    );
+  }
+
+  /**
+   * Mirrors .NET `string.Trim()` (`char.IsWhiteSpace`): JS `trim()` strips BOM (U+FEFF,
+   * which .NET does not treat as whitespace) but misses NEL (U+0085). Trim exactly the
+   * .NET whitespace set so keys match the runtime for edge-whitespace identities.
+   */
+  private static dotnetTrim(value: string): string {
+    return value.replace(
+      /^[\t-\r \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+|[\t-\r \u0085\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]+$/g,
+      '',
+    );
   }
 
   /** Reads a raw persisted localStorage value (post-drain) for the scoped feature key. */

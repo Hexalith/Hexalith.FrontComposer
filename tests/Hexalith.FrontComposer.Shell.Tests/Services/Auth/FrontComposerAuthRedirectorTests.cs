@@ -34,6 +34,9 @@ public sealed class FrontComposerAuthRedirectorTests {
     [InlineData("data:text/html,<script>alert(1)</script>")]
     [InlineData("file:///etc/passwd")]
     [InlineData("/@evil.com/path")]
+    [InlineData("/../admin")]
+    [InlineData("/redirect?next=https://evil.test/callback")]
+    [InlineData("/orders/%zz")]
     public void SanitizeReturnUrl_DropsUnsafeReturnPaths(string input)
         => FrontComposerReturnUrl.Sanitize(input).ShouldBe("/");
 

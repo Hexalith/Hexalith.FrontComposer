@@ -193,12 +193,13 @@ public sealed class FrontComposerMcpToolAdmissionService(
         catch (OperationCanceledException) {
             throw;
         }
-        catch {
-            // Sanitized log: descriptor kind + bounded context only; no exception text, no tenant/user IDs,
-            // no descriptor name (which could carry generated metadata).
-            logger.LogWarning(
-                "MCP tenant gate threw while evaluating descriptor in bounded context {BoundedContext}; treating as not visible.",
-                descriptor.BoundedContext);
+        catch (Exception ex) {
+            // Sanitized log: hashed bounded-context token only; no exception text, no tenant/user IDs,
+            // no raw descriptor name or raw bounded-context value (which could carry generated metadata).
+            FrontComposerMcpLog.TenantToolGateFailedClosed(
+                logger,
+                descriptor.BoundedContext,
+                ex.GetType().FullName ?? "Exception");
             return false;
         }
     }
@@ -222,10 +223,11 @@ public sealed class FrontComposerMcpToolAdmissionService(
         catch (OperationCanceledException) {
             throw;
         }
-        catch {
-            logger.LogWarning(
-                "MCP policy gate threw while evaluating descriptor in bounded context {BoundedContext}; treating as not visible.",
-                descriptor.BoundedContext);
+        catch (Exception ex) {
+            FrontComposerMcpLog.PolicyGateFailedClosed(
+                logger,
+                descriptor.BoundedContext,
+                ex.GetType().FullName ?? "Exception");
             return false;
         }
     }

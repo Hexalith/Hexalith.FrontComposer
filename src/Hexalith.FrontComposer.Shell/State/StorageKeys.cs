@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Shell.Services;
+
 namespace Hexalith.FrontComposer.Shell.State;
 
 /// <summary>
@@ -16,11 +18,12 @@ public static class StorageKeys {
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="userId">The user identifier.</param>
     /// <param name="feature">The feature name.</param>
-    /// <returns>A storage key in the format <c>{tenantId}:{userId}:{feature}</c>.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="tenantId"/> or <paramref name="userId"/> contains a colon — prevents cross-tenant collision on keys that re-use <c>:</c> as segment separator.</exception>
+    /// <returns>A storage key in the format <c>{tenant}:{user}:{feature}</c>, where tenant and user are canonicalized key segments.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="tenantId"/>, <paramref name="userId"/>, or <paramref name="feature"/> is null, empty, or whitespace; when <paramref name="feature"/> contains a separator; or when <paramref name="tenantId"/> or <paramref name="userId"/> is not valid Unicode (e.g. contains an unpaired surrogate) and so fails NFC normalization during canonicalization.</exception>
     public static string BuildKey(string tenantId, string userId, string feature) {
-        GuardIdentitySegments(tenantId, userId);
-        return $"{tenantId}:{userId}:{feature}";
+        (string tenant, string user) = CanonicalizeIdentitySegments(tenantId, userId);
+        GuardFeatureSegment(feature);
+        return $"{tenant}:{user}:{feature}";
     }
 
     /// <summary>4-segment key for discriminated features (DataGrid, ETagCache). Matches IStorageService doc pattern.</summary>
@@ -28,22 +31,27 @@ public static class StorageKeys {
     /// <param name="userId">The user identifier.</param>
     /// <param name="feature">The feature name.</param>
     /// <param name="discriminator">The discriminator (e.g., projection type).</param>
-    /// <returns>A storage key in the format <c>{tenantId}:{userId}:{feature}:{discriminator}</c>.</returns>
-    /// <exception cref="ArgumentException">Thrown when <paramref name="tenantId"/> or <paramref name="userId"/> contains a colon.</exception>
+    /// <returns>A storage key in the format <c>{tenant}:{user}:{feature}:{discriminator}</c>, where tenant and user are canonicalized key segments.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="tenantId"/>, <paramref name="userId"/>, <paramref name="feature"/>, or <paramref name="discriminator"/> is null, empty, or whitespace; when <paramref name="feature"/> contains a separator; or when <paramref name="tenantId"/> or <paramref name="userId"/> is not valid Unicode (e.g. contains an unpaired surrogate) and so fails NFC normalization during canonicalization.</exception>
     public static string BuildKey(string tenantId, string userId, string feature, string discriminator) {
-        GuardIdentitySegments(tenantId, userId);
-        return $"{tenantId}:{userId}:{feature}:{discriminator}";
+        (string tenant, string user) = CanonicalizeIdentitySegments(tenantId, userId);
+        GuardFeatureSegment(feature);
+        ArgumentException.ThrowIfNullOrWhiteSpace(discriminator);
+        return $"{tenant}:{user}:{feature}:{discriminator}";
     }
 
-    private static void GuardIdentitySegments(string tenantId, string userId) {
-        // Two tuples ("a:b","c") and ("a","b:c") would otherwise yield identical prefixes; enumerate
-        // / prune paths could then cross-read or cross-delete a foreign tenant's keys. Reject colons.
-        if (tenantId is not null && tenantId.Contains(':', StringComparison.Ordinal)) {
-            throw new ArgumentException("tenantId must not contain ':'.", nameof(tenantId));
+    private static void GuardFeatureSegment(string feature) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(feature);
+        if (feature.Contains(':', StringComparison.Ordinal)) {
+            throw new ArgumentException("Feature segment must not contain ':'.", nameof(feature));
         }
+    }
 
-        if (userId is not null && userId.Contains(':', StringComparison.Ordinal)) {
-            throw new ArgumentException("userId must not contain ':'.", nameof(userId));
-        }
+    private static (string TenantId, string UserId) CanonicalizeIdentitySegments(string tenantId, string userId) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(userId);
+        return (
+            FrontComposerStorageKey.CanonicalizeTenant(tenantId),
+            FrontComposerStorageKey.CanonicalizeUser(userId));
     }
 }

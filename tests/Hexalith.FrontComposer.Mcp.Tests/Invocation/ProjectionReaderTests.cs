@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Invocation;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Shouldly;
 
@@ -49,6 +50,29 @@ public sealed class ProjectionReaderTests {
         // The empty-state suggestion list emits bullets directly under the empty-state line;
         // the previous "Suggestions:" inline label was not part of the canonical document grammar.
         result.Text.ShouldNotContain("Suggestions:");
+    }
+
+    [Fact]
+    public async Task ReadAsync_QueryCatchAll_LogsSanitizedFailure() {
+        CapturingLogger<FrontComposerMcpProjectionReader> logger = new();
+        IServiceCollection services = Services(new ThrowingQueryService());
+        _ = services.AddSingleton<ILogger<FrontComposerMcpProjectionReader>>(logger);
+        ServiceProvider provider = services.BuildServiceProvider();
+        FrontComposerMcpProjectionReader reader = provider.GetRequiredService<FrontComposerMcpProjectionReader>();
+
+        FrontComposerMcpResult result = await reader.ReadAsync("frontcomposer://Billing/projections/InvoiceProjection", TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.DownstreamFailed);
+        LogEntry entry = logger.Entries.Single();
+        entry.Message.ShouldContain("MCP projection reader failed closed");
+        entry.Message.ShouldContain(FrontComposerMcpFailureCategory.DownstreamFailed.ToString());
+        entry.Message.ShouldContain(nameof(InvalidOperationException));
+        entry.Message.ShouldNotContain("frontcomposer://Billing/projections/InvoiceProjection");
+        entry.Message.ShouldNotContain("tenant-a");
+        entry.Message.ShouldNotContain("agent-a");
+        entry.Message.ShouldNotContain("raw query failure");
+        entry.Exception.ShouldBeNull();
     }
 
     private static IServiceCollection Services(IQueryService queryService) {
@@ -127,8 +151,41 @@ public sealed class ProjectionReaderTests {
             => Task.FromResult(new QueryResult<T>([], 0, null));
     }
 
+    private sealed class ThrowingQueryService : IQueryService {
+        public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default)
+            => throw new InvalidOperationException(
+                "raw query failure for frontcomposer://Billing/projections/InvoiceProjection tenant-a agent-a");
+    }
+
     private sealed class StaticAgentContextAccessor : IFrontComposerMcpAgentContextAccessor {
         public FrontComposerMcpAgentContext GetContext()
             => new("tenant-a", "agent-a", new ClaimsPrincipal(new ClaimsIdentity("test")));
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T> {
+        public List<LogEntry> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull
+            => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Entries.Add(new LogEntry(logLevel, formatter(state, exception), exception));
+    }
+
+    private sealed record LogEntry(LogLevel Level, string Message, Exception? Exception);
+
+    private sealed class NullScope : IDisposable {
+        public static readonly NullScope Instance = new();
+
+        public void Dispose() {
+        }
     }
 }

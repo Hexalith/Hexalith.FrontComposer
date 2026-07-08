@@ -1,11 +1,11 @@
-.fc-projection-connection-status {
+.fc-projection-connection-status-host ::deep .fc-projection-connection-status {
     margin-block: calc(var(--fc-spacing-unit, 4px) * 2);
 }
 
 /* P35 — bound pulse iterations to keep prolonged disconnect from running an indefinite
    visual loop. 24 alternating iterations at 700ms ≈ 17s, which covers the SignalR
    automatic-reconnect retry budget (0/2/10/30s) and then settles to a steady state. */
-.fc-projection-connection-status-pulse {
+.fc-projection-connection-status-host ::deep .fc-projection-connection-status-pulse {
     animation: fc-sync-status-pulse 700ms ease-in-out 24 alternate;
 }
 
@@ -20,7 +20,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .fc-projection-connection-status-pulse {
+    .fc-projection-connection-status-host ::deep .fc-projection-connection-status-pulse {
         animation: none;
     }
 }

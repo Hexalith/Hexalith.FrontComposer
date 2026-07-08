@@ -1,3 +1,7 @@
+using System.Globalization;
+
+using Hexalith.FrontComposer.Contracts.Rendering;
+
 namespace Hexalith.FrontComposer.Shell.Services.Auth;
 
 internal static class FrontComposerReturnUrl {
@@ -26,7 +30,9 @@ internal static class FrontComposerReturnUrl {
 
         // P3 — fixpoint unescape (bounded to prevent pathological loops). Prior implementation
         // capped at 2 iterations, which let `/%2525%252fevil` and similar multi-encoded payloads
-        // skate past the `//` check.
+        // skate past the `//` check. On net10 `Uri.UnescapeDataString` never throws for malformed
+        // percent sequences (it returns them unchanged); malformed-percent rejection is enforced
+        // by the delegated `ReturnPathValidator.IsSafeRelativePath` check below.
         string unescaped = candidate;
         for (int i = 0; i < MaxUnescapeIterations; i++) {
             string next = Uri.UnescapeDataString(unescaped);
@@ -44,48 +50,38 @@ internal static class FrontComposerReturnUrl {
             || unescaped.StartsWith("//", StringComparison.Ordinal)
             || unescaped.StartsWith("/@", StringComparison.Ordinal)
             || unescaped.Contains('\\', StringComparison.Ordinal)
-            || ContainsForbiddenCharacter(unescaped)) {
+            || ContainsForbiddenCharacter(unescaped)
+            || !ReturnPathValidator.IsSafeRelativePath(candidate)) {
             return "/";
         }
 
         return candidate;
     }
 
+    /// <summary>P3 — Reject characters that browsers and renderers may treat inconsistently in a
+    /// return URL: control characters, exotic (non-ASCII) whitespace, and every Unicode "format"
+    /// (Cf) code point (RTL/LTR overrides, directional isolates, zero-width joiners/spaces, word
+    /// joiner, soft hyphen, Arabic letter mark, BOM, and astral format code points such as
+    /// U+E0001). Rejecting the whole Cf category rather than an enumerated denylist closes the
+    /// invisible-character class in one predicate and stays aligned with <c>ReturnPathValidator</c>.
+    /// The scan is code-point aware so astral format code points, which are surrogate pairs, are
+    /// classified correctly.</summary>
     private static bool ContainsForbiddenCharacter(string value) {
         for (int i = 0; i < value.Length; i++) {
             char c = value[i];
-            if (char.IsControl(c) || IsForbiddenFormatChar(c)) {
+            if (char.IsControl(c) || (char.IsWhiteSpace(c) && c != ' ')) {
                 return true;
+            }
+
+            if (c > (char)127 && CharUnicodeInfo.GetUnicodeCategory(value, i) == UnicodeCategory.Format) {
+                return true;
+            }
+
+            if (char.IsHighSurrogate(c) && i + 1 < value.Length && char.IsLowSurrogate(value[i + 1])) {
+                i++;
             }
         }
 
         return false;
-    }
-
-    /// <summary>P3 — Unicode format characters that browsers and renderers may treat
-    /// inconsistently (RTL/LTR overrides, line/paragraph separators, BOM, zero-width spaces,
-    /// non-breaking space). Reject them outright in return URLs to prevent UI spoofing,
-    /// log injection, and header confusion. Codepoints listed explicitly to avoid
-    /// editor/encoding mistakes when reading visually identical glyphs.</summary>
-    private static bool IsForbiddenFormatChar(char c) {
-        int cp = c;
-        return cp switch {
-            0x00A0 => true, // NO-BREAK SPACE
-            0x200B => true, // ZERO WIDTH SPACE
-            0x200C => true, // ZERO WIDTH NON-JOINER
-            0x200D => true, // ZERO WIDTH JOINER
-            0x200E => true, // LEFT-TO-RIGHT MARK
-            0x200F => true, // RIGHT-TO-LEFT MARK
-            0x2028 => true, // LINE SEPARATOR
-            0x2029 => true, // PARAGRAPH SEPARATOR
-            0x202A => true, // LEFT-TO-RIGHT EMBEDDING
-            0x202B => true, // RIGHT-TO-LEFT EMBEDDING
-            0x202C => true, // POP DIRECTIONAL FORMATTING
-            0x202D => true, // LEFT-TO-RIGHT OVERRIDE
-            0x202E => true, // RIGHT-TO-LEFT OVERRIDE
-            0x2060 => true, // WORD JOINER
-            0xFEFF => true, // ZERO WIDTH NO-BREAK SPACE / BOM
-            _ => false,
-        };
     }
 }

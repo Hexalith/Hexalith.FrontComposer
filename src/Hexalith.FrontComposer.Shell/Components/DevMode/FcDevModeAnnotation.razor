@@ -8,13 +8,15 @@
 
 @if (Controller?.IsActive == true && Node is not null)
 {
-    <FluentButton Appearance="ButtonAppearance.Transparent"
-                  Class="@CssClass"
-                  aria-label="@AccessibleName"
-                  title="@AccessibleName"
-                  OnClick="OpenAsync">
-        <span class="fc-devmode-badge">@Node.Convention.Name</span>
-    </FluentButton>
+    <span class="fc-devmode-annotation-host">
+        <FluentButton Appearance="ButtonAppearance.Transparent"
+                      Class="@CssClass"
+                      aria-label="@AccessibleName"
+                      title="@AccessibleName"
+                      OnClick="OpenAsync">
+            <span class="fc-devmode-badge">@Node.Convention.Name</span>
+        </FluentButton>
+    </span>
 }
 
 @code {

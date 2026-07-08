@@ -1,6 +1,4 @@
 using System.Security.Claims;
-using System.Security.Cryptography;
-using System.Text;
 
 using Hexalith.FrontComposer.Contracts.Schema;
 
@@ -12,7 +10,8 @@ namespace Hexalith.FrontComposer.Mcp;
 
 internal sealed class HttpFrontComposerMcpAgentContextAccessor(
     IHttpContextAccessor httpContextAccessor,
-    IOptions<FrontComposerMcpOptions> options) : IFrontComposerMcpAgentContextAccessor {
+    IOptions<FrontComposerMcpOptions> options,
+    FrontComposerMcpApiKeyCredentialStore? apiKeyCredentialStore = null) : IFrontComposerMcpAgentContextAccessor {
     private const string SchemaFingerprintHeaderName = "x-frontcomposer-schema-fingerprint";
     private const int MaxSchemaFingerprintHeaderLength = 256;
     private const int MaxSchemaFingerprintAlgorithmLength = 128;
@@ -36,6 +35,8 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
         SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
         SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1,
     };
+    private readonly FrontComposerMcpApiKeyCredentialStore _apiKeyCredentialStore =
+        apiKeyCredentialStore ?? new FrontComposerMcpApiKeyCredentialStore(options);
 
     public IServiceProvider? RequestServices => httpContextAccessor.HttpContext?.RequestServices;
 
@@ -91,7 +92,7 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
             }
 
-            FrontComposerMcpApiKeyIdentity? matched = MatchApiKey(candidate, options.Value.ApiKeys) ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
+            FrontComposerMcpApiKeyIdentity? matched = _apiKeyCredentialStore.Match(candidate) ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
             return Create(matched.TenantId, matched.UserId, claimsSource: null);
         }
 
@@ -162,27 +163,6 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
         }
 
         return true;
-    }
-
-    private static FrontComposerMcpApiKeyIdentity? MatchApiKey(
-        string candidate,
-        IDictionary<string, FrontComposerMcpApiKeyIdentity> apiKeys) {
-        // Constant-time scan: walk every registered key so timing does not reveal valid prefixes.
-        byte[] candidateBytes = Encoding.UTF8.GetBytes(candidate);
-        FrontComposerMcpApiKeyIdentity? matched = null;
-        foreach (KeyValuePair<string, FrontComposerMcpApiKeyIdentity> entry in apiKeys) {
-            if (string.IsNullOrWhiteSpace(entry.Key)) {
-                continue;
-            }
-
-            byte[] storedBytes = Encoding.UTF8.GetBytes(entry.Key);
-            if (candidateBytes.Length == storedBytes.Length
-                && CryptographicOperations.FixedTimeEquals(candidateBytes, storedBytes)) {
-                matched = entry.Value;
-            }
-        }
-
-        return matched;
     }
 
     private static string? FirstClaim(ClaimsPrincipal principal, IEnumerable<string> claimTypes) {

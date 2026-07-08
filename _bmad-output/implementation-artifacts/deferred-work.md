@@ -1405,3 +1405,26 @@ source_spec: `spec-11-2-projection-realtime-resilience.md`
 severity: low
 reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260706-075033-1582; this entry preserves the lingering follow-up recommendation for a deliberate later review.
 status: open
+
+## Deferred from: bmad-dev-auto follow-up review of spec-11-4-security-validation-hardening.md (2026-07-06)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-4-security-validation-hardening.md`
+  summary: `CommandResult.RetryAfter` golden-pins the .NET-specific `TimeSpan` "c" JSON format (`"retryAfter":"00:00:03"`), freezing a non-portable duration encoding into the pre-v1.0 HTTP/SignalR wire contract that non-.NET consumers (JS shell hosts, agents) must custom-parse.
+  evidence: `System.Text.Json` serializes `TimeSpan` with the constant ("c") format and `tests/Hexalith.FrontComposer.Contracts.Tests/Communication/Story114WireFormatTests.cs` asserts that exact string; the serialization behavior pre-exists Story 11.4 (the story only pinned it), but the v1.0 wire freeze should deliberately choose ISO-8601 duration (`PT3S`) or integer seconds before the shape ships frozen — changing it later is a breaking wire rename that the Story 11.4 Block-If explicitly kept out of scope.
+
+### bmad-dev-auto follow-up review pass 2 (2026-07-06) — new entries
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-4-security-validation-hardening.md`
+  summary: The Story 11.4 DTO JSON member-name pins (`CommandResult`, `ProjectionChangedDetail`, `ProblemDetailsPayload`) are latent — no production code path serializes or deserializes them through System.Text.Json, so the `[JsonPropertyName]` attributes and never-null coalescing guard only the Story 11.4 unit tests, and the required reference-type members (`ProjectionChangedDetail.ProjectionType`/`TenantId`, `CommandResult.MessageId`/`Status`) still deserialize to `null`.
+  evidence: `ProjectionChangedDetail` is reconstructed from four positional SignalR arguments in `SignalRProjectionHubConnectionFactory.OnProjectionChangedDetail` (never `JsonSerializer.Deserialize`), `ProblemDetailsPayload` is parsed field-by-field from `JsonElement` in `EventStoreResponseClassifier.ParseProblemDetails`, and `CommandResult` is an in-process return value with no serialize/deserialize site; a missing/null wire member therefore yields a null required scalar on a round trip (verified) but cannot occur on any current production path. A real wire-contract test exercising the true SignalR positional mapping and the manual ProblemDetails parser — plus `[JsonRequired]`/coalescing on the required scalars — would make the "wire pin" guarantee real. Deferred because there is no production consequence today and the story Block-If keeps wire renames out of scope.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-4-security-validation-hardening.md`
+  summary: `FrontComposerStorageKey.CanonicalizeUser` lowercases the whole email-shaped user id (D39), so on an identity provider that treats the local part case-sensitively two distinct principals (`Bob@x.com` vs `bob@x.com`) collapse to one storage-key segment and share all persisted per-user UI state (theme, density, navigation, palette, capability discovery, datagrid, and the ETag cache) — a cross-user state read/overwrite.
+  evidence: `CanonicalizeUser` (`src/Hexalith.FrontComposer.Shell/Services/FrontComposerStorageKey.cs:76-84`) applies `ToLower(InvariantCulture)` to the whole value when it contains `@`; RFC 5321 local parts are case-sensitive, so case-distinct principals canonicalize identically. The full-string lowercase is a pre-existing D39 decision that Story 11.4 widened from the LastUsed key to every `StorageKeys`-built key, so the bleed now spans all shell features rather than LastUsed alone. Low real-world impact because common IdPs normalize email case and the shared data is non-sensitive UI preference/cache state; a hardening option (lowercase only the domain part, or key on the immutable `sub` claim) is deferred for a focused canonicalization-policy decision before v1.0.
+
+### DW-668: Follow-up review still recommended for 11-4-security-validation-hardening after the review budget was exhausted
+origin: review-budget-followup
+source_spec: `spec-11-4-security-validation-hardening.md`
+severity: low
+reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260706-191144-ea78; this entry preserves the lingering follow-up recommendation for a deliberate later review.
+status: open

@@ -8,14 +8,16 @@
 @inject IStringLocalizer<FcShellResources> Localizer
 
 @if (_visible) {
-    <FluentMessageBar Intent="@Intent"
-                      AllowDismiss="false"
-                      role="status"
-                      aria-live="polite"
-                      data-testid="fc-projection-connection-status"
-                      class="@CssClass">
-        @Message
-    </FluentMessageBar>
+    <div class="fc-projection-connection-status-host">
+        <FluentMessageBar Intent="@Intent"
+                          AllowDismiss="false"
+                          role="status"
+                          aria-live="polite"
+                          data-testid="fc-projection-connection-status"
+                          Class="@CssClass">
+            @Message
+        </FluentMessageBar>
+    </div>
 }
 
 @code {

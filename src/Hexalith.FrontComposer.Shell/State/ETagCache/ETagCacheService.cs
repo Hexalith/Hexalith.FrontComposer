@@ -74,11 +74,6 @@ public sealed class ETagCacheService : IETagCache {
             return false;
         }
 
-        if (tenantId!.Contains(':', System.StringComparison.Ordinal)
-            || userId!.Contains(':', System.StringComparison.Ordinal)) {
-            return false;
-        }
-
         if (!ETagCacheDiscriminator.IsAllowlisted(discriminator)) {
             return false;
         }
@@ -92,7 +87,11 @@ public sealed class ETagCacheService : IETagCache {
             return true;
         }
         catch (System.ArgumentException) {
-            // Defence-in-depth — StorageKeys also enforces the colon guard.
+            // Defence-in-depth / fail-closed — StorageKeys canonicalization URL-encodes colons
+            // rather than rejecting them, but its Unicode NFC normalization still throws
+            // ArgumentException for identifiers that are not valid Unicode (e.g. an unpaired
+            // surrogate) even though they passed the non-blank guard above. Fail closed rather
+            // than cache under a partially built key.
             return false;
         }
     }
@@ -227,9 +226,7 @@ public sealed class ETagCacheService : IETagCache {
         // failure (cap=0, allowlist tightening, colon segments), losing the schema-mismatch
         // invalidation entirely.
         if (string.IsNullOrWhiteSpace(tenantId)
-            || string.IsNullOrWhiteSpace(userId)
-            || tenantId.Contains(':', StringComparison.Ordinal)
-            || userId.Contains(':', StringComparison.Ordinal)) {
+            || string.IsNullOrWhiteSpace(userId)) {
             // P14 — log a sanitized warning so a silent no-op cannot mask a stale-cache window.
             // Raw identifiers are not logged; we only signal that invalidation was skipped.
             _logger.LogWarning(
@@ -242,7 +239,21 @@ public sealed class ETagCacheService : IETagCache {
             return;
         }
 
-        string tenantUserPrefix = $"{tenantId}:{userId}:etag:";
+        string tenantUserPrefix;
+        try {
+            tenantUserPrefix = StorageKeys.BuildKey(tenantId, userId, "etag") + ":";
+        }
+        catch (System.ArgumentException) {
+            // P14 / fail-closed — StorageKeys canonicalization NFC-normalizes the identity, which
+            // throws ArgumentException for identifiers that pass the non-blank guard above but are
+            // not valid Unicode (e.g. an unpaired surrogate). Mirror TryBuildKey's fail-closed catch
+            // and skip invalidation with a sanitized warning rather than faulting the caller (an
+            // uncaught throw out of this Fluxor effect path could drop the Blazor circuit).
+            _logger.LogWarning(
+                "ETagCacheService: tenant-scoped family invalidation skipped — tenant or user identifier failed canonicalization.");
+            return;
+        }
+
         await RemoveByProjectionTypeCoreAsync(
             tenantUserPrefix,
             projectionType,
