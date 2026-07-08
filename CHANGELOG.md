@@ -1,3 +1,10 @@
+# [1.8.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.7.0...v1.8.0) (2026-07-08)
+
+
+### Features
+
+* add specification for running all tests and fixing failures ([1e06627](https://github.com/Hexalith/Hexalith.FrontComposer/commit/1e0662767a6df9da971b0ed50b450524d5a4782f))
+
 # [1.7.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.6.1...v1.7.0) (2026-07-08)
 
 
