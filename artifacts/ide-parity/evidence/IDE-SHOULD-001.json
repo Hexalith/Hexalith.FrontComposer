@@ -8,7 +8,7 @@
     "visualStudio": "Visual Studio 2022 17.13+",
     "rider": "JetBrains Rider 2026.1.x",
     "vsCodeDevKit": "VS Code stable + C# Dev Kit pinned minor",
-    "dotnetSdk": "10.0.300"
+    "dotnetSdk": "10.0.301"
   },
   "osOrContainerImage": "Manual release evidence across supported IDEs",
   "validationCommandOrManualSteps": "Find references from a domain member and record generated usage or frontcomposer inspect fallback.",

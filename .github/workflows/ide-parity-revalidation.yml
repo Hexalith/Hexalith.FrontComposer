@@ -19,7 +19,7 @@ on:
         required: false
         type: string
       dotnet_sdk_version:
-        description: 'Detected .NET SDK version (e.g. 10.0.300). Leave blank to skip.'
+        description: 'Detected .NET SDK version (e.g. 10.0.301). Leave blank to skip.'
         required: false
         type: string
 

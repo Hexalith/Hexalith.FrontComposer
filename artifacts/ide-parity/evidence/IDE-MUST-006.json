@@ -8,7 +8,7 @@
     "visualStudio": "Visual Studio 2022 17.13+",
     "rider": "JetBrains Rider 2026.1.x",
     "vsCodeDevKit": "VS Code stable + C# Dev Kit pinned minor",
-    "dotnetSdk": "10.0.300"
+    "dotnetSdk": "10.0.301"
   },
   "osOrContainerImage": "Local CI benchmark boundary",
   "validationCommandOrManualSteps": "Run incremental generator benchmark boundary and keep warm update under 500 ms.",
