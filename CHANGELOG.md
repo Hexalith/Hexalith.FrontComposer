@@ -1,3 +1,16 @@
+# [1.7.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.6.1...v1.7.0) (2026-07-08)
+
+
+### Bug Fixes
+
+* **docs:** update Node.js and .NET SDK references in documentation to reflect current requirements ([92edc30](https://github.com/Hexalith/Hexalith.FrontComposer/commit/92edc300e5de8778c81d60bbc781613d9e1d1f21))
+* update .NET SDK version from 10.0.300 to 10.0.301 across workflows and evidence files ([9ca8772](https://github.com/Hexalith/Hexalith.FrontComposer/commit/9ca8772424c06ced8875619e930ac13970e06c52))
+
+
+### Features
+
+* harden MCP lifecycle and validation ([238aaa3](https://github.com/Hexalith/Hexalith.FrontComposer/commit/238aaa37c1ef56a95437d3b522026394017ddc85))
+
 ## [1.6.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.6.0...v1.6.1) (2026-07-06)
 
 
