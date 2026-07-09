@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-09T15:28:06+02:00
+# last_updated: 2026-07-09T15:50:42+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-09T15:28:06+02:00
+last_updated: 2026-07-09T15:50:42+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -384,7 +384,9 @@ development_status:
   # 11-4 follow-up review pass on 2026-07-06 (bmad-dev-auto fresh review, status stays done; patched return-path forbidden-char/encoded-whitespace/single-slash-scheme/mid-string-double-slash rejects, soft-hyphen+ALM spoofing-set alignment, ProjectionChangedDetail metadata coalescing, generative storage-key FsCheck property, e2e key encoding/trim parity, dead UriFormatException catch removal; deferred the retryAfter TimeSpan wire-format decision to the deferred-work ledger. Contracts 66/66, Shell focused 80/80 + SignalR 32/32, Testing 30/30, e2e typecheck, story validation, diff check, and Release build passed.)
   11-4-security-validation-hardening: done
   # 11-5 moved backlog -> ready-for-dev on 2026-07-09 (create-story; dead CSS remediation and visual conformance guards, with brownfield confirm-and-pin context from existing spec/code/test evidence rather than a greenfield rewrite.)
-  11-5-dead-css-remediation-and-visual-conformance-guards: ready-for-dev
+  # 11-5 moved ready-for-dev -> in-progress on 2026-07-09 (dev-story; baseline preserved; starting confirm-and-pin audit for dead CSS remediation and visual-conformance guards.)
+  # 11-5 moved in-progress -> review on 2026-07-09 (dev-story; confirm-and-pin completed with no source changes required. Focused governance 39/39, affected component lane 31/31, e2e typecheck, Playwright specimen/a11y 21/21, visual governance, broad filtered solution test, Release build, and diff check passed.)
+  11-5-dead-css-remediation-and-visual-conformance-guards: review
   11-6-testing-harness-failure-modes: backlog
   11-7-route-contract-implementation: backlog
   # 11-8 moved backlog -> done on 2026-07-05 (correct-course; approved the Contracts kernel split, amended the multi-TFM decision, recorded package-compat/public-API/deprecation requirements, and kept Stories 11.11-11.14 deliberately ordered last for pre-v1.0 implementation evidence.)

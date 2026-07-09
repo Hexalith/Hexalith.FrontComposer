@@ -5,12 +5,12 @@ story: 5
 story_key: 11-5-dead-css-remediation-and-visual-conformance-guards
 source_epics: _bmad-output/planning-artifacts/epics.md
 baseline_commit: d02f2b423719950d220332820a85b800464a78ec
-status: ready-for-dev
+status: review
 ---
 
 # Story 11.5: Dead-CSS Remediation and Visual-Conformance Guards
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -30,44 +30,44 @@ so Shell visual regressions fail in CI instead of shipping as silent no-op style
 
 ## Tasks / Subtasks
 
-- [ ] Reconfirm the current brownfield state before editing. (AC: 1, 2, 3)
-  - [ ] Read this story, `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md`, Epic 11 in `_bmad-output/planning-artifacts/epics.md`, `_bmad-output/implementation-artifacts/visual-component-evidence-checklist.md`, and `_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md` before changing code.
-  - [ ] Read every UPDATE candidate listed in "Current Files To Read Before Editing" completely before editing it.
-  - [ ] Classify the dirty worktree before editing and preserve unrelated changes; do not revert existing release/sprint/submodule state.
-  - [ ] Treat the current implementation as possibly already partially complete. If a requirement is already satisfied, confirm and pin it with evidence instead of duplicating wrappers, selectors, or tests.
+- [x] Reconfirm the current brownfield state before editing. (AC: 1, 2, 3)
+  - [x] Read this story, `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md`, Epic 11 in `_bmad-output/planning-artifacts/epics.md`, `_bmad-output/implementation-artifacts/visual-component-evidence-checklist.md`, and `_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md` before changing code.
+  - [x] Read every UPDATE candidate listed in "Current Files To Read Before Editing" completely before editing it.
+  - [x] Classify the dirty worktree before editing and preserve unrelated changes; do not revert existing release/sprint/submodule state.
+  - [x] Treat the current implementation as possibly already partially complete. If a requirement is already satisfied, confirm and pin it with evidence instead of duplicating wrappers, selectors, or tests.
 
-- [ ] Strengthen or verify the three Story 11.5 governance guards first. (AC: 2, 3)
-  - [ ] In `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs`, ensure `Shell_wwwroot_css_files_are_linked_through_frontcomposer_shell` enumerates Shell `wwwroot/css/*.css` files and fails when `FrontComposerShell` does not expose a matching `<link>`.
-  - [ ] Ensure `Shell_scoped_css_does_not_target_classes_only_on_fluent_component_roots` fails when a same-component `.razor.css` selector targets a class assigned only to a `Fluent*` component root and passes when the style is reachable through a raw scoped wrapper, `::deep`, inline style, or component parameter.
-  - [ ] Ensure the legacy-token guard catches `--error`, `--error-background*`, `--error-foreground*`, bare `error-background*`, and bare `error-foreground*`, while allowing Fluent 2 tokens such as `--colorPaletteRedBorder2`, `--colorPaletteRedBackground3`, and `--colorPaletteRedForeground1`.
-  - [ ] Keep failure messages actionable with the offending file path, class/token, and suggested remediation pattern.
+- [x] Strengthen or verify the three Story 11.5 governance guards first. (AC: 2, 3)
+  - [x] In `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs`, ensure `Shell_wwwroot_css_files_are_linked_through_frontcomposer_shell` enumerates Shell `wwwroot/css/*.css` files and fails when `FrontComposerShell` does not expose a matching `<link>`.
+  - [x] Ensure `Shell_scoped_css_does_not_target_classes_only_on_fluent_component_roots` fails when a same-component `.razor.css` selector targets a class assigned only to a `Fluent*` component root and passes when the style is reachable through a raw scoped wrapper, `::deep`, inline style, or component parameter.
+  - [x] Ensure the legacy-token guard catches `--error`, `--error-background*`, `--error-foreground*`, bare `error-background*`, and bare `error-foreground*`, while allowing Fluent 2 tokens such as `--colorPaletteRedBorder2`, `--colorPaletteRedBackground3`, and `--colorPaletteRedForeground1`.
+  - [x] Keep failure messages actionable with the offending file path, class/token, and suggested remediation pattern.
 
-- [ ] Confirm or remediate the seven scoped-CSS surfaces. (AC: 1)
-  - [ ] `FcProjectionConnectionStatus`: keep status/pulse styling reachable from a raw host and preserve reduced-motion handling.
-  - [ ] `FcColumnPrioritizer`: keep the gear/popover visual hook reachable from a raw prioritizer root and preserve accessible button labeling.
-  - [ ] `FcSettingsDialog`: keep the footer and mobile Done button styling reachable from a raw footer root and preserve dialog/accordion behavior.
-  - [ ] `FcDensityPreviewPanel`: keep the density preview layout styling reachable from a raw wrapper and preserve density preview selectors used by browser evidence.
-  - [ ] `FcDevModeAnnotation`, `FcDevModeToggleButton`, and `FcDevModeOverlay`: keep DevMode annotation, toggle, drawer, source, copy, and icon-button styling reachable from raw scoped roots or `::deep` descendants.
-  - [ ] Do not replace Fluent interactive controls with raw buttons, inputs, or custom controls; repo UX rules require Fluent components for interactive UI.
+- [x] Confirm or remediate the seven scoped-CSS surfaces. (AC: 1)
+  - [x] `FcProjectionConnectionStatus`: keep status/pulse styling reachable from a raw host and preserve reduced-motion handling.
+  - [x] `FcColumnPrioritizer`: keep the gear/popover visual hook reachable from a raw prioritizer root and preserve accessible button labeling.
+  - [x] `FcSettingsDialog`: keep the footer and mobile Done button styling reachable from a raw footer root and preserve dialog/accordion behavior.
+  - [x] `FcDensityPreviewPanel`: keep the density preview layout styling reachable from a raw wrapper and preserve density preview selectors used by browser evidence.
+  - [x] `FcDevModeAnnotation`, `FcDevModeToggleButton`, and `FcDevModeOverlay`: keep DevMode annotation, toggle, drawer, source, copy, and icon-button styling reachable from raw scoped roots or `::deep` descendants.
+  - [x] Do not replace Fluent interactive controls with raw buttons, inputs, or custom controls; repo UX rules require Fluent components for interactive UI.
 
-- [ ] Confirm or migrate legacy error-token usage. (AC: 2)
-  - [ ] Search `src/`, `tests/`, and Shell CSS for `--error`, `--error-background`, `--error-foreground`, `error-background`, and `error-foreground`.
-  - [ ] Replace source CSS usages with Fluent 2 red/status tokens or component-supported error semantics; representative current targets include `FcFieldPlaceholder.razor.css`, `FcDestructiveConfirmationDialog.razor.css`, DevMode scoped CSS, and `wwwroot/css/fc-empty-state.css`.
-  - [ ] Keep test fixture strings that intentionally assert the guard catches legacy tokens, but make their intent clear.
+- [x] Confirm or migrate legacy error-token usage. (AC: 2)
+  - [x] Search `src/`, `tests/`, and Shell CSS for `--error`, `--error-background`, `--error-foreground`, `error-background`, and `error-foreground`.
+  - [x] Replace source CSS usages with Fluent 2 red/status tokens or component-supported error semantics; representative current targets include `FcFieldPlaceholder.razor.css`, `FcDestructiveConfirmationDialog.razor.css`, DevMode scoped CSS, and `wwwroot/css/fc-empty-state.css`.
+  - [x] Keep test fixture strings that intentionally assert the guard catches legacy tokens, but make their intent clear.
 
-- [ ] Pin rendered-DOM and browser/computed-style evidence. (AC: 1, 3)
-  - [ ] Maintain or add focused bUnit coverage in `FcProjectionConnectionStatusTests`, `FcColumnPrioritizerTests`, `FcSettingsDialogTests`, `FcDensityPreviewPanelTests`, and `FcDevModeVisualReachabilityTests` proving the rendered DOM exposes raw roots and descendants that make the scoped selectors reachable.
-  - [ ] Maintain or add browser evidence in `tests/e2e/specs/specimen-accessibility.spec.ts` for computed style, responsive/mobile state, and `prefers-reduced-motion` behavior. Source-string assertions alone are not enough for this story.
-  - [ ] If browser execution is locally blocked, record the exact command, exact blocker, CI lane/owner/artifact that will supply the browser evidence, and named responsibility in the story completion notes.
+- [x] Pin rendered-DOM and browser/computed-style evidence. (AC: 1, 3)
+  - [x] Maintain or add focused bUnit coverage in `FcProjectionConnectionStatusTests`, `FcColumnPrioritizerTests`, `FcSettingsDialogTests`, `FcDensityPreviewPanelTests`, and `FcDevModeVisualReachabilityTests` proving the rendered DOM exposes raw roots and descendants that make the scoped selectors reachable.
+  - [x] Maintain or add browser evidence in `tests/e2e/specs/specimen-accessibility.spec.ts` for computed style, responsive/mobile state, and `prefers-reduced-motion` behavior. Source-string assertions alone are not enough for this story.
+  - [x] If browser execution is locally blocked, record the exact command, exact blocker, CI lane/owner/artifact that will supply the browser evidence, and named responsibility in the story completion notes.
 
-- [ ] Validate and reconcile artifacts before review. (AC: 1, 2, 3)
-  - [ ] Run the focused governance lane for `FluentConformanceTests`.
-  - [ ] Run focused Shell component lanes for the affected test classes.
-  - [ ] Run the e2e typecheck and the relevant Playwright/browser lane when feasible.
-  - [ ] Run `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` unless a local environment blocker occurs; if blocked, record exact command, exact blocker, and focused fallback evidence.
-  - [ ] Run `dotnet build Hexalith.FrontComposer.slnx -c Release` and `git diff --check`.
-  - [ ] Run `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`.
-  - [ ] Reconcile the story File List and Completion Notes against actual `git diff --name-only`; include `spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` if it is updated during implementation.
+- [x] Validate and reconcile artifacts before review. (AC: 1, 2, 3)
+  - [x] Run the focused governance lane for `FluentConformanceTests`.
+  - [x] Run focused Shell component lanes for the affected test classes.
+  - [x] Run the e2e typecheck and the relevant Playwright/browser lane when feasible.
+  - [x] Run `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` unless a local environment blocker occurs; if blocked, record exact command, exact blocker, and focused fallback evidence.
+  - [x] Run `dotnet build Hexalith.FrontComposer.slnx -c Release` and `git diff --check`.
+  - [x] Run `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`.
+  - [x] Reconcile the story File List and Completion Notes against actual `git diff --name-only`; include `spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` if it is updated during implementation.
 
 ## Dev Notes
 
@@ -258,6 +258,16 @@ GPT-5 Codex
 - 2026-07-09: Confirmed no standard Story 11.5 file existed before creation; `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` existed as an earlier automation/spec context file.
 - 2026-07-09: Confirmed `11-5-dead-css-remediation-and-visual-conformance-guards` was the next authoritative backlog story in `sprint-status.yaml`; Epic 11 was already `in-progress`.
 - 2026-07-09: Current code inspection found most intended Story 11.5 remediation and guards already present, so the story deliberately frames implementation as confirm-and-pin/reconcile work rather than a greenfield rewrite.
+- 2026-07-09: Dev-story activation loaded BMAD workflow/config, root project context and project-context persistent facts, Hexalith LLM/UX instructions, complete sprint status, complete Story 11.5, spec artifact, Epic 11 source section, visual evidence checklist, story reconciliation checklist, and every listed update candidate before implementation edits.
+- 2026-07-09: Reclassified worktree after story activation; only this story file and `sprint-status.yaml` were dirty from the dev-story status transition. No unrelated release, CI, or submodule paths were dirty in the live worktree.
+- 2026-07-09: Confirmed current Shell UI/governance/e2e implementation already satisfies Story 11.5. No production or test source changes were required beyond story/sprint evidence updates.
+- 2026-07-09: Validation evidence: focused governance 39/39 passed; focused affected component lane 31/31 passed; e2e typecheck passed; Playwright `test:a11y` passed 21/21 including Story 11.5 computed-style/reduced-motion evidence; visual governance validator passed with no committed visual baseline changes; broad filtered solution lane passed; Release build passed 0 warnings/0 errors; `git diff --check` passed.
+
+### Implementation Plan
+
+- Confirm-and-pin, not greenfield remediation: verify the already-present raw scoped hosts, `::deep` selectors, Fluent 2 red tokens, stylesheet-link guard, scoped-CSS Fluent-root detector, and browser computed-style evidence.
+- Keep Story 11.5 source behavior unchanged because the current implementation and tests already satisfy all acceptance criteria.
+- Reconcile only BMAD story/sprint artifacts after validation.
 
 ### Completion Notes List
 
@@ -265,8 +275,36 @@ GPT-5 Codex
 - Story status set to `ready-for-dev`.
 - Sprint status updated so Story 11.5 is `ready-for-dev`.
 - No source code was changed by story creation.
+- Dev-story confirm-and-pin completed on 2026-07-09. The seven scoped-CSS surfaces use reachable raw roots or `::deep` descendants, legacy error-token usage is absent from Shell source CSS, and Story 11.5 governance/browser evidence is already present and passing.
+- Visual component evidence checklist:
+  - Required: yes.
+  - Rendered DOM attachment: focused bUnit component lane passed 31/31 for `FcProjectionConnectionStatusTests`, `FcColumnPrioritizerTests`, `FcSettingsDialogTests`, `FcDensityPreviewPanelTests`, and `FcDevModeVisualReachabilityTests`.
+  - Scoped CSS / Fluent targeting: `FluentConformanceTests` passed 39/39, including stylesheet-link drift, scoped-CSS Fluent-root detection, legacy error-token, and Shell accent-as-thread guards.
+  - Computed style / behavior: `npm --prefix tests/e2e run test:a11y` passed 21/21, including `story 11.5 scoped Fluent-root visual hooks are reachable` and reduced-motion pulse evidence.
+  - Accessibility interaction: the same Playwright lane passed keyboard, focus-visible, forced-colors/reduced-motion, zoom/reflow, status icon focus/hover/touch, and axe checks.
+  - Shell accent-as-thread guard: passed through `FluentConformanceTests`.
+  - Visual/browser lane: local Chromium lane passed; no CI handoff blocker.
+  - Snapshot/baseline intent: no committed visual baseline changes detected by `npm --prefix tests/e2e run validate:visual-governance`.
+- Broad validation passed: `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"`, `dotnet build Hexalith.FrontComposer.slnx -c Release`, and `git diff --check`.
+- Story artifact validation passed: `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`. The validator reported the already documented pre-existing unrelated baseline-diff paths only.
+
+### Change Log
+
+- 2026-07-09: Confirmed Story 11.5 implementation and evidence already present; updated story and sprint tracking to `review` after successful focused, browser, broad test, Release build, visual governance, and diff-check validation.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` - pre-existing evidence, unchanged.
+- `_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md` - pre-existing evidence, unchanged.
+- `_bmad-output/implementation-artifacts/visual-component-evidence-checklist.md` - pre-existing evidence, unchanged.
+- `_bmad-output/planning-artifacts/epics.md` - pre-existing evidence, unchanged.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` - pre-existing evidence, unchanged.
+- `.razor.css` - pre-existing evidence pattern mention, unchanged.
+- `src/` - pre-existing evidence scan root, unchanged.
+- `tests/` - pre-existing evidence scan root, unchanged.
+- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css` - pre-existing evidence, unchanged.
+- `src/Hexalith.FrontComposer.Shell/Components/Forms/FcDestructiveConfirmationDialog.razor.css` - pre-existing evidence, unchanged.
+- `wwwroot/css/fc-empty-state.css` - pre-existing evidence path mention, unchanged.
+- `tests/e2e/specs/specimen-accessibility.spec.ts` - pre-existing evidence, unchanged.
