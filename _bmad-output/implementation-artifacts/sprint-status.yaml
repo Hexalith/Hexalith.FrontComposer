@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-06T20:04:37+02:00
+# last_updated: 2026-07-09T15:28:06+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-06T20:04:37+02:00
+last_updated: 2026-07-09T15:28:06+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -383,7 +383,8 @@ development_status:
   # 11-4 moved backlog -> review -> done on 2026-07-06 (bmad-dev-auto implementation and review; patched return-path bypasses, auth sanitizer alignment, canonical storage/ETag key paths, DTO invariants, e2e key parity. Focused Contracts 46/46, focused Shell 80/80, Testing 30/30, e2e typecheck, story validation, diff check, and Release build passed.)
   # 11-4 follow-up review pass on 2026-07-06 (bmad-dev-auto fresh review, status stays done; patched return-path forbidden-char/encoded-whitespace/single-slash-scheme/mid-string-double-slash rejects, soft-hyphen+ALM spoofing-set alignment, ProjectionChangedDetail metadata coalescing, generative storage-key FsCheck property, e2e key encoding/trim parity, dead UriFormatException catch removal; deferred the retryAfter TimeSpan wire-format decision to the deferred-work ledger. Contracts 66/66, Shell focused 80/80 + SignalR 32/32, Testing 30/30, e2e typecheck, story validation, diff check, and Release build passed.)
   11-4-security-validation-hardening: done
-  11-5-dead-css-remediation-and-visual-conformance-guards: backlog
+  # 11-5 moved backlog -> ready-for-dev on 2026-07-09 (create-story; dead CSS remediation and visual conformance guards, with brownfield confirm-and-pin context from existing spec/code/test evidence rather than a greenfield rewrite.)
+  11-5-dead-css-remediation-and-visual-conformance-guards: ready-for-dev
   11-6-testing-harness-failure-modes: backlog
   11-7-route-contract-implementation: backlog
   # 11-8 moved backlog -> done on 2026-07-05 (correct-course; approved the Contracts kernel split, amended the multi-TFM decision, recorded package-compat/public-API/deprecation requirements, and kept Stories 11.11-11.14 deliberately ordered last for pre-v1.0 implementation evidence.)
@@ -402,7 +403,10 @@ development_status:
   # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
   # rel-1 moved backlog -> in-progress on 2026-07-05 (dev-story; owner decision: keep Jul 3 auto-publish model, add FR24 evidence only. baseline 2d1a1290. Signing deferred; REL-AI-1 stays open.)
   # rel-1 moved in-progress -> review on 2026-07-05 (dev-story; added advisory FR24 evidence layer to release.yml + requiring governance test (CiGovernanceTests 41/41 via direct xUnit runner, Release build 0/0), reconciled deployment-guide. Evidence-only increment on feat/rel-1-release-evidence-gate; AC2 signing / AC4-5 gating / AC6 consumer-validation / AC8 evidence-recording deferred. CI authoritative for workflow execution.)
+  # rel-1 release-model decision superseded on 2026-07-09 by approved Correct Course proposal sprint-change-proposal-2026-07-09-tenants-cicd-alignment.md; REL-2 owns Tenants-style CI/CD alignment. REL-AI-1 remains open for FR24 evidence.
   rel-1-release-evidence-gate-before-v1-rc: review
+  # rel-2 added backlog on 2026-07-09 (correct-course approved; align FrontComposer primary CI/CD with Tenants reusable Hexalith.Builds workflows and supersede July 5 auto-publish model)
+  rel-2-align-frontcomposer-cicd-with-tenants: backlog
 
 action_items:
   - epic: 2
@@ -461,8 +465,8 @@ action_items:
     assigned: "2026-07-05"
     due: "before v1.0 release candidate"
     status: open
-    implementation_story: "REL-1"
-    progress: "2026-07-05 (REL-1 review): advisory FR24 evidence layer wired into release.yml (evidence-only model per owner decision — auto-publish kept, no gating); requiring governance test added; CiGovernanceTests 41/41 locally. STILL OPEN — remaining: AC2 certificate signing, AC4-5 publish gating, AC6 package-consumer validation, and AC8 Release Owner running the workflow on a real release to record evidence paths."
+    implementation_story: "REL-1, REL-2"
+    progress: "2026-07-09: approved Tenants CI/CD alignment supersedes the July 5 auto-publish model; REL-2 added to move FrontComposer to workflow_run-after-CI-success and reusable Hexalith.Builds domain workflows while preserving/rerouting FR24 evidence. 2026-07-05 (REL-1 review): advisory FR24 evidence layer wired into release.yml (evidence-only model per owner decision — auto-publish kept, no gating); requiring governance test added; CiGovernanceTests 41/41 locally. STILL OPEN — remaining: reusable-release evidence placement, AC2 certificate signing, AC4-5 publish gating or approved reusable-workflow fallback, AC6 package-consumer validation, and AC8 Release Owner running the workflow on a real release to record evidence paths."
     evidence_required:
       - "validated package inventory"
       - "signed .nupkg verification with timestamp"

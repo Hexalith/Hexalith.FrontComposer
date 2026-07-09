@@ -6,7 +6,9 @@ status: review
 baseline_commit: 2d1a1290aaf62c10c4db6e70ab36c9e4d8622703
 approval: approved-by-administrator-2026-07-05
 amendmentApproval: approved-by-administrator-2026-07-05
-releaseModelDecision: "2026-07-05 — keep the Jul 3 auto-publish-from-main model; add FR24 evidence only (no approval gates, no dry-run). Signing/cert deferred; attestation provenance + advisory classify only. Reverses REL-1's original gated-dispatch AC scope by owner decision."
+alignmentApproval: approved-by-administrator-2026-07-09
+supersededBy: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-tenants-cicd-alignment.md
+releaseModelDecision: "Superseded 2026-07-09 by the Tenants CI/CD alignment proposal: FrontComposer release follows the Tenants workflow_run-after-CI-success model through Hexalith.Builds domain-release. FR24 evidence remains required before v1.0 RC and must be moved to the reusable release path or tracked as an explicit release-owner follow-up."
 ---
 
 # REL-1: Implement FR24 Release Evidence Gate Before v1.0 RC
@@ -16,6 +18,11 @@ Status: review (evidence-only increment; signing/gating/consumer-validation defe
 Approval: approved by Administrator on 2026-07-05.
 
 Amendment approval: documentation/live-workflow drift handling approved by Administrator on 2026-07-05.
+
+Tenants CI/CD alignment approval: approved by Administrator on 2026-07-09. This supersedes the July 5
+auto-publish-from-`main` release-model decision. REL-2 owns the implementation path that moves
+FrontComposer to the Tenants `workflow_run` + reusable `domain-release.yml` model while preserving or
+rerouting FR24 evidence.
 
 ## Story
 
@@ -171,6 +178,9 @@ validation, and AC8 (Release Owner runs the workflow once and records evidence p
 
 ## Change Log
 
+- 2026-07-09: Superseded the July 5 auto-publish release-model decision by approved Correct Course
+  proposal `sprint-change-proposal-2026-07-09-tenants-cicd-alignment.md`. REL-2 owns the CI/CD
+  alignment implementation. `REL-AI-1` remains open until FR24 evidence obligations are satisfied.
 - 2026-07-05: Implemented evidence-only FR24 layer (advisory, non-gating) in `release.yml`; added
   requiring governance test; reconciled deployment-guide; verified `CiGovernanceTests` 41/41 locally.
   Signing/gating/consumer-validation deferred by owner decision; `REL-AI-1` stays open.
