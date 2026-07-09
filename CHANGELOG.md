@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.8.1...v1.9.0) (2026-07-09)
+
+
+### Features
+
+* Align FrontComposer CI/CD with Tenants reusable workflows ([d79d767](https://github.com/Hexalith/Hexalith.FrontComposer/commit/d79d7675a80d0436677f8ebd82f5c588a286dd55))
+
 ## [1.8.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.8.0...v1.8.1) (2026-07-08)
 
 
