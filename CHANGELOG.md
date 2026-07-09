@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.9.0...v1.9.1) (2026-07-09)
+
+
+### Bug Fixes
+
+* update story status to review and adjust sprint tracking for dead-CSS remediation ([289bb09](https://github.com/Hexalith/Hexalith.FrontComposer/commit/289bb099b8305be513b8e1ce0e88f5f574cc50cf))
+
 # [1.9.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.8.1...v1.9.0) (2026-07-09)
 
 
