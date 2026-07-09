@@ -1,3 +1,10 @@
+## [1.9.2](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.9.1...v1.9.2) (2026-07-09)
+
+
+### Bug Fixes
+
+* update last_updated timestamp and add story 11.6 for testing harness failure modes ([ee0fe69](https://github.com/Hexalith/Hexalith.FrontComposer/commit/ee0fe69cefe2949096b91c980a27b938dd6725c0))
+
 ## [1.9.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.9.0...v1.9.1) (2026-07-09)
 
 
