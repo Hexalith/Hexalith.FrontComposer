@@ -10,6 +10,8 @@ import {
 
 const consoleErrorsByPage = new WeakMap<import('@playwright/test').Page, string[]>();
 const unexpectedRequestsByPage = new WeakMap<import('@playwright/test').Page, string[]>();
+const minimumReadableTextContrast = 4.5;
+const windowsVisualBaselineMaxDiffPixels = 76_000;
 
 test.describe('FrontComposer accessibility and visual specimens', () => {
   test.use({
@@ -83,6 +85,106 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await expect(page.getByTestId('fc-lifecycle-confirmed-rejected')).toContainText('Terminal confirmation');
     await expect(page.getByTestId('fc-expanded-detail')).toContainText('fc-correlation-0002');
     await expect(page.getByRole('navigation', { name: 'Specimen multi-level navigation' })).toBeVisible();
+  });
+
+  test('dark generated command specimens keep readable foreground contrast', async ({ page }) => {
+    const route = getSpecimenRoute('type');
+    await page.goto(`${route.path}?theme=dark&density=roomy`);
+    await expect(page.locator(route.readySelector)).toBeVisible();
+
+    const samples = await page.evaluate(() => {
+      type Color = { r: number; g: number; b: number; a: number };
+
+      const parseColor = (value: string): Color => {
+        if (value === 'transparent') {
+          return { r: 0, g: 0, b: 0, a: 0 };
+        }
+
+        const match = value.match(/^rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)$/u);
+        if (!match) {
+          throw new Error(`Unsupported CSS color: ${value}`);
+        }
+
+        return {
+          r: Number.parseFloat(match[1]),
+          g: Number.parseFloat(match[2]),
+          b: Number.parseFloat(match[3]),
+          a: match[4] === undefined ? 1 : Number.parseFloat(match[4]),
+        };
+      };
+
+      const luminance = (color: Color): number => {
+        const normalize = (channel: number): number => {
+          const value = channel / 255;
+          return value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+        };
+
+        return (0.2126 * normalize(color.r)) + (0.7152 * normalize(color.g)) + (0.0722 * normalize(color.b));
+      };
+
+      const contrastRatio = (foreground: string, background: string): number => {
+        const foregroundLuminance = luminance(parseColor(foreground));
+        const backgroundLuminance = luminance(parseColor(background));
+        return (Math.max(foregroundLuminance, backgroundLuminance) + 0.05)
+          / (Math.min(foregroundLuminance, backgroundLuminance) + 0.05);
+      };
+
+      const effectiveBackground = (element: Element): string => {
+        for (let current: Element | null = element; current; current = current.parentElement) {
+          const background = getComputedStyle(current).backgroundColor;
+          if (parseColor(background).a > 0) {
+            return background;
+          }
+        }
+
+        return getComputedStyle(document.body).backgroundColor;
+      };
+
+      const query = (selectors: string[]): Element => {
+        for (const selector of selectors) {
+          const element = document.querySelector(selector);
+          if (element) {
+            return element;
+          }
+        }
+
+        throw new Error(`Missing contrast sample target: ${selectors.join(', ')}`);
+      };
+
+      const sample = (selectors: string[]) => {
+        const element = query(selectors);
+        const foreground = getComputedStyle(element).color;
+        const background = effectiveBackground(element);
+        return {
+          background,
+          foreground,
+          ratio: contrastRatio(foreground, background),
+        };
+      };
+
+      return {
+        destructiveInput: sample(["[data-testid='fc-destructive-command-specimen'] .fc-command-input"]),
+        destructiveLabel: sample(["[data-testid='fc-destructive-command-specimen'] .fc-command-field-label"]),
+        policyInput: sample(["[data-testid='fc-policy-command-specimen'] .fc-command-input"]),
+        policyLabel: sample(["[data-testid='fc-policy-command-specimen'] .fc-command-field-label"]),
+        policyWarningText: sample([
+          "[data-testid='fc-policy-command-specimen'] fluent-message-bar .content",
+          "[data-testid='fc-policy-command-specimen'] fluent-message-bar",
+        ]),
+      };
+    });
+
+    for (const [name, sample] of Object.entries(samples)) {
+      expect(sample.ratio, `${name} contrast ${sample.foreground} on ${sample.background}`)
+        .toBeGreaterThanOrEqual(minimumReadableTextContrast);
+    }
+    expect(samples.destructiveInput.foreground).toBe('rgb(20, 20, 20)');
+    expect(samples.destructiveInput.background).toBe('rgb(255, 255, 255)');
+    expect(samples.destructiveLabel.foreground).toBe('rgb(247, 247, 242)');
+    expect(samples.policyInput.foreground).toBe('rgb(20, 20, 20)');
+    expect(samples.policyInput.background).toBe('rgb(255, 255, 255)');
+    expect(samples.policyLabel.foreground).toBe('rgb(247, 247, 242)');
+    expect(samples.policyWarningText.foreground).toBe('rgb(59, 47, 0)');
   });
 
   // Touch activation (AC2) requires a touch-enabled browser context. The desktop projects
@@ -300,6 +402,10 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
       await expect(page).toHaveScreenshot(combination.artifact, {
         fullPage: true,
         animations: 'disabled',
+        // Linux baselines are regenerated locally. Windows baselines come from CI
+        // artifacts, so keep the semantic contrast guard strict and allow only a
+        // narrow Windows text-rasterization delta calibrated from the CSS fix.
+        ...(process.platform === 'win32' ? { maxDiffPixels: windowsVisualBaselineMaxDiffPixels } : {}),
       });
     });
   }
