@@ -1,3 +1,10 @@
+# [1.10.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.9.3...v1.10.0) (2026-07-10)
+
+
+### Features
+
+* add initial Playwright configuration for navigation and workflow UI ([7bbdddb](https://github.com/Hexalith/Hexalith.FrontComposer/commit/7bbdddbdf187936b95f1671d8c8f52f21444a9fe))
+
 ## [1.9.3](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.9.2...v1.9.3) (2026-07-10)
 
 
