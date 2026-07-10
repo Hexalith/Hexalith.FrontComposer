@@ -1,3 +1,10 @@
+## [1.9.3](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.9.2...v1.9.3) (2026-07-10)
+
+
+### Bug Fixes
+
+* refresh accessibility visual baselines ([92faf6d](https://github.com/Hexalith/Hexalith.FrontComposer/commit/92faf6d3af9ffc662405751a70ccf00799c39bc0))
+
 ## [1.9.2](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.9.1...v1.9.2) (2026-07-09)
 
 
