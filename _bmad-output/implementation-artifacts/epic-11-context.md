@@ -4,7 +4,7 @@
 
 ## Goal
 
-Epic 11 closes v1.0 architecture-review remediation without reopening completed product epics. It hardens runtime reliability, security validation, realtime and MCP behavior, visual governance, Testing harness failure modes, route activation, package boundaries, shell layering, logging, and enforcement policy so FrontComposer is release-ready and safe for adopter modules such as Hexalith.Tenants.
+Epic 11 closes the remaining architecture-review risks before v1.0 without reopening completed product epics. It hardens runtime reliability, security, realtime and MCP behavior, visual governance, adopter testing, route activation, package boundaries, shell layering, logging, and enforcement so FrontComposer is safe to consume and release.
 
 ## Stories
 
@@ -30,42 +30,30 @@ Epic 11 closes v1.0 architecture-review remediation without reopening completed 
 
 ## Requirements & Constraints
 
-Epic 11 implementation is release-risk remediation, not new product scope. Stories must address runtime blind spots and architecture boundaries with focused Given/When/Then acceptance criteria, preserve existing command/query/projection behavior, and avoid reopening Epics 1-8 or depending on Epics 9-10.
+This epic is release-risk remediation, not new product scope. Each implementation story must use focused Given/When/Then acceptance criteria, preserve existing command/query/projection behavior, and add durable evidence for the defect class it closes.
 
-Security, privacy, and support-safety are mandatory across the epic. Auth, return-path validation, storage keys, MCP hidden/denied paths, lifecycle authorization, API-key handling, logs, telemetry, evidence, snapshots, and Testing outputs must fail closed where appropriate and must not expose raw tokens, secrets, JWT payloads, raw EventStore metadata, stack traces, raw event payloads, unrestricted PII, or raw local paths.
+Security and support-safety apply throughout. Auth, redirects, storage scopes, MCP denial paths, lifecycle tracking, logs, telemetry, snapshots, and Testing evidence must fail closed where appropriate and must not expose raw tokens, secrets, payloads, stack traces, unrestricted PII, or raw local paths.
 
-Visual and accessibility remediation must be guard-backed. Dead scoped CSS, unlinked stylesheets, legacy Fluent/FAST tokens, and accessibility-sensitive regressions require durable Governance checks plus rendered-DOM, computed-style, bUnit, e2e, or equivalent evidence. UI work must preserve accessible names, roles, keyboard access, focus behavior, live-region behavior, reduced-motion and forced-colors behavior, stable test selectors, and support-safe copy.
+Testing must let adopters simulate command rejection, timeout, stall-at-`Syncing`, authorization-policy states, and per-request paging/filter/sort outcomes. Changed builders, assertions, fakes, and fault/evidence paths require direct tests, default redaction of configured tenant/user identifiers (including property and dictionary keys), structural secret redaction, bounded path evidence, and intentional Testing public-API baseline updates.
 
-Testing package work must make adopter failure-path tests realistic: rejection, timeout, stall-at-syncing, authorization-policy states, per-request paging/filter/sort callbacks, redacted evidence, and direct tests for changed builders, assertions, and fakes. Public API baselines must be updated intentionally whenever shipped Testing surface changes.
-
-All work remains under the repository's strict build posture: .NET 10, `.slnx` only, nullable enabled, centralized package versions, built-in analyzers, `TreatWarningsAsErrors=true`, source-generated logging for warning/security/hot paths where required, and no global warning or analyzer disable to mask remediation.
+Visual fixes require guard-backed evidence for dead scoped CSS, unlinked stylesheets, legacy Fluent tokens, and accessibility-sensitive behavior. Public API, schema, CLI/MCP wire shapes, diagnostics, generated output, and package inventory remain controlled contracts; changes require intentional baselines and migration or compatibility evidence. Build policy remains .NET 10, `.slnx`, centralized dependencies, nullable code, and warnings as errors, with no global warning/analyzer suppression used to hide remediation.
 
 ## Technical Decisions
 
-The canonical generated command route family is `/commands/{BoundedContext}/{CommandTypeName}`. Command palette entries, projection empty-state CTAs, and generated command pages must converge on that route family and be pinned by e2e route-activation coverage.
+The canonical generated command route is `/commands/{BoundedContext}/{CommandTypeName}`. Palette entries, empty-state CTAs, and generated command pages must converge on it. Module tabs use `/{module}/{tab}`, with projection flyouts secondary to the module workspace.
 
-The FC-IA-1 route/navigation decision is signed off. Module workspaces use one primary shell entry per module, required default tabs, path-segment tab routes shaped as `/{module}/{tab}`, and projection flyouts remain strictly secondary routes into the module workspace rather than a second primary information architecture.
+The approved package target keeps `Contracts` as a netstandard2.0-clean kernel and moves Blazor/Fluent rendering contracts to net10-only `Contracts.UI`. `SourceTools` continues to reference only the kernel; runtime and Testing implementations must live in their owning packages. Public moves require package-consumer, public-API, documentation, release-inventory, and deprecation evidence.
 
-The approved package-boundary target is a netstandard2.0-clean `Contracts` kernel plus a net10-only `Contracts.UI` assembly. The kernel owns attributes, communication contracts, registration abstractions, MCP descriptors, schema fingerprint contracts, and diagnostic IDs. Blazor/Fluent rendering contracts such as typography tokens, render-fragment contexts, keyboard-event members, and projection slot/template/view contracts move out of the kernel. `SourceTools` must keep referencing only the kernel.
+MCP cross-request state uses a singleton state store behind a scoped facade; it must not capture scoped admission services. EventStore token acquisition must work safely in interactive circuits with expiry and sign-out eviction. Projection realtime must recover beyond the default retry ladder, restart after closed connections, and align disposal/cache synchronization. Fail-closed and hot-path logging uses sanitized source-generated events.
 
-No new Blazor, Fluent, runtime-service, or testing-implementation types should be added to `Contracts`. Runtime-owned types move to runtime packages, Testing-owned fakes move to Testing, shell options and Fluxor action records move to Shell where approved, and `QueryRequest` changes must use the existing HFC0001 migration/deprecation path rather than a silent breaking change.
-
-Schema fingerprints, generated output paths, CLI JSON schemas, MCP schemas, HFC diagnostics, Testing public API, and package inventory are public contracts. Public-surface or package-boundary changes require intentional baseline updates, compatibility notes, migration/deprecation guidance, release inventory updates, and package-consumer validation before v1.0.
-
-Shell layering must be explicit and enforceable: telemetry is cross-cutting, connection and polling workers belong in infrastructure, render components should not own route/label helpers, duplicated scope-resolution and snapshot-publisher behavior should be consolidated, and helper consolidation must preserve behavior through focused tests.
+`QueryRequest` decomposition must use the HFC0001 migration path and preserve or explicitly version serialized shapes. Shell boundaries place telemetry cross-cutting, connection/polling workers in infrastructure, and route/label helpers outside render components; duplicated scope, snapshot, fatal-exception, hydration, JSON, and literal-escaping behavior should be consolidated with focused equivalence tests.
 
 ## UX & Interaction Patterns
 
-Epic 11 UI work is corrective. Realtime and lifecycle surfaces must expose reconnecting, fallback polling, degraded, pending, rejected, and confirmed states without treating HTTP acceptance or projection nudges as confirmed success. Palette and CTA command activation must land on real generated command pages.
-
-UI changes must use FrontComposer and Fluent UI Blazor v5 patterns, Fluent 2 tokens, and existing shell interaction components. Status indicators use icon plus tooltip plus `aria-label`; command and projection state changes use live regions only when useful and non-noisy; hover-only affordances are insufficient; modal stacks should stay shallow.
-
-Stories with visual or layout decisions not already covered by planning artifacts need story-local design notes.
+Realtime and command surfaces must expose reconnecting, fallback, degraded, pending, rejected, and confirmed states without treating HTTP acceptance or a projection nudge as confirmed success. UI remediation uses FrontComposer/Fluent UI Blazor v5, Fluent 2 tokens, accessible names and keyboard behavior, stable selectors, reduced-motion and forced-colors support, plus rendered-DOM, computed-style, bUnit, e2e, or Governance evidence appropriate to the change.
 
 ## Cross-Story Dependencies
 
-Story creation follows the Epic 11 implementation-order table, not heading order or numeric sort. Story 11.0 is complete and unlocks general implementation. Story 11.8 is complete, but its package-boundary implementation stories, 11.11 through 11.14, remain deliberately last.
+Story creation follows the Epic 11 implementation-order table, not heading or numeric order: 11.1, 11.2, 11.4, 11.3, 11.5, 11.6, 11.7; then 11.9/11.15/11.16; then the split children of 11.17, 11.18, and 11.19; finally 11.11-11.14.
 
-The implementation order is: 11.1, 11.2, 11.4, 11.3, 11.5, 11.6, 11.7, then 11.9/11.15/11.16, then split child stories for 11.17, 11.18, and 11.19, and finally 11.11 through 11.14.
-
-Stories 11.17, 11.18, and 11.19 are decomposition parents and must be split into independently reviewable child stories with named validation lanes before development. Stories 11.11 through 11.14 depend on the approved Contracts split plan and must carry package compatibility, public API, documentation, migration, and release evidence together.
+Story 11.0 and the module-tab IA gate are resolved prerequisites for 11.7. Story 11.8 is resolved, but 11.11-11.14 remain deliberately last and must implement the approved package-boundary plan together with compatibility and public-contract evidence. Stories 11.17, 11.18, and 11.19 are decomposition parents and must be split into independently reviewable children with named validation lanes before development.
