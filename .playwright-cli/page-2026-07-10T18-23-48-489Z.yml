@@ -1,0 +1,265 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - link "Skip to content" [ref=e4] [cursor=pointer]:
+      - /url: "#start-of-content"
+    - banner [ref=e6]:
+      - heading "Navigation Menu" [level=2] [ref=e7]
+      - generic [ref=e8]:
+        - link "Homepage" [ref=e10] [cursor=pointer]:
+          - /url: /
+          - img [ref=e11]
+        - generic [ref=e13]:
+          - navigation "Global" [ref=e16]:
+            - list [ref=e17]:
+              - listitem [ref=e18]:
+                - button "Platform" [ref=e20] [cursor=pointer]:
+                  - text: Platform
+                  - img [ref=e21]
+              - listitem [ref=e23]:
+                - button "Solutions" [ref=e25] [cursor=pointer]:
+                  - text: Solutions
+                  - img [ref=e26]
+              - listitem [ref=e28]:
+                - button "Resources" [ref=e30] [cursor=pointer]:
+                  - text: Resources
+                  - img [ref=e31]
+              - listitem [ref=e33]:
+                - button "Open Source" [ref=e35] [cursor=pointer]:
+                  - text: Open Source
+                  - img [ref=e36]
+              - listitem [ref=e38]:
+                - button "Enterprise" [ref=e40] [cursor=pointer]:
+                  - text: Enterprise
+                  - img [ref=e41]
+              - listitem [ref=e43]:
+                - link "Pricing" [ref=e44] [cursor=pointer]:
+                  - /url: https://github.com/pricing
+                  - generic [ref=e45]: Pricing
+          - generic [ref=e46]:
+            - button "Search or jump to…" [ref=e49] [cursor=pointer]:
+              - img [ref=e51]
+            - link "Sign in" [ref=e54] [cursor=pointer]:
+              - /url: /login?return_to=https%3A%2F%2Fgithub.com%2FHexalith%2FHexalith.FrontComposer%2Factions%2Fruns%2F29113763035%2Fjob%2F86432055639
+            - link "Sign up" [ref=e55] [cursor=pointer]:
+              - /url: /signup?ref_cta=Sign+up&ref_loc=header+logged+out&ref_page=%2F%3Cuser-name%3E%2F%3Crepo-name%3E%2Factions%2Fjob%2Findex&source=header-repo&source_repo=Hexalith%2FHexalith.FrontComposer
+            - button "Appearance settings" [ref=e58] [cursor=pointer]:
+              - img
+  - main [ref=e62]:
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - generic [ref=e67]:
+            - img [ref=e68]
+            - link "Hexalith" [ref=e71] [cursor=pointer]:
+              - /url: /Hexalith
+            - generic [ref=e72]: /
+            - strong [ref=e73]:
+              - link "Hexalith.FrontComposer" [ref=e74] [cursor=pointer]:
+                - /url: /Hexalith/Hexalith.FrontComposer
+            - generic [ref=e75]: Public
+          - generic [ref=e76]:
+            - list:
+              - listitem [ref=e77]:
+                - link "You must be signed in to change notification settings" [ref=e78] [cursor=pointer]:
+                  - /url: /login?return_to=%2FHexalith%2FHexalith.FrontComposer
+                  - img [ref=e79]
+                  - text: Notifications
+              - listitem [ref=e81]:
+                - link "Fork 0" [ref=e82] [cursor=pointer]:
+                  - /url: /login?return_to=%2FHexalith%2FHexalith.FrontComposer
+                  - img [ref=e83]
+                  - text: Fork
+                  - generic "0" [ref=e85]
+              - listitem [ref=e86]:
+                - link "You must be signed in to star a repository" [ref=e88] [cursor=pointer]:
+                  - /url: /login?return_to=%2FHexalith%2FHexalith.FrontComposer
+                  - img [ref=e89]
+                  - text: Star
+                  - generic "0 users starred this repository" [ref=e91]: "0"
+        - navigation "Repository" [ref=e92]:
+          - list [ref=e93]:
+            - listitem [ref=e94]:
+              - link "Code" [ref=e95] [cursor=pointer]:
+                - /url: /Hexalith/Hexalith.FrontComposer
+                - img [ref=e96]
+                - generic [ref=e98]: Code
+            - listitem [ref=e99]:
+              - link "Issues 31" [ref=e100] [cursor=pointer]:
+                - /url: /Hexalith/Hexalith.FrontComposer/issues
+                - img [ref=e101]
+                - generic [ref=e104]: Issues
+                - generic "31" [ref=e105]
+            - listitem [ref=e106]:
+              - link "Pull requests" [ref=e107] [cursor=pointer]:
+                - /url: /Hexalith/Hexalith.FrontComposer/pulls
+                - img [ref=e108]
+                - generic [ref=e110]: Pull requests
+            - listitem [ref=e111]:
+              - link "Actions" [ref=e112] [cursor=pointer]:
+                - /url: /Hexalith/Hexalith.FrontComposer/actions
+                - img [ref=e113]
+                - generic [ref=e115]: Actions
+            - listitem [ref=e116]:
+              - link "Projects" [ref=e117] [cursor=pointer]:
+                - /url: /Hexalith/Hexalith.FrontComposer/projects
+                - img [ref=e118]
+                - generic [ref=e120]: Projects
+            - listitem [ref=e121]:
+              - link "Security and quality" [ref=e122] [cursor=pointer]:
+                - /url: /Hexalith/Hexalith.FrontComposer/security
+                - img [ref=e123]
+                - generic [ref=e125]: Security and quality
+            - listitem [ref=e126]:
+              - link "Insights" [ref=e127] [cursor=pointer]:
+                - /url: /Hexalith/Hexalith.FrontComposer/pulse
+                - img [ref=e128]
+                - generic [ref=e130]: Insights
+      - generic [ref=e135]:
+        - generic [ref=e138]:
+          - link "CI" [ref=e141] [cursor=pointer]:
+            - /url: /Hexalith/Hexalith.FrontComposer/actions/workflows/ci.yml
+            - img [ref=e142]
+            - generic [ref=e144]: CI
+          - generic [ref=e145]:
+            - generic [ref=e146]:
+              - img "failed:" [ref=e150]
+              - 'heading "Fix/actions 29112530341 verify baselines (#55) #658" [level=1] [ref=e152]':
+                - generic [ref=e153]: "Fix/actions 29112530341 verify baselines (#55) #658"
+            - link "Sign in to view logs" [ref=e156] [cursor=pointer]:
+              - /url: /login?return_to=https%3A%2F%2Fgithub.com%2FHexalith%2FHexalith.FrontComposer%2Factions%2Fruns%2F29113763035%2Fjob%2F86432055639
+        - generic [ref=e157]:
+          - navigation "Workflow run" [ref=e163]:
+            - list [ref=e164]:
+              - listitem [ref=e165]:
+                - link "Summary" [ref=e241] [cursor=pointer]:
+                  - /url: /Hexalith/Hexalith.FrontComposer/actions/runs/29113763035
+                  - generic:
+                    - img
+                  - generic [ref=e243]: Summary
+              - generic [ref=e169]:
+                - heading "All jobs" [level=4] [ref=e170]
+                - button "Filter by job status" [ref=e171] [cursor=pointer]:
+                  - img [ref=e172]
+              - listitem [ref=e174]
+              - listitem [ref=e175]:
+                - list [ref=e176]:
+                  - listitem [ref=e244]:
+                    - link "commitlint" [ref=e245] [cursor=pointer]:
+                      - /url: /Hexalith/Hexalith.FrontComposer/actions/runs/29113763035/job/86432055639
+                      - generic:
+                        - img
+                      - generic [ref=e247]: commitlint
+                  - listitem [ref=e248]:
+                    - link "build-and-test" [ref=e249] [cursor=pointer]:
+                      - /url: /Hexalith/Hexalith.FrontComposer/actions/runs/29113763035/job/86432055607
+                      - generic:
+                        - img
+                      - generic [ref=e251]: build-and-test
+                  - listitem [ref=e252]:
+                    - link "accessibility-visual" [ref=e253] [cursor=pointer]:
+                      - /url: /Hexalith/Hexalith.FrontComposer/actions/runs/29113763035/job/86432055596
+                      - generic:
+                        - img
+                      - generic [ref=e255]: accessibility-visual
+              - listitem [ref=e187]
+              - listitem [ref=e188]:
+                - heading "Run details" [level=3] [ref=e190]
+                - list "Run details" [ref=e191]:
+                  - listitem [ref=e192]:
+                    - link "Usage" [ref=e256] [cursor=pointer]:
+                      - /url: /Hexalith/Hexalith.FrontComposer/actions/runs/29113763035/usage
+                      - generic:
+                        - img
+                      - generic [ref=e258]: Usage
+                  - listitem [ref=e196]:
+                    - link "Workflow file" [ref=e259] [cursor=pointer]:
+                      - /url: /Hexalith/Hexalith.FrontComposer/actions/runs/29113763035/workflow
+                      - generic:
+                        - img
+                      - generic [ref=e261]: Workflow file
+          - region "Check run summary" [ref=e201]:
+            - generic [ref=e202]:
+              - region "Annotations" [ref=e204]:
+                - generic [ref=e208]:
+                  - button "Open job annotations" [ref=e210] [cursor=pointer]:
+                    - img [ref=e213]
+                  - generic [ref=e215]:
+                    - heading "Annotations" [level=2] [ref=e216]
+                    - generic [ref=e217]: 1 error
+              - generic [ref=e219]:
+                - generic [ref=e221]:
+                  - link "commitlint" [ref=e224] [cursor=pointer]:
+                    - /url: "#logs"
+                    - generic [ref=e225]: commitlint
+                  - generic [ref=e226]: failed Jul 10, 20269 minutes ago in 13s
+                - generic [ref=e228]:
+                  - generic [ref=e229]:
+                    - group:
+                      - generic "Set up job":
+                        - generic:
+                          - img
+                          - generic:
+                            - generic: Set up job
+                  - generic [ref=e230]:
+                    - group:
+                      - generic "Run actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0":
+                        - generic:
+                          - img
+                          - generic:
+                            - generic: Run actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+                  - generic [ref=e231]:
+                    - group:
+                      - generic "Run actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e":
+                        - generic:
+                          - img
+                          - generic:
+                            - generic: Run actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+                  - generic [ref=e232]:
+                    - group:
+                      - generic "Install commitlint dependencies":
+                        - generic:
+                          - img
+                          - generic:
+                            - generic: Install commitlint dependencies
+                  - generic [ref=e233]:
+                    - group:
+                      - generic "Validate PR title":
+                        - generic:
+                          - img
+                          - generic:
+                            - generic: Validate PR title
+                  - generic [ref=e234]:
+                    - group:
+                      - generic "Validate PR commits":
+                        - generic:
+                          - img
+                          - generic:
+                            - generic: Validate PR commits
+                  - generic [ref=e235]:
+                    - group:
+                      - generic "Validate latest main commit":
+                        - generic:
+                          - img
+                          - generic:
+                            - generic: Validate latest main commit
+                  - generic [ref=e236]:
+                    - group:
+                      - generic "Post Run actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e":
+                        - generic:
+                          - img
+                          - generic:
+                            - generic: Post Run actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+                  - generic [ref=e237]:
+                    - group:
+                      - generic "Post Run actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0":
+                        - generic:
+                          - img
+                          - generic:
+                            - generic: Post Run actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+                  - generic [ref=e238]:
+                    - group:
+                      - generic "Complete job":
+                        - generic:
+                          - img
+                          - generic:
+                            - generic: Complete job
