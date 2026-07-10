@@ -1,4 +1,12 @@
 .fc-specimen {
+    --fc-specimen-control-background: #ffffff;
+    --fc-specimen-control-border: #707070;
+    --fc-specimen-control-foreground: #141414;
+    --fc-specimen-foreground: #242424;
+    --fc-specimen-warning-background: #fff4ce;
+    --fc-specimen-warning-border: #fde300;
+    --fc-specimen-warning-foreground: #3b2f00;
+
     color: #141414;
     background: #f8f8f4;
     min-height: 100vh;
@@ -6,6 +14,14 @@
 }
 
 .fc-specimen--dark {
+    --fc-specimen-control-background: #ffffff;
+    --fc-specimen-control-border: #d1d1d1;
+    --fc-specimen-control-foreground: #141414;
+    --fc-specimen-foreground: #f7f7f2;
+    --fc-specimen-warning-background: #fff4ce;
+    --fc-specimen-warning-border: #f2c94c;
+    --fc-specimen-warning-foreground: #3b2f00;
+
     color: #f7f7f2;
     background: #15171a;
 }
@@ -116,6 +132,27 @@
     display: grid;
     gap: .75rem;
     max-inline-size: 36rem;
+}
+
+.fc-specimen ::deep .fluent-card,
+.fc-specimen ::deep .fc-command-form,
+.fc-specimen ::deep .fc-command-field,
+.fc-specimen ::deep .fc-command-field-label,
+.fc-specimen ::deep .fc-command-field-message {
+    color: var(--fc-specimen-foreground);
+}
+
+.fc-specimen ::deep .fc-command-input,
+.fc-specimen input {
+    background: var(--fc-specimen-control-background);
+    border: 1px solid var(--fc-specimen-control-border);
+    color: var(--fc-specimen-control-foreground);
+}
+
+.fc-specimen ::deep fluent-message-bar {
+    background: var(--fc-specimen-warning-background);
+    border-color: var(--fc-specimen-warning-border);
+    color: var(--fc-specimen-warning-foreground);
 }
 
 .fc-specimen__form label { display: grid; gap: .25rem; }
