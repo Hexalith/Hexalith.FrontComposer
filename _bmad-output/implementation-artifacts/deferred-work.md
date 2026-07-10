@@ -1428,3 +1428,25 @@ source_spec: `spec-11-4-security-validation-hardening.md`
 severity: low
 reason: Review budget (3 cycles) was exhausted with the story finalized (status: done, verify green) while the review pass kept recommending an independent follow-up. The work was committed by bmad-loop run 20260706-191144-ea78; this entry preserves the lingering follow-up recommendation for a deliberate later review.
 status: open
+
+## Deferred from: actions-29110799882-enable-dependency-graph (2026-07-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29110799882-enable-dependency-graph.md`
+  summary: Enforce required pull-request checks on `main` so changes cannot merge while dependency review or CI is pending or failing.
+  evidence: GitHub reports no branch protection and zero repository rulesets; PR #52 merged before its checks completed, and its CI run 29110798810 later failed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29110799882-enable-dependency-graph.md`
+  summary: Diagnose and fix the failed build-and-test and accessibility-visual jobs in CI run 29110798810.
+  evidence: Both jobs completed with failure after PR #52 merged; they are separate from dependency-review run 29110799882 and were not caused by enabling the dependency graph.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29110799882-enable-dependency-graph.md`
+  summary: Add dependency-security coverage for repository-local .NET tool manifests.
+  evidence: Dependency review returned zero changes for PR #52 even though `.config/dotnet-tools.json` upgraded dotnet-stryker, so the current graph does not review that manifest type.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29110799882-enable-dependency-graph.md`
+  summary: Pin the reusable dependency-review workflow to an immutable Hexalith.Builds commit.
+  evidence: `.github/workflows/dependency-review.yml` currently references `Hexalith/Hexalith.Builds/.github/workflows/dependency-review.yml@main`, allowing the reviewed implementation to change between runs.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29110799882-enable-dependency-graph.md`
+  summary: Triage the repository's open low-severity undici Dependabot alert.
+  evidence: The alert pre-existed this repair and remains below the dependency-review workflow's configured high-severity failure threshold.
