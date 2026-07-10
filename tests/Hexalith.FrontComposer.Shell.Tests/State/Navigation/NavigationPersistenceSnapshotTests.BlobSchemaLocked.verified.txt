@@ -1,1 +1,1 @@
-{"sidebarCollapsed":true,"collapsedGroups":{"Counter":true,"Orders":false}}
+﻿{"sidebarCollapsed":true,"collapsedGroups":{"Counter":true,"Orders":false}}
