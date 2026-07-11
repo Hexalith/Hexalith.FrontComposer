@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text;
 
+using Hexalith.FrontComposer.Contracts.Routing;
+
 namespace Hexalith.FrontComposer.Shell.Routing;
 
 /// <summary>
@@ -65,11 +67,9 @@ public static class CommandRouteBuilder {
     /// </summary>
     /// <param name="boundedContext">The bounded-context name.</param>
     /// <param name="commandTypeName">The fully qualified command type name.</param>
-    /// <returns>A URL of the form <c>/domain/{kebab-bc}/{kebab-cmd}</c>.</returns>
-    public static string BuildRoute(string boundedContext, string commandTypeName) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(boundedContext);
-        ArgumentException.ThrowIfNullOrWhiteSpace(commandTypeName);
-        return $"/domain/{KebabCase(boundedContext)}/{KebabCase(commandTypeName)}";
+    /// <returns>A URL of the form <c>/commands/{BoundedContext}/{CommandTypeName}</c>.</returns>
+    public static string BuildRoute(string? boundedContext, string commandTypeName) {
+        return GeneratedCommandRoute.Build(boundedContext, commandTypeName);
     }
 
     /// <summary>

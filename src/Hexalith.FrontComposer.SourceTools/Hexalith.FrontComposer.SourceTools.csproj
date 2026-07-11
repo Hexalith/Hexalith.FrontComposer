@@ -27,4 +27,17 @@
     <None Include="$(OutputPath)\$(AssemblyName).pdb" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" Condition="'$(IncludeSymbols)' == 'true'" />
     <None Include="$(OutputPath)\Hexalith.FrontComposer.Contracts.pdb" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" Condition="'$(IncludeSymbols)' == 'true'" />
   </ItemGroup>
+  <!-- ProjectReference analyzer consumers need the Contracts dependency in Roslyn's analyzer load
+       context just as packaged consumers do. Return it beside the generator from GetTargetPath. -->
+  <Target Name="AddContractsAnalyzerDependencyToTargetPath"
+          AfterTargets="GetTargetPathWithTargetPlatformMoniker">
+    <ItemGroup>
+      <TargetPathWithTargetPlatformMoniker Include="$(TargetDir)Hexalith.FrontComposer.Contracts.dll">
+        <TargetPlatformMoniker>$(TargetPlatformMoniker)</TargetPlatformMoniker>
+        <TargetPlatformIdentifier>$(TargetPlatformIdentifier)</TargetPlatformIdentifier>
+        <TargetFrameworkIdentifier>$(TargetFrameworkIdentifier)</TargetFrameworkIdentifier>
+        <TargetFrameworkVersion>$(TargetFrameworkVersion.TrimStart('vV'))</TargetFrameworkVersion>
+      </TargetPathWithTargetPlatformMoniker>
+    </ItemGroup>
+  </Target>
 </Project>

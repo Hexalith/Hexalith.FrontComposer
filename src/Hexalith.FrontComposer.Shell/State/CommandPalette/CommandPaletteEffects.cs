@@ -219,7 +219,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         // P6 (Pass-6): dedupe identical filtered entries — older code paths or storage corruption
         // could persist duplicates; the reducer dedupes on visit but NOT on hydrate.
         ImmutableArray<string> filtered = [.. stored
-            .Where(CommandRouteBuilder.IsInternalRoute)
+            .Where(IsAdvertisableRecentRoute)
             .Distinct(StringComparer.OrdinalIgnoreCase)];
         int rejected = stored.Length - filtered.Length;
         if (rejected > 0) {
@@ -242,6 +242,16 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
 
         dispatcher.Dispatch(new PaletteHydratedCompletedAction());
+    }
+
+    private static bool IsAdvertisableRecentRoute(string route) {
+        if (!CommandRouteBuilder.IsInternalRoute(route)) {
+            return false;
+        }
+
+        int suffixIndex = route.IndexOfAny(['?', '#']);
+        ReadOnlySpan<char> path = suffixIndex >= 0 ? route.AsSpan(0, suffixIndex) : route.AsSpan();
+        return !path.TrimStart('/').StartsWith("domain/", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -487,6 +497,19 @@ public sealed class CommandPaletteEffects : IDisposable {
             }
 
             dispatcher.Dispatch(new PaletteQueryChangedAction(NewCorrelationId(), ShortcutsCanonicalQuery));
+            return Task.CompletedTask;
+        }
+
+        // Re-check reachability at activation so a result computed before a late manifest merge
+        // cannot navigate to a command whose generated page is no longer advertised.
+        if (result.Category == PaletteResultCategory.Command
+            && (string.IsNullOrWhiteSpace(result.CommandTypeName)
+                || Registry is not { } activationRegistry
+                || !activationRegistry.HasFullPageRoute(result.CommandTypeName))) {
+            _logger.LogInformation(
+                "{DiagnosticId}: Command activation rejected because no generated full-page route is registered.",
+                FcDiagnosticIds.HFC2111_PaletteHydrationEmpty);
+            SafeDispatchClose(dispatcher);
             return Task.CompletedTask;
         }
 

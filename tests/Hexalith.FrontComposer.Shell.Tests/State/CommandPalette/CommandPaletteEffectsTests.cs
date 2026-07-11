@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State;
@@ -19,6 +20,7 @@ using Hexalith.FrontComposer.Shell.State.Navigation;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
@@ -187,6 +189,7 @@ public class CommandPaletteEffectsTests {
     [InlineData("//evil.example/pwn")]                  // protocol-relative URL
     [InlineData("https://attacker.example/")]           // explicit external scheme
     [InlineData("javascript:alert(1)")]                 // javascript scheme
+    [InlineData("/domain/commerce/submit-order-command")] // legacy command route is read-only compatibility, never advertised
     public async Task HandleAppInitialized_FiltersTamperedUrls_BeforeDispatchingHydrate(string tampered) {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider sp);
         IStorageService storage = sp.GetRequiredService<IStorageService>();
@@ -227,14 +230,33 @@ public class CommandPaletteEffectsTests {
     }
 
     [Fact]
-    public async Task HandlePaletteResultActivated_Command_NavigatesToKebabRoute() {
+    public async Task HandlePaletteResultActivated_Command_NavigatesToCanonicalGeneratedRoute() {
         CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
             paletteResults: [new PaletteResult(PaletteResultCategory.Command, "SubmitOrder", "Commerce", null, "Commerce.SubmitOrderCommand", 100, false)]);
 
         await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
 
         dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
-        dispatcher.Received(1).Dispatch(ArgEx.Is<RecentRouteVisitedAction>(r => r.Url == "/domain/commerce/submit-order-command"));
+        dispatcher.Received(1).Dispatch(ArgEx.Is<RecentRouteVisitedAction>(r => r.Url == "/commands/Commerce/SubmitOrderCommand"));
+    }
+
+    [Fact]
+    public async Task HandlePaletteResultActivated_CommandRechecksCurrentFullPageReachability() {
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        registry.RegisterDomain(new DomainManifest("Commerce", "Commerce", [], ["Commerce.SubmitOrderCommand"]) {
+            FullPageCommands = [],
+        });
+        CommandPaletteEffects sut = BuildEffects(
+            out _,
+            out IDispatcher dispatcher,
+            out _,
+            registry: registry,
+            paletteResults: [new PaletteResult(PaletteResultCategory.Command, "SubmitOrder", "Commerce", null, "Commerce.SubmitOrderCommand", 100, false)]);
+
+        await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
+
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
     }
 
     [Fact]
@@ -347,6 +369,31 @@ public class CommandPaletteEffectsTests {
 
         dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
             !a.Results.Any(r => r.CommandTypeName == "Counter.UnreachableCommand")));
+    }
+
+    [Fact]
+    public async Task HandlePaletteQueryChanged_GeneratedMembership_SurfacesOnlyFullPageCommands() {
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        registry.RegisterDomain(new DomainManifest(
+            "Counter",
+            "Counter",
+            [],
+            ["Counter.IncrementCommand", "Counter.ConfigureCounterCommand"]) {
+            FullPageCommands = ["Counter.ConfigureCounterCommand"],
+        });
+        CommandPaletteEffects sut = BuildEffects(
+            out FakeTimeProvider time,
+            out IDispatcher dispatcher,
+            out _,
+            registry: registry);
+
+        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "Command"), dispatcher);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        await pending;
+
+        dispatcher.Received().Dispatch(ArgEx.Is<PaletteResultsComputedAction>(a =>
+            a.Results.Any(r => r.CommandTypeName == "Counter.ConfigureCounterCommand")
+            && !a.Results.Any(r => r.CommandTypeName == "Counter.IncrementCommand")));
     }
 
     [Fact]

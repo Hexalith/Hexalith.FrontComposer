@@ -88,8 +88,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         if (firstRender) {
-            await RegisterKeyboardInteropAsync().ConfigureAwait(false);
-            await FocusSearchAsync().ConfigureAwait(false);
+            await RegisterKeyboardInteropAsync();
+            await FocusSearchAsync();
 
             // D15 empty-then-populate live-region choreography. DO NOT refactor — see anti-regression
             // comment in FcCommandPalette.razor for the full rationale.

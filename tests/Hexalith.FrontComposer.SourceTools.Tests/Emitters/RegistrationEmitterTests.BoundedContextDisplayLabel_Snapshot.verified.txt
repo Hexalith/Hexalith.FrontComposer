@@ -20,7 +20,11 @@ public static class OrderProjectionRegistration
         Name: "Commandes",
         BoundedContext: "Orders",
         Projections: new List<string> { typeof(OrderProjection).FullName! },
-        Commands: new List<string>());
+        Commands: new List<string>(),
+        CommandPolicies: null)
+    {
+        FullPageCommands = new List<string>(),
+    };
 
     /// <summary>
     /// Registers this projection's domain metadata with the composition registry.

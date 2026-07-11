@@ -48,4 +48,15 @@ public record DomainManifest(
         get;
         init => field = value ?? EmptyCommandPolicies;
     } = CommandPolicies ?? EmptyCommandPolicies;
+
+    /// <summary>
+    /// Gets the fully qualified command names with generated full-page routes.
+    /// </summary>
+    /// <remarks>
+    /// <see langword="null"/> denotes a legacy manifest whose registered commands retain the
+    /// historical reachable-page assumption; an empty collection explicitly declares that no
+    /// registered command has a page. This is a non-positional property so the record's original
+    /// constructor and deconstruction contract remain source and binary compatible.
+    /// </remarks>
+    public IReadOnlyList<string>? FullPageCommands { get; init; }
 }

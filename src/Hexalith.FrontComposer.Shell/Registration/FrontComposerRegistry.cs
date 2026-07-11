@@ -37,35 +37,18 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     }
 
     /// <summary>
-    /// Walks every registered manifest and asserts each <see cref="DomainManifest.Commands"/> entry
-    /// has a FullPage route (Story 3-4 D21). Story 9-4 supersedes this with a build-time analyzer
-    /// and an adopter-provided render-mode metadata source that makes the check meaningful.
+    /// Walks every metadata-aware manifest and asserts each declared full-page command is also
+    /// present in <see cref="DomainManifest.Commands"/>.
     /// </summary>
     /// <remarks>
-    /// <b>Inert placeholder today (ratified 2026-04-21, DN6):</b> <see cref="HasFullPageRoute"/> returns
-    /// <c>true</c> for every command that appears in any manifest, so this validator cannot throw
-    /// under the current single-source-of-truth. The branch is retained to (a) reserve the diagnostic
-    /// ID, (b) keep the future-compatible code path warm, and (c) pin the validation contract so
-    /// Story 9-4 can harden it without a surface-area change. Revisit when adopter-supplied
-    /// render-mode metadata (e.g., from the Story 2-2 source generator) becomes available.
+    /// Legacy manifests have absent metadata and retain their compatibility behavior. Generated
+    /// manifests always provide metadata, including an explicitly empty collection for Inline and
+    /// CompactInline commands.
     /// </remarks>
-    /// <exception cref="InvalidOperationException">Thrown with <see cref="FcDiagnosticIds.HFC1601_ManifestInvalid"/> when a command has no FullPage route — unreachable today.</exception>
+    /// <exception cref="InvalidOperationException">Thrown with <see cref="FcDiagnosticIds.HFC1601_ManifestInvalid"/> when full-page metadata names an unregistered command.</exception>
     private void ValidateManifests() {
         foreach (DomainManifest manifest in SnapshotManifestReferences()) {
-            // Defensive: a custom IFrontComposerRegistry consumer could theoretically register a
-            // DomainManifest with a null Commands collection. The DomainManifest record declares
-            // Commands non-nullable but nothing enforces it at runtime construction paths outside
-            // the source-generator. Skip the manifest rather than NRE the startup validator.
-            if (manifest.Commands is null) {
-                continue;
-            }
-
-            foreach (string command in manifest.Commands) {
-                if (!HasFullPageRoute(command)) {
-                    throw new InvalidOperationException(
-                        $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: command '{command}' in bounded context '{manifest.BoundedContext}' has no FullPage route. Every registered command must emit a FullPage page so the command palette can route to it.");
-                }
-            }
+            ValidateManifest(manifest);
         }
     }
 
@@ -115,15 +98,17 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
 
     /// <inheritdoc />
     public bool HasFullPageRoute(string commandTypeName) {
-        // Story 3-4 D21 — until the source generator surfaces real per-command render-mode metadata
-        // (Story 9-4 build-time analyzer), every registered command is assumed to have a FullPage
-        // route. Surface a true response when the command is in any manifest; false otherwise.
         if (string.IsNullOrWhiteSpace(commandTypeName)) {
             return false;
         }
 
         foreach (DomainManifest manifest in SnapshotManifestReferences()) {
-            if (manifest.Commands.Contains(commandTypeName, StringComparer.Ordinal)) {
+            if (!manifest.Commands.Contains(commandTypeName, StringComparer.Ordinal)) {
+                continue;
+            }
+
+            if (manifest.FullPageCommands is null
+                || manifest.FullPageCommands.Contains(commandTypeName, StringComparer.Ordinal)) {
                 return true;
             }
         }
@@ -172,15 +157,19 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
 
     /// <inheritdoc />
     public void RegisterDomain(DomainManifest manifest) {
+        ArgumentNullException.ThrowIfNull(manifest);
+        DomainManifest incoming = Clone(manifest);
+        ValidateManifest(incoming);
+
         lock (_sync) {
-            int existingIndex = _manifests.FindIndex(m => string.Equals(m.BoundedContext, manifest.BoundedContext, StringComparison.Ordinal));
+            int existingIndex = _manifests.FindIndex(m => string.Equals(m.BoundedContext, incoming.BoundedContext, StringComparison.Ordinal));
             if (existingIndex < 0) {
-                _manifests.Add(Clone(manifest));
+                _manifests.Add(incoming);
                 return;
             }
 
             DomainManifest existing = _manifests[existingIndex];
-            string name = ChooseName(existing.Name, manifest.Name, existing.BoundedContext);
+            string name = ChooseName(existing.Name, incoming.Name, existing.BoundedContext);
 
             // Preserve the existing manifest's display metadata (Icon / NameKey / Resource) and fall back
             // to the incoming manifest's when the existing one left them unset, so a later registration can
@@ -189,15 +178,18 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             // Null-coalesce the incoming collections to match the hardening in Clone / ValidateManifests:
             // a custom registry consumer or hand-rolled manifest can leave Projections / Commands null,
             // and Concat would otherwise throw under _sync during host startup on the second registration.
-            _manifests[existingIndex] = existing with {
+            DomainManifest merged = existing with {
                 Name = name,
-                Projections = [.. existing.Projections.Concat(manifest.Projections ?? []).Distinct(StringComparer.Ordinal)],
-                Commands = [.. existing.Commands.Concat(manifest.Commands ?? []).Distinct(StringComparer.Ordinal)],
-                CommandPolicies = MergeCommandPolicies(existing.CommandPolicies, manifest.CommandPolicies),
-                Icon = existing.Icon ?? manifest.Icon,
-                NameKey = existing.NameKey ?? manifest.NameKey,
-                Resource = existing.Resource ?? manifest.Resource,
+                Projections = [.. existing.Projections.Concat(incoming.Projections).Distinct(StringComparer.Ordinal)],
+                Commands = [.. existing.Commands.Concat(incoming.Commands).Distinct(StringComparer.Ordinal)],
+                CommandPolicies = MergeCommandPolicies(existing.CommandPolicies, incoming.CommandPolicies),
+                FullPageCommands = MergeFullPageCommands(existing, incoming),
+                Icon = existing.Icon ?? incoming.Icon,
+                NameKey = existing.NameKey ?? incoming.NameKey,
+                Resource = existing.Resource ?? incoming.Resource,
             };
+            ValidateManifest(merged);
+            _manifests[existingIndex] = merged;
         }
     }
 
@@ -220,7 +212,62 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             CommandPolicies = manifest.CommandPolicies is null
                 ? new Dictionary<string, string>(StringComparer.Ordinal)
                 : new Dictionary<string, string>(manifest.CommandPolicies, StringComparer.Ordinal),
+            FullPageCommands = manifest.FullPageCommands is null ? null : [.. manifest.FullPageCommands],
         };
+
+    private static IReadOnlyList<string>? MergeFullPageCommands(DomainManifest existing, DomainManifest incoming) {
+        if (existing.FullPageCommands is null && incoming.FullPageCommands is null) {
+            return null;
+        }
+
+        HashSet<string> explicitlyDescribedCommands = new(StringComparer.Ordinal);
+        HashSet<string> explicitlyReachable = new(StringComparer.Ordinal);
+        HashSet<string> legacyCommands = new(StringComparer.Ordinal);
+
+        AddExplicitMetadata(existing, explicitlyDescribedCommands, explicitlyReachable);
+        AddExplicitMetadata(incoming, explicitlyDescribedCommands, explicitlyReachable);
+        AddLegacyCommands(existing, legacyCommands);
+        AddLegacyCommands(incoming, legacyCommands);
+
+        return [.. existing.Commands
+            .Concat(incoming.Commands)
+            .Distinct(StringComparer.Ordinal)
+            .Where(command => explicitlyReachable.Contains(command)
+                || (!explicitlyDescribedCommands.Contains(command) && legacyCommands.Contains(command)))];
+    }
+
+    private static void AddExplicitMetadata(
+        DomainManifest manifest,
+        HashSet<string> explicitlyDescribedCommands,
+        HashSet<string> reachable) {
+        if (manifest.FullPageCommands is null) {
+            return;
+        }
+
+        explicitlyDescribedCommands.UnionWith(manifest.Commands);
+        reachable.UnionWith(manifest.FullPageCommands);
+    }
+
+    private static void AddLegacyCommands(DomainManifest manifest, HashSet<string> legacyCommands) {
+        if (manifest.FullPageCommands is not null) {
+            return;
+        }
+
+        legacyCommands.UnionWith(manifest.Commands);
+    }
+
+    private static void ValidateManifest(DomainManifest manifest) {
+        if (manifest.FullPageCommands is null) {
+            return;
+        }
+
+        foreach (string command in manifest.FullPageCommands) {
+            if (!manifest.Commands.Contains(command, StringComparer.Ordinal)) {
+                throw new InvalidOperationException(
+                    $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: full-page command '{command}' in bounded context '{manifest.BoundedContext}' is not present in the manifest command membership.");
+            }
+        }
+    }
 
     private IReadOnlyDictionary<string, string> MergeCommandPolicies(
         IReadOnlyDictionary<string, string> existing,
