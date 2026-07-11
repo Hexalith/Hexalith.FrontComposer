@@ -69,6 +69,12 @@ so Shell visual regressions fail in CI instead of shipping as silent no-op style
   - [x] Run `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`.
   - [x] Reconcile the story File List and Completion Notes against actual `git diff --name-only`; include `spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` if it is updated during implementation.
 
+### Review Findings
+
+- [ ] [Review][Decision] Establish an auditable Story 11.5 completion boundary — The fixed baseline now expands to 353 files at current `HEAD`, while the actual review-promotion commit `289bb099` also changed `references/Hexalith.Builds` and `references/Hexalith.Commons` despite the story claiming only the story and sprint files were dirty. Replaying artifact validation against the baseline-to-completion changed-file set fails because `references/Hexalith.Commons` is neither story-owned nor documented as unrelated. Decide whether to classify and pin the historical submodule changes with an immutable completion endpoint, or reopen/rework the story evidence before approval.
+- [ ] [Review][Decision] Resolve the stale prior Story 11.5 spec — `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` remains `in-progress` with every execution task unchecked while the canonical story is in review. Decide whether to synchronize that artifact with the completed evidence or mark it explicitly superseded by this canonical story.
+- [ ] [Review][Patch] Add normal-motion computed-style coverage for the reconnect pulse [tests/e2e/specs/specimen-accessibility.spec.ts:274]
+
 ## Dev Notes
 
 ### Story Context
