@@ -629,8 +629,9 @@ public sealed partial class DiagnosticRegistryTests {
         // AC24 / AC9 precedence: where TFM supports custom obsolete diagnostic IDs and URL format,
         // they must be used. We assert this for the two known production deprecations.
         string queryRequest = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Contracts", "Communication", "QueryRequest.cs"), Encoding.UTF8);
-        queryRequest.ShouldContain("DiagnosticId = \"HFC0001\"", customMessage: "QueryRequest.Filter must declare DiagnosticId on net10.0+ obsolete (AC24).");
-        queryRequest.ShouldContain("UrlFormat = \"https://hexalith.github.io/FrontComposer/diagnostics/{0}\"", customMessage: "QueryRequest.Filter must declare UrlFormat on net10.0+ obsolete (AC24).");
+        queryRequest.ShouldContain("private const string DiagnosticId = \"HFC0001\"", customMessage: "QueryRequest legacy entry points must use the HFC0001 identity on net10.0+ obsolete metadata (AC24).");
+        queryRequest.ShouldContain("private const string HelpLinkFormat = \"https://hexalith.github.io/FrontComposer/diagnostics/{0}\"", customMessage: "QueryRequest legacy entry points must use the canonical help-link format on net10.0+ obsolete metadata (AC24).");
+        queryRequest.ShouldContain("DiagnosticId = DiagnosticId, UrlFormat = HelpLinkFormat", customMessage: "QueryRequest legacy entry points must apply the shared HFC0001 metadata (AC24).");
 
         string schemaNegotiation = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Mcp", "Schema", "SchemaNegotiation.cs"), Encoding.UTF8);
         schemaNegotiation.ShouldContain("DiagnosticId = \"HFC4001\"", customMessage: "SchemaNegotiation.HasCompatibleAdditiveDrift must declare DiagnosticId (AC24).");

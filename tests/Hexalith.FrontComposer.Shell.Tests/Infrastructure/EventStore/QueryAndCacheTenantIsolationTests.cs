@@ -65,8 +65,8 @@ public sealed class QueryAndCacheTenantIsolationTests {
     }
 
     private static QueryRequest Request(string? tenantId, string? cacheDiscriminator = null)
-        => new(
-            ProjectionType: "Orders.Row",
+        => QueryRequest.Create(
+            Criteria: new ProjectionQuery("Orders.Row"),
             TenantId: tenantId,
             Domain: "orders",
             AggregateId: "orders",

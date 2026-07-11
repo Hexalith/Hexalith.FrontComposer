@@ -57,8 +57,8 @@ public sealed class TestingFailureModeTests {
     public async Task TestQueryService_CallbackIsLastWriteWins_AndFailuresAreRecorded() {
         using BunitContext context = new();
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
-        host.QueryService.SucceedWith<string>(request => new([request.SearchQuery!], request.Take!.Value, "callback"));
-        QueryRequest request = new("Projection", "tenant", Skip: 4, Take: 2, SearchQuery: "needle", SortColumn: "Name", SortDescending: true);
+        host.QueryService.SucceedWith<string>(request => new([request.Criteria.SearchQuery!], request.Criteria.Take!.Value, "callback"));
+        QueryRequest request = QueryRequest.Create(new ProjectionQuery("Projection", Skip: 4, Take: 2, SearchQuery: "needle", SortColumn: "Name", SortDescending: true), "tenant");
 
         QueryResult<string> result = await host.QueryService.QueryAsync<string>(request, Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
         result.Items.ShouldBe(["needle"]);
@@ -107,7 +107,7 @@ public sealed class TestingFailureModeTests {
         host.PageLoader.SucceedWith("Projection", _ => throw new OperationCanceledException(canceled.Token));
 
         Task<QueryResult<string>> queryTask = host.QueryService.QueryAsync<string>(
-            new QueryRequest("Projection", "tenant"), Xunit.TestContext.Current.CancellationToken);
+            QueryRequest.Create(new ProjectionQuery("Projection"), "tenant"), Xunit.TestContext.Current.CancellationToken);
         Task<ProjectionPageResult> pageTask = host.PageLoader.LoadPageAsync(
             "Projection", 0, 1, ImmutableDictionary<string, string>.Empty, null, false, null, Xunit.TestContext.Current.CancellationToken);
         await Should.ThrowAsync<OperationCanceledException>(() => queryTask).ConfigureAwait(true);
@@ -230,7 +230,7 @@ public sealed class TestingFailureModeTests {
         host.QueryService.NotModifiedWith<string>(["final"], "final");
         host.PageLoader.NotModified("Projection", ["final"], 1, "final");
         QueryResult<string> query = await host.QueryService.QueryAsync<string>(
-            new QueryRequest("Projection", "tenant"), Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
+            QueryRequest.Create(new ProjectionQuery("Projection"), "tenant"), Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
         ProjectionPageResult page = await host.PageLoader.LoadPageAsync(
             "Projection", 0, 1, ImmutableDictionary<string, string>.Empty, null, false, null,
             Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);

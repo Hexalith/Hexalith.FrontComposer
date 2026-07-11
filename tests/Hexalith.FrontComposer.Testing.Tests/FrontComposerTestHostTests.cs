@@ -229,7 +229,7 @@ public sealed class FrontComposerTestHostTests {
 
         for (int i = 0; i < 5; i++) {
             _ = await host.QueryService.QueryAsync<string>(
-                new QueryRequest("String", null),
+                QueryRequest.Create(new ProjectionQuery("String"), null),
                 Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
             _ = await host.PageLoader.LoadPageAsync(
                 typeof(CounterProjection).FullName!,
@@ -254,14 +254,12 @@ public sealed class FrontComposerTestHostTests {
         query.NotModifiedWith([new CounterProjection { Id = "counter-cache", Count = 4 }], "\"etag-cache\"");
 
         QueryResult<CounterProjection> notModified = await query.QueryAsync<CounterProjection>(
-            new QueryRequest(
-                typeof(CounterProjection).FullName!,
-                "tenant-query",
-                Skip: 10,
-                Take: 5),
+            QueryRequest.Create(
+                new ProjectionQuery(typeof(CounterProjection).FullName!, Skip: 10, Take: 5),
+                "tenant-query"),
             Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
         QueryResult<string> empty = await query.QueryAsync<string>(
-            new QueryRequest("StringProjection", null, Skip: 2, Take: 3),
+            QueryRequest.Create(new ProjectionQuery("StringProjection", Skip: 2, Take: 3), null),
             Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         notModified.IsNotModified.ShouldBeTrue();
@@ -283,7 +281,7 @@ public sealed class FrontComposerTestHostTests {
         await cts.CancelAsync().ConfigureAwait(true);
 
         _ = await Should.ThrowAsync<OperationCanceledException>(() =>
-            host.ExposedQueryService.QueryAsync<string>(new QueryRequest("StringProjection", null), cts.Token)).ConfigureAwait(true);
+            host.ExposedQueryService.QueryAsync<string>(QueryRequest.Create(new ProjectionQuery("StringProjection"), null), cts.Token)).ConfigureAwait(true);
         _ = await Should.ThrowAsync<OperationCanceledException>(() =>
             host.ExposedPageLoader.LoadPageAsync(
                 "Projection",

@@ -175,7 +175,7 @@ public sealed class FcShellOptions {
     /// Upper bound (inclusive) on the unfiltered row count returned by projection queries.
     /// Story 4-4 Decision D10. When <c>state.Items.Count</c> reaches this cap, the shell surfaces
     /// <c>FcMaxItemsCapNotice</c> inviting the user to apply filters. Servers are expected to
-    /// honour this value via <c>QueryRequest.Take</c> clamping. Default: 10 000.
+    /// honour this value via <c>QueryRequest.Criteria.Take</c> clamping. Default: 10 000.
     /// </summary>
     [Range(100, 1_000_000, ErrorMessage = "MaxUnfilteredItems must be between 100 and 1000000.")]
     public int MaxUnfilteredItems { get; set; } = 10_000;

@@ -129,8 +129,8 @@ public sealed class EventStoreClientTests {
             NullLogger<EventStoreQueryClient>.Instance);
 
         QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(
-            new QueryRequest(
-                ProjectionType: "orders",
+            QueryRequest.Create(
+                Criteria: new ProjectionQuery("orders"),
                 TenantId: "acme",
                 Domain: "orders",
                 AggregateId: "order-1",
@@ -141,6 +141,52 @@ public sealed class EventStoreClientTests {
         result.IsNotModified.ShouldBeTrue();
         result.ETag.ShouldBe("\"etag-2\"");
         handler.Requests.Single().RequestUri!.PathAndQuery.ShouldBe("/api/v1/queries");
+    }
+
+    [Fact]
+    public async Task QueryClient_CanonicalCriteria_MapToUnchangedEventStorePayload()
+    {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""{"payload":[]}""", Encoding.UTF8, "application/json"),
+        });
+        EventStoreQueryClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
+            NullLogger<EventStoreQueryClient>.Instance);
+        QueryRequest request = QueryRequest.Create(
+            new ProjectionQuery(
+                "orders",
+                Skip: 2,
+                Take: 25,
+                ColumnFilters: new Dictionary<string, string>(StringComparer.Ordinal) { ["Status"] = "Open" },
+                StatusFilters: ["Open", "Pending"],
+                SearchQuery: "needle",
+                SortColumn: "CreatedAt",
+                SortDescending: true),
+            "acme",
+            ETag: "\"caller-etag\"",
+            Domain: "orders",
+            AggregateId: "order-1",
+            QueryType: "GetOrders");
+
+        _ = await sut.QueryAsync<OrderProjection>(request, TestContext.Current.CancellationToken);
+
+        handler.Requests.Single().Headers.GetValues("If-None-Match").ShouldBe(["\"caller-etag\""]);
+        using JsonDocument document = JsonDocument.Parse(handler.Bodies.Single());
+        JsonElement payload = document.RootElement.GetProperty("payload");
+        payload.GetProperty("filter").ValueKind.ShouldBe(JsonValueKind.Null);
+        payload.GetProperty("skip").GetInt32().ShouldBe(2);
+        payload.GetProperty("take").GetInt32().ShouldBe(25);
+        payload.GetProperty("columnFilters").GetProperty("Status").GetString().ShouldBe("Open");
+        payload.GetProperty("statusFilters").EnumerateArray().Select(value => value.GetString()).ShouldBe(["Open", "Pending"]);
+        payload.GetProperty("searchQuery").GetString().ShouldBe("needle");
+        payload.GetProperty("sortColumn").GetString().ShouldBe("CreatedAt");
+        payload.GetProperty("sortDescending").GetBoolean().ShouldBeTrue();
     }
 
     [Fact]
@@ -160,8 +206,8 @@ public sealed class EventStoreClientTests {
             NullLogger<EventStoreQueryClient>.Instance);
 
         QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(
-            new QueryRequest(
-                ProjectionType: "orders",
+            QueryRequest.Create(
+                Criteria: new ProjectionQuery("orders"),
                 TenantId: "acme",
                 Domain: "orders",
                 AggregateId: "order-1",
@@ -190,8 +236,8 @@ public sealed class EventStoreClientTests {
 
         InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(
             async () => await sut.QueryAsync<OrderProjection>(
-                new QueryRequest(
-                    ProjectionType: "orders",
+                QueryRequest.Create(
+                    Criteria: new ProjectionQuery("orders"),
                     TenantId: "acme",
                     Domain: "orders",
                     AggregateId: "order-1",
@@ -214,8 +260,8 @@ public sealed class EventStoreClientTests {
             new EventStoreTestSupport.RecordingAuthRedirector(),
             NullLogger<EventStoreQueryClient>.Instance);
 
-        QueryRequest request = new(
-            ProjectionType: "orders",
+        QueryRequest request = QueryRequest.Create(
+            Criteria: new ProjectionQuery("orders"),
             TenantId: "acme",
             Domain: "orders",
             AggregateId: "order-1",
@@ -449,8 +495,8 @@ public sealed class EventStoreClientTests {
             new EventStoreTestSupport.RecordingAuthRedirector(),
             NullLogger<EventStoreQueryClient>.Instance);
 
-        QueryRequest request = new(
-            ProjectionType: "orders",
+        QueryRequest request = QueryRequest.Create(
+            Criteria: new ProjectionQuery("orders"),
             TenantId: "acme",
             Domain: "orders",
             AggregateId: "order-1",

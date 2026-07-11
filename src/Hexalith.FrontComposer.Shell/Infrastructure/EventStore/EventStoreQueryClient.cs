@@ -102,8 +102,8 @@ public sealed class EventStoreQueryClient(
             EventStoreIdentity.NormalizeRouteSegment(request.Domain),
             nameof(request.Domain));
         string aggregateId = EventStoreValidation.RequireNonColonSegment(request.AggregateId, nameof(request.AggregateId));
-        string queryType = EventStoreValidation.RequireNonColonSegment(request.QueryType ?? request.ProjectionType, nameof(request.QueryType));
-        string projectionType = EventStoreValidation.RequireNonColonSegment(request.ProjectionType, nameof(request.ProjectionType));
+        string queryType = EventStoreValidation.RequireNonColonSegment(request.QueryType ?? request.Criteria.ProjectionType, nameof(request.QueryType));
+        string projectionType = EventStoreValidation.RequireNonColonSegment(request.Criteria.ProjectionType, nameof(request.Criteria.ProjectionType));
         if (!string.IsNullOrWhiteSpace(request.EntityId)) {
             _ = EventStoreValidation.RequireNonColonSegment(request.EntityId, nameof(request.EntityId));
         }
@@ -192,7 +192,7 @@ public sealed class EventStoreQueryClient(
                             FrontComposerTelemetry.SetOutcome(activity, "from_cache");
                             try {
                                 RevalidateSnapshot(tenantContext);
-                                return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
+                                return DeserializeNotModifiedFromCache<T>(cachedEntry, request.Criteria.ProjectionType);
                             }
                             catch (ProjectionSchemaMismatchException ex) {
                                 FrontComposerLog.QuerySchemaMismatch(
@@ -251,7 +251,7 @@ public sealed class EventStoreQueryClient(
                             // P2 — broaden beyond JsonException so type-shape mismatches surfaced by
                             // ReadPayloadItems<T>.Deserialize (InvalidOperationException, NotSupportedException,
                             // ArgumentException) flow through the schema-mismatch path instead of bubbling raw.
-                            // P4 — null-guard the diagnostic field; request.ProjectionType is normalized non-null
+                            // P4 — null-guard the diagnostic field; request.Criteria.ProjectionType is normalized non-null
                             // earlier but logging the literal "null" is still preferable to a NullReferenceException.
                             string diagnosticProjectionType = projectionType ?? string.Empty;
                             // DN2 — invalidate the projection family, not just this single cache key.
@@ -384,12 +384,12 @@ public sealed class EventStoreQueryClient(
         }
     }
 
-#pragma warning disable HFC0001 // Legacy Filter read intentionally retained for v0.x back-compat (removed in v0.4).
+#pragma warning disable HFC0001 // Legacy Filter is forwarded until the documented v2.0.0 removal.
     private static bool HasCacheUnsafeQueryShape(QueryRequest request) => !string.IsNullOrWhiteSpace(request.Filter)
-            || (request.ColumnFilters is { Count: > 0 })
-            || (request.StatusFilters is { Count: > 0 })
-            || !string.IsNullOrWhiteSpace(request.SearchQuery)
-            || !string.IsNullOrWhiteSpace(request.SortColumn);
+            || (request.Criteria.ColumnFilters is { Count: > 0 })
+            || (request.Criteria.StatusFilters is { Count: > 0 })
+            || !string.IsNullOrWhiteSpace(request.Criteria.SearchQuery)
+            || !string.IsNullOrWhiteSpace(request.Criteria.SortColumn);
 #pragma warning restore HFC0001
 
     private static IReadOnlyList<string> GetRequestEtags(QueryRequest request) {
@@ -493,17 +493,17 @@ public sealed class EventStoreQueryClient(
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
         Justification = "EventStore adapter serializes query payload metadata through System.Text.Json web defaults.")]
-#pragma warning disable HFC0001 // Legacy Filter forwarded on the wire for v0.x back-compat (removed in v0.4).
+#pragma warning disable HFC0001 // Legacy Filter is forwarded until the documented v2.0.0 removal.
     private static JsonElement SerializeQueryPayload(QueryRequest request) => JsonSerializer.SerializeToElement(
             new QueryPayload(
                 request.Filter,
-                request.Skip,
-                request.Take,
-                request.ColumnFilters,
-                request.StatusFilters,
-                request.SearchQuery,
-                request.SortColumn,
-                request.SortDescending),
+                request.Criteria.Skip,
+                request.Criteria.Take,
+                request.Criteria.ColumnFilters,
+                request.Criteria.StatusFilters,
+                request.Criteria.SearchQuery,
+                request.Criteria.SortColumn,
+                request.Criteria.SortDescending),
             EventStoreRequestContent.JsonOptions);
 #pragma warning restore HFC0001
 

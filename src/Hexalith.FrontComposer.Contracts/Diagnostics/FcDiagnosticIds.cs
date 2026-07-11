@@ -10,7 +10,9 @@ namespace Hexalith.FrontComposer.Contracts.Diagnostics;
 /// </remarks>
 public static class FcDiagnosticIds {
     /// <summary>
-    /// Deprecation: <c>QueryRequest.Filter</c> is replaced by <c>QueryRequest.ColumnFilters</c>.
+    /// Deprecation: flattened <c>QueryRequest</c> projection criteria are replaced by
+    /// <c>QueryRequest.Criteria</c> and <c>ProjectionQuery</c>. The legacy <c>Filter</c>
+    /// member remains a compatibility-only EventStore payload shim.
     /// </summary>
     public const string HFC0001_QueryRequestFilterDeprecated = "HFC0001";
 

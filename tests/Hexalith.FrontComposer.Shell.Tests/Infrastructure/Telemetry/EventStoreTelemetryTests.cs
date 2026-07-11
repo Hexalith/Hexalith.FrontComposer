@@ -81,8 +81,8 @@ public sealed class EventStoreTelemetryTests {
             NullLogger<EventStoreQueryClient>.Instance);
         using var capture = ActivityCapture.Start();
 
-        QueryRequest request = new(
-            ProjectionType: "telemetry-protocol-drift-orders",
+        QueryRequest request = QueryRequest.Create(
+            Criteria: new ProjectionQuery("telemetry-protocol-drift-orders"),
             TenantId: "tenant-secret",
             Domain: "orders",
             AggregateId: "order-1",
@@ -158,8 +158,8 @@ public sealed class EventStoreTelemetryTests {
         using var capture = ActivityCapture.Start();
 
         _ = await sut.QueryAsync<OrderProjection>(
-            new QueryRequest(
-                ProjectionType: "telemetry-raw-etag-orders",
+            QueryRequest.Create(
+                Criteria: new ProjectionQuery("telemetry-raw-etag-orders"),
                 TenantId: "tenant-secret",
                 Domain: "orders",
                 AggregateId: "order-1",

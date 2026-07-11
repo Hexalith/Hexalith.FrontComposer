@@ -56,9 +56,9 @@ public sealed class TestQueryService : IQueryService {
             callbackFailure = ex;
         }
         EnqueueBounded(new ProjectionPageEvidence(
-            request.ProjectionType,
-            request.Skip ?? 0,
-            request.Take ?? 0,
+            request.Criteria.ProjectionType,
+            request.Criteria.Skip ?? 0,
+            request.Criteria.Take ?? 0,
             request.TenantId ?? _options.TestTenantId,
             _options.TestUserId,
             callbackFailure is not null ? "callback-failed" : result is null ? "empty" : result.IsNotModified ? "not-modified" : callbackMode ? "callback" : "configured",

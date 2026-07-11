@@ -74,10 +74,9 @@ public sealed class FrontComposerMcpProjectionReader(
             Type projectionType = ResolveType(snapshot.Descriptor.ProjectionTypeName);
             IQueryService queryService = services.GetRequiredService<IQueryService>();
             int take = Math.Max(1, Math.Min(options.Value.DefaultResourceTake, options.Value.MaxResourceTake));
-            QueryRequest request = new(
-                ProjectionType: snapshot.Descriptor.ProjectionTypeName,
-                TenantId: context.TenantId,
-                Take: take);
+            QueryRequest request = QueryRequest.Create(
+                new ProjectionQuery(snapshot.Descriptor.ProjectionTypeName, Take: take),
+                context.TenantId);
             MethodInfo? method = typeof(IQueryService).GetMethod(nameof(IQueryService.QueryAsync)) ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
             object? resultTask;
             try {

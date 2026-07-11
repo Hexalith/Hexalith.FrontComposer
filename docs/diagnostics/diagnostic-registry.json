@@ -59,27 +59,27 @@
     {
       "id": "HFC0001",
       "ownerPackage": "Contracts",
-      "title": "QueryRequest.Filter is deprecated",
+      "title": "Flattened QueryRequest criteria are deprecated",
       "lifecycle": "deprecated",
       "introducedIn": "0.1.0",
       "deprecatedIn": "0.2.0",
-      "removedIn": "0.4.0",
-      "compilerSeverity": null,
-      "runtimeLogLevel": "Information",
-      "panelSeverity": "Information",
+      "removedIn": "2.0.0",
+      "compilerSeverity": "Warning",
+      "runtimeLogLevel": null,
+      "panelSeverity": null,
       "cliExitBehavior": "non-blocking",
       "mcpCategory": null,
-      "messageTemplate": "What: QueryRequest.Filter is deprecated. Expected: Use QueryRequest.ColumnFilters for column-scoped filter expressions. Got: Legacy QueryRequest.Filter metadata was used. Fix: Move filter state to ColumnFilters before the removal release. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
+      "messageTemplate": "What: Flattened QueryRequest projection criteria are deprecated. Expected: Compose QueryRequest.Criteria from ProjectionQuery. Got: A legacy flattened constructor, criteria property, or deconstruction entry point was used. Fix: Move projection type, paging, filtering, search, and ordering values into ProjectionQuery before v2.0.0. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
       "docsSlug": "diagnostics/HFC0001",
       "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
-      "redactionClass": "runtime-sanitized",
+      "redactionClass": "source-metadata-only",
       "suppressionPolicy": "allowed-with-rationale",
-      "releaseRow": "runtime-only",
+      "releaseRow": "compiler-obsolete",
       "migrationId": "HFC0001",
       "relatedIds": [
         "HFC4001"
       ],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "11-13-decompose-queryrequest-through-hfc0001-migration-path"
     },
     {
       "id": "HFC1001",

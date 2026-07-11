@@ -79,6 +79,32 @@ public class EventStoreQueryCacheIntegrationTests {
         cached.ShouldBeNull();
     }
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task QueryAsync_CanonicalColumnOrStatusFilters_DisableFrameworkCacheEvenWithDiscriminator(bool columnFilter)
+    {
+        ScriptedHandler handler = new();
+        handler.Script.Add(_ => Ok("[{\"id\":\"order-1\"}]", "\"v1\""));
+        EventStoreQueryClient sut = NewClient(handler);
+        string discriminator = ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)!;
+        ProjectionQuery criteria = columnFilter
+            ? new ProjectionQuery(ProjectionType, ColumnFilters: new Dictionary<string, string>(StringComparer.Ordinal) { ["Status"] = "Open" })
+            : new ProjectionQuery(ProjectionType, StatusFilters: ["Open"]);
+        QueryRequest request = QueryRequest.Create(
+            criteria,
+            Tenant,
+            Domain: Domain,
+            AggregateId: "order-1",
+            QueryType: ProjectionType,
+            CacheDiscriminator: discriminator);
+
+        _ = await sut.QueryAsync<OrderProjection>(request, TestContext.Current.CancellationToken);
+
+        ETagCacheEntry? cached = await _cache.TryGetAsync(BuildKey(0), 1, TestContext.Current.CancellationToken);
+        cached.ShouldBeNull();
+    }
+
     [Fact]
     public async Task QueryAsync_304WithCacheHit_ReusesCachedItems_AndKeepsIsNotModifiedTrue() {
         ScriptedHandler handler = new();
@@ -367,6 +393,7 @@ public class EventStoreQueryCacheIntegrationTests {
         tenantB!.ETag.ShouldBe("\"v2\"");
     }
 
+#pragma warning disable HFC0001 // This helper deliberately exercises v1.12 Filter forwarding.
     private static QueryRequest BuildRequest(
         string? cacheDiscriminator = null,
         string? eTag = null,
@@ -385,6 +412,7 @@ public class EventStoreQueryCacheIntegrationTests {
             SortColumn: sortColumn,
             CacheDiscriminator: cacheDiscriminator,
             CachePayloadVersion: cachePayloadVersion);
+#pragma warning restore HFC0001
 
     private static string BuildKey(int skip)
         => $"{Tenant}:{User}:etag:projection-page:{ProjectionType}:s{skip}-t25";

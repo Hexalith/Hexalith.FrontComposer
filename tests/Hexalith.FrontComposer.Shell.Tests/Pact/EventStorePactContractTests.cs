@@ -725,8 +725,8 @@ public sealed class EventStorePactContractTests {
         string? ETag = null,
         IReadOnlyList<string>? ETags = null,
         string? CacheDiscriminator = null)
-        => new(
-            ProjectionType: "orders",
+        => Hexalith.FrontComposer.Contracts.Communication.QueryRequest.Create(
+            Criteria: new ProjectionQuery("orders"),
             TenantId,
             Domain: "orders",
             AggregateId: "order-1",

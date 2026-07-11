@@ -22,6 +22,8 @@ public sealed class ProjectionReaderTests {
 
         result.IsError.ShouldBeFalse();
         query.Request!.TenantId.ShouldBe("tenant-a");
+        query.Request.Criteria.ProjectionType.ShouldBe(typeof(InvoiceProjection).FullName);
+        query.Request.Criteria.Take.ShouldBe(50);
         result.Text.ShouldContain("# Invoices");
         result.Text.ShouldContain("| Number | Amount |");
         result.Text.ShouldContain("INV-1");

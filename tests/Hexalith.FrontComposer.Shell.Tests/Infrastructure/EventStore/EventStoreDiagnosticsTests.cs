@@ -82,8 +82,8 @@ public sealed class EventStoreDiagnosticsTests {
 
         _ = await Should.ThrowAsync<HttpRequestException>(
             async () => await sut.QueryAsync<OrderProjection>(
-                new QueryRequest(
-                    ProjectionType: "orders",
+                QueryRequest.Create(
+                    Criteria: new ProjectionQuery("orders"),
                     TenantId: "acme",
                     Domain: "orders",
                     AggregateId: "order-1",

@@ -69,10 +69,9 @@ public sealed class EventStoreActionQueueCountReader : IActionQueueCountReader {
         }
 
         string? domain = projectionType.GetCustomAttribute<BoundedContextAttribute>()?.Name;
-        QueryRequest request = new(
-            ProjectionType: projectionTypeName,
+        QueryRequest request = QueryRequest.Create(
+            Criteria: new ProjectionQuery(projectionTypeName, Take: 0),
             TenantId: tenant!,
-            Take: 0,
             Domain: domain,
             AggregateId: projectionTypeName,
             QueryType: projectionTypeName,

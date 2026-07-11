@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-09T16:03:35+02:00
+# last_updated: 2026-07-11T16:07:58+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-09T16:03:35+02:00
+last_updated: 2026-07-11T16:07:58+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -394,7 +394,7 @@ development_status:
   11-8-contracts-kernel-split-decision-and-compatibility-plan: done
   11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface: backlog
   11-12-relocate-runtime-and-testing-owned-types-out-of-contracts: done
-  11-13-decompose-queryrequest-through-hfc0001-migration-path: backlog
+  11-13-decompose-queryrequest-through-hfc0001-migration-path: review
   11-14-update-architecture-context-ux-and-package-compat-docs: backlog
   11-9-shell-layering-declaration-and-route-label-relocation: backlog
   11-15-storage-scope-and-snapshot-publisher-consolidation: backlog

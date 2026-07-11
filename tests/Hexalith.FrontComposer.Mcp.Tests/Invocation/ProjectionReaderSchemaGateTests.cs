@@ -187,7 +187,7 @@ public sealed class ProjectionReaderSchemaGateTests {
     /// <summary>
     /// Counts how many times the host-side validator runs before <see cref="QueryAsync"/>.
     /// AC5 requires re-validation on CompatibleAdditive; the actual hook will be added in T3
-    /// — this scaffold uses a sentinel <see cref="QueryRequest.Take"/> bound to detect the
+    /// — this scaffold uses a sentinel <see cref="ProjectionQuery.Take"/> bound to detect the
     /// re-validation path once it lands.
     /// </summary>
     private sealed class RevalidationCountingQueryService : IQueryService {
@@ -199,7 +199,7 @@ public sealed class ProjectionReaderSchemaGateTests {
             CallCount++;
             // T3 should pin the take bound through the post-additive validator. Until T3 lands,
             // RevalidationCount stays 0 and this scaffold will fail meaningfully when unskipped.
-            if (request.Take is > 0 and <= 1024) {
+            if (request.Criteria.Take is > 0 and <= 1024) {
                 RevalidationCount++;
             }
 

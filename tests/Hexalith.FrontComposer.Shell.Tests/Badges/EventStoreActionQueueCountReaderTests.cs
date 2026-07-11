@@ -27,7 +27,7 @@ public class EventStoreActionQueueCountReaderTests {
 
         count.ShouldBe(7);
         queryService.LastRequest.ShouldNotBeNull();
-        queryService.LastRequest!.Take.ShouldBe(0);
+        queryService.LastRequest!.Criteria.Take.ShouldBe(0);
         queryService.LastRequest.CacheDiscriminator.ShouldStartWith("action-queue-count:");
     }
 
