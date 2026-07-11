@@ -632,6 +632,9 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         navigation.NavigateTo("/domain/commerce/submit-order-command");
         cut.WaitForAssertion(() => state.Value.CurrentBoundedContext.ShouldBe("commerce"));
 
+        navigation.NavigateTo("/commands/Commerce/SubmitOrderCommand");
+        cut.WaitForAssertion(() => state.Value.CurrentBoundedContext.ShouldBe("commerce"));
+
         navigation.NavigateTo("/");
         cut.WaitForAssertion(() => state.Value.CurrentBoundedContext.ShouldBeNull());
     }

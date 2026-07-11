@@ -23,7 +23,7 @@
             @* §4.3 — the dialog landmark (role/@ref/@onkeydown) stays a <div>; its flex column moves
                to a nested FluentStack. *@
             <FluentStack Orientation="Orientation.Vertical" VerticalGap="calc(var(--fc-spacing-unit, 4px) * 2)">
-                <FluentTextInput @ref="_searchRef" Value="@_localQuery" ValueChanged="OnQueryChangedAsync"
+                <FluentTextInput @ref="_searchRef" Value="@_localQuery" ValueChanged="OnQueryChangedAsync" Immediate="true"
                                  TextInputType="TextInputType.Search" Placeholder="@Localizer["PaletteSearchPlaceholder"].Value"
                                  role="combobox" aria-haspopup="listbox" aria-expanded="@(PaletteState.Value.Results.IsEmpty ? "false" : "true")" aria-controls="@ResultListId"
                                  aria-activedescendant="@ActiveDescendantId" aria-autocomplete="list" data-testid="fc-palette-search" />

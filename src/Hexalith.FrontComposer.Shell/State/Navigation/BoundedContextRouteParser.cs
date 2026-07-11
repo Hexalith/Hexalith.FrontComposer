@@ -38,10 +38,26 @@ public static class BoundedContextRouteParser {
         // Accept 2-segment /domain/{bc} landing routes so persist/restore stays symmetric — previous
         // ≥3 check silently dropped restorations of BC landing pages.
         if (string.Equals(segments[0], "domain", StringComparison.OrdinalIgnoreCase)) {
-            return segments.Length >= 2 ? segments[1].ToLowerInvariant() : null;
+            return segments.Length >= 2 ? DecodeAndNormalize(segments[1]) : null;
         }
 
-        return segments.Length >= 2 ? segments[0].ToLowerInvariant() : null;
+        // A generated command route is only contextual when both the bounded-context and command
+        // segments are present. Treating /commands/{bc} as valid made incomplete URLs influence
+        // palette scoring even though no generated page could match them.
+        if (string.Equals(segments[0], "commands", StringComparison.OrdinalIgnoreCase)) {
+            return segments.Length >= 3 ? DecodeAndNormalize(segments[1]) : null;
+        }
+
+        return segments.Length >= 2 ? DecodeAndNormalize(segments[0]) : null;
+    }
+
+    private static string? DecodeAndNormalize(string segment) {
+        try {
+            return Uri.UnescapeDataString(segment).ToLowerInvariant();
+        }
+        catch (UriFormatException) {
+            return null;
+        }
     }
 
     private static string ExtractPath(string uriOrPath)

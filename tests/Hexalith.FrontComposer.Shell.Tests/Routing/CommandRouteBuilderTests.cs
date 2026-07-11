@@ -14,8 +14,16 @@ public class CommandRouteBuilderTests {
     public void KebabCase_ProducesExpectedSlug(string input, string expected) => CommandRouteBuilder.KebabCase(input).ShouldBe(expected);
 
     [Fact]
-    public void BuildRoute_ProducesCanonicalDomainUrl() => CommandRouteBuilder.BuildRoute("Commerce", "SubmitOrderCommand")
-            .ShouldBe("/domain/commerce/submit-order-command");
+    public void BuildRoute_ProducesCanonicalGeneratedCommandUrl() => CommandRouteBuilder.BuildRoute("Commerce", "Commerce.Commands.SubmitOrderCommand")
+            .ShouldBe("/commands/Commerce/SubmitOrderCommand");
+
+    [Fact]
+    public void BuildRoute_MissingBoundedContext_UsesDefault() => CommandRouteBuilder.BuildRoute(null, "SubmitOrderCommand")
+            .ShouldBe("/commands/Default/SubmitOrderCommand");
+
+    [Fact]
+    public void BuildRoute_UnsafeCharacters_UsesGeneratorSanitization() => CommandRouteBuilder.BuildRoute("Sales / West", "Commerce.Commands.Submit/Order Command")
+            .ShouldBe("/commands/Sales---West/Submit-Order-Command");
 
     [Theory]
     [InlineData("/")]

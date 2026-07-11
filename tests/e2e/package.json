@@ -24,6 +24,7 @@
     "test:fc-diagnostics": "PLAYWRIGHT_SKIP_WEBSERVER=1 playwright test specs/diagnostic-catalog-inspect.spec.ts --project=chromium",
     "test:fc-page-toolbar": "playwright test specs/page-toolbar.spec.ts --project=chromium",
     "test:abandonment": "playwright test specs/form-abandonment-guard.spec.ts --project=chromium",
+    "test:route-contract": "playwright test specs/route-contract.spec.ts --project=chromium",
     "test:mcp-resources": "playwright test specs/mcp-resources.spec.ts --project=chromium",
     "test:mcp-security": "playwright test specs/mcp-fail-closed-security.spec.ts --project=chromium",
     "test:mcp-schema": "playwright test specs/mcp-schema-fingerprint-negotiation.spec.ts --project=chromium",

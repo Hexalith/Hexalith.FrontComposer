@@ -581,9 +581,89 @@ public partial class AllUnsupportedProjection
             .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.SetNameCommand.CommandRegistration.g.cs");
         string registrationSource = registrationTree.GetText(ct).ToString();
 
-        registrationSource.ShouldContain("Commands: new List<string> { typeof(SetNameCommand).FullName! });");
+        registrationSource.ShouldContain("Commands: new List<string> { typeof(SetNameCommand).FullName! },");
+        registrationSource.ShouldContain("FullPageCommands = new List<string>()");
         registrationSource.ShouldContain("public static void RegisterDomain(IFrontComposerRegistry registry)");
         registrationSource.ShouldContain("registry.RegisterDomain(Manifest);");
+    }
+
+    [Fact]
+    public void RunGenerators_FullPageCommand_RouteAndManifestMembershipStayInParity() {
+        GeneratorDriverRunResult result = RunGenerator(CommandTestSources.MultiFieldCommand);
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
+        string pageSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.PlaceOrderCommand.CommandPage.g.razor.cs")
+            .GetText(ct)
+            .ToString();
+        string registrationSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.PlaceOrderCommand.CommandRegistration.g.cs")
+            .GetText(ct)
+            .ToString();
+
+        pageSource.ShouldContain("[Route(\"/commands/Orders/PlaceOrderCommand\")]");
+        registrationSource.ShouldContain("BoundedContext: \"Orders\"");
+        registrationSource.ShouldContain("FullPageCommands = new List<string> { typeof(PlaceOrderCommand).FullName! }");
+    }
+
+    [Fact]
+    public void RunGenerators_FullPageCommandWithoutBoundedContext_UsesDefaultEverywhere() {
+        GeneratorDriverRunResult result = RunGenerator(BuildCommandSource("DefaultRouteCommand", 5));
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
+        string pageSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.DefaultRouteCommand.CommandPage.g.razor.cs")
+            .GetText(ct)
+            .ToString();
+        string registrationSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.DefaultRouteCommand.CommandRegistration.g.cs")
+            .GetText(ct)
+            .ToString();
+        string rendererSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.DefaultRouteCommand.CommandRenderer.g.razor.cs")
+            .GetText(ct)
+            .ToString();
+
+        pageSource.ShouldContain("[Route(\"/commands/Default/DefaultRouteCommand\")]");
+        registrationSource.ShouldContain("BoundedContext: \"Default\"");
+        registrationSource.ShouldContain("FullPageCommands = new List<string> { typeof(DefaultRouteCommand).FullName! }");
+        rendererSource.ShouldContain("PageContext.BoundedContext : \"Default\"");
+    }
+
+    [Fact]
+    public void RunGenerators_UnsafeBoundedContext_SanitizesGeneratedRouteOnly() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [Command]
+            [BoundedContext("Sales / West")]
+            public class SubmitOrderCommand
+            {
+                public string MessageId { get; set; } = string.Empty;
+                public string Field0 { get; set; } = string.Empty;
+                public string Field1 { get; set; } = string.Empty;
+                public string Field2 { get; set; } = string.Empty;
+                public string Field3 { get; set; } = string.Empty;
+                public string Field4 { get; set; } = string.Empty;
+            }
+            """;
+        GeneratorDriverRunResult result = RunGenerator(source);
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
+        string pageSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.SubmitOrderCommand.CommandPage.g.razor.cs")
+            .GetText(ct)
+            .ToString();
+        string registrationSource = result.GeneratedTrees
+            .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.SubmitOrderCommand.CommandRegistration.g.cs")
+            .GetText(ct)
+            .ToString();
+
+        pageSource.ShouldContain("[Route(\"/commands/Sales---West/SubmitOrderCommand\")]");
+        registrationSource.ShouldContain("BoundedContext: \"Sales / West\"");
+        registrationSource.ShouldContain("FullPageCommands = new List<string> { typeof(SubmitOrderCommand).FullName! }");
     }
 
     [Fact]

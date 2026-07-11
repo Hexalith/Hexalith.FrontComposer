@@ -56,18 +56,19 @@ public static class RegistrationEmitter {
         string policyMap = hasPolicyMap
             ? "new Dictionary<string, string> { [typeof(" + model.TypeName + ").FullName!] = \"" + EscapeString(model.AuthorizationPolicyName!) + "\" }"
             : string.Empty;
+        string fullPageCommandsList = model.IsCommand && model.HasFullPageRoute
+            ? "new List<string> { typeof(" + model.TypeName + ").FullName! }"
+            : "new List<string>()";
 
         _ = sb.AppendLine("    public static DomainManifest Manifest { get; } = new DomainManifest(");
         _ = sb.AppendLine("        Name: \"" + EscapeString(displayName) + "\",");
         _ = sb.AppendLine("        BoundedContext: \"" + EscapeString(model.BoundedContext) + "\",");
         _ = sb.AppendLine("        Projections: " + projectionsList + ",");
-        if (hasPolicyMap) {
-            _ = sb.AppendLine("        Commands: " + commandsList + ",");
-            _ = sb.AppendLine("        CommandPolicies: " + policyMap + ");");
-        }
-        else {
-            _ = sb.AppendLine("        Commands: " + commandsList + ");");
-        }
+        _ = sb.AppendLine("        Commands: " + commandsList + ",");
+        _ = sb.AppendLine("        CommandPolicies: " + (hasPolicyMap ? policyMap : "null") + ")");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        FullPageCommands = " + fullPageCommandsList + ",");
+        _ = sb.AppendLine("    };");
         _ = sb.AppendLine();
 
         // RegisterDomain method

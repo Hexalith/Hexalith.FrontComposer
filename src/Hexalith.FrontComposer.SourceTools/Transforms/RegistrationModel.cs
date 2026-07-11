@@ -10,13 +10,15 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
         string @namespace,
         string? displayLabel,
         bool isCommand = false,
-        string? authorizationPolicyName = null) {
+        string? authorizationPolicyName = null,
+        bool hasFullPageRoute = false) {
         BoundedContext = boundedContext;
         TypeName = typeName;
         Namespace = @namespace;
         DisplayLabel = displayLabel;
         IsCommand = isCommand;
         AuthorizationPolicyName = authorizationPolicyName;
+        HasFullPageRoute = hasFullPageRoute;
     }
 
     public string BoundedContext { get; }
@@ -35,6 +37,11 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
 
     public string? AuthorizationPolicyName { get; }
 
+    /// <summary>
+    /// Gets a value indicating whether this command registration has an emitted full-page route.
+    /// </summary>
+    public bool HasFullPageRoute { get; }
+
     public bool Equals(RegistrationModel? other) {
         if (other is null) {
             return false;
@@ -49,7 +56,8 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
             && Namespace == other.Namespace
             && DisplayLabel == other.DisplayLabel
             && IsCommand == other.IsCommand
-            && AuthorizationPolicyName == other.AuthorizationPolicyName;
+            && AuthorizationPolicyName == other.AuthorizationPolicyName
+            && HasFullPageRoute == other.HasFullPageRoute;
     }
 
     public override bool Equals(object? obj) => Equals(obj as RegistrationModel);
@@ -63,6 +71,7 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
             hash = (hash * 31) + (DisplayLabel?.GetHashCode() ?? 0);
             hash = (hash * 31) + IsCommand.GetHashCode();
             hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + HasFullPageRoute.GetHashCode();
             return hash;
         }
     }

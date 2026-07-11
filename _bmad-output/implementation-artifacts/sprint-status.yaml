@@ -389,7 +389,7 @@ development_status:
   11-5-dead-css-remediation-and-visual-conformance-guards: review
   # 11-6 moved backlog -> ready-for-dev on 2026-07-09 (create-story; testing harness failure modes, per-request query/page callbacks, authorization states, async host setup, public API and privacy evidence requirements.)
   11-6-testing-harness-failure-modes: done
-  11-7-route-contract-implementation: backlog
+  11-7-route-contract-implementation: done
   # 11-8 moved backlog -> done on 2026-07-05 (correct-course; approved the Contracts kernel split, amended the multi-TFM decision, recorded package-compat/public-API/deprecation requirements, and kept Stories 11.11-11.14 deliberately ordered last for pre-v1.0 implementation evidence.)
   11-8-contracts-kernel-split-decision-and-compatibility-plan: done
   11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface: backlog

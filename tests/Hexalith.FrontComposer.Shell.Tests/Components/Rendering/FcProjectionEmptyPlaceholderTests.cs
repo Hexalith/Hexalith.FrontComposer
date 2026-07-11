@@ -122,8 +122,27 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
             .Add(p => p.CtaCommandName, "CreateOrderCommand"));
 
         cut.Markup.ShouldContain("Send your first Create Order");
-        cut.Markup.ShouldContain("href=\"/domain/orders/create-order-command\"");
+        cut.Markup.ShouldContain("href=\"/commands/Orders/CreateOrderCommand\"");
         cut.Markup.ShouldContain("fc-projection-empty-placeholder-cta");
+    }
+
+    [Fact]
+    public void CtaIsHiddenWhenGeneratedCommandHasNoFullPageRoute() {
+        Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
+            Name: "Orders",
+            BoundedContext: "Orders",
+            Projections: [typeof(OrderProjection).FullName!],
+            Commands: ["CreateOrderCommand"]) {
+            FullPageCommands = [],
+        });
+        _auth.SetAuthorized("test-user");
+
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(OrderProjection))
+            .Add(p => p.CtaCommandName, "CreateOrderCommand"));
+
+        cut.Markup.ShouldNotContain("fc-projection-empty-placeholder-cta");
+        cut.Markup.ShouldNotContain("href=\"/commands/");
     }
 
     [Fact]

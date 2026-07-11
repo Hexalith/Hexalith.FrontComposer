@@ -1,8 +1,10 @@
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
 
@@ -40,7 +42,7 @@ public sealed class EmptyStateCtaResolverTests {
         cta.ShouldNotBeNull();
         cta.CommandFqn.ShouldBe("ShipOrderCommand");
         cta.CommandDisplayName.ShouldBe("Ship Order");
-        cta.CommandRoute.ShouldBe("/domain/orders/ship-order-command");
+        cta.CommandRoute.ShouldBe("/commands/Orders/ShipOrderCommand");
     }
 
     [Fact]
@@ -214,6 +216,22 @@ public sealed class EmptyStateCtaResolverTests {
         registry.IsCommandWritable(Arg.Any<string>()).Returns(false);
 
         EmptyStateCtaResolver resolver = new(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+
+        resolver.Resolve(typeof(OrderProjection)).ShouldBeNull();
+    }
+
+    [Fact]
+    public void GeneratedInlineCommandWithoutPage_ReturnsNull() {
+        string command = "Orders.CreateOrderCommand";
+        FrontComposerRegistry registry = new([], [], NullLogger<FrontComposerRegistry>.Instance);
+        registry.RegisterDomain(new DomainManifest(
+            "Orders",
+            "Orders",
+            [typeof(OrderProjection).FullName!],
+            [command]) {
+            FullPageCommands = [],
+        });
+        EmptyStateCtaResolver resolver = new(registry, NullLogger<EmptyStateCtaResolver>.Instance);
 
         resolver.Resolve(typeof(OrderProjection)).ShouldBeNull();
     }
