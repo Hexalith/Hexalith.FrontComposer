@@ -4,13 +4,13 @@ epic: 11
 story: 5
 story_key: 11-5-dead-css-remediation-and-visual-conformance-guards
 source_epics: _bmad-output/planning-artifacts/epics.md
-baseline_commit: d02f2b423719950d220332820a85b800464a78ec
-status: review
+baseline_commit: 0c7e5c74f18b2a5c11c70a77a727713373720964
+status: in-progress
 ---
 
 # Story 11.5: Dead-CSS Remediation and Visual-Conformance Guards
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -38,7 +38,7 @@ so Shell visual regressions fail in CI instead of shipping as silent no-op style
 
 - [x] Strengthen or verify the three Story 11.5 governance guards first. (AC: 2, 3)
   - [x] In `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs`, ensure `Shell_wwwroot_css_files_are_linked_through_frontcomposer_shell` enumerates Shell `wwwroot/css/*.css` files and fails when `FrontComposerShell` does not expose a matching `<link>`.
-  - [x] Ensure `Shell_scoped_css_does_not_target_classes_only_on_fluent_component_roots` fails when a same-component `.razor.css` selector targets a class assigned only to a `Fluent*` component root and passes when the style is reachable through a raw scoped wrapper, `::deep`, inline style, or component parameter.
+  - [x] Ensure `Shell_scoped_css_does_not_target_classes_only_on_fluent_component_roots` fails when a same-component scoped-CSS selector targets a class assigned only to a `Fluent*` component root and passes when the style is reachable through a raw scoped wrapper, `::deep`, inline style, or component parameter.
   - [x] Ensure the legacy-token guard catches `--error`, `--error-background*`, `--error-foreground*`, bare `error-background*`, and bare `error-foreground*`, while allowing Fluent 2 tokens such as `--colorPaletteRedBorder2`, `--colorPaletteRedBackground3`, and `--colorPaletteRedForeground1`.
   - [x] Keep failure messages actionable with the offending file path, class/token, and suggested remediation pattern.
 
@@ -51,8 +51,8 @@ so Shell visual regressions fail in CI instead of shipping as silent no-op style
   - [x] Do not replace Fluent interactive controls with raw buttons, inputs, or custom controls; repo UX rules require Fluent components for interactive UI.
 
 - [x] Confirm or migrate legacy error-token usage. (AC: 2)
-  - [x] Search `src/`, `tests/`, and Shell CSS for `--error`, `--error-background`, `--error-foreground`, `error-background`, and `error-foreground`.
-  - [x] Replace source CSS usages with Fluent 2 red/status tokens or component-supported error semantics; representative current targets include `FcFieldPlaceholder.razor.css`, `FcDestructiveConfirmationDialog.razor.css`, DevMode scoped CSS, and `wwwroot/css/fc-empty-state.css`.
+  - [x] Search the source tree, test tree, and Shell CSS for `--error`, `--error-background`, `--error-foreground`, `error-background`, and `error-foreground`.
+  - [x] Replace source CSS usages with Fluent 2 red/status tokens or component-supported error semantics; representative current targets include `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css`, `src/Hexalith.FrontComposer.Shell/Components/Forms/FcDestructiveConfirmationDialog.razor.css`, DevMode scoped CSS, and `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-empty-state.css`.
   - [x] Keep test fixture strings that intentionally assert the guard catches legacy tokens, but make their intent clear.
 
 - [x] Pin rendered-DOM and browser/computed-style evidence. (AC: 1, 3)
@@ -71,9 +71,9 @@ so Shell visual regressions fail in CI instead of shipping as silent no-op style
 
 ### Review Findings
 
-- [ ] [Review][Decision] Establish an auditable Story 11.5 completion boundary — The fixed baseline now expands to 353 files at current `HEAD`, while the actual review-promotion commit `289bb099` also changed `references/Hexalith.Builds` and `references/Hexalith.Commons` despite the story claiming only the story and sprint files were dirty. Replaying artifact validation against the baseline-to-completion changed-file set fails because `references/Hexalith.Commons` is neither story-owned nor documented as unrelated. Decide whether to classify and pin the historical submodule changes with an immutable completion endpoint, or reopen/rework the story evidence before approval.
-- [ ] [Review][Decision] Resolve the stale prior Story 11.5 spec — `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` remains `in-progress` with every execution task unchecked while the canonical story is in review. Decide whether to synchronize that artifact with the completed evidence or mark it explicitly superseded by this canonical story.
-- [ ] [Review][Patch] Add normal-motion computed-style coverage for the reconnect pulse [tests/e2e/specs/specimen-accessibility.spec.ts:274]
+- [x] [Review][Patch] Reopen Story 11.5 and rebuild its evidence from a clean baseline — The fixed baseline expanded to 353 files at the review-start `HEAD`, while the prior review-promotion commit `289bb099` also changed `references/Hexalith.Builds` and `references/Hexalith.Commons` despite the story claiming only the story and sprint files were dirty. User decision applied: reopened the story at clean baseline `0c7e5c74f18b2a5c11c70a77a727713373720964`, reran the required evidence, and kept the story in progress because the broad solution lane has one unrelated package-inventory governance failure.
+- [x] [Review][Patch] Synchronize the prior Story 11.5 spec as the rework contract — User decision applied: the prior spec remains active, now shares the clean rework baseline and records the rebuilt evidence and blocker.
+- [x] [Review][Patch] Add normal-motion computed-style coverage for the reconnect pulse [tests/e2e/specs/specimen-accessibility.spec.ts:274]
 
 ## Dev Notes
 
@@ -87,7 +87,7 @@ There is already a prior automation artifact at `_bmad-output/implementation-art
 
 ### Brownfield Implementation Snapshot
 
-Current inspection on 2026-07-09 found much of Story 11.5 already present in the working tree. The dev agent must verify these facts against the live files before relying on them:
+Current rework inspection on 2026-07-11 found much of Story 11.5 already present in the working tree. The dev agent must verify these facts against the live files before relying on them:
 
 - `FcProjectionConnectionStatus.razor` currently wraps the `FluentMessageBar` in a raw `div.fc-projection-connection-status-host`; its scoped CSS targets `.fc-projection-connection-status-host ::deep .fc-projection-connection-status` and `.fc-projection-connection-status-host ::deep .fc-projection-connection-status-pulse`, including a reduced-motion rule.
 - `FcColumnPrioritizer.razor` currently has a raw `div.fc-column-prioritizer`; its scoped CSS targets `.fc-column-prioritizer ::deep .fc-column-prioritizer-gear`.
@@ -196,30 +196,15 @@ Story 11.2 and 11.3 previously encountered unrelated standard-lane blockers in S
 
 ### Git Intelligence
 
-Current worktree at story creation has these unrelated dirty paths:
+The 2026-07-09 review-promotion attempt used baseline `d02f2b423719950d220332820a85b800464a78ec` and was later found to share commits with unrelated release and submodule-pointer changes. The 2026-07-11 review reopened the story by user decision and established clean baseline `0c7e5c74f18b2a5c11c70a77a727713373720964` before applying the review patches.
 
-- `_bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- `references/Hexalith.Builds`
-- `references/Hexalith.EventStore`
-- `references/Hexalith.Parties`
-- `references/Hexalith.Tenants`
-- `_bmad-output/implementation-artifacts/rel-2-align-frontcomposer-cicd-with-tenants.md`
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-tenants-cicd-alignment.md`
+### Documented Blockers
 
-The `sprint-status.yaml` path is dirty because earlier sprint/release work already updated release tracking before this story was created. This story creation should only add the Story 11.5 ready-for-dev transition and timestamp. Do not revert or normalize the unrelated release notes.
+- `eng/release-package-inventory.json` - The broad filtered solution lane fails because the packable `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj` project is missing from the release inventory. This baseline package-boundary work is outside Story 11.5 and aligns with Story 11.14 ownership; Story 11.5 remains in progress until the broad gate is green.
 
 ## Documented Unrelated Changes
 
-These paths were dirty before Story 11.5 creation and are unrelated to the create-story artifact work. They are intentionally not listed as story-owned implementation files.
-
-- `_bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md` - Pre-existing unrelated release evidence update; do not modify or revert for this story.
-- `_bmad-output/implementation-artifacts/rel-2-align-frontcomposer-cicd-with-tenants.md` - Pre-existing unrelated release/CICD planning artifact; do not modify or revert for this story.
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-tenants-cicd-alignment.md` - Pre-existing unrelated sprint change proposal; do not modify or revert for this story.
-- `references/Hexalith.Builds` - Pre-existing unrelated submodule workspace state; do not modify or revert for this story.
-- `references/Hexalith.EventStore` - Pre-existing unrelated submodule workspace state; do not modify or revert for this story.
-- `references/Hexalith.Parties` - Pre-existing unrelated submodule workspace state; do not modify or revert for this story.
-- `references/Hexalith.Tenants` - Pre-existing unrelated submodule workspace state; do not modify or revert for this story.
+None at the 2026-07-11 rework baseline.
 
 ### Project Structure Notes
 
@@ -268,6 +253,8 @@ GPT-5 Codex
 - 2026-07-09: Reclassified worktree after story activation; only this story file and `sprint-status.yaml` were dirty from the dev-story status transition. No unrelated release, CI, or submodule paths were dirty in the live worktree.
 - 2026-07-09: Confirmed current Shell UI/governance/e2e implementation already satisfies Story 11.5. No production or test source changes were required beyond story/sprint evidence updates.
 - 2026-07-09: Validation evidence: focused governance 39/39 passed; focused affected component lane 31/31 passed; e2e typecheck passed; Playwright `test:a11y` passed 21/21 including Story 11.5 computed-style/reduced-motion evidence; visual governance validator passed with no committed visual baseline changes; broad filtered solution lane passed; Release build passed 0 warnings/0 errors; `git diff --check` passed.
+- 2026-07-11: Review rework established clean baseline `0c7e5c74f18b2a5c11c70a77a727713373720964`; current changed-file reconciliation is limited to the canonical story, prior spec, sprint status, and Story 11.5 Playwright evidence.
+- 2026-07-11: Normal-motion browser proof now requires the CSS-isolated `fc-sync-status-pulse-*` animation name, `0.7s` duration, `24` iterations, and `alternate` direction before separately proving reduced motion yields `none` / `0s`.
 
 ### Implementation Plan
 
@@ -277,6 +264,7 @@ GPT-5 Codex
 
 ### Completion Notes List
 
+- The 2026-07-09 review-promotion evidence below is retained as historical context but was superseded after review found a mixed completion range and an undocumented `Hexalith.Commons` submodule pointer change.
 - Story context created by BMAD create-story workflow on 2026-07-09.
 - Story status set to `ready-for-dev`.
 - Sprint status updated so Story 11.5 is `ready-for-dev`.
@@ -294,23 +282,40 @@ GPT-5 Codex
 - Broad validation passed: `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"`, `dotnet build Hexalith.FrontComposer.slnx -c Release`, and `git diff --check`.
 - Story artifact validation passed: `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`. The validator reported the already documented pre-existing unrelated baseline-diff paths only.
 
+### 2026-07-11 Review Rework Evidence
+
+| Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
+| --- | --- | --- | --- | --- | --- |
+| Focused governance | `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~FluentConformanceTests"` | Passed, 39/39 | None | Not needed | Local required lane |
+| Affected components | `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~FcProjectionConnectionStatusTests\|FullyQualifiedName~FcColumnPrioritizerTests\|FullyQualifiedName~FcSettingsDialogTests\|FullyQualifiedName~FcDensityPreviewPanelTests\|FullyQualifiedName~FcDevModeVisualReachabilityTests"` | Passed, 31/31 | None | Not needed | Local required lane |
+| E2E typecheck | `npm --prefix tests/e2e run typecheck` | Passed | None | Not needed | Local required lane |
+| Browser/a11y/visual | `npm --prefix tests/e2e run test:a11y` | Passed, 22/22 | None | Focused Story 11.5 test also passed 1/1 | Local Chromium lane |
+| Visual baseline governance | `npm --prefix tests/e2e run validate:visual-governance` | Passed; no committed baseline changes | None | Not needed | Local required lane |
+| Broad filtered solution | `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` | Failed; Shell 2215/2216 with one baseline package-inventory governance failure | During `CiGovernanceTests.PackageInventory_IsExplicitLockstepAndReviewable`; `eng/release_evidence.py inventory` reports `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj: unexpected packable project missing from release package inventory` | Story-focused governance 39/39, components 31/31, browser 22/22; Contracts 200/200, Contracts.UI 9/9, CLI 67/67, MCP 372/372, and SourceTools 1062/1062 passed in the broad run | Not overridden; story remains in progress |
+| Release build | `dotnet build Hexalith.FrontComposer.slnx --configuration Release` | Passed, 0 warnings / 0 errors | None | Not needed | Local required lane |
+| Artifact reconciliation | `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md` | Passed | None | Not needed | Local hard gate |
+| Diff hygiene | `git diff --check` | Passed; line-ending normalization warnings only | None | Not needed | Local required lane |
+
 ### Change Log
 
+- 2026-07-11: Reopened by user decision during code review; reset to clean baseline `0c7e5c74f18b2a5c11c70a77a727713373720964`, synchronized the prior spec for rework, and added normal-/reduced-motion reconnect-pulse browser evidence.
 - 2026-07-09: Confirmed Story 11.5 implementation and evidence already present; updated story and sprint tracking to `review` after successful focused, browser, broad test, Release build, visual governance, and diff-check validation.
 
 ### File List
 
+Changed from rework baseline:
+
 - `_bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` - pre-existing evidence, unchanged.
-- `_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md` - pre-existing evidence, unchanged.
-- `_bmad-output/implementation-artifacts/visual-component-evidence-checklist.md` - pre-existing evidence, unchanged.
-- `_bmad-output/planning-artifacts/epics.md` - pre-existing evidence, unchanged.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` - pre-existing evidence, unchanged.
-- `.razor.css` - pre-existing evidence pattern mention, unchanged.
-- `src/` - pre-existing evidence scan root, unchanged.
-- `tests/` - pre-existing evidence scan root, unchanged.
-- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css` - pre-existing evidence, unchanged.
-- `src/Hexalith.FrontComposer.Shell/Components/Forms/FcDestructiveConfirmationDialog.razor.css` - pre-existing evidence, unchanged.
-- `wwwroot/css/fc-empty-state.css` - pre-existing evidence path mention, unchanged.
-- `tests/e2e/specs/specimen-accessibility.spec.ts` - pre-existing evidence, unchanged.
+- `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md`
+- `tests/e2e/specs/specimen-accessibility.spec.ts`
+
+Pre-existing evidence verified during rework (unchanged from baseline):
+
+- `_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md` - pre-existing evidence verified during rework, unchanged.
+- `_bmad-output/implementation-artifacts/visual-component-evidence-checklist.md` - pre-existing evidence verified during rework, unchanged.
+- `_bmad-output/planning-artifacts/epics.md` - pre-existing evidence verified during rework, unchanged.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` - pre-existing evidence verified by the 39/39 focused governance lane, unchanged.
+- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css` - pre-existing evidence verified during rework, unchanged.
+- `src/Hexalith.FrontComposer.Shell/Components/Forms/FcDestructiveConfirmationDialog.razor.css` - pre-existing evidence verified during rework, unchanged.
+- `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-empty-state.css` - pre-existing evidence verified during rework, unchanged.

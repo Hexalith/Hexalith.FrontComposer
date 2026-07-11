@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-11T16:07:58+02:00
+# last_updated: 2026-07-11T19:13:30+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-11T16:07:58+02:00
+last_updated: 2026-07-11T19:13:30+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -386,7 +386,9 @@ development_status:
   # 11-5 moved backlog -> ready-for-dev on 2026-07-09 (create-story; dead CSS remediation and visual conformance guards, with brownfield confirm-and-pin context from existing spec/code/test evidence rather than a greenfield rewrite.)
   # 11-5 moved ready-for-dev -> in-progress on 2026-07-09 (dev-story; baseline preserved; starting confirm-and-pin audit for dead CSS remediation and visual-conformance guards.)
   # 11-5 moved in-progress -> review on 2026-07-09 (dev-story; confirm-and-pin completed with no source changes required. Focused governance 39/39, affected component lane 31/31, e2e typecheck, Playwright specimen/a11y 21/21, visual governance, broad filtered solution test, Release build, and diff check passed.)
-  11-5-dead-css-remediation-and-visual-conformance-guards: review
+  # 11-5 moved review -> in-progress on 2026-07-11 (bmad-code-review; user chose to reopen and rebuild evidence from clean baseline 0c7e5c74 after the prior completion range mixed unrelated submodule-pointer changes; normal-motion pulse verification added.)
+  # 11-5 review patches completed on 2026-07-11; remains in-progress because the broad filtered solution lane fails the baseline package-inventory guard for the unlisted packable Contracts.UI project. Story-focused governance 39/39, components 31/31, Chromium a11y/visual 22/22, Release build, and both story artifact validators passed.
+  11-5-dead-css-remediation-and-visual-conformance-guards: in-progress
   # 11-6 moved backlog -> ready-for-dev on 2026-07-09 (create-story; testing harness failure modes, per-request query/page callbacks, authorization states, async host setup, public API and privacy evidence requirements.)
   11-6-testing-harness-failure-modes: done
   11-7-route-contract-implementation: done

@@ -271,9 +271,10 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await page.screenshot({ path: testInfo.outputPath('focus-type-command-submit.png'), fullPage: false });
   });
 
-  test('story 11.5 scoped Fluent-root visual hooks are reachable', async ({ page }) => {
+  test('story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion', async ({ page }) => {
     const route = getSpecimenRoute('type');
     await page.setViewportSize({ width: 420, height: 900 });
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
     await gotoSpecimen(page, route);
 
     await page.getByTestId('fc-settings-button').click();
@@ -332,26 +333,45 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
 
       const host = document.createElement('div');
       host.className = 'fc-projection-connection-status-host';
+      host.setAttribute('data-testid', 'fc-story-11-5-pulse-proof');
       host.setAttribute(scopeAttribute, '');
       const pulse = document.createElement('div');
       pulse.className = 'fc-projection-connection-status fc-projection-connection-status-pulse';
       host.append(pulse);
       document.body.append(host);
-      try {
-        const styles = getComputedStyle(pulse);
-        return {
-          animationName: styles.animationName,
-          animationDuration: styles.animationDuration,
-          reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
-        };
-      } finally {
-        host.remove();
-      }
+      const styles = getComputedStyle(pulse);
+      return {
+        animationDirection: styles.animationDirection,
+        animationDuration: styles.animationDuration,
+        animationIterationCount: styles.animationIterationCount,
+        animationName: styles.animationName,
+        reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+      };
     });
 
-    expect(pulseProof.reducedMotion).toBe(true);
-    expect(pulseProof.animationName).toBe('none');
-    expect(pulseProof.animationDuration).toBe('0s');
+    expect(pulseProof.reducedMotion).toBe(false);
+    expect(pulseProof.animationName).toMatch(/^fc-sync-status-pulse(?:-|$)/u);
+    expect(pulseProof.animationDuration).toBe('0.7s');
+    expect(pulseProof.animationIterationCount).toBe('24');
+    expect(pulseProof.animationDirection).toBe('alternate');
+
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const reducedPulseProof = await page
+      .getByTestId('fc-story-11-5-pulse-proof')
+      .locator('.fc-projection-connection-status-pulse')
+      .evaluate((element) => {
+        const styles = getComputedStyle(element);
+        return {
+          animationDuration: styles.animationDuration,
+          animationName: styles.animationName,
+          reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+        };
+      });
+
+    expect(reducedPulseProof.reducedMotion).toBe(true);
+    expect(reducedPulseProof.animationName).toBe('none');
+    expect(reducedPulseProof.animationDuration).toBe('0s');
+    await page.getByTestId('fc-story-11-5-pulse-proof').evaluate((element) => element.remove());
   });
 
   test('forced-colors and reduced-motion states are active and perceivable', async ({ browser }) => {

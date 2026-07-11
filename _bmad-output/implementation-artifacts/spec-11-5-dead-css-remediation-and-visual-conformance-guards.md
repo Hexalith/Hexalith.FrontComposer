@@ -3,10 +3,11 @@ title: '11.5 Dead-CSS remediation and visual-conformance guards'
 type: 'feature'
 created: '2026-07-06T22:29:05+02:00'
 status: 'in-progress'
-baseline_revision: 'd620581a836625fcd63faeceb01e7ca6c13f1f33'
-review_loop_iteration: 0
-followup_review_recommended: false
+baseline_revision: '0c7e5c74f18b2a5c11c70a77a727713373720964'
+review_loop_iteration: 1
+followup_review_recommended: true
 context:
+  - '{project-root}/_bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md'
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/epic-11-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/spec-11-4-security-validation-hardening.md'
@@ -57,14 +58,14 @@ warnings: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` -- add the three Story 11.5 governance guards with focused positive/negative regex or fixture rows -- closes the unlinked stylesheet, dead scoped CSS, and `--error*` token blind spots before or with remediation.
-- [ ] `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor`, `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.css`, `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcColumnPrioritizer.razor`, and `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcColumnPrioritizer.razor.css` -- move status/pulse and gear-pin styling to reachable raw roots, `::deep`, or inline/component parameters while preserving existing attributes and selectors -- restores connection and grid affordance visuals.
-- [ ] `src/Hexalith.FrontComposer.Shell/Components/Layout/FcSettingsDialog.razor`, `src/Hexalith.FrontComposer.Shell/Components/Layout/FcSettingsDialog.razor.css`, `src/Hexalith.FrontComposer.Shell/Components/Layout/FcDensityPreviewPanel.razor`, and `src/Hexalith.FrontComposer.Shell/Components/Layout/FcDensityPreviewPanel.razor.css` -- move mobile Done and preview layout styling to reachable raw roots, `::deep`, or inline/component parameters -- restores settings and density preview visuals.
-- [ ] `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor`, `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor.css`, `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeToggleButton.razor`, `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeToggleButton.razor.css`, `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeOverlay.razor`, and `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeOverlay.razor.css` -- move Fluent-root DevMode styling to reachable roots and replace `--error` with Fluent 2 error/status tokens -- restores DevMode visuals and token conformance.
-- [ ] `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css` and `src/Hexalith.FrontComposer.Shell/Components/Forms/FcDestructiveConfirmationDialog.razor.css` -- replace remaining `--error*` variables with Fluent 2 error/status tokens or component parameters -- removes undefined FAST-era token usage.
-- [ ] `tests/Hexalith.FrontComposer.Shell.Tests/Components/EventStore/FcProjectionConnectionStatusTests.cs`, `tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcColumnPrioritizerTests.cs`, `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcSettingsDialogTests.cs`, `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcDensityPreviewPanelTests.cs`, and `tests/Hexalith.FrontComposer.Shell.Tests/Components/DevMode/FcDevModeVisualReachabilityTests.cs` -- assert rendered DOM carries reachable roots, inline styles, or `::deep` source anchors for every fixed component -- provides default-lane proof that source-string-only checks missed.
-- [ ] `tests/e2e/specs/specimen-accessibility.spec.ts` or an adjacent focused e2e spec -- add computed-style or behavior proof for the reconnect pulse/reduced-motion path and at least one Fluent-root remediation representative; record visual-governance/a11y artifact status -- satisfies E8-AI-1 visual evidence.
-- [ ] `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` and `sprint-status.yaml` -- record status transitions, file list, visual evidence checklist results, and validation commands -- keeps BMAD artifacts auditable.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` -- add the three Story 11.5 governance guards with focused positive/negative regex or fixture rows -- closes the unlinked stylesheet, dead scoped CSS, and `--error*` token blind spots before or with remediation.
+- [x] `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor`, `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.css`, `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcColumnPrioritizer.razor`, and `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcColumnPrioritizer.razor.css` -- move status/pulse and gear-pin styling to reachable raw roots, `::deep`, or inline/component parameters while preserving existing attributes and selectors -- restores connection and grid affordance visuals.
+- [x] `src/Hexalith.FrontComposer.Shell/Components/Layout/FcSettingsDialog.razor`, `src/Hexalith.FrontComposer.Shell/Components/Layout/FcSettingsDialog.razor.css`, `src/Hexalith.FrontComposer.Shell/Components/Layout/FcDensityPreviewPanel.razor`, and `src/Hexalith.FrontComposer.Shell/Components/Layout/FcDensityPreviewPanel.razor.css` -- move mobile Done and preview layout styling to reachable raw roots, `::deep`, or inline/component parameters -- restores settings and density preview visuals.
+- [x] `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor`, `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor.css`, `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeToggleButton.razor`, `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeToggleButton.razor.css`, `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeOverlay.razor`, and `src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeOverlay.razor.css` -- move Fluent-root DevMode styling to reachable roots and replace `--error` with Fluent 2 error/status tokens -- restores DevMode visuals and token conformance.
+- [x] `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css` and `src/Hexalith.FrontComposer.Shell/Components/Forms/FcDestructiveConfirmationDialog.razor.css` -- replace remaining `--error*` variables with Fluent 2 error/status tokens or component parameters -- removes undefined FAST-era token usage.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Components/EventStore/FcProjectionConnectionStatusTests.cs`, `tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcColumnPrioritizerTests.cs`, `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcSettingsDialogTests.cs`, `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcDensityPreviewPanelTests.cs`, and `tests/Hexalith.FrontComposer.Shell.Tests/Components/DevMode/FcDevModeVisualReachabilityTests.cs` -- assert rendered DOM carries reachable roots, inline styles, or `::deep` source anchors for every fixed component -- provides default-lane proof that source-string-only checks missed.
+- [x] `tests/e2e/specs/specimen-accessibility.spec.ts` -- add computed-style or behavior proof for the reconnect pulse under both normal and reduced motion and at least one Fluent-root remediation representative; record visual-governance/a11y artifact status -- satisfies E8-AI-1 visual evidence.
+- [x] `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` and `_bmad-output/implementation-artifacts/sprint-status.yaml` -- record status transitions, file list, visual evidence checklist results, and validation commands -- keeps BMAD artifacts auditable.
 
 **Acceptance Criteria:**
 - Given the seven scoped-CSS files named by Story 11.5, when the focused component tests and Governance lane run, then no class defined only in component-scoped CSS remains assigned only to a Fluent component root.
@@ -75,6 +76,33 @@ warnings: []
 ## Spec Change Log
 
 ## Review Triage Log
+
+- 2026-07-11: Reopened by user decision because the prior review-promotion range mixed Story 11.5 evidence with unrelated submodule-pointer changes and could not pass artifact reconciliation at a stable endpoint.
+- 2026-07-11: User chose to keep this prior spec active and synchronize it with the canonical Story 11.5 rework contract.
+- 2026-07-11: Rework baseline reset to clean commit `0c7e5c74f18b2a5c11c70a77a727713373720964`; required patch adds normal-motion computed-style proof alongside the existing reduced-motion proof.
+- 2026-07-11: Story-focused evidence passed; the broad filtered solution lane remains red only at `CiGovernanceTests.PackageInventory_IsExplicitLockstepAndReviewable`, so both story artifacts remain `in-progress` pending that baseline blocker.
+
+## Rework Evidence
+
+- Focused governance: 39/39 passed.
+- Affected component tests: 31/31 passed.
+- E2E typecheck: passed.
+- Chromium accessibility/visual specimen lane: 22/22 passed, including normal-motion and reduced-motion reconnect-pulse computed styles.
+- Visual baseline governance: passed with no committed baseline changes.
+- Release solution build: passed with 0 warnings and 0 errors.
+- Canonical story artifact validation: passed against clean baseline `0c7e5c74f18b2a5c11c70a77a727713373720964`.
+- Broad filtered solution lane: failed at the pre-existing package-inventory governance check (`CiGovernanceTests.PackageInventory_IsExplicitLockstepAndReviewable`) because `Hexalith.FrontComposer.Contracts.UI.csproj` is an unexpected packable project missing from `eng/release-package-inventory.json`; Story 11.5 remains in progress.
+
+## Documented Blockers
+
+- `eng/release-package-inventory.json` - The packable `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj` project is missing from the release inventory. Story 11.14 owns package-compatibility and inventory completion; Story 11.5 remains in progress until the broad filtered solution lane is green.
+
+## File List
+
+- `_bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`
+- `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `tests/e2e/specs/specimen-accessibility.spec.ts`
 
 ## Design Notes
 
