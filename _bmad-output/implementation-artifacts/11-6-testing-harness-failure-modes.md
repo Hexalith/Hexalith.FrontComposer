@@ -6,14 +6,15 @@ story_key: 11-6-testing-harness-failure-modes
 source_epics: _bmad-output/planning-artifacts/epics.md
 baseline_commit: a783c82bf9cdfbe1347c23ac6f8e699ae540eef4
 baseline_revision: 3a4551bc1fe81d12999c6b70e86f8cce74e03d67
-status: in-review
+status: done
 review_loop_iteration: 1
 followup_review_recommended: true
+final_revision: 8086851e47215d658489d9dd318d473063abbd7e
 ---
 
 # Story 11.6: Testing Harness Failure Modes
 
-Status: in-review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
