@@ -1,3 +1,10 @@
+# [1.11.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.10.0...v1.11.0) (2026-07-11)
+
+
+### Features
+
+* Add BMAD configuration and skill manifests for version 6.10.0 ([26b125a](https://github.com/Hexalith/Hexalith.FrontComposer/commit/26b125a00e5b7664a70d84289a5f2d77af30b6f8))
+
 # [1.10.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.9.3...v1.10.0) (2026-07-10)
 
 
