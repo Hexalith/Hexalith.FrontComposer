@@ -18,7 +18,7 @@ namespace Hexalith.FrontComposer.Shell.State.ExpandedRow;
 /// opaque; only equality matters for dictionary access.
 /// </para>
 /// <para>
-/// <b>Disposal contract.</b> Each generated view dispatches <see cref="Contracts.Rendering.CollapseRowAction"/>
+/// <b>Disposal contract.</b> Each generated view dispatches <see cref="CollapseRowAction"/>
 /// from its <c>DisposeAsync</c> body so navigation away leaves no stale entry — see Story 4-4
 /// D3 <c>ClearPendingPagesAction</c> precedent. The reducer is idempotent, so the dispatch is
 /// unconditional (no state read during teardown).
@@ -27,8 +27,8 @@ namespace Hexalith.FrontComposer.Shell.State.ExpandedRow;
 public sealed record ExpandedRowState {
     /// <summary>
     /// Gets the dictionary of (ephemeral view-key) → (single expanded entry). Empty by default;
-    /// entries materialise on the first <see cref="Contracts.Rendering.ExpandRowAction"/> dispatch
-    /// per view-key and disappear on <see cref="Contracts.Rendering.CollapseRowAction"/> or view
+    /// entries materialise on the first <see cref="ExpandRowAction"/> dispatch
+    /// per view-key and disappear on <see cref="CollapseRowAction"/> or view
     /// <c>DisposeAsync</c>.
     /// </summary>
     public ImmutableDictionary<string, ExpandedRowEntry> ExpandedByViewKey { get; init; }

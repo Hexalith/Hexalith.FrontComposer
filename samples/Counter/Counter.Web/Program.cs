@@ -12,6 +12,7 @@ using Hexalith.FrontComposer.Mcp;
 using Hexalith.FrontComposer.Mcp.Extensions;
 using Hexalith.FrontComposer.Shell.Components.Specimens;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 

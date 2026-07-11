@@ -25,7 +25,7 @@ public partial class DemoCommandPage : ComponentBase
         string? viewKey = InferReturnViewKeyFromReferrer();
         if (!string.IsNullOrWhiteSpace(viewKey))
         {
-            Dispatcher.Dispatch(new RestoreGridStateAction(viewKey));
+            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.RestoreGridStateAction(viewKey));
         }
     }
 

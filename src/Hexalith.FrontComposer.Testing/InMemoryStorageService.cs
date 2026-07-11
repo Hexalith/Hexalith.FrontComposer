@@ -1,7 +1,9 @@
 
 using System.Collections.Concurrent;
 
-namespace Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Contracts.Storage;
+
+namespace Hexalith.FrontComposer.Testing;
 /// <summary>
 /// In-memory implementation of <see cref="IStorageService"/> for server-side rendering
 /// and bUnit testing. Thread-safe via <see cref="ConcurrentDictionary{TKey,TValue}"/>.

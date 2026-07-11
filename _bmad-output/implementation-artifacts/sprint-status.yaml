@@ -393,7 +393,7 @@ development_status:
   # 11-8 moved backlog -> done on 2026-07-05 (correct-course; approved the Contracts kernel split, amended the multi-TFM decision, recorded package-compat/public-API/deprecation requirements, and kept Stories 11.11-11.14 deliberately ordered last for pre-v1.0 implementation evidence.)
   11-8-contracts-kernel-split-decision-and-compatibility-plan: done
   11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface: backlog
-  11-12-relocate-runtime-and-testing-owned-types-out-of-contracts: backlog
+  11-12-relocate-runtime-and-testing-owned-types-out-of-contracts: done
   11-13-decompose-queryrequest-through-hfc0001-migration-path: backlog
   11-14-update-architecture-context-ux-and-package-compat-docs: backlog
   11-9-shell-layering-declaration-and-route-label-relocation: backlog

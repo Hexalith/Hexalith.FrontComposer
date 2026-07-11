@@ -10,6 +10,7 @@
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" SetTargetFramework="TargetFramework=netstandard2.0" />
+    <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Testing\Hexalith.FrontComposer.Testing.csproj" />
     <PackageReference Include="Fluxor.Blazor.Web" />
     <PackageReference Include="bunit" />
     <PackageReference Include="NSubstitute" />

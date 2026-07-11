@@ -35,7 +35,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     private IDispatcher Dispatcher { get; set; } = default!;
 
     [Inject]
-    private Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Contracts.FcShellOptions> ShellOptions { get; set; } = default!;
+    private Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Shell.Options.FcShellOptions> ShellOptions { get; set; } = default!;
 
     [Inject]
     private global::Hexalith.FrontComposer.Shell.Services.DataGridScrollInterop ScrollInterop { get; set; } = default!;
@@ -499,7 +499,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     public void HandleScrollAsync(string viewKey, double scrollTop)
     {
         if (!string.Equals(viewKey, _viewKey, StringComparison.Ordinal) || double.IsNaN(scrollTop) || double.IsInfinity(scrollTop) || scrollTop < 0) { return; }
-        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ScrollCapturedAction(viewKey, scrollTop));
+        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ScrollCapturedAction(viewKey, scrollTop));
     }
 
     private async ValueTask<global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<OrderProjection>> LoadPageAsync(global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderRequest<OrderProjection> request)
@@ -511,7 +511,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         var snapshot = CurrentGridSnapshot();
         var filters = QueryFilters(snapshot);
         var searchQuery = SearchQuery(snapshot);
-        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.LoadPageAction(
+        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(
             viewKey: _viewKey,
             skip: skip,
             take: take,
@@ -555,9 +555,9 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         _projectionFallbackLaneRegistration?.Dispose();
         _projectionFallbackLaneRegistration = null;
         _registeredProjectionFallbackLaneKey = null;
-        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ClearPendingPagesAction(_viewKey)); }
+        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ClearPendingPagesAction(_viewKey)); }
         catch (System.ObjectDisposedException) { /* store already disposed */ }
-        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.CollapseRowAction(_ephemeralViewKey)); }
+        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.ExpandedRow.CollapseRowAction(_ephemeralViewKey)); }
         catch (System.ObjectDisposedException) { /* store already disposed */ }
         try { await ScrollInterop.DisposeViewKeyAsync(_viewKey).ConfigureAwait(true); }
         catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }
@@ -573,11 +573,11 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         var entry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);
         if (entry.HasValue && entry.Value.ItemKey.Equals(key))
         {
-            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.CollapseRowAction(_ephemeralViewKey));
+            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.ExpandedRow.CollapseRowAction(_ephemeralViewKey));
         }
         else
         {
-            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ExpandRowAction(_ephemeralViewKey, key));
+            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandRowAction(_ephemeralViewKey, key));
         }
 
         return System.Threading.Tasks.Task.CompletedTask;

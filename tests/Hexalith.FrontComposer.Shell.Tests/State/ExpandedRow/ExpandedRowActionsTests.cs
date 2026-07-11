@@ -1,10 +1,8 @@
-using Hexalith.FrontComposer.Contracts.Rendering;
-
 using Shouldly;
 
 using Xunit;
 
-namespace Hexalith.FrontComposer.Contracts.Tests.Rendering;
+namespace Hexalith.FrontComposer.Shell.Tests.State.ExpandedRow;
 
 /// <summary>
 /// Story 4-5 T4.6 — record validation for ExpandRowAction + CollapseRowAction.

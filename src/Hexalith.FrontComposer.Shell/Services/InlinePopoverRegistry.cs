@@ -1,4 +1,6 @@
-namespace Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Contracts.Rendering;
+
+namespace Hexalith.FrontComposer.Shell.Services;
 
 /// <summary>
 /// Story 2-2 Decision D37 — enforces the "at most one Inline popover open at a time per circuit"
@@ -33,7 +35,7 @@ public sealed class InlinePopoverRegistry {
             }
             catch (Exception) {
                 // Best-effort close — never block the new popover from opening on a stale handle.
-                // Telemetry hook deferred to the Shell wrapper that injects ILogger (Group C).
+                // Sanitized observability for stale-close failures is tracked separately.
             }
         }
     }

@@ -122,7 +122,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private IDispatcher Dispatcher { get; set; } = default!;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    [Inject]");
-            _ = sb.AppendLine("    private Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Contracts.FcShellOptions> ShellOptions { get; set; } = default!;");
+            _ = sb.AppendLine("    private Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Shell.Options.FcShellOptions> ShellOptions { get; set; } = default!;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    [Inject]");
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.DataGridScrollInterop ScrollInterop { get; set; } = default!;");
@@ -962,7 +962,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    public void HandleScrollAsync(string viewKey, double scrollTop)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (!string.Equals(viewKey, _viewKey, StringComparison.Ordinal) || double.IsNaN(scrollTop) || double.IsInfinity(scrollTop) || scrollTop < 0) { return; }");
-            _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ScrollCapturedAction(viewKey, scrollTop));");
+            _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ScrollCapturedAction(viewKey, scrollTop));");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
 
@@ -977,7 +977,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        var snapshot = CurrentGridSnapshot();");
             _ = sb.AppendLine("        var filters = QueryFilters(snapshot);");
             _ = sb.AppendLine("        var searchQuery = SearchQuery(snapshot);");
-            _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.LoadPageAction(");
+            _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(");
             _ = sb.AppendLine("            viewKey: _viewKey,");
             _ = sb.AppendLine("            skip: skip,");
             _ = sb.AppendLine("            take: take,");
@@ -1030,10 +1030,10 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        _projectionFallbackLaneRegistration?.Dispose();");
             _ = sb.AppendLine("        _projectionFallbackLaneRegistration = null;");
             _ = sb.AppendLine("        _registeredProjectionFallbackLaneKey = null;");
-            _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ClearPendingPagesAction(_viewKey)); }");
+            _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ClearPendingPagesAction(_viewKey)); }");
             _ = sb.AppendLine("        catch (System.ObjectDisposedException) { /* store already disposed */ }");
             if (EmitsExpandInRowMachinery(model.Strategy)) {
-                _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.CollapseRowAction(_ephemeralViewKey)); }");
+                _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.ExpandedRow.CollapseRowAction(_ephemeralViewKey)); }");
                 _ = sb.AppendLine("        catch (System.ObjectDisposedException) { /* store already disposed */ }");
             }
 
@@ -1057,11 +1057,11 @@ public static class RazorEmitter {
                 _ = sb.AppendLine("        var entry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
                 _ = sb.AppendLine("        if (entry.HasValue && entry.Value.ItemKey.Equals(key))");
                 _ = sb.AppendLine("        {");
-                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.CollapseRowAction(_ephemeralViewKey));");
+                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.ExpandedRow.CollapseRowAction(_ephemeralViewKey));");
                 _ = sb.AppendLine("        }");
                 _ = sb.AppendLine("        else");
                 _ = sb.AppendLine("        {");
-                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ExpandRowAction(_ephemeralViewKey, key));");
+                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandRowAction(_ephemeralViewKey, key));");
                 _ = sb.AppendLine("        }");
                 _ = sb.AppendLine();
                 _ = sb.AppendLine("        return System.Threading.Tasks.Task.CompletedTask;");
@@ -1077,11 +1077,11 @@ public static class RazorEmitter {
                 _ = sb.AppendLine("        var entry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
                 _ = sb.AppendLine("        if (entry.HasValue && entry.Value.ItemKey.Equals(key))");
                 _ = sb.AppendLine("        {");
-                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.CollapseRowAction(_ephemeralViewKey));");
+                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.ExpandedRow.CollapseRowAction(_ephemeralViewKey));");
                 _ = sb.AppendLine("        }");
                 _ = sb.AppendLine("        else");
                 _ = sb.AppendLine("        {");
-                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ExpandRowAction(_ephemeralViewKey, key));");
+                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandRowAction(_ephemeralViewKey, key));");
                 _ = sb.AppendLine("        }");
                 _ = sb.AppendLine();
                 _ = sb.AppendLine("        return System.Threading.Tasks.Task.CompletedTask;");

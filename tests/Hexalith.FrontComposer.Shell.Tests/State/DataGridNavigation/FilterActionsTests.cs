@@ -5,7 +5,7 @@ using Shouldly;
 
 using Xunit;
 
-namespace Hexalith.FrontComposer.Contracts.Tests.Rendering;
+namespace Hexalith.FrontComposer.Shell.Tests.State.DataGridNavigation;
 
 /// <summary>
 /// Story 4-3 T7.7 — FilterActions enforce non-empty ViewKey per Story 2-2 D30 discipline,

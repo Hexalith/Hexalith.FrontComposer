@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 
-namespace Hexalith.FrontComposer.Contracts;
+namespace Hexalith.FrontComposer.Shell.Options;
 
 /// <summary>
 /// Adopter-facing shell options for FrontComposer — themeable defaults consumed by
@@ -308,37 +308,4 @@ public sealed class FcShellOptions {
     /// </remarks>
     [EnumDataType(typeof(CustomizationContractValidationMode), ErrorMessage = "CustomizationContractValidation must be LogAndSkip or FailClosedOnMajorMismatch.")]
     public CustomizationContractValidationMode CustomizationContractValidation { get; set; } = CustomizationContractValidationMode.LogAndSkip;
-}
-
-/// <summary>
-/// Runtime customization-contract validation policy selected by adopters via
-/// <see cref="FcShellOptions.CustomizationContractValidation"/>.
-/// </summary>
-public enum CustomizationContractValidationMode {
-    /// <summary>Default. Major-mismatched descriptors are skipped with a warning log; startup proceeds.</summary>
-    LogAndSkip = 0,
-
-    /// <summary>Strict. Any Major-mismatched descriptor causes startup to fail-closed with a clear diagnostic.</summary>
-    FailClosedOnMajorMismatch = 1,
-}
-
-/// <summary>
-/// Development-only overlay limits for bounded starter-template generation.
-/// </summary>
-public sealed class FcShellDevModeOptions {
-    /// <summary>Maximum component-tree depth walked while emitting starter metadata.</summary>
-    [Range(8, 512, ErrorMessage = "DevMode.MaxNodeDepth must be between 8 and 512.")]
-    public int MaxNodeDepth { get; set; } = 64;
-
-    /// <summary>Maximum children emitted for a single node while walking starter metadata.</summary>
-    [Range(8, 4_096, ErrorMessage = "DevMode.MaxFanOut must be between 8 and 4096.")]
-    public int MaxFanOut { get; set; } = 512;
-
-    /// <summary>Maximum time a clipboard copy operation may take before timing out.</summary>
-    [Range(100, 30_000, ErrorMessage = "DevMode.CopyTimeoutMilliseconds must be between 100 and 30000.")]
-    public int CopyTimeoutMilliseconds { get; set; } = 2_000;
-
-    /// <summary>Maximum size (bytes) of a clipboard payload accepted by the dev-mode overlay.</summary>
-    [Range(1_024, 1_048_576, ErrorMessage = "DevMode.MaxClipboardPayloadBytes must be between 1024 and 1048576.")]
-    public int MaxClipboardPayloadBytes { get; set; } = 65_536;
 }

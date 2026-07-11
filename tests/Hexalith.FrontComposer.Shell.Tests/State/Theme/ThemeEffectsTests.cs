@@ -57,7 +57,7 @@ public class ThemeEffectsTests {
         await storage.SetAsync(key, ThemeValue.Dark, ct);
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new ThemeEffects(storage, MsOptions.Create(new Contracts.FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
+        var sut = new ThemeEffects(storage, MsOptions.Create(new FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
         var action = new AppInitializedAction("corr-init");
 
         // Act
@@ -75,7 +75,7 @@ public class ThemeEffectsTests {
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new ThemeEffects(storage, MsOptions.Create(new Contracts.FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
+        var sut = new ThemeEffects(storage, MsOptions.Create(new FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
         var action = new AppInitializedAction("corr-init");
 
         // Act
@@ -104,7 +104,7 @@ public class ThemeEffectsTests {
         state.Value.Returns(new FrontComposerThemeState(ThemeValue.Light));
         var sut = new ThemeEffects(
             storage,
-            MsOptions.Create(new Contracts.FcShellOptions()),
+            MsOptions.Create(new FcShellOptions()),
             accessor,
             logger,
             themeService,
@@ -131,7 +131,7 @@ public class ThemeEffectsTests {
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new ThemeEffects(storage, MsOptions.Create(new Contracts.FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
+        var sut = new ThemeEffects(storage, MsOptions.Create(new FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
         var action = new ThemeChangedAction("corr-1", ThemeValue.Dark);
         string key = StorageKeys.BuildKey(TestTenant, TestUser, "theme");
 
@@ -152,7 +152,7 @@ public class ThemeEffectsTests {
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new ThemeEffects(storage, MsOptions.Create(new Contracts.FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
+        var sut = new ThemeEffects(storage, MsOptions.Create(new FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
         var action = new ThemeChangedAction("corr-1", ThemeValue.Dark);
 
         // Act — should not throw
@@ -181,7 +181,7 @@ public class ThemeEffectsTests {
         _ = services.AddScoped(_ => storage);
         _ = services.AddScoped(_ => StubAccessor(TestTenant, TestUser));
         _ = services.AddScoped<IThemeService>(_ => Substitute.For<IThemeService>());
-        _ = services.AddOptions<Contracts.FcShellOptions>();
+        _ = services.AddOptions<FcShellOptions>();
         // Story 3-5 — CapabilityDiscoveryEffects auto-registers via Fluxor scan; supply the
         // dependencies it needs even though this test never exercises the badge feature.
         _ = services.AddSingleton<Hexalith.FrontComposer.Contracts.Badges.IActionQueueProjectionCatalog>(_ =>

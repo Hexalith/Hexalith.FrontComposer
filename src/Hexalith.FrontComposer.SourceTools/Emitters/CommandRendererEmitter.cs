@@ -85,9 +85,9 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    [CascadingParameter] public ProjectionContext? ProjectionContext { get; set; }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    [Inject] private IEnumerable<IDerivedValueProvider> DerivedValueProviders { get; set; } = default!;");
-        _ = sb.AppendLine("    [Inject] private IOptions<FcShellOptions> ShellOptions { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private IOptions<global::Hexalith.FrontComposer.Shell.Options.FcShellOptions> ShellOptions { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IJSRuntime JSRuntime { get; set; } = default!;");
-        _ = sb.AppendLine("    [Inject] private InlinePopoverRegistry InlinePopoverRegistry { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.InlinePopoverRegistry InlinePopoverRegistry { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private NavigationManager NavigationManager { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILogger<" + rendererName + ">? Logger { get; set; }");
         _ = sb.AppendLine("    [Inject] private ICommandPageContext PageContext { get; set; } = default!;");

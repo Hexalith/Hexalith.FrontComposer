@@ -14,7 +14,7 @@ public enum VirtualizationLane {
 
     /// <summary>
     /// Server-side path: <c>FluentDataGrid.ItemsProvider</c> bound to the generator-emitted
-    /// <c>LoadPageAsync</c> callback backed by <see cref="Contracts.Rendering.LoadPageAction"/>.
+    /// <c>LoadPageAsync</c> callback backed by <see cref="LoadPageAction"/>.
     /// Selected when first-mount <c>state.Items.Count &gt;= VirtualizationServerSideThreshold</c>.
     /// </summary>
     ServerSide = 1,

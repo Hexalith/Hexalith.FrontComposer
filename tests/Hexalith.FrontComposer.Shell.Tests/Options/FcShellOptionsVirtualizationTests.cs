@@ -4,7 +4,7 @@ using Shouldly;
 
 using Xunit;
 
-namespace Hexalith.FrontComposer.Contracts.Tests;
+namespace Hexalith.FrontComposer.Shell.Tests.Options;
 
 /// <summary>
 /// Story 4-4 T7.6 / D10 re-revised — validate that the four virtualization knobs on

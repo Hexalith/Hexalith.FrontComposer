@@ -33,7 +33,7 @@ public sealed class PackageBoundaryTests {
         string output = Path.Combine(Path.GetTempPath(), "fc-testing-pack-" + Guid.NewGuid().ToString("N"));
         _ = Directory.CreateDirectory(output);
 
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-c", "Release", "-o", output, "--no-restore", "-m:1", "/nr:false").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-c", "Release", "-o", output, "--no-build", "-m:1", "/nr:false").ConfigureAwait(true);
 
         string package = Directory.GetFiles(output, "Hexalith.FrontComposer.Testing.*.nupkg").Single();
         using ZipArchive archive = ZipFile.OpenRead(package);
@@ -69,9 +69,9 @@ public sealed class PackageBoundaryTests {
         _ = Directory.CreateDirectory(packageOutput);
         _ = Directory.CreateDirectory(consumer);
 
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj", "-c", "Release", "-o", packageOutput, "--no-restore", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj", "-c", "Release", "-o", packageOutput, "--no-restore", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-c", "Release", "-o", packageOutput, "--no-restore", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
 
         await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
 <Project Sdk="Microsoft.NET.Sdk.Razor">
@@ -110,6 +110,7 @@ public sealed class PackageBoundaryTests {
         await File.WriteAllTextAsync(Path.Combine(consumer, "ConsumerSmokeTests.cs"), """
 using Bunit;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -122,6 +123,10 @@ public sealed class ConsumerSmokeTests
         using BunitContext context = new();
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
         ICommandService service = context.Services.GetRequiredService<ICommandService>();
+        IStorageService storage = context.Services.GetRequiredService<IStorageService>();
+        Assert.IsType<InMemoryStorageService>(storage);
+        await storage.SetAsync("smoke", "stored", Xunit.TestContext.Current.CancellationToken);
+        Assert.Equal("stored", await storage.GetAsync<string>("smoke", Xunit.TestContext.Current.CancellationToken));
         await service.DispatchAsync(new SmokeCommand { Name = "demo" }, Xunit.TestContext.Current.CancellationToken);
         Assert.Single(host.CommandService.Evidence);
     }

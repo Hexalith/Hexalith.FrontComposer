@@ -78,6 +78,13 @@ Hexalith.FrontComposer.Testing.GeneratedProjectionAssertions.AssertAccessibility
 Hexalith.FrontComposer.Testing.GeneratedProjectionAssertions.AssertCellValues<TComponent>(IRenderedComponent<TComponent>,System.String[]):void
 Hexalith.FrontComposer.Testing.GeneratedProjectionAssertions.AssertDataGridEnvelope<TComponent>(IRenderedComponent<TComponent>,System.String):void
 Hexalith.FrontComposer.Testing.GeneratedProjectionAssertions.AssertHeadersInOrder<TComponent>(IRenderedComponent<TComponent>,System.String[]):void
+Hexalith.FrontComposer.Testing.InMemoryStorageService
+Hexalith.FrontComposer.Testing.InMemoryStorageService.#ctor()
+Hexalith.FrontComposer.Testing.InMemoryStorageService.FlushAsync(System.Threading.CancellationToken):System.Threading.Tasks.Task
+Hexalith.FrontComposer.Testing.InMemoryStorageService.GetAsync<T>(System.String,System.Threading.CancellationToken):Task<T>
+Hexalith.FrontComposer.Testing.InMemoryStorageService.GetKeysAsync(System.String,System.Threading.CancellationToken):System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<System.String>>
+Hexalith.FrontComposer.Testing.InMemoryStorageService.RemoveAsync(System.String,System.Threading.CancellationToken):System.Threading.Tasks.Task
+Hexalith.FrontComposer.Testing.InMemoryStorageService.SetAsync<T>(System.String,T,System.Threading.CancellationToken):System.Threading.Tasks.Task
 Hexalith.FrontComposer.Testing.ProjectionPageEvidence
 Hexalith.FrontComposer.Testing.ProjectionPageEvidence.#ctor(System.String,System.Int32,System.Int32,System.String,System.String,System.String,System.DateTimeOffset)
 Hexalith.FrontComposer.Testing.ProjectionPageEvidence.<Clone>$():Hexalith.FrontComposer.Testing.ProjectionPageEvidence

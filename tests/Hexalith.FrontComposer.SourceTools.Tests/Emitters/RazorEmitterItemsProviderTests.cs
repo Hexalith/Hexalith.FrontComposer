@@ -34,7 +34,7 @@ public sealed class RazorEmitterItemsProviderTests {
     [Fact]
     public void LoadPageAsync_DispatchesLoadPageActionWithViewKeyAndPagingArgs() {
         string src = RazorEmitter.Emit(Model());
-        src.ShouldContain("Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.LoadPageAction(");
+        src.ShouldContain("Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction(");
         src.ShouldContain("viewKey: _viewKey");
         src.ShouldContain("skip: skip");
         src.ShouldContain("take: take");
@@ -59,7 +59,7 @@ public sealed class RazorEmitterItemsProviderTests {
         string src = RazorEmitter.Emit(Model());
         src.ShouldContain("[global::Microsoft.JSInterop.JSInvokable]");
         src.ShouldContain("public void HandleScrollAsync(string viewKey, double scrollTop)");
-        src.ShouldContain("new global::Hexalith.FrontComposer.Contracts.Rendering.ScrollCapturedAction(viewKey, scrollTop)");
+        src.ShouldContain("new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.ScrollCapturedAction(viewKey, scrollTop)");
         src.ShouldContain("double.IsNaN(scrollTop) || double.IsInfinity(scrollTop) || scrollTop < 0");
     }
 }

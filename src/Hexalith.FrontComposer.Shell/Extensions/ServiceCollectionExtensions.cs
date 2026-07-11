@@ -280,7 +280,7 @@ public static class ServiceCollectionExtensions {
         // Story 2-2 Decision D25 — cached expand-in-row JS module (scoped, lazy import).
         services.TryAddScoped<IExpandInRowJSModule, ExpandInRowJSModule>();
 
-        // Story 2-2 Decision D37 — at-most-one Inline popover registry (Contracts/Rendering).
+        // Story 2-2 Decision D37 — at-most-one Shell-owned Inline popover registry.
         // The registry MUST be Scoped (per circuit). Singleton would cross-leak popovers between
         // user circuits because the "currently-open" reference would be process-wide. Reject any
         // pre-existing non-Scoped registration loudly. We scan every matching descriptor (not just
@@ -288,7 +288,7 @@ public static class ServiceCollectionExtensions {
         // Singleton appended later — still trip the throw, since DI resolves the last-registered
         // descriptor.
         ServiceDescriptor? offendingPopoverRegistry = services.FirstOrDefault(
-            d => d.ServiceType == typeof(Hexalith.FrontComposer.Contracts.Rendering.InlinePopoverRegistry)
+            d => d.ServiceType == typeof(InlinePopoverRegistry)
                 && d.Lifetime != ServiceLifetime.Scoped);
         if (offendingPopoverRegistry is not null) {
             throw new InvalidOperationException(
@@ -296,7 +296,7 @@ public static class ServiceCollectionExtensions {
                 + "Singleton or Transient registration would cross-leak popovers between user circuits.");
         }
 
-        services.TryAddScoped<Hexalith.FrontComposer.Contracts.Rendering.InlinePopoverRegistry>();
+        services.TryAddScoped<InlinePopoverRegistry>();
 
         // Default no-op ICommandPageContext — adopter-hosted pages override via scoped registration.
         services.TryAddScoped<ICommandPageContext, NullCommandPageContext>();

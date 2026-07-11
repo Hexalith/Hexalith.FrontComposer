@@ -30,7 +30,7 @@ public sealed class ThemeEffectsScopeTests {
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
         IUserContextAccessor accessor = MakeAccessor(tenantId: null, userId: "alice");
-        var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Contracts.FcShellOptions()), accessor, logger, themeService);
+        var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()), accessor, logger, themeService);
 
         await sut.HandleThemeChanged(new ThemeChangedAction("c1", ThemeValue.Dark), Substitute.For<IDispatcher>());
 
@@ -46,7 +46,7 @@ public sealed class ThemeEffectsScopeTests {
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
         IUserContextAccessor accessor = MakeAccessor(tenantId: "acme", userId: null);
-        var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Contracts.FcShellOptions()), accessor, logger, themeService);
+        var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()), accessor, logger, themeService);
 
         await sut.HandleThemeChanged(new ThemeChangedAction("c1", ThemeValue.Dark), Substitute.For<IDispatcher>());
 
@@ -64,7 +64,7 @@ public sealed class ThemeEffectsScopeTests {
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
         IUserContextAccessor accessor = MakeAccessor(tenantId, userId);
-        var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Contracts.FcShellOptions()), accessor, logger, themeService);
+        var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()), accessor, logger, themeService);
 
         await sut.HandleThemeChanged(new ThemeChangedAction("c1", ThemeValue.Dark), Substitute.For<IDispatcher>());
 
@@ -81,7 +81,7 @@ public sealed class ThemeEffectsScopeTests {
         IThemeService themeService = Substitute.For<IThemeService>();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
-        var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Contracts.FcShellOptions()), accessor, logger, themeService);
+        var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()), accessor, logger, themeService);
 
         await sut.HandleThemeChanged(new ThemeChangedAction("c1", ThemeValue.Dark), Substitute.For<IDispatcher>());
 
@@ -98,7 +98,7 @@ public sealed class ThemeEffectsScopeTests {
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Contracts.FcShellOptions()), accessor, logger, themeService);
+        var sut = new ThemeEffects(storage, MsOptions.Create(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()), accessor, logger, themeService);
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 

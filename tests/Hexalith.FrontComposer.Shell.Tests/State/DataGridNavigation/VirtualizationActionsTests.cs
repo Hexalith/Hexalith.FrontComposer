@@ -6,7 +6,7 @@ using Shouldly;
 
 using Xunit;
 
-namespace Hexalith.FrontComposer.Contracts.Tests.Rendering;
+namespace Hexalith.FrontComposer.Shell.Tests.State.DataGridNavigation;
 
 /// <summary>
 /// Story 4-4 T7.5 / D3/D6/D7 — contract-surface validation for the 8 virtualization action records.

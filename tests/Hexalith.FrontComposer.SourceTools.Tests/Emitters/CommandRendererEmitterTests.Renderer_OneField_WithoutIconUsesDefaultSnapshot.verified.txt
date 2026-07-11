@@ -35,9 +35,9 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
     [CascadingParameter] public ProjectionContext? ProjectionContext { get; set; }
 
     [Inject] private IEnumerable<IDerivedValueProvider> DerivedValueProviders { get; set; } = default!;
-    [Inject] private IOptions<FcShellOptions> ShellOptions { get; set; } = default!;
+    [Inject] private IOptions<global::Hexalith.FrontComposer.Shell.Options.FcShellOptions> ShellOptions { get; set; } = default!;
     [Inject] private IJSRuntime JSRuntime { get; set; } = default!;
-    [Inject] private InlinePopoverRegistry InlinePopoverRegistry { get; set; } = default!;
+    [Inject] private global::Hexalith.FrontComposer.Shell.Services.InlinePopoverRegistry InlinePopoverRegistry { get; set; } = default!;
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
     [Inject] private ILogger<DemoCommandRenderer>? Logger { get; set; }
     [Inject] private ICommandPageContext PageContext { get; set; } = default!;

@@ -82,7 +82,7 @@ public class LoadPageNotModifiedReducerTests {
             state,
             new LoadPageCancelledAction("orders:Counter.Domain.OrderProjection", 0, completion));
         LoadedPageState afterLateSuccess = new LoadedPageReducers(
-            new TestOptionsMonitor(new Hexalith.FrontComposer.Contracts.FcShellOptions()),
+            new TestOptionsMonitor(new Hexalith.FrontComposer.Shell.Options.FcShellOptions()),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<LoadedPageReducers>.Instance)
             .ReduceLoadPageSucceeded(
                 cancelled,
@@ -100,10 +100,10 @@ public class LoadPageNotModifiedReducerTests {
         afterLateSuccess.LastElapsedMsByKey.ShouldBeEmpty();
     }
 
-    private sealed class TestOptionsMonitor(Hexalith.FrontComposer.Contracts.FcShellOptions value)
-        : Microsoft.Extensions.Options.IOptionsMonitor<Hexalith.FrontComposer.Contracts.FcShellOptions> {
-        public Hexalith.FrontComposer.Contracts.FcShellOptions CurrentValue => value;
-        public Hexalith.FrontComposer.Contracts.FcShellOptions Get(string? name) => value;
-        public IDisposable? OnChange(Action<Hexalith.FrontComposer.Contracts.FcShellOptions, string?> listener) => null;
+    private sealed class TestOptionsMonitor(Hexalith.FrontComposer.Shell.Options.FcShellOptions value)
+        : Microsoft.Extensions.Options.IOptionsMonitor<Hexalith.FrontComposer.Shell.Options.FcShellOptions> {
+        public Hexalith.FrontComposer.Shell.Options.FcShellOptions CurrentValue => value;
+        public Hexalith.FrontComposer.Shell.Options.FcShellOptions Get(string? name) => value;
+        public IDisposable? OnChange(Action<Hexalith.FrontComposer.Shell.Options.FcShellOptions, string?> listener) => null;
     }
 }

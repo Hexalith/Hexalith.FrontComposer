@@ -1,15 +1,25 @@
 
-using Hexalith.FrontComposer.Contracts.Storage;
-
 using Shouldly;
 
 using Xunit;
 
-namespace Hexalith.FrontComposer.Contracts.Tests;
+namespace Hexalith.FrontComposer.Testing.Tests;
 /// <summary>
 /// Unit tests for <see cref="InMemoryStorageService"/>.
 /// </summary>
 public class InMemoryStorageServiceTests {
+    [Fact]
+    public async Task CancellationToken_AlreadyCanceled_PreservesSynchronousFakeBehavior() {
+        CancellationToken cancellationToken = new(canceled: true);
+        InMemoryStorageService sut = new();
+
+        await sut.SetAsync("key", "value", cancellationToken).ConfigureAwait(true);
+        (await sut.GetAsync<string>("key", cancellationToken).ConfigureAwait(true)).ShouldBe("value");
+        (await sut.GetKeysAsync("k", cancellationToken).ConfigureAwait(true)).ShouldContain("key");
+        await sut.FlushAsync(cancellationToken).ConfigureAwait(true);
+        await sut.RemoveAsync("key", cancellationToken).ConfigureAwait(true);
+    }
+
     [Fact]
     public async Task FlushAsync_CompletesSuccessfully() {
         // Arrange
@@ -148,5 +158,16 @@ public class InMemoryStorageServiceTests {
 
         // Assert
         result.ShouldBe(42);
+    }
+
+    [Fact]
+    public async Task SetAsync_NullValue_PreservesKeyAndReturnsNull() {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        InMemoryStorageService sut = new();
+
+        await sut.SetAsync<string?>("null-key", null, cancellationToken).ConfigureAwait(true);
+
+        (await sut.GetAsync<string>("null-key", cancellationToken).ConfigureAwait(true)).ShouldBeNull();
+        (await sut.GetKeysAsync("null", cancellationToken).ConfigureAwait(true)).ShouldContain("null-key");
     }
 }

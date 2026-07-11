@@ -55,7 +55,7 @@ public static class CommandPageEmitter {
         _ = sb.AppendLine("        string? viewKey = InferReturnViewKeyFromReferrer();");
         _ = sb.AppendLine("        if (!string.IsNullOrWhiteSpace(viewKey))");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            Dispatcher.Dispatch(new RestoreGridStateAction(viewKey));");
+        _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.RestoreGridStateAction(viewKey));");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
