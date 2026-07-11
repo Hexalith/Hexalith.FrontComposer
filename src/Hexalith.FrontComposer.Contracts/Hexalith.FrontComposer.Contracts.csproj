@@ -4,10 +4,6 @@
     <PackageId>Hexalith.FrontComposer.Contracts</PackageId>
     <IsTrimmable
       Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsTrimmable>
-    <!-- NU5104: the net10.0 target still carries the pre-split Fluent UI v5 typography surface.
-         Story 11.11 moves it to Contracts.UI; until then the netstandard2.0 kernel stays clean
-         while release packing permits the documented net10.0 prerelease dependency. -->
-    <NoWarn>$(NoWarn);NU5104</NoWarn>
   </PropertyGroup>
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Collections.Immutable" />
@@ -15,12 +11,5 @@
     <!-- Story 3-5 D3 — ValueTask<T> is not in netstandard2.0 in-box; required by
          IActionQueueCountReader.GetCountAsync. net10.0 carries it via System.Runtime. -->
     <PackageReference Include="System.Threading.Tasks.Extensions" />
-  </ItemGroup>
-  <!-- Story 3-1: Typography static class (Rendering/Typography.cs) references Fluent UI v5 enums
-       (TextSize, TextWeight, TextTag, TextFont). The Fluent UI package has no netstandard2.0 target,
-       so Typography compiles only on net10.0 — guarded with #if NET10_0_OR_GREATER so source
-       generators targeting netstandard2.0 continue to build. -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
   </ItemGroup>
 </Project>

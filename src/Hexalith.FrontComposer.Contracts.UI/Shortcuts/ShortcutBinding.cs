@@ -1,8 +1,4 @@
-#if NET10_0_OR_GREATER
-
 using Microsoft.AspNetCore.Components.Web;
-
-#endif
 
 namespace Hexalith.FrontComposer.Contracts.Shortcuts;
 
@@ -96,8 +92,6 @@ public static class ShortcutBinding {
         return NormalizeSingleKey(trimmed, allowBareLetter: false);
     }
 
-#if NET10_0_OR_GREATER
-
     /// <summary>
     /// Builds a normalised binding string from a Blazor <see cref="KeyboardEventArgs"/>. Returns
     /// <see langword="false"/> when the event is a modifier-only press (Shift / Ctrl / Alt / Meta
@@ -152,8 +146,6 @@ public static class ShortcutBinding {
         binding = string.Join("+", parts);
         return true;
     }
-
-#endif
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE0057:Use range operator", Justification = "Not supported in this context")]
     private static string Capitalise(string token) => string.IsNullOrEmpty(token)

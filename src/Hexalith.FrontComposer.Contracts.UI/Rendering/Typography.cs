@@ -1,4 +1,3 @@
-#if NET10_0_OR_GREATER
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Hexalith.FrontComposer.Contracts.Rendering;
@@ -29,10 +28,9 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// <b>Spec adaptation:</b> Story 3-1 D2 originally named 9 Fluent UI v5 <c>Typography</c> enum
 /// values (<c>Title1</c>, <c>Subtitle1</c>, <c>Title3</c>, <c>Subtitle2</c>, <c>Body1Strong</c>,
 /// <c>Body1</c>, <c>Body2</c>, <c>Caption1</c>). That enum exists in Fluent UI's React library but
-/// NOT in the Blazor SDK (<c>Microsoft.FluentUI.AspNetCore.Components 5.0.0-rc.2-26098.1</c>), where
-/// the primitives are <c>TextSize</c>/<c>TextWeight</c>/<c>TextTag</c>. The token pair model keeps
-/// the 9 adopter-visible constants + living-table discipline intact; consumers bind primitives
-/// directly on <c>FluentText</c>.
+/// NOT in the Blazor SDK, where the primitives are <c>TextSize</c>/<c>TextWeight</c>/<c>TextTag</c>.
+/// The token model keeps the 9 adopter-visible constants + living-table discipline intact;
+/// consumers bind primitives directly on <c>FluentText</c>.
 /// </para>
 /// </remarks>
 public static class Typography {
@@ -67,19 +65,3 @@ public static class Typography {
     /// </summary>
     public static readonly FcTypoToken Code = new(TextSize.Size300, TextWeight.Regular, TextTag.Span, TextFont.Monospace);
 }
-
-/// <summary>
-/// Immutable typography token binding a Fluent UI v5 <see cref="TextSize"/> +
-/// <see cref="TextWeight"/> + <see cref="TextTag"/> (+ optional <see cref="TextFont"/>) set
-/// into a single addressable constant. See <see cref="Typography"/> for the 9 framework-owned roles.
-/// </summary>
-/// <param name="Size">Fluent UI text size (Size100–Size1000).</param>
-/// <param name="Weight">Fluent UI text weight (Regular / Medium / Semibold / Bold).</param>
-/// <param name="Tag">HTML element tag emitted by <c>FluentText</c>.</param>
-/// <param name="Font">Optional font family override (Base / Numeric / Monospace).</param>
-public readonly record struct FcTypoToken(
-    TextSize Size,
-    TextWeight Weight,
-    TextTag Tag,
-    TextFont? Font = null);
-#endif

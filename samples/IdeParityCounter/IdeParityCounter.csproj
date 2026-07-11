@@ -13,6 +13,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Contracts.UI\Hexalith.FrontComposer.Contracts.UI.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj"
                       OutputItemType="Analyzer"

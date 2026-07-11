@@ -1,4 +1,3 @@
-#if NET10_0_OR_GREATER
 using System.Runtime.CompilerServices;
 
 using Microsoft.AspNetCore.Components.Web;
@@ -60,4 +59,3 @@ public interface IShortcutService {
     /// <returns><see langword="true"/> when a registered handler was invoked; <see langword="false"/> otherwise.</returns>
     Task<bool> TryInvokeAsync(KeyboardEventArgs e);
 }
-#endif

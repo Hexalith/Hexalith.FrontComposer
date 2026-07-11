@@ -833,6 +833,7 @@ public sealed partial class DiagnosticRegistryTests {
             .ToArray();
 
         packableProjects.ShouldBe([
+            "src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj",
             "src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj",
             "src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj",
             "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj",

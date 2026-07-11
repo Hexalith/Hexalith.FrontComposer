@@ -31,6 +31,7 @@
     </Project>
     <Project Path="src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj" />
+    <Project Path="src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj" />
@@ -43,6 +44,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj" />
     <Project Path="tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj" />
+    <Project Path="tests/Hexalith.FrontComposer.Contracts.UI.Tests/Hexalith.FrontComposer.Contracts.UI.Tests.csproj" />
     <Project Path="tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj" />
     <Project Path="tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj" />
     <Project Path="tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj" />

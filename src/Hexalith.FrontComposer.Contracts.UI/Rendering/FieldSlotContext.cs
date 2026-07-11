@@ -1,4 +1,3 @@
-#if NET10_0_OR_GREATER
 using Hexalith.FrontComposer.Contracts.Attributes;
 
 using Microsoft.AspNetCore.Components;
@@ -74,4 +73,3 @@ public sealed class FieldSlotContext<TProjection, TField> {
     /// </summary>
     public RenderFragment<FieldSlotContext<TProjection, TField>>? RenderDefault { get; }
 }
-#endif

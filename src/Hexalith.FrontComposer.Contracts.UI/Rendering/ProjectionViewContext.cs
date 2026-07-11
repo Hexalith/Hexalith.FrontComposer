@@ -1,24 +1,13 @@
-#if NET10_0_OR_GREATER
 using Hexalith.FrontComposer.Contracts.Attributes;
 
 using Microsoft.AspNetCore.Components;
 
 namespace Hexalith.FrontComposer.Contracts.Rendering;
 
-/// <summary>
-/// Typed per-render context passed to Level 4 full projection-view replacement components.
-/// </summary>
-/// <remarks>
-/// A replacement owns only the generated projection body region. The surrounding shell,
-/// lifecycle, loading/empty policy, navigation, authorization boundary, telemetry context,
-/// and disposal hooks remain framework-owned. This context is constructed per render and
-/// must not be cached across tenants, users, cultures, densities, themes, or item sets.
-/// </remarks>
+/// <summary>Typed per-render context passed to Level 4 full projection-view replacement components.</summary>
 /// <typeparam name="TProjection">Projection record/class type being rendered.</typeparam>
 public sealed class ProjectionViewContext<TProjection> {
-    /// <summary>
-    /// Initializes a new instance of the <see cref="ProjectionViewContext{TProjection}"/> class.
-    /// </summary>
+    /// <summary>Initializes a new instance of the <see cref="ProjectionViewContext{TProjection}"/> class.</summary>
     public ProjectionViewContext(
         Type projectionType,
         string? boundedContext,
@@ -71,19 +60,19 @@ public sealed class ProjectionViewContext<TProjection> {
     /// <summary>Gets the projection role; <see langword="null"/> means the default role.</summary>
     public ProjectionRole? Role { get; }
 
-    /// <summary>Gets the current framework-owned render/query window, not an all-data grant.</summary>
+    /// <summary>Gets the current framework-owned render/query window.</summary>
     public IReadOnlyList<TProjection> Items { get; }
 
-    /// <summary>Gets the current render context carrying tenant, user, render mode, density, and flags.</summary>
+    /// <summary>Gets the current render context.</summary>
     public RenderContext? RenderContext { get; }
 
-    /// <summary>Gets generated field descriptors available to starter templates and replacements.</summary>
+    /// <summary>Gets generated field descriptors.</summary>
     public IReadOnlyList<ProjectionTemplateColumnDescriptor> Columns { get; }
 
-    /// <summary>Gets framework-owned section descriptors available to starter templates and replacements.</summary>
+    /// <summary>Gets framework-owned section descriptors.</summary>
     public IReadOnlyList<ProjectionTemplateSectionDescriptor> Sections { get; }
 
-    /// <summary>Gets the lifecycle summary available to the generated view body.</summary>
+    /// <summary>Gets the lifecycle summary.</summary>
     public string LifecycleState { get; }
 
     /// <summary>Gets the localization-safe singular projection label.</summary>
@@ -92,7 +81,7 @@ public sealed class ProjectionViewContext<TProjection> {
     /// <summary>Gets the localization-safe plural projection label.</summary>
     public string EntityPluralLabel { get; }
 
-    /// <summary>Gets the default generated body renderer. This bypasses the active Level 4 descriptor.</summary>
+    /// <summary>Gets the default generated body renderer.</summary>
     public RenderFragment DefaultBody { get; }
 
     /// <summary>Gets a generated section renderer.</summary>
@@ -113,4 +102,3 @@ public sealed class ProjectionViewContext<TProjection> {
     /// <summary>Gets a value indicating whether developer diagnostics affordances are active.</summary>
     public bool IsDevMode => RenderContext?.IsDevMode == true;
 }
-#endif

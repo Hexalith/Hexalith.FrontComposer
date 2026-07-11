@@ -8,6 +8,7 @@
     <ProjectReference Include="..\..\samples\Counter\Counter.Domain\Counter.Domain.csproj" />
     <ProjectReference Include="..\..\samples\Counter\Counter.Web\Counter.Web.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Contracts.UI\Hexalith.FrontComposer.Contracts.UI.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" SetTargetFramework="TargetFramework=netstandard2.0" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Testing\Hexalith.FrontComposer.Testing.csproj" />

@@ -3,9 +3,6 @@
     <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
     <IsPackable>true</IsPackable>
     <PackageId>Hexalith.FrontComposer.Schema</PackageId>
-    <!-- NU5104: this package references the current Contracts package, whose net10.0 target
-         temporarily exposes the pinned Fluent UI v5 RC until Story 11.11 completes Contracts.UI. -->
-    <NoWarn>$(NoWarn);NU5104</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />

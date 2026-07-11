@@ -8,7 +8,7 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// <remarks>
 /// Implementations must be safe for concurrent reads from multiple Blazor render circuits.
 /// Per binding decisions D3 / D16, the registry caches descriptors only — never
-/// <see cref="FieldSlotContext{TProjection,TField}"/>, parent items, <see cref="RenderContext"/>,
+/// <c>FieldSlotContext&lt;TProjection,TField&gt;</c>, parent items, <see cref="RenderContext"/>,
 /// rendered fragments, or service-provider scoped values — and <see cref="Descriptors"/> must
 /// expose an immutable snapshot so concurrent renders observe a stable view.
 /// </remarks>

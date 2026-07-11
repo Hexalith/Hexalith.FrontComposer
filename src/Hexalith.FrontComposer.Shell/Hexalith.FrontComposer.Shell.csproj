@@ -11,6 +11,8 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <ProjectReference
       Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+    <ProjectReference
+      Include="..\Hexalith.FrontComposer.Contracts.UI\Hexalith.FrontComposer.Contracts.UI.csproj" />
     <PackageReference Include="Fluxor.Blazor.Web" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />

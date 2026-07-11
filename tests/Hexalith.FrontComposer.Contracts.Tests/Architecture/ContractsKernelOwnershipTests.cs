@@ -12,6 +12,22 @@ using Xunit;
 namespace Hexalith.FrontComposer.Contracts.Tests.Architecture;
 
 public sealed class ContractsKernelOwnershipTests {
+    private static readonly string[] MovedUiTypeNames = [
+        "Hexalith.FrontComposer.Contracts.Rendering.Typography",
+        "Hexalith.FrontComposer.Contracts.Rendering.FcTypoToken",
+        "Hexalith.FrontComposer.Contracts.Rendering.TypographyStyle",
+        "Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext`2",
+        "Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateContext`1",
+        "Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionRenderer",
+        "Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateRowRenderer`1",
+        "Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateFieldRenderer`1",
+        "Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor",
+        "Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor",
+        "Hexalith.FrontComposer.Contracts.Rendering.ProjectionViewContext`1",
+        "Hexalith.FrontComposer.Contracts.Shortcuts.IShortcutService",
+        "Hexalith.FrontComposer.Contracts.Shortcuts.ShortcutBinding",
+    ];
+
     private static readonly string[] OldAssemblyQualifiedIdentities = [
         "Hexalith.FrontComposer.Contracts.Storage.InMemoryStorageService, Hexalith.FrontComposer.Contracts",
         "Hexalith.FrontComposer.Contracts.FcShellOptions, Hexalith.FrontComposer.Contracts",
@@ -79,9 +95,15 @@ public sealed class ContractsKernelOwnershipTests {
         exportedNames.ShouldContain(typeof(IStorageService).FullName!);
         exportedNames.ShouldContain(typeof(IInlinePopover).FullName!);
         exportedNames.ShouldContain(typeof(GridViewSnapshot).FullName!);
+        exportedNames.ShouldNotContain(name => MovedUiTypeNames.Contains(name, StringComparer.Ordinal));
         assembly.GetReferencedAssemblies().Select(reference => reference.Name)
             .Any(name => name is "Hexalith.FrontComposer.Shell" or "Hexalith.FrontComposer.Testing")
             .ShouldBeFalse();
+        string?[] kernelReferences = assembly.GetReferencedAssemblies().Select(reference => reference.Name).ToArray();
+        kernelReferences.ShouldNotContain("Hexalith.FrontComposer.Contracts.UI");
+        kernelReferences.ShouldNotContain("Microsoft.AspNetCore.Components");
+        kernelReferences.ShouldNotContain("Microsoft.AspNetCore.Components.Web");
+        kernelReferences.ShouldNotContain("Microsoft.FluentUI.AspNetCore.Components");
         assembly.GetReferencedAssemblies().Select(reference => reference.Name)
             .ShouldNotContain("System.ComponentModel.Annotations");
         assembly.GetExportedTypes()
@@ -127,10 +149,15 @@ public sealed class ContractsKernelOwnershipTests {
         exportedNames.ShouldContain(typeof(IStorageService).FullName!);
         exportedNames.ShouldContain(typeof(IInlinePopover).FullName!);
         exportedNames.ShouldContain(typeof(GridViewSnapshot).FullName!);
+        exportedNames.ShouldNotContain(name => MovedUiTypeNames.Contains(name, StringComparer.Ordinal));
         typeReferences.ShouldNotContain("TaskCompletionSource`1");
         assemblyReferences.ShouldNotContain("Hexalith.FrontComposer.Shell");
         assemblyReferences.ShouldNotContain("Hexalith.FrontComposer.Testing");
         assemblyReferences.ShouldNotContain("System.ComponentModel.Annotations");
+        assemblyReferences.ShouldNotContain("Hexalith.FrontComposer.Contracts.UI");
+        assemblyReferences.ShouldNotContain("Microsoft.AspNetCore.Components");
+        assemblyReferences.ShouldNotContain("Microsoft.AspNetCore.Components.Web");
+        assemblyReferences.ShouldNotContain("Microsoft.FluentUI.AspNetCore.Components");
 
         OldAssemblyQualifiedIdentities.Length.ShouldBe(25);
         NewAssemblyQualifiedIdentities.Length.ShouldBe(25);

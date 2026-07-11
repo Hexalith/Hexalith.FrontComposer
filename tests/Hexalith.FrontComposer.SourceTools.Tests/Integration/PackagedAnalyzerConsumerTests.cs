@@ -19,6 +19,7 @@ public sealed class PackagedAnalyzerConsumerTests {
         _ = Directory.CreateDirectory(consumer);
 
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
 
@@ -32,6 +33,7 @@ public sealed class PackagedAnalyzerConsumerTests {
             analyzerEntries.ShouldContain("analyzers/dotnet/cs/Hexalith.FrontComposer.SourceTools.dll");
             analyzerEntries.ShouldContain("analyzers/dotnet/cs/Hexalith.FrontComposer.Contracts.dll");
             analyzerEntries.ShouldNotContain(entry => entry.Contains("Hexalith.FrontComposer.Shell", StringComparison.Ordinal));
+            analyzerEntries.ShouldNotContain(entry => entry.Contains("Hexalith.FrontComposer.Contracts.UI", StringComparison.Ordinal));
 
             ZipArchiveEntry analyzer = archive.GetEntry("analyzers/dotnet/cs/Hexalith.FrontComposer.SourceTools.dll")!;
             using Stream analyzerStream = analyzer.Open();
@@ -45,6 +47,7 @@ public sealed class PackagedAnalyzerConsumerTests {
                 .Select(reference => reader.GetString(reference.Name))
                 .ToArray();
             references.ShouldContain("Hexalith.FrontComposer.Contracts");
+            references.ShouldNotContain("Hexalith.FrontComposer.Contracts.UI");
             references.ShouldNotContain("Hexalith.FrontComposer.Shell");
             references.ShouldNotContain("Hexalith.FrontComposer.Testing");
         }
@@ -65,6 +68,7 @@ public sealed class PackagedAnalyzerConsumerTests {
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Hexalith.FrontComposer.Contracts" Version="{{packageVersion}}" />
+    <PackageReference Include="Hexalith.FrontComposer.Contracts.UI" Version="{{packageVersion}}" />
     <PackageReference Include="Hexalith.FrontComposer.Shell" Version="{{packageVersion}}" />
     <PackageReference Include="Hexalith.FrontComposer.SourceTools" Version="{{packageVersion}}" PrivateAssets="all" />
   </ItemGroup>

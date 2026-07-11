@@ -7,7 +7,7 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// </summary>
 /// <remarks>
 /// Implementations may cache descriptor metadata only. They must not cache
-/// <see cref="ProjectionViewContext{TProjection}"/>, item lists, <see cref="RenderContext"/>,
+/// <c>ProjectionViewContext&lt;TProjection&gt;</c>, item lists, <see cref="RenderContext"/>,
 /// rendered fragments, scoped services, tenant/user identifiers, or localized strings.
 /// </remarks>
 public interface IProjectionViewOverrideRegistry {
