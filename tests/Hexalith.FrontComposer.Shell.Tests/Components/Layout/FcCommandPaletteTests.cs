@@ -142,6 +142,35 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public async Task SameGeneratedCommandPageActivation_UsesCanonicalRouteForFocusFallback() {
+        EnsureStoreInitialized();
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/commands/Counter/ConfigureCounterCommand");
+
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new PaletteOpenedAction("open-1"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction(
+            string.Empty,
+            [new PaletteResult(
+                PaletteResultCategory.Command,
+                "Configure Counter",
+                "Counter",
+                null,
+                "Counter.Domain.ConfigureCounterCommand",
+                100,
+                false)]));
+
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+        int focusInvocationsBefore = FocusModule.Invocations.Count(i => i.Identifier == "focusBodyIfNeeded");
+
+        await cut.InvokeAsync(() =>
+            cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "Enter" }));
+        await cut.Instance.DisposeAsync();
+
+        FocusModule.Invocations.Count(i => i.Identifier == "focusBodyIfNeeded").ShouldBeGreaterThan(focusInvocationsBefore);
+    }
+
+    [Fact]
     public async Task DifferentPageActivation_DoesNotPrimeBodyFocusFallback() {
         // Pass-5 P16 — complements SamePageActivation to prove the fallback is scoped to
         // same-page activations; a navigation to a different URL must NOT trigger focusBodyIfNeeded.
@@ -183,6 +212,8 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
 
         cut.Markup.ShouldContain("role=\"combobox\"");
         cut.Markup.ShouldContain("aria-haspopup=\"listbox\"");
+        cut.FindComponent<Microsoft.FluentUI.AspNetCore.Components.FluentTextInput>()
+            .Instance.Immediate.ShouldBeTrue("palette search must publish each typed query without waiting for blur");
     }
 
     [Fact]
@@ -262,6 +293,23 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase {
         IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
         await cut.InvokeAsync(() =>
             cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "Enter" }));
+
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/counter/counter-view"));
+    }
+
+    [Fact]
+    public async Task ResultClick_ActivatesProjectionThroughRenderedChildBoundary() {
+        EnsureStoreInitialized();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        dispatcher.Dispatch(new PaletteOpenedAction("open-1"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction(
+            string.Empty,
+            [new PaletteResult(
+                PaletteResultCategory.Projection, "Counter", "Counter", "/counter/counter-view", null, 100, false, typeof(CounterProjectionStub))]));
+
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+        await cut.InvokeAsync(() => cut.Find("[data-testid='fc-palette-option']").Click());
 
         cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/counter/counter-view"));
     }

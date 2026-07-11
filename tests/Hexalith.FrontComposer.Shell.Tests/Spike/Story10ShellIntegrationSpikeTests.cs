@@ -73,7 +73,8 @@ public sealed class Story10ShellIntegrationSpikeTests {
 
         DomainManifest counter = manifests.Single(m => m.BoundedContext == "Counter");
         counter.Projections.ShouldContain(typeof(CounterProjection).FullName!);
-        counter.Commands.ShouldContain(typeof(IncrementCommand).FullName!);
+        manifests.Single(m => m.BoundedContext == "Default")
+            .Commands.ShouldContain(typeof(IncrementCommand).FullName!);
     }
 
     // ── Q3: Projection-route reachability + companion-interface opt-in (Task 3) ─────────────────────
@@ -94,14 +95,13 @@ public sealed class Story10ShellIntegrationSpikeTests {
     }
 
     [Fact]
-    public void DefaultRegistry_HasFullPageRoute_TrueForRegisteredCommand_FalseForUnknown() {
+    public void DefaultRegistry_HasFullPageRoute_UsesGeneratedMembership() {
         using ServiceProvider provider = BuildSpikeHost();
 
         IFrontComposerRegistry registry = provider.GetRequiredService<IFrontComposerRegistry>();
 
-        // The default HasFullPageRoute returns true for any command present in a manifest (inert
-        // permissive placeholder until Story 9-4), and false for a command that was never registered.
-        registry.HasFullPageRoute(typeof(IncrementCommand).FullName!).ShouldBeTrue();
+        registry.HasFullPageRoute(typeof(IncrementCommand).FullName!).ShouldBeFalse();
+        registry.HasFullPageRoute(typeof(ConfigureCounterCommand).FullName!).ShouldBeTrue();
         registry.HasFullPageRoute("Counter.Domain.NeverRegisteredCommand").ShouldBeFalse();
     }
 

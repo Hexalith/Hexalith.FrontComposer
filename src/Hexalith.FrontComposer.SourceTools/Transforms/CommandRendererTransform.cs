@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 
+using Hexalith.FrontComposer.Contracts.Routing;
 using Hexalith.FrontComposer.SourceTools.Parsing;
 
 namespace Hexalith.FrontComposer.SourceTools.Transforms;
@@ -22,8 +23,7 @@ public static class CommandRendererTransform {
 
         string displayLabel = BuildDisplayLabel(model);
         string boundedContext = string.IsNullOrEmpty(model.BoundedContext) ? "Default" : model.BoundedContext!;
-        // Story 2-2 code-review P40 — sanitize route segments to safe URL-path characters.
-        string route = "/commands/" + SanitizeRouteSegment(boundedContext) + "/" + SanitizeRouteSegment(model.TypeName);
+        string route = GeneratedCommandRoute.Build(boundedContext, model.TypeName);
 
         ImmutableArray<string>.Builder nonDerivable = ImmutableArray.CreateBuilder<string>();
         foreach (PropertyModel p in model.NonDerivableProperties) {
@@ -38,7 +38,7 @@ public static class CommandRendererTransform {
         return new CommandRendererModel(
             typeName: model.TypeName,
             @namespace: model.Namespace,
-            boundedContext: model.BoundedContext,
+            boundedContext: boundedContext,
             density: model.Density,
             iconName: model.IconName,
             displayLabel: displayLabel,
@@ -64,21 +64,6 @@ public static class CommandRendererTransform {
         string? humanized = CamelCaseHumanizer.Humanize(model.TypeName);
         string source = string.IsNullOrEmpty(humanized) ? model.TypeName : humanized!;
         return StripTrailingCommand(source);
-    }
-
-    // Story 2-2 code-review P40 — restrict route segments to URL-safe characters (letters, digits, '.', '-', '_').
-    // Anything else collapses to '-'; empty segments become "_".
-    private static string SanitizeRouteSegment(string segment) {
-        if (string.IsNullOrEmpty(segment)) {
-            return "_";
-        }
-
-        System.Text.StringBuilder sb = new(segment.Length);
-        foreach (char c in segment) {
-            _ = sb.Append(char.IsLetterOrDigit(c) || c == '.' || c == '-' || c == '_' ? c : '-');
-        }
-
-        return sb.ToString();
     }
 
     // Story 2-2 code-review P41/P42 — case-insensitive suffix strip; fall back to original when result is empty.

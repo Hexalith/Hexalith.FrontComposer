@@ -27,8 +27,9 @@ public static class RegistrationModelTransform {
     /// Transforms a parsed command model into a registration output model.
     /// </summary>
     public static RegistrationModel TransformCommand(CommandModel model) {
-        string boundedContext = model.BoundedContext
-            ?? GetNamespaceLastSegment(model.Namespace);
+        string boundedContext = string.IsNullOrEmpty(model.BoundedContext)
+            ? "Default"
+            : model.BoundedContext!;
 
         return new RegistrationModel(
             boundedContext,
@@ -36,7 +37,8 @@ public static class RegistrationModelTransform {
             model.Namespace,
             model.BoundedContextDisplayLabel,
             isCommand: true,
-            authorizationPolicyName: model.AuthorizationPolicyName);
+            authorizationPolicyName: model.AuthorizationPolicyName,
+            hasFullPageRoute: model.Density == CommandDensity.FullPage);
     }
 
     private static string GetNamespaceLastSegment(string @namespace) {

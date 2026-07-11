@@ -94,7 +94,8 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
         DomainManifest counterManifest = registry.GetManifests().Single(m => m.BoundedContext == "Counter");
         counterManifest.Projections.ShouldContain(typeof(CounterProjection).FullName!);
-        counterManifest.Commands.ShouldContain(typeof(IncrementCommand).FullName!);
+        registry.GetManifests().Single(m => m.BoundedContext == "Default")
+            .Commands.ShouldContain(typeof(IncrementCommand).FullName!);
     }
 
     [Fact]

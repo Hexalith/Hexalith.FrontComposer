@@ -75,6 +75,7 @@ public static class ServiceCollectionExtensions {
         Assembly domainAssembly = typeof(T).Assembly;
         BoundedContextAttribute? markerContext = typeof(T).GetCustomAttribute<BoundedContextAttribute>();
         var commandGroups = new Dictionary<string, CommandGroup>(StringComparer.Ordinal);
+        var generatedManifestCommands = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (Type type in domainAssembly.GetExportedTypes()) {
             if (type.Name.EndsWith("LastUsedSubscriber", StringComparison.Ordinal)
@@ -104,6 +105,10 @@ public static class ServiceCollectionExtensions {
 
             if (hasManifest && registerMethod is not null) {
                 _ = services.AddSingleton(new DomainRegistrationAction(registerMethod));
+                DomainManifest? generatedManifest = ReadStaticManifest(type);
+                if (generatedManifest?.Commands is not null) {
+                    generatedManifestCommands.UnionWith(generatedManifest.Commands);
+                }
             }
             else if (hasManifest || registerMethod is not null) {
                 _ = services.AddSingleton(new DomainRegistrationWarning(
@@ -116,11 +121,21 @@ public static class ServiceCollectionExtensions {
         }
 
         foreach ((string boundedContext, CommandGroup group) in commandGroups) {
+            string[] fallbackCommands = [.. group.Commands.Where(command => !generatedManifestCommands.Contains(command))];
+            if (fallbackCommands.Length == 0) {
+                continue;
+            }
+
             DomainManifest manifest = new(
                 group.DisplayName ?? boundedContext,
                 boundedContext,
                 [],
-                [.. group.Commands]);
+                fallbackCommands) {
+                // Reflection discovery can prove command membership but cannot prove that a
+                // matching generated page exists. Fail closed so palette and CTA consumers do
+                // not advertise a route that may render a blank or not-found page.
+                FullPageCommands = [],
+            };
 
             _ = services.AddSingleton(new DomainRegistrationAction(registry => registry.RegisterDomain(manifest)));
         }
@@ -600,6 +615,19 @@ public static class ServiceCollectionExtensions {
 
         FieldInfo? field = type.GetField("Manifest", BindingFlags.Public | BindingFlags.Static);
         return field is not null && field.FieldType == typeof(DomainManifest);
+    }
+
+    private static DomainManifest? ReadStaticManifest(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type type) {
+        PropertyInfo? property = type.GetProperty("Manifest", BindingFlags.Public | BindingFlags.Static);
+        if (property?.PropertyType == typeof(DomainManifest)) {
+            return property.GetValue(null) as DomainManifest;
+        }
+
+        FieldInfo? field = type.GetField("Manifest", BindingFlags.Public | BindingFlags.Static);
+        return field?.FieldType == typeof(DomainManifest)
+            ? field.GetValue(null) as DomainManifest
+            : null;
     }
 
     private sealed class CommandGroup {

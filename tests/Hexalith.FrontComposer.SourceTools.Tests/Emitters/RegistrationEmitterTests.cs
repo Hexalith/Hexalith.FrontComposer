@@ -41,4 +41,28 @@ public class RegistrationEmitterTests {
         source.ShouldContain("typeof(ApproveOrderCommand).FullName!");
         source.ShouldContain("\"OrderApprover\"");
     }
+
+    [Fact]
+    public void InlineCommand_EmitsKnownEmptyFullPageMembership() {
+        var model = new RegistrationModel("Orders", "ApproveOrderCommand", "TestDomain", null, isCommand: true);
+
+        string source = RegistrationEmitter.Emit(model);
+
+        source.ShouldContain("FullPageCommands = new List<string>()");
+    }
+
+    [Fact]
+    public void FullPageCommand_EmitsCommandMembership() {
+        var model = new RegistrationModel(
+            "Orders",
+            "ApproveOrderCommand",
+            "TestDomain",
+            null,
+            isCommand: true,
+            hasFullPageRoute: true);
+
+        string source = RegistrationEmitter.Emit(model);
+
+        source.ShouldContain("FullPageCommands = new List<string> { typeof(ApproveOrderCommand).FullName! }");
+    }
 }

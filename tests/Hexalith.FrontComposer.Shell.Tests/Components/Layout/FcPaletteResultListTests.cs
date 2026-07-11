@@ -127,11 +127,6 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase {
 
     [Fact]
     public void InformationalShortcutRowsDoNotInvokeSelectionCallback() {
-        // Pass-5 P2 retracted — bUnit's Click() dispatcher does not recognize Func<Task>
-        // lambda handlers (Razor `@onclick="() => HandleOptionClickedAsync(...)"`) as valid
-        // onclick wiring; it throws MissingEventHandlerException. Real-browser Blazor DOES
-        // dispatch the handler (Blazor's async event-handler support). This test is a bUnit
-        // idiom proving informational rows never surface a dispatching handler to bUnit.
         EnsureStoreInitialized();
         int invocations = 0;
         ImmutableArray<PaletteResult> results = [
@@ -144,10 +139,29 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase {
             .Add(c => c.SelectedIndex, 0)
             .Add(c => c.OnSelectionChanged, _ => invocations++));
 
-        Should.Throw<Bunit.MissingEventHandlerException>(() =>
-            cut.Find("[data-testid='fc-palette-option']").Click());
+        cut.Find("[data-testid='fc-palette-option']").Click();
 
         invocations.ShouldBe(0);
+    }
+
+    [Fact]
+    public void RoutableCommandRowInvokesSelectionCallback() {
+        EnsureStoreInitialized();
+        int selectedIndex = -1;
+        ImmutableArray<PaletteResult> results = [
+            new(PaletteResultCategory.Command, "Configure Counter", "Counter", null, "Counter.ConfigureCounterCommand", 100, false),
+        ];
+
+        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
+            .Add(c => c.Id, "fc-palette-results")
+            .Add(c => c.Results, results)
+            .Add(c => c.SelectedIndex, 0)
+            .Add(c => c.OnSelectionChanged, index => selectedIndex = index));
+
+        cut.Find("[data-testid='fc-palette-option']").Click();
+
+        selectedIndex.ShouldBe(0);
+        cut.Markup.ShouldNotContain("@onclick");
     }
 
     [Fact]
@@ -167,13 +181,6 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase {
 
         cut.Markup.ShouldNotContain("aria-disabled=\"true\"");
     }
-
-    // Note: a "ShortcutRowWithRouteUrl_InvokesSelectionCallbackOnClick" counterpart to the
-    // markup-only test above was considered but cannot be authored at the bUnit layer — bUnit
-    // Click() does not dispatch Func<Task> lambda handlers (same limitation documented in
-    // InformationalShortcutRowsDoNotInvokeSelectionCallback). The activation-path contract for
-    // shortcut-with-route rows is instead verified at the effect layer
-    // (CommandPaletteEffectsTests.HandlePaletteResultActivated_Shortcut_NavigatesWhenRouteUrlPresent).
 
     [Fact]
     public void EmptyResults_RendersNoMatchesText() {
