@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -32,7 +33,8 @@ public sealed class FrontComposerTestHostBuilder
         TestCommandService commandService,
         TestQueryService queryService,
         TestProjectionPageLoader pageLoader,
-        TestFaultInjectionProvider faultProvider,
+        TestFaultEvidenceRecorder faultRecorder,
+        TestAuthorizationEvaluator authorizationEvaluator,
         IDisposable cultureScope,
         bool storeInitialized) {
         Context = context;
@@ -41,7 +43,8 @@ public sealed class FrontComposerTestHostBuilder
         CommandService = commandService;
         QueryService = queryService;
         PageLoader = pageLoader;
-        FaultProvider = faultProvider;
+        FaultRecorder = faultRecorder;
+        AuthorizationEvaluator = authorizationEvaluator;
         StoreInitialized = storeInitialized;
         _cultureScope = cultureScope;
     }
@@ -65,7 +68,10 @@ public sealed class FrontComposerTestHostBuilder
     public TestProjectionPageLoader PageLoader { get; }
 
     /// <summary>Gets the deterministic fault provider used by reconnection tests.</summary>
-    public TestFaultInjectionProvider FaultProvider { get; }
+    public TestFaultEvidenceRecorder FaultRecorder { get; }
+
+    /// <summary>Gets the exact deterministic authorization evaluator registered in DI.</summary>
+    public TestAuthorizationEvaluator AuthorizationEvaluator { get; }
 
     internal bool StoreInitialized { get; }
 
@@ -167,6 +173,11 @@ public static class FrontComposerTestHostServiceCollectionExtensions {
         FrontComposerTestOptions options = new();
         configure?.Invoke(options);
 
+        if (options.StoreInitialization == StoreInitializationMode.DuringHostSetup) {
+            throw new InvalidOperationException(
+                "StoreInitializationMode.DuringHostSetup requires AddFrontComposerTestHostAsync; synchronous setup never blocks on asynchronous store initialization.");
+        }
+
         context.JSInterop.Mode = options.JSInteropMode;
         IDisposable cultureScope = FrontComposerTestHostBuilder.ApplyCulture(options.Culture);
 
@@ -178,7 +189,8 @@ public static class FrontComposerTestHostServiceCollectionExtensions {
         TestCommandService commandService = new(userContext, commandPageContext, options);
         TestQueryService queryService = new(options);
         TestProjectionPageLoader pageLoader = new(options);
-        TestFaultInjectionProvider faultProvider = new(options);
+        TestFaultEvidenceRecorder faultRecorder = new(options);
+        TestAuthorizationEvaluator authorizationEvaluator = new();
 
         _ = services.AddLocalization();
         _ = services.AddFluentUIComponents();
@@ -196,17 +208,13 @@ public static class FrontComposerTestHostServiceCollectionExtensions {
         _ = services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => commandService));
         _ = services.Replace(ServiceDescriptor.Scoped<IQueryService>(_ => queryService));
         _ = services.Replace(ServiceDescriptor.Scoped<IProjectionPageLoader>(_ => pageLoader));
+        _ = services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => authorizationEvaluator));
         _ = services.Replace(ServiceDescriptor.Scoped(_ => commandService));
         _ = services.Replace(ServiceDescriptor.Scoped(_ => queryService));
         _ = services.Replace(ServiceDescriptor.Scoped(_ => pageLoader));
         _ = services.Replace(ServiceDescriptor.Singleton(options.TimeProvider));
-        _ = services.AddSingleton(faultProvider);
-
-        bool storeInitialized = false;
-        if (options.StoreInitialization == StoreInitializationMode.DuringHostSetup) {
-            context.Services.GetRequiredService<IStore>().InitializeAsync().GetAwaiter().GetResult();
-            storeInitialized = true;
-        }
+        _ = services.AddSingleton(faultRecorder);
+        _ = services.AddSingleton(authorizationEvaluator);
 
         return new FrontComposerTestHostBuilder(
             context,
@@ -215,9 +223,56 @@ public static class FrontComposerTestHostServiceCollectionExtensions {
             commandService,
             queryService,
             pageLoader,
-            faultProvider,
+            faultRecorder,
+            authorizationEvaluator,
             cultureScope,
-            storeInitialized);
+            false);
+    }
+
+    /// <summary>Registers the test host and asynchronously initializes Fluxor when requested.</summary>
+    public static async Task<FrontComposerTestHostBuilder> AddFrontComposerTestHostAsync(
+        this IServiceCollection services,
+        BunitContext context,
+        Action<FrontComposerTestOptions>? configure = null,
+        CancellationToken cancellationToken = default) {
+        StoreInitializationMode requestedMode = StoreInitializationMode.OnDemand;
+        CultureInfo requestedCulture = CultureInfo.CurrentCulture;
+        FrontComposerTestHostBuilder host = services.AddFrontComposerTestHost(context, options => {
+            configure?.Invoke(options);
+            requestedMode = options.StoreInitialization;
+            requestedCulture = options.Culture;
+            options.StoreInitialization = StoreInitializationMode.OnDemand;
+            // Culture is process/async-context state. Keep it unchanged across store initialization,
+            // then apply the requested scope only after the await succeeds.
+            options.Culture = CultureInfo.CurrentCulture;
+        });
+        if (requestedMode != StoreInitializationMode.DuringHostSetup) {
+            return new FrontComposerTestHostBuilder(
+                host.Context, host.Options, host.UserContext, host.CommandService, host.QueryService,
+                host.PageLoader, host.FaultRecorder, host.AuthorizationEvaluator,
+                new CompositeDisposable(host, FrontComposerTestHostBuilder.ApplyCulture(requestedCulture)), false);
+        }
+
+        try {
+            cancellationToken.ThrowIfCancellationRequested();
+            await context.Services.GetRequiredService<IStore>().InitializeAsync().ConfigureAwait(false);
+            cancellationToken.ThrowIfCancellationRequested();
+            return new FrontComposerTestHostBuilder(
+                host.Context, host.Options, host.UserContext, host.CommandService, host.QueryService,
+                host.PageLoader, host.FaultRecorder, host.AuthorizationEvaluator,
+                new CompositeDisposable(host, FrontComposerTestHostBuilder.ApplyCulture(requestedCulture)), true);
+        }
+        catch {
+            host.Dispose();
+            throw;
+        }
+    }
+
+    private sealed class CompositeDisposable(IDisposable first, IDisposable second) : IDisposable {
+        public void Dispose() {
+            second.Dispose();
+            first.Dispose();
+        }
     }
 
     private sealed class TestCommandPageContext(string commandName, string boundedContext, string? returnPath)

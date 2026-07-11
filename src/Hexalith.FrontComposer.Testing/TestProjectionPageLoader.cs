@@ -9,7 +9,7 @@ namespace Hexalith.FrontComposer.Testing;
 /// Deterministic fake projection page loader for generated DataGrid virtualization tests.
 /// </summary>
 public sealed class TestProjectionPageLoader : IProjectionPageLoader {
-    private readonly ConcurrentDictionary<string, ProjectionPageResult> _pages = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, TestProjectionPageConfiguration> _configurations = new(StringComparer.Ordinal);
     private readonly ConcurrentQueue<ProjectionPageEvidence> _evidence = new();
     private readonly FrontComposerTestOptions _options;
 
@@ -22,14 +22,23 @@ public sealed class TestProjectionPageLoader : IProjectionPageLoader {
     public void SucceedWith(string projectionTypeFqn, IReadOnlyList<object> items, int? totalCount = null, string? etag = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectionTypeFqn);
         ArgumentNullException.ThrowIfNull(items);
-        _pages[projectionTypeFqn] = new ProjectionPageResult(items, totalCount ?? items.Count, etag);
+        _configurations[projectionTypeFqn] = TestProjectionPageConfiguration.FromResult(
+            new ProjectionPageResult(items, totalCount ?? items.Count, etag));
+    }
+
+    /// <summary>Configures a page result selected from all inputs for one projection type.</summary>
+    public void SucceedWith(string projectionTypeFqn, Func<ProjectionPageRequest, ProjectionPageResult> callback) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectionTypeFqn);
+        ArgumentNullException.ThrowIfNull(callback);
+        _configurations[projectionTypeFqn] = TestProjectionPageConfiguration.FromCallback(callback);
     }
 
     /// <summary>Configures a not-modified response for one projection type.</summary>
     public void NotModified(string projectionTypeFqn, IReadOnlyList<object> cachedItems, int? totalCount = null, string? etag = null) {
         ArgumentException.ThrowIfNullOrWhiteSpace(projectionTypeFqn);
         ArgumentNullException.ThrowIfNull(cachedItems);
-        _pages[projectionTypeFqn] = new ProjectionPageResult(cachedItems, totalCount ?? cachedItems.Count, etag, IsNotModified: true);
+        _configurations[projectionTypeFqn] = TestProjectionPageConfiguration.FromResult(
+            new ProjectionPageResult(cachedItems, totalCount ?? cachedItems.Count, etag, IsNotModified: true));
     }
 
     /// <inheritdoc />
@@ -42,23 +51,50 @@ public sealed class TestProjectionPageLoader : IProjectionPageLoader {
         bool sortDescending,
         string? searchQuery,
         CancellationToken cancellationToken) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(projectionTypeFqn);
+        ArgumentNullException.ThrowIfNull(filters);
         cancellationToken.ThrowIfCancellationRequested();
-        bool hasPage = _pages.TryGetValue(projectionTypeFqn, out ProjectionPageResult? result);
+        bool configured = _configurations.TryGetValue(projectionTypeFqn, out TestProjectionPageConfiguration? configuration);
+        bool callbackMode = configuration?.Callback is not null;
+        ProjectionPageResult? result = configuration?.Result;
+        bool hasPage = configured && result is not null;
+        Exception? callbackFailure = null;
+        if (callbackMode) {
+            try {
+                result = configuration!.Callback!(new(projectionTypeFqn, skip, take, filters, sortColumn, sortDescending, searchQuery))
+                    ?? throw new InvalidOperationException("The configured projection page callback returned null.");
+                hasPage = true;
+            }
+            catch (Exception ex) {
+                callbackFailure = ex;
+            }
+        }
         EnqueueBounded(new ProjectionPageEvidence(
             projectionTypeFqn,
             skip,
             take,
             _options.TestTenantId,
             _options.TestUserId,
-            hasPage ? (result!.IsNotModified ? "not-modified" : "configured") : "empty",
+            callbackFailure is not null ? "callback-failed" : hasPage ? result!.IsNotModified ? "not-modified" : callbackMode ? "callback" : "configured" : "empty",
             _options.TimeProvider.GetUtcNow()));
+
+        if (callbackFailure is not null) {
+            if (callbackFailure is OperationCanceledException canceled) {
+                CancellationToken canceledToken = canceled.CancellationToken.IsCancellationRequested
+                    ? canceled.CancellationToken
+                    : new CancellationToken(canceled: true);
+                return Task.FromCanceled<ProjectionPageResult>(canceledToken);
+            }
+
+            return Task.FromException<ProjectionPageResult>(callbackFailure);
+        }
 
         return Task.FromResult(hasPage ? result! : new ProjectionPageResult([], 0, null));
     }
 
     /// <summary>Clears configured pages and captured evidence.</summary>
     public void Reset() {
-        _pages.Clear();
+        _configurations.Clear();
         while (_evidence.TryDequeue(out _)) {
         }
     }

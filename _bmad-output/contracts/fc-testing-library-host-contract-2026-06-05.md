@@ -1,5 +1,13 @@
 # FC Testing Library Host Contract - Story 7.5
 
+## Story 11.6 extension
+
+- Command success/rejection/timeout/stall are deterministic, lifecycle-accurate, and use monotonic IDs.
+- Query and page callbacks receive each request, record callback failures, reject null results, and are last-write-wins.
+- The exact host-exposed `TestAuthorizationEvaluator` is registered for `ICommandAuthorizationEvaluator`; missing policies fail closed.
+- `TestFaultEvidenceRecorder` and its `Record*` API record bounded redacted evidence only and do not inject faults.
+- `AddFrontComposerTestHostAsync` owns `DuringHostSetup`; synchronous setup rejects that mode and never blocks on async work.
+
 Date: 2026-06-05
 Story: 7.5 - Testing library - bUnit host and deterministic fakes
 Status: v1 contract
@@ -12,7 +20,7 @@ Status: v1 contract
 
 - Inheritance setup: derive from `FrontComposerTestBase`.
 - Composition setup: call `Services.AddFrontComposerTestHost(context, configure)` from a `BunitContext`.
-- The returned `FrontComposerTestHostBuilder` exposes `Options`, `UserContext`, `CommandService`, `QueryService`, `PageLoader`, and `FaultProvider`.
+- The returned `FrontComposerTestHostBuilder` exposes `Options`, `UserContext`, `CommandService`, `QueryService`, `PageLoader`, `AuthorizationEvaluator`, and `FaultRecorder`.
 - Direct composition owns a culture scope. Dispose `FrontComposerTestHostBuilder` to restore `CultureInfo.CurrentCulture` and `CurrentUICulture`.
 - `AddDomainAssembly<TMarker>()` adds a generated domain assembly once, scans it with Fluxor, and registers `AddHexalithDomain<TMarker>()`.
 
@@ -32,7 +40,7 @@ The host registers these defaults:
 - `IProjectionPageLoader` backed by `TestProjectionPageLoader`.
 - Concrete fake services for direct assertions.
 - `TimeProvider` from `FrontComposerTestOptions.TimeProvider`.
-- `TestFaultInjectionProvider`.
+- `TestFaultEvidenceRecorder`.
 
 Store initialization is explicit by default (`StoreInitializationMode.OnDemand`). When `StoreInitializationMode.DuringHostSetup` is configured, composition setup initializes the Fluxor store during host setup; `FrontComposerTestBase.InitializeStoreAsync()` remains idempotent and uses `ConfigureAwait(false)`.
 
@@ -84,7 +92,7 @@ Fakes are per test host instance. Parallel bUnit contexts do not share user cont
 
 ## Fault Modes
 
-`TestFaultInjectionProvider` is an evidence recorder, not a live SignalR simulator. It exposes deterministic methods for:
+`TestFaultEvidenceRecorder` is an evidence recorder, not a live SignalR simulator. Its `Record*` methods cover:
 
 - `Drop(correlationId)`
 - `Delay(correlationId)`
@@ -100,7 +108,7 @@ Evidence records are public Testing package contracts:
 
 - `CommandDispatchEvidence`
 - `ProjectionPageEvidence`
-- `FaultInjectionEvidence`
+- `FaultEvidence`
 
 `RedactedEvidenceFormatter.Format(...)` serializes bounded assertion payloads and redacts:
 

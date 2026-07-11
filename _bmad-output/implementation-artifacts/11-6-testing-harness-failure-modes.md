@@ -5,12 +5,15 @@ story: 6
 story_key: 11-6-testing-harness-failure-modes
 source_epics: _bmad-output/planning-artifacts/epics.md
 baseline_commit: a783c82bf9cdfbe1347c23ac6f8e699ae540eef4
-status: ready-for-dev
+baseline_revision: 3a4551bc1fe81d12999c6b70e86f8cce74e03d67
+status: in-review
+review_loop_iteration: 1
+followup_review_recommended: true
 ---
 
 # Story 11.6: Testing Harness Failure Modes
 
-Status: ready-for-dev
+Status: in-review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -288,7 +291,82 @@ GPT-5 Codex
 
 - 2026-07-09: Created Story 11.6 ready-for-dev artifact and moved sprint tracking from `backlog` to `ready-for-dev`.
 
+## Spec Change Log
+
+### 2026-07-11 — Review-driven re-derivation constraints
+
+- Triggering findings: the first implementation covered fake-level happy and failure paths but did not satisfy the specified adopter/generated-component authorization surface, required direct/privacy/edge-path coverage, honest fault-recorder API contract, or robust callback/async-host failure semantics.
+- Amendment: implementation must preserve the successful command reject/timeout/stall vocabulary, request callbacks, authorization DI seam, async initialization direction, public API baseline discipline, and focused green test lane while also satisfying every original task and acceptance criterion.
+- Known-bad state to avoid: do not leave synchronous `AddFrontComposerTestHost(...)` silently ignoring `DuringHostSetup`; do not leak culture scope when async initialization fails or hold unsafe culture mutation across an await; do not allow stale callbacks to override later static/not-modified configuration; do not omit evidence for callback failures; do not derive command IDs from bounded evidence count or reread mutable outcomes during a dispatch; do not treat unknown/missing/unauthenticated authorization as allowed by default; do not retain injection-oriented public naming for a recorder-only provider; and do not claim completion with only direct fake tests.
+- KEEP: deterministic command lifecycle outcomes without wall-clock sleeps; callback request objects carrying all query/page inputs; a host-exposed authorization fake registered as the exact DI instance; no sync-over-async; existing redaction formatter reuse; intentional public API and documentation updates; zero-warning Release build and focused Testing suite.
+
+## Review Triage Log
+
+### 2026-07-11 — Review pass
+- intent_gap: 0
+- bad_spec: 12: (high 6, medium 6, low 0)
+- patch: 0
+- defer: 0
+- reject: 9
+- addressed_findings:
+  - `[high]` `[bad_spec]` Re-derive authorization support through the host and a real policy-gated/generated consumer, including allowed, denied, pending, missing-policy, unauthenticated, and handler-failed states.
+  - `[high]` `[bad_spec]` Preserve synchronous host semantics or make the compatibility behavior explicit while providing exception-safe, isolation-safe async initialization without sync-over-async.
+  - `[high]` `[bad_spec]` Complete direct builders, assertions, fakes, fault-recorder, privacy, not-modified, empty, cancellation, paging, filtering, sorting, and search verification required by the story.
+  - `[high]` `[bad_spec]` Align the fault evidence recorder's adopter-facing names, documentation, tests, and public API rather than changing prose alone.
+  - `[high]` `[bad_spec]` Make callback configuration last-write-wins and capture bounded redacted request evidence even when configured callbacks fail.
+  - `[high]` `[bad_spec]` Make command IDs monotonic per host and snapshot configured outcome/rejection data once per dispatch.
+  - `[medium]` `[bad_spec]` Fail fast on invalid null callback results and pin consistent evidence status vocabulary.
+  - `[medium]` `[bad_spec]` Update the authoritative host contract comprehensively for authorization wiring, async setup, recorder naming, and the complete public API delta.
+
+### 2026-07-11 — Review pass 2
+- intent_gap: 0
+- bad_spec: 0
+- patch: 15: (high 3, medium 10, low 2)
+- defer: 0
+- reject: 8
+- addressed_findings:
+  - `[high]` `[patch]` Redacted configured tenant/user identifiers in fault evidence while preserving plain correlation identifiers, with direct privacy assertions.
+  - `[high]` `[patch]` Added rendered authorization coverage for denied, pending, missing-policy, unauthenticated, and handler-failed states and normalized callback exceptions fail-closed.
+  - `[high]` `[patch]` Made query and page configuration atomic and truly last-write-wins under concurrent configuration.
+  - `[medium]` `[patch]` Preserved cancellation semantics for callback-thrown cancellation and validated projection-page inputs.
+  - `[medium]` `[patch]` Made command configuration snapshots thread-safe and retained evidence when lifecycle callbacks fail.
+  - `[medium]` `[patch]` Added synchronous DuringHostSetup fail-fast verification, rejection-resolution verification, async cancellation, and consistent inheritance guidance.
+  - `[medium]` `[patch]` Rejected contradictory blocked authorization reasons and avoided mutating registered options after composition.
+
 ### File List
 
+- `_bmad-output/contracts/fc-testing-library-host-contract-2026-06-05.md`
 - `_bmad-output/implementation-artifacts/11-6-testing-harness-failure-modes.md`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/how-to/test-generated-components.md`
+- `src/Hexalith.FrontComposer.Testing/Evidence.cs`
+- `src/Hexalith.FrontComposer.Testing/FrontComposerTestBase.cs`
+- `src/Hexalith.FrontComposer.Testing/FrontComposerTestHostBuilder.cs`
+- `src/Hexalith.FrontComposer.Testing/ProjectionPageRequest.cs`
+- `src/Hexalith.FrontComposer.Testing/PublicAPI.Shipped.txt`
+- `src/Hexalith.FrontComposer.Testing/README.md`
+- `src/Hexalith.FrontComposer.Testing/TestAuthorizationEvaluator.cs`
+- `src/Hexalith.FrontComposer.Testing/TestCommandConfiguration.cs`
+- `src/Hexalith.FrontComposer.Testing/TestCommandOutcome.cs`
+- `src/Hexalith.FrontComposer.Testing/TestCommandService.cs`
+- `src/Hexalith.FrontComposer.Testing/TestFaultInjectionProvider.cs` (removed)
+- `src/Hexalith.FrontComposer.Testing/TestFaultEvidenceRecorder.cs`
+- `src/Hexalith.FrontComposer.Testing/TestProjectionPageConfiguration.cs`
+- `src/Hexalith.FrontComposer.Testing/TestProjectionPageLoader.cs`
+- `src/Hexalith.FrontComposer.Testing/TestQueryConfiguration.cs`
+- `src/Hexalith.FrontComposer.Testing/TestQueryService.cs`
+- `tests/Hexalith.FrontComposer.Testing.Tests/FrontComposerTestHostTests.cs`
+- `tests/Hexalith.FrontComposer.Testing.Tests/TestingFailureModeTests.cs`
+
+## Auto Run Result
+
+Status: done
+
+Summary: Hardened the adopter-facing Testing harness with deterministic command rejection, timeout, and stall outcomes; atomic request-sensitive query/page callbacks; fail-closed authorization states exercised through rendered policy regions; async host initialization; honestly named fault evidence recording; privacy-preserving evidence; direct surface tests; documentation; and intentional public API updates.
+
+Review findings: first-pass specification re-derivation addressed 12 material alignment findings; second-pass review applied 15 localized patches; no deferred work remains; noise and non-actionable theoretical findings were rejected.
+
+Follow-up review recommendation: true, because the review-driven patches span concurrency, cancellation, authorization, privacy, public API, and behavioral compatibility.
+
+Verification: focused Testing Release build passed with zero warnings; focused Testing suite passed 46/46; xUnit executable fallback passed 46/46; public API/package/clean-consumer gates passed within the focused suite; broad filtered solution tests and full Release solution build passed in the implementation handoff; `git diff --check` passed. Story artifact validation remained sensitive to the story's historical baseline and unrelated post-baseline repository changes.
+
+Residual risk: async initialization failure cleanup is implemented, but directly injecting an `IStore.InitializeAsync` failure remains constrained by bUnit service-provider locking. Deterministic sequences intentionally remain monotonic across Reset to avoid concurrent ID reuse.

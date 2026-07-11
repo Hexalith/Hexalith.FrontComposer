@@ -37,7 +37,7 @@ public sealed record ProjectionPageEvidence(
 /// <summary>
 /// Immutable evidence captured when the deterministic fault provider simulates reconnection behavior.
 /// </summary>
-public sealed record FaultInjectionEvidence(
+public sealed record FaultEvidence(
     string Mode,
     string? TenantId,
     string? UserId,
@@ -74,6 +74,15 @@ public static class RedactedEvidenceFormatter {
         }
 
         return redacted[..options.MaxDiagnosticPayloadCharacters] + "...<truncated>";
+    }
+
+    internal static string FormatText(string value, FrontComposerTestOptions options) {
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(options);
+        string redacted = RedactConfiguredValues(value, options);
+        return redacted.Length <= options.MaxDiagnosticPayloadCharacters
+            ? redacted
+            : redacted[..options.MaxDiagnosticPayloadCharacters] + "...<truncated>";
     }
 
     private static JsonNode? RedactNode(JsonNode? node, string? propertyName = null) {

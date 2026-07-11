@@ -24,11 +24,15 @@ public abstract class FrontComposerTestBase : BunitContext {
     /// </summary>
     /// <param name="configure">Optional host configuration callback.</param>
     protected FrontComposerTestBase(Action<FrontComposerTestOptions> configure) {
-        Host = Services.AddFrontComposerTestHost(this, configure);
+        ArgumentNullException.ThrowIfNull(configure);
+        Host = Services.AddFrontComposerTestHost(this, options => {
+            configure(options);
+            if (options.StoreInitialization == StoreInitializationMode.DuringHostSetup) {
+                throw new InvalidOperationException(
+                    "FrontComposerTestBase constructors cannot initialize the store asynchronously. Use StoreInitializationMode.OnDemand and await InitializeStoreAsync() from test initialization.");
+            }
+        });
         _storeInitialized = Host.StoreInitialized;
-        if (Host.Options.StoreInitialization == StoreInitializationMode.DuringHostSetup && !_storeInitialized) {
-            InitializeStoreAsync().GetAwaiter().GetResult();
-        }
     }
 
     /// <summary>Gets the composable host builder used by this test instance.</summary>

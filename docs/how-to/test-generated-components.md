@@ -12,6 +12,10 @@ slug: how-to/test-generated-components/
 
 # Test generated components
 
+Configure failure paths through `host.CommandService`, request-sensitive query/page results through callback overloads, and policy decisions through `host.AuthorizationEvaluator`. Unknown policies fail closed. `host.FaultRecorder` records evidence only and does not emulate a transport.
+
+For setup-time Fluxor initialization, await `AddFrontComposerTestHostAsync(...)` with `StoreInitializationMode.DuringHostSetup`; synchronous composition intentionally rejects that mode.
+
 Add `Hexalith.FrontComposer.Testing` to an xUnit v3 + bUnit test project. The package configures FrontComposer Shell services, in-memory storage, deterministic user context, fake command/query/page-loader providers, loose JS interop, and assertion helpers.
 
 ## Inherit from the test base
@@ -92,4 +96,4 @@ public sealed class CommandDispatchTests
 }
 ```
 
-The fake providers keep evidence per test context. They do not open EventStore, SignalR, DAPR, browser storage, or a running app host. Use `TestProjectionPageLoader.SucceedWith(...)` or `TestProjectionPageLoader.NotModified(...)` for server-side virtualization paths, `TestQueryService.SucceedWith<T>(...)` or `TestQueryService.NotModifiedWith<T>(...)` for query seams, and `TestFaultInjectionProvider` for deterministic drop, delay, partial delivery, reorder, and reconnect-nudge scenarios. Evidence formatting redacts configured tenant/user values and token, secret, or password keyed values before assertion output.
+The fake providers keep evidence per test context. They do not open EventStore, SignalR, DAPR, browser storage, or a running app host. Use `TestProjectionPageLoader.SucceedWith(...)` or `TestProjectionPageLoader.NotModified(...)` for server-side virtualization paths, `TestQueryService.SucceedWith<T>(...)` or `TestQueryService.NotModifiedWith<T>(...)` for query seams, and `TestFaultEvidenceRecorder` to record deterministic drop, delay, partial delivery, reorder, and reconnect-nudge evidence. Evidence formatting redacts configured tenant/user values and token, secret, or password keyed values before assertion output.

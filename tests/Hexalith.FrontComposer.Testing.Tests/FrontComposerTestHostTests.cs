@@ -53,7 +53,7 @@ public sealed class FrontComposerTestHostTests {
         context.Services.GetRequiredService<IQueryService>().ShouldBeSameAs(host.QueryService);
         context.Services.GetRequiredService<Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader>()
             .ShouldBeSameAs(host.PageLoader);
-        context.Services.GetRequiredService<TestFaultInjectionProvider>().ShouldBeSameAs(host.FaultProvider);
+        context.Services.GetRequiredService<TestFaultEvidenceRecorder>().ShouldBeSameAs(host.FaultRecorder);
         context.Services.GetRequiredService<TimeProvider>().ShouldBeSameAs(timeProvider);
     }
 
@@ -68,15 +68,25 @@ public sealed class FrontComposerTestHostTests {
     }
 
     [Fact]
-    public void AddFrontComposerTestHost_DuringHostSetup_CompositionInitializesStore() {
-        using BunitContext context = new();
-        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
+    public async Task AddFrontComposerTestHostAsync_DuringHostSetup_CompositionInitializesStore() {
+        await using BunitContext context = new();
+        using FrontComposerTestHostBuilder host = await context.Services.AddFrontComposerTestHostAsync(
             context,
-            options => options.StoreInitialization = StoreInitializationMode.DuringHostSetup);
+            options => options.StoreInitialization = StoreInitializationMode.DuringHostSetup,
+            Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         IDispatcher dispatcher = context.Services.GetRequiredService<IDispatcher>();
 
         Should.NotThrow(() => dispatcher.Dispatch(new CounterProjectionLoadRequestedAction("corr-during-setup")));
+    }
+
+    [Fact]
+    public void AddFrontComposerTestHost_DuringHostSetup_FailsFastWithAsyncGuidance() {
+        using BunitContext context = new();
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() => context.Services.AddFrontComposerTestHost(
+            context,
+            options => options.StoreInitialization = StoreInitializationMode.DuringHostSetup));
+        exception.Message.ShouldContain(nameof(FrontComposerTestHostServiceCollectionExtensions.AddFrontComposerTestHostAsync));
     }
 
     [Fact]
@@ -290,7 +300,7 @@ public sealed class FrontComposerTestHostTests {
     }
 
     [Fact]
-    public void TestFaultInjectionProvider_AllModes_AreDeterministicTimestampedAndBounded() {
+    public void TestFaultEvidenceRecorder_AllModes_AreDeterministicTimestampedAndBounded() {
         using BunitContext context = new();
         FixedTimeProvider timeProvider = new(DateTimeOffset.Parse("2026-06-05T12:00:00Z", CultureInfo.InvariantCulture));
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
@@ -302,16 +312,16 @@ public sealed class FrontComposerTestHostTests {
                 options.MaxEvidenceRecords = 3;
             });
 
-        _ = host.FaultProvider.Drop("corr-1");
-        _ = host.FaultProvider.Delay("corr-2");
-        _ = host.FaultProvider.PartialDelivery("corr-3");
-        _ = host.FaultProvider.Reorder("corr-4");
-        FaultInjectionEvidence nudge = host.FaultProvider.ReconnectNudge("corr-5");
+        _ = host.FaultRecorder.RecordDrop("corr-1");
+        _ = host.FaultRecorder.RecordDelay("corr-2");
+        _ = host.FaultRecorder.RecordPartialDelivery("corr-3");
+        _ = host.FaultRecorder.RecordReorder("corr-4");
+        FaultEvidence nudge = host.FaultRecorder.RecordReconnectNudge("corr-5");
 
         nudge.Mode.ShouldBe("reconnect-nudge");
-        host.FaultProvider.Evidence.Select(e => e.Mode).ShouldBe(["partial-delivery", "reorder", "reconnect-nudge"]);
-        host.FaultProvider.Evidence.ShouldAllBe(e => e.TenantId == "tenant-fault" && e.UserId == "user-fault");
-        host.FaultProvider.Evidence.ShouldAllBe(e => e.CapturedAtUtc == timeProvider.Timestamp);
+        host.FaultRecorder.Evidence.Select(e => e.Mode).ShouldBe(["partial-delivery", "reorder", "reconnect-nudge"]);
+        host.FaultRecorder.Evidence.ShouldAllBe(e => e.TenantId == "<tenant>" && e.UserId == "<user>");
+        host.FaultRecorder.Evidence.ShouldAllBe(e => e.CapturedAtUtc == timeProvider.Timestamp);
     }
 
     [Fact]
