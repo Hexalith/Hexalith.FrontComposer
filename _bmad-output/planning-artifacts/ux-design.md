@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer UX Design Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-07-05
+updated: 2026-07-11
 sourceOfRecord:
   - _bmad-output/planning-artifacts/epics.md
   - _bmad-output/project-docs/architecture.md
@@ -17,7 +17,11 @@ This document makes the UX requirements discoverable to implementation-readiness
 
 ### UX-DR1 - Design Tokens
 
-`Typography` and `FcTypoToken` map semantic text roles to Fluent UI v5 text size, weight, and tag values. `DensityLevel` and `DensitySurface` apply density tokens through `<body data-fc-density>`.
+`Typography`, `FcTypoToken`, `TypographyStyle`, and their Fluent mappings are supplied by the
+`Hexalith.FrontComposer.Contracts.UI` package/assembly while retaining the public
+`Hexalith.FrontComposer.Contracts.Rendering` namespace. The nine roles and
+`TypographyMappingVersion = "3.1.0"` remain unchanged. `DensityLevel` and `DensitySurface` remain
+kernel-safe and apply density tokens through `<body data-fc-density>`.
 
 ### UX-DR2 - Semantic Status Slots
 

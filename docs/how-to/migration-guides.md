@@ -5,7 +5,7 @@ genre: how-to
 audience: adopter
 ownerStory: 9-5-diataxis-documentation-site
 status: published
-reviewed: 2026-05-10
+reviewed: 2026-07-11
 uid: frontcomposer.how-to.migration-guides
 slug: how-to/migration-guides/
 fromVersion: "9.1.0"
@@ -40,3 +40,8 @@ Analyzer/code-fix availability: no automatic code fix is shipped for this v1 pag
 Skill-corpus evidence: `docs/skills/frontcomposer/migration/versioned-corpus-rules.md` remains the producer input.
 
 Related links: [CLI inspect and migrate](../reference/cli.md), [diagnostics](../reference/diagnostics/index.md), and [migration stubs](../migrations/9.1-to-9.2.md).
+
+For the Contracts/Contracts.UI package split, runtime/testing ownership moves, and composed-query
+migration, use the [FrontComposer 1.12 to 2.0 guide](../migrations/1.12-to-2.0.md). That major-version
+guide is manual: HFC0001 identifies flattened query usage, while package/namespace moves require an
+explicit reference and source audit.

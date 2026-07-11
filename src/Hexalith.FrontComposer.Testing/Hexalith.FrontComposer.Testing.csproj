@@ -9,7 +9,6 @@
     <RepositoryUrl>https://github.com/Hexalith/Hexalith.FrontComposer</RepositoryUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <EnablePackageValidation>false</EnablePackageValidation>
     <!-- NU5104: this package intentionally ships against bUnit, which is currently published
          only as a prerelease (2.8.x-preview). A stable Testing package referencing a prerelease
          dependency is by design, so the stable-with-prerelease warning is suppressed. -->

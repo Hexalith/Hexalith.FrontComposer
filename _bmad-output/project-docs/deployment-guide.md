@@ -6,6 +6,12 @@
 
 FrontComposer is a library/tooling product. Its release artifacts are **NuGet packages** (`.nupkg`) + **symbol packages** (`.snupkg`) published to nuget.org, plus a GitHub Release carrying those packages and an advisory **release-evidence** bundle. The expected package set is pinned in [eng/release-package-inventory.json](eng/release-package-inventory.json) and verified during release.
 
+The explicit package set contains `Cli`, `Contracts`, `Contracts.UI`, `Mcp`, `Schema`, `Shell`,
+`SourceTools`, and `Testing`; every package requires a symbol package. `AppHost` and the combined `UI`
+host are explicit non-package exceptions. The Contracts.UI/ownership split is binary-breaking from
+`v1.12.0`, so the Release Owner approved `2.0.0`; the release commit range must carry a Conventional
+Commit breaking-change signal. See the published 1.12-to-2.0 migration guide.
+
 > **Current vs FR24 target (REL-1, 2026-07-05).** The live pipeline uses the deliberate 2026-07-03
 > **auto-publish-from-`main`** model. REL-1 added an **advisory FR24 evidence layer** (test-results,
 > inventory, SBOM, checksums, sealed manifest, advisory readiness) in [.github/workflows/release.yml](.github/workflows/release.yml)
@@ -81,6 +87,10 @@ Signing (`NUGET_SIGNING_CERTIFICATE_*`), dry-run/approval (`RELEASE_DRY_RUN`, `R
 ## Consuming the packages
 
 Downstream apps add the FrontComposer NuGet packages, annotate domain types with `[Projection]`/`[Command]`, and call `AddHexalithFrontComposerQuickstart()` + `AddHexalithDomain<TMarker>()` + `AddHexalithEventStore(...)` (see [architecture.md](./architecture.md) §4). To stand up the MCP endpoint, register the fail-closed gates and call `AddFrontComposerMcp(...)` + `MapFrontComposerMcp()` (see [api-contracts.md](./api-contracts.md) §2).
+
+UI/rendering adopters reference `Hexalith.FrontComposer.Contracts.UI`; kernel-only contract or analyzer
+consumers do not. Fluent UI v5 and bUnit remain prerelease dependencies. Scoped NU5104 suppressions
+record that deliberate posture but do not make stable-on-prerelease dependency resolution risk-free.
 
 ## Pre-release checklist
 

@@ -64,12 +64,13 @@ public sealed class PackageBoundaryTests {
         string root = FindRepoRoot();
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-testing-clean-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-testing-consumer-" + Guid.NewGuid().ToString("N"));
-        string packageVersion = "0.2.0-review." + Guid.NewGuid().ToString("N")[..8];
+        string packageVersion = "2.0.0-review." + Guid.NewGuid().ToString("N")[..8];
         string fallbackPackages = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         _ = Directory.CreateDirectory(packageOutput);
         _ = Directory.CreateDirectory(consumer);
 
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
 
@@ -110,6 +111,7 @@ public sealed class PackageBoundaryTests {
         await File.WriteAllTextAsync(Path.Combine(consumer, "ConsumerSmokeTests.cs"), """
 using Bunit;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Testing;
 using Microsoft.Extensions.DependencyInjection;
@@ -125,6 +127,7 @@ public sealed class ConsumerSmokeTests
         ICommandService service = context.Services.GetRequiredService<ICommandService>();
         IStorageService storage = context.Services.GetRequiredService<IStorageService>();
         Assert.IsType<InMemoryStorageService>(storage);
+        Assert.Equal(Microsoft.FluentUI.AspNetCore.Components.TextTag.Span, Typography.Body.Tag);
         await storage.SetAsync("smoke", "stored", Xunit.TestContext.Current.CancellationToken);
         Assert.Equal("stored", await storage.GetAsync<string>("smoke", Xunit.TestContext.Current.CancellationToken));
         await service.DispatchAsync(new SmokeCommand { Name = "demo" }, Xunit.TestContext.Current.CancellationToken);
@@ -141,8 +144,14 @@ public sealed class ConsumerSmokeTests
         await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-m:1", "/nr:false").ConfigureAwait(true);
 
         string assets = await File.ReadAllTextAsync(Path.Combine(consumer, "obj", "project.assets.json"), TestContext.Current.CancellationToken).ConfigureAwait(true);
+        assets.ShouldContain($"\"Hexalith.FrontComposer.Contracts/{packageVersion}\"");
+        assets.ShouldContain($"\"Hexalith.FrontComposer.Contracts.UI/{packageVersion}\"");
+        assets.ShouldContain($"\"Hexalith.FrontComposer.Shell/{packageVersion}\"");
+        assets.ShouldContain($"\"Hexalith.FrontComposer.Testing/{packageVersion}\"");
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components/" + FluentV5Version + "\"");
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components/4.");
+        assets.ShouldNotContain("\"type\": \"project\"");
+        assets.ShouldNotContain(root.Replace('\\', '/'));
     }
 
     private static string ReadNuspec(ZipArchive archive) {

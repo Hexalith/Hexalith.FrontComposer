@@ -4,7 +4,7 @@
 
 ## Goal
 
-Epic 11 closes the remaining architecture-review risks before v1.0 without reopening completed product epics. It hardens runtime reliability, security, realtime and MCP behavior, visual governance, adopter testing, route activation, package boundaries, shell layering, logging, and enforcement so FrontComposer is safe to consume and release.
+Epic 11 closes the remaining architecture-review risks without reopening completed product epics. It hardens runtime reliability, security, realtime and MCP behavior, visual governance, adopter testing, route activation, package boundaries, shell layering, logging, and enforcement so FrontComposer is safe to consume and release.
 
 ## Stories
 
@@ -42,11 +42,11 @@ Visual fixes require guard-backed evidence for dead scoped CSS, unlinked stylesh
 
 The canonical generated command route is `/commands/{BoundedContext}/{CommandTypeName}`. Palette entries, empty-state CTAs, and generated command pages must converge on it. Module tabs use `/{module}/{tab}`, with projection flyouts secondary to the module workspace.
 
-The approved package target keeps `Contracts` as a netstandard2.0-clean kernel and moves Blazor/Fluent rendering contracts to net10-only `Contracts.UI`. `SourceTools` continues to reference only the kernel; runtime and Testing implementations must live in their owning packages. Public moves require package-consumer, public-API, documentation, release-inventory, and deprecation evidence.
+The implemented package target keeps both `Contracts` TFMs UI-clean and places Blazor/Fluent rendering contracts in packable net10-only `Contracts.UI`. `SourceTools` remains a packable netstandard2.0 analyzer referencing only the kernel. Shell owns runtime options, registries, and Fluxor actions; Testing owns `InMemoryStorageService`. Public moves require package-consumer, public-API, documentation, release-inventory, and deprecation evidence.
 
 MCP cross-request state uses a singleton state store behind a scoped facade; it must not capture scoped admission services. EventStore token acquisition must work safely in interactive circuits with expiry and sign-out eviction. Projection realtime must recover beyond the default retry ladder, restart after closed connections, and align disposal/cache synchronization. Fail-closed and hot-path logging uses sanitized source-generated events.
 
-`QueryRequest` decomposition must use the HFC0001 migration path and preserve or explicitly version serialized shapes. Shell boundaries place telemetry cross-cutting, connection/polling workers in infrastructure, and route/label helpers outside render components; duplicated scope, snapshot, fatal-exception, hydration, JSON, and literal-escaping behavior should be consolidated with focused equivalence tests.
+`ProjectionQuery` now owns canonical query criteria and is composed through `QueryRequest.Create`; HFC0001/CS0618 preserves the v1.12 flattened source/deconstruction surface and flat JSON through the `2.0.0` transition. Shell boundaries place telemetry cross-cutting, connection/polling workers in infrastructure, and route/label helpers outside render components; duplicated scope, snapshot, fatal-exception, hydration, JSON, and literal-escaping behavior should be consolidated with focused equivalence tests.
 
 ## UX & Interaction Patterns
 
@@ -56,4 +56,4 @@ Realtime and command surfaces must expose reconnecting, fallback, degraded, pend
 
 Story creation follows the Epic 11 implementation-order table, not heading or numeric order: 11.1, 11.2, 11.4, 11.3, 11.5, 11.6, 11.7; then 11.9/11.15/11.16; then the split children of 11.17, 11.18, and 11.19; finally 11.11-11.14.
 
-Story 11.0 and the module-tab IA gate are resolved prerequisites for 11.7. Story 11.8 is resolved, but 11.11-11.14 remain deliberately last and must implement the approved package-boundary plan together with compatibility and public-contract evidence. Stories 11.17, 11.18, and 11.19 are decomposition parents and must be split into independently reviewable children with named validation lanes before development.
+Story 11.0 and the module-tab IA gate are resolved prerequisites for 11.7. Story 11.8 approved the split; 11.11 implemented Contracts.UI but remains status-blocked on Story 11.14 evidence, 11.12 is done, and 11.13 is in review. Story 11.14 owns the explicit inventory, migration/docs trace, `v1.12.0` compatibility baseline, and approved `2.0.0` posture; it does not recreate the assembly changes. Stories 11.17, 11.18, and 11.19 remain decomposition parents requiring independently reviewable children.

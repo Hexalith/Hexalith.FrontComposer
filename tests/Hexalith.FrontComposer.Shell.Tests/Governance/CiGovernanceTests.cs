@@ -339,6 +339,7 @@ public sealed class CiGovernanceTests {
 
         inventory.ShouldContain("Hexalith.FrontComposer.Cli");
         inventory.ShouldContain("Hexalith.FrontComposer.Contracts");
+        inventory.ShouldContain("Hexalith.FrontComposer.Contracts.UI");
         inventory.ShouldContain("Hexalith.FrontComposer.Mcp");
         inventory.ShouldContain("Hexalith.FrontComposer.Schema");
         inventory.ShouldContain("Hexalith.FrontComposer.Shell");

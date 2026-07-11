@@ -32,7 +32,7 @@ Senior/adversarial code review is part of this team's workflow — see [ONBOARDI
 1. **`.slnx` only** — never create/use `.sln`.
 2. **Centralized package versions** — never add `Version=` to a `.csproj`; edit [Directory.Packages.props](Directory.Packages.props).
 3. **`TreatWarningsAsErrors=true`** — analyzer/style warnings break the build; fix them, don't suppress without justification.
-4. **Contracts & SourceTools multi-target** `net10.0` + `netstandard2.0`. Guard any FluentUI-dependent code with `#if NET10_0_OR_GREATER` (e.g. `Typography.cs`) so the analyzer-host build stays clean.
+4. **Keep the package boundary downward.** Contracts targets `net10.0;netstandard2.0` and both faces are UI-clean; Contracts.UI is net10-only; SourceTools is netstandard2.0 and references only Contracts. Put runtime options/actions/registries in Shell and adopter fakes in Testing.
 5. **ULIDs, not GUIDs** for `messageId`/`correlationId` (`IUlidFactory`).
 6. **Don't hand-edit generated code.** Change the generator or the annotated domain types. The generated-output path (`obj/{Config}/{TFM}/generated/HexalithFrontComposer/`) is a **public contract** — validate in Debug *and* Release.
 7. **Submodules:** root-declared under `references/` only; never recurse into nested submodules; **never modify submodule files without explicit approval** (changes propagate across the Hexalith ecosystem).
@@ -49,7 +49,7 @@ From [CONTRIBUTING.md](CONTRIBUTING.md) and the generator design:
 - Density thresholds (≤1 Inline / 2–4 CompactInline / ≥5 FullPage) and baseline identity formation are **spec-locked** — change only with a story/ADR.
 - New diagnostics: declare a `public const string` in `FcDiagnosticIds` (Contracts) + a `DiagnosticDescriptor` (SourceTools) with full XML docs; follow the `HFC1xxx` (build) / `HFC2xxx` (runtime) bands. See the full catalog in [api-contracts.md](./api-contracts.md) §1.4.
 - `Debugger.Launch()` is contributor-local only — never in `src/**/*.cs` (source-scanned by the IDE-parity suite). Remove before review.
-- Don't broaden the Roslyn package pin (`Microsoft.CodeAnalysis.CSharp` 5.3.0) outside a story that owns that compatibility work.
+- Don't broaden the Roslyn package pin (`Microsoft.CodeAnalysis.CSharp` 5.6.0) outside a story that owns that compatibility work.
 
 ## Testing requirements
 
@@ -58,7 +58,7 @@ From [CONTRIBUTING.md](CONTRIBUTING.md) and the generator design:
 - Three-part test names `Subject_Scenario_Expectation`.
 - Update `.verified.txt` snapshots **intentionally** (CI sets `DiffEngine_Disabled=true`).
 - Generator tests go through `CompilationHelper.CreateCompilation()`.
-- **Public-API baseline:** update `PublicAPI.Shipped.txt` (Testing library) intentionally — `PackageBoundaryTests` enforces it.
+- **Public-API baselines:** update Contracts.UI and Testing `PublicAPI.Shipped.txt` files intentionally; Shell's focused FC-TBL baseline remains separately governed.
 - **NFR17 tripwire:** new `IStorageService.SetAsync` call sites in `Shell/State/` require updating the tripwire whitelist + the story compliance matrix.
 - **Pacts:** regenerate and commit intentional contract changes — CI fails on a stale pact diff (`tests/.../Shell.Tests/Pact`).
 - Benchmarks live only in the separate `Shell.Tests.Bench` exe.

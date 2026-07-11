@@ -66,13 +66,13 @@
         ".github/workflows/release.yml": "04adc9b92bac844bbc444ab31cbcf957e770d32a3de009fb2c13145990585a07",
         ".releaserc.json": "4e0a6288e9391bfcf27c4881f74eb51fbe25a42729a261ed9b8e656423450a23",
         "Directory.Packages.props": "0bd7e8e3e6cb6fcad019fbc070a86be84c5d48078ad75ba8b534b2440a5daa7d",
-        "eng/release-package-inventory.json": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd"
+        "eng/release-package-inventory.json": "401023c2e71d46f22d911e3ac8a125c3d7ee1a0a5ebff35dbb0df4f364e0f329"
       },
       "run_id": "42",
       "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "seal": {
         "algorithm": "sha256",
-        "hash": "58b4ecbbbb3357f784ab8a856368bc714f42ee350b5bb912d0bee8a2087a1cf4",
+        "hash": "843ebab75b2ffeaf8a24d352c027373f682a1eb54627e8a35b6ec9110375ef5a",
         "sealed_at": "2026-05-19T00:00:00+00:00"
       },
       "tag": "v1.2.3",
@@ -95,7 +95,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -116,7 +116,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "7eab6ec93d720598c9f4c40ba86d5cc7855f4c1d3f233f101672358e35d77ce0",
+            "hash": "e4aadaed80f0d840c4fdb7af48127a0b22749b1a923ef8011c556a95686c4a4f",
             "sealed_at": "2026-05-17T00:00:00+00:00"
           }
         }
@@ -152,7 +152,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -176,7 +176,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "7eab6ec93d720598c9f4c40ba86d5cc7855f4c1d3f233f101672358e35d77ce0",
+            "hash": "e4aadaed80f0d840c4fdb7af48127a0b22749b1a923ef8011c556a95686c4a4f",
             "sealed_at": "2026-05-17T00:00:00+00:00"
           }
         }
@@ -433,7 +433,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
             "approved_at": "2025-12-01T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -593,7 +593,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -631,7 +631,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -703,7 +703,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -779,7 +779,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
             "approved_at": "2026-01-01T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -802,7 +802,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
             "approved_at": "2024-01-01T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -887,7 +887,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Cli.9.9.9.nupkg",
-            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",

@@ -18,9 +18,9 @@
 | | |
 |---|---|
 | **Solution** | [Hexalith.FrontComposer.slnx](Hexalith.FrontComposer.slnx) (XML `.slnx`; never `.sln`) |
-| **Tech stack** | .NET 10 · Blazor + FluentUI v5 (`5.0.0-rc.3-26138.1`) · Fluxor 6.9.0 · Roslyn 5.3.0 generator · MCP SDK 1.3.0 · NUlid · SignalR · OIDC |
+| **Tech stack** | .NET 10 · Blazor + FluentUI v5 (`5.0.0-rc.4-26180.1`) · Fluxor 6.9.0 · Roslyn 5.6.0 generator · MCP SDK 1.4.0 · NUlid · SignalR · OIDC |
 | **Packages** | Centralized in [Directory.Packages.props](Directory.Packages.props) (`TreatWarningsAsErrors=true`) |
-| **Source projects** | Contracts · Schema · SourceTools · Shell · Mcp · Cli · Testing (7) |
+| **Source projects** | Contracts · Contracts.UI · Schema · SourceTools · Shell · Mcp · Cli · Testing packages + AppHost/UI hosts (10) |
 | **Tests** | xUnit **v3**, Shouldly, NSubstitute, bUnit, Verify, FsCheck, PactNet, BenchmarkDotNet + Playwright e2e |
 | **Generator entry** | `src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs` |
 | **Shell entry** | `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs` → `AddHexalithFrontComposerQuickstart()` |
@@ -32,7 +32,7 @@
 
 ## Generated documentation
 
-- [Project Overview](./project-overview.md) — what it is, the core loop, tech stack, the 7 projects
+- [Project Overview](./project-overview.md) — what it is, the core loop, tech stack, and source projects
 - [Architecture](./architecture.md) — layering, the generation pipeline, runtime composition, MCP boundary, invariants
 - [Source Tree Analysis](./source-tree-analysis.md) — annotated directory tree, critical folders, entry points
 - [Component Inventory](./component-inventory.md) — Blazor component catalog + per-project public surface

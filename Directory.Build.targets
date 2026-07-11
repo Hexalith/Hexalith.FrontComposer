@@ -2,12 +2,12 @@
 
   <PropertyGroup>
     <EnableFrontComposerPackageValidation Condition="'$(EnableFrontComposerPackageValidation)' == ''">false</EnableFrontComposerPackageValidation>
-    <FrontComposerPackageValidationBaselineVersion Condition="'$(FrontComposerPackageValidationBaselineVersion)' == ''">0.1.0</FrontComposerPackageValidationBaselineVersion>
+    <FrontComposerPackageValidationBaselineVersion Condition="'$(FrontComposerPackageValidationBaselineVersion)' == ''">1.12.0</FrontComposerPackageValidationBaselineVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'">
     <EnablePackageValidation>true</EnablePackageValidation>
-    <PackageValidationBaselineVersion>$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>
+    <PackageValidationBaselineVersion Condition="'$(FrontComposerPackageValidationSkipBaseline)' != 'true'">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>
     <ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
     <PackageId>Hexalith.FrontComposer.Shell</PackageId>
     <IsTrimmable>true</IsTrimmable>
     <!-- NU5104: Shell intentionally ships against the pinned Fluent UI v5 RC and System.Reactive RC

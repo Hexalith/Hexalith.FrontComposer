@@ -38,36 +38,39 @@ The `frontcomposer` **CLI** (`Hexalith.FrontComposer.Cli`) lets you `inspect` th
 |---|---|---|---|
 | Runtime / SDK | .NET | 10 (SDK `10.0.301`, `rollForward: latestPatch`) | pinned in [global.json](global.json) |
 | Language | C# `latest` | — | `Nullable`, `ImplicitUsings` enabled; **`TreatWarningsAsErrors=true`** ([Directory.Build.props](Directory.Build.props)) |
-| Target frameworks | `net10.0`; `net10.0` + `netstandard2.0` | — | Contracts & SourceTools multi-target so the Roslyn analyzer host (netstandard2.0) can reference contracts |
-| UI | Microsoft.FluentUI.AspNetCore.Components (FluentUI v5) | `5.0.0-rc.3-26138.1` | exact pin (ADR-003); v5 RC |
+| Target frameworks | `net10.0`; `net10.0` + `netstandard2.0`; `netstandard2.0` | — | Contracts is dual-TFM and UI-clean; Contracts.UI/runtime are net10; SourceTools is netstandard2.0 |
+| UI | Microsoft.FluentUI.AspNetCore.Components (FluentUI v5) | `5.0.0-rc.4-26180.1` | exact pin (ADR-003); v5 RC |
 | State management | Fluxor.Blazor.Web | `6.9.0` | single-writer discipline per state slice |
-| Source generation | Microsoft.CodeAnalysis.CSharp (Roslyn) | `5.3.0` | incremental generator on netstandard2.0 |
-| MCP | ModelContextProtocol.AspNetCore | `1.3.0` | HTTP streamable transport |
+| Source generation | Microsoft.CodeAnalysis.CSharp (Roslyn) | `5.6.0` | incremental generator on netstandard2.0 |
+| MCP | ModelContextProtocol.AspNetCore | `1.4.0` | HTTP streamable transport |
 | Identifiers | NUlid (ULID) | `1.7.3` | **ULIDs, never GUIDs**, for `messageId` / `correlationId` |
-| Real-time | Microsoft.AspNetCore.SignalR.Client | `10.0.8` | EventStore projection subscriptions |
-| Auth | Microsoft.AspNetCore.Authentication.OpenIdConnect | `10.0.8` | host-owned OIDC |
-| Reactive | System.Reactive | `6.1.0` | badge-count producer/consumer isolation |
-| Orchestration | Aspire.Hosting.AppHost | `13.4.0` | local topology |
-| Testing | xUnit **v3** `3.2.2`, Shouldly `4.3.0`, NSubstitute `5.3.0`, bUnit `2.7.2`, Verify `31.19.0`, FsCheck.Xunit.v3 `3.3.3`, PactNet `5.0.1`, BenchmarkDotNet `0.15.8`, coverlet `10.0.1` | — | see [development-guide.md](./development-guide.md) |
+| Real-time | Microsoft.AspNetCore.SignalR.Client | `10.0.9` | EventStore projection subscriptions |
+| Auth | Microsoft.AspNetCore.Authentication.OpenIdConnect | `10.0.9` | host-owned OIDC |
+| Reactive | System.Reactive | `7.0.0-rc.1` | badge-count producer/consumer isolation |
+| Orchestration | Aspire.Hosting.AppHost | `13.4.6` | local topology |
+| Testing | xUnit **v3** `3.2.2`, Shouldly `4.3.0`, NSubstitute `6.0.0-rc.1`, bUnit `2.8.4-preview`, Verify `31.22.0`, FsCheck.Xunit.v3 `3.3.3`, PactNet `5.0.1`, BenchmarkDotNet `0.15.8`, coverlet `10.0.1` | — | see [development-guide.md](./development-guide.md) |
 | Packages | Centralized | — | [Directory.Packages.props](Directory.Packages.props), `ManagePackageVersionsCentrally=true` |
 
 ## Repository classification
 
-- **Repository type:** Monolith — one cohesive .NET solution ([Hexalith.FrontComposer.slnx](Hexalith.FrontComposer.slnx)) with 7 source projects, 7 test projects, and 1 sample.
+- **Repository type:** Monolith — one cohesive .NET solution ([Hexalith.FrontComposer.slnx](Hexalith.FrontComposer.slnx)) with 10 source projects, 8 test projects, samples, and Playwright e2e tests.
 - **Primary project type:** `library` (NuGet-published .NET framework) with **source-generator**, **Blazor-UI**, **MCP-server**, and **CLI** facets.
 - **Architecture style:** Source-generation-driven, layered: a leaf *contracts* kernel → a *generator* that emits code → a *runtime shell* + *MCP adapter* that consume the generated artifacts; schema **fingerprints** bind producer (generator) and consumers (shell, MCP, CLI) together.
 
-## The 7 source projects
+## The 10 source projects
 
 | Project | Role | Type / TFM |
 |---|---|---|
-| `Hexalith.FrontComposer.Contracts` | Shared kernel: attributes, command/query/lifecycle interfaces, rendering model, `DomainManifest`, MCP descriptors, schema fingerprint/baseline/delta types, diagnostic IDs | library, `net10.0`+`netstandard2.0` |
+| `Hexalith.FrontComposer.Contracts` | UI-clean kernel: attributes, communication/lifecycle interfaces, UI-neutral rendering seams, `DomainManifest`, MCP/schema/diagnostic contracts | library, `net10.0`+`netstandard2.0` |
+| `Hexalith.FrontComposer.Contracts.UI` | Blazor/Fluent typography, render-fragment customization contexts, and keyboard shortcut contracts under retained namespaces | library, `net10.0` |
 | `Hexalith.FrontComposer.Schema` | Schema family names + stateless `SchemaMigrationDeltaAnalyzer` (compat decisions) | library |
 | `Hexalith.FrontComposer.SourceTools` | The single Roslyn incremental generator (`FrontComposerGenerator`) + drift detection | analyzer, `netstandard2.0` |
 | `Hexalith.FrontComposer.Shell` | The Blazor front-shell UI library (layout, nav, DataGrid, dialogs, Fluxor state, EventStore clients) | Blazor library, `net10.0` |
 | `Hexalith.FrontComposer.Mcp` | ASP.NET Core MCP server exposing commands/projections/docs to AI agents | web library, `net10.0` |
 | `Hexalith.FrontComposer.Cli` | `frontcomposer` dotnet tool: `inspect` + `migrate` | tool, `net10.0` |
 | `Hexalith.FrontComposer.Testing` | Adopter bUnit test host + deterministic fakes | library, `net10.0` |
+| `Hexalith.FrontComposer.AppHost` | Local Aspire orchestration host | executable, non-packable |
+| `Hexalith.FrontComposer.UI` | Combined module UI/container host | executable, non-packable |
 
 ## Documentation map
 

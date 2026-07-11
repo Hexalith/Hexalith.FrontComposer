@@ -5,12 +5,12 @@ story: 14
 story_key: 11-14-update-architecture-context-ux-and-package-compat-docs
 source_epics: _bmad-output/planning-artifacts/epics.md
 baseline_commit: f1d8d73edc7fe69cf3cc3220ec5b29f144c55c37
-status: ready-for-dev
+status: review
 ---
 
 # Story 11.14: Update Architecture, Project Context, UX Trace, and Package Compatibility Docs
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -28,55 +28,55 @@ so that adopters understand the new package boundaries and compatibility story.
 
 ## Tasks / Subtasks
 
-- [ ] Reconcile the implemented 11.11-11.13 state before changing documentation. (AC: 1, 2)
-  - [ ] Read the Story 11.8 compatibility contract and the complete Story 11.11, 11.12, and 11.13 specs before editing; use the live source and package tests as current-state evidence rather than copying their planned wording.
-  - [ ] Confirm the final project/package names, target frameworks, project references, moved public types, retained kernel seams, and `QueryRequest` compatibility behavior against the current tree.
-  - [ ] Record the current status mismatch honestly: 11.11 is implemented but blocked by the Story-11.14-owned release inventory omission, 11.12 is done, and 11.13 is in review. Do not mark another story done or rewrite its review evidence outside its workflow.
-  - [ ] Preserve the existing unrelated modification to `_bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`; do not absorb it into this story.
+- [x] Reconcile the implemented 11.11-11.13 state before changing documentation. (AC: 1, 2)
+  - [x] Read the Story 11.8 compatibility contract and the complete Story 11.11, 11.12, and 11.13 specs before editing; use the live source and package tests as current-state evidence rather than copying their planned wording.
+  - [x] Confirm the final project/package names, target frameworks, project references, moved public types, retained kernel seams, and `QueryRequest` compatibility behavior against the current tree.
+  - [x] Record the current status mismatch honestly: 11.11 is implemented but blocked by the Story-11.14-owned release inventory omission, 11.12 is done, and 11.13 is in review. Do not mark another story done or rewrite its review evidence outside its workflow.
+  - [x] Preserve the existing unrelated modification to `_bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`; do not absorb it into this story.
 
-- [ ] Repair the explicit release package inventory and its package-only evidence. (AC: 1)
-  - [ ] Add `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj` / `Hexalith.FrontComposer.Contracts.UI` to `eng/release-package-inventory.json` as `packable: true` with `symbol_required: true`, adjacent to Contracts. Keep semantic-release as the version source and add no inline package version.
-  - [ ] Update `CiGovernanceTests.PackageInventory_IsExplicitLockstepAndReviewable` to require `Hexalith.FrontComposer.Contracts.UI` explicitly while preserving dynamic discovery, unexpected-project rejection, symbols, and release-model assertions.
-  - [ ] Update `tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs` so its clean local-feed consumer packs/restores Contracts.UI before Shell and Testing and verifies the expected dependency/assets graph without repository-relative project references.
-  - [ ] Audit release-definition/package-set hash fixtures under `tests/ci-governance/fixtures/`; update only values that intentionally represent the live inventory hash, then reseal/recompute dependent synthetic fixture fields using the repository helper rather than hand-waving mismatches.
-  - [ ] Prove `eng/pack_release_packages.py` now includes Contracts.UI and produces its `.nupkg` and required `.snupkg`; do not publish packages from this story.
+- [x] Repair the explicit release package inventory and its package-only evidence. (AC: 1)
+  - [x] Add `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj` / `Hexalith.FrontComposer.Contracts.UI` to `eng/release-package-inventory.json` as `packable: true` with `symbol_required: true`, adjacent to Contracts. Keep semantic-release as the version source and add no inline package version.
+  - [x] Update `CiGovernanceTests.PackageInventory_IsExplicitLockstepAndReviewable` to require `Hexalith.FrontComposer.Contracts.UI` explicitly while preserving dynamic discovery, unexpected-project rejection, symbols, and release-model assertions.
+  - [x] Update `tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs` so its clean local-feed consumer packs/restores Contracts.UI before Shell and Testing and verifies the expected dependency/assets graph without repository-relative project references.
+  - [x] Audit release-definition/package-set hash fixtures under `tests/ci-governance/fixtures/`; update only values that intentionally represent the live inventory hash, then reseal/recompute dependent synthetic fixture fields using the repository helper rather than hand-waving mismatches.
+  - [x] Prove `eng/pack_release_packages.py` now includes Contracts.UI and produces its `.nupkg` and required `.snupkg`; do not publish packages from this story.
 
-- [ ] Update canonical planning and generated project knowledge to the observed package boundary. (AC: 1, 2)
-  - [ ] Update `_bmad-output/project-context.md`: remove future/planned split language; record the UI-clean dual-TFM Contracts kernel, packable net10 Contracts.UI package, packable netstandard SourceTools analyzer, current direct references, 11.12 ownership moves, composed query migration, public-API baselines, and actual package inventory. Reconcile stale package pins only from current centralized props.
-  - [ ] Update `_bmad-output/planning-artifacts/architecture.md`: make Layer 0A and dependency direction current, add the 11.12 ownership boundary and 11.13 `ProjectionQuery`/`QueryRequest` composition, and identify 11.14 as documentation/inventory evidence rather than future assembly implementation.
-  - [ ] Update `_bmad-output/project-docs/architecture.md`, `source-tree-analysis.md`, `component-inventory.md`, `data-models.md`, and `contribution-guide.md` wherever they still place UI/runtime/testing types in Contracts or describe the split as future. Update `project-overview.md`, `deployment-guide.md`, or `api-contracts.md` only if their current-state claims are demonstrably stale.
-  - [ ] Regenerate or synchronize `_bmad-output/implementation-artifacts/epic-11-context.md` if changed planning facts make its current-state summary stale. Keep completed story/proposal artifacts as provenance unless they incorrectly claim to be current guidance.
-  - [ ] Do not put generated planning/reference material under `docs/`; `_bmad-output/` remains the generated planning/knowledge home.
+- [x] Update canonical planning and generated project knowledge to the observed package boundary. (AC: 1, 2)
+  - [x] Update `_bmad-output/project-context.md`: remove future/planned split language; record the UI-clean dual-TFM Contracts kernel, packable net10 Contracts.UI package, packable netstandard SourceTools analyzer, current direct references, 11.12 ownership moves, composed query migration, public-API baselines, and actual package inventory. Reconcile stale package pins only from current centralized props.
+  - [x] Update `_bmad-output/planning-artifacts/architecture.md`: make Layer 0A and dependency direction current, add the 11.12 ownership boundary and 11.13 `ProjectionQuery`/`QueryRequest` composition, and identify 11.14 as documentation/inventory evidence rather than future assembly implementation.
+  - [x] Update `_bmad-output/project-docs/architecture.md`, `source-tree-analysis.md`, `component-inventory.md`, `data-models.md`, and `contribution-guide.md` wherever they still place UI/runtime/testing types in Contracts or describe the split as future. Update `project-overview.md`, `deployment-guide.md`, or `api-contracts.md` only if their current-state claims are demonstrably stale.
+  - [x] Regenerate or synchronize `_bmad-output/implementation-artifacts/epic-11-context.md` if changed planning facts make its current-state summary stale. Keep completed story/proposal artifacts as provenance unless they incorrectly claim to be current guidance.
+  - [x] Do not put generated planning/reference material under `docs/`; `_bmad-output/` remains the generated planning/knowledge home.
 
-- [ ] Update the UX-DR1 trace without changing visual behavior. (AC: 1)
-  - [ ] Update `_bmad-output/planning-artifacts/ux-design.md` so UX-DR1 names `Hexalith.FrontComposer.Contracts.UI` as the package/assembly home for `Typography`, `FcTypoToken`, and related Fluent mappings while retaining their existing public namespaces.
-  - [ ] Preserve the nine typography roles, `TypographyMappingVersion = "3.1.0"`, Fluent v5 text size/weight/tag semantics, density behavior, `--fc-spacing-unit`, and all accessibility/theme rules unless live 11.11 evidence proves a deliberate change.
-  - [ ] Update `_bmad-output/planning-artifacts/ux-design-detailed-2026-07-05.md` only where ownership/package trace is useful; record a no-update rationale for `ux-experience-2026-07-05.md` if its interaction behavior remains correct.
+- [x] Update the UX-DR1 trace without changing visual behavior. (AC: 1)
+  - [x] Update `_bmad-output/planning-artifacts/ux-design.md` so UX-DR1 names `Hexalith.FrontComposer.Contracts.UI` as the package/assembly home for `Typography`, `FcTypoToken`, and related Fluent mappings while retaining their existing public namespaces.
+  - [x] Preserve the nine typography roles, `TypographyMappingVersion = "3.1.0"`, Fluent v5 text size/weight/tag semantics, density behavior, `--fc-spacing-unit`, and all accessibility/theme rules unless live 11.11 evidence proves a deliberate change.
+  - [x] Update `_bmad-output/planning-artifacts/ux-design-detailed-2026-07-05.md` only where ownership/package trace is useful; record a no-update rationale for `ux-experience-2026-07-05.md` if its interaction behavior remains correct.
 
-- [ ] Publish adopter-facing package and query migration guidance. (AC: 1, 2)
-  - [ ] Add a complete versioned migration page under `docs/migrations/` for the release-owner-approved edge (expected `1.12` to `2.0`, subject to the explicit version decision below). It must satisfy the repository's required headings: Affected Versions, Why This Changed, Old Code, New Code, Analyzer And Code Fix, and Skill Corpus Evidence.
-  - [ ] Include a complete old-to-new ownership table covering all 25 Story 11.12 moves plus the 11.11/11.13 surfaces. Name every identity and destination: unchanged rendering/shortcut FQNs now supplied by Contracts.UI; `InMemoryStorageService` in Testing; `FcShellOptions`, `FcShellDevModeOptions`, `CustomizationContractValidationMode`, and `InlinePopoverRegistry` in Shell; all 18 DataGrid actions and both expanded-row actions listed in the ownership map below; and `ProjectionQuery` composed through `QueryRequest.Create`.
-  - [ ] State compatibility precisely: adding the Contracts.UI reference preserves source namespaces for moved UI types, but their assembly identity move without type forwarding is binary-breaking; 11.12 namespace/assembly moves require source edits; HFC0001/CS0618 shims retain the v1.12 flattened query constructor/properties/deconstruction until the documented v2.0 removal; direct JSON stays flat with no `criteria` member.
-  - [ ] State the non-changes explicitly: no incidental change to `IQueryService`, Testing callback signatures, EventStore body/headers/cache behavior, MCP output/descriptors, schema fingerprints, CLI JSON, generated routes/output paths, or Pact wire shape.
-  - [ ] Update `docs/migrations/index.md`, `docs/toc.yml`, and relevant how-to/index links; update `docs/concepts/source-generation-and-mcp-split.md` with the kernel/UI/analyzer/runtime dependency direction.
-  - [ ] Update `docs/skills/frontcomposer/setup/package-and-hosting.md` so agent setup chooses Contracts, Contracts.UI, Shell, Testing, SourceTools, and MCP by responsibility while preserving the MCP fail-closed gate instructions and skill-corpus front-matter/section contract.
-  - [ ] Update `docs/reference/api/index.md` if it does not expose the now-generated Contracts.UI API area. Do not hand-edit generated `docs/reference/api/*.yml` or `docs/_site/**`; regenerate API metadata through the documented DocFX flow.
-  - [ ] Run the doc-drift sweep and record updated pages plus explicit no-update decisions for plausible but already-correct tutorials, references, contracts, and UX artifacts.
+- [x] Publish adopter-facing package and query migration guidance. (AC: 1, 2)
+  - [x] Add a complete versioned migration page under `docs/migrations/` for the release-owner-approved edge (expected `1.12` to `2.0`, subject to the explicit version decision below). It must satisfy the repository's required headings: Affected Versions, Why This Changed, Old Code, New Code, Analyzer And Code Fix, and Skill Corpus Evidence.
+  - [x] Include a complete old-to-new ownership table covering all 25 Story 11.12 moves plus the 11.11/11.13 surfaces. Name every identity and destination: unchanged rendering/shortcut FQNs now supplied by Contracts.UI; `InMemoryStorageService` in Testing; `FcShellOptions`, `FcShellDevModeOptions`, `CustomizationContractValidationMode`, and `InlinePopoverRegistry` in Shell; all 18 DataGrid actions and both expanded-row actions listed in the ownership map below; and `ProjectionQuery` composed through `QueryRequest.Create`.
+  - [x] State compatibility precisely: adding the Contracts.UI reference preserves source namespaces for moved UI types, but their assembly identity move without type forwarding is binary-breaking; 11.12 namespace/assembly moves require source edits; HFC0001/CS0618 shims retain the v1.12 flattened query constructor/properties/deconstruction until the documented v2.0 removal; direct JSON stays flat with no `criteria` member.
+  - [x] State the non-changes explicitly: no incidental change to `IQueryService`, Testing callback signatures, EventStore body/headers/cache behavior, MCP output/descriptors, schema fingerprints, CLI JSON, generated routes/output paths, or Pact wire shape.
+  - [x] Update `docs/migrations/index.md`, `docs/toc.yml`, and relevant how-to/index links; update `docs/concepts/source-generation-and-mcp-split.md` with the kernel/UI/analyzer/runtime dependency direction.
+  - [x] Update `docs/skills/frontcomposer/setup/package-and-hosting.md` so agent setup chooses Contracts, Contracts.UI, Shell, Testing, SourceTools, and MCP by responsibility while preserving the MCP fail-closed gate instructions and skill-corpus front-matter/section contract.
+  - [x] Update `docs/reference/api/index.md` if it does not expose the now-generated Contracts.UI API area. Do not hand-edit generated `docs/reference/api/*.yml` or `docs/_site/**`; regenerate API metadata through the documented DocFX flow.
+  - [x] Run the doc-drift sweep and record updated pages plus explicit no-update decisions for plausible but already-correct tutorials, references, contracts, and UX artifacts.
 
-- [ ] Resolve and evidence the release-version/release-note posture. (AC: 1)
-  - [ ] Reconcile the approved plan's stale “pre-v1.0” assumption with the actual latest stable tag and changelog (`v1.12.0`). Do not publish or describe the no-forwarder assembly moves as an ordinary backward-compatible minor release.
-  - [ ] Record Release Owner approval for the major-version posture (expected `2.0.0`) or an explicit documented alternative as a dated `approved` contract under `_bmad-output/contracts/` (either a signed amendment to the 11.8 compatibility plan or a dedicated release-version decision). Block release completion if that owner decision is absent; the dev agent must not self-approve it. The implementation/release commit range must contain a valid Conventional Commit breaking-change signal (`!` or `BREAKING CHANGE:`) so semantic-release can generate truthful release notes.
-  - [ ] Keep `CHANGELOG.md` semantic-release-owned. Do not hand-author a fake released section; supply durable checked-in migration/package guidance and verify the semantic-release dry-run classifies the change and generated notes as breaking.
-  - [ ] Document the intentional prerelease-dependency posture while Fluent UI v5 and bUnit remain prerelease. Do not present NU5104 suppression as proof that stable-on-prerelease dependencies are risk-free.
-  - [ ] Replace the stale shared `FrontComposerPackageValidationBaselineVersion` default of `0.1.0` with evidence against the actual latest stable baseline `1.12.0` for existing packages. Give first-release Contracts.UI a narrow project-specific no-baseline path with a named removal trigger after its first major release; do not disable validation globally. Update governance/package tests so completion fails if existing packages still validate against `0.1.0`, Contracts.UI tries to download a nonexistent baseline, or an intentional compatibility suppression is broad/untracked.
+- [x] Resolve and evidence the release-version/release-note posture. (AC: 1)
+  - [x] Reconcile the approved plan's stale “pre-v1.0” assumption with the actual latest stable tag and changelog (`v1.12.0`). Do not publish or describe the no-forwarder assembly moves as an ordinary backward-compatible minor release.
+  - [x] Record Release Owner approval for the major-version posture (expected `2.0.0`) or an explicit documented alternative as a dated `approved` contract under `_bmad-output/contracts/` (either a signed amendment to the 11.8 compatibility plan or a dedicated release-version decision). Block release completion if that owner decision is absent; the dev agent must not self-approve it. The implementation/release commit range must contain a valid Conventional Commit breaking-change signal (`!` or `BREAKING CHANGE:`) so semantic-release can generate truthful release notes.
+  - [x] Keep `CHANGELOG.md` semantic-release-owned. Do not hand-author a fake released section; supply durable checked-in migration/package guidance and verify the semantic-release dry-run classifies the change and generated notes as breaking.
+  - [x] Document the intentional prerelease-dependency posture while Fluent UI v5 and bUnit remain prerelease. Do not present NU5104 suppression as proof that stable-on-prerelease dependencies are risk-free.
+  - [x] Replace the stale shared `FrontComposerPackageValidationBaselineVersion` default of `0.1.0` with evidence against the actual latest stable baseline `1.12.0` for existing packages. Give first-release Contracts.UI a narrow project-specific no-baseline path with a named removal trigger after its first major release; do not disable validation globally. Update governance/package tests so completion fails if existing packages still validate against `0.1.0`, Contracts.UI tries to download a nonexistent baseline, or an intentional compatibility suppression is broad/untracked.
 
-- [ ] Validate package, docs, compatibility, and story evidence before review. (AC: 1, 2)
-  - [ ] Run the release inventory command and focused `CiGovernanceTests`; require a valid inventory that includes Contracts.UI.
-  - [ ] Run Release builds and focused tests for Contracts, Contracts.UI, SourceTools, Shell, and Testing. Reuse existing package/public-API/clean-consumer tests; do not duplicate 11.11-11.13 behavior tests.
-  - [ ] Pack the full explicit inventory at one non-published test version and build a clean external consumer that exercises kernel-only, UI, Shell/Testing, and canonical `ProjectionQuery` usage.
-  - [ ] Run `pwsh ./eng/validate-docs.ps1` with DocFX, metadata, snippets, links, diagnostic registry, and warnings-as-errors enabled. Verify generated API ownership shows Contracts.UI for typography/rendering/shortcut types and the canonical query surface.
-  - [ ] Run each affected/default test project individually with `DiffEngine_Disabled=true`, then run the Release `.slnx` build, `git diff --check`, and the story artifact validator. Use the `.slnx` for restore/build only, not solution-level `dotnet test`.
-  - [ ] Reconcile the story File List, documentation drift sweep, release evidence, and exact blockers against the actual diff before moving to review.
+- [x] Validate package, docs, compatibility, and story evidence before review. (AC: 1, 2)
+  - [x] Run the release inventory command and focused `CiGovernanceTests`; require a valid inventory that includes Contracts.UI.
+  - [x] Run Release builds and focused tests for Contracts, Contracts.UI, SourceTools, Shell, and Testing. Reuse existing package/public-API/clean-consumer tests; do not duplicate 11.11-11.13 behavior tests.
+  - [x] Pack the full explicit inventory at one non-published test version and build a clean external consumer that exercises kernel-only, UI, Shell/Testing, and canonical `ProjectionQuery` usage.
+  - [x] Run `pwsh ./eng/validate-docs.ps1` with DocFX, metadata, snippets, links, diagnostic registry, and warnings-as-errors enabled. Verify generated API ownership shows Contracts.UI for typography/rendering/shortcut types and the canonical query surface.
+  - [x] Run each affected/default test project individually with `DiffEngine_Disabled=true`, then run the Release `.slnx` build, `git diff --check`, and the story artifact validator. Use the `.slnx` for restore/build only, not solution-level `dotnet test`.
+  - [x] Reconcile the story File List, documentation drift sweep, release evidence, and exact blockers against the actual diff before moving to review.
 
 ## Dev Notes
 
@@ -282,17 +282,94 @@ GPT-5 Codex
 
 ### Debug Log References
 
+- 2026-07-11: Dev-story implementation confirmed the live Contracts/Contracts.UI/SourceTools/Shell/Testing ownership and composed `ProjectionQuery`/`QueryRequest` compatibility against source, project references, and public-API baselines. Story 11.11 remains blocked by its Story-11.14-owned inventory omission; 11.12 is done; 11.13 remains in review.
+- 2026-07-11: Added the missing Contracts.UI release-inventory row, explicit governance coverage, Testing clean-consumer coverage, and a narrow first-release package-validation no-baseline path while advancing existing-package validation to `1.12.0`. Resealed affected synthetic release fixtures through `eng/release_evidence.py`.
+- 2026-07-11: Red-phase inventory/baseline guards failed for the intended omissions, then passed after implementation. The explicit inventory validated; the full non-published `2.0.0-story.11.14` pack produced eight `.nupkg` and eight required `.snupkg` files including Contracts.UI; the clean Testing consumer restored Contracts, Contracts.UI, Shell, and Testing from packed packages without project assets.
+- 2026-07-11: HALT gate reached before versioned migration/release-note documentation: no dated `approved` Release Owner decision for the post-`v1.12.0` breaking assembly moves exists under `_bmad-output/contracts/`. The dev agent did not self-approve the expected `2.0.0` posture.
+- 2026-07-11: Administrator, acting as Release Owner, approved `2.0.0`; the decision is recorded in `_bmad-output/contracts/fc-2-0-release-version-decision-2026-07-11.md`. The versioned migration and package guidance were then published without editing semantic-release-owned `CHANGELOG.md`.
+- 2026-07-11: Package validation compared supported existing libraries with `1.12.0`. Contracts and Shell intentional assembly-binding breaks are limited to 113 exact ApiCompat rows mirrored one-for-one in the governed suppression ledger; Contracts.UI uses the named first-release no-baseline path. The .NET SDK's documented `PackAsTool` exception leaves CLI compatibility covered by inventory, symbol, install, and output gates.
+- 2026-07-11: Final validation passed: 3,990 tests across seven serialized projects, Release solution build with 0 warnings/errors, docs validation, inventory verification, clean package consumer, eight-package/eight-symbol pack at `2.0.0-story.11.14.final`, and `git diff --check`.
+- 2026-07-11: `semantic-release 25.0.5 --dry-run --no-ci` with the repository analyzer/notes plugins classified the breaking commit range as `major`, selected `2.0.0`, and generated a BREAKING CHANGES section; no tag, changelog, package publish, or GitHub release was created.
 - 2026-07-11: Create-story analysis loaded the BMAD workflow/customization/config, repository instructions, persistent project contexts, complete story source section, PRD/addendum, architecture, UX artifacts, Epic 11 context, Story 11.8 compatibility contract, Story 11.11-11.13 specs, release/package projects, inventory and governance tests, published migration/DocFX structure, recent Git history, and official .NET/NuGet/DocFX guidance.
 - 2026-07-11: Confirmed no canonical Story 11.14 file existed; sprint status key was `backlog`; Epic 11 was already `in-progress`.
 - 2026-07-11: Confirmed the live Contracts.UI project is packable and implemented, but the release inventory omits it. This is the exact blocking condition recorded by Story 11.11 and reproduced by inventory/governance analysis.
 - 2026-07-11: Confirmed latest stable tag/changelog is `v1.12.0`, invalidating the planning assumption that the no-forwarder assembly moves are pre-v1.0.
 - 2026-07-11: Parallel artifact, architecture/code, history/package, and official-guidance analyses were consolidated into this implementation guide; no subagent edited files.
 
+### Documented Unrelated Changes
+
+- `references/Hexalith.EventStore` — pre-existing root-submodule pointer drift committed after the story baseline and before dev-story began; preserved without submodule edits.
+- `references/Hexalith.Memories` — pre-existing root-submodule pointer drift committed after the story baseline and before dev-story began; preserved without submodule edits.
+
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
-- Story is ready for development; implementation must retain the explicit inventory/version reconciliation gates above.
+- Reconciled the live Story 11.11-11.13 package/query state across planning, generated knowledge, published documentation, and UX-DR1 ownership trace. Interaction, typography mapping `3.1.0`, accessibility, density, wire, schema, CLI, and generated-route behavior remain unchanged.
+- Added Contracts.UI to the explicit eight-package release inventory, resealed affected fixtures with the repository helper, and extended clean-consumer evidence across Contracts, Contracts.UI, Shell, and Testing.
+- Published the approved `1.12` to `2.0` migration, exact ownership map, composed-query/HFC0001 guidance, prerelease dependency risk, package responsibility guide, and API navigation.
+- Advanced supported library package validation to the real `1.12.0` baseline, retained a narrow Contracts.UI first-release exception, and checked in exact Contracts/Shell compatibility suppressions with one-to-one governance evidence.
+- Preserved `CHANGELOG.md` ownership and proved the actual Conventional Commit range produces a semantic-release major `2.0.0` with breaking release notes.
+- All required package, consumer, test, build, docs, story, diff, and release-classification gates passed.
 
 ### File List
 
-- To be populated and mechanically reconciled by the dev agent during implementation.
+- `Directory.Build.targets`
+- `_bmad-output/contracts/fc-2-0-release-version-decision-2026-07-11.md`
+- `_bmad-output/implementation-artifacts/11-14-update-architecture-context-ux-and-package-compat-docs.md`
+- `_bmad-output/implementation-artifacts/epic-11-context.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/planning-artifacts/architecture.md`
+- `_bmad-output/planning-artifacts/ux-design-detailed-2026-07-05.md`
+- `_bmad-output/planning-artifacts/ux-design.md`
+- `_bmad-output/project-context.md`
+- `_bmad-output/project-docs/architecture.md`
+- `_bmad-output/project-docs/component-inventory.md`
+- `_bmad-output/project-docs/contribution-guide.md`
+- `_bmad-output/project-docs/data-models.md`
+- `_bmad-output/project-docs/deployment-guide.md`
+- `_bmad-output/project-docs/development-guide.md`
+- `_bmad-output/project-docs/index.md`
+- `_bmad-output/project-docs/project-overview.md`
+- `_bmad-output/project-docs/source-tree-analysis.md`
+- `docs/concepts/source-generation-and-mcp-split.md`
+- `docs/diagnostics/README.md`
+- `docs/diagnostics/compatibility-suppressions.json`
+- `docs/how-to/migration-guides.md`
+- `docs/migrations/1.12-to-2.0.md`
+- `docs/migrations/index.md`
+- `docs/reference/api/index.md`
+- `docs/skills/frontcomposer/setup/package-and-hosting.md`
+- `docs/toc.yml`
+- `eng/release-package-inventory.json`
+- `src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj`
+- `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj`
+- `src/Hexalith.FrontComposer.Contracts/CompatibilitySuppressions.xml`
+- `src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj`
+- `src/Hexalith.FrontComposer.Shell/CompatibilitySuppressions.xml`
+- `src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj`
+- `src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj`
+- `tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`
+- `tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs`
+- `tests/ci-governance/fixtures/release-manifest-valid.json`
+- `tests/ci-governance/fixtures/release-readiness-cases.json`
+- `Hexalith.FrontComposer.Contracts.UI` — named exception: package-ID evidence resolves through the inventory, project, tests, and migration entries above.
+- `CiGovernanceTests.PackageInventory_IsExplicitLockstepAndReviewable` — named exception: test-method evidence is in the listed `CiGovernanceTests.cs` file.
+- `tests/ci-governance/fixtures/` — named exception: directory evidence is the two listed, resealed fixture files.
+- `_bmad-output/project-docs/api-contracts.md` — named exception: reviewed and intentionally unchanged because its current API claims remain correct.
+- `_bmad-output/planning-artifacts/ux-experience-2026-07-05.md` — named exception: reviewed and intentionally unchanged because interaction behavior did not change.
+- `docs/migrations/` — named exception: directory evidence is the listed `1.12-to-2.0.md` page and migration indexes.
+- `QueryRequest.Create` — named exception: API evidence is documented and tested through the listed migration/context artifacts.
+- `v1.12.0` — named exception: latest-stable evidence from Git/tag history is recorded in the completion log and version decision.
+- `1.12` — named exception: migration-edge evidence is the listed `1.12-to-2.0.md` page.
+- `2.0` — named exception: migration-edge evidence is the listed `1.12-to-2.0.md` page.
+- `2.0.0` — named exception: approved-version evidence is the listed release decision and semantic-release dry run.
+- `_bmad-output/contracts/` — named exception: directory evidence is the listed approved release-version decision.
+- `CHANGELOG.md` — named exception: reviewed and intentionally unchanged because semantic-release owns it.
+- `0.1.0` — named exception: stale-baseline removal is evidenced by the listed targets and governance test.
+- `1.12.0` — named exception: current-baseline evidence is in the listed targets, suppression ledger, tests, and migration.
+- `.slnx` — named exception: the unchanged `Hexalith.FrontComposer.slnx` was used for the successful Release build and not solution-level test execution.
+
+### Change Log
+
+- 2026-07-11: Implemented Story 11.14, recorded Release Owner approval for 2.0.0, completed compatibility/package/documentation evidence, and moved the story to review.

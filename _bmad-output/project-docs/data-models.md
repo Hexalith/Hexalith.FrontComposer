@@ -24,7 +24,8 @@ DomainManifest
 | Record / type | Shape & role |
 |---|---|
 | `CommandResult` | Outcome of `ICommandService.DispatchAsync`; carries accepted `MessageId`, optional EventStore `CorrelationId`, and optional retry hint. |
-| `QueryRequest` / `QueryResult` | Projection query request/response DTOs. |
+| `ProjectionQuery` | Canonical projection criteria: projection type, paging, column/status filters, search, and ordering. |
+| `QueryRequest` / `QueryResult` | `QueryRequest.Create` composes `ProjectionQuery` with tenant, EventStore routing, ETags, and cache metadata. HFC0001/CS0618 retains the v1.12 flattened source/deconstruction surface and exact flat JSON until `2.0.0`; no nested `criteria` member is emitted. |
 | `ProblemDetailsPayload` | RFC 7807 error payload with optional bounded `CommandRejectionDetails`. |
 | `CommandRejectionDetails` | Typed rejection metadata (`errorCode`, `reasonCategory`, `suggestedAction`, `docsCode`) shown by command lifecycle UI. |
 | `CommandWarningKind` / `CommandWarningException` | Warning-class command outcomes (`Forbidden`, `NotFound`, `RateLimited`, `Pending`, `RetryableDispatchFailed`) rendered outside terminal lifecycle state. |
@@ -43,13 +44,13 @@ The render pipeline is described by data, not hard-coded UI:
 
 | Type | Role |
 |---|---|
-| `FcTypoToken` (readonly record struct) | `(Size, Weight, Tag, Font?)` typography tuple. |
-| `Typography` (static) | 9 role constants (e.g. `AppTitle`, `ViewTitle`) → FluentUI v5 `TextSize`/`TextWeight`/`TextTag`. **net10.0 only** (`#if NET10_0_OR_GREATER`). Version-pinned by `ContractsMetadata.TypographyMappingVersion = "3.1.0"`. |
+| `FcTypoToken` (readonly record struct, Contracts.UI) | `(Size, Weight, Tag, Font?)` typography tuple under the retained `Hexalith.FrontComposer.Contracts.Rendering` namespace. |
+| `Typography` (static, Contracts.UI) | 9 role constants (e.g. `AppTitle`, `ViewTitle`) → FluentUI v5 `TextSize`/`TextWeight`/`TextTag`. Version-pinned by kernel `ContractsMetadata.TypographyMappingVersion = "3.1.0"`. |
 | `ProjectionContext` | Cascading Blazor parameter carrying row-level field values to command renderers. |
 | `FrontComposerRenderContract` | A render surface's capabilities, bounds, content-type, and fingerprint. |
 | `RenderSurfaceKind`, `RenderCapability`, `RenderBounds`, `DensityLevel`, `DensitySurface` | Rendering-model enums/records. |
-| `FieldDescriptor`, `FieldSlotContext<TProjection,TField>` | Field-level metadata for slot overrides. |
-| `ProjectionSlotDescriptor`/`Selector`, `ProjectionTemplateDescriptor`/`Context<T>`, `ProjectionViewOverrideDescriptor`/`Context<T>` | Level 2–4 customization registration records. |
+| `FieldDescriptor` (Contracts) / `FieldSlotContext<TProjection,TField>` (Contracts.UI) | UI-neutral metadata remains in the kernel; render-fragment context is UI-owned. |
+| Projection slot/template/view descriptors and selectors (Contracts); render-fragment contexts/delegates (Contracts.UI) | Level 2–4 customization keeps the dependency direction inward while preserving public namespaces. |
 | `FcRenderMode`, `CommandRenderMode` | Render-mode enums. |
 | `DerivedValueResult` (+ `IDerivedValueProvider`) | Computed-field support. |
 
@@ -109,13 +110,13 @@ This is the backbone of FrontComposer's "drift detection" — how producer (gene
 
 | Type | Role |
 |---|---|
-| `FcShellOptions` | Runtime shell configuration (validated via DataAnnotations / `OptionsBuilder.ValidateDataAnnotations` plus cross-property validators). Includes lifecycle thresholds, command-status polling cadence and duration, retained pending-entry cap, per-tick cap, and EventStore pre-accept command dispatch retry attempts/delay. |
+| `FcShellOptions` (Shell.Options) | Runtime shell configuration (validated via DataAnnotations / `OptionsBuilder.ValidateDataAnnotations` plus cross-property validators). Includes lifecycle thresholds, command-status polling cadence and duration, retained pending-entry cap, per-tick cap, and EventStore pre-accept command dispatch retry attempts/delay. |
 | `FrontComposerAuthenticationOptions` | OIDC/auth options (Shell). |
 | `FrontComposerAuthorizationOptions` | Host-owned policy catalog for `[RequiresPolicy]` commands, including strict startup validation. |
 | `FrontComposerMcpOptions` | MCP endpoint, API-key map, arg/render/lifecycle bounds, claim types. |
 | `LifecycleOptions` | Lifecycle tracker timing/retention. |
 | `GeneratedOutputPathContract` | Public template `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{Type}.g.razor.cs`; use `BuildProjectRelativePath(...)`, never hardcode. |
-| `ShortcutBinding` / `ShortcutRegistration` | Keyboard-shortcut registry entries. |
+| `ShortcutBinding` (Contracts.UI) / `ShortcutRegistration` (Contracts) | Keyboard-event mapping is UI-owned; the UI-neutral registration record remains in the kernel. |
 | `BadgeCountChangedArgs` | Badge-count change event payload. |
 | `ComponentTreeNode`, `ConventionDescriptor`, `CustomizationDiagnostic*` | Dev-mode component-tree + customization diagnostics. |
 
@@ -123,7 +124,7 @@ This is the backbone of FrontComposer's "drift detection" — how producer (gene
 
 There is no relational/document database in FrontComposer itself. Persistence seams are:
 
-- **`IStorageService`** — key-value abstraction; runtime impl is `LocalStorageService` (browser `localStorage` via JS interop); `InMemoryStorageService` for tests/defaults.
+- **`IStorageService`** — kernel key-value abstraction; runtime impl is Shell `LocalStorageService` (browser `localStorage` via JS interop); adopter test fake is `Hexalith.FrontComposer.Testing.InMemoryStorageService`.
 - **EventStore** — the actual event-sourced backend lives in the `references/Hexalith.EventStore` submodule (external). The Shell talks to it via `EventStoreCommandClient` / `EventStoreQueryClient` (HTTP) and `ProjectionSubscriptionService` (SignalR). See [architecture.md](./architecture.md) §8.
 
 ## 8. Entity-relationship sketch (conceptual)

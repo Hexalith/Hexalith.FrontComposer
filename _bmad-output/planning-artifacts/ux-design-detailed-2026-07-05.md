@@ -2,7 +2,7 @@
 name: Hexalith Common Application UX
 description: Common visual identity for Hexalith web applications that compose Hexalith modules through FrontComposer and Fluent UI Blazor V5.
 status: draft
-updated: 2026-07-05
+updated: 2026-07-11
 sources:
   - ../../prd.md
   - ../../architecture.md
@@ -92,6 +92,11 @@ Avoid legacy Fluent v4 / FAST tokens, saturated chrome fills, gradients, decorat
 ## Typography
 
 Typography is Fluent-owned. Use `FluentText` roles and parameters (`Size`, `Weight`, `Color`) instead of CSS font ramps.
+
+Ownership trace: `Typography`, `FcTypoToken`, and `TypographyStyle` are shipped by the net10-only
+`Hexalith.FrontComposer.Contracts.UI` package/assembly under their existing
+`Hexalith.FrontComposer.Contracts.Rendering` namespace. The nine role mappings and
+`ContractsMetadata.TypographyMappingVersion = "3.1.0"` are unchanged by the assembly move.
 
 - Page title: `{typography.page-title}`.
 - Section title: `{typography.section-title}`.

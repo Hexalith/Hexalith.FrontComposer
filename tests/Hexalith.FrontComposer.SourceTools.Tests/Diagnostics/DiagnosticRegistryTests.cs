@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
+using System.Xml.Linq;
 
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.SourceTools.Diagnostics;
@@ -677,6 +678,44 @@ public sealed partial class DiagnosticRegistryTests {
 
             uniqueness.Add((package, tfm, oldSig)).ShouldBeTrue($"duplicate suppression row for ({package}, {tfm}, {oldSig}).");
         }
+
+        string[] trackedRows = [.. suppressions
+            .Select(node => node!.AsObject())
+            .Select(item => $"{item["package"]!.GetValue<string>()}|{item["tfm"]!.GetValue<string>()}|{item["oldSignature"]!.GetValue<string>()}")
+            .OrderBy(value => value, Ordinal)];
+
+        var exactApiCompatRows = new List<string>();
+        foreach (string suppressionPath in Directory.EnumerateFiles(
+            Path.Combine(ProjectRoot().FullName, "src"),
+            "CompatibilitySuppressions.xml",
+            SearchOption.AllDirectories)) {
+            string package = new FileInfo(suppressionPath).Directory!.Name;
+            XDocument apiCompat = XDocument.Load(suppressionPath);
+            foreach (XElement item in apiCompat.Root!.Elements("Suppression")) {
+                string diagnosticId = item.Element("DiagnosticId")!.Value;
+                if (package == "Hexalith.FrontComposer.Contracts") {
+                    diagnosticId.ShouldBe("CP0001", "Contracts suppressions are exact reviewed type moves.");
+                }
+                else if (package == "Hexalith.FrontComposer.Shell") {
+                    new[] { "CP0002", "CP0008" }.ShouldContain(diagnosticId, "Shell suppressions are exact member/interface assembly-binding changes.");
+                }
+                else {
+                    Assert.Fail($"{package} has an unreviewed package-validation suppression file.");
+                }
+
+                item.Element("IsBaselineSuppression")!.Value.ShouldBe("true");
+                string left = item.Element("Left")!.Value;
+                string right = item.Element("Right")!.Value;
+                right.ShouldBe(left, "a suppression must not widen package-validation comparison scope.");
+                string tfm = left.Split('/')[1];
+                exactApiCompatRows.Add($"{package}|{tfm}|{item.Element("Target")!.Value}");
+            }
+        }
+
+        exactApiCompatRows.Sort(Ordinal);
+
+        exactApiCompatRows.ShouldBe(trackedRows, ignoreOrder: false,
+            customMessage: "Every ApiCompat suppression must have one exact package/TFM/type evidence row, with no untracked or stale entries.");
     }
 
     [Theory]
@@ -820,10 +859,17 @@ public sealed partial class DiagnosticRegistryTests {
 
         string directoryBuildTargets = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "Directory.Build.targets"), Encoding.UTF8);
         directoryBuildTargets.ShouldContain("<EnableFrontComposerPackageValidation Condition=\"'$(EnableFrontComposerPackageValidation)' == ''\">false</EnableFrontComposerPackageValidation>");
+        directoryBuildTargets.ShouldContain("<FrontComposerPackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationBaselineVersion)' == ''\">1.12.0</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
-        directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion>$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
+        directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldContain("<ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>");
+        directoryBuildTargets.ShouldNotContain(">0.1.0</FrontComposerPackageValidationBaselineVersion>");
+
+        string contractsUiProject = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"), Encoding.UTF8);
+        contractsUiProject.ShouldContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");
+        contractsUiProject.ShouldContain("Remove after Hexalith.FrontComposer.Contracts.UI 2.0.0 is published");
+        contractsUiProject.ShouldNotContain("<EnablePackageValidation>false</EnablePackageValidation>");
 
         Regex isPackableTrue = IsPackableTrueRegex();
         string[] packableProjects = Directory.EnumerateFiles(Path.Combine(ProjectRoot().FullName, "src"), "*.csproj", SearchOption.AllDirectories)
@@ -833,12 +879,23 @@ public sealed partial class DiagnosticRegistryTests {
             .ToArray();
 
         packableProjects.ShouldBe([
+            "src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj",
             "src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj",
+            "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
             "src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj",
             "src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj",
+            "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
             "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj",
             "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj",
         ], ignoreOrder: false);
+
+        foreach (string projectPath in packableProjects) {
+            string project = File.ReadAllText(Path.Combine(ProjectRoot().FullName, projectPath), Encoding.UTF8);
+            project.ShouldNotContain("<EnablePackageValidation>false</EnablePackageValidation>", customMessage: $"{projectPath} must not broadly disable validation.");
+            if (!projectPath.Contains("Contracts.UI", StringComparison.Ordinal)) {
+                project.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>", customMessage: $"{projectPath} must validate against the 1.12.0 baseline.");
+            }
+        }
     }
 
     [Fact]

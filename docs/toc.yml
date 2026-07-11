@@ -5,6 +5,11 @@
   items:
   - name: Migrations
     href: migrations/index.md
+    items:
+    - name: 1.12 to 2.0
+      href: migrations/1.12-to-2.0.md
+    - name: 9.1 to 9.2
+      href: migrations/9.1-to-9.2.md
 - name: Reference
   href: reference/index.md
   items:

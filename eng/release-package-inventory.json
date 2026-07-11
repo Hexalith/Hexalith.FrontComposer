@@ -19,6 +19,12 @@
       "symbol_required": true
     },
     {
+      "project": "src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj",
+      "package_id": "Hexalith.FrontComposer.Contracts.UI",
+      "packable": true,
+      "symbol_required": true
+    },
+    {
       "project": "src/Hexalith.FrontComposer.UI/Hexalith.FrontComposer.UI.csproj",
       "package_id": "Hexalith.FrontComposer.UI",
       "packable": false,

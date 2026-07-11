@@ -21,8 +21,8 @@ frontcomposer/
 ├── CONTRIBUTING.md                 # source-generator debugging guidance
 ├── ONBOARDING.md                   # team/Claude usage onboarding (informational)
 │
-├── src/                            # ★ 7 source projects (see below)
-├── tests/                          # ★ 7 xUnit v3 test projects + e2e/ (Playwright)
+├── src/                            # ★ 10 source projects (8 packages + AppHost/UI hosts; see below)
+├── tests/                          # ★ 8 xUnit v3 test projects + e2e/ (Playwright)
 ├── samples/                        # IdeParityCounter sample domain
 │
 ├── eng/                            # build/release engineering scripts (validate-docs.ps1, release_evidence.py, llm_benchmark.py)
@@ -51,16 +51,16 @@ frontcomposer/
 
 `★` = critical for understanding/operating the project.
 
-## `src/` — the 7 source projects
+## `src/` — the 10 source projects
 
 ```
 src/
 ├── Hexalith.FrontComposer.Contracts/      # LAYER 0 — leaf kernel (net10.0 + netstandard2.0)
 │   ├── Attributes/        # [Projection],[Command],[BoundedContext],[ProjectionRole],[ProjectionBadge],
 │   │                      #   [ColumnPriority],[ProjectionFieldGroup],[Destructive],[RequiresPolicy],[Icon],[Currency],[RelativeTime]…
-│   ├── Communication/     # ICommandService, IQueryService, CommandResult, typed exceptions
+│   ├── Communication/     # ICommandService, IQueryService, ProjectionQuery, QueryRequest, results/exceptions
 │   ├── Lifecycle/         # CommandLifecycleState machine, IUlidFactory, McpLifecycleStateNames
-│   ├── Rendering/         # Typography (FcTypoToken), ProjectionContext, slot/template/view descriptors, render contracts
+│   ├── Rendering/         # UI-neutral descriptors, density/render contracts, retained inward seams
 │   ├── Registration/      # IFrontComposerRegistry, DomainManifest (generator output target)
 │   ├── Mcp/               # McpManifest, McpCommandDescriptor, McpResourceDescriptor…
 │   ├── Schema/            # SchemaFingerprint, CanonicalSchemaMaterial, baseline/delta records, SchemaContractFamily
@@ -68,6 +68,11 @@ src/
 │   ├── Conformance/       # GeneratedOutputPathContract (public generated-path template)
 │   ├── Badges/ Shortcuts/ Storage/ Telemetry/ DevMode/   # service contracts
 │   └── ContractsMetadata.cs   # TypographyMappingVersion pin
+│
+├── Hexalith.FrontComposer.Contracts.UI/   # LAYER 0A — packable net10 UI contracts
+│   ├── Rendering/         # Typography/FcTypoToken, render-fragment slot/template/view contexts
+│   ├── Shortcuts/         # KeyboardEventArgs-dependent shortcut service/binding
+│   └── PublicAPI.Shipped.txt   # intentional moved-surface API baseline
 │
 ├── Hexalith.FrontComposer.Schema/         # LAYER 0 — thin lib on Contracts
 │   ├── SchemaContractFamilyNames.cs       # enum → canonical kebab name
@@ -109,11 +114,15 @@ src/
 │   ├── ExitCodes.cs, OutputSanitizer.cs, CommandOptions.cs, ProjectSelection.cs, PathUtilities.cs
 │   └── README.md             # user-facing CLI docs (exit codes, JSON schema, migration notes)
 │
-└── Hexalith.FrontComposer.Testing/        # LAYER 2 — adopter bUnit test host (net10.0, publishable)
-    ├── FrontComposerTestBase.cs           # abstract BunitContext base for adopter tests
-    ├── FrontComposerTestHostBuilder.cs    # ★ AddFrontComposerTestHost wiring + fakes
-    ├── Evidence.cs                        # evidence records + RedactedEvidenceFormatter
-    └── (Test* fakes, data builders, GeneratedProjectionAssertions, CommandEvidenceAssertions)
+├── Hexalith.FrontComposer.Testing/        # LAYER 2 — adopter bUnit test host (net10.0, publishable)
+│   ├── FrontComposerTestBase.cs           # abstract BunitContext base for adopter tests
+│   ├── FrontComposerTestHostBuilder.cs    # ★ AddFrontComposerTestHost wiring + fakes
+│   ├── InMemoryStorageService.cs          # adopter-facing test-owned storage fake
+│   ├── Evidence.cs                        # evidence records + RedactedEvidenceFormatter
+│   └── (Test* fakes, data builders, GeneratedProjectionAssertions, CommandEvidenceAssertions)
+│
+├── Hexalith.FrontComposer.AppHost/        # non-packable Aspire orchestration host
+└── Hexalith.FrontComposer.UI/             # non-packable combined module UI/container host
 ```
 
 ## `tests/` — test projects (xUnit v3)
@@ -121,6 +130,7 @@ src/
 ```
 tests/
 ├── Hexalith.FrontComposer.Contracts.Tests/     # contracts-layer unit tests (no bUnit)
+├── Hexalith.FrontComposer.Contracts.UI.Tests/  # UI ownership, API, and package-consumer tests
 ├── Hexalith.FrontComposer.Shell.Tests/         # ★ largest: bUnit component tests, Fluxor E2E, Pact, a11y,
 │                                               #   Architecture/ tripwires, Governance/, SlotMappingRegressionTests
 ├── Hexalith.FrontComposer.Shell.Tests.Bench/   # standalone BenchmarkDotNet exe (PaletteScorerBench)

@@ -5,6 +5,9 @@
     <PackageId>Hexalith.FrontComposer.Contracts.UI</PackageId>
     <Description>Blazor and Fluent UI rendering contracts for Hexalith FrontComposer.</Description>
     <IsTrimmable>true</IsTrimmable>
+    <!-- First-release exception: no prior package exists for baseline comparison.
+         Remove after Hexalith.FrontComposer.Contracts.UI 2.0.0 is published, then validate against 2.0.0. -->
+    <FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>
     <!-- NU5104: the public typography contract intentionally exposes the pinned Fluent UI v5 RC. -->
     <NoWarn>$(NoWarn);NU5104</NoWarn>
   </PropertyGroup>

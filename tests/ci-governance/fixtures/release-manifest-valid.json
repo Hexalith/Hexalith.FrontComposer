@@ -5,7 +5,7 @@
     "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
     "version": "1.0.0"
   },
-  "package_set_fingerprint": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd",
+  "package_set_fingerprint": "401023c2e71d46f22d911e3ac8a125c3d7ee1a0a5ebff35dbb0df4f364e0f329",
   "packages": [
     {
       "artifact_path": "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
@@ -27,13 +27,13 @@
     "Directory.Build.props": "11111111111111111111111111111111111111111111111111111111111111aa",
     "Directory.Build.targets": "11111111111111111111111111111111111111111111111111111111111111bb",
     "Directory.Packages.props": "0bd7e8e3e6cb6fcad019fbc070a86be84c5d48078ad75ba8b534b2440a5daa7d",
-    "eng/release-package-inventory.json": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd"
+    "eng/release-package-inventory.json": "401023c2e71d46f22d911e3ac8a125c3d7ee1a0a5ebff35dbb0df4f364e0f329"
   },
   "run_id": "42",
   "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "seal": {
     "algorithm": "sha256",
-    "hash": "9a044abc213b6311454520dfc3dd4c0840399bacf1f83a5a533e8a14a58a5079",
+    "hash": "a2deed2041f39be3d116b243ccd6ef52386c6c4b7b7c0ed077da0ce89b6ae698",
     "sealed_at": "2026-05-19T00:00:00+00:00"
   },
   "tag": "v1.2.3",

@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-11T21:04:21+02:00
+# last_updated: 2026-07-11T23:08:00+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-11T21:04:21+02:00
+last_updated: 2026-07-11T23:08:00+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -398,7 +398,9 @@ development_status:
   11-12-relocate-runtime-and-testing-owned-types-out-of-contracts: done
   11-13-decompose-queryrequest-through-hfc0001-migration-path: review
   # 11-14 moved backlog -> ready-for-dev on 2026-07-11 (create-story; current-state architecture/UX/package migration guide plus the Contracts.UI release-inventory repair, package-consumer evidence, and v1.12-to-v2 compatibility/release posture.)
-  11-14-update-architecture-context-ux-and-package-compat-docs: ready-for-dev
+  # 11-14 moved ready-for-dev -> in-progress on 2026-07-11 (dev-story; baseline f1d8d73edc7fe69cf3cc3220ec5b29f144c55c37 preserved; starting live-state reconciliation and release-inventory repair.)
+  # 11-14 moved in-progress -> review on 2026-07-11 (dev-story; Release Owner approved 2.0.0; package inventory, migration/UX/architecture docs, 1.12 ApiCompat evidence, eight-package pack, 3,990 tests, docs/build validation, and semantic-release major dry-run passed.)
+  11-14-update-architecture-context-ux-and-package-compat-docs: review
   11-9-shell-layering-declaration-and-route-label-relocation: backlog
   11-15-storage-scope-and-snapshot-publisher-consolidation: backlog
   11-16-fatal-hydration-json-and-generated-literal-helper-consolidation: backlog

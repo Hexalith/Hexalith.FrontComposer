@@ -87,19 +87,29 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 
 The vocabulary shared by generator + runtime + MCP. (Attributes are catalogued in [api-contracts.md](./api-contracts.md); data records in [data-models.md](./data-models.md).)
 
-**Communication:** `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, `IProjectionChangeNotifier`, `IProjectionSubscription`, `IProjectionSearchProvider`; records `CommandResult`, `QueryResult`, `QueryRequest`, `ProblemDetailsPayload`, `CommandRejectionDetails`; warning kind `CommandWarningKind` including `RetryableDispatchFailed`; exceptions `CommandRejectedException`, `CommandWarningException`, `CommandValidationException`, `AuthRedirectRequiredException`.
+**Communication:** `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, `IProjectionChangeNotifier`, `IProjectionSubscription`, `IProjectionSearchProvider`; records `CommandResult`, `QueryResult`, canonical `ProjectionQuery`, composed `QueryRequest`, `ProblemDetailsPayload`, `CommandRejectionDetails`. HFC0001/CS0618 retains the v1.12 flattened `QueryRequest` source/deconstruction surface and flat JSON shape until `2.0.0`.
 
 **Lifecycle:** `CommandLifecycleState` (Idle→Submitting→Acknowledged→Syncing→Confirmed/Rejected), `CommandLifecycleTransition`, `ICommandLifecycleTracker`, `ILifecycleStateService`, `IUlidFactory`, `LifecycleOptions`, `McpLifecycleStateNames`.
 
-**Rendering:** `Typography` (static, 9 `FcTypoToken` role constants; net10.0 only), `FcTypoToken` (readonly record struct), `TypographyStyle`, `ProjectionContext` (cascading parameter), `FrontComposerRenderContract`, `RenderSurfaceKind`/`RenderCapability`/`RenderBounds`/`DensityLevel`/`DensitySurface`, `FieldDescriptor`, `FieldSlotContext<,>`, projection slot/template/view descriptor + context + registry types, `FcRenderMode`/`CommandRenderMode`, `IRenderer`, `IDerivedValueProvider`/`DerivedValueResult`, `IUserContextAccessor`.
+**Rendering:** UI-neutral `ProjectionContext`, `FrontComposerRenderContract`, `RenderSurfaceKind`/`RenderCapability`/`RenderBounds`/`DensityLevel`/`DensitySurface`, `FieldDescriptor`, descriptor/selector/registry seams, `FcRenderMode`/`CommandRenderMode`, `IRenderer`, `IDerivedValueProvider`/`DerivedValueResult`, and `IUserContextAccessor`. Blazor/Fluent render-fragment contexts and typography live in Contracts.UI.
 
 **Registration:** `IFrontComposerRegistry`, `IFrontComposerFullPageRouteRegistry`, `IFrontComposerCommandWriteAccessRegistry`, `IOverrideRegistry`, `DomainManifest`.
 
-**Other contracts:** `IStorageService`/`InMemoryStorageService`, `IShortcutService`/`ShortcutBinding`/`ShortcutRegistration`, `IBadgeCountService`/`IActionQueueCountReader`/`BadgeCountChangedArgs`, `FrontComposerActivitySource`, `FcShellOptions`, `GeneratedOutputPathContract`, `ContractsMetadata` (`TypographyMappingVersion = "3.1.0"`), `FcDiagnosticIds`, dev-mode `ComponentTreeNode`/`ConventionDescriptor`/`CustomizationDiagnostic*`.
+**Other contracts:** `IStorageService`, `IInlinePopover`, `GridViewSnapshot`, UI-neutral `ShortcutRegistration`, `IBadgeCountService`/`IActionQueueCountReader`/`BadgeCountChangedArgs`, `FrontComposerActivitySource`, `GeneratedOutputPathContract`, `ContractsMetadata` (`TypographyMappingVersion = "3.1.0"`), `FcDiagnosticIds`, and dev-mode contract records. Runtime implementations/options/actions are Shell-owned; `InMemoryStorageService` is Testing-owned.
 
 ---
 
-## D. MCP server surface (`Hexalith.FrontComposer.Mcp`)
+## D. UI contracts surface (`Hexalith.FrontComposer.Contracts.UI`)
+
+Packable net10-only assembly referencing Contracts, ASP.NET Core components, and Fluent UI v5 while preserving existing public namespaces:
+
+- `Hexalith.FrontComposer.Contracts.Rendering`: `Typography`, `FcTypoToken`, `TypographyStyle`, `FieldSlotContext<,>`, projection template contexts/descriptors/delegates, and projection view context.
+- `Hexalith.FrontComposer.Contracts.Shortcuts`: `IShortcutService` and `ShortcutBinding`.
+- `PublicAPI.Shipped.txt` pins the intentional assembly-owned surface. Source compatibility requires adding the package reference; the assembly identity move has no upward type forwarder and is binary-breaking.
+
+---
+
+## E. MCP server surface (`Hexalith.FrontComposer.Mcp`)
 
 (Tools/resources detailed in [api-contracts.md](./api-contracts.md).) Key public/registration types:
 
@@ -113,13 +123,13 @@ The vocabulary shared by generator + runtime + MCP. (Attributes are catalogued i
 
 ---
 
-## E. CLI surface (`Hexalith.FrontComposer.Cli`)
+## F. CLI surface (`Hexalith.FrontComposer.Cli`)
 
 (Commands detailed in [api-contracts.md](./api-contracts.md).) Public types: `CliApplication.RunAsync(args, out, err, ct)` (sole entry), `ExitCodes` (Success=0, ActionableFindings=1, InvalidArguments=2, GeneratedOutputUnavailable=3, ApplyWriteFailure=4), `OutputSanitizer`. All other types are `internal`.
 
 ---
 
-## F. Testing library surface (`Hexalith.FrontComposer.Testing`)
+## G. Testing library surface (`Hexalith.FrontComposer.Testing`)
 
 For adopters writing bUnit tests against generated components:
 
@@ -128,6 +138,7 @@ For adopters writing bUnit tests against generated components:
 | `FrontComposerTestBase` | Abstract `BunitContext` base; auto-registers host + fakes. |
 | `AddFrontComposerTestHost()` (+ `FrontComposerTestHostBuilder`) | DI wiring without inheriting the base; `AddDomainAssembly<TMarker>()`, `ValidateVersionAlignment()`. |
 | `FrontComposerTestOptions` | Tenant/user IDs, culture, JS-runtime mode, store-init mode, evidence caps. |
+| `InMemoryStorageService` | Testing-owned implementation of the kernel `IStorageService` seam. |
 | `TestCommandService` / `TestQueryService` / `TestProjectionPageLoader` | Deterministic fakes (replay lifecycle, prime results, paging). |
 | `TestFaultInjectionProvider` | Deterministic fault recorder (Drop/Delay/PartialDelivery/Reorder/ReconnectNudge). |
 | `CommandDispatchEvidence` / `ProjectionPageEvidence` / `FaultInjectionEvidence` + `RedactedEvidenceFormatter` | Immutable interaction evidence + redaction. |

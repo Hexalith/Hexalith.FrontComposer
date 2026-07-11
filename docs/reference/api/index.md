@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 9-5-diataxis-documentation-site
 status: published
-reviewed: 2026-05-10
+reviewed: 2026-07-11
 uid: frontcomposer.reference.api.index
 slug: reference/api/
 ---
@@ -15,6 +15,7 @@ slug: reference/api/
 DocFX metadata is scoped to the public FrontComposer packages:
 
 - `src/Hexalith.FrontComposer.Contracts`
+- `src/Hexalith.FrontComposer.Contracts.UI`
 - `src/Hexalith.FrontComposer.Shell`
 - `src/Hexalith.FrontComposer.SourceTools`
 - `src/Hexalith.FrontComposer.Mcp`
