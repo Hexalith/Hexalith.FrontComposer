@@ -255,6 +255,10 @@ GPT-5 Codex
 - 2026-07-09: Validation evidence: focused governance 39/39 passed; focused affected component lane 31/31 passed; e2e typecheck passed; Playwright `test:a11y` passed 21/21 including Story 11.5 computed-style/reduced-motion evidence; visual governance validator passed with no committed visual baseline changes; broad filtered solution lane passed; Release build passed 0 warnings/0 errors; `git diff --check` passed.
 - 2026-07-11: Review rework established clean baseline `0c7e5c74f18b2a5c11c70a77a727713373720964`; current changed-file reconciliation is limited to the canonical story, prior spec, sprint status, and Story 11.5 Playwright evidence.
 - 2026-07-11: Normal-motion browser proof now requires the CSS-isolated `fc-sync-status-pulse-*` animation name, `0.7s` duration, `24` iterations, and `alternate` direction before separately proving reduced motion yields `none` / `0s`.
+- 2026-07-11: Dev-story completion revalidation started from clean `main` at `f1d8d73edc7fe69cf3cc3220ec5b29f144c55c37`. Focused governance passed 39/39, affected component tests passed 31/31, e2e typecheck passed, visual-baseline governance passed with no committed baseline drift, and Chromium accessibility/visual evidence passed 22/22.
+- 2026-07-11: The broad filtered solution lane failed outside Story 11.5: Shell passed 2214/2216, with the known package-inventory failure plus a polling-driver timeout; Testing passed 56/57 because the clean packed consumer could not restore `Hexalith.FrontComposer.Contracts.UI`; all other executed projects passed. The polling-driver test passed 1/1 on focused rerun, while the package inventory and packed-consumer failures reproduced deterministically.
+- 2026-07-11: `aspire start --apphost src/Hexalith.FrontComposer.AppHost --non-interactive --format Json` could not establish the runtime baseline because the current Tenants submodule still references `FcShellOptions`; a stop/retry removed initial lock noise and reproduced four `CS0246` errors in `Hexalith.Tenants.UI`. No AppHost was left running.
+- 2026-07-11: Reconciliation against baseline `0c7e5c74` found that commit `f1d8d73e` also advanced `references/Hexalith.Memories` from `c5a999e1` to `eb959d7f`. This committed pointer change is unrelated to Story 11.5 and was not modified or reverted during this run.
 
 ### Implementation Plan
 
@@ -281,6 +285,9 @@ GPT-5 Codex
   - Snapshot/baseline intent: no committed visual baseline changes detected by `npm --prefix tests/e2e run validate:visual-governance`.
 - Broad validation passed: `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"`, `dotnet build Hexalith.FrontComposer.slnx -c Release`, and `git diff --check`.
 - Story artifact validation passed: `python3 eng/validate-story-artifacts.py --story _bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`. The validator reported the already documented pre-existing unrelated baseline-diff paths only.
+- Completion revalidation on 2026-07-11 reconfirmed every Story 11.5-focused gate: governance 39/39, affected components 31/31, e2e typecheck, Chromium 22/22, and visual-baseline governance all passed.
+- Story 11.5 remains `in-progress` because the mandatory broad regression gate is not green. The deterministic blockers are the unlisted/unpacked `Hexalith.FrontComposer.Contracts.UI` package in release/package-consumer validation; the isolated Shell polling timeout passed on focused rerun and is recorded as transient evidence, not as a green broad lane.
+- No production, test, package-inventory, or submodule content was changed by this dev-story run. Updating `eng/release-package-inventory.json` or package publication wiring is outside Story 11.5 and remains owned by Story 11.14.
 
 ### 2026-07-11 Review Rework Evidence
 
@@ -298,6 +305,7 @@ GPT-5 Codex
 
 ### Change Log
 
+- 2026-07-11: Revalidated Story 11.5 focused and browser evidence; kept the story in progress after deterministic Contracts.UI release/package-consumer regression failures, recorded the AppHost/Tenants baseline blocker, and reconciled the unrelated committed Memories pointer.
 - 2026-07-11: Reopened by user decision during code review; reset to clean baseline `0c7e5c74f18b2a5c11c70a77a727713373720964`, synchronized the prior spec for rework, and added normal-/reduced-motion reconnect-pulse browser evidence.
 - 2026-07-09: Confirmed Story 11.5 implementation and evidence already present; updated story and sprint tracking to `review` after successful focused, browser, broad test, Release build, visual governance, and diff-check validation.
 
@@ -309,6 +317,10 @@ Changed from rework baseline:
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md`
 - `tests/e2e/specs/specimen-accessibility.spec.ts`
+
+Committed unrelated pointer change present in the rework range (not modified by this run):
+
+- `references/Hexalith.Memories` - advanced from `c5a999e1` to `eb959d7f` in commit `f1d8d73e`; unrelated to Story 11.5 and preserved as found.
 
 Pre-existing evidence verified during rework (unchanged from baseline):
 
