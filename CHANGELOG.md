@@ -1,3 +1,15 @@
+# [1.12.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.11.0...v1.12.0) (2026-07-11)
+
+
+### Bug Fixes
+
+* update testing harness status to done ([df16faa](https://github.com/Hexalith/Hexalith.FrontComposer/commit/df16faa5a446e5e75c727f4f9bf9008b1d154ca0))
+
+
+### Features
+
+* **testing:** harden harness failure modes ([8086851](https://github.com/Hexalith/Hexalith.FrontComposer/commit/8086851e47215d658489d9dd318d473063abbd7e))
+
 # [1.11.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.10.0...v1.11.0) (2026-07-11)
 
 
