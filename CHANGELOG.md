@@ -1,3 +1,33 @@
+# [2.0.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.12.0...v2.0.0) (2026-07-12)
+
+
+* refactor!: govern the FrontComposer 2.0 package split ([b6e985f](https://github.com/Hexalith/Hexalith.FrontComposer/commit/b6e985f40ec697dd1927dabf14152c318cd931d9))
+
+
+### Bug Fixes
+
+* CI/CD ([723e3e1](https://github.com/Hexalith/Hexalith.FrontComposer/commit/723e3e1640dfb7e083b31b6481f88f8461500d10))
+* **ci:** pin clean consumers to fluent v5 ([3eafa3f](https://github.com/Hexalith/Hexalith.FrontComposer/commit/3eafa3fa34de19bc599ae5471066e2b2d072b9a4))
+* correct link path for hexalith-llm-instructions.md in copilot instructions ([522d835](https://github.com/Hexalith/Hexalith.FrontComposer/commit/522d83573d36fb24b321922356d2b3c627f8e6fd))
+* **release:** build contracts test prerequisite ([f32a986](https://github.com/Hexalith/Hexalith.FrontComposer/commit/f32a9862a0b39d09cc45589750e278c67a49d9c3))
+* update subproject reference for Hexalith.EventStore ([cf3ff8c](https://github.com/Hexalith/Hexalith.FrontComposer/commit/cf3ff8ca8cf4829f7ec18f9ab3347b2ac701de97))
+* update subproject reference for Hexalith.EventStore ([5023637](https://github.com/Hexalith/Hexalith.FrontComposer/commit/5023637fa3e89f8cc738c6afae3d18a8ad1ffb77))
+* update subproject references for Hexalith.AI.Tools, Hexalith.EventStore, and Hexalith.Memories ([8c638df](https://github.com/Hexalith/Hexalith.FrontComposer/commit/8c638df712d3b09a9376949cf9de8c11d02513c4))
+
+
+### Features
+
+* Add review findings and decisions for Story 11.5; update subproject references for Hexalith.Builds and Hexalith.EventStore ([0c7e5c7](https://github.com/Hexalith/Hexalith.FrontComposer/commit/0c7e5c74f18b2a5c11c70a77a727713373720964))
+* Add Story 11.14 for updating architecture, project context, UX trace, and package compatibility documentation; update sprint status and subproject references ([b39c891](https://github.com/Hexalith/Hexalith.FrontComposer/commit/b39c891874caee06239d1fa01061af3e5216dc6f))
+* Introduce Typography and TypographyStyle for Fluent UI integration ([4d24036](https://github.com/Hexalith/Hexalith.FrontComposer/commit/4d24036d6c59fd53a76761ffdef8c797509f4008))
+* Reopen Story 11.5 for rework; update baseline and add normal/reduced motion visual evidence ([f1d8d73](https://github.com/Hexalith/Hexalith.FrontComposer/commit/f1d8d73edc7fe69cf3cc3220ec5b29f144c55c37))
+
+
+### BREAKING CHANGES
+
+* UI, runtime, and testing-owned types now resolve from
+Contracts.UI, Shell, and Testing packages instead of Contracts.
+
 # [1.12.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.11.0...v1.12.0) (2026-07-11)
 
 
