@@ -268,6 +268,31 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void ReleaseWorkflow_BuildsContractsNetStandard20BeforeContractTests() {
+        string root = RepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string releaseJob = ExtractJobBlock(workflow, "release");
+        const string prerequisiteName = "Build Contracts test prerequisite (netstandard2.0)";
+        string prerequisite = FindStepBlockContaining(releaseJob, $"- name: {prerequisiteName}");
+        string releaseTests = FindStepBlockContaining(releaseJob, "- name: Run release tests");
+
+        const string restoreCommand = "dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release";
+        const string buildCommand = "dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -f netstandard2.0 --configuration Release --no-restore -m:1 /nr:false";
+        prerequisite.ShouldStartWith($"      - name: {prerequisiteName}");
+        ExtractRunScriptLines(prerequisite).ShouldBe([restoreCommand, buildCommand]);
+        prerequisite.ShouldNotContain("if:");
+        prerequisite.ShouldNotContain("continue-on-error");
+        releaseTests.ShouldStartWith("      - name: Run release tests");
+        releaseTests.ShouldContain(
+            "tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj");
+
+        int prerequisiteIndex = releaseJob.IndexOf(prerequisite, StringComparison.Ordinal);
+        int releaseTestsIndex = releaseJob.IndexOf(releaseTests, StringComparison.Ordinal);
+        (prerequisiteIndex + prerequisite.Length).ShouldBe(releaseTestsIndex);
+        releaseTestsIndex.ShouldBeLessThan(releaseJob.IndexOf("- name: Run semantic-release", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void ReleaseWorkflow_RunsAutomaticPackageReleaseAfterBlockingTests() {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
@@ -1797,6 +1822,33 @@ public sealed class CiGovernanceTests {
         idx.ShouldBeGreaterThanOrEqualTo(0, $"workflow is missing the named step '{name}'.");
         int nextStep = workflow.IndexOf("      - name:", idx + name.Length, StringComparison.Ordinal);
         return nextStep < 0 ? workflow[idx..] : workflow[idx..nextStep];
+    }
+
+    private static string ExtractJobBlock(string workflow, string jobId) {
+        Match job = Regex.Match(
+            workflow,
+            $@"^  {Regex.Escape(jobId)}:[ \t]*\r?$",
+            RegexOptions.Multiline);
+        job.Success.ShouldBeTrue($"workflow is missing jobs.{jobId}.");
+
+        int start = job.Index;
+        Match nextJob = Regex.Match(
+            workflow[(start + job.Length)..],
+            @"^  [A-Za-z0-9_-]+:[ \t]*\r?$",
+            RegexOptions.Multiline);
+        int end = nextJob.Success ? start + job.Length + nextJob.Index : workflow.Length;
+        return workflow[start..end];
+    }
+
+    private static string[] ExtractRunScriptLines(string step) {
+        string[] lines = step.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        int runIndex = Array.FindIndex(lines, line => string.Equals(line.Trim(), "run: |", StringComparison.Ordinal));
+        runIndex.ShouldBeGreaterThanOrEqualTo(0, "step must use a multiline run script.");
+
+        return lines[(runIndex + 1)..]
+            .Where(line => !string.IsNullOrWhiteSpace(line))
+            .Select(line => line.Trim())
+            .ToArray();
     }
 
     internal static string FindStepBlockContaining(string workflow, string needle) {
