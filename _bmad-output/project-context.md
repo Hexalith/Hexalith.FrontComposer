@@ -255,8 +255,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
   Never add a reference that pulls net10-only deps into `SourceTools` or the netstandard2.0 face of
   `Contracts`
 - **Package validation** is opt-in via `EnableFrontComposerPackageValidation=true` (existing-package
-  baseline `1.12.0`, `Directory.Build.targets`). First-release Contracts.UI has a narrow no-baseline
-  property that must be removed after its `2.0.0` publication
+  baseline `1.12.0`, `Directory.Build.targets`). Contracts.UI overrides that shared baseline with its
+  published `2.0.0` baseline
 - **No third-party CLI framework** — the `frontcomposer` CLI uses a bespoke option parser + the fixed
   generated-output path contract; don't add System.CommandLine et al.
 

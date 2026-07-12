@@ -5,12 +5,13 @@ story: 5
 story_key: 11-5-dead-css-remediation-and-visual-conformance-guards
 source_epics: _bmad-output/planning-artifacts/epics.md
 baseline_commit: 0c7e5c74f18b2a5c11c70a77a727713373720964
-status: in-progress
+completion_reconcile_base: 8c638df712d3b09a9376949cf9de8c11d02513c4
+status: done
 ---
 
 # Story 11.5: Dead-CSS Remediation and Visual-Conformance Guards
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -74,6 +75,22 @@ so Shell visual regressions fail in CI instead of shipping as silent no-op style
 - [x] [Review][Patch] Reopen Story 11.5 and rebuild its evidence from a clean baseline — The fixed baseline expanded to 353 files at the review-start `HEAD`, while the prior review-promotion commit `289bb099` also changed `references/Hexalith.Builds` and `references/Hexalith.Commons` despite the story claiming only the story and sprint files were dirty. User decision applied: reopened the story at clean baseline `0c7e5c74f18b2a5c11c70a77a727713373720964`, reran the required evidence, and kept the story in progress because the broad solution lane has one unrelated package-inventory governance failure.
 - [x] [Review][Patch] Synchronize the prior Story 11.5 spec as the rework contract — User decision applied: the prior spec remains active, now shares the clean rework baseline and records the rebuilt evidence and blocker.
 - [x] [Review][Patch] Add normal-motion computed-style coverage for the reconnect pulse [tests/e2e/specs/specimen-accessibility.spec.ts:274]
+
+#### Code Review 2026-07-12 (bmad-code-review; 4 layers: Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor)
+
+Acceptance Auditor verdict: PASS — AC1/AC2/AC3 genuinely satisfied by pre-existing, still-present code; guards enforce AC2/AC3 (regex + self-tests + clean Shell grep); confirm-and-pin claims true; completion pass honestly limited to tracking artifacts. Findings below concern evidence STRENGTH, not shipping-product defects.
+
+- [x] [Review][Decision] Reconnect-pulse computed-style proof runs against a synthetic fabricated node, not the shipped component — The normal/reduced-motion assertions build a `div.fc-projection-connection-status-host` + `.fc-projection-connection-status-pulse` child and stamp the scope attribute pulled from the CSSOM, rather than rendering the real `FcProjectionConnectionStatus`. It proves the scoped rule computes to the pinned values (0.7s/24/alternate; reduced → none/0s), but not that the real component renders a DOM the rule reaches, nor that `@keyframes fc-sync-status-pulse` exists (a deleted/renamed keyframe still yields the same `animationName` string → test stays green). The exact "dead scoped CSS on a Fluent child" regression the story targets (e.g. a Fluent v5 upgrade relocating where `FluentMessageBar` places its `Class`) would pass this e2e layer. Backstops: bUnit `FcProjectionConnectionStatusTests` proves the real component emits the class on a reachable raw host; the `toHaveScreenshot` visual lane catches gross breaks — so AC1's literal wording is met, but no single layer is end-to-end. RESOLVED 2026-07-12: user accepted the synthetic-node evidence as-is (dismissed); bUnit + visual-screenshot backstops are adequate for a confirm-and-pin story. No code change. [tests/e2e/specs/specimen-accessibility.spec.ts:334-374]
+- [x] [Review][Defer] Four of the seven AC1 surfaces have no browser/computed-style evidence — `FcColumnPrioritizer`, `FcDevModeAnnotation`, `FcDevModeToggleButton`, and `FcDevModeOverlay` are covered only by bUnit class-present (rendered-DOM) + CSS source-string (`css.ShouldContain("... ::deep ...")`) checks, and the governance guard explicitly `continue`s past `::deep` selectors. A dead-`::deep` regression (rule kept but descendant no longer reachable) regresses uncaught: source-string still matches, bUnit class-present still matches, governance skips `::deep`. Only computed-style detects this failure mode — which the pulse/density/settings surfaces got and these four did not. AC1's literal "rendered-DOM OR computed-style" is met via bUnit. Deferred 2026-07-12 (user decision): AC1 is literally met via bUnit rendered-DOM; extending browser computed-style proof to the four surfaces is out-of-scope for a confirm-and-pin remediation story — tracked in `deferred-work.md`. [tests/e2e/specs/specimen-accessibility.spec.ts; tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs:704]
+- [x] [Review][Patch] Restore unconditional cleanup of the injected pulse-proof node — old code removed the host in `finally`; new code removed it only after the five assertions, so a failing assertion leaked the node. APPLIED 2026-07-12: wrapped the assert/re-query body in try/finally; the finally removes via `page.evaluate(() => document.querySelector('[data-testid="fc-story-11-5-pulse-proof"]')?.remove())` (no-ops if never appended). [tests/e2e/specs/specimen-accessibility.spec.ts:352-375]
+- [x] [Review][Patch] Tighten the `animationName` assertion — REVERTED 2026-07-12 as a FALSE POSITIVE. The Edge Case Hunter claim that Blazor does not scope `@keyframes` names is wrong for the bundled stylesheet: running the Chromium a11y lane showed the computed value is `fc-sync-status-pulse-b-upjgyesj1x` (Blazor scopes the keyframe name with a `-b-<hash>` suffix per build). The original `/^fc-sync-status-pulse(?:-|$)/u` regex is therefore correct and intentional — `toBe('fc-sync-status-pulse')` fails. Kept the regex and added an explanatory comment. Caught only because the browser lane was re-run after applying patches (typecheck alone passed). [tests/e2e/specs/specimen-accessibility.spec.ts:353-355]
+- [x] [Review][Patch] Guard the Chromium-serialized pins to the chromium project — APPLIED 2026-07-12: added `test.skip(browserName !== 'chromium', ...)` as the first statement so a plain `playwright test` / firefox / webkit run skips the Chromium-calibrated computed-style pins instead of failing on engine serialization differences. [tests/e2e/specs/specimen-accessibility.spec.ts:274-275]
+- [x] [Review][Patch] Document or remove the untracked `prompt-fc-nip-continuation-2026-07-12.md` — APPLIED 2026-07-12: added a one-line entry under "Documented Unrelated Changes" recording it as an untracked FC-NIP scratch artifact that will not ship with the story. [_bmad-output/implementation-artifacts/prompt-fc-nip-continuation-2026-07-12.md]
+- [x] [Review][Defer] Scoped-CSS governance guard blind spot for dynamic `Class="@..."` on Fluent roots — `FindDeadScopedCssOnFluentRoots` skips any Fluent-root class value containing `@`, so a dead interpolated class on a Fluent root is not caught; enforces AC3 only for static `Class=`. Pre-existing guard behavior, not introduced by this diff, and does not affect the seven named surfaces (all `::deep`-reachable). [tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs:679] — deferred, pre-existing
+
+Post-patch verification (2026-07-12): applied P1/P3 and (initially) P2, then re-ran the Chromium a11y lane on the affected test — `Hexalith__FrontComposer__Specimens__Enabled=true DiffEngine_Disabled=true npx playwright test specs/specimen-accessibility.spec.ts --project=chromium -g "story 11.5 scoped Fluent-root visual hooks"`. First run FAILED and exposed P2 as a false positive (computed keyframe name is scoped `fc-sync-status-pulse-b-<hash>`); P2 was reverted to the original regex. Re-run after revert: 1 passed (5.2s). `npm --prefix tests/e2e run typecheck` passed. Final applied patches: P1 (try/finally cleanup) + P3 (chromium skip guard); P4 (doc note). P2 reverted.
+
+Dismissed as noise (4): exact-value over-pinning of 0.7s/24/alternate (by-design for a confirm-and-pin story; CSS P35 comment documents 24×700ms as a deliberate contract tied to the SignalR reconnect budget; values verified correct); "stale review patch vs worktree" (concerns the review diff artifact, not the code — the substantive e2e change is committed and was reviewed; the uncommitted completion flip is BMAD tracking only); Linux visual-snapshot drift disposition (user-confirmed, traced to the 2.0 package split, orthogonal to the pulse test); broad-lane 2218/2218 counts not independently re-run (reported claim, not a code defect; static verification corroborates the AC-relevant governance).
 
 ## Dev Notes
 
@@ -200,11 +217,15 @@ The 2026-07-09 review-promotion attempt used baseline `d02f2b423719950d220332820
 
 ### Documented Blockers
 
-- `eng/release-package-inventory.json` - The broad filtered solution lane fails because the packable `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj` project is missing from the release inventory. This baseline package-boundary work is outside Story 11.5 and aligns with Story 11.14 ownership; Story 11.5 remains in progress until the broad gate is green.
+- RESOLVED (2026-07-12): the prior broad-lane blocker `eng/release-package-inventory.json` no longer applies. The packable `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj` is now listed in the release inventory, delivered by the Epic 11 2.0 package-split work (Stories 11.11-11.14, commit `b6e985f4`; Story 11.14 done). At HEAD `8c638df712d3b09a9376949cf9de8c11d02513c4` the broad filtered solution lane passes with zero failures: Shell 2218/2218, Testing 57/57, Contracts 200/200, Contracts.UI 10/10, Cli 67/67, Mcp 372/372, SourceTools 1063/1063.
+- OUT OF SCOPE, owned elsewhere: the local Linux Playwright visual snapshot `visual baseline light comfortable` (`tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/frontcomposer-type-light-comfortable-chromium-linux.png`) drifts +32px in page height (1280x3215 baseline vs 1280x3247 actual; 0.03 pixel ratio) because the 2.0 package split (`b6e985f4`, `619e135e`) changed the type-specimen rendered layout. This is not a Story 11.5 change - Story 11.5 alters no `.razor`, `.razor.css`, `wwwroot/css`, or committed baseline. Per the test, Linux baselines are regenerated locally while CI's authoritative visual lane is Windows; specimen baseline refreshes are owned by the visual-baseline-refresh process (`spec-fix-accessibility-visual-ci-baselines.md`, with rationale in `docs/accessibility-verification/baseline-change-rationale.md`). Story 11.5's own visual-conformance guard `validate:visual-governance` passes with no committed baseline changes, and the 21 non-snapshot a11y checks (scoped-Fluent-root reachability plus normal/reduced-motion pulse) pass.
 
 ## Documented Unrelated Changes
 
-None at the 2026-07-11 rework baseline.
+- `AGENTS.md` - pre-existing unrelated worktree edit to the AI-assistant entrypoint file (user/linter trimmed the submodule-rules block; 3 lines removed). Not part of Story 11.5; preserved as found per the repo rule never to modify or revert the entrypoint files during module work.
+- `CLAUDE.md` - pre-existing unrelated worktree edit to the AI-assistant entrypoint file, kept byte-for-byte identical to `AGENTS.md` (3 lines removed). Not part of Story 11.5; preserved as found.
+- `references/Hexalith.Memories` - unrelated committed pointer advanced from `c5a999e1` to `eb959d7f` in the rework range (commit `f1d8d73e`); unrelated to Story 11.5 and preserved as found.
+- `_bmad-output/implementation-artifacts/prompt-fc-nip-continuation-2026-07-12.md` - untracked FC-NIP (Epic 9 / Story 9.2) continuation-prompt scratch artifact present in the worktree; unrelated to Story 11.5 and untracked, so it will not ship with the story. Recorded here for worktree-enumeration completeness (surfaced by the 2026-07-12 code review).
 
 ### Project Structure Notes
 
@@ -289,6 +310,17 @@ GPT-5 Codex
 - Story 11.5 remains `in-progress` because the mandatory broad regression gate is not green. The deterministic blockers are the unlisted/unpacked `Hexalith.FrontComposer.Contracts.UI` package in release/package-consumer validation; the isolated Shell polling timeout passed on focused rerun and is recorded as transient evidence, not as a green broad lane.
 - No production, test, package-inventory, or submodule content was changed by this dev-story run. Updating `eng/release-package-inventory.json` or package publication wiring is outside Story 11.5 and remains owned by Story 11.14.
 
+#### 2026-07-12 Completion (in-progress -> review)
+
+- Blocker cleared: the sole documented blocker keeping Story 11.5 in progress - the packable `Hexalith.FrontComposer.Contracts.UI` project missing from `eng/release-package-inventory.json` - is resolved on `main`. Story 11.14 and the Epic 11 2.0 package split (`b6e985f4`) added `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj` to the inventory as packable.
+- Broad regression lane now GREEN with zero failures at HEAD `8c638df712d3b09a9376949cf9de8c11d02513c4`: `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release -p:NuGetAudit=false --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` -> Contracts 200/200, Contracts.UI 10/10, Cli 67/67, Mcp 372/372, Shell 2218/2218, Testing 57/57, SourceTools 1063/1063 (was 2215/2216 Shell + 56/57 Testing during the 2026-07-11 rework because Contracts.UI was unlisted/unpacked).
+- Release build GREEN: `dotnet build Hexalith.FrontComposer.slnx -c Release` -> 0 errors (one transient parallel-build MSB3026 file-lock on `SourceTools.dll` that auto-retried; no code warning).
+- Governance and component AC evidence green within the broad Shell 2218/2218: `FluentConformanceTests` (stylesheet-link drift, scoped-CSS-on-Fluent-root detector, legacy error-token guard) and the five reachability lanes (`FcProjectionConnectionStatusTests`, `FcColumnPrioritizerTests`, `FcSettingsDialogTests`, `FcDensityPreviewPanelTests`, `FcDevModeVisualReachabilityTests`).
+- Browser/computed-style evidence: `npm --prefix tests/e2e run test:a11y` (chromium) passed 21/22, including scoped-Fluent-root visual-hook reachability and normal/reduced-motion reconnect-pulse computed-style checks. The single failure is the out-of-scope local Linux `visual baseline light comfortable` snapshot documented under Documented Blockers (2.0 package-split layout drift; owned by the visual-baseline-refresh process; CI-authoritative visual lane is Windows).
+- Story 11.5-owned visual-conformance guard `npm --prefix tests/e2e run validate:visual-governance` passed: "No committed visual baseline changes detected." `npm --prefix tests/e2e run typecheck` passed.
+- Artifact reconciliation: Story 11.5's implementation (the `specimen-accessibility.spec.ts` normal/reduced-motion evidence and guards) is already committed on `main` (rework commit `f1d8d73e`) and the worktree is clean for those files, so this completion pass changes only BMAD tracking artifacts. `baseline_commit` is preserved per workflow; File List and `validate-story-artifacts.py` are reconciled against the completion base `8c638df7` (HEAD), because the range `0c7e5c74..8c638df7` also contains independently-merged Epic 11 package-split stories (11.11-11.14) and CI fixes that are not Story 11.5 changes (the same stale-baseline situation seen on the already-done Stories 11.6 and 11.14).
+- Disposition confirmed by the user (2026-07-12): flip to review and document the local Linux visual-snapshot drift as out-of-scope rather than refreshing an out-of-scope baseline inside this confirm-and-pin story.
+
 ### 2026-07-11 Review Rework Evidence
 
 | Lane | Required command | Local result | Blocker timing | Fallback evidence | CI authority |
@@ -305,29 +337,32 @@ GPT-5 Codex
 
 ### Change Log
 
+- 2026-07-12: Completed Story 11.5 (in-progress -> review). The sole prior blocker (Contracts.UI missing from the release inventory) is resolved on `main` via Story 11.14 / the 2.0 package split; the broad filtered solution lane now passes with zero failures, Release build is clean, `validate:visual-governance` and e2e typecheck pass, and the a11y lane passes 21/22. Documented the one remaining local Linux visual-snapshot drift as an out-of-scope 2.0 package-split layout change owned by the visual-baseline-refresh process (user-confirmed disposition). Reconciled File List against completion base `8c638df7` and preserved unrelated dirty entrypoint files (`AGENTS.md`, `CLAUDE.md`).
 - 2026-07-11: Revalidated Story 11.5 focused and browser evidence; kept the story in progress after deterministic Contracts.UI release/package-consumer regression failures, recorded the AppHost/Tenants baseline blocker, and reconciled the unrelated committed Memories pointer.
 - 2026-07-11: Reopened by user decision during code review; reset to clean baseline `0c7e5c74f18b2a5c11c70a77a727713373720964`, synchronized the prior spec for rework, and added normal-/reduced-motion reconnect-pulse browser evidence.
 - 2026-07-09: Confirmed Story 11.5 implementation and evidence already present; updated story and sprint tracking to `review` after successful focused, browser, broad test, Release build, visual governance, and diff-check validation.
 
 ### File List
 
-Changed from rework baseline:
+Changed by this completion pass (reconciled against completion base `8c638df712d3b09a9376949cf9de8c11d02513c4`):
 
 - `_bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
-- `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md`
-- `tests/e2e/specs/specimen-accessibility.spec.ts`
+- `tests/e2e/specs/specimen-accessibility.spec.ts` - code-review patches applied 2026-07-12 (P1 try/finally cleanup of the injected pulse-proof node; P3 `test.skip` non-chromium guard). P2 was applied then reverted as a false positive. Chromium a11y lane re-run on the affected test: 1 passed (5.2s); e2e typecheck passed.
+- `_bmad-output/implementation-artifacts/deferred-work.md` - appended two code-review deferrals (D2 four-surface browser evidence; W1 dynamic `Class=` guard blind spot).
 
-Committed unrelated pointer change present in the rework range (not modified by this run):
+Story 11.5 implementation already committed in the rework range (pre-existing at the completion base):
 
-- `references/Hexalith.Memories` - advanced from `c5a999e1` to `eb959d7f` in commit `f1d8d73e`; unrelated to Story 11.5 and preserved as found.
+- `_bmad-output/implementation-artifacts/spec-11-5-dead-css-remediation-and-visual-conformance-guards.md` - committed in the rework range (commit `f1d8d73e`); pre-existing and unchanged this pass. The `tests/e2e/specs/specimen-accessibility.spec.ts` normal/reduced-motion pulse browser evidence was also committed in that range (commit `f1d8d73e`) and received the 2026-07-12 code-review patches listed above.
 
-Pre-existing evidence verified during rework (unchanged from baseline):
+Pre-existing evidence verified (unchanged from baseline):
 
-- `_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md` - pre-existing evidence verified during rework, unchanged.
-- `_bmad-output/implementation-artifacts/visual-component-evidence-checklist.md` - pre-existing evidence verified during rework, unchanged.
-- `_bmad-output/planning-artifacts/epics.md` - pre-existing evidence verified during rework, unchanged.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` - pre-existing evidence verified by the 39/39 focused governance lane, unchanged.
-- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css` - pre-existing evidence verified during rework, unchanged.
-- `src/Hexalith.FrontComposer.Shell/Components/Forms/FcDestructiveConfirmationDialog.razor.css` - pre-existing evidence verified during rework, unchanged.
-- `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-empty-state.css` - pre-existing evidence verified during rework, unchanged.
+- `_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md` - pre-existing evidence verified, unchanged.
+- `_bmad-output/implementation-artifacts/visual-component-evidence-checklist.md` - pre-existing evidence verified, unchanged.
+- `_bmad-output/planning-artifacts/epics.md` - pre-existing evidence verified, unchanged.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs` - pre-existing evidence verified by the Shell 2218/2218 broad lane (includes governance), unchanged.
+- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css` - pre-existing evidence verified, unchanged.
+- `src/Hexalith.FrontComposer.Shell/Components/Forms/FcDestructiveConfirmationDialog.razor.css` - pre-existing evidence verified, unchanged.
+- `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-empty-state.css` - pre-existing evidence verified, unchanged.
+
+Unrelated worktree and committed state preserved and not modified by this story is recorded under "Documented Unrelated Changes" above (the two AI-assistant entrypoint files and the Hexalith.Memories submodule pointer).

@@ -890,8 +890,8 @@ public sealed partial class DiagnosticRegistryTests {
         directoryBuildTargets.ShouldNotContain(">0.1.0</FrontComposerPackageValidationBaselineVersion>");
 
         string contractsUiProject = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"), Encoding.UTF8);
-        contractsUiProject.ShouldContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");
-        contractsUiProject.ShouldContain("Remove after Hexalith.FrontComposer.Contracts.UI 2.0.0 is published");
+        contractsUiProject.ShouldContain("<FrontComposerPackageValidationBaselineVersion>2.0.0</FrontComposerPackageValidationBaselineVersion>");
+        contractsUiProject.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");
         contractsUiProject.ShouldNotContain("<EnablePackageValidation>false</EnablePackageValidation>");
 
         Regex isPackableTrue = IsPackableTrueRegex();
@@ -915,9 +915,7 @@ public sealed partial class DiagnosticRegistryTests {
         foreach (string projectPath in packableProjects) {
             string project = File.ReadAllText(Path.Combine(ProjectRoot().FullName, projectPath), Encoding.UTF8);
             project.ShouldNotContain("<EnablePackageValidation>false</EnablePackageValidation>", customMessage: $"{projectPath} must not broadly disable validation.");
-            if (!projectPath.Contains("Contracts.UI", StringComparison.Ordinal)) {
-                project.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>", customMessage: $"{projectPath} must validate against the 1.12.0 baseline.");
-            }
+            project.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>", customMessage: $"{projectPath} must validate against a published package baseline.");
         }
     }
 

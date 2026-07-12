@@ -1,7 +1,7 @@
 {
   "schemaVersion": "2.0",
   "currentRelease": "v2.0",
-  "baselinePolicy": "Package validation compares existing packable libraries with 1.12.0. Every approved 2.0.0 CP0001, CP0002, or CP0008 baseline suppression is exact by package, TFM, diagnostic, and API signature; Contracts.UI has no baseline until its first release.",
+  "baselinePolicy": "Package validation compares existing packable libraries with 1.12.0 and Contracts.UI with its published 2.0.0 baseline. Every approved 2.0.0 CP0001, CP0002, or CP0008 baseline suppression is exact by package, TFM, diagnostic, and API signature.",
   "suppressions": [
     {
       "package": "Hexalith.FrontComposer.Contracts",

@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-12T01:20:00+02:00
+# last_updated: 2026-07-12T12:58:22+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-12T01:20:00+02:00
+last_updated: 2026-07-12T12:58:22+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -388,13 +388,18 @@ development_status:
   # 11-5 moved in-progress -> review on 2026-07-09 (dev-story; confirm-and-pin completed with no source changes required. Focused governance 39/39, affected component lane 31/31, e2e typecheck, Playwright specimen/a11y 21/21, visual governance, broad filtered solution test, Release build, and diff check passed.)
   # 11-5 moved review -> in-progress on 2026-07-11 (bmad-code-review; user chose to reopen and rebuild evidence from clean baseline 0c7e5c74 after the prior completion range mixed unrelated submodule-pointer changes; normal-motion pulse verification added.)
   # 11-5 review patches completed on 2026-07-11; remains in-progress because the broad filtered solution lane fails the baseline package-inventory guard for the unlisted packable Contracts.UI project. Story-focused governance 39/39, components 31/31, Chromium a11y/visual 22/22, Release build, and both story artifact validators passed.
-  11-5-dead-css-remediation-and-visual-conformance-guards: in-progress
+  # 11-5 moved in-progress -> review on 2026-07-12 (dev-story; blocker resolved. Contracts.UI is now in eng/release-package-inventory.json via Story 11.14 / the 2.0 package split, so the broad filtered solution lane is GREEN at HEAD 8c638df7: Shell 2218/2218, Testing 57/57, Contracts 200/200, Contracts.UI 10/10, Cli 67/67, Mcp 372/372, SourceTools 1063/1063. Release build 0 errors; validate:visual-governance and e2e typecheck pass; a11y lane 21/22. The one failing local Linux visual snapshot (frontcomposer-type-light-comfortable, +32px height) is an out-of-scope 2.0 package-split layout drift owned by the visual-baseline-refresh process; CI-authoritative visual lane is Windows. User-confirmed disposition. File List reconciled against completion base 8c638df7.)
+  # 11-5 moved review -> done on 2026-07-12 (bmad-code-review; 4 layers. Acceptance Auditor PASS: AC1/AC2/AC3 genuinely satisfied, confirm-and-pin claims verified true. 2 decision-needed resolved (D1 synthetic-node evidence accepted as-is; D2 four-surface browser-evidence gap deferred to deferred-work.md per user). 4 patches: P1 try/finally cleanup + P3 chromium-skip guard applied to specimen-accessibility.spec.ts, P4 doc note; P2 animationName-toBe applied then REVERTED as a false positive (browser lane showed the keyframe name is Blazor-scoped `fc-sync-status-pulse-b-<hash>`, so the original regex is correct). Post-patch Chromium a11y re-run on the affected test: 1 passed (5.2s); e2e typecheck passed. 1 defer (W1 dynamic-Class guard blind spot) + 4 dismissed. Review-applied test/doc patches are uncommitted in the worktree.)
+  11-5-dead-css-remediation-and-visual-conformance-guards: done
   # 11-6 moved backlog -> ready-for-dev on 2026-07-09 (create-story; testing harness failure modes, per-request query/page callbacks, authorization states, async host setup, public API and privacy evidence requirements.)
   11-6-testing-harness-failure-modes: done
   11-7-route-contract-implementation: done
   # 11-8 moved backlog -> done on 2026-07-05 (correct-course; approved the Contracts kernel split, amended the multi-TFM decision, recorded package-compat/public-API/deprecation requirements, and kept Stories 11.11-11.14 deliberately ordered last for pre-v1.0 implementation evidence.)
   11-8-contracts-kernel-split-decision-and-compatibility-plan: done
-  11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface: backlog
+  # 11-11 moved backlog -> ready-for-dev on 2026-07-12 (create-story; brownfield confirm-and-pin/status reconciliation for the already-landed Contracts.UI split, exact package-dependency proof, and post-first-release package-validation trigger.)
+  # 11-11 moved ready-for-dev -> in-progress on 2026-07-12 (dev-story; baseline 359bbf834798bea62824d1a4a00509a7d9f8228e preserved; reconciling exact Contracts.UI dependency proof and the post-first-release package-validation trigger.)
+  # 11-11 moved in-progress -> review on 2026-07-12 (dev-story; exact nuspec/transitive-consumer proof, published 2.0.0 package-validation baseline, deterministic package fixtures, current guidance, 3,497 focused tests, eight-package/eight-symbol pack, docs, inventory, and Release build evidence complete.)
+  11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface: review
   11-12-relocate-runtime-and-testing-owned-types-out-of-contracts: done
   11-13-decompose-queryrequest-through-hfc0001-migration-path: review
   # 11-14 moved backlog -> ready-for-dev on 2026-07-11 (create-story; current-state architecture/UX/package migration guide plus the Contracts.UI release-inventory repair, package-consumer evidence, and v1.12-to-v2 compatibility/release posture.)

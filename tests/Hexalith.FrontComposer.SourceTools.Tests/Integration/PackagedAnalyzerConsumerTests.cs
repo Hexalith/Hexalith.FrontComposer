@@ -18,7 +18,7 @@ public sealed class PackagedAnalyzerConsumerTests {
         AssertCentralPackageVersion(root, "Microsoft.FluentUI.AspNetCore.Components.Icons", FluentV5Version);
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-source-tools-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-source-tools-consumer-" + Guid.NewGuid().ToString("N"));
-        string packageVersion = "2.0.0-review." + Guid.NewGuid().ToString("N")[..8];
+        string packageVersion = "2.0.0-review.g" + Guid.NewGuid().ToString("N")[..8];
         string fallbackPackages = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages");
         _ = Directory.CreateDirectory(packageOutput);
         _ = Directory.CreateDirectory(consumer);

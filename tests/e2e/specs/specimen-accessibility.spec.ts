@@ -271,7 +271,8 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await page.screenshot({ path: testInfo.outputPath('focus-type-command-submit.png'), fullPage: false });
   });
 
-  test('story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion', async ({ page }) => {
+  test('story 11.5 scoped Fluent-root visual hooks are reachable in normal and reduced motion', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'Computed-style pins (0.7s / 24 / alternate) and emulateMedia reduced-motion are Chromium-serialized; the gated a11y lane runs chromium only.');
     const route = getSpecimenRoute('type');
     await page.setViewportSize({ width: 420, height: 900 });
     await page.emulateMedia({ reducedMotion: 'no-preference' });
@@ -349,29 +350,34 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
       };
     });
 
-    expect(pulseProof.reducedMotion).toBe(false);
-    expect(pulseProof.animationName).toMatch(/^fc-sync-status-pulse(?:-|$)/u);
-    expect(pulseProof.animationDuration).toBe('0.7s');
-    expect(pulseProof.animationIterationCount).toBe('24');
-    expect(pulseProof.animationDirection).toBe('alternate');
+    try {
+      expect(pulseProof.reducedMotion).toBe(false);
+      // Blazor CSS isolation scopes the @keyframes name with a `-b-<hash>` suffix in the bundled
+      // stylesheet (observed: `fc-sync-status-pulse-b-<hash>`), so match the prefix, not an exact name.
+      expect(pulseProof.animationName).toMatch(/^fc-sync-status-pulse(?:-|$)/u);
+      expect(pulseProof.animationDuration).toBe('0.7s');
+      expect(pulseProof.animationIterationCount).toBe('24');
+      expect(pulseProof.animationDirection).toBe('alternate');
 
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    const reducedPulseProof = await page
-      .getByTestId('fc-story-11-5-pulse-proof')
-      .locator('.fc-projection-connection-status-pulse')
-      .evaluate((element) => {
-        const styles = getComputedStyle(element);
-        return {
-          animationDuration: styles.animationDuration,
-          animationName: styles.animationName,
-          reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
-        };
-      });
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const reducedPulseProof = await page
+        .getByTestId('fc-story-11-5-pulse-proof')
+        .locator('.fc-projection-connection-status-pulse')
+        .evaluate((element) => {
+          const styles = getComputedStyle(element);
+          return {
+            animationDuration: styles.animationDuration,
+            animationName: styles.animationName,
+            reducedMotion: matchMedia('(prefers-reduced-motion: reduce)').matches,
+          };
+        });
 
-    expect(reducedPulseProof.reducedMotion).toBe(true);
-    expect(reducedPulseProof.animationName).toBe('none');
-    expect(reducedPulseProof.animationDuration).toBe('0s');
-    await page.getByTestId('fc-story-11-5-pulse-proof').evaluate((element) => element.remove());
+      expect(reducedPulseProof.reducedMotion).toBe(true);
+      expect(reducedPulseProof.animationName).toBe('none');
+      expect(reducedPulseProof.animationDuration).toBe('0s');
+    } finally {
+      await page.evaluate(() => document.querySelector('[data-testid="fc-story-11-5-pulse-proof"]')?.remove());
+    }
   });
 
   test('forced-colors and reduced-motion states are active and perceivable', async ({ browser }) => {

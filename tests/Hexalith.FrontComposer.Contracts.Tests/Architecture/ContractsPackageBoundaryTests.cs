@@ -13,7 +13,7 @@ public sealed class ContractsPackageBoundaryTests {
         string root = FindRepoRoot();
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-contracts-kernel-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-contracts-kernel-consumer-" + Guid.NewGuid().ToString("N"));
-        string version = "0.2.0-review." + Guid.NewGuid().ToString("N")[..8];
+        string version = "0.2.0-review.g" + Guid.NewGuid().ToString("N")[..8];
         _ = Directory.CreateDirectory(packageOutput);
         _ = Directory.CreateDirectory(consumer);
 

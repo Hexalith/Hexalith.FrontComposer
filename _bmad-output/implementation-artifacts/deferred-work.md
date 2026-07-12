@@ -1487,3 +1487,13 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-29182697666-fix-cicd.md`
   summary: Clean up temporary clean-consumer package, project, and cache directories after package-boundary tests.
   evidence: The pre-existing package-consumer tests allocate unique `/tmp` directories on every run and never remove them, causing repeated local or CI executions to accumulate package payloads and generated build outputs.
+
+## Deferred from: code review of 11-5-dead-css-remediation-and-visual-conformance-guards.md (2026-07-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`
+  summary: Close the scoped-CSS governance guard blind spot for dynamic `Class="@..."` values on Fluent component roots.
+  evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Governance/FluentConformanceTests.cs:679` — `FindDeadScopedCssOnFluentRoots` skips any Fluent-root class value containing `@`, so a genuinely dead interpolated class on a Fluent root is not flagged; AC3's drift guard therefore enforces only static `Class=`. Pre-existing guard behavior, not introduced by Story 11.5, and it does not affect the seven named surfaces (all `::deep`-reachable regardless). Skipping dynamic values is a defensible false-positive avoidance; a targeted enhancement would resolve the interpolated class against known safe patterns before deciding.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-5-dead-css-remediation-and-visual-conformance-guards.md`
+  summary: Extend browser/computed-style evidence to the four AC1 surfaces that currently have none (FcColumnPrioritizer, FcDevModeAnnotation, FcDevModeToggleButton, FcDevModeOverlay).
+  evidence: These four scoped-CSS surfaces are covered only by bUnit class-present (rendered-DOM) + CSS source-string (`css.ShouldContain("... ::deep ...")`) checks; the governance guard `continue`s past `::deep` selectors (`FluentConformanceTests.cs:704`). A dead-`::deep` regression (rule kept but descendant no longer reachable) regresses uncaught because source-string still matches, bUnit class-present still matches, and governance skips `::deep` — only computed-style detects it, which the pulse/density/settings surfaces got and these four did not. Follow-up: add one Playwright computed-style block per surface (or a shared parametrized one) reaching each real rendered element on its specimen route and asserting a load-bearing property from the `::deep` rule is non-default. Deferred per user decision on 2026-07-12: AC1 is literally met via bUnit rendered-DOM, so this is out-of-scope for a confirm-and-pin remediation story.

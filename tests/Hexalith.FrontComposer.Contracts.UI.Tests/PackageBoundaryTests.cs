@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Reflection;
+using System.Xml.Linq;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 
@@ -49,13 +50,13 @@ public sealed class PackageBoundaryTests {
     }
 
     [Fact]
-    public void PackageValidation_FirstReleaseUsesNarrowTrackedNoBaselinePath() {
+    public void PackageValidation_Published20UsesItsReleasedBaseline() {
         string root = FindRepoRoot();
         string project = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"));
         string targets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
 
-        project.ShouldContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");
-        project.ShouldContain("Remove after Hexalith.FrontComposer.Contracts.UI 2.0.0 is published");
+        project.ShouldContain("<FrontComposerPackageValidationBaselineVersion>2.0.0</FrontComposerPackageValidationBaselineVersion>");
+        project.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");
         project.ShouldNotContain("<EnablePackageValidation>false</EnablePackageValidation>");
         targets.ShouldContain("<FrontComposerPackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationBaselineVersion)' == ''\">1.12.0</FrontComposerPackageValidationBaselineVersion>");
         targets.ShouldContain("Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\"");
@@ -67,7 +68,7 @@ public sealed class PackageBoundaryTests {
         string root = FindRepoRoot();
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-contracts-ui-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-contracts-ui-consumer-" + Guid.NewGuid().ToString("N"));
-        string version = "2.0.0-review." + Guid.NewGuid().ToString("N")[..8];
+        string version = "2.0.0-review.g" + Guid.NewGuid().ToString("N")[..8];
         _ = Directory.CreateDirectory(packageOutput);
         _ = Directory.CreateDirectory(consumer);
 
@@ -76,9 +77,22 @@ public sealed class PackageBoundaryTests {
 
         string package = Directory.GetFiles(packageOutput, "Hexalith.FrontComposer.Contracts.UI.*.nupkg").Single();
         using (ZipArchive archive = ZipFile.OpenRead(package)) {
-            string nuspec = ReadNuspec(archive);
-            nuspec.ShouldContain("Hexalith.FrontComposer.Contracts");
-            nuspec.ShouldContain("Microsoft.FluentUI.AspNetCore.Components");
+            XDocument nuspec = ReadNuspec(archive);
+            XElement dependencyGroup = nuspec
+                .Descendants()
+                .Single(element => string.Equals(element.Name.LocalName, "group", StringComparison.Ordinal)
+                    && element.Parent?.Name.LocalName == "dependencies");
+            dependencyGroup.Attribute("targetFramework")?.Value.ShouldBe("net10.0");
+            string[] dependencies = dependencyGroup
+                .Elements()
+                .Where(element => string.Equals(element.Name.LocalName, "dependency", StringComparison.Ordinal))
+                .Select(element => $"{element.Attribute("id")?.Value}|{element.Attribute("version")?.Value}")
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+            dependencies.ShouldBe([
+                $"Hexalith.FrontComposer.Contracts|{version}",
+                $"Microsoft.FluentUI.AspNetCore.Components|{FluentV5Version}",
+            ], ignoreOrder: false);
             archive.Entries.Select(entry => entry.FullName)
                 .ShouldContain(entry => entry.EndsWith("build/Hexalith.FrontComposer.Contracts.UI.PublicAPI.Shipped.txt", StringComparison.Ordinal));
         }
@@ -86,7 +100,7 @@ public sealed class PackageBoundaryTests {
         await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors><NuGetAudit>false</NuGetAudit></PropertyGroup>
-  <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /><PackageReference Include="Hexalith.FrontComposer.Contracts.UI" Version="{{version}}" /><PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="{{FluentV5Version}}" /></ItemGroup>
+  <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /><PackageReference Include="Hexalith.FrontComposer.Contracts.UI" Version="{{version}}" /></ItemGroup>
 </Project>
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
         await File.WriteAllTextAsync(Path.Combine(consumer, "nuget.config"), $$"""
@@ -102,10 +116,10 @@ public static class Consumer { public static FcTypoToken Token => Typography.Bod
         await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-m:1", "/nr:false").ConfigureAwait(true);
     }
 
-    private static string ReadNuspec(ZipArchive archive) {
+    private static XDocument ReadNuspec(ZipArchive archive) {
         ZipArchiveEntry entry = archive.Entries.Single(item => item.FullName.EndsWith(".nuspec", StringComparison.Ordinal));
-        using StreamReader reader = new(entry.Open());
-        return reader.ReadToEnd();
+        using Stream stream = entry.Open();
+        return XDocument.Load(stream);
     }
 
     private static IEnumerable<string> EnumeratePublicApi(Assembly assembly) {
