@@ -1,3 +1,10 @@
+## [2.0.3](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v2.0.2...v2.0.3) (2026-07-12)
+
+
+### Bug Fixes
+
+* update subproject references for Hexalith.EventStore and Hexalith.Memories ([5a27c40](https://github.com/Hexalith/Hexalith.FrontComposer/commit/5a27c40d90f543ac1e44bd2ec9b8858534fc3a7c))
+
 ## [2.0.2](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v2.0.1...v2.0.2) (2026-07-12)
 
 
