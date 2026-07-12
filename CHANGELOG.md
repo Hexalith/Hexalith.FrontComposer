@@ -1,3 +1,10 @@
+## [2.0.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v2.0.0...v2.0.1) (2026-07-12)
+
+
+### Bug Fixes
+
+* update status to done for Story 11.11 and adjust related documentation ([8f28078](https://github.com/Hexalith/Hexalith.FrontComposer/commit/8f2807821218adedec87f88f2a237256e8db2088))
+
 # [2.0.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v1.12.0...v2.0.0) (2026-07-12)
 
 
