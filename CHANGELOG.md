@@ -1,3 +1,10 @@
+## [2.0.2](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v2.0.1...v2.0.2) (2026-07-12)
+
+
+### Bug Fixes
+
+* update subproject references for Hexalith.Builds, Hexalith.Commons, Hexalith.Memories, and Hexalith.Parties ([ff0095b](https://github.com/Hexalith/Hexalith.FrontComposer/commit/ff0095b900647df4f3cf2f90896d52e827e0f822))
+
 ## [2.0.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v2.0.0...v2.0.1) (2026-07-12)
 
 
