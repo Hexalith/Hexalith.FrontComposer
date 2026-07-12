@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Reflection;
+using System.Xml.Linq;
 
 using Shouldly;
 
@@ -10,6 +11,7 @@ namespace Hexalith.FrontComposer.Testing.Tests;
 
 public sealed class PackageBoundaryTests {
     private const string FluentV5Version = "5.0.0-rc.4-26180.1";
+    private const string LocalizationAbstractionsVersion = "10.0.9";
 
     [Fact]
     public void PublicApi_ExportedTypes_MatchIntentionalBaseline() {
@@ -62,6 +64,9 @@ public sealed class PackageBoundaryTests {
     [Fact]
     public async Task CleanTemporaryConsumer_RestoresFromPackedNupkgs_WithoutRepoRelativeProjectReferences() {
         string root = FindRepoRoot();
+        AssertCentralPackageVersion(root, "Microsoft.FluentUI.AspNetCore.Components", FluentV5Version);
+        AssertCentralPackageVersion(root, "Microsoft.FluentUI.AspNetCore.Components.Icons", FluentV5Version);
+        AssertCentralPackageVersion(root, "Microsoft.Extensions.Localization.Abstractions", LocalizationAbstractionsVersion);
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-testing-clean-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-testing-consumer-" + Guid.NewGuid().ToString("N"));
         string packageVersion = "2.0.0-review." + Guid.NewGuid().ToString("N")[..8];
@@ -73,6 +78,12 @@ public sealed class PackageBoundaryTests {
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
         await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-c", "Release", "-o", packageOutput, "--no-build", "-m:1", "/nr:false", $"-p:Version={packageVersion}").ConfigureAwait(true);
+
+        AssertPackageDependencyVersion(packageOutput, "Hexalith.FrontComposer.Contracts.UI", "Microsoft.FluentUI.AspNetCore.Components", FluentV5Version);
+        AssertPackageDependencyVersion(packageOutput, "Hexalith.FrontComposer.Shell", "Microsoft.FluentUI.AspNetCore.Components", FluentV5Version);
+        AssertPackageDependencyVersion(packageOutput, "Hexalith.FrontComposer.Shell", "Microsoft.FluentUI.AspNetCore.Components.Icons", FluentV5Version);
+        AssertPackageDependencyVersion(packageOutput, "Hexalith.FrontComposer.Testing", "Microsoft.FluentUI.AspNetCore.Components", FluentV5Version);
+        AssertPackageDependencyVersion(packageOutput, "Hexalith.FrontComposer.Testing", "Microsoft.FluentUI.AspNetCore.Components.Icons", FluentV5Version);
 
         await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
 <Project Sdk="Microsoft.NET.Sdk.Razor">
@@ -88,6 +99,7 @@ public sealed class PackageBoundaryTests {
     <PackageReference Include="Hexalith.FrontComposer.Testing" Version="{{packageVersion}}" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" Version="{{FluentV5Version}}" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="{{FluentV5Version}}" />
+    <PackageReference Include="Microsoft.Extensions.Localization.Abstractions" Version="{{LocalizationAbstractionsVersion}}" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="xunit.v3.assert" Version="3.2.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
@@ -153,7 +165,10 @@ public sealed class ConsumerSmokeTests
         assets.ShouldContain($"\"Hexalith.FrontComposer.Shell/{packageVersion}\"");
         assets.ShouldContain($"\"Hexalith.FrontComposer.Testing/{packageVersion}\"");
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components/" + FluentV5Version + "\"");
+        assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/" + FluentV5Version + "\"");
+        assets.ShouldContain("\"Microsoft.Extensions.Localization.Abstractions/" + LocalizationAbstractionsVersion + "\"");
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components/4.");
+        assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/4.");
         assets.ShouldNotContain("\"type\": \"project\"");
         assets.ShouldNotContain(root.Replace('\\', '/'));
     }
@@ -163,6 +178,35 @@ public sealed class ConsumerSmokeTests
         using Stream stream = entry.Open();
         using StreamReader reader = new(stream);
         return reader.ReadToEnd();
+    }
+
+    private static void AssertCentralPackageVersion(string root, string packageId, string expectedVersion) {
+        string path = Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props");
+        XDocument document = XDocument.Load(path);
+        string? actualVersion = document
+            .Descendants("PackageVersion")
+            .Single(element => string.Equals((string?)element.Attribute("Include"), packageId, StringComparison.Ordinal))
+            .Attribute("Version")
+            ?.Value;
+
+        actualVersion.ShouldBe(expectedVersion);
+    }
+
+    private static void AssertPackageDependencyVersion(string packageOutput, string packageId, string dependencyId, string expectedVersion) {
+        string package = Directory.GetFiles(packageOutput, $"{packageId}.*.nupkg").Single();
+        using ZipArchive archive = ZipFile.OpenRead(package);
+        ZipArchiveEntry nuspec = archive.Entries.Single(entry => entry.FullName.EndsWith(".nuspec", StringComparison.Ordinal));
+        using Stream stream = nuspec.Open();
+        XDocument document = XDocument.Load(stream);
+        string actualVersion = document
+            .Descendants()
+            .Where(element => string.Equals(element.Name.LocalName, "dependency", StringComparison.Ordinal))
+            .Where(element => string.Equals((string?)element.Attribute("id"), dependencyId, StringComparison.Ordinal))
+            .Select(element => (string?)element.Attribute("version"))
+            .Distinct(StringComparer.Ordinal)
+            .Single()!;
+
+        actualVersion.ShouldBe(expectedVersion);
     }
 
     private static string FormatTypeName(Type type) {

@@ -1479,3 +1479,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-14-update-architecture-context-ux-and-package-compat-docs.md`
   summary: Reconcile the pre-existing generated project index with the live unsigned-package release posture.
   evidence: `_bmad-output/project-docs/index.md:31` says semantic-release produces signed NuGet packages, while `_bmad-output/project-docs/deployment-guide.md:19-21,56` correctly records that signing remains deferred and packages are currently unsigned.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29182697666-fix-cicd.md`
+  summary: Make clean package-consumer fixtures honor NuGet's effective global packages folder.
+  evidence: The pre-existing fixtures construct `~/.nuget/packages` directly, so environments using `NUGET_PACKAGES` can fail despite already containing every restored dependency in their configured global folder.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29182697666-fix-cicd.md`
+  summary: Clean up temporary clean-consumer package, project, and cache directories after package-boundary tests.
+  evidence: The pre-existing package-consumer tests allocate unique `/tmp` directories on every run and never remove them, causing repeated local or CI executions to accumulate package payloads and generated build outputs.
