@@ -7,12 +7,12 @@ source_epics: _bmad-output/planning-artifacts/epics.md
 baseline_commit: 359bbf834798bea62824d1a4a00509a7d9f8228e
 implementation_commit: 4d24036d6c59fd53a76761ffdef8c797509f4008
 governance_commit: b6e985f40ec697dd1927dabf14152c318cd931d9
-status: review
+status: done
 ---
 
 # Story 11.11: Create Contracts.UI Assembly and Migrate Blazor Rendering Surface
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -82,8 +82,15 @@ so that referencing Contracts stops inheriting the pinned Fluent RC.
   - [x] Run Contracts, Contracts.UI, SourceTools, and Shell test projects individually with `DiffEngine_Disabled=true`; run relevant Testing/sample/IDE-parity builds when dependency changes touch them.
   - [x] Run public API, exact nuspec/assets, clean-consumer, analyzer-payload/generated-consumer, release inventory, package pack, DocFX/docs, story artifact, and whitespace gates. Do not publish packages.
   - [x] Use the `.slnx` for restore/build only. Do not substitute a solution-level `dotnet test` for the repository-required per-project lanes.
-  - [x] Record exact current counts and blockers. Historical 11.14 counts are useful baseline evidence but are not a fresh pass.
-  - [x] Reconcile the final implementation diff, story File List, current-state documentation, and any accepted deferral before moving this story to review.
+- [x] Record exact current counts and blockers. Historical 11.14 counts are useful baseline evidence but are not a fresh pass.
+- [x] Reconcile the final implementation diff, story File List, current-state documentation, and any accepted deferral before moving this story to review.
+
+### Review Findings
+
+- [x] [Review][Decision] Separate or explicitly accept the out-of-scope review range — Resolved 2026-07-12: user accepted the bundled history as intentional; no paths were reverted and the finding was dismissed.
+- [x] [Review][Patch] Make the clean Contracts.UI consumer prove the package-supplied ASP.NET framework reference [tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs:80]
+- [x] [Review][Patch] Validate dependency asset exclusions and runtime loading in the packed-package proof [tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs:86]
+- [x] [Review][Defer] Move synthetic pulse insertion inside the cleanup scope [tests/e2e/specs/specimen-accessibility.spec.ts:342] — deferred, pre-existing
 
 ## Dev Notes
 

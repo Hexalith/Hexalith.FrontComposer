@@ -86,21 +86,31 @@ public sealed class PackageBoundaryTests {
             string[] dependencies = dependencyGroup
                 .Elements()
                 .Where(element => string.Equals(element.Name.LocalName, "dependency", StringComparison.Ordinal))
-                .Select(element => $"{element.Attribute("id")?.Value}|{element.Attribute("version")?.Value}")
+                .Select(element => $"{element.Attribute("id")?.Value}|{element.Attribute("version")?.Value}|{element.Attribute("exclude")?.Value}")
                 .Order(StringComparer.Ordinal)
                 .ToArray();
             dependencies.ShouldBe([
-                $"Hexalith.FrontComposer.Contracts|{version}",
-                $"Microsoft.FluentUI.AspNetCore.Components|{FluentV5Version}",
+                $"Hexalith.FrontComposer.Contracts|{version}|Build,Analyzers",
+                $"Microsoft.FluentUI.AspNetCore.Components|{FluentV5Version}|Build,Analyzers",
             ], ignoreOrder: false);
+            XElement frameworkReferenceGroup = nuspec
+                .Descendants()
+                .Single(element => string.Equals(element.Name.LocalName, "group", StringComparison.Ordinal)
+                    && element.Parent?.Name.LocalName == "frameworkReferences");
+            frameworkReferenceGroup.Attribute("targetFramework")?.Value.ShouldBe("net10.0");
+            frameworkReferenceGroup
+                .Elements()
+                .Where(element => string.Equals(element.Name.LocalName, "frameworkReference", StringComparison.Ordinal))
+                .Select(element => element.Attribute("name")?.Value)
+                .ShouldBe(["Microsoft.AspNetCore.App"], ignoreOrder: false);
             archive.Entries.Select(entry => entry.FullName)
                 .ShouldContain(entry => entry.EndsWith("build/Hexalith.FrontComposer.Contracts.UI.PublicAPI.Shipped.txt", StringComparison.Ordinal));
         }
 
         await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
 <Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors><NuGetAudit>false</NuGetAudit></PropertyGroup>
-  <ItemGroup><FrameworkReference Include="Microsoft.AspNetCore.App" /><PackageReference Include="Hexalith.FrontComposer.Contracts.UI" Version="{{version}}" /></ItemGroup>
+  <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors><NuGetAudit>false</NuGetAudit></PropertyGroup>
+  <ItemGroup><PackageReference Include="Hexalith.FrontComposer.Contracts.UI" Version="{{version}}" /></ItemGroup>
 </Project>
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
         await File.WriteAllTextAsync(Path.Combine(consumer, "nuget.config"), $$"""
@@ -110,10 +120,18 @@ public sealed class PackageBoundaryTests {
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Microsoft.AspNetCore.Components.Web;
-public static class Consumer { public static FcTypoToken Token => Typography.Body; public static bool Map(KeyboardEventArgs e) => ShortcutBinding.TryFromKeyboardEvent(e, out _); }
+public static class Consumer {
+    public static int Main() {
+        FcTypoToken token = Typography.Body;
+        bool mapped = ShortcutBinding.TryFromKeyboardEvent(new KeyboardEventArgs { Key = "k", CtrlKey = true }, out string binding);
+        Console.WriteLine($"{token.Size}:{binding}");
+        return mapped && string.Equals(binding, "ctrl+k", StringComparison.Ordinal) ? 0 : 1;
+    }
+}
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-m:1", "/nr:false").ConfigureAwait(true);
+        await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "run", "--no-build").ConfigureAwait(true);
     }
 
     private static XDocument ReadNuspec(ZipArchive archive) {

@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-12T12:58:22+02:00
+# last_updated: 2026-07-12T15:47:46+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-12T12:58:22+02:00
+last_updated: 2026-07-12T15:47:46+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -399,7 +399,8 @@ development_status:
   # 11-11 moved backlog -> ready-for-dev on 2026-07-12 (create-story; brownfield confirm-and-pin/status reconciliation for the already-landed Contracts.UI split, exact package-dependency proof, and post-first-release package-validation trigger.)
   # 11-11 moved ready-for-dev -> in-progress on 2026-07-12 (dev-story; baseline 359bbf834798bea62824d1a4a00509a7d9f8228e preserved; reconciling exact Contracts.UI dependency proof and the post-first-release package-validation trigger.)
   # 11-11 moved in-progress -> review on 2026-07-12 (dev-story; exact nuspec/transitive-consumer proof, published 2.0.0 package-validation baseline, deterministic package fixtures, current guidance, 3,497 focused tests, eight-package/eight-symbol pack, docs, inventory, and Release build evidence complete.)
-  11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface: review
+  # 11-11 moved review -> done on 2026-07-12 (bmad-code-review; bundled history accepted by user, two package-proof patches applied, Contracts.UI Release tests 10/10 passed, one pre-existing Story 11.5 cleanup deferred, and nine findings dismissed.)
+  11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface: done
   11-12-relocate-runtime-and-testing-owned-types-out-of-contracts: done
   11-13-decompose-queryrequest-through-hfc0001-migration-path: review
   # 11-14 moved backlog -> ready-for-dev on 2026-07-11 (create-story; current-state architecture/UX/package migration guide plus the Contracts.UI release-inventory repair, package-consumer evidence, and v1.12-to-v2 compatibility/release posture.)
