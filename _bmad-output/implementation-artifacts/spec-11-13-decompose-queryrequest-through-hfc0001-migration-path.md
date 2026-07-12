@@ -2,7 +2,7 @@
 title: 'Story 11.13: Decompose QueryRequest through the HFC0001 migration path'
 type: 'refactor'
 created: '2026-07-11T00:00:00+02:00'
-status: 'in-review'
+status: 'done'
 baseline_revision: 'ff166ac2134b13e839e6e1c9bbab35472ad09019'
 review_loop_iteration: 0
 followup_review_recommended: false
@@ -58,7 +58,7 @@ warnings: [oversized]
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/{DiagnosticRegistryTests,QueryRequestDeprecationTests}.cs` -- compile net10 canonical and legacy consumers to prove HFC0001/no-warning behavior, document the netstandard obsolete identity, and keep registry/docs metadata consistent with a real post-v1 removal target.
 - `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/{EventStoreClientTests,EventStoreQueryCacheIntegrationTests,QueryAndCacheTenantIsolationTests}.cs`, `tests/Hexalith.FrontComposer.Shell.Tests/Badges/EventStoreActionQueueCountReaderTests.cs`, and `tests/Hexalith.FrontComposer.Shell.Tests/Pact/EventStorePactContractTests.cs` -- update construction and add mapping/cache/security equivalence assertions; pact fixtures must not drift.
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTests.cs` and `tests/Hexalith.FrontComposer.Testing.Tests/{FrontComposerTestHostTests,TestingFailureModeTests}.cs` -- prove canonical request capture with unchanged MCP output, Testing callback behavior, evidence, and public API baseline.
-- `docs/diagnostics/diagnostic-registry.json` and `docs/diagnostics/HFC0001.md` -- replace the missed v0.4 promise with accurate flattened-query migration steps, compiler-emission semantics, TFM behavior, and an explicit v2.0.0 removal target.
+- `docs/diagnostics/diagnostic-registry.json` and `docs/diagnostics/HFC0001.md` -- replace the missed v0.4 promise with accurate flattened-query migration steps, compiler-emission semantics, TFM behavior, and an explicit v3.0.0 removal target.
 
 **Acceptance Criteria:**
 - Given a canonical composed request or any supported flattened v1.12 construction, when Shell, MCP, badge, and Testing consumers execute it, then the same projection criteria, routing, ETag, cache, tenant, and result behavior is observed.
@@ -70,6 +70,19 @@ warnings: [oversized]
 ## Spec Change Log
 
 ## Review Triage Log
+
+### Review Findings
+
+_Adversarial code review (`bmad-code-review`), 2026-07-12 — 4 parallel layers (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor). All layers passed; no CRITICAL/HIGH issues. Verification Gap: NO FINDINGS. Scope: the two 11.13 commits' net change to the story's Code-Map source/tests/diagnostic docs. Result: 1 decision, 1 patch, 4 dismissed._
+
+- [x] [Review][Decision] Deprecation removal target mismatch: code uses **v3.0.0**, spec Execution task previously said **v2.0.0** — RESOLVED 2026-07-12: the spec Execution task was updated to v3.0.0 to match the SemVer-correct code (2.0.x already shipped). No code change. `QueryRequest.LegacyMessage`, `docs/diagnostics/diagnostic-registry.json` (`"removedIn": "3.0.0"`), `docs/diagnostics/HFC0001.md`, and the pinning tests remain the source of truth on v3.0.0.
+- [x] [Review][Patch] `ProjectionType` serialized unconditionally, bypassing null-omission [src/Hexalith.FrontComposer.Contracts/Communication/QueryRequestJsonConverter.cs:121] — APPLIED 2026-07-12: routed the `ProjectionType` write through the shared `WriteString`→`ShouldOmitNull` helper so a null `ProjectionType` under `WhenWritingNull`/`WhenWritingDefault` is omitted like every other member; golden `Never` shape unchanged. Added `DirectJson_NullProjectionType_IsOmittedUnderIgnoreConditions` (theory) and `DirectJson_NullProjectionType_IsWrittenUnderDefaultIgnoreCondition` regression tests. Verified: Contracts net10.0 + netstandard2.0 build clean (0 warnings), Contracts.Tests 203/203 pass.
+
+_Dismissed (no action, recorded for traceability):_
+- `with { <flattened>, Criteria = … }` order-dependent data loss — only triggers when an obsolete flattened member and canonical `Criteria` are set in a single `with` (a combination impossible in v1.12, since `Criteria` is additive); the flattened member already emits HFC0001. Pure v1.12-shaped `with` usage compounds correctly, so the "silent data divergence" Block-If is not tripped.
+- `CachePayloadVersion` write-omit-default (0) vs read-default (1) asymmetry — faithfully reproduces the released v1.12 STJ behavior (parameter default 1 vs value-type default 0 under `WhenWritingDefault`); reproducing the released shape byte-for-byte is the converter's requirement.
+- Duplicate JSON property keys resolve first-wins vs STJ last-wins — malformed/RFC-undefined input; no legitimate producer emits duplicate keys.
+- Provided review diff is a subset of the committed change (excludes `SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`) — deliberate review scoping disclosed at the checkpoint; the file is committed on disk with HFC0001 metadata assertions consistent with the change.
 
 ## Design Notes
 

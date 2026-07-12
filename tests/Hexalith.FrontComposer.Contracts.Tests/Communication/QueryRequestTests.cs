@@ -270,6 +270,33 @@ public sealed class QueryRequestTests
         json.ShouldContain("\"cachePayloadVersion\":1");
     }
 
+    [Theory]
+    [InlineData(JsonIgnoreCondition.WhenWritingNull)]
+    [InlineData(JsonIgnoreCondition.WhenWritingDefault)]
+    public void DirectJson_NullProjectionType_IsOmittedUnderIgnoreConditions(JsonIgnoreCondition condition)
+    {
+        JsonSerializerOptions options = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = condition };
+#pragma warning disable HFC0001, CS8625 // Intentional v1.12 nullable-disabled consumer shape.
+        QueryRequest request = new(null, null);
+#pragma warning restore HFC0001, CS8625
+
+        string json = JsonSerializer.Serialize(request, options);
+
+        json.ShouldNotContain("\"projectionType\"");
+    }
+
+    [Fact]
+    public void DirectJson_NullProjectionType_IsWrittenUnderDefaultIgnoreCondition()
+    {
+#pragma warning disable HFC0001, CS8625 // Intentional v1.12 nullable-disabled consumer shape.
+        QueryRequest request = new(null, null);
+#pragma warning restore HFC0001, CS8625
+
+        string json = JsonSerializer.Serialize(request, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+
+        json.ShouldContain("\"projectionType\":null");
+    }
+
     [Fact]
     public void DirectJson_UnmappedMemberDisallow_RemainsFailClosed()
     {

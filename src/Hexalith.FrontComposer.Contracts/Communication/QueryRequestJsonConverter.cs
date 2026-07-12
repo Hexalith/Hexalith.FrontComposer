@@ -118,7 +118,7 @@ public sealed class QueryRequestJsonConverter : JsonConverter<QueryRequest>
         }
 
         writer.WriteStartObject();
-        writer.WriteString(PropertyName(nameof(QueryRequest.ProjectionType), options), value.Criteria.ProjectionType);
+        WriteString(writer, nameof(QueryRequest.ProjectionType), value.Criteria.ProjectionType, options);
         WriteString(writer, nameof(QueryRequest.TenantId), value.TenantId, options);
         WriteString(writer, nameof(QueryRequest.Filter), value.LegacyFilter, options);
         WriteNumber(writer, nameof(QueryRequest.Skip), value.Criteria.Skip, options);
