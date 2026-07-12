@@ -1,3 +1,11 @@
+## [2.0.4](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v2.0.3...v2.0.4) (2026-07-12)
+
+
+### Bug Fixes
+
+* update status of Story 11.13 to done and adjust migration target to v3.0.0 ([32ac411](https://github.com/Hexalith/Hexalith.FrontComposer/commit/32ac411b074678c30087318d095a10c4e58d6580))
+* update subproject reference for Hexalith.Memories ([f4fdfa0](https://github.com/Hexalith/Hexalith.FrontComposer/commit/f4fdfa0074046c95bd74dceaf2a31b1a242960b3))
+
 ## [2.0.3](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v2.0.2...v2.0.3) (2026-07-12)
 
 
