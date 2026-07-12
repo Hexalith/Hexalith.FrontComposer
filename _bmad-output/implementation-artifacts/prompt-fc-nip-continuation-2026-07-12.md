@@ -37,28 +37,31 @@ Treat these statements as the approved starting point:
 
 ## Existing Submodule Story Routing
 
-Do not create a duplicate EventStore story before reconciling these existing backlog entries in
-`references/Hexalith.EventStore`:
+Do not create duplicate EventStore work. The current `references/Hexalith.EventStore` workspace
+already contains the adjacent Epic 4 implementations:
 
 1. **Story 4.1: Event Identity And Duplicate Result Fidelity**
    - Sprint key: `4-1-event-identity-and-duplicate-result-fidelity`
-   - Current status: `backlog`
-   - Story file: not created
+   - Current status: `done`
+   - Story file: `_bmad-output/implementation-artifacts/4-1-event-identity-and-duplicate-result-fidelity.md`
    - Relevant scope: preserve event count, typed/domain result payload, backpressure fields,
      acceptance/error state, and correlation information when returning a duplicate command result.
    - FC-NIP relationship: adjacent duplicate-result correctness only; it does not define generated
      grid row identity.
+   - Routing: already implemented and reviewed; do not schedule or recreate it.
 
 2. **Story 4.2: Resume And Idempotency Integrity**
    - Sprint key: `4-2-resume-and-idempotency-integrity`
-   - Current status: `backlog`
-   - Story file: not created
+   - Current status: `review`
+   - Story file: `_bmad-output/implementation-artifacts/4-2-resume-and-idempotency-integrity.md`
    - Relevant scope: match resume state by `MessageId`, `CausationId`, and `CommandType`; validate
      tenant access before idempotency reads; preserve retryability; key command status/archive by
      `{tenant}:{messageId}` while treating correlation id as an indexed field.
    - FC-NIP relationship: this is the existing home for EventStore command-status identity
      hardening. It strengthens the `MessageId` lifecycle boundary used by FrontComposer but does not
      replace `PendingCommandRowIdentity` or supply FrontComposer lane/entity metadata.
+   - Routing: implementation is developed; complete its independent code-review and verification
+     workflow before promotion to `done`. Do not reimplement it from this prompt.
 
 The existing EventStore **Story 2.6: Generated Command-Status Location Policy** is already `done` and
 must not be recreated. It owns the absolute, gateway-authoritative, fail-closed status `Location`
@@ -67,9 +70,9 @@ policy, not FC-NIP row identity.
 No matching unfinished FC-NIP, `FcNewItemIndicator`, `PendingCommandRowIdentity`, or generated-grid
 row-identity story was found in the root-declared Tenants, Memories, or Parties submodules.
 
-If EventStore work is authorized, follow the existing Epic 4 ordering: create/implement Story 4.1
-when duplicate-result fidelity is in scope, then create/implement Story 4.2 for status/resume identity
-hardening. Do not broaden either story with FrontComposer presentation concepts.
+The next undeveloped story in EventStore Epic 4 is **Story 4.3: Deterministic Replay Dispatch And
+Serialization** (`backlog`), but it is unrelated to FC-NIP and is not required for FrontComposer to
+continue. Do not broaden Story 4.3 with FrontComposer presentation concepts.
 
 ## Objective
 
