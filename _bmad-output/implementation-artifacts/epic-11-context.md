@@ -46,7 +46,7 @@ The implemented package target keeps both `Contracts` TFMs UI-clean and places B
 
 MCP cross-request state uses a singleton state store behind a scoped facade; it must not capture scoped admission services. EventStore token acquisition must work safely in interactive circuits with expiry and sign-out eviction. Projection realtime must recover beyond the default retry ladder, restart after closed connections, and align disposal/cache synchronization. Fail-closed and hot-path logging uses sanitized source-generated events.
 
-`ProjectionQuery` now owns canonical query criteria and is composed through `QueryRequest.Create`; HFC0001/CS0618 preserves the v1.12 flattened source/deconstruction surface and flat JSON through the `2.0.0` transition. Shell boundaries place telemetry cross-cutting, connection/polling workers in infrastructure, and route/label helpers outside render components; duplicated scope, snapshot, fatal-exception, hydration, JSON, and literal-escaping behavior should be consolidated with focused equivalence tests.
+`ProjectionQuery` now owns canonical query criteria and is composed through `QueryRequest.Create`; HFC0001/CS0618 preserves the v1.12 flattened source/deconstruction surface and flat JSON throughout 2.x, with removal targeted for `3.0.0`. Shell boundaries place telemetry cross-cutting, connection/polling workers in infrastructure, and route/label helpers outside render components; duplicated scope, snapshot, fatal-exception, hydration, JSON, and literal-escaping behavior should be consolidated with focused equivalence tests.
 
 ## UX & Interaction Patterns
 

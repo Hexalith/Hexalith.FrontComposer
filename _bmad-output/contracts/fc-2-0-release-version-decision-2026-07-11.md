@@ -25,7 +25,8 @@ changes. These changes must not be presented as an ordinary backward-compatible 
   namespaces remain unchanged, but adopters must add the package reference and rebuild.
 - Story 11.12 moves require adopters to update namespaces and package references to Shell or Testing.
 - The flattened v1.12 `QueryRequest` constructor, criteria properties, deconstruction, and flat JSON
-  representation remain available through HFC0001/CS0618 shims until their `2.0.0` removal target.
+  representation remain available through HFC0001/CS0618 shims throughout 2.x, with removal targeted
+  for `3.0.0`.
 - `IQueryService`, Testing callback signatures, EventStore wire behavior, MCP descriptors/output,
   schema fingerprints, CLI JSON, generated routes/output paths, and Pact wire shape do not change as
   incidental consequences of the package-boundary work.
@@ -44,3 +45,7 @@ Contracts.UI release has no prior baseline; its project-specific exception must 
 
 Administrator, acting as Release Owner, approved the `2.0.0` posture in the Story 11.14 dev-story
 workflow on 2026-07-11.
+
+On 2026-07-12, Administrator approved the Story 11.14 review resolution that retains the flattened
+`QueryRequest` compatibility shims throughout the complete 2.x release line and advances their
+removal target to `3.0.0`.

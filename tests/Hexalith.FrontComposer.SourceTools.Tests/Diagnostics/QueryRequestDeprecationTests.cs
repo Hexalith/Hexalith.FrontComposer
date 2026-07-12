@@ -85,7 +85,7 @@ public sealed class QueryRequestDeprecationTests
 
         obsolete.Length.ShouldBe(12);
         obsolete.All(diagnostic => diagnostic.GetMessage().Contains("HFC0001", StringComparison.Ordinal)).ShouldBeTrue();
-        obsolete.All(diagnostic => diagnostic.GetMessage().Contains("v2.0.0", StringComparison.Ordinal)).ShouldBeTrue();
+        obsolete.All(diagnostic => diagnostic.GetMessage().Contains("v3.0.0", StringComparison.Ordinal)).ShouldBeTrue();
         diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
     }
 
@@ -94,6 +94,11 @@ public sealed class QueryRequestDeprecationTests
         string[] trustedAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))!
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
         List<MetadataReference> references = trustedAssemblies
+            // The fixture selects one Contracts TFM explicitly; exclude the in-process runner's copy.
+            .Where(path => !string.Equals(
+                Path.GetFileName(path),
+                "Hexalith.FrontComposer.Contracts.dll",
+                StringComparison.OrdinalIgnoreCase))
             .Select(path => MetadataReference.CreateFromFile(path))
             .Cast<MetadataReference>()
             .ToList();

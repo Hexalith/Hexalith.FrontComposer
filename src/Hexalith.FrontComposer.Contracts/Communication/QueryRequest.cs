@@ -9,7 +9,7 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 [JsonConverter(typeof(QueryRequestJsonConverter))]
 public record QueryRequest
 {
-    private const string LegacyMessage = "Flattened QueryRequest projection criteria are deprecated. Use QueryRequest.Criteria with ProjectionQuery. Removed in v2.0.0. See HFC0001.";
+    private const string LegacyMessage = "Flattened QueryRequest projection criteria are deprecated. Use QueryRequest.Criteria with ProjectionQuery. Removed in v3.0.0. See HFC0001.";
     private const string DiagnosticId = "HFC0001";
     private const string HelpLinkFormat = "https://hexalith.github.io/FrontComposer/diagnostics/{0}";
 

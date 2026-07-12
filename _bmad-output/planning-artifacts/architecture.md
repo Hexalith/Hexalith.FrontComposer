@@ -28,7 +28,7 @@ FrontComposer is a source-generation-driven Blazor application framework. A dual
 
 - `SourceTools` references only the `Contracts` kernel and stays netstandard2.0-clean.
 - No Blazor/Fluent/runtime/testing implementation types are added to `Contracts`; rendering contracts live in Contracts.UI, runtime options/registries/actions in Shell, and `InMemoryStorageService` in Testing.
-- `ProjectionQuery` owns query criteria. `QueryRequest.Create` composes it with transport/cache metadata while HFC0001/CS0618 preserves the v1.12 flattened source and flat JSON compatibility surface until `2.0.0`.
+- `ProjectionQuery` owns query criteria. `QueryRequest.Create` composes it with transport/cache metadata while HFC0001/CS0618 preserves the v1.12 flattened source and flat JSON compatibility surface throughout 2.x, with removal targeted for `3.0.0`.
 - No Roslyn `ISymbol` escapes the SourceTools parse stage.
 - Generated output path `obj/{Config}/{TFM}/generated/HexalithFrontComposer/` is public contract.
 - Schema canonicalization pins encoder, sentinel, source-gen context, and ordinal comparison.

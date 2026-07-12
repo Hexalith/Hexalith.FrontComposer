@@ -25,7 +25,7 @@ DomainManifest
 |---|---|
 | `CommandResult` | Outcome of `ICommandService.DispatchAsync`; carries accepted `MessageId`, optional EventStore `CorrelationId`, and optional retry hint. |
 | `ProjectionQuery` | Canonical projection criteria: projection type, paging, column/status filters, search, and ordering. |
-| `QueryRequest` / `QueryResult` | `QueryRequest.Create` composes `ProjectionQuery` with tenant, EventStore routing, ETags, and cache metadata. HFC0001/CS0618 retains the v1.12 flattened source/deconstruction surface and exact flat JSON until `2.0.0`; no nested `criteria` member is emitted. |
+| `QueryRequest` / `QueryResult` | `QueryRequest.Create` composes `ProjectionQuery` with tenant, EventStore routing, ETags, and cache metadata. HFC0001/CS0618 retains the v1.12 flattened source/deconstruction surface and exact flat JSON throughout 2.x, with removal targeted for `3.0.0`; no nested `criteria` member is emitted. |
 | `ProblemDetailsPayload` | RFC 7807 error payload with optional bounded `CommandRejectionDetails`. |
 | `CommandRejectionDetails` | Typed rejection metadata (`errorCode`, `reasonCategory`, `suggestedAction`, `docsCode`) shown by command lifecycle UI. |
 | `CommandWarningKind` / `CommandWarningException` | Warning-class command outcomes (`Forbidden`, `NotFound`, `RateLimited`, `Pending`, `RetryableDispatchFailed`) rendered outside terminal lifecycle state. |

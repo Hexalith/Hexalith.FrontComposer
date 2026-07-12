@@ -87,7 +87,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 
 The vocabulary shared by generator + runtime + MCP. (Attributes are catalogued in [api-contracts.md](./api-contracts.md); data records in [data-models.md](./data-models.md).)
 
-**Communication:** `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, `IProjectionChangeNotifier`, `IProjectionSubscription`, `IProjectionSearchProvider`; records `CommandResult`, `QueryResult`, canonical `ProjectionQuery`, composed `QueryRequest`, `ProblemDetailsPayload`, `CommandRejectionDetails`. HFC0001/CS0618 retains the v1.12 flattened `QueryRequest` source/deconstruction surface and flat JSON shape until `2.0.0`.
+**Communication:** `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, `IProjectionChangeNotifier`, `IProjectionSubscription`, `IProjectionSearchProvider`; records `CommandResult`, `QueryResult`, canonical `ProjectionQuery`, composed `QueryRequest`, `ProblemDetailsPayload`, `CommandRejectionDetails`. HFC0001/CS0618 retains the v1.12 flattened `QueryRequest` source/deconstruction surface and flat JSON shape throughout 2.x, with removal targeted for `3.0.0`.
 
 **Lifecycle:** `CommandLifecycleState` (Idle→Submitting→Acknowledged→Syncing→Confirmed/Rejected), `CommandLifecycleTransition`, `ICommandLifecycleTracker`, `ILifecycleStateService`, `IUlidFactory`, `LifecycleOptions`, `McpLifecycleStateNames`.
 

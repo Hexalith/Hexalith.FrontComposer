@@ -5,12 +5,13 @@ story: 14
 story_key: 11-14-update-architecture-context-ux-and-package-compat-docs
 source_epics: _bmad-output/planning-artifacts/epics.md
 baseline_commit: f1d8d73edc7fe69cf3cc3220ec5b29f144c55c37
-status: review
+review_patch_baseline_commit: cf3ff8ca
+status: done
 ---
 
 # Story 11.14: Update Architecture, Project Context, UX Trace, and Package Compatibility Docs
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -56,7 +57,7 @@ so that adopters understand the new package boundaries and compatibility story.
 - [x] Publish adopter-facing package and query migration guidance. (AC: 1, 2)
   - [x] Add a complete versioned migration page under `docs/migrations/` for the release-owner-approved edge (expected `1.12` to `2.0`, subject to the explicit version decision below). It must satisfy the repository's required headings: Affected Versions, Why This Changed, Old Code, New Code, Analyzer And Code Fix, and Skill Corpus Evidence.
   - [x] Include a complete old-to-new ownership table covering all 25 Story 11.12 moves plus the 11.11/11.13 surfaces. Name every identity and destination: unchanged rendering/shortcut FQNs now supplied by Contracts.UI; `InMemoryStorageService` in Testing; `FcShellOptions`, `FcShellDevModeOptions`, `CustomizationContractValidationMode`, and `InlinePopoverRegistry` in Shell; all 18 DataGrid actions and both expanded-row actions listed in the ownership map below; and `ProjectionQuery` composed through `QueryRequest.Create`.
-  - [x] State compatibility precisely: adding the Contracts.UI reference preserves source namespaces for moved UI types, but their assembly identity move without type forwarding is binary-breaking; 11.12 namespace/assembly moves require source edits; HFC0001/CS0618 shims retain the v1.12 flattened query constructor/properties/deconstruction until the documented v2.0 removal; direct JSON stays flat with no `criteria` member.
+  - [x] State compatibility precisely: adding the Contracts.UI reference preserves source namespaces for moved UI types, but their assembly identity move without type forwarding is binary-breaking; 11.12 namespace/assembly moves require source edits; HFC0001/CS0618 shims retain the v1.12 flattened query constructor/properties/deconstruction throughout 2.x with removal targeted for 3.0; direct JSON stays flat with no `criteria` member.
   - [x] State the non-changes explicitly: no incidental change to `IQueryService`, Testing callback signatures, EventStore body/headers/cache behavior, MCP output/descriptors, schema fingerprints, CLI JSON, generated routes/output paths, or Pact wire shape.
   - [x] Update `docs/migrations/index.md`, `docs/toc.yml`, and relevant how-to/index links; update `docs/concepts/source-generation-and-mcp-split.md` with the kernel/UI/analyzer/runtime dependency direction.
   - [x] Update `docs/skills/frontcomposer/setup/package-and-hosting.md` so agent setup chooses Contracts, Contracts.UI, Shell, Testing, SourceTools, and MCP by responsibility while preserving the MCP fail-closed gate instructions and skill-corpus front-matter/section contract.
@@ -76,7 +77,20 @@ so that adopters understand the new package boundaries and compatibility story.
   - [x] Pack the full explicit inventory at one non-published test version and build a clean external consumer that exercises kernel-only, UI, Shell/Testing, and canonical `ProjectionQuery` usage.
   - [x] Run `pwsh ./eng/validate-docs.ps1` with DocFX, metadata, snippets, links, diagnostic registry, and warnings-as-errors enabled. Verify generated API ownership shows Contracts.UI for typography/rendering/shortcut types and the canonical query surface.
   - [x] Run each affected/default test project individually with `DiffEngine_Disabled=true`, then run the Release `.slnx` build, `git diff --check`, and the story artifact validator. Use the `.slnx` for restore/build only, not solution-level `dotnet test`.
-  - [x] Reconcile the story File List, documentation drift sweep, release evidence, and exact blockers against the actual diff before moving to review.
+- [x] Reconcile the story File List, documentation drift sweep, release evidence, and exact blockers against the actual diff before moving to review.
+
+### Review Findings
+
+- [x] [Review][Patch] [High] Allow no migration diagnostic for manual package moves and preserve each exact ApiCompat CP identity — remove the unrelated query-only `HFC0001` claim from package/type/member breaks, record `CP0001`/`CP0002`/`CP0008` in the governed ledger, and reconcile that identity with each XML suppression. Evidence: `docs/diagnostics/compatibility-suppressions.json` and `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`.
+- [x] [Review][Patch] [High] Retain the flattened `QueryRequest` compatibility shims throughout 2.0 and advance their documented removal target to 3.0.0. Evidence: `src/Hexalith.FrontComposer.Contracts/Communication/QueryRequest.cs`, `_bmad-output/contracts/fc-2-0-release-version-decision-2026-07-11.md`, and `docs/migrations/1.12-to-2.0.md`.
+- [x] [Review][Patch] [High] Enable the 1.12 package-validation gate in the semantic-release pack path and verify evaluated MSBuild behavior. Evidence: `eng/pack_release_packages.py`.
+- [x] [Review][Patch] [Medium] Enforce compatibility-suppression expiry against the current release, not only against each row's target release. Evidence: `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`.
+- [x] [Review][Patch] [High] Correct suppression-ledger destinations that falsely claim Story 11.12 namespaces were preserved. Evidence: `docs/diagnostics/compatibility-suppressions.json`.
+- [x] [Review][Patch] [Medium] Replace the non-compiling three-argument `LoadPageAction` examples with valid migration code. Evidence: `docs/migrations/1.12-to-2.0.md`.
+- [x] [Review][Patch] [Medium] Make the Testing clean consumer local-feed/offline-only as required by the story. Evidence: `tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs`.
+- [x] [Review][Defer] [Low] Contracts.UI dependency proof can false-pass broken dependency metadata because it uses substring nuspec checks and directly references Fluent [`tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs:79`] — deferred, pre-existing
+- [x] [Review][Defer] [Medium] Generated project guidance still recommends forbidden solution-level test execution [`_bmad-output/project-docs/development-guide.md:56`] — deferred, pre-existing
+- [x] [Review][Defer] [Medium] Generated project index still claims NuGet packages are signed while the live release guide says they are unsigned [`_bmad-output/project-docs/index.md:31`] — deferred, pre-existing
 
 ## Dev Notes
 
@@ -103,7 +117,7 @@ Do not claim the package-boundary implementation set complete from sprint labels
 | Shell | `Hexalith.FrontComposer.Shell`, `net10.0` | References Contracts + Contracts.UI; owns shell options, `InlinePopoverRegistry`, DataGrid actions, and expanded-row actions. |
 | Testing | `Hexalith.FrontComposer.Testing`, packable `net10.0` | References Contracts + Shell; owns `InMemoryStorageService` and its public API baseline. |
 | Schema / MCP / CLI | Kernel consumers | Schema references Contracts; MCP references Contracts + Schema; CLI has no project references. Do not add Contracts.UI without separately approved evidence. |
-| Query contracts | `ProjectionQuery` + `QueryRequest` in Contracts | Criteria are composed, legacy flattened source remains until v2.0, and JSON/EventStore/MCP/Testing outward behavior stays compatible. |
+| Query contracts | `ProjectionQuery` + `QueryRequest` in Contracts | Criteria are composed, legacy flattened source remains throughout 2.x with removal targeted for 3.0, and JSON/EventStore/MCP/Testing outward behavior stays compatible. |
 
 The Contracts.UI `PublicAPI.Shipped.txt`, Contracts kernel ownership/package tests, SourceTools packaged-analyzer test, Testing public API/package test, and Story 11.13 query compatibility tests already exist. Extend only where the Story 11.14 inventory or documentation boundary exposes a real gap.
 
@@ -282,6 +296,7 @@ GPT-5 Codex
 
 ### Debug Log References
 
+- 2026-07-12: Review-patch verification passed after the Administrator-approved lifecycle resolution. The compatibility ledger now uses schema `2.0`, reconciles all 113 exact CP0001/CP0002/CP0008 XML identities, and permits same-FQN namespace preservation only for Contracts-to-Contracts.UI moves. The shared semantic-release execution plan rejects the pre-target `1.12` line, rejects expiry at `2.1`, rejects a mismatched current release line, and forwards `EnableFrontComposerPackageValidation=true` to all 16 planned build/pack commands. Focused verification passed: 4 Python execution-plan tests, 17 `QueryRequestTests`, 98 SourceTools diagnostic/deprecation tests (including the isolated 4/4 deprecation lane after excluding the in-process runner's Contracts copy), 43 CI governance tests, zero-warning Release builds, DocFX/docs validation, the actual eight-package/eight-symbol pack at `2.0.0-review.followup`, and `git diff --check`.
 - 2026-07-11: Dev-story implementation confirmed the live Contracts/Contracts.UI/SourceTools/Shell/Testing ownership and composed `ProjectionQuery`/`QueryRequest` compatibility against source, project references, and public-API baselines. Story 11.11 remains blocked by its Story-11.14-owned inventory omission; 11.12 is done; 11.13 remains in review.
 - 2026-07-11: Added the missing Contracts.UI release-inventory row, explicit governance coverage, Testing clean-consumer coverage, and a narrow first-release package-validation no-baseline path while advancing existing-package validation to `1.12.0`. Resealed affected synthetic release fixtures through `eng/release_evidence.py`.
 - 2026-07-11: Red-phase inventory/baseline guards failed for the intended omissions, then passed after implementation. The explicit inventory validated; the full non-published `2.0.0-story.11.14` pack produced eight `.nupkg` and eight required `.snupkg` files including Contracts.UI; the clean Testing consumer restored Contracts, Contracts.UI, Shell, and Testing from packed packages without project assets.
@@ -333,26 +348,38 @@ GPT-5 Codex
 - `docs/concepts/source-generation-and-mcp-split.md`
 - `docs/diagnostics/README.md`
 - `docs/diagnostics/compatibility-suppressions.json`
+- `docs/diagnostics/diagnostic-registry.json`
+- `docs/diagnostics/HFC0001.md`
 - `docs/how-to/migration-guides.md`
 - `docs/migrations/1.12-to-2.0.md`
 - `docs/migrations/index.md`
 - `docs/reference/api/index.md`
 - `docs/skills/frontcomposer/setup/package-and-hosting.md`
 - `docs/toc.yml`
+- `docs/validation/producer-fingerprints.json`
+- `eng/pack_release_packages.py`
 - `eng/release-package-inventory.json`
 - `src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj`
 - `src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj`
 - `src/Hexalith.FrontComposer.Contracts/CompatibilitySuppressions.xml`
+- `src/Hexalith.FrontComposer.Contracts/Communication/QueryRequest.cs`
 - `src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj`
 - `src/Hexalith.FrontComposer.Shell/CompatibilitySuppressions.xml`
 - `src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs`
 - `src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj`
+- `tests/eng/test_pack_release_packages.py`
 - `tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Communication/QueryRequestTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/QueryRequestDeprecationTests.cs`
 - `tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs`
 - `tests/ci-governance/fixtures/release-manifest-valid.json`
 - `tests/ci-governance/fixtures/release-readiness-cases.json`
+- `_bmad-output/implementation-artifacts/deferred-work.md` — named exception: review-workflow deferred-item triage is pre-existing/root-owned and intentionally excluded from this patch implementation.
+- `tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs:79` — named exception: review-location evidence for the deferred pre-existing Contracts.UI finding resolves through the listed test file.
+- `_bmad-output/project-docs/development-guide.md:56` — named exception: review-location evidence for the deferred pre-existing generated-guidance finding resolves through the listed document.
 - `Hexalith.FrontComposer.Contracts.UI` — named exception: package-ID evidence resolves through the inventory, project, tests, and migration entries above.
 - `CiGovernanceTests.PackageInventory_IsExplicitLockstepAndReviewable` — named exception: test-method evidence is in the listed `CiGovernanceTests.cs` file.
 - `tests/ci-governance/fixtures/` — named exception: directory evidence is the two listed, resealed fixture files.
@@ -372,4 +399,40 @@ GPT-5 Codex
 
 ### Change Log
 
+- 2026-07-12: Applied approved review patches, retained `QueryRequest` shims throughout 2.x with removal targeted for 3.0, and hardened compatibility-suppression release enforcement.
 - 2026-07-11: Implemented Story 11.14, recorded Release Owner approval for 2.0.0, completed compatibility/package/documentation evidence, and moved the story to review.
+
+## Suggested Review Order
+
+**Release enforcement**
+
+- Start with the shared plan that validates release lines before executing package commands.
+  [`pack_release_packages.py:29`](../../eng/pack_release_packages.py#L29)
+
+- Review the versioned ledger schema and exact CP identity evidence.
+  [`compatibility-suppressions.json:1`](../../docs/diagnostics/compatibility-suppressions.json#L1)
+
+- Confirm every planned command forwards package validation and rejects stale suppressions.
+  [`test_pack_release_packages.py:19`](../../tests/eng/test_pack_release_packages.py#L19)
+
+**Query migration lifecycle**
+
+- Verify the retained compatibility surface now advertises the approved 3.0 removal.
+  [`QueryRequest.cs:12`](../../src/Hexalith.FrontComposer.Contracts/Communication/QueryRequest.cs#L12)
+
+- Confirm the Release Owner amendment preserves shims throughout the 2.x line.
+  [`fc-2-0-release-version-decision-2026-07-11.md:22`](../contracts/fc-2-0-release-version-decision-2026-07-11.md#L22)
+
+- Read the corrected adopter examples and complete ownership map.
+  [`1.12-to-2.0.md:53`](../../docs/migrations/1.12-to-2.0.md#L53)
+
+**Verification boundaries**
+
+- Inspect exact ledger-to-XML reconciliation and destination parsing.
+  [`DiagnosticRegistryTests.cs:643`](../../tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs#L643)
+
+- Check deterministic TFM selection for isolated deprecation compilation.
+  [`QueryRequestDeprecationTests.cs:94`](../../tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/QueryRequestDeprecationTests.cs#L94)
+
+- Confirm the clean consumer restores exclusively from local packages and cache.
+  [`PackageBoundaryTests.cs:63`](../../tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs#L63)

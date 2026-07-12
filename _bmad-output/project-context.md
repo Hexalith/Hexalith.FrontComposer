@@ -31,7 +31,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
   `GridViewSnapshot` remain kernel seams
 - **Query composition:** `ProjectionQuery` owns projection criteria; `QueryRequest.Create` composes
   criteria with tenant/routing/ETag/cache metadata. HFC0001/CS0618 retains the v1.12 flattened source,
-  19-value deconstruction, and exact flat JSON shape through the approved `2.0.0` transition
+  19-value deconstruction, and exact flat JSON shape throughout 2.x, with removal targeted for `3.0.0`
 - **Roslyn:** `Microsoft.CodeAnalysis.*` **5.6.0**; SourceTools is a Roslyn component and must remain
   compiler-host compatible
 - **Blazor UI:** `Microsoft.FluentUI.AspNetCore.Components` **`5.0.0-rc.4-26180.1`**; exact RC pin.

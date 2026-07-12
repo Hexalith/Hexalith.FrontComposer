@@ -26,6 +26,7 @@ public sealed class DiagnosticRegistryCollection { }
 [Collection("DiagnosticRegistry")]
 public sealed partial class DiagnosticRegistryTests {
     private const string SupportedSchemaVersion = "1.0";
+    private const string CompatibilitySuppressionsSchemaVersion = "2.0";
     private const string CanonicalHelpLinkFormat = "https://hexalith.github.io/FrontComposer/diagnostics/{0}";
     private const string CanonicalDocsHost = "hexalith.github.io";
     private static readonly StringComparer Ordinal = StringComparer.Ordinal;
@@ -646,12 +647,13 @@ public sealed partial class DiagnosticRegistryTests {
 
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
-        json["schemaVersion"]!.GetValue<string>().ShouldBe("1.0");
+        json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v2.0");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
-        Regex hfcIdRegex = StrictHfcIdRegex();
+        HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008"];
         Regex targetReleaseRegex = TargetReleaseRegex();
-        HashSet<(string Package, string Tfm, string Old)> uniqueness = [];
+        HashSet<(string Package, string Tfm, string Diagnostic, string Old)> uniqueness = [];
 
         foreach (JsonNode? node in suppressions) {
             JsonObject item = node!.AsObject();
@@ -659,7 +661,7 @@ public sealed partial class DiagnosticRegistryTests {
             string tfm = item["tfm"]!.GetValue<string>();
             string oldSig = item["oldSignature"]!.GetValue<string>();
             string newState = item["newState"]!.GetValue<string>();
-            string hfcId = item["hfcId"]!.GetValue<string>();
+            string apiCompatDiagnosticId = item["apiCompatDiagnosticId"]!.GetValue<string>();
             string target = item["targetRelease"]!.GetValue<string>();
             string rationale = item["reviewerRationale"]!.GetValue<string>();
 
@@ -667,8 +669,24 @@ public sealed partial class DiagnosticRegistryTests {
             tfm.ShouldNotBeNullOrWhiteSpace();
             oldSig.ShouldNotBeNullOrWhiteSpace();
             newState.ShouldNotBeNullOrWhiteSpace();
-            hfcIdRegex.IsMatch(hfcId).ShouldBeTrue($"hfcId '{hfcId}' malformed.");
+            apiCompatDiagnosticIds.ShouldContain(apiCompatDiagnosticId, $"ApiCompat diagnostic '{apiCompatDiagnosticId}' is not governed.");
+            item.ContainsKey("hfcId").ShouldBeFalse("manual package moves must not claim an unrelated HFC migration diagnostic.");
             targetReleaseRegex.IsMatch(target).ShouldBeTrue($"targetRelease '{target}' malformed.");
+
+            if (package == "Hexalith.FrontComposer.Contracts") {
+                oldSig.ShouldStartWith("T:", customMessage: "Contracts CP0001 suppressions must identify an exact type.");
+                TryParseMovedTypeState(newState, out string? newSignature, out string? newAssembly, out bool namespacePreserved)
+                    .ShouldBeTrue($"{oldSig} must identify its exact destination type and assembly.");
+                string oldSignature = oldSig[2..];
+                if (namespacePreserved) {
+                    newAssembly.ShouldBe("Hexalith.FrontComposer.Contracts.UI", $"{oldSig} may preserve its namespace only when moving to Contracts.UI.");
+                    newSignature.ShouldBe(oldSignature, $"{oldSig} may say namespace preserved only for an exact same-FQN move.");
+                }
+                else {
+                    newSignature.ShouldNotBe(oldSignature, $"{oldSig} must name its ownership-correct Story 11.12 namespace.");
+                    newAssembly.ShouldBeOneOf("Hexalith.FrontComposer.Shell", "Hexalith.FrontComposer.Testing");
+                }
+            }
 
             string trimmed = rationale.Trim();
             trimmed.Length.ShouldBeInRange(16, 400, $"rationale must be 16-400 visible chars (got {trimmed.Length}).");
@@ -676,12 +694,12 @@ public sealed partial class DiagnosticRegistryTests {
                 Assert.Fail("rationale must not contain control characters.");
             }
 
-            uniqueness.Add((package, tfm, oldSig)).ShouldBeTrue($"duplicate suppression row for ({package}, {tfm}, {oldSig}).");
+            uniqueness.Add((package, tfm, apiCompatDiagnosticId, oldSig)).ShouldBeTrue($"duplicate suppression row for ({package}, {tfm}, {apiCompatDiagnosticId}, {oldSig}).");
         }
 
         string[] trackedRows = [.. suppressions
             .Select(node => node!.AsObject())
-            .Select(item => $"{item["package"]!.GetValue<string>()}|{item["tfm"]!.GetValue<string>()}|{item["oldSignature"]!.GetValue<string>()}")
+            .Select(item => $"{item["package"]!.GetValue<string>()}|{item["tfm"]!.GetValue<string>()}|{item["apiCompatDiagnosticId"]!.GetValue<string>()}|{item["oldSignature"]!.GetValue<string>()}")
             .OrderBy(value => value, Ordinal)];
 
         var exactApiCompatRows = new List<string>();
@@ -708,7 +726,7 @@ public sealed partial class DiagnosticRegistryTests {
                 string right = item.Element("Right")!.Value;
                 right.ShouldBe(left, "a suppression must not widen package-validation comparison scope.");
                 string tfm = left.Split('/')[1];
-                exactApiCompatRows.Add($"{package}|{tfm}|{item.Element("Target")!.Value}");
+                exactApiCompatRows.Add($"{package}|{tfm}|{diagnosticId}|{item.Element("Target")!.Value}");
             }
         }
 
@@ -724,11 +742,13 @@ public sealed partial class DiagnosticRegistryTests {
     [InlineData("wildcard-package", "suppression-wildcard-scope")]
     [InlineData("duplicate-row", "suppression-duplicate-row")]
     [InlineData("expired-row", "suppression-expired")]
+    [InlineData("expired-against-current-release", "suppression-expired")]
     [InlineData("unknown-reason", "suppression-unknown-reason")]
     public void CompatibilitySuppressionValidator_FailsClosedWithNamedCategories(string mutation, string expectedCategory) {
         JsonObject json = JsonNode.Parse("""
             {
-              "schemaVersion": "1.0",
+              "schemaVersion": "2.0",
+              "currentRelease": "v2.0",
               "baselinePolicy": "fixture",
               "suppressions": [
                 {
@@ -736,7 +756,7 @@ public sealed partial class DiagnosticRegistryTests {
                   "tfm": "net10.0",
                   "oldSignature": "M:Example.Old",
                   "newState": "removed",
-                  "hfcId": "HFC0001",
+                  "apiCompatDiagnosticId": "CP0001",
                   "targetRelease": "v1.0",
                   "reviewerRationale": "Intentional binary break reviewed for this fixture.",
                   "ownerStory": "11-2-diagnostic-registry-and-documentation-governance-follow-ups",
@@ -753,7 +773,7 @@ public sealed partial class DiagnosticRegistryTests {
                 _ = row.Remove("package");
                 break;
             case "unknown-diagnostic":
-                row["hfcId"] = "HFC9999";
+                row["apiCompatDiagnosticId"] = "CP9999";
                 break;
             case "wildcard-package":
                 row["package"] = "*";
@@ -763,6 +783,9 @@ public sealed partial class DiagnosticRegistryTests {
                 break;
             case "expired-row":
                 row["expiresAfter"] = "v0.1";
+                break;
+            case "expired-against-current-release":
+                row["expiresAfter"] = "v2.0";
                 break;
             case "unknown-reason":
                 row["reason"] = "anything-goes";
@@ -1677,7 +1700,7 @@ public sealed partial class DiagnosticRegistryTests {
                 string[] suppressionKeys = suppressionArray
                     .Select(node => {
                         JsonObject row = node!.AsObject();
-                        return $"{row["package"]!.GetValue<string>()}|{row["tfm"]!.GetValue<string>()}|{row["oldSignature"]!.GetValue<string>()}|{row["hfcId"]!.GetValue<string>()}";
+                        return $"{row["package"]!.GetValue<string>()}|{row["tfm"]!.GetValue<string>()}|{row["oldSignature"]!.GetValue<string>()}|{row["apiCompatDiagnosticId"]!.GetValue<string>()}";
                     })
                     .OrderBy(s => s, Ordinal)
                     .ToArray();
@@ -2096,7 +2119,7 @@ public sealed partial class DiagnosticRegistryTests {
 
     private static IEnumerable<string> ValidateCompatibilitySuppressionsJson(JsonObject json) {
         if (!TryGetString(json, "schemaVersion", out string? schemaVersion)
-            || schemaVersion != SupportedSchemaVersion) {
+            || schemaVersion != CompatibilitySuppressionsSchemaVersion) {
             yield return "compatibility-unsupported-schema";
             yield break;
         }
@@ -2106,11 +2129,25 @@ public sealed partial class DiagnosticRegistryTests {
             yield break;
         }
 
-        var registryIds = LoadRegistry().Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);
+        if (!TryGetString(json, "currentRelease", out string? currentRelease)) {
+            yield return "compatibility-missing-current-release";
+            yield break;
+        }
+
+        if (!TryParseVersionToken(currentRelease!, out Version? parsedCurrentRelease)) {
+            yield return "compatibility-malformed-current-release";
+            yield break;
+        }
+
         // Pass-2 R21: include newState in the dedupe tuple so two suppressions differing only in
         // newState ("removed" vs "modified") are treated as distinct compatibility scenarios, not
         // collapsed into a spurious duplicate.
-        HashSet<(string Package, string Tfm, string OldSignature, string NewState, string HfcId, string TargetRelease)> uniqueRows = [];
+        HashSet<(string Package, string Tfm, string OldSignature, string NewState, string ApiCompatDiagnosticId, string TargetRelease)> uniqueRows = [];
+        HashSet<string> allowedApiCompatDiagnosticIds = new(Ordinal) {
+            "CP0001",
+            "CP0002",
+            "CP0008",
+        };
         HashSet<string> allowedReasons = new(Ordinal) {
             "intentional-major-break",
             "known-binary-compatibility-gap",
@@ -2150,8 +2187,8 @@ public sealed partial class DiagnosticRegistryTests {
                 yield return "suppression-missing-new-state";
                 continue;
             }
-            if (!TryGetString(row, "hfcId", out string? hfcId)) {
-                yield return "suppression-missing-hfc-id";
+            if (!TryGetString(row, "apiCompatDiagnosticId", out string? apiCompatDiagnosticId)) {
+                yield return "suppression-missing-apicompat-diagnostic-id";
                 continue;
             }
             if (!TryGetString(row, "targetRelease", out string? targetRelease)) {
@@ -2175,7 +2212,7 @@ public sealed partial class DiagnosticRegistryTests {
                 continue;
             }
 
-            if (!registryIds.Contains(hfcId!)) {
+            if (!allowedApiCompatDiagnosticIds.Contains(apiCompatDiagnosticId!)) {
                 yield return "suppression-unknown-diagnostic";
             }
 
@@ -2193,7 +2230,8 @@ public sealed partial class DiagnosticRegistryTests {
             if (!targetOk) {
                 yield return "suppression-malformed-target-release";
             }
-            if (expiresOk && targetOk && parsedExpires! <= parsedTarget!) {
+            if (expiresOk && parsedExpires! <= parsedCurrentRelease!
+                || expiresOk && targetOk && parsedExpires! <= parsedTarget!) {
                 yield return "suppression-expired";
             }
 
@@ -2201,7 +2239,7 @@ public sealed partial class DiagnosticRegistryTests {
                 yield return "suppression-missing-required-field";
             }
 
-            if (!uniqueRows.Add((package, tfm!, oldSignature!, newState!, hfcId!, targetRelease!))) {
+            if (!uniqueRows.Add((package, tfm!, oldSignature!, newState!, apiCompatDiagnosticId!, targetRelease!))) {
                 yield return "suppression-duplicate-row";
             }
         }
@@ -2225,6 +2263,39 @@ public sealed partial class DiagnosticRegistryTests {
         catch (Exception) {
             return false;
         }
+    }
+
+    private static bool TryParseMovedTypeState(
+        string value,
+        out string? newSignature,
+        out string? newAssembly,
+        out bool namespacePreserved) {
+        const string Prefix = "moved to T:";
+        const string AssemblySeparator = " in ";
+        const string NamespaceSeparator = "; namespace ";
+        newSignature = null;
+        newAssembly = null;
+        namespacePreserved = false;
+
+        if (!value.StartsWith(Prefix, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        int assemblySeparator = value.IndexOf(AssemblySeparator, Prefix.Length, StringComparison.Ordinal);
+        int namespaceSeparator = value.IndexOf(NamespaceSeparator, assemblySeparator + AssemblySeparator.Length, StringComparison.Ordinal);
+        if (assemblySeparator <= Prefix.Length || namespaceSeparator <= assemblySeparator + AssemblySeparator.Length) {
+            return false;
+        }
+
+        string disposition = value[(namespaceSeparator + NamespaceSeparator.Length)..];
+        if (disposition is not ("preserved" or "changed")) {
+            return false;
+        }
+
+        newSignature = value[Prefix.Length..assemblySeparator];
+        newAssembly = value[(assemblySeparator + AssemblySeparator.Length)..namespaceSeparator];
+        namespacePreserved = disposition == "preserved";
+        return !string.IsNullOrWhiteSpace(newSignature) && !string.IsNullOrWhiteSpace(newAssembly);
     }
 
     private static bool TryGetString(JsonObject json, string propertyName, out string? value) {

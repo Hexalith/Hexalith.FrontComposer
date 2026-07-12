@@ -334,6 +334,7 @@ public sealed class CiGovernanceTests {
     public void PackageInventory_IsExplicitLockstepAndReviewable() {
         string root = RepositoryRoot();
         string inventory = File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json"));
+        string packScript = File.ReadAllText(Path.Combine(root, "eng/pack_release_packages.py"));
         string directoryTargets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
         string testingProject = File.ReadAllText(Path.Combine(root, "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj"));
 
@@ -347,6 +348,7 @@ public sealed class CiGovernanceTests {
         inventory.ShouldContain("Hexalith.FrontComposer.SourceTools");
         inventory.ShouldContain("\"packable\": false");
         inventory.ShouldContain("exception");
+        packScript.ShouldContain("\"-p:EnableFrontComposerPackageValidation=true\"");
         directoryTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryTargets.ShouldContain("<IncludeSymbols>true</IncludeSymbols>");
         directoryTargets.ShouldContain("<SymbolPackageFormat>snupkg</SymbolPackageFormat>");
@@ -386,6 +388,25 @@ public sealed class CiGovernanceTests {
         ]);
         unexpectedInventory.ExitCode.ShouldNotBe(0);
         unexpectedInventory.Error.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void SemanticReleasePack_EnablesEvaluatedPackageValidationAgainst112Baseline() {
+        string root = RepositoryRoot();
+        string project = Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts", "Hexalith.FrontComposer.Contracts.csproj");
+        ProcessResult result = RunProcess(root, "dotnet", [
+            "msbuild",
+            project,
+            "-getProperty:EnablePackageValidation,PackageValidationBaselineVersion",
+            "-p:EnableFrontComposerPackageValidation=true",
+            "-nologo",
+        ]);
+
+        result.ExitCode.ShouldBe(0, result.Error);
+        using JsonDocument evaluated = JsonDocument.Parse(result.Output);
+        JsonElement properties = evaluated.RootElement.GetProperty("Properties");
+        properties.GetProperty("EnablePackageValidation").GetString().ShouldBe("true");
+        properties.GetProperty("PackageValidationBaselineVersion").GetString().ShouldBe("1.12.0");
     }
 
     [Fact]
@@ -1871,6 +1892,10 @@ public sealed class CiGovernanceTests {
 
     internal static ProcessResult RunPython(string root, IReadOnlyList<string> arguments) {
         string executable = OperatingSystem.IsWindows() ? "python" : "python3";
+        return RunProcess(root, executable, arguments);
+    }
+
+    private static ProcessResult RunProcess(string root, string executable, IReadOnlyList<string> arguments) {
         ProcessStartInfo startInfo = new(executable) {
             WorkingDirectory = root,
             RedirectStandardError = true,
@@ -1888,7 +1913,7 @@ public sealed class CiGovernanceTests {
         if (!process.WaitForExit(30_000)) {
             process.Kill(entireProcessTree: true);
             process.WaitForExit();
-            return new ProcessResult(-1, outputTask.GetAwaiter().GetResult(), "governance script timed out");
+            return new ProcessResult(-1, outputTask.GetAwaiter().GetResult(), $"{executable} timed out");
         }
 
         string output = outputTask.GetAwaiter().GetResult();

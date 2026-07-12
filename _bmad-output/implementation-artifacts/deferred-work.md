@@ -1467,3 +1467,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-12-relocate-runtime-and-testing-owned-types-out-of-contracts.md`
   summary: Add sanitized observability when the Shell-owned inline-popover registry suppresses a stale close failure.
   evidence: `InlinePopoverRegistry.OpenAsync` intentionally preserves best-effort opening by swallowing non-cancellation close failures, but operators still receive no sanitized signal that a stale handle failed to close.
+
+## Deferred from: code review of 11-14-update-architecture-context-ux-and-package-compat-docs.md (2026-07-11)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-14-update-architecture-context-ux-and-package-compat-docs.md`
+  summary: Strengthen the pre-existing Contracts.UI package dependency proof so broken dependency metadata cannot false-pass.
+  evidence: `tests/Hexalith.FrontComposer.Contracts.UI.Tests/PackageBoundaryTests.cs:79-90` searches the raw nuspec for a package-ID substring and directly references Fluent in the consumer; parse exact dependency IDs/versions and let the package supply Fluent transitively.
+- source_spec: `_bmad-output/implementation-artifacts/11-14-update-architecture-context-ux-and-package-compat-docs.md`
+  summary: Replace the pre-existing solution-level test commands in generated project guidance with the repository-required per-project lanes.
+  evidence: `_bmad-output/project-docs/development-guide.md:56` and `_bmad-output/project-docs/index.md:30` still direct contributors to `dotnet test Hexalith.FrontComposer.slnx`, although the repository uses `.slnx` for restore/build only.
+- source_spec: `_bmad-output/implementation-artifacts/11-14-update-architecture-context-ux-and-package-compat-docs.md`
+  summary: Reconcile the pre-existing generated project index with the live unsigned-package release posture.
+  evidence: `_bmad-output/project-docs/index.md:31` says semantic-release produces signed NuGet packages, while `_bmad-output/project-docs/deployment-guide.md:19-21,56` correctly records that signing remains deferred and packages are currently unsigned.

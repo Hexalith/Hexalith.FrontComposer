@@ -95,19 +95,22 @@ public sealed class PackageBoundaryTests {
   </ItemGroup>
 </Project>
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
-        await File.WriteAllTextAsync(Path.Combine(consumer, "nuget.config"), $$"""
+        string nugetConfigPath = Path.Combine(consumer, "nuget.config");
+        await File.WriteAllTextAsync(nugetConfigPath, $$"""
 <?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <packageSources>
     <clear />
     <add key="local" value="{{packageOutput}}" />
-    <add key="nuget" value="https://api.nuget.org/v3/index.json" />
   </packageSources>
   <fallbackPackageFolders>
     <add key="global" value="{{fallbackPackages}}" />
   </fallbackPackageFolders>
 </configuration>
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        string nugetConfig = await File.ReadAllTextAsync(nugetConfigPath, TestContext.Current.CancellationToken).ConfigureAwait(true);
+        nugetConfig.ShouldNotContain("http://", customMessage: "the clean consumer must not use a network package source.");
+        nugetConfig.ShouldNotContain("https://", customMessage: "the clean consumer must not use a network package source.");
         await File.WriteAllTextAsync(Path.Combine(consumer, "ConsumerSmokeTests.cs"), """
 using Bunit;
 using Hexalith.FrontComposer.Contracts.Communication;
@@ -141,7 +144,8 @@ public sealed class ConsumerSmokeTests
 }
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
-        await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-m:1", "/nr:false").ConfigureAwait(true);
+        await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "restore", "--configfile", nugetConfigPath, "--no-http-cache", "-m:1", "/nr:false").ConfigureAwait(true);
+        await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "--no-restore", "-m:1", "/nr:false").ConfigureAwait(true);
 
         string assets = await File.ReadAllTextAsync(Path.Combine(consumer, "obj", "project.assets.json"), TestContext.Current.CancellationToken).ConfigureAwait(true);
         assets.ShouldContain($"\"Hexalith.FrontComposer.Contracts/{packageVersion}\"");

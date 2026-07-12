@@ -332,7 +332,7 @@ public sealed class QueryRequestTests
             ObsoleteAttribute obsolete = member.GetCustomAttribute<ObsoleteAttribute>().ShouldNotBeNull();
             obsolete.DiagnosticId.ShouldBe("HFC0001");
             obsolete.UrlFormat.ShouldBe("https://hexalith.github.io/FrontComposer/diagnostics/{0}");
-            obsolete.Message.ShouldNotBeNull().ShouldContain("v2.0.0");
+            obsolete.Message.ShouldNotBeNull().ShouldContain("v3.0.0");
         }
     }
 
