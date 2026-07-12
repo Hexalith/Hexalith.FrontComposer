@@ -5,6 +5,7 @@ using System.Collections.Immutable;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 

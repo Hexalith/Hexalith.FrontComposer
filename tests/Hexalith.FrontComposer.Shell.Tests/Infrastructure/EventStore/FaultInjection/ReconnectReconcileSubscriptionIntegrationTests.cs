@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Components.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;

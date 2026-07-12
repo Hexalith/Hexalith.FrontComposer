@@ -2,6 +2,7 @@
 @using Hexalith.FrontComposer.Contracts.Registration
 @using Hexalith.FrontComposer.Shell.Badges
 @using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.Routing
 @using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery
 @using Hexalith.FrontComposer.Shell.State.Navigation
 @using Microsoft.AspNetCore.Components.Authorization
@@ -143,8 +144,8 @@
                     @foreach (string projectionFqn in projections)
                     {
                         int count = LookupCount(projectionFqn, discovery.Counts);
-                        string label = ProjectionLabel(projectionFqn);
-                        string route = BuildRoute(manifest.BoundedContext, projectionFqn);
+                        string label = ProjectionRouteBuilder.ProjectionLabel(projectionFqn);
+                        string route = ProjectionRouteBuilder.BuildRoute(manifest.BoundedContext, projectionFqn);
                         string projCapabilityId = CapabilityIds.ForProjection(manifest.BoundedContext, projectionFqn);
                         bool projShowsNew = !discovery.SeenCapabilities.Contains(projCapabilityId) && count > 0;
                         bool activeProjection = IsHrefActive(route);

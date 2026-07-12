@@ -15,6 +15,8 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.Infrastructure.PendingCommands;
+using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.Infrastructure.Storage;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Options;

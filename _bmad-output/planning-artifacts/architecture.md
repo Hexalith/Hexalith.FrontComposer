@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-07-11
+updated: 2026-07-12
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -23,6 +23,16 @@ FrontComposer is a source-generation-driven Blazor application framework. A dual
 - **Layer 1 - SourceTools producer:** Roslyn incremental generator. Parse emits pure equatable IR; transform and emit produce generated UI, Fluxor state, registration, and manifests while referencing only the `Contracts` kernel.
 - **Layer 2 - Consumers:** Shell directly references Contracts + Contracts.UI and owns runtime options, registries, and Fluxor actions; Testing references Contracts + Shell and owns test fakes; MCP and Schema remain kernel-only; CLI has no project references.
 - **External dependencies:** root-declared `references/Hexalith.*` submodules only. Nested submodules are not initialized.
+
+### Shell sublayers
+
+- **Components** owns Blazor render composition and may consume Routing derivations, State snapshots/actions, and application Services.
+- **Routing** owns pure route and label derivation. It must not depend on Components, State, Services, or Infrastructure.
+- **State** owns Fluxor slices/effects, state-service contracts, mutation coordinators, and the polling scheduler interfaces/lane models consumed by generated views. State may consume Routing and Services, but never Components.
+- **Infrastructure** owns external adapters and concrete background orchestration. `PendingCommandPollingDriver`, `ProjectionFallbackPollingDriver`, and `ProjectionFallbackRefreshScheduler` are scoped Infrastructure workers; their State contracts and mutation coordinators remain in State.
+- **Infrastructure.Telemetry** is cross-cutting and may be imported by any Shell sublayer. The only retained non-telemetry State-to-Infrastructure exception is `State/DataGridNavigation/LoadPageEffects.cs` consuming the exact legacy `Infrastructure.EventStore.ProjectionSchemaMismatchException` seam (via the `Infrastructure.EventStore` namespace import). Its `IProjectionPageLoader` dependency is a same-layer `State.DataGridNavigation` type, not a cross-layer seam.
+
+The Shell source architecture guard enforces namespace/folder agreement, the State-to-Components prohibition, Routing purity, concrete worker placement, and the explicit State-to-Infrastructure exception list. The dependency direction is render composition/background adapters toward pure derivation and state contracts; no render-layer dependency may flow back into State or Routing.
 
 ## Key Invariants
 

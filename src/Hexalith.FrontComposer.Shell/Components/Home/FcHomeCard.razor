@@ -1,7 +1,7 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Home
 @using Hexalith.FrontComposer.Shell.Badges
-@using Hexalith.FrontComposer.Shell.Components.Layout
 @using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.Routing
 @using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery
 @using Microsoft.AspNetCore.Components.Web
 @using Microsoft.Extensions.Localization
@@ -57,7 +57,7 @@
                     }
 
                     string projCapabilityId = CapabilityIds.ForProjection(Card.Manifest.BoundedContext, row.ProjectionFqn);
-                    string projectionLabel = FrontComposerNavigation.ProjectionLabel(row.ProjectionFqn);
+                    string projectionLabel = ProjectionRouteBuilder.ProjectionLabel(row.ProjectionFqn);
                     int rowCount = row.Count ?? 0;
                     bool projShowsNew = !SeenCapabilities.Contains(projCapabilityId) && rowCount > 0;
 

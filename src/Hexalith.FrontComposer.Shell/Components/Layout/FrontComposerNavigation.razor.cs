@@ -7,6 +7,7 @@ using Fluxor.Blazor.Web.Components;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.Components.Icons;
+using Hexalith.FrontComposer.Shell.Routing;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Navigation;
@@ -31,7 +32,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// a minimal re-render.
 /// </para>
 /// <para>
-/// Routes are derived via the convention in <see cref="BuildRoute"/>
+/// Routes are derived via the convention in <see cref="ProjectionRouteBuilder.BuildRoute"/>
 /// (<c>/{boundedContextLowercase}/{projectionTypeKebabCase}</c>). Adopters needing a different
 /// route replace the <c>FrontComposerShell.Navigation</c> slot (ADR-035 override path).
 /// </para>
@@ -109,7 +110,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
         List<string> hrefs = [];
         foreach (DomainManifest manifest in Registry.GetManifests()) {
             foreach (string projectionFqn in VisibleProjections(manifest, discovery.Counts)) {
-                hrefs.Add(NormalizeHref(BuildRoute(manifest.BoundedContext, projectionFqn)));
+                hrefs.Add(NormalizeHref(ProjectionRouteBuilder.BuildRoute(manifest.BoundedContext, projectionFqn)));
             }
         }
 
@@ -231,10 +232,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     /// <param name="projectionFqn">The fully-qualified projection type name.</param>
     /// <returns>The conventional route.</returns>
     public static string BuildRoute(string boundedContext, string projectionFqn) {
-        ArgumentException.ThrowIfNullOrEmpty(boundedContext);
-        ArgumentException.ThrowIfNullOrEmpty(projectionFqn);
-        string typeName = LastSegment(projectionFqn);
-        return $"/{boundedContext.ToLowerInvariant()}/{ToKebab(typeName)}";
+        return ProjectionRouteBuilder.BuildRoute(boundedContext, projectionFqn);
     }
 
     /// <summary>
@@ -246,8 +244,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     /// <param name="projectionFqn">The fully-qualified projection type name.</param>
     /// <returns>The projection type-name segment after the last dot.</returns>
     public static string ProjectionLabel(string projectionFqn) {
-        ArgumentException.ThrowIfNullOrEmpty(projectionFqn);
-        return LastSegment(projectionFqn);
+        return ProjectionRouteBuilder.ProjectionLabel(projectionFqn);
     }
 
     /// <summary>
@@ -554,15 +551,4 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
         Navigation.NavigateTo(entry.Href);
     }
 
-    private static string LastSegment(string fqn) {
-        int lastDot = fqn.LastIndexOf('.');
-        return lastDot < 0 ? fqn : fqn[(lastDot + 1)..];
-    }
-
-    private static string ToKebab(string pascal)
-        // Delegates to the canonical D21 kebab contract so nav/home/palette projection routes and
-        // command routes share ONE slug algorithm (acronym runs stay together: "XMLReport" →
-        // "xml-report", not "x-m-l-report"). Blank input is tolerated here because BuildRoute
-        // callers historically received it silently; KebabCase itself throws on blank input.
-        => string.IsNullOrWhiteSpace(pascal) ? pascal : Routing.CommandRouteBuilder.KebabCase(pascal);
 }

@@ -408,7 +408,7 @@ development_status:
   # 11-14 moved in-progress -> review on 2026-07-11 (dev-story; Release Owner approved 2.0.0; package inventory, migration/UX/architecture docs, 1.12 ApiCompat evidence, eight-package pack, 3,990 tests, docs/build validation, and semantic-release major dry-run passed.)
   # 11-14 moved review -> done on 2026-07-12 (bmad-code-review; 7 approved patches applied, 3 pre-existing findings deferred, package-validation execution/expiry governance hardened, QueryRequest 3.0 removal approved, and focused/docs/package gates passed.)
   11-14-update-architecture-context-ux-and-package-compat-docs: done
-  11-9-shell-layering-declaration-and-route-label-relocation: backlog
+  11-9-shell-layering-declaration-and-route-label-relocation: done
   11-15-storage-scope-and-snapshot-publisher-consolidation: backlog
   11-16-fatal-hydration-json-and-generated-literal-helper-consolidation: backlog
   11-17-mechanical-one-type-per-file-split: backlog

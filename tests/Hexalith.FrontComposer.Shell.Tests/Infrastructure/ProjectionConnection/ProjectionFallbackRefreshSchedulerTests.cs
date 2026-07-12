@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
@@ -11,7 +12,7 @@ using NSubstitute;
 
 using Shouldly;
 
-namespace Hexalith.FrontComposer.Shell.Tests.State.ProjectionConnection;
+namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.ProjectionConnection;
 
 public sealed class ProjectionFallbackRefreshSchedulerTests {
     [Fact]

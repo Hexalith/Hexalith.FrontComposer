@@ -1,10 +1,11 @@
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Hexalith.FrontComposer.Shell.State.ProjectionConnection;
+namespace Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 
 /// <summary>
 /// Story 5-3 DN1 — periodic driver that fires bounded fallback polling while the EventStore

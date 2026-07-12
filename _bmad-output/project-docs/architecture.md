@@ -72,6 +72,18 @@ These three calls are **order- and presence-validated at startup** (Story 1.1): 
 
 State is managed in Fluxor slices under `src/Hexalith.FrontComposer.Shell/State/` (Theme, Density, Navigation, CommandPalette, ETagCache, PendingCommands, ProjectionConnection, ReconnectionReconciliation, …) following a **single-writer discipline** (ADR-007): each action type has one dispatch source; effects own persistence and JS interop. EventStore-enabled hosts run command-status polling through a scoped `PendingCommandPollingDriver`; pending-state mutation remains centralized in `PendingCommandPollingCoordinator` and `PendingCommandOutcomeResolver`.
 
+#### 4.0.1 Shell sublayer declaration
+
+The Shell's internal dependency direction is explicit:
+
+- **Components** is render composition. Blazor components consume Routing derivations, State snapshots/actions, and application Services.
+- **Routing** is pure route/label derivation. It has no dependency on Components, State, Services, or Infrastructure. `ProjectionRouteBuilder` owns projection URLs and simple-name labels; `FrontComposerNavigation` retains public delegating compatibility methods only.
+- **State** owns Fluxor slices/effects, state contracts, and mutation. `IProjectionFallbackRefreshScheduler`, its lane/result models, `IPendingCommandPollingCoordinator`, state services, and Fluxor state remain here. State may consume Routing and Services but never Components.
+- **Infrastructure** owns external adapters and concrete background orchestration. The scoped `PendingCommandPollingDriver`, `ProjectionFallbackPollingDriver`, and `ProjectionFallbackRefreshScheduler` implementations live here and retain their existing start/dispose, reconnect, fallback, nudge, and reconciliation behavior.
+- **Infrastructure.Telemetry** is deliberately cross-cutting and may be imported by every sublayer. This is an explicit exception, not evidence of a general Infrastructure dependency.
+
+One non-telemetry legacy edge remains: `State/DataGridNavigation/LoadPageEffects.cs` consumes the exact `Infrastructure.EventStore.ProjectionSchemaMismatchException` seam (via the `Infrastructure.EventStore` namespace import). Its `IProjectionPageLoader` dependency is a same-layer `State.DataGridNavigation` type, not a cross-layer seam. No other State-to-Infrastructure edge is permitted. `ShellLayeringTests` uses Roslyn source analysis to enforce folder/namespace agreement, reject State-to-Components and Routing-outward dependencies with the offending path and edge, pin the three concrete worker locations, and allowlist only telemetry plus that named legacy EventStore seam.
+
 Command submission has an explicit safety boundary. Generated forms validate local input, evaluate
 `[RequiresPolicy]` authorization before `BeforeSubmit`, run destructive confirmation or other
 `BeforeSubmit` hooks, re-authorize protected commands, then acquire the scoped

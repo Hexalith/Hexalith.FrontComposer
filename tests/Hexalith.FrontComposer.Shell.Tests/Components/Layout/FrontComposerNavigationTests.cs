@@ -13,6 +13,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Routing;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
@@ -275,12 +276,11 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void ProjectionLabelsUseVerbatimTypeName() {
-        FrontComposerNavigation.ProjectionLabel("Counter.Domain.Projections.CounterView")
-            .ShouldBe("CounterView");
+    public void ProjectionLabelCompatibilityFacade_DelegatesToRoutingHelper() {
+        const string projection = "Reporting.Projections.XMLReportView";
 
-        FrontComposerNavigation.ProjectionLabel("CounterView")
-            .ShouldBe("CounterView");
+        FrontComposerNavigation.ProjectionLabel(projection)
+            .ShouldBe(ProjectionRouteBuilder.ProjectionLabel(projection));
     }
 
     [Fact]
@@ -328,26 +328,38 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void BuildRouteProducesExpectedHref() {
-        // D2 — convention: /{boundedContext-lowercase}/{projectionTypeName-kebab-case}
-        string route = FrontComposerNavigation.BuildRoute("Counter", "Counter.Domain.Projections.CounterView");
-        route.ShouldBe("/counter/counter-view");
+    public void BuildRouteCompatibilityFacade_DelegatesToRoutingHelper() {
+        const string boundedContext = "Reporting";
+        const string projection = "Reporting.Projections.XMLReportView";
 
-        // Multi-word type
-        string route2 = FrontComposerNavigation.BuildRoute("Orders", "Orders.Domain.Projections.OrderLineItemView");
-        route2.ShouldBe("/orders/order-line-item-view");
+        FrontComposerNavigation.BuildRoute(boundedContext, projection)
+            .ShouldBe(ProjectionRouteBuilder.BuildRoute(boundedContext, projection));
+    }
 
-        // Short name (no namespace)
-        string route3 = FrontComposerNavigation.BuildRoute("Counter", "CounterView");
-        route3.ShouldBe("/counter/counter-view");
+    [Theory]
+    [InlineData(" ", "CounterView", "/ /counter-view")]
+    [InlineData("Counter", " ", "/counter/ ")]
+    [InlineData("Counter", "Counter.Projections.", "/counter/")]
+    public void BuildRouteCompatibilityFacade_LegacyEdgeInput_PreservesExactRoute(
+        string boundedContext,
+        string projectionFqn,
+        string expected) {
+        FrontComposerNavigation.BuildRoute(boundedContext, projectionFqn).ShouldBe(expected);
+    }
 
-        // Acronym runs stay together — pins that nav routes share the canonical D21
-        // CommandRouteBuilder.KebabCase slug algorithm ("xml-report-view", never "x-m-l-report-view").
-        string route4 = FrontComposerNavigation.BuildRoute("Reporting", "Reporting.Projections.XMLReportView");
-        route4.ShouldBe("/reporting/xml-report-view");
+    [Theory]
+    [InlineData(null, "CounterView", "boundedContext")]
+    [InlineData("", "CounterView", "boundedContext")]
+    [InlineData("Counter", null, "projectionFqn")]
+    [InlineData("Counter", "", "projectionFqn")]
+    public void BuildRouteCompatibilityFacade_InvalidInput_PreservesExceptionParameter(
+        string? boundedContext,
+        string? projectionFqn,
+        string expectedParameter) {
+        ArgumentException exception = Should.Throw<ArgumentException>(
+            () => FrontComposerNavigation.BuildRoute(boundedContext!, projectionFqn!));
 
-        string route5 = FrontComposerNavigation.BuildRoute("Commerce", "SKUList");
-        route5.ShouldBe("/commerce/sku-list");
+        exception.ParamName.ShouldBe(expectedParameter);
     }
 
     [Theory]

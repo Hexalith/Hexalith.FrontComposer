@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Auth;

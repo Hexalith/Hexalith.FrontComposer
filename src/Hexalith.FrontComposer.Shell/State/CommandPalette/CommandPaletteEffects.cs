@@ -8,7 +8,6 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
-using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Routing;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
@@ -371,7 +370,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                 }
 
                 foreach (string projection in manifest.Projections) {
-                    string label = FrontComposerNavigation.ProjectionLabel(projection);
+                    string label = ProjectionRouteBuilder.ProjectionLabel(projection);
                     int score = PaletteScorer.Score(canonical, label);
                     if (score <= 0) {
                         continue;
@@ -838,12 +837,12 @@ public sealed class CommandPaletteEffects : IDisposable {
     }
 
     private static PaletteResult CreateProjectionResult(DomainManifest manifest, string projection, int score, bool isInCurrentContext) {
-        string label = FrontComposerNavigation.ProjectionLabel(projection);
+        string label = ProjectionRouteBuilder.ProjectionLabel(projection);
         return new PaletteResult(
             Category: PaletteResultCategory.Projection,
             DisplayLabel: label,
             BoundedContext: manifest.BoundedContext,
-            RouteUrl: FrontComposerNavigation.BuildRoute(manifest.BoundedContext, projection),
+            RouteUrl: ProjectionRouteBuilder.BuildRoute(manifest.BoundedContext, projection),
             CommandTypeName: null,
             Score: score,
             IsInCurrentContext: isInCurrentContext,

@@ -4,8 +4,8 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Badges;
-using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Routing;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 
@@ -88,7 +88,7 @@ public partial class FcHomeDirectory {
         // with no projections only get the badge dismissal — no navigation occurs.
         foreach (string projection in manifest.Projections) {
             if (!string.IsNullOrWhiteSpace(projection)) {
-                string url = FrontComposerNavigation.BuildRoute(manifest.BoundedContext, projection);
+                string url = ProjectionRouteBuilder.BuildRoute(manifest.BoundedContext, projection);
                 Nav.NavigateTo(url);
                 break;
             }

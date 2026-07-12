@@ -29,5 +29,6 @@
     </PackageReference>
     <PackageReference Include="FsCheck.Xunit.v3" />
     <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 </Project>

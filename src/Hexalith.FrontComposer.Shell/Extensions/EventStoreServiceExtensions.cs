@@ -3,6 +3,8 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.PendingCommands;
+using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;

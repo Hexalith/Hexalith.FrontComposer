@@ -1500,3 +1500,11 @@ status: open
 ## Deferred from: code review of 11-11-create-contracts-ui-assembly-and-migrate-blazor-rendering-surface (2026-07-12)
 
 - Move synthetic pulse insertion inside the cleanup scope. The Story 11.5 Playwright proof appends `fc-story-11-5-pulse-proof` before the outer `try/finally`; an exception inside the page evaluation after insertion but before it returns bypasses the cleanup. This is unrelated to Story 11.11 and should be corrected by the Story 11.5/e2e owner. Evidence: `tests/e2e/specs/specimen-accessibility.spec.ts:342-351`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-9-shell-layering-declaration-and-route-label-relocation.md`
+  summary: Harden projection-route construction against protocol-relative or non-internal routes in a dedicated behavior-changing security story.
+  evidence: The pre-existing `FrontComposerNavigation.BuildRoute` contract accepts arbitrary bounded-context text; Story 11.9 deliberately preserves its byte-for-byte 2.x behavior while moving ownership, so introducing `IsInternalRoute` rejection here would exceed the relocation intent.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-9-shell-layering-declaration-and-route-label-relocation.md`
+  summary: Complete the one-type-per-file split for the retained projection fallback contracts and scheduler helper types under Story 11.17.
+  evidence: `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshContracts.cs` retains the pre-existing public contract bundle and the Infrastructure scheduler retains nested helper types; Story 11.9 explicitly excludes the separately planned mechanical split.

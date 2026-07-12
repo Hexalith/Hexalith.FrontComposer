@@ -282,8 +282,8 @@
     <IsBaselineSuppression>true</IsBaselineSuppression>
   </Suppression>
   <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandPollingDriver.#ctor(Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandPollingCoordinator,Microsoft.Extensions.Options.IOptionsMonitor{Hexalith.FrontComposer.Contracts.FcShellOptions},System.TimeProvider,Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandPollingDriver})</Target>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandPollingDriver</Target>
     <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
     <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>
@@ -303,22 +303,15 @@
     <IsBaselineSuppression>true</IsBaselineSuppression>
   </Suppression>
   <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackPollingDriver.#ctor(Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionConnectionState,Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionFallbackRefreshScheduler,Microsoft.Extensions.Options.IOptionsMonitor{Hexalith.FrontComposer.Contracts.FcShellOptions},Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackPollingDriver})</Target>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackPollingDriver</Target>
     <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
     <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>
   </Suppression>
   <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackRefreshScheduler.#ctor(Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionConnectionState,Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader,Fluxor.IDispatcher,Fluxor.IState{Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState},Microsoft.Extensions.Options.IOptionsMonitor{Hexalith.FrontComposer.Contracts.FcShellOptions},Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackRefreshScheduler})</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackRefreshScheduler.#ctor(Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionConnectionState,Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader,Microsoft.Extensions.Options.IOptionsMonitor{Hexalith.FrontComposer.Contracts.FcShellOptions},Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackRefreshScheduler})</Target>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackRefreshScheduler</Target>
     <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
     <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>

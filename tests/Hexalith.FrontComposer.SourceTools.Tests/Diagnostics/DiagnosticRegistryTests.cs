@@ -688,6 +688,18 @@ public sealed partial class DiagnosticRegistryTests {
                 }
             }
 
+            if (package == "Hexalith.FrontComposer.Shell" && apiCompatDiagnosticId == "CP0001") {
+                oldSig.ShouldStartWith("T:", customMessage: "Shell CP0001 suppressions must identify an exact removed type.");
+                TryParseMovedTypeState(newState, out string? newSignature, out string? newAssembly, out bool namespacePreserved)
+                    .ShouldBeTrue($"{oldSig} must identify its exact destination type and assembly.");
+                newAssembly.ShouldBe("Hexalith.FrontComposer.Shell");
+                namespacePreserved.ShouldBeFalse($"{oldSig} is a namespace relocation and cannot claim namespace preservation.");
+                newSignature.ShouldNotBe(oldSig[2..], $"{oldSig} must name a different destination namespace.");
+                target.ShouldBe("v3.0", "Story 11.9 public worker relocations are next-major changes.");
+                Version.Parse(item["expiresAfter"]!.GetValue<string>()[1..])
+                    .ShouldBeGreaterThan(Version.Parse(target[1..]), "CP0001 evidence must expire after its target release.");
+            }
+
             string trimmed = rationale.Trim();
             trimmed.Length.ShouldBeInRange(16, 400, $"rationale must be 16-400 visible chars (got {trimmed.Length}).");
             if (trimmed.Any(char.IsControl)) {
@@ -715,7 +727,9 @@ public sealed partial class DiagnosticRegistryTests {
                     diagnosticId.ShouldBe("CP0001", "Contracts suppressions are exact reviewed type moves.");
                 }
                 else if (package == "Hexalith.FrontComposer.Shell") {
-                    new[] { "CP0002", "CP0008" }.ShouldContain(diagnosticId, "Shell suppressions are exact member/interface assembly-binding changes.");
+                    new[] { "CP0001", "CP0002", "CP0008" }.ShouldContain(
+                        diagnosticId,
+                        "Shell suppressions are exact type relocations, member assembly-binding changes, or interface changes.");
                 }
                 else {
                     Assert.Fail($"{package} has an unreviewed package-validation suppression file.");

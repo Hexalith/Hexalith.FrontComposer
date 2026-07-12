@@ -1,9 +1,10 @@
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
+namespace Hexalith.FrontComposer.Shell.Infrastructure.PendingCommands;
 
 /// <summary>
 /// TimeProvider-driven command-status polling driver. It schedules ticks only; pending-state

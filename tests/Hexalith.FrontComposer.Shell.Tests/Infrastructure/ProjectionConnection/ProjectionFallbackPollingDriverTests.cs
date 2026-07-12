@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -8,7 +9,7 @@ using NSubstitute;
 
 using Shouldly;
 
-namespace Hexalith.FrontComposer.Shell.Tests.State.ProjectionConnection;
+namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.ProjectionConnection;
 
 public sealed class ProjectionFallbackPollingDriverTests {
     [Fact]

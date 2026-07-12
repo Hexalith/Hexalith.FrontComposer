@@ -1,4 +1,6 @@
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.Infrastructure.PendingCommands;
+using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
@@ -8,7 +10,7 @@ using Microsoft.Extensions.Time.Testing;
 
 using Shouldly;
 
-namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
+namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.PendingCommands;
 
 public sealed class PendingCommandPollingDriverTests {
     [Fact]
