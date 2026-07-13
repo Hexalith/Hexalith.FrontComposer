@@ -3,7 +3,7 @@ baseline_commit: e914c615ea395b469c6ca3fd53dafdad159e559e
 ---
 # Story 11.15: Storage scope and snapshot publisher consolidation
 
-Status: in-progress
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Type: refactor (Epic 11 lower-risk consolidation group — closes architecture-review finding M19 subset). -->
@@ -174,6 +174,9 @@ claude-opus-4-8 (Claude Opus 4.8) — /bmad-dev-story.
 
 ### Debug Log References
 
+- Completion revalidation (2026-07-13): `dotnet restore Hexalith.FrontComposer.slnx -p:NuGetAudit=false` passed; `dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` passed with **0 warnings / 0 errors**.
+- Completion revalidation (2026-07-13), `DiffEngine_Disabled=true`: full solution default lane passed **4,053 / 4,053** (Contracts 203, Contracts.UI 10, CLI 67, MCP 372, Shell 2,281, SourceTools 1,063, Testing 57); solution Governance lane passed **258 / 258** (Shell 126, SourceTools 132).
+- Completion reconciliation found that squash merge `8b8e002d` retained unrelated EventStore and Memories pointer upgrades despite the review record stating they were removed. Both root gitlinks were restored to their `baseline_commit` values (`EventStore` `1f3d1b3e`; `Memories` `a077fd09`), with no submodule content edits; `git diff --check` is clean.
 - Build (Release, TWAE) Shell: `dotnet build src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj -c Release -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=1.0.0` → **0 warnings / 0 errors**.
 - Build (Release, TWAE) Shell.Tests → **0 warnings / 0 errors** (after fixing two xUnit analyzer findings — xUnit1031/xUnit1051 — in the new concurrency test).
 - Tests run via the built xUnit v3 executable directly (VSTest sockets are environment-blocked — memory `shell-tests-direct-xunit-runner`), `DiffEngine_Disabled=true`:
@@ -193,6 +196,7 @@ claude-opus-4-8 (Claude Opus 4.8) — /bmad-dev-story.
 - **Documented exclusions (unchanged).** `Services/DerivedValues/LastUsedValueProvider.cs` (`TryResolveTenantAndUser`, D31 one-per-circuit + `IDiagnosticSink` Warning) and `State/Navigation/ScopeReadinessGate.cs` (Interlocked exactly-once transition) are distinct concerns, not clones of the six — left as-is (Decision A). `BadgeCountService` (Rx `Subject`), `LifecycleStateService` (correlation-keyed, Contracts-frozen), `CommandFeedbackPublisher` (hot), and the six plain `.NET event` publishers are excluded from the SnapshotPublisher migration (Decision B); full M19 closure (drop `System.Reactive`) is the deferred follow-up.
 - **Scope-test disposition.** The six `*EffectsScopeTests.cs` are **retained unchanged** — they assert persistence-skipped + HFC2105 fail-closed behavior which now flows through the new resolver seam (via the test-fixture fallback), so they pass byte-for-byte with no edits. Direct resolver coverage (incl. the new throwing-accessor hardening) lives in the new `StorageScopeResolverTests`.
 - No `.csproj`/`Directory.Packages.props` change (no new packages; `System.Reactive` stays). No generated-code, schema, CLI/MCP wire, or public-API baseline change (the effect-ctor optional-param additions are not in any tracked baseline; Release build clean under TWAE + the full Governance/boundary lane green confirms it).
+- **Completion reconciliation.** Restored the two unrelated root submodule pointers that were reintroduced by the squash merge after review, making the working result match the story baseline and bounded scope. Full Release/default/Governance validation remains green after the restoration.
 
 ### File List
 
@@ -218,6 +222,8 @@ claude-opus-4-8 (Claude Opus 4.8) — /bmad-dev-story.
 - `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionState.cs`
 - `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationState.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellLayeringTests.cs` (recurrence guard + `FindMethodDeclarations` helper)
+- `references/Hexalith.EventStore` (restore root gitlink from the unrelated squash-merge upgrade to baseline `1f3d1b3e`)
+- `references/Hexalith.Memories` (restore root gitlink from the unrelated squash-merge upgrade to baseline `a077fd09`)
 - `_bmad-output/implementation-artifacts/deferred-work.md` (M19 full-closure follow-up row)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (status tracking)
 - `_bmad-output/implementation-artifacts/11-15-storage-scope-and-snapshot-publisher-consolidation.md` (this story: `baseline_commit`, status, task checkboxes, Dev Agent Record, File List, Change Log)
@@ -226,5 +232,6 @@ claude-opus-4-8 (Claude Opus 4.8) — /bmad-dev-story.
 
 ## Change Log
 
+- 2026-07-13 — Completion reconciliation restored the EventStore and Memories root gitlinks to the captured baseline after squash merge `8b8e002d` reintroduced unrelated upgrades that review had declared removed. Revalidated the complete result: restore passed; Release solution build 0 warnings / 0 errors; full default lane 4,053/4,053; Governance 258/258; `git diff --check` clean. Story and sprint status returned to `review`.
 - 2026-07-13 — Adversarial code review applied all 11 patches: bounded accessor-failure categories without exception attachment; exact public constructor compatibility plus production resolver identity pins; owner-specific subscriber-fault logging; post-capture unsubscribe safety; atomic projection teardown capture; deterministic replay-race and local-function governance coverage; documentation cleanup; unrelated submodule bumps removed; Conventional Commit metadata repaired. Review verification: Release solution build 0/0, focused 35/35, full Shell default 2281/2281, Governance 126/126. One verified medium, pre-existing concurrent delivery-ordering issue remains deferred, so status returns to `in-progress`.
 - 2026-07-13 — Story 11.15 implemented (refactor; M19 clusters 4 & 5). Consolidated six effect-local `TryResolveScope` resolvers into one Scoped `Services/StorageScopeResolver` (adopting CommandPalette's throwing-accessor guard, fixing the latent throw-propagation bug in the other five) — `6 definitions / 16 invocations` → `0 definitions / 16 shared invocations`. Introduced Scoped `Services/SnapshotPublisher<T>` and reused it across `ProjectionConnectionStateService` + `ReconnectionReconciliationStateService` (each retaining its distinct epoch/dedup/reconnect/logging/telemetry semantics and unchanged public interface) — `2 hand-rolled containers` → `1 primitive + 2 thin owners`. Added a Roslyn governance guard (0 effect-local `TryResolveScope` under `State/**`; single resolver at the exact path; synthetic negative case), direct resolver tests (incl. new throwing-accessor `Reason=AccessorThrew` hardening), `SnapshotPublisher<T>` matrix tests, and Scoped-lifetime pins. Excluded `LastUsedValueProvider`/`ScopeReadinessGate` (Decision A) and `BadgeCountService`/`LifecycleStateService`/`CommandFeedbackPublisher`/plain events (Decision B); appended the deferred M19/Rx-removal follow-up (cross-referencing DW-0285). Release build 0/0 (TWAE); full Shell default lane 2277/0, Governance lane 126/0. No package, generated-code, schema, wire, or public-API baseline change.
