@@ -1520,3 +1520,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-15-storage-scope-and-snapshot-publisher-consolidation.md`
   summary: Serialize concurrent state advance and fan-out so subscribers cannot observe a newer snapshot followed by an older one.
   evidence: `SnapshotPublisher<T>.TryApply` advances `Current` and captures handlers under its lock, but owners call `Deliver` after releasing that lock. Two concurrent transitions can therefore advance S1 then S2 and deliver S2 before S1. Both pre-story owner implementations used the same mutate-under-lock/fan-out-after-lock shape, so this is real but pre-existing rather than a Story 11.15 regression. Evidence: `src/Hexalith.FrontComposer.Shell/Services/SnapshotPublisher.cs:104-129`.
+
+## Deferred from: code review of 11-15-storage-scope-and-snapshot-publisher-consolidation.md (2026-07-13, round 2)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-15-storage-scope-and-snapshot-publisher-consolidation.md`
+  summary: `ProjectionConnectionStateService.Apply` has no `_disposed` guard — post-dispose transitions rebuild suppression buckets the completed one-shot F07 flush never emits.
+  evidence: A connection transition arriving after `Dispose()` has run (a SignalR callback landing during/after circuit teardown) re-enters `ShouldLogConnectionTransition`, which rebuilds `_logBuckets` under `_logSync`. The one-shot F07 flush in `Dispose` has already completed, so those suppressed-transition counts are never emitted — the "1 reconnect log, then silence" pattern F07 exists to avoid. Pre-existing (the missing post-dispose guard predates Story 11.15; the rewritten `Apply` merely keeps it reachable). Evidence: `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionState.cs` (`Apply` has no `_disposed` check; `Dispose` is one-shot).
+
+- source_spec: `_bmad-output/implementation-artifacts/11-15-storage-scope-and-snapshot-publisher-consolidation.md`
+  summary: The Roslyn recurrence guard is name-coupled — it forbids only the exact identifier `TryResolveScope` under `State/**`.
+  evidence: `ShellLayeringTests.StorageScopeResolver_IsSoleScopeResolver…` collects method + local-function declarations named `TryResolveScope` under `State/**` and asserts zero. Re-inlined tenant/user resolution under any other method name, or placed outside `State/**`, passes the guard undetected. It does carry a real synthetic negative (method + local-function forms), so it is not vacuously green — this is a hardening opportunity (semantic detection of tenant/user accessor reads), not a defect. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellLayeringTests.cs:367`.
+
+- note: The advance-vs-advance fan-out race (fresh-then-stale delivery) re-surfaced by this round's Edge Case Hunter is the SAME item already recorded above under the round-1 `code review of 11-15-…` heading (`SnapshotPublisher.cs:104-129`) — not duplicated here.
