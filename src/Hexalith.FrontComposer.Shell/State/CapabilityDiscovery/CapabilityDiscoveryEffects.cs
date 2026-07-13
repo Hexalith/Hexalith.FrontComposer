@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
 
@@ -46,8 +47,15 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
     private readonly IBadgeCountService _badgeCountService;
     private readonly IState<FrontComposerCapabilityDiscoveryState> _state;
     private readonly ILogger<CapabilityDiscoveryEffects> _logger;
+
+    // Story 11.15 (M19 cluster 4) — the internal production constructor receives the registered
+    // Scoped resolver; the published compatibility constructor lazily creates the same implementation.
+    private IStorageScopeResolver? _scopeResolver;
     private readonly IDisposable _bridgeSubscription;
     private bool _disposed;
+
+    private IStorageScopeResolver ScopeResolver =>
+        _scopeResolver ??= new StorageScopeResolver(_userContextAccessor, _logger);
 
     /// <summary>
     /// Initializes a new instance of the <see cref="CapabilityDiscoveryEffects"/> class.
@@ -83,6 +91,27 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
             onNext: SafeDispatchCountChanged,
             onError: static _ => { /* swallow — never crash the circuit on bridge errors */ },
             onCompleted: static () => { /* expected on dispose */ });
+    }
+
+    /// <summary>Initializes a production instance that consumes the registered scoped resolver.</summary>
+    /// <param name="dispatcher">Fluxor dispatcher used by the bridge subscription.</param>
+    /// <param name="storage">Storage service for the seen-set blob.</param>
+    /// <param name="userContextAccessor">Tenant/user context accessor.</param>
+    /// <param name="badgeCountService">Badge-count observable.</param>
+    /// <param name="state">Current capability-discovery state.</param>
+    /// <param name="logger">Logger for persistence diagnostics.</param>
+    /// <param name="scopeResolver">The registered scoped storage-scope resolver.</param>
+    internal CapabilityDiscoveryEffects(
+        IDispatcher dispatcher,
+        IStorageService storage,
+        IUserContextAccessor userContextAccessor,
+        IBadgeCountService badgeCountService,
+        IState<FrontComposerCapabilityDiscoveryState> state,
+        ILogger<CapabilityDiscoveryEffects> logger,
+        IStorageScopeResolver scopeResolver)
+        : this(dispatcher, storage, userContextAccessor, badgeCountService, state, logger) {
+        ArgumentNullException.ThrowIfNull(scopeResolver);
+        _scopeResolver = scopeResolver;
     }
 
     /// <summary>
@@ -129,7 +158,7 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
     [EffectMethod]
     public async Task HandleCapabilityVisited(CapabilityVisitedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
-        if (!TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
             return;
         }
 
@@ -163,7 +192,7 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
     }
 
     private async Task HydrateSeenSetAsync(IDispatcher dispatcher) {
-        if (!TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
             dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
                 ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
             return;
@@ -233,21 +262,4 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
         }
     }
 
-    private bool TryResolveScope(out string tenantId, out string userId, string direction) {
-        string? rawTenant = _userContextAccessor.TenantId;
-        string? rawUser = _userContextAccessor.UserId;
-        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
-            _logger.LogInformation(
-                "{DiagnosticId}: Capability-seen {Direction} skipped — null/empty/whitespace tenant or user context.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
-                direction);
-            tenantId = string.Empty;
-            userId = string.Empty;
-            return false;
-        }
-
-        tenantId = rawTenant;
-        userId = rawUser;
-        return true;
-    }
 }

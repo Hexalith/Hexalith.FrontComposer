@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Shell.Services;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
@@ -30,36 +32,32 @@ public interface IReconnectionReconciliationState {
 }
 
 /// <summary>In-memory reconciliation status service. History is intentionally not persisted.</summary>
+/// <remarks>
+/// Story 11.15 (M19 cluster 5): the handler-list / current-and-replay / fault-isolation /
+/// idempotent-unsubscribe mechanics are delegated to the shared <see cref="SnapshotPublisher{T}"/>
+/// primitive. This service retains its distinct semantics: epoch + status staleness gating,
+/// logical-duplicate dedup, and atomic current-then-replay ordering (the guards run inside the
+/// publisher's lock via <see cref="SnapshotPublisher{T}.TryApply"/>). It intentionally does NOT
+/// implement <see cref="IDisposable"/>.
+/// </remarks>
 public sealed class ReconnectionReconciliationStateService(
     TimeProvider timeProvider,
     ILogger<ReconnectionReconciliationStateService> logger) : IReconnectionReconciliationState {
-    private readonly object _sync = new();
-    private readonly List<Action<ReconnectionReconciliationSnapshot>> _handlers = [];
-    private ReconnectionReconciliationSnapshot _current = new(
-        ReconnectionReconciliationStatus.Idle,
-        Epoch: 0,
-        Changed: false,
-        LastTransitionAt: timeProvider.GetUtcNow());
+    private readonly SnapshotPublisher<ReconnectionReconciliationSnapshot> _publisher = new(
+        new ReconnectionReconciliationSnapshot(
+            ReconnectionReconciliationStatus.Idle,
+            Epoch: 0,
+            Changed: false,
+            timeProvider.GetUtcNow()),
+        ex => logger.LogWarning(
+            ex,
+            "Reconnection reconciliation state subscriber threw. FailureCategory={FailureCategory}",
+            ex.GetType().Name));
 
-    public ReconnectionReconciliationSnapshot Current {
-        get {
-            lock (_sync) {
-                return _current;
-            }
-        }
-    }
+    public ReconnectionReconciliationSnapshot Current => _publisher.Current;
 
-    public IDisposable Subscribe(Action<ReconnectionReconciliationSnapshot> handler, bool replay = true) {
-        ArgumentNullException.ThrowIfNull(handler);
-        lock (_sync) {
-            _handlers.Add(handler);
-            if (replay) {
-                InvokeSafe(handler, _current);
-            }
-        }
-
-        return new Subscription(this, handler);
-    }
+    public IDisposable Subscribe(Action<ReconnectionReconciliationSnapshot> handler, bool replay = true)
+        => _publisher.Subscribe(handler, replay);
 
     public void Start(long epoch)
         => Apply(new ReconnectionReconciliationSnapshot(
@@ -69,118 +67,72 @@ public sealed class ReconnectionReconciliationStateService(
             timeProvider.GetUtcNow()));
 
     public void Complete(long epoch, bool changed) {
-        // P13/P15 — atomic epoch + status check inside the lock. Stale epoch results never
-        // overwrite a fresh Start; once the pass has settled to Refreshed/Idle a duplicate
-        // Complete is silently ignored.
-        ReconnectionReconciliationSnapshot? next = null;
-        Action<ReconnectionReconciliationSnapshot>[] handlers = [];
-        lock (_sync) {
-            if (epoch != _current.Epoch) {
-                return;
-            }
+        // P13/P15 — atomic epoch + status check inside the lock. Stale epoch results never overwrite
+        // a fresh Start; once the pass has settled to Refreshed/Idle a duplicate Complete is silently
+        // ignored.
+        if (!_publisher.TryApply(
+                current => {
+                    if (epoch != current.Epoch) {
+                        return null;
+                    }
 
-            if (_current.Status != ReconnectionReconciliationStatus.Reconciling) {
-                return;
-            }
+                    if (current.Status != ReconnectionReconciliationStatus.Reconciling) {
+                        return null;
+                    }
 
-            ReconnectionReconciliationSnapshot snapshot = new(
-                changed ? ReconnectionReconciliationStatus.Refreshed : ReconnectionReconciliationStatus.Idle,
-                epoch,
-                changed,
-                timeProvider.GetUtcNow());
-            if (IsLogicalDuplicate(_current, snapshot)) {
-                return;
-            }
-
-            _current = snapshot;
-            next = snapshot;
-            handlers = [.. _handlers];
+                    ReconnectionReconciliationSnapshot candidate = new(
+                        changed ? ReconnectionReconciliationStatus.Refreshed : ReconnectionReconciliationStatus.Idle,
+                        epoch,
+                        changed,
+                        timeProvider.GetUtcNow());
+                    return IsLogicalDuplicate(current, candidate) ? null : candidate;
+                },
+                out ReconnectionReconciliationSnapshot snapshot,
+                out Action<ReconnectionReconciliationSnapshot>[] handlers)) {
+            return;
         }
 
-        foreach (Action<ReconnectionReconciliationSnapshot> handler in handlers) {
-            InvokeSafe(handler, next!);
-        }
+        _publisher.Deliver(handlers, snapshot);
     }
 
     public void Reset(long? expectedEpoch = null) {
-        // P14 — read the latest epoch and publish under the same lock. A stale Reset that
-        // races with a fresh Start cannot clobber the new pass because the snapshot it builds
-        // carries the now-current epoch.
-        ReconnectionReconciliationSnapshot? next = null;
-        Action<ReconnectionReconciliationSnapshot>[] handlers = [];
-        lock (_sync) {
-            if (expectedEpoch.HasValue && expectedEpoch.Value != _current.Epoch) {
-                return;
-            }
+        // P14 — read the latest epoch and publish under the same lock. A stale Reset that races with a
+        // fresh Start cannot clobber the new pass because the snapshot it builds carries the
+        // now-current epoch.
+        if (!_publisher.TryApply(
+                current => {
+                    if (expectedEpoch.HasValue && expectedEpoch.Value != current.Epoch) {
+                        return null;
+                    }
 
-            ReconnectionReconciliationSnapshot snapshot = new(
-                ReconnectionReconciliationStatus.Idle,
-                _current.Epoch,
-                Changed: false,
-                timeProvider.GetUtcNow());
-            if (IsLogicalDuplicate(_current, snapshot)) {
-                return;
-            }
-
-            _current = snapshot;
-            next = snapshot;
-            handlers = [.. _handlers];
+                    ReconnectionReconciliationSnapshot candidate = new(
+                        ReconnectionReconciliationStatus.Idle,
+                        current.Epoch,
+                        Changed: false,
+                        timeProvider.GetUtcNow());
+                    return IsLogicalDuplicate(current, candidate) ? null : candidate;
+                },
+                out ReconnectionReconciliationSnapshot snapshot,
+                out Action<ReconnectionReconciliationSnapshot>[] handlers)) {
+            return;
         }
 
-        foreach (Action<ReconnectionReconciliationSnapshot> handler in handlers) {
-            InvokeSafe(handler, next!);
-        }
+        _publisher.Deliver(handlers, snapshot);
     }
 
     private void Apply(ReconnectionReconciliationSnapshot snapshot) {
-        Action<ReconnectionReconciliationSnapshot>[] handlers;
-        lock (_sync) {
-            if (IsLogicalDuplicate(_current, snapshot)) {
-                return;
-            }
-
-            _current = snapshot;
-            handlers = [.. _handlers];
+        if (!_publisher.TryApply(
+                current => IsLogicalDuplicate(current, snapshot) ? null : snapshot,
+                out ReconnectionReconciliationSnapshot published,
+                out Action<ReconnectionReconciliationSnapshot>[] handlers)) {
+            return;
         }
 
-        foreach (Action<ReconnectionReconciliationSnapshot> handler in handlers) {
-            InvokeSafe(handler, snapshot);
-        }
+        _publisher.Deliver(handlers, published);
     }
 
     private static bool IsLogicalDuplicate(ReconnectionReconciliationSnapshot current, ReconnectionReconciliationSnapshot next)
         => current.Status == next.Status
             && current.Epoch == next.Epoch
             && current.Changed == next.Changed;
-
-    private void InvokeSafe(Action<ReconnectionReconciliationSnapshot> handler, ReconnectionReconciliationSnapshot snapshot) {
-        try {
-            handler(snapshot);
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
-            // P16 — log message + stack so diagnosing a subscriber crash does not require a
-            // debugger attach. Exception type is preserved as a structured field so log
-            // aggregators can group failures.
-            logger.LogWarning(
-                ex,
-                "Reconnection reconciliation state subscriber threw. FailureCategory={FailureCategory}",
-                ex.GetType().Name);
-        }
-    }
-
-    private void Unsubscribe(Action<ReconnectionReconciliationSnapshot> handler) {
-        lock (_sync) {
-            _ = _handlers.Remove(handler);
-        }
-    }
-
-    private sealed class Subscription(ReconnectionReconciliationStateService owner, Action<ReconnectionReconciliationSnapshot> handler) : IDisposable {
-        private int _disposed;
-
-        public void Dispose() {
-            if (Interlocked.Exchange(ref _disposed, 1) == 0) {
-                owner.Unsubscribe(handler);
-            }
-        }
-    }
 }

@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.Logging;
@@ -58,9 +59,16 @@ public sealed class DataGridNavigationEffects : IDisposable {
     private readonly IState<DataGridNavigationState> _state;
     private readonly IFrontComposerRegistry? _registry;
     private readonly TimeProvider _timeProvider;
+
+    // Story 11.15 (M19 cluster 4) — the internal production constructor receives the registered
+    // Scoped resolver; the published compatibility constructor lazily creates the same implementation.
+    private IStorageScopeResolver? _scopeResolver;
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _pending = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, byte> _loggedOutOfScope = new(StringComparer.Ordinal);
     private int _disposed;
+
+    private IStorageScopeResolver ScopeResolver =>
+        _scopeResolver ??= new StorageScopeResolver(_userContextAccessor, _logger);
 
     /// <summary>Initializes a new instance of the <see cref="DataGridNavigationEffects"/> class.</summary>
     /// <param name="storage">Storage service for per-view blobs.</param>
@@ -86,6 +94,27 @@ public sealed class DataGridNavigationEffects : IDisposable {
         _state = state;
         _registry = registry;
         _timeProvider = timeProvider ?? TimeProvider.System;
+    }
+
+    /// <summary>Initializes a production instance that consumes the registered scoped resolver.</summary>
+    /// <param name="storage">Storage service for per-view blobs.</param>
+    /// <param name="userContextAccessor">Tenant/user context accessor.</param>
+    /// <param name="logger">Logger for persistence diagnostics.</param>
+    /// <param name="state">Current DataGrid navigation state.</param>
+    /// <param name="registry">Optional view registry.</param>
+    /// <param name="timeProvider">Optional debounce time source.</param>
+    /// <param name="scopeResolver">The registered scoped storage-scope resolver.</param>
+    internal DataGridNavigationEffects(
+        IStorageService storage,
+        IUserContextAccessor userContextAccessor,
+        ILogger<DataGridNavigationEffects> logger,
+        IState<DataGridNavigationState> state,
+        IFrontComposerRegistry? registry,
+        TimeProvider? timeProvider,
+        IStorageScopeResolver scopeResolver)
+        : this(storage, userContextAccessor, logger, state, registry, timeProvider) {
+        ArgumentNullException.ThrowIfNull(scopeResolver);
+        _scopeResolver = scopeResolver;
     }
 
     /// <summary>
@@ -150,7 +179,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
-        if (!TryResolveScope(out string tenantId, out string userId, "persist")) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "persist")) {
             return;
         }
 
@@ -185,7 +214,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
-        if (!TryResolveScope(out tenantId, out userId, "persist")) {
+        if (!ScopeResolver.TryResolveScope(out tenantId, out userId, "persist")) {
             return;
         }
 
@@ -235,7 +264,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             TryCancelAndDispose(pending);
         }
 
-        if (!TryResolveScope(out string tenantId, out string userId, "persist")) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "persist")) {
             return;
         }
 
@@ -275,7 +304,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
-        if (!TryResolveScope(out string tenantId, out string userId, "hydrate")) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "hydrate")) {
             return;
         }
 
@@ -324,7 +353,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
     }
 
     private async Task HydrateAsync(IDispatcher dispatcher) {
-        if (!TryResolveScope(out string tenantId, out string userId, "hydrate")) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "hydrate")) {
             return;
         }
 
@@ -535,24 +564,6 @@ public sealed class DataGridNavigationEffects : IDisposable {
         finally {
             cts.Dispose();
         }
-    }
-
-    private bool TryResolveScope(out string tenantId, out string userId, string direction) {
-        string? rawTenant = _userContextAccessor.TenantId;
-        string? rawUser = _userContextAccessor.UserId;
-        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
-            _logger.LogInformation(
-                "{DiagnosticId}: DataGrid {Direction} skipped — null/empty/whitespace tenant or user context.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
-                direction);
-            tenantId = string.Empty;
-            userId = string.Empty;
-            return false;
-        }
-
-        tenantId = rawTenant;
-        userId = rawUser;
-        return true;
     }
 
     // Retained for future source-gen migration (D18). Unused until Story 9-x.

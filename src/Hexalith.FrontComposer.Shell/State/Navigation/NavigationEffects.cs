@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -54,6 +55,14 @@ public sealed class NavigationEffects(
     IServiceProvider? serviceProvider = null,
     IFrontComposerRegistry? registry = null) {
     private const string FeatureSegment = "nav";
+
+    // Story 11.15 (M19 cluster 4) — resolve the single Scoped StorageScopeResolver from the same
+    // late-bound serviceProvider used for NavigationManager / IUlidFactory. In DI-less unit-test
+    // fixtures fall back to a local instance wrapping the injected accessor + logger, keeping
+    // fail-closed behavior byte-for-byte identical.
+    private readonly IStorageScopeResolver _scopeResolver =
+        serviceProvider?.GetService<IStorageScopeResolver>()
+        ?? new StorageScopeResolver(userContextAccessor, logger);
 
     /// <summary>
     /// Hydrates navigation state from storage when the application initializes (Story 3-2 D15 /
@@ -148,7 +157,7 @@ public sealed class NavigationEffects(
         // Scope guard — do not pollute in-memory LastActiveRoute with anon navigation that persist
         // cannot write. Symmetric with PersistAsync's fail-closed behavior; prevents cross-user
         // leak when a later scoped hydrate returns null blob.
-        if (!TryResolveScope(out _, out _, "persist")) {
+        if (!_scopeResolver.TryResolveScope(out _, out _, "persist")) {
             return Task.CompletedTask;
         }
 
@@ -198,7 +207,7 @@ public sealed class NavigationEffects(
     }
 
     private async Task HydrateAsync(IDispatcher dispatcher) {
-        if (!TryResolveScope(out string tenantId, out string userId, "hydrate")) {
+        if (!_scopeResolver.TryResolveScope(out string tenantId, out string userId, "hydrate")) {
             return;
         }
 
@@ -341,7 +350,7 @@ public sealed class NavigationEffects(
     }
 
     private async Task PersistAsync() {
-        if (!TryResolveScope(out string tenantId, out string userId, "persist")) {
+        if (!_scopeResolver.TryResolveScope(out string tenantId, out string userId, "persist")) {
             return;
         }
 
@@ -371,23 +380,5 @@ public sealed class NavigationEffects(
                 "{DiagnosticId}: Navigation persistence failed — swallowed (next toggle retries).",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
         }
-    }
-
-    private bool TryResolveScope(out string tenantId, out string userId, string direction) {
-        string? rawTenant = userContextAccessor.TenantId;
-        string? rawUser = userContextAccessor.UserId;
-        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
-            logger.LogInformation(
-                "{DiagnosticId}: Navigation {Direction} skipped — null/empty/whitespace tenant or user context.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
-                direction);
-            tenantId = string.Empty;
-            userId = string.Empty;
-            return false;
-        }
-
-        tenantId = rawTenant;
-        userId = rawUser;
-        return true;
     }
 }

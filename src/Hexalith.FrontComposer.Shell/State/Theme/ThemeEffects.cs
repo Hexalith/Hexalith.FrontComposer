@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -19,6 +20,7 @@ namespace Hexalith.FrontComposer.Shell.State.Theme;
 /// <param name="userContextAccessor">Resolves the tenant/user segments used to scope storage keys (Story 3-1 D8).</param>
 /// <param name="logger">Logger for diagnostics.</param>
 /// <param name="themeService">Optional Fluent UI theme applier for user-driven theme changes.</param>
+/// <param name="state">Optional theme state used to suppress redundant storage-ready hydration.</param>
 public class ThemeEffects(
     IStorageService storage,
     IOptions<FcShellOptions> options,
@@ -29,6 +31,35 @@ public class ThemeEffects(
     private const string FeatureSegment = "theme";
     private const string DirectionHydrate = "hydrate";
     private const string DirectionPersist = "persist";
+
+    // Story 11.15 (M19 cluster 4) — the internal production constructor receives the registered
+    // Scoped resolver. The published compatibility constructor lazily creates the same implementation
+    // for direct construction in existing adopters and DI-less tests.
+    private IStorageScopeResolver? _scopeResolver;
+
+    private IStorageScopeResolver ScopeResolver =>
+        _scopeResolver ??= new StorageScopeResolver(userContextAccessor, logger);
+
+    /// <summary>Initializes a production instance that consumes the registered scoped resolver.</summary>
+    /// <param name="storage">The storage service for persisting theme preferences.</param>
+    /// <param name="options">Shell options providing the accent color for ThemeSettings.</param>
+    /// <param name="userContextAccessor">Resolves tenant/user storage-key segments.</param>
+    /// <param name="logger">Logger for diagnostics.</param>
+    /// <param name="themeService">Optional Fluent UI theme applier.</param>
+    /// <param name="state">Optional theme state.</param>
+    /// <param name="scopeResolver">The registered scoped storage-scope resolver.</param>
+    internal ThemeEffects(
+        IStorageService storage,
+        IOptions<FcShellOptions> options,
+        IUserContextAccessor userContextAccessor,
+        ILogger<ThemeEffects> logger,
+        IThemeService? themeService,
+        IState<FrontComposerThemeState>? state,
+        IStorageScopeResolver scopeResolver)
+        : this(storage, options, userContextAccessor, logger, themeService, state) {
+        ArgumentNullException.ThrowIfNull(scopeResolver);
+        _scopeResolver = scopeResolver;
+    }
 
     /// <summary>
     /// Hydrates theme state from storage when the application initializes.
@@ -63,7 +94,7 @@ public class ThemeEffects(
     }
 
     private async Task HydrateAsync(string correlationId, IDispatcher dispatcher) {
-        if (!TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
             return;
         }
 
@@ -114,7 +145,7 @@ public class ThemeEffects(
             _ => ThemeMode.System,
         };
 
-        if (!TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
             await ApplyThemeAsync(mode).ConfigureAwait(false);
             return;
         }
@@ -127,24 +158,6 @@ public class ThemeEffects(
         catch (Exception ex) {
             logger.LogWarning(ex, "Failed to persist theme state");
         }
-    }
-
-    private bool TryResolveScope(out string tenantId, out string userId, string direction) {
-        string? rawTenant = userContextAccessor.TenantId;
-        string? rawUser = userContextAccessor.UserId;
-        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
-            logger.LogInformation(
-                "{DiagnosticId}: Theme {Direction} skipped — null/empty/whitespace tenant or user context.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
-                direction);
-            tenantId = string.Empty;
-            userId = string.Empty;
-            return false;
-        }
-
-        tenantId = rawTenant;
-        userId = rawUser;
-        return true;
     }
 
     private Task ApplyThemeAsync(ThemeMode mode)

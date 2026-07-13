@@ -1,6 +1,7 @@
 using System.Diagnostics;
 
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
 
@@ -46,6 +47,13 @@ public interface IProjectionConnectionState {
 }
 
 /// <summary>Scoped per-circuit projection connection state service.</summary>
+/// <remarks>
+/// Story 11.15 (M19 cluster 5): the handler-list / current-and-replay / fault-isolation /
+/// idempotent-unsubscribe mechanics are delegated to the shared <see cref="SnapshotPublisher{T}"/>
+/// primitive. This service retains its distinct semantics: reconnect-attempt accumulation (P6),
+/// logical-state dedup (P9), rate-limited transition logging with 30-second buckets + F16 eviction,
+/// telemetry, sensitive-value bounding, and the F07 dispose flush.
+/// </remarks>
 public sealed class ProjectionConnectionStateService(
     TimeProvider timeProvider,
     ILogger<ProjectionConnectionStateService> logger) : IProjectionConnectionState, IDisposable, IAsyncDisposable {
@@ -54,75 +62,63 @@ public sealed class ProjectionConnectionStateService(
     /// count is preserved on the next visible log via the closing flush).</summary>
     private const int MaxLogBuckets = 16;
 
-    private readonly object _sync = new();
-    private readonly List<Action<ProjectionConnectionSnapshot>> _handlers = [];
+    /// <summary>Guards the log-suppression buckets only; the subscriber list / current snapshot are
+    /// owned by <see cref="_publisher"/>.</summary>
+    private readonly object _logSync = new();
     private readonly Dictionary<string, ConnectionLogBucket> _logBuckets = new(StringComparer.Ordinal);
+    private readonly SnapshotPublisher<ProjectionConnectionSnapshot> _publisher = new(
+        new ProjectionConnectionSnapshot(
+            ProjectionConnectionStatus.Connected,
+            timeProvider.GetUtcNow(),
+            ReconnectAttempt: 0,
+            LastFailureCategory: null),
+        ex => logger.LogWarning(
+            "Projection connection state subscriber threw. FailureCategory={FailureCategory}",
+            ex.GetType().Name));
+
     private int _disposed;
-    private ProjectionConnectionSnapshot _current = new(
-        ProjectionConnectionStatus.Connected,
-        timeProvider.GetUtcNow(),
-        ReconnectAttempt: 0,
-        LastFailureCategory: null);
 
     /// <inheritdoc />
-    public ProjectionConnectionSnapshot Current {
-        get {
-            lock (_sync) {
-                return _current;
-            }
-        }
-    }
+    public ProjectionConnectionSnapshot Current => _publisher.Current;
 
     /// <inheritdoc />
-    public IDisposable Subscribe(Action<ProjectionConnectionSnapshot> handler, bool replay = true) {
-        ArgumentNullException.ThrowIfNull(handler);
-
-        // P14 — invoke replay under the lock so a concurrent Apply that runs between
-        // add-to-handlers and replay cannot deliver fresh-then-stale ordering. The lock is
-        // re-entrant by virtue of running on the same thread; subscribers must not call back
-        // into Apply/Subscribe inside their replay handler.
-        lock (_sync) {
-            _handlers.Add(handler);
-            if (replay) {
-                InvokeSafe(handler, _current);
-            }
-        }
-
-        return new Subscription(this, handler);
-    }
+    public IDisposable Subscribe(Action<ProjectionConnectionSnapshot> handler, bool replay = true)
+        => _publisher.Subscribe(handler, replay);
 
     /// <inheritdoc />
     public void Apply(ProjectionConnectionTransition transition) {
         ArgumentNullException.ThrowIfNull(transition);
 
-        Action<ProjectionConnectionSnapshot>[] handlers;
-        ProjectionConnectionSnapshot snapshot;
-        lock (_sync) {
-            // P6 — accumulate ReconnectAttempt across consecutive Reconnecting transitions.
-            // The transition's ReconnectAttempt is used as a lower bound so first-attempt
-            // callers can pass 1; subsequent Reconnecting events without Connected in between
-            // increment from the current value.
-            int attempt = transition.Status switch {
-                ProjectionConnectionStatus.Connected => 0,
-                ProjectionConnectionStatus.Reconnecting when _current.Status is ProjectionConnectionStatus.Reconnecting
-                    => Math.Max(_current.ReconnectAttempt + 1, Math.Max(1, transition.ReconnectAttempt)),
-                _ => Math.Max(0, transition.ReconnectAttempt),
-            };
+        // P6 / P9 — reconnect-attempt accumulation + logical-state dedup are evaluated atomically
+        // against the current snapshot under the publisher's lock (returning null short-circuits when
+        // no logical change occurred). Logging/telemetry then run between the state advance and the
+        // fan-out (Deliver), preserving the original "mutate → log → fan-out" ordering.
+        if (!_publisher.TryApply(
+                current => {
+                    // P6 — accumulate ReconnectAttempt across consecutive Reconnecting transitions.
+                    // The transition's ReconnectAttempt is used as a lower bound so first-attempt
+                    // callers can pass 1; subsequent Reconnecting events without Connected in between
+                    // increment from the current value.
+                    int attempt = transition.Status switch {
+                        ProjectionConnectionStatus.Connected => 0,
+                        ProjectionConnectionStatus.Reconnecting when current.Status is ProjectionConnectionStatus.Reconnecting
+                            => Math.Max(current.ReconnectAttempt + 1, Math.Max(1, transition.ReconnectAttempt)),
+                        _ => Math.Max(0, transition.ReconnectAttempt),
+                    };
 
-            snapshot = new ProjectionConnectionSnapshot(
-                transition.Status,
-                timeProvider.GetUtcNow(),
-                attempt,
-                BoundCategory(transition.FailureCategory));
+                    ProjectionConnectionSnapshot candidate = new(
+                        transition.Status,
+                        timeProvider.GetUtcNow(),
+                        attempt,
+                        BoundCategory(transition.FailureCategory));
 
-            // P9 — short-circuit when no logical change occurred (status / attempt / category).
-            // Excludes LastTransitionAt because it always differs and would defeat the dedupe.
-            if (IsSameLogicalState(_current, snapshot)) {
-                return;
-            }
-
-            _current = snapshot;
-            handlers = [.. _handlers];
+                    // P9 — short-circuit when no logical change occurred (status / attempt / category).
+                    // Excludes LastTransitionAt because it always differs and would defeat the dedupe.
+                    return IsSameLogicalState(current, candidate) ? null : candidate;
+                },
+                out ProjectionConnectionSnapshot snapshot,
+                out Action<ProjectionConnectionSnapshot>[] handlers)) {
+            return;
         }
 
         int suppressedCount = ShouldLogConnectionTransition(snapshot, out bool emitLog);
@@ -140,12 +136,9 @@ public sealed class ProjectionConnectionStateService(
                 suppressedCount);
         }
 
-        // P7 — wrap handler invocations: a single throwing subscriber must not skip the rest
-        // of the chain or escalate up the SignalR dispatcher. Failures are logged at warning
-        // with the redacted exception type only (no payload/tenant data).
-        foreach (Action<ProjectionConnectionSnapshot> handler in handlers) {
-            InvokeSafe(handler, snapshot);
-        }
+        // P7 — a single throwing subscriber must not skip the rest of the chain or escalate up the
+        // SignalR dispatcher; the primitive's Deliver applies per-handler fault isolation.
+        _publisher.Deliver(handlers, snapshot);
     }
 
     private static bool IsSameLogicalState(ProjectionConnectionSnapshot a, ProjectionConnectionSnapshot b)
@@ -153,27 +146,10 @@ public sealed class ProjectionConnectionStateService(
             && a.ReconnectAttempt == b.ReconnectAttempt
             && string.Equals(a.LastFailureCategory, b.LastFailureCategory, StringComparison.Ordinal);
 
-    private void InvokeSafe(Action<ProjectionConnectionSnapshot> handler, ProjectionConnectionSnapshot snapshot) {
-        try {
-            handler(snapshot);
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
-            logger.LogWarning(
-                "Projection connection state subscriber threw. FailureCategory={FailureCategory}",
-                ex.GetType().Name);
-        }
-    }
-
-    private void Unsubscribe(Action<ProjectionConnectionSnapshot> handler) {
-        lock (_sync) {
-            _ = _handlers.Remove(handler);
-        }
-    }
-
     private int ShouldLogConnectionTransition(ProjectionConnectionSnapshot snapshot, out bool emitLog) {
         if (snapshot.Status is ProjectionConnectionStatus.Connected or ProjectionConnectionStatus.Disconnected) {
             int suppressed = 0;
-            lock (_sync) {
+            lock (_logSync) {
                 // F15 — sum + clear under lock without LINQ allocation. The previous
                 // _logBuckets.Values.Sum(...) call allocated an enumerator on every Connected
                 // or Disconnected transition (the chatty branch under reconnect storms).
@@ -190,7 +166,7 @@ public sealed class ProjectionConnectionStateService(
 
         string key = string.Concat(snapshot.Status, "|", snapshot.LastFailureCategory ?? "none");
         DateTimeOffset now = timeProvider.GetUtcNow();
-        lock (_sync) {
+        lock (_logSync) {
             if (!_logBuckets.TryGetValue(key, out ConnectionLogBucket? bucket)
                 || now - bucket.WindowStartedAt >= TimeSpan.FromSeconds(30)) {
                 int suppressed = bucket?.SuppressedCount ?? 0;
@@ -233,33 +209,25 @@ public sealed class ProjectionConnectionStateService(
             return;
         }
 
-        int suppressed;
-        ProjectionConnectionStatus lastStatus;
-        string? lastFailure;
-        int lastAttempt;
-        lock (_sync) {
-            if (_logBuckets.Count == 0) {
-                return;
+        (ProjectionConnectionSnapshot Current, int Suppressed) flush = _publisher.ReadCurrent(current => {
+            lock (_logSync) {
+                int suppressed = 0;
+                foreach (ConnectionLogBucket bucket in _logBuckets.Values) {
+                    suppressed += bucket.SuppressedCount;
+                }
+
+                _logBuckets.Clear();
+                return (current, suppressed);
             }
+        });
 
-            suppressed = 0;
-            foreach (ConnectionLogBucket bucket in _logBuckets.Values) {
-                suppressed += bucket.SuppressedCount;
-            }
-
-            _logBuckets.Clear();
-            lastStatus = _current.Status;
-            lastFailure = _current.LastFailureCategory;
-            lastAttempt = _current.ReconnectAttempt;
-        }
-
-        if (suppressed > 0) {
+        if (flush.Suppressed > 0) {
             FrontComposerLog.ProjectionConnectionChanged(
                 logger,
-                lastStatus.ToString(),
-                lastAttempt,
-                lastFailure ?? "none",
-                suppressed);
+                flush.Current.Status.ToString(),
+                flush.Current.ReconnectAttempt,
+                flush.Current.LastFailureCategory ?? "none",
+                flush.Suppressed);
         }
     }
 
@@ -285,16 +253,6 @@ public sealed class ProjectionConnectionStateService(
         }
 
         return new string(buffer[..written]);
-    }
-
-    private sealed class Subscription(ProjectionConnectionStateService owner, Action<ProjectionConnectionSnapshot> handler) : IDisposable {
-        private int _disposed;
-
-        public void Dispose() {
-            if (Interlocked.Exchange(ref _disposed, 1) == 0) {
-                owner.Unsubscribe(handler);
-            }
-        }
     }
 
     private sealed class ConnectionLogBucket(DateTimeOffset windowStartedAt, int suppressedCount) {

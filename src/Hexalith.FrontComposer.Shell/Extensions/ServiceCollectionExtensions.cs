@@ -34,6 +34,7 @@ using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+using Hexalith.FrontComposer.Shell.State.Density;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
@@ -49,6 +50,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Hexalith.FrontComposer.Shell.Extensions;
 
@@ -355,6 +357,56 @@ public static class ServiceCollectionExtensions {
         // circuit / per user (mirrors LocalStorageService lifetime). Adopters that wire
         // EventStore via AddHexalithEventStore inherit this default automatically.
         services.TryAddScoped<IETagCache, ETagCacheService>();
+
+        // Story 11.15 (M19 cluster 4) — the single Scoped storage scope resolver consumed by the six
+        // persisted-feature effects (Theme / Density / Navigation / DataGridNavigation /
+        // CapabilityDiscovery / CommandPalette). Consolidates their six formerly-duplicated
+        // effect-local TryResolveScope helpers and adopts CommandPalette's throwing-accessor guard so
+        // fail-closed resolution is defined once. A factory supplies the categorized ILogger because
+        // StorageScopeResolver takes a non-generic ILogger (so an effect can reuse it as a fail-closed
+        // fallback in DI-less unit-test fixtures). Depends only on IUserContextAccessor (D31 default
+        // above) + ILogger. No EventStore-path parity registration is required: the six consuming
+        // effects are registered only on the Quickstart path.
+        services.TryAddScoped<IStorageScopeResolver>(sp => new StorageScopeResolver(
+            sp.GetService<IUserContextAccessor>(),
+            sp.GetRequiredService<ILogger<StorageScopeResolver>>()));
+
+        // Keep the published effect constructors binary-compatible while production instances consume
+        // the exact registered Scoped resolver. Fluxor's assembly scan registers these concrete effect
+        // types first; Replace swaps those descriptors for assembly-internal constructor factories.
+        services.Replace(ServiceDescriptor.Scoped<ThemeEffects>(sp => new ThemeEffects(
+            sp.GetRequiredService<IStorageService>(),
+            sp.GetRequiredService<IOptions<FcShellOptions>>(),
+            sp.GetRequiredService<IUserContextAccessor>(),
+            sp.GetRequiredService<ILogger<ThemeEffects>>(),
+            sp.GetService<IThemeService>(),
+            sp.GetService<IState<FrontComposerThemeState>>(),
+            sp.GetRequiredService<IStorageScopeResolver>())));
+        services.Replace(ServiceDescriptor.Scoped<DensityEffects>(sp => new DensityEffects(
+            sp.GetRequiredService<IStorageService>(),
+            sp.GetRequiredService<IUserContextAccessor>(),
+            sp.GetRequiredService<ILogger<DensityEffects>>(),
+            sp.GetRequiredService<IState<FrontComposerNavigationState>>(),
+            sp.GetRequiredService<IOptions<FcShellOptions>>(),
+            sp.GetRequiredService<IState<FrontComposerDensityState>>(),
+            sp.GetRequiredService<IStorageScopeResolver>())));
+        services.Replace(ServiceDescriptor.Scoped<DataGridNavigationEffects>(sp => new DataGridNavigationEffects(
+            sp.GetRequiredService<IStorageService>(),
+            sp.GetRequiredService<IUserContextAccessor>(),
+            sp.GetRequiredService<ILogger<DataGridNavigationEffects>>(),
+            sp.GetRequiredService<IState<DataGridNavigationState>>(),
+            sp.GetService<IFrontComposerRegistry>(),
+            sp.GetService<TimeProvider>(),
+            sp.GetRequiredService<IStorageScopeResolver>())));
+        services.Replace(ServiceDescriptor.Scoped<CapabilityDiscoveryEffects>(sp => new CapabilityDiscoveryEffects(
+            sp.GetRequiredService<IDispatcher>(),
+            sp.GetRequiredService<IStorageService>(),
+            sp.GetRequiredService<IUserContextAccessor>(),
+            sp.GetRequiredService<IBadgeCountService>(),
+            sp.GetRequiredService<IState<FrontComposerCapabilityDiscoveryState>>(),
+            sp.GetRequiredService<ILogger<CapabilityDiscoveryEffects>>(),
+            sp.GetRequiredService<IStorageScopeResolver>())));
+
         services.TryAddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
         services.TryAddScoped<IProjectionFallbackRefreshScheduler, ProjectionFallbackRefreshScheduler>();
         services.TryAddScoped<IReconnectionReconciliationState, ReconnectionReconciliationStateService>();
