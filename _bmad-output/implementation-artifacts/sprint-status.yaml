@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-12T18:20:34+02:00
+# last_updated: 2026-07-13T11:17:12+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-13T00:00:00+02:00
+last_updated: 2026-07-13T10:25:38+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -410,7 +410,10 @@ development_status:
   11-14-update-architecture-context-ux-and-package-compat-docs: done
   11-9-shell-layering-declaration-and-route-label-relocation: done
   # 11-15 moved backlog -> ready-for-dev on 2026-07-13 (create-story; consolidate 6 duplicated effect-local TryResolveScope resolvers into one Scoped Services/StorageScopeResolver [adopting CommandPalette's throwing-accessor guard, fixing 5 latent throw-propagation bugs] and reuse a Services/SnapshotPublisher<T> primitive across the two replayable snapshot twins [ProjectionConnection + Reconciliation]. Both spec-11-15 intent-gap decisions resolved with user: A=six effects only [LastUsed/ScopeReadinessGate near-variants excluded]; B=two replayable twins only [BadgeCount Rx/Lifecycle/Feedback/events excluded; full M19 Rx-removal deferred to a follow-up]. New Roslyn source guard blocks effect-local TryResolveScope recurrence.)
-  11-15-storage-scope-and-snapshot-publisher-consolidation: ready-for-dev
+  # 11-15 moved ready-for-dev -> in-progress on 2026-07-13 (dev-story; baseline e914c615ea395b469c6ca3fd53dafdad159e559e captured; starting StorageScopeResolver consolidation [Task 1], SnapshotPublisher<T> primitive [Task 2], Roslyn recurrence guard + tests/evidence [Task 3] on branch refactor/11-15-storage-scope-snapshot-consolidation.)
+  # 11-15 moved in-progress -> review on 2026-07-13 (dev-story; all 3 tasks complete. M19 clusters 4 & 5 consolidated: 6 effect-local TryResolveScope -> 1 Scoped Services/StorageScopeResolver [6 defs/16 invocations -> 0 defs/16 shared invocations; adopts CommandPalette throwing-accessor guard, fixes latent throw-propagation in the other 5]; 2 hand-rolled replayable snapshot containers -> 1 Services/SnapshotPublisher<T> + 2 thin owners [ProjectionConnection + Reconciliation retain distinct epoch/dedup/reconnect/logging/telemetry, unchanged interfaces]. New Roslyn governance guard blocks effect-local TryResolveScope recurrence [+ synthetic negative]; direct resolver tests incl. throwing-accessor Reason=AccessorThrew hardening; SnapshotPublisher<T> matrix tests; Scoped-lifetime pins. Effects consume the internal resolver via IServiceProvider [CS0051 blocks internal-type ctor injection into public effects] with accessor fallback -> six *EffectsScopeTests retained green unchanged. Decisions A/B exclusions untouched; M19/Rx-removal follow-up deferred [cross-ref DW-0285]. Release build 0/0 TWAE; full Shell default lane 2277/0, Governance 126/0. No package/generated/schema/wire/public-API baseline change.)
+  # 11-15 moved review -> in-progress on 2026-07-13 (bmad-code-review; all 11 patches applied: support-safe accessor/subscriber logging, exact constructor compatibility and production DI identity, unsubscribe/teardown race hardening, deterministic concurrency and Roslyn local-function coverage, docs, submodule cleanup, and commit metadata. Release build 0/0; focused 35/35; full Shell default 2281/2281; Governance 126/126. One verified medium pre-existing concurrent delivery-ordering item remains deferred.)
+  11-15-storage-scope-and-snapshot-publisher-consolidation: in-progress
   11-16-fatal-hydration-json-and-generated-literal-helper-consolidation: backlog
   11-17-mechanical-one-type-per-file-split: backlog
   11-18-loggermessage-migration-for-warnings-and-hot-paths: backlog

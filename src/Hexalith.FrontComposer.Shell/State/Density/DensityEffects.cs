@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.Logging;
@@ -52,6 +53,35 @@ public sealed class DensityEffects(
     private const string DirectionHydrate = "hydrate";
     private const string DirectionPersist = "persist";
 
+    // Story 11.15 (M19 cluster 4) — the internal production constructor receives the registered
+    // Scoped resolver. The published compatibility constructor lazily creates the same implementation
+    // for direct construction in existing adopters and DI-less tests.
+    private IStorageScopeResolver? _scopeResolver;
+
+    private IStorageScopeResolver ScopeResolver =>
+        _scopeResolver ??= new StorageScopeResolver(userContextAccessor, logger);
+
+    /// <summary>Initializes a production instance that consumes the registered scoped resolver.</summary>
+    /// <param name="storage">The storage service for persisting density preferences.</param>
+    /// <param name="userContextAccessor">Resolves tenant/user storage-key segments.</param>
+    /// <param name="logger">Logger for diagnostics.</param>
+    /// <param name="navigationState">Current viewport-tier state.</param>
+    /// <param name="options">Shell density options.</param>
+    /// <param name="densityState">Current density state.</param>
+    /// <param name="scopeResolver">The registered scoped storage-scope resolver.</param>
+    internal DensityEffects(
+        IStorageService storage,
+        IUserContextAccessor userContextAccessor,
+        ILogger<DensityEffects> logger,
+        IState<FrontComposerNavigationState> navigationState,
+        IOptions<FcShellOptions> options,
+        IState<FrontComposerDensityState> densityState,
+        IStorageScopeResolver scopeResolver)
+        : this(storage, userContextAccessor, logger, navigationState, options, densityState) {
+        ArgumentNullException.ThrowIfNull(scopeResolver);
+        _scopeResolver = scopeResolver;
+    }
+
     /// <summary>
     /// Hydrates density state from storage when the application initializes. Dispatches
     /// <see cref="DensityHydratedAction"/> with the resolved effective density; on any error the
@@ -87,7 +117,7 @@ public sealed class DensityEffects(
     }
 
     private async Task HydrateAsync(IDispatcher dispatcher, bool useBootstrapTierCap) {
-        if (!TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
             return;
         }
 
@@ -193,7 +223,7 @@ public sealed class DensityEffects(
     }
 
     private async Task PersistAsync(DensityLevel? value) {
-        if (!TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
             return;
         }
 
@@ -210,24 +240,6 @@ public sealed class DensityEffects(
                 "{DiagnosticId}: Density persistence failed — swallowed (next change retries).",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
         }
-    }
-
-    private bool TryResolveScope(out string tenantId, out string userId, string direction) {
-        string? rawTenant = userContextAccessor.TenantId;
-        string? rawUser = userContextAccessor.UserId;
-        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
-            logger.LogInformation(
-                "{DiagnosticId}: Density {Direction} skipped — null/empty/whitespace tenant or user context.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
-                direction);
-            tenantId = string.Empty;
-            userId = string.Empty;
-            return false;
-        }
-
-        tenantId = rawTenant;
-        userId = rawUser;
-        return true;
     }
 
     private ViewportTier GetHydrationTier(bool useBootstrapTierCap) {

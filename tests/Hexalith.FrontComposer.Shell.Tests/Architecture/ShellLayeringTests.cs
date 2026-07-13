@@ -13,6 +13,7 @@ public sealed class ShellLayeringTests {
     private const string EventStoreNamespace = ShellNamespace + ".Infrastructure.EventStore";
     private const string SchemaMismatchType = EventStoreNamespace + ".ProjectionSchemaMismatchException";
     private const string LoadPageEffectsPath = "State/DataGridNavigation/LoadPageEffects.cs";
+    private const string StorageScopeResolverPath = "Services/StorageScopeResolver.cs";
 
     [Fact]
     public void ShellSources_NamespaceMatchesFolder_AndDependenciesFollowDeclaredLayers() {
@@ -65,6 +66,67 @@ public sealed class ShellLayeringTests {
             File.Exists(Path.Combine(shellRoot, NormalizeForFileSystem(oldPath))).ShouldBeFalse(
                 $"Old concrete worker path must be absent: {oldPath}");
         }
+    }
+
+    [Fact]
+    public void StorageScopeResolver_IsSoleScopeResolver_NoEffectLocalTryResolveScopeUnderState() {
+        // Story 11.15 (M19 cluster 4) anti-recurrence guard. Roslyn syntax analysis (NOT a text grep)
+        // so comments / string literals / aliases / fully-qualified names cannot spoof it
+        // (Story 11.9 review lesson). No file under State/** may declare a local `TryResolveScope`
+        // method or local function — tenant/user resolution must flow through the single Scoped
+        // Services/StorageScopeResolver.
+        string shellRoot = LocateShellRoot();
+        SourceFile[] sources = LoadSources(shellRoot);
+
+        List<string> offenders = [
+            .. FindMethodDeclarations(sources, "TryResolveScope")
+                .Where(location => location.Path.StartsWith("State/", StringComparison.Ordinal))
+                .Select(location => location.Path),
+        ];
+        offenders.ShouldBeEmpty(
+            "No effect-local TryResolveScope may recur under State/**; resolve tenant/user through "
+            + "the shared Services/StorageScopeResolver. Offenders: " + string.Join(", ", offenders));
+
+        // The consolidated resolver has exactly one concrete declaration, at the exact Services path.
+        List<TypeDeclaration> declarations = FindClassDeclarations(sources, "StorageScopeResolver");
+        declarations.Count.ShouldBe(1, "StorageScopeResolver must have exactly one declaration.");
+        declarations[0].Path.ShouldBe(StorageScopeResolverPath);
+        declarations[0].Namespace.ShouldBe(ShellNamespace + ".Services");
+        declarations[0].IsAbstract.ShouldBeFalse("StorageScopeResolver must remain concrete.");
+    }
+
+    [Fact]
+    public void StorageScopeResolverGuard_SyntheticEffectLocalTryResolveScope_IsReported() {
+        // Synthetic proof the guard fails when a forbidden effect-local TryResolveScope is
+        // reintroduced under State/** — the guard is not vacuously green.
+        SourceFile[] sources = [
+            new(
+                "State/Theme/ThemeEffects.cs",
+                "namespace Hexalith.FrontComposer.Shell.State.Theme;\n"
+                + "internal sealed class ThemeEffects {\n"
+                + "    private bool TryResolveScope(out string tenantId, out string userId, string direction) {\n"
+                + "        tenantId = string.Empty; userId = string.Empty; return false;\n"
+                + "    }\n"
+                + "}"),
+            new(
+                "State/Density/DensityEffects.cs",
+                "namespace Hexalith.FrontComposer.Shell.State.Density;\n"
+                + "internal sealed class DensityEffects {\n"
+                + "    private void Persist() {\n"
+                + "        bool TryResolveScope() => false;\n"
+                + "        _ = TryResolveScope();\n"
+                + "    }\n"
+                + "}"),
+        ];
+
+        List<string> offenders = [
+            .. FindMethodDeclarations(sources, "TryResolveScope")
+                .Where(location => location.Path.StartsWith("State/", StringComparison.Ordinal))
+                .Select(location => location.Path),
+        ];
+
+        offenders.ShouldContain("State/Theme/ThemeEffects.cs");
+        offenders.ShouldContain("State/Density/DensityEffects.cs");
     }
 
     [Fact]
@@ -306,6 +368,40 @@ public sealed class ShellLayeringTests {
                     source.Path,
                     containingNamespace?.Name.ToString() ?? string.Empty,
                     declaration.Modifiers.Any(SyntaxKind.AbstractKeyword)));
+            }
+        }
+
+        return declarations;
+    }
+
+    private static List<TypeDeclaration> FindMethodDeclarations(
+        IEnumerable<SourceFile> sources,
+        string methodName) {
+        List<TypeDeclaration> declarations = [];
+        foreach (SourceFile source in sources) {
+            CompilationUnitSyntax root = CSharpSyntaxTree.ParseText(source.Content).GetCompilationUnitRoot();
+            foreach (MethodDeclarationSyntax declaration in root.DescendantNodes()
+                .OfType<MethodDeclarationSyntax>()
+                .Where(declaration => string.Equals(declaration.Identifier.ValueText, methodName, StringComparison.Ordinal))) {
+                BaseNamespaceDeclarationSyntax? containingNamespace = declaration.Ancestors()
+                    .OfType<BaseNamespaceDeclarationSyntax>()
+                    .FirstOrDefault();
+                declarations.Add(new TypeDeclaration(
+                    source.Path,
+                    containingNamespace?.Name.ToString() ?? string.Empty,
+                    declaration.Modifiers.Any(SyntaxKind.AbstractKeyword)));
+            }
+
+            foreach (LocalFunctionStatementSyntax declaration in root.DescendantNodes()
+                .OfType<LocalFunctionStatementSyntax>()
+                .Where(declaration => string.Equals(declaration.Identifier.ValueText, methodName, StringComparison.Ordinal))) {
+                BaseNamespaceDeclarationSyntax? containingNamespace = declaration.Ancestors()
+                    .OfType<BaseNamespaceDeclarationSyntax>()
+                    .FirstOrDefault();
+                declarations.Add(new TypeDeclaration(
+                    source.Path,
+                    containingNamespace?.Name.ToString() ?? string.Empty,
+                    IsAbstract: false));
             }
         }
 

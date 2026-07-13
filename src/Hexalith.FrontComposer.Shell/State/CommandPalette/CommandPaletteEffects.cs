@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Routing;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
@@ -126,6 +127,13 @@ public sealed class CommandPaletteEffects : IDisposable {
 
     private IUserContextAccessor? UserContextAccessor => TryGetService<IUserContextAccessor>();
 
+    // Story 11.15 (M19 cluster 4) — the single Scoped StorageScopeResolver, resolved lazily via the
+    // same null-tolerant TryGetService pattern as UserContextAccessor. Falls back to a local instance
+    // wrapping the (nullable) accessor + logger when the resolver is unregistered (DI-less fixtures),
+    // preserving the former fail-closed behavior byte-for-byte.
+    private IStorageScopeResolver ScopeResolver =>
+        TryGetService<IStorageScopeResolver>() ?? new StorageScopeResolver(UserContextAccessor, _logger);
+
     /// <summary>
     /// Hydrates the recent-route ring buffer from storage on app initialisation. Read-only — does
     /// NOT trigger re-persistence (ADR-038 mirror). Filters tampered URLs through
@@ -160,7 +168,7 @@ public sealed class CommandPaletteEffects : IDisposable {
     }
 
     private async Task HydrateRecentRoutesAsync(IDispatcher dispatcher) {
-        if (!TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
             return;
         }
 
@@ -619,7 +627,7 @@ public sealed class CommandPaletteEffects : IDisposable {
     [EffectMethod]
     public async Task HandleRecentRouteVisited(RecentRouteVisitedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
-        if (!TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
             return;
         }
 
@@ -951,43 +959,6 @@ public sealed class CommandPaletteEffects : IDisposable {
 
             cts.Dispose();
         }
-    }
-
-    private bool TryResolveScope(out string tenantId, out string userId, string direction) {
-        IUserContextAccessor? accessor = UserContextAccessor;
-        // P16 (Pass-6): accessor property getters may throw (claims principal disposed, JWT parse
-        // error in adopter implementation). Wrap reads so the fail-closed branch fires consistently
-        // with HFC2105 instead of bubbling an unhandled effect exception to Fluxor's pipeline.
-        string? rawTenant;
-        string? rawUser;
-        try {
-            rawTenant = accessor?.TenantId;
-            rawUser = accessor?.UserId;
-        }
-        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
-            _logger.LogInformation(
-                ex,
-                "{DiagnosticId}: Palette {Direction} skipped — IUserContextAccessor threw on TenantId/UserId access. Reason=AccessorThrew.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
-                direction);
-            tenantId = string.Empty;
-            userId = string.Empty;
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
-            _logger.LogInformation(
-                "{DiagnosticId}: Palette {Direction} skipped — null/empty/whitespace tenant or user context.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
-                direction);
-            tenantId = string.Empty;
-            userId = string.Empty;
-            return false;
-        }
-
-        tenantId = rawTenant;
-        userId = rawUser;
-        return true;
     }
 
     private static string ShortName(string fullyQualifiedTypeName) {
