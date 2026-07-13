@@ -1,0 +1,334 @@
+name: Release Evidence
+
+# REL-2 / FR24 (2026-07-13): supplemental FrontComposer-owned release evidence gate.
+#
+# The shared reusable Hexalith.Builds `domain-release.yml` (called from release.yml)
+# publishes via semantic-release and exposes NO evidence hook, and it is a @main submodule
+# we must not edit. So the FR24 obligations (signed packages, SBOM, checksums, a sealed +
+# verified release manifest, classify-release, and evidence assets) live here in a separate
+# supplemental workflow — the AC8 escape hatch sanctioned by the 2026-07-09 proposal.
+#
+# Gating posture G1 (approved 2026-07-13): publish proceeds under the reusable workflow;
+# this workflow produces the full evidence bundle over a deterministic re-pack of the
+# release inventory, runs classify-release in advisory mode with no publishable pre-gate
+# (for the release that just published), and FAILS CLOSED — its core evidence steps (test-results,
+# inventory, verify-manifest, classify-release) are real gating steps, so a missing/invalid
+# manifest fails this workflow and blocks confidence in the next release. G2 (an inline
+# pre-publish gate upstreamed into Hexalith.Builds domain-release.yml) is a separate
+# owner-approved dependency, not implemented in this repo. No workflow_dispatch / dry-run /
+# approval gating is reintroduced.
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+concurrency:
+  group: release-evidence-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  release-evidence:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: write
+      # FR24 AC9: attest-build-provenance mints an OIDC token (id-token) and uploads a signed
+      # provenance attestation (attestations) over the re-packed release artifacts.
+      attestations: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 0
+          # Root-declared references submodules only; no recursive nested submodule checkout.
+          submodules: false
+
+      - name: Initialize build submodules
+        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+
+      - name: Initialize .NET
+        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+        with:
+          global-json-file: global.json
+
+      - name: Setup Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - name: Cache NuGet packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'Directory.Packages.props', 'references/Hexalith.Builds/Props/Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: |
+            nuget-${{ runner.os }}-
+
+      # Seed release evidence so the final upload never produces an empty forensic artifact
+      # even if a later step fails.
+      - name: Seed release evidence directory
+        if: always()
+        env:
+          RUN_META_EVENT_NAME: ${{ github.event.workflow_run.event }}
+          RUN_META_REF: ${{ github.ref }}
+          RUN_META_RUN_ID: ${{ github.run_id }}
+          RUN_META_RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_META_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          mkdir -p release-evidence
+          python3 - <<'PYEOF'
+          import json, os
+          metadata = {
+              "decision_contract": "frontcomposer.release-run-metadata.v1",
+              "event_name": os.environ.get("RUN_META_EVENT_NAME", ""),
+              "ref": os.environ.get("RUN_META_REF", ""),
+              "run_id": os.environ.get("RUN_META_RUN_ID", ""),
+              "run_attempt": os.environ.get("RUN_META_RUN_ATTEMPT", ""),
+              "sha": os.environ.get("RUN_META_SHA", ""),
+          }
+          with open("release-evidence/run-metadata.json", "w", encoding="utf-8", newline="\n") as fh:
+              json.dump(metadata, fh, sort_keys=True, separators=(",", ":"))
+              fh.write("\n")
+          PYEOF
+
+      # Resolve the tag/version that the release workflow published for this commit. If no tag
+      # points at this commit there was no releasable change this run, so evidence is a no-op
+      # (G1: the next release still fails closed if it lacks evidence). The evidence bundle is
+      # built over a deterministic re-pack of the inventory at the resolved version — the
+      # supplemental workflow never depends on the concurrent release job's runner artifacts.
+      - name: Resolve release tag
+        id: tag
+        shell: bash
+        run: |
+          set -uo pipefail
+          if ! git fetch --tags --force origin >/dev/null 2>&1; then
+            echo "::notice::tag fetch skipped (tags already present or origin unreachable)."
+          fi
+          tag="$(git tag --points-at "${{ github.event.workflow_run.head_sha }}" 'v*' | sort -V | tail -n1)"
+          if [ -z "$tag" ]; then
+            echo "No release tag points at this commit; no releasable change this run." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build Contracts test prerequisite (netstandard2.0)
+        if: ${{ steps.tag.outputs.tag != '' }}
+        run: |
+          dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
+          dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -f netstandard2.0 --configuration Release --no-restore -m:1 /nr:false
+
+      - name: Build solution
+        if: ${{ steps.tag.outputs.tag != '' }}
+        run: dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore
+
+      - name: Run release tests
+        if: ${{ steps.tag.outputs.tag != '' }}
+        shell: bash
+        env:
+          DiffEngine_Disabled: true
+          TEST_PROJECTS: |
+            tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj
+            tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj
+            tests/Hexalith.FrontComposer.Contracts.UI.Tests/Hexalith.FrontComposer.Contracts.UI.Tests.csproj
+            tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj
+            tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj
+            tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj
+            tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj
+        run: |
+          set -euo pipefail
+          while IFS= read -r project; do
+            [ -z "$project" ] && continue
+            name="$(basename "$project" .csproj)"
+            dotnet test "$project" --configuration Release --no-build \
+              --filter "Category!=Quarantined" \
+              --results-directory "./TestResults/$name" \
+              --logger "trx;LogFileName=${name}.trx"
+          done <<< "$TEST_PROJECTS"
+
+      # Record test-evidence: a failed/skipped lane is captured in the FR24 bundle. This is a
+      # G1 fail-closed step (no best-effort suppression): missing/invalid test evidence fails.
+      - name: Record release test evidence
+        if: always()
+        run: python3 eng/release_evidence.py test-results --results-dir ./TestResults --output release-evidence/test-results.json
+
+      - name: Install CycloneDX .NET tool
+        if: always()
+        run: dotnet tool install --global CycloneDX --version 5.*
+
+      - name: Re-pack release inventory for evidence
+        if: ${{ steps.tag.outputs.tag != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf ./nupkgs
+          # Positional CI-time packer over the single-source-of-truth inventory (packable==true).
+          python3 scripts/pack-release-packages.py ./nupkgs "${{ steps.tag.outputs.version }}"
+
+      - name: Validate package inventory
+        if: ${{ steps.tag.outputs.tag != '' }}
+        run: python3 eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output release-evidence/package-inventory.json
+
+      # FR24 AC9: generate + verify a signed build-provenance attestation over the re-packed
+      # release artifacts before release readiness is claimed (bound into the evidence bundle).
+      - name: Attest release evidence provenance
+        if: ${{ steps.tag.outputs.tag != '' }}
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: nupkgs/*.nupkg
+
+      - name: Generate SBOM
+        if: ${{ steps.tag.outputs.tag != '' }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-evidence
+          dotnet CycloneDX Hexalith.FrontComposer.slnx -o release-evidence -fn sbom.json -j
+
+      - name: Sign and verify packages
+        if: ${{ steps.tag.outputs.tag != '' }}
+        shell: bash
+        env:
+          SIGNING_CERT_BASE64: ${{ secrets.NUGET_SIGNING_CERTIFICATE_BASE64 }}
+          SIGNING_CERT_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
+          SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER || 'http://timestamp.digicert.com' }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-evidence
+          if [ -z "${SIGNING_CERT_BASE64:-}" ]; then
+            # AC2/AC10 fail-closed readiness reason: unsigned packages are a blocking gap that the
+            # Release Owner must clear before v1.0 RC. Recorded (not silently skipped).
+            python3 - <<'PYEOF'
+          import json
+          reason = {
+              "decision_contract": "frontcomposer.signing-readiness.v1",
+              "signed": False,
+              "verified": False,
+              "blocking": True,
+              "readiness_reason": "signing certificate secret NUGET_SIGNING_CERTIFICATE_BASE64 is not provisioned; packages are unsigned (FR24 AC2 blocking).",
+          }
+          with open("release-evidence/signing-readiness.json", "w", encoding="utf-8", newline="\n") as fh:
+              json.dump(reason, fh, sort_keys=True, separators=(",", ":"))
+              fh.write("\n")
+          PYEOF
+            echo "::warning::FR24 signing certificate not provisioned; packages unsigned. Recorded as a blocking readiness reason."
+          else
+            cert_path="$(mktemp --suffix=.pfx)"
+            echo "$SIGNING_CERT_BASE64" | base64 -d > "$cert_path"
+            for pkg in nupkgs/*.nupkg nupkgs/*.snupkg; do
+              [ -e "$pkg" ] || continue
+              dotnet nuget sign "$pkg" \
+                --certificate-path "$cert_path" \
+                --certificate-password "$SIGNING_CERT_PASSWORD" \
+                --timestamper "$SIGNING_TIMESTAMPER" \
+                --overwrite
+            done
+            rm -f "$cert_path"
+            # RFC 3161 timestamp + author signature verification across all packages.
+            dotnet nuget verify nupkgs/*.nupkg --all
+            python3 - <<'PYEOF'
+          import json
+          reason = {
+              "decision_contract": "frontcomposer.signing-readiness.v1",
+              "signed": True,
+              "verified": True,
+              "blocking": False,
+              "readiness_reason": "packages signed and verified (dotnet nuget verify --all, RFC 3161 timestamp).",
+          }
+          with open("release-evidence/signing-readiness.json", "w", encoding="utf-8", newline="\n") as fh:
+              json.dump(reason, fh, sort_keys=True, separators=(",", ":"))
+              fh.write("\n")
+          PYEOF
+          fi
+
+      - name: Record FR24 release evidence bundle
+        if: ${{ steps.tag.outputs.tag != '' }}
+        env:
+          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
+        run: |
+          set -euo pipefail
+          if [ -f release-evidence/sbom.json ]; then
+            sbom_hash="$(sha256sum release-evidence/sbom.json | cut -d' ' -f1)"
+          else
+            sbom_hash=""
+          fi
+          python3 eng/release_evidence.py checksums \
+            --root . \
+            --pattern 'nupkgs/*.nupkg' \
+            --pattern 'nupkgs/*.snupkg' \
+            --pattern 'release-evidence/sbom.json' \
+            --pattern 'release-evidence/test-results.json' \
+            --pattern 'release-evidence/package-inventory.json' \
+            --output release-evidence/checksums.json
+          python3 eng/release_evidence.py prepare-manifest \
+            --inventory release-evidence/package-inventory.json \
+            --checksums release-evidence/checksums.json \
+            --version "${{ steps.tag.outputs.version }}" \
+            --tag "${{ steps.tag.outputs.tag }}" \
+            --sbom-hash "$sbom_hash" \
+            --output release-evidence/pre-manifest.json
+          python3 eng/release_evidence.py seal-manifest \
+            --manifest release-evidence/pre-manifest.json \
+            --output release-evidence/sealed-manifest.json
+          python3 eng/release_evidence.py verify-manifest \
+            --manifest release-evidence/sealed-manifest.json \
+            --root . \
+            --output release-evidence/manifest-verification.json
+
+      # G1: classify-release runs in advisory mode with no publishable pre-gate (for the release
+      # that already published), but its exit code gates this workflow so missing/invalid evidence
+      # fails closed on this and the next release.
+      - name: Classify release readiness
+        if: ${{ steps.tag.outputs.tag != '' }}
+        env:
+          GITHUB_EVENT_NAME: ${{ github.event.workflow_run.event }}
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_REF_PROTECTED: ${{ github.ref_protected }}
+        run: |
+          set -euo pipefail
+          python3 eng/release_evidence.py classify-release \
+            --root . \
+            --evidence-root ./release-evidence \
+            --manifest ./release-evidence/sealed-manifest.json \
+            --test-results ./release-evidence/test-results.json \
+            --output ./release-evidence/release-readiness.json \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --ref "$GITHUB_REF" \
+            --ref-protected "${GITHUB_REF_PROTECTED:-false}"
+
+      - name: Summarize release evidence artifacts
+        if: always()
+        run: |
+          {
+            echo '## FR24 release evidence artifacts (G1)'
+            echo
+            if [ -d release-evidence ]; then
+              find release-evidence -maxdepth 4 -type f | sort | sed 's#^#- #'
+            else
+              echo '- release-evidence directory was not created.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attach release evidence to GitHub Release
+        if: ${{ steps.tag.outputs.tag != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload "${{ steps.tag.outputs.tag }}" release-evidence/*.json --clobber
+
+      - name: Upload release evidence artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-evidence/**
+          if-no-files-found: error
+          retention-days: 30

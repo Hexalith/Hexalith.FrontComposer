@@ -1,10 +1,13 @@
 # Hexalith.FrontComposer — Deployment / Release Guide
 
-> **Generated:** 2026-06-02 · deep scan. FrontComposer ships as **NuGet packages**, not a deployed service. "Deployment" here means the automated **semantic-release → NuGet** pipeline ([.releaserc.json](.releaserc.json)) plus the CI workflows.
+> **Generated:** 2026-06-02 · deep scan. **Updated 2026-07-13 (REL-2)** for the Tenants-aligned
+> reusable CI/CD model. FrontComposer ships as **NuGet packages**, not a deployed service.
+> "Deployment" here means the automated **semantic-release → NuGet** pipeline
+> ([.releaserc.json](.releaserc.json)) driven by the shared reusable **Hexalith.Builds** workflows.
 
 ## What gets shipped
 
-FrontComposer is a library/tooling product. Its release artifacts are **NuGet packages** (`.nupkg`) + **symbol packages** (`.snupkg`) published to nuget.org, plus a GitHub Release carrying those packages and an advisory **release-evidence** bundle. The expected package set is pinned in [eng/release-package-inventory.json](eng/release-package-inventory.json) and verified during release.
+FrontComposer is a library/tooling product. Its release artifacts are **NuGet packages** (`.nupkg`) + **symbol packages** (`.snupkg`) published to nuget.org, plus a GitHub Release carrying those packages and a **release-evidence** bundle. The expected package set is pinned in [eng/release-package-inventory.json](eng/release-package-inventory.json) and verified during CI (consumer validation) and release (evidence).
 
 The explicit package set contains `Cli`, `Contracts`, `Contracts.UI`, `Mcp`, `Schema`, `Shell`,
 `SourceTools`, and `Testing`; every package requires a symbol package. `AppHost` and the combined `UI`
@@ -12,27 +15,40 @@ host are explicit non-package exceptions. The Contracts.UI/ownership split is bi
 `v1.12.0`, so the Release Owner approved `2.0.0`; the release commit range must carry a Conventional
 Commit breaking-change signal. See the published 1.12-to-2.0 migration guide.
 
-> **Current vs FR24 target (REL-1, 2026-07-05).** The live pipeline uses the deliberate 2026-07-03
-> **auto-publish-from-`main`** model. REL-1 added an **advisory FR24 evidence layer** (test-results,
-> inventory, SBOM, checksums, sealed manifest, advisory readiness) in [.github/workflows/release.yml](.github/workflows/release.yml)
-> **without** re-adding approval gates or dry-run. **Deferred FR24 targets (why `REL-AI-1` stays open):**
-> certificate **signing + RFC 3161 timestamp** (AC2), **publish gating** via `classify-release
-> --require-publishable` / dry-run / owner approval (AC4–5), and **package-consumer validation** (AC6).
-> Packages are currently published **unsigned**; provenance is via GitHub build-provenance attestation.
-
 There are **no Dockerfiles / container images** for FrontComposer's own projects (unlike the `Hexalith.EventStore` submodule). The only orchestration is the local `samples/Counter` Aspire AppHost, which is a sample — not a deployed artifact.
 
-## CI workflows ([.github/workflows/](.github/workflows/))
+## CI/CD model (REL-2, 2026-07-13) — one shared operating model
+
+FrontComposer's primary CI/CD now delegates to the same reusable **Hexalith.Builds** workflows as
+**Hexalith.Tenants**, so every Hexalith module shares one CI/CD operating model. The FR24 release
+evidence obligations use **3-layer split-homing**, because the shared reusable `domain-release.yml`
+publishes via semantic-release and exposes **no evidence hook** (and is a `@main` submodule this repo
+must not edit):
+
+| Layer | Home | Covers |
+|---|---|---|
+| **CI** | `ci.yml` → reusable `domain-ci.yml` with `run-consumer-validation: true` + `scripts/` | build + Tier 1 unit tests + coverage evidence; FR24 AC1 inventory + AC6 consumer-boundary validation |
+| **Quality (supplemental)** | `quality.yml` | FrontComposer-only gates the reusable does not run — Gate 1 (Contracts netstandard2.0), Gate 2a (CLI smoke), Gate 2b (Governance), Gate 2c (Contract pacts + validators + stale-pact-diff), Gate 2d (docs), trait-filtered test lanes, quarantine/CI-duration telemetry, Playwright a11y/visual |
+| **Release (publish)** | `release.yml` → reusable `domain-release.yml` via `workflow_run` | semantic-release pack + publish only |
+| **Release evidence (FR24)** | `release-evidence.yml` (`workflow_run` on CI success) | AC2 signing, AC3 SBOM+checksums+sealed manifest, AC4–5 classify-release, AC8 evidence assets, AC9 attestation |
+
+### CI workflows ([.github/workflows/](.github/workflows/))
 
 | Workflow | Trigger | Purpose |
 |---|---|---|
-| `ci.yml` | push / PR to `main` | commitlint · build (Gate 1 netstandard2.0 Contracts, Gate 2 solution) · CLI pack+smoke · Governance & Contract tests · docs validation · unit+bUnit (coverage) · a11y/visual (Playwright) |
-| `release.yml` | push to `main` | semantic-release auto-publish + advisory FR24 evidence layer (below) |
+| `commitlint.yml` | PR **and** push to `main` | reusable `commitlint.yml@main` (Tenants parity; push guards direct-to-main commits) |
+| `ci.yml` | push / PR to `main` | reusable `domain-ci.yml@main`: build (Release, `-warnaserror`) · `scripts/` consumer validation · Tier 1 unit tests + coverage |
+| `quality.yml` | push / PR to `main` | supplemental FrontComposer gates (Gate 1/2a/2b/2c/2d, trait-filtered test lanes, telemetry, a11y/visual) — **CI-authoritative for these gates** |
+| `release.yml` | `workflow_run` after CI success (push) | reusable `domain-release.yml@main`: semantic-release publish (no container images) |
+| `release-evidence.yml` | `workflow_run` after CI success (push) | FR24 evidence bundle under **G1** (signing, SBOM, checksums, sealed manifest, classify-release, attestation, evidence assets) |
 | `nightly.yml` | schedule | nightly checks (incl. skill-corpus prompt benchmark) |
 | `ide-parity-revalidation.yml` | schedule / drift | revalidates `docs/ide-parity-matrix.json` against IDE behavior |
 | `mutation-property-nightly.yml` | schedule | Stryker mutation + FsCheck property suites |
 | `flaky-test-governance.yml` | schedule/governance | flaky-test tracking |
 | `quarantine-governance-nightly.yml` | schedule | quarantined-test governance |
+
+Every workflow uses **root-declared submodule init only** (`submodules: false` +
+`initialize-build@main`); never recursive nested submodules.
 
 CI build/test commands are the source of truth for local dev — see [development-guide.md](./development-guide.md).
 
@@ -49,53 +65,75 @@ Releases are fully automated from commit messages on `main` ([.releaserc.json](.
 
 Plugins: `commit-analyzer` → `release-notes-generator` → `changelog` → `exec` (pack/publish) → `github` (release + assets) → `git` (commits `CHANGELOG.md` with `chore(release): ${version} [skip ci]`).
 
-## The release pipeline — current behavior (auto-publish + advisory evidence)
+## The release pipeline — behavior
 
-### semantic-release (`@semantic-release/exec`, [.releaserc.json](.releaserc.json))
+### Publish (`release.yml` → reusable `domain-release.yml`)
 
-- **`prepareCmd`:** `python3 eng/pack_release_packages.py --version ${nextRelease.version} --output ./nupkgs` — packs the inventory package set (`.nupkg` + `.snupkg`). No signing step today.
-- **`publishCmd`:** `dotnet nuget push ./nupkgs/*.nupkg` then `./nupkgs/*.snupkg` to `https://api.nuget.org/v3/index.json` with `$NUGET_API_KEY --skip-duplicate`. Publish runs automatically on push to `main`; there is no dry-run or approval gate.
+`release.yml` runs from **`workflow_run` after a successful CI push** (guarded
+`conclusion == 'success' && event == 'push'`, so PR/scheduled CI runs never release, and a failed CI
+can never publish). It delegates to `domain-release.yml@main` with `test-projects: ''` (CI already
+gated the same head — the release path does not duplicate test compute). The reusable runs
+`npm ci` → `npm audit signatures` → build → `npx semantic-release`, which drives this repo's
+`.releaserc.json`:
 
-### FR24 evidence layer ([.github/workflows/release.yml](.github/workflows/release.yml), REL-1)
+- **`prepareCmd`:** `python3 eng/pack_release_packages.py --version ${nextRelease.version} --output ./nupkgs` — packs the inventory package set (`.nupkg` + `.snupkg`).
+- **`publishCmd`:** `dotnet nuget push ./nupkgs/*.nupkg` then `./nupkgs/*.snupkg` to nuget.org with `$NUGET_API_KEY --skip-duplicate`.
 
-Orchestrated in the workflow around the unchanged publish, all **advisory / best-effort** (evidence failures never gate or block the auto-publish):
+### FR24 release evidence (`release-evidence.yml`, G1)
 
-1. **Before publish:** run tests per project → `release_evidence.py test-results` (`release-evidence/test-results.json`); `release_evidence.py inventory` (`package-inventory.json`); `attest-build-provenance` over the inventory.
-2. **After publish** (over the produced `./nupkgs`): CycloneDX **SBOM** (`sbom.json`) → `release_evidence.py checksums` (`checksums.json`) → `prepare-manifest` → `seal-manifest` (`sealed-manifest.json`) → `verify-manifest` (`manifest-verification.json`) → **advisory** `classify-release` **without** `--require-publishable` (`release-readiness.json`).
-3. **Archive:** `gh release upload <tag> release-evidence/*.json` attaches the bundle to the GitHub Release; `upload-artifact` archives `release-evidence/**` (30-day retention, `if-no-files-found: error`).
+Re-homed from the bespoke `release.yml` (REL-1) into a supplemental workflow because the reusable
+`domain-release.yml` has no evidence hook. It runs from `workflow_run` after CI success, resolves the
+release tag pointing at the commit, and over a **deterministic re-pack** of the inventory produces:
 
-### Deferred FR24 targets — why `REL-AI-1` stays open
+1. `release_evidence.py test-results` (`release-evidence/test-results.json`) — release tests re-run excluding `Category=Quarantined`.
+2. `release_evidence.py inventory` (`package-inventory.json`) → `actions/attest-build-provenance@v4` over the re-packed `.nupkg` (AC9).
+3. CycloneDX **SBOM** (`sbom.json`) → **sign + verify** (`dotnet nuget sign` / `dotnet nuget verify --all`, RFC 3161) when the signing cert secret is provisioned — otherwise a **blocking readiness reason** is recorded (AC2).
+4. `checksums` → `prepare-manifest` → `seal-manifest` → `verify-manifest` — the sealed manifest binds commit SHA / tag / run-id / workflow-ref / package-set fingerprint / version.
+5. `classify-release` **without** `--require-publishable` (G1 = advisory for the release that just published).
+6. `gh release upload <tag> release-evidence/*.json` + `upload-artifact` archives `release-evidence/**` (30-day retention).
+
+**Gating posture G1 (approved 2026-07-13):** publish proceeds under the reusable workflow; the evidence
+workflow's core steps (test-results, inventory, verify-manifest, classify-release) are **real gating
+steps** (not best-effort), so missing/invalid evidence fails the workflow and **fails closed on the next
+release**. **G2** — an opt-in inline pre-publish gate (`classify-release --require-publishable` before
+`dotnet nuget push`) — requires upstreaming new inputs into Hexalith.Builds `domain-release.yml` and is a
+**separate owner-approved follow-up**, tracked in
+[g2-hexalith-builds-inline-pre-publish-gate-request.md](../planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md). It is **not** implemented in this repo.
+
+### FR24 status — why `REL-AI-1` stays open
 
 | Target | AC | Status |
 |---|---|---|
-| Certificate signing + RFC 3161 timestamp (`dotnet nuget sign` / `verify --all`) | AC2 | **Deferred** — needs a code-signing cert + secrets (Release Owner) |
-| Publish gating: `classify-release --require-publishable`, dry-run default, owner approval, partial-publish incident | AC4–5 | **Out of scope** — owner chose to keep the 2026-07-03 auto-publish model |
-| Package-consumer validation (clean consumer restores local packages) | AC6 | **Not yet implemented** — follow-up |
-| Release Owner records evidence paths from a real run | AC8 | **Pending** — the evidence layer must run in CI once and its paths be recorded |
+| Package-consumer validation (Contracts-only vs Shell/UI boundaries) | AC1/AC6 | **Implemented** — `scripts/` trio, run by `domain-ci.yml` `run-consumer-validation: true` |
+| SBOM + checksums + sealed manifest + classify-release + evidence assets | AC3/AC4–5/AC8 | **Implemented (G1)** in `release-evidence.yml` |
+| Certificate signing + RFC 3161 timestamp | AC2 | **Wired, secret-gated** — provision `NUGET_SIGNING_CERTIFICATE_BASE64`/`_PASSWORD` to activate; unsigned runs record a blocking readiness reason |
+| Attestation generated before readiness claimed | AC9 | **Implemented** — `attest-build-provenance` over re-packed `.nupkg` |
+| Inline pre-publish gate (`--require-publishable` before push) | — (G2) | **Deferred** — upstream Hexalith.Builds follow-up |
+| Release Owner records evidence paths from a real run | AC8/AC12 | **Pending** — a real release must run `release-evidence.yml` once and its paths be recorded; `REL-AI-1` stays open until then |
 
-The evidence tooling (`eng/release_evidence.py`) is complete and covers signing/gating/manifest classification; those axes are simply **not wired into the live pipeline** under the current model.
+## Required release environment
 
-## Required release environment (current)
-
-| Variable | Purpose |
-|---|---|
-| `NUGET_API_KEY` | nuget.org push |
-| `GITHUB_TOKEN` | GitHub Release + evidence asset upload |
-
-Signing (`NUGET_SIGNING_CERTIFICATE_*`), dry-run/approval (`RELEASE_DRY_RUN`, `RELEASE_OWNER_APPROVED`), and attestation-gate variables are part of the **deferred** FR24 gate and are not consumed by the current pipeline.
+| Variable | Scope | Purpose |
+|---|---|---|
+| `NUGET_API_KEY` | secret (forwarded to `domain-release.yml`) | nuget.org push |
+| `GITHUB_TOKEN` | provided | GitHub Release + evidence asset upload |
+| `NUGET_SIGNING_CERTIFICATE_BASE64` / `NUGET_SIGNING_CERTIFICATE_PASSWORD` | secret (optional) | package signing in `release-evidence.yml`; when absent, signing is recorded as a blocking readiness reason |
+| `NUGET_SIGNING_TIMESTAMPER` | var (optional) | RFC 3161 timestamp authority (default `http://timestamp.digicert.com`) |
 
 ## Consuming the packages
 
 Downstream apps add the FrontComposer NuGet packages, annotate domain types with `[Projection]`/`[Command]`, and call `AddHexalithFrontComposerQuickstart()` + `AddHexalithDomain<TMarker>()` + `AddHexalithEventStore(...)` (see [architecture.md](./architecture.md) §4). To stand up the MCP endpoint, register the fail-closed gates and call `AddFrontComposerMcp(...)` + `MapFrontComposerMcp()` (see [api-contracts.md](./api-contracts.md) §2).
 
 UI/rendering adopters reference `Hexalith.FrontComposer.Contracts.UI`; kernel-only contract or analyzer
-consumers do not. Fluent UI v5 and bUnit remain prerelease dependencies. Scoped NU5104 suppressions
-record that deliberate posture but do not make stable-on-prerelease dependency resolution risk-free.
+consumers do not. The `scripts/validate-consumer-package-references.py` CI check proves both boundaries:
+a **Contracts-only** consumer never inherits Blazor/Fluent/Fluxor runtime deps (kernel-split invariant),
+while a **Shell/UI** consumer composes the full bootstrap surface.
 
 ## Pre-release checklist
 
 1. Conventional-commit messages on `main` (drives the version bump).
-2. Green CI: build Gates 1–2, Governance + Contract tests, docs validation, unit+bUnit lane.
+2. Green CI: `ci.yml` (build + consumer validation + unit tests) **and** `quality.yml` (Gates 1–2, Governance + Contract, docs, unit+bUnit, a11y/visual).
 3. No stale pact diff; public-API baseline updated intentionally if the Testing surface changed.
 4. `eng/release-package-inventory.json` matches the packages you intend to ship.
-5. `NUGET_API_KEY` configured. Publish is automatic on merge to `main` — there is no dry-run rehearsal in the current model (see deferred FR24 targets).
+5. `NUGET_API_KEY` configured. Publish is automatic after CI success on `main` (via `workflow_run`); `release-evidence.yml` produces the G1 evidence bundle. To sign, provision the `NUGET_SIGNING_CERTIFICATE_*` secrets.
+6. After a real release, the Release Owner records the `release-evidence.yml` evidence paths so `REL-AI-1` can close.

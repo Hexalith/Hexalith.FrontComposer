@@ -2,18 +2,24 @@
 created: 2026-07-05
 owner: Release Owner + Developer + QA/Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-rel-ai-1-release-evidence-gate.md
-status: review
+status: superseded
 baseline_commit: 2d1a1290aaf62c10c4db6e70ab36c9e4d8622703
 approval: approved-by-administrator-2026-07-05
 amendmentApproval: approved-by-administrator-2026-07-05
 alignmentApproval: approved-by-administrator-2026-07-09
-supersededBy: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-tenants-cicd-alignment.md
-releaseModelDecision: "Superseded 2026-07-09 by the Tenants CI/CD alignment proposal: FrontComposer release follows the Tenants workflow_run-after-CI-success model through Hexalith.Builds domain-release. FR24 evidence remains required before v1.0 RC and must be moved to the reusable release path or tracked as an explicit release-owner follow-up."
+supersededBy: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md
+closedAs: superseded-2026-07-13
+obligationsTransferredTo: REL-2
+releaseModelDecision: "Superseded 2026-07-09 by the Tenants CI/CD alignment proposal, then CLOSED 2026-07-13: FR24 evidence obligations re-homed into REL-2. FrontComposer release follows the Tenants workflow_run-after-CI-success model through the pristine reusable Hexalith.Builds domain-release; FR24 evidence lives in a supplemental FrontComposer release-evidence.yml (reusing eng/release_evidence.py) plus consumer validation in shared CI. The advisory FR24 layer this story added to release.yml is removed when REL-2 adopts the reusable release workflow."
 ---
 
 # REL-1: Implement FR24 Release Evidence Gate Before v1.0 RC
 
-Status: review (evidence-only increment; signing/gating/consumer-validation deferred — `REL-AI-1` stays open)
+Status: **superseded** (closed 2026-07-13). Open FR24 ACs (AC2 signing / AC4–5 gating / AC6
+package-consumer validation / AC8 evidence-recording) are transferred to **REL-2**. The advisory,
+non-gating evidence layer this story shipped into `.github/workflows/release.yml` is intentionally
+removed when REL-2 replaces `release.yml` with the reusable `domain-release.yml`. `REL-AI-1` stays open
+under REL-2. See `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md`.
 
 Approval: approved by Administrator on 2026-07-05.
 
@@ -178,6 +184,10 @@ validation, and AC8 (Release Owner runs the workflow once and records evidence p
 
 ## Change Log
 
+- 2026-07-13: **Closed as superseded** by approved Correct Course proposal
+  `sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md`. FR24 obligations re-homed into
+  REL-2 under the 3-layer split-homing architecture (CI consumer-validation + pristine reusable
+  domain-release + supplemental release-evidence.yml). `REL-AI-1` remains open under REL-2.
 - 2026-07-09: Superseded the July 5 auto-publish release-model decision by approved Correct Course
   proposal `sprint-change-proposal-2026-07-09-tenants-cicd-alignment.md`. REL-2 owns the CI/CD
   alignment implementation. `REL-AI-1` remains open until FR24 evidence obligations are satisfied.

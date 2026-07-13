@@ -196,6 +196,17 @@ create a focused release-governance implementation story (`REL-1` or the team's 
 publication. The story must close the gap between `.releaserc.json`, `.github/workflows/release.yml`,
 `eng/release_evidence.py`, governance tests, release docs, and package-consumer validation evidence.
 
+**Update (correct-course 2026-07-13):** FR24 implementation is now owned by **`REL-2`** (Tenants
+reusable-workflow alignment), and `REL-1` is closed as superseded. Because the release trigger moves to
+`workflow_run`-after-CI on the shared reusable `domain-release.yml` (which has no evidence hook and is a
+non-editable submodule), FR24 evidence is re-homed via 3-layer split-homing: package inventory +
+consumer validation in shared CI (`domain-ci.yml` + FrontComposer `scripts/`), publish on the pristine
+reusable release, and a supplemental FrontComposer `release-evidence.yml` for signing, SBOM, checksums,
+manifest, `classify-release`, and evidence assets. Inventory + consumer validation run against the final
+post-2.0-split package set (`Contracts.UI` packable @ 2.0.0). Gating posture: G1 (post-publish +
+next-release fail-closed) now, G2 (optional Hexalith.Builds inline gate) as a durable follow-up. See
+`_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md`.
+
 ### PRD V1 Readiness Coverage Addendum
 
 The legacy FR Coverage Map above is retained for brownfield continuity. The canonical PRD adds explicit

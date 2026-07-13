@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-13T13:05:00+02:00
+# last_updated: 2026-07-13T15:30:00+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-13T13:05:00+02:00
+last_updated: 2026-07-13T17:30:00+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -425,9 +425,14 @@ development_status:
   # rel-1 moved backlog -> in-progress on 2026-07-05 (dev-story; owner decision: keep Jul 3 auto-publish model, add FR24 evidence only. baseline 2d1a1290. Signing deferred; REL-AI-1 stays open.)
   # rel-1 moved in-progress -> review on 2026-07-05 (dev-story; added advisory FR24 evidence layer to release.yml + requiring governance test (CiGovernanceTests 41/41 via direct xUnit runner, Release build 0/0), reconciled deployment-guide. Evidence-only increment on feat/rel-1-release-evidence-gate; AC2 signing / AC4-5 gating / AC6 consumer-validation / AC8 evidence-recording deferred. CI authoritative for workflow execution.)
   # rel-1 release-model decision superseded on 2026-07-09 by approved Correct Course proposal sprint-change-proposal-2026-07-09-tenants-cicd-alignment.md; REL-2 owns Tenants-style CI/CD alignment. REL-AI-1 remains open for FR24 evidence.
-  rel-1-release-evidence-gate-before-v1-rc: review
+  # rel-1 CLOSED as superseded on 2026-07-13 (correct-course approved sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md). Its advisory FR24 layer in release.yml is removed when REL-2 adopts the reusable domain-release.yml; open FR24 ACs (AC2 signing / AC4-5 gating / AC6 consumer-validation / AC8 evidence-recording) transferred to REL-2.
+  rel-1-release-evidence-gate-before-v1-rc: superseded
   # rel-2 added backlog on 2026-07-09 (correct-course approved; align FrontComposer primary CI/CD with Tenants reusable Hexalith.Builds workflows and supersede July 5 auto-publish model)
-  rel-2-align-frontcomposer-cicd-with-tenants: backlog
+  # rel-2 expanded on 2026-07-13 (correct-course approved) to OWN the FR24 evidence gate via 3-layer split-homing: (CI) domain-ci.yml run-consumer-validation + new scripts/ for AC1/AC6; (publish) pristine reusable domain-release.yml; (evidence) new supplemental release-evidence.yml reusing eng/release_evidence.py for AC2/AC3/AC4-5/AC8. Gating posture: G1 now (post-publish + next-release fail-closed), G2 (Hexalith.Builds inline gate) flagged as durable upstream follow-up. Re-validate inventory/consumer refs against the landed 2.0 split (Contracts.UI packable @ 2.0.0). REL-AI-1 stays open.
+  # rel-2 moved backlog -> ready-for-dev on 2026-07-13 (create-story; comprehensive context engine pass baseline_commit d05d723d. Dev Notes capture current-vs-target CI/CD, 3-layer split-homing, reusable domain-ci/domain-release input contracts, Tenants copy-templates, the governance-test flip spec incl. the broader-than-4 breakage set (CiGovernanceTests now 42, plus BuildsContractsNetStandard20Before / BlockingTestLanes / Gate2b / QuarantineLane / Workflows_UseRootLevelSubmodulesOnly), FR24 evidence chain via eng/release_evidence.py (12 subcmds, no sign/sbom/consumer-validation), and resolved decisions D1-D7 incl. DiffEngine ModuleInitializer, scripts/ positional signature, Contracts-only vs Shell/UI consumer boundaries. REL-AI-1 stays open; G2 raised upstream only.)
+  # rel-2 moved ready-for-dev -> in-progress on 2026-07-13 (dev-story; baseline_commit d05d723d preserved. Implementing T1-T10: commitlint push trigger, scripts/ consumer-validation trio, ci.yml->domain-ci.yml, supplemental quality workflow(s), release.yml->domain-release.yml, release-evidence.yml (FR24 G1), governance-test reconciliation, G2 upstream request, docs/status reconciliation.)
+  # rel-2 moved in-progress -> review on 2026-07-13 (dev-story; T1-T10 complete. commitlint PR+push; ci.yml->domain-ci.yml (run-consumer-validation + 5 trait-clean unit-test-projects); new quality.yml retains all FrontComposer gates (CI-authoritative); release.yml->domain-release.yml via workflow_run; new release-evidence.yml FR24 G1 + signing + attestation; scripts/ trio (pack/validate-nuget/validate-consumer) sanity-run green (8+8 pkgs, kernel-split held, both consumers 0/0); DiffEngine ModuleInitializer (D1). Governance lane reconciled: CiGovernanceTests 44/44 + Story12_4_RedPhaseDefTests 11/11 via direct xUnit runner (attestation re-homed to release-evidence.yml). Builds 0/0. G2 upstream request doc authored (no submodule edit). REL-AI-1 STAYS OPEN pending Release-Owner real-release evidence.)
+  rel-2-align-frontcomposer-cicd-with-tenants: review
 
 action_items:
   - epic: 2
@@ -486,8 +491,8 @@ action_items:
     assigned: "2026-07-05"
     due: "before v1.0 release candidate"
     status: open
-    implementation_story: "REL-1, REL-2"
-    progress: "2026-07-09: approved Tenants CI/CD alignment supersedes the July 5 auto-publish model; REL-2 added to move FrontComposer to workflow_run-after-CI-success and reusable Hexalith.Builds domain workflows while preserving/rerouting FR24 evidence. 2026-07-05 (REL-1 review): advisory FR24 evidence layer wired into release.yml (evidence-only model per owner decision — auto-publish kept, no gating); requiring governance test added; CiGovernanceTests 41/41 locally. STILL OPEN — remaining: reusable-release evidence placement, AC2 certificate signing, AC4-5 publish gating or approved reusable-workflow fallback, AC6 package-consumer validation, and AC8 Release Owner running the workflow on a real release to record evidence paths."
+    implementation_story: "REL-2"
+    progress: "2026-07-13: approved correct-course (sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md) RE-HOMED FR24 into REL-2 and CLOSED REL-1 as superseded. Reusable domain-release.yml provides NO FR24 evidence and is a shared submodule we cannot edit, so FR24 uses 3-layer split-homing: CI (domain-ci.yml run-consumer-validation + new scripts/) for AC1/AC6; pristine reusable domain-release.yml for publish; new supplemental release-evidence.yml (reusing eng/release_evidence.py) for AC2/AC3/AC4-5/AC8. Gating: G1 now (post-publish + next-release fail-closed), G2 (Hexalith.Builds inline gate) flagged as durable upstream follow-up. Re-validate inventory/consumer refs against the landed 2.0 split (Contracts.UI packable @ 2.0.0). Three model-guard governance tests (PublishesFromMainWithoutManualDispatchGates, RunsAutomaticPackageReleaseAfterBlockingTests, ProducesAdvisoryFr24EvidenceBundleWithoutGating) must flip; the 1.12 package-validation baseline test moves to 2.0.0. 2026-07-09: Tenants CI/CD alignment superseded the July 5 auto-publish model; REL-2 created. 2026-07-05 (REL-1): advisory FR24 evidence layer + requiring governance test (superseded). STILL OPEN — remaining: AC2 signing, AC4-5 gating (G1), AC6 consumer-validation, AC8 Release Owner records evidence on a real release."
     evidence_required:
       - "validated package inventory"
       - "signed .nupkg verification with timestamp"

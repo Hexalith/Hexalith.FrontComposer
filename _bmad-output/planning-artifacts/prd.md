@@ -351,6 +351,7 @@ FrontComposer must release the expected NuGet package set through semantic-relea
 - Release dry-run defaults to safe non-publish behavior and cannot publish package or GitHub Release side effects.
 - Package inventory, signing/timestamp verification, symbol package presence, SBOM presence, checksum coverage, manifest verification, release-readiness classification, and package-consumer validation gate publication.
 - `REL-AI-1` can be marked done only when the Release Owner records evidence paths for every FR24 artifact or records an approved fallback with explicit reopen criteria.
+- Release is triggered by `workflow_run` after a successful `CI` push (Tenants-aligned reusable `domain-release.yml`), not a direct push. Because the shared reusable release workflow provides no evidence hook and cannot be modified from this repo, FR24 evidence is produced by a **supplemental FrontComposer workflow** (`release-evidence.yml`) reusing `eng/release_evidence.py`, plus package-consumer validation in shared CI. Implemented by `REL-2` (correct-course 2026-07-13); gating posture G1 (post-publish + next-release fail-closed) now, with an optional Hexalith.Builds inline gate (G2) as a durable follow-up.
 
 #### FR-25: Preserve public contracts and deprecation paths
 

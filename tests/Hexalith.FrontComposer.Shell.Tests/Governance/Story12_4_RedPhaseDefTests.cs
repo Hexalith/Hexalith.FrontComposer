@@ -33,74 +33,54 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 // ----------------------------------------------------------------------------
 public sealed class Story12_4_RedPhaseDefTests {
     [Fact]
-    public void Story12_4_Def14_AttestBuildProvenanceStep_IsWiredInReleaseWorkflow() {
-        // Regression pin (Def14, implemented): AC9 ("Attestations are generated and verified before
-        // release readiness is claimed") requires an actual generation step. The story
-        // currently reaches AC9 only via AC10's `fallback-approved` path, leaving AC9
-        // structurally unreachable for production. This test pins the contract that
-        // closing Def14 requires wiring `actions/attest-build-provenance@v4` before
-        // `Run semantic-release (live publish)` and binding the attestation bundle into
-        // the sealed manifest.
-        //
-        // F4 (Story 12.4 test review): structural step-body checks via FindStepBlockContaining
-        // replace raw `workflow.Contains(...)` + `IndexOf(...)`. The previous substring approach
-        // matched on comments and doc anchors, ignored `if: false`/`continue-on-error: true`
-        // skip flags, and used positional indices that could be confused by unrelated mentions
-        // of the same text earlier in the file.
+    public void Story12_4_Def14_AttestBuildProvenanceStep_IsWiredInReleaseEvidenceWorkflow() {
+        // Regression pin (Def14). REL-2 (2026-07-13): FR24 attestation re-homed from the bespoke
+        // release.yml into the supplemental release-evidence.yml — release.yml now delegates to the
+        // shared reusable domain-release.yml, which has no attestation hook. AC9 ("Attestations are
+        // generated and verified before release readiness is claimed") still requires an actual
+        // generation step: pin actions/attest-build-provenance@v4 as a live, non-advisory step over
+        // the re-packed release artifacts, running before the evidence bundle upload.
         string root = CiGovernanceTests.RepositoryRoot();
-        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
 
         string attestStep = CiGovernanceTests.FindStepBlockContaining(workflow, "actions/attest-build-provenance@v4");
         attestStep.ShouldNotBeNullOrEmpty(
-            "AC9/Def14: release.yml must include a workflow STEP whose `uses:` (or `run:` body) invokes actions/attest-build-provenance@v4. A reference inside a comment does not count.");
+            "AC9/Def14: release-evidence.yml must include a workflow STEP whose `uses:` invokes actions/attest-build-provenance@v4. A reference inside a comment does not count.");
 
         attestStep.Contains("if: false", StringComparison.Ordinal).ShouldBeFalse(
             "AC9/Def14: the attest-build-provenance step must not be conditionally disabled (`if: false`).");
         attestStep.Contains("continue-on-error: true", StringComparison.Ordinal).ShouldBeFalse(
             "AC9/Def14: the attest-build-provenance step must not be marked advisory (`continue-on-error: true`).");
 
-        // Ordering: attestation must run before the live-publish semantic-release step so the
-        // bundle binds into the sealed manifest before any irreversible side effect.
-        string livePublishStep = CiGovernanceTests.ExtractNamedStep(workflow, "Run semantic-release (live publish)");
+        // Ordering: attestation must run before the final evidence upload so the provenance is
+        // produced as part of the sealed evidence bundle.
+        string uploadStep = CiGovernanceTests.ExtractNamedStep(workflow, "Upload release evidence artifact");
         int attestStepIdx = workflow.IndexOf(attestStep, StringComparison.Ordinal);
-        int livePublishIdx = workflow.IndexOf(livePublishStep, StringComparison.Ordinal);
+        int uploadIdx = workflow.IndexOf(uploadStep, StringComparison.Ordinal);
         attestStepIdx.ShouldBeLessThan(
-            livePublishIdx,
-            "AC9/Def14: attest-build-provenance must run before semantic-release (live publish) so the attestation bundle is bound into the sealed manifest.");
+            uploadIdx,
+            "AC9/Def14: attest-build-provenance must run before the evidence bundle upload.");
     }
 
     [Fact]
     public void Story12_4_Def14_AttestationsWritePermission_IsRestored() {
-        // Regression pin (Def14, implemented): round-8 CR-12-4-P189 deliberately narrowed the job
-        // permission scope to `attestations: read` because no attestation creation
-        // step exists. The attested path becomes reachable only when Def14 restores
-        // `attestations: write` AND wires the build-provenance step. Pin both halves
-        // so a partial Def14 fix (permission flipped without the step, or vice versa)
-        // does not silently slip past review.
-        //
-        // F4 (Story 12.4 test review): scope the permission assertions to the release job's
-        // `permissions:` block via ExtractJobPermissionsBlock. The previous substring approach
-        // on the full workflow text could not distinguish workflow-level vs job-level
-        // permission scope, allowing a partial green if `attestations: write` appeared at
-        // workflow scope while the release job still carried `attestations: read`.
+        // Regression pin (Def14). REL-2 (2026-07-13): the FR24 attestation permissions moved with
+        // the attest step into release-evidence.yml. Scope the assertions to the release-evidence
+        // job's own `permissions:` block via ExtractJobPermissionsBlock so a workflow-level grant
+        // cannot mask a missing job-level scope.
         string root = CiGovernanceTests.RepositoryRoot();
-        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
 
-        string jobPermissions = CiGovernanceTests.ExtractJobPermissionsBlock(workflow, "release");
+        string jobPermissions = CiGovernanceTests.ExtractJobPermissionsBlock(workflow, "release-evidence");
         jobPermissions.ShouldNotBeNullOrEmpty(
-            "AC9/Def14: the release job must declare a `permissions:` block — none found.");
+            "AC9/Def14: the release-evidence job must declare a `permissions:` block — none found.");
 
         jobPermissions.Contains("attestations: write", StringComparison.Ordinal).ShouldBeTrue(
-            "AC9/Def14: the release job permissions must include `attestations: write` so attest-build-provenance can sign and upload (round-8 CR-12-4-P189 narrowed to `read`; Def14 must restore `write`).");
+            "AC9/Def14: the release-evidence job permissions must include `attestations: write` so attest-build-provenance can sign and upload.");
         jobPermissions.Contains("id-token: write", StringComparison.Ordinal).ShouldBeTrue(
-            "AC9/Def14: the release job permissions must include `id-token: write` so the attestation step can mint an OIDC token for the signing provider.");
-
-        // Guard against the dual-grant footgun: the narrowed `attestations: read` from round-8
-        // must be REPLACED, not duplicated, when Def14 wires the attestation step. YAML
-        // duplicate-key semantics let a later `attestations: write` shadow an earlier
-        // `attestations: read`, but the duplication is a red flag for an incomplete edit.
+            "AC9/Def14: the release-evidence job permissions must include `id-token: write` so the attestation step can mint an OIDC token for the signing provider.");
         jobPermissions.Contains("attestations: read", StringComparison.Ordinal).ShouldBeFalse(
-            "AC9/Def14: the narrowed `attestations: read` from round-8 CR-12-4-P189 must be replaced, not duplicated, when Def14 wires the attestation step.");
+            "AC9/Def14: the release-evidence job must grant attestations: write, not the narrowed read scope.");
     }
 
     [Fact]

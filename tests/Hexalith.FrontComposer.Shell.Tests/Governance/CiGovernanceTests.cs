@@ -13,30 +13,30 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 public sealed class CiGovernanceTests {
     [Fact]
     public void CommitlintJob_BlocksPrTitlesAndCommitMessagesUsedBySemanticRelease() {
+        // REL-2 (2026-07-13): commitlint moved out of the inline ci.yml job into the dedicated
+        // commitlint.yml reusable caller (Tenants parity). semantic-release derives versions from
+        // commit messages and this repository pushes to main directly, so the gate MUST run on
+        // both pull requests and pushes to main; the shared reusable owns the actual PR-title /
+        // PR-commit-range / last-main-commit validation.
         string root = RepositoryRoot();
-        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/commitlint.yml"));
 
-        string commitlintJob = workflow[workflow.IndexOf("  commitlint:", StringComparison.Ordinal)..];
-        string commitlintJobHeader = commitlintJob[..commitlintJob.IndexOf("    steps:", StringComparison.Ordinal)];
-        commitlintJobHeader.ShouldNotContain("continue-on-error: true");
+        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/commitlint.yml@main");
+        workflow.ShouldNotContain("continue-on-error: true");
 
-        string prTitleStep = ExtractNamedStep(workflow, "Validate PR title");
-        prTitleStep.ShouldContain("github.event_name == 'pull_request'");
-        prTitleStep.ShouldContain("echo \"$PR_TITLE\" | npx commitlint");
-
-        string prCommitsStep = ExtractNamedStep(workflow, "Validate PR commits");
-        prCommitsStep.ShouldContain("github.event_name == 'pull_request'");
-        prCommitsStep.ShouldContain("npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose");
-
-        string mainCommitStep = ExtractNamedStep(workflow, "Validate latest main commit");
-        mainCommitStep.ShouldContain("github.event_name == 'push'");
-        mainCommitStep.ShouldContain("npx commitlint --last --verbose");
+        string onBlock = ExtractOnBlock(workflow);
+        onBlock.ShouldContain("pull_request:");
+        onBlock.ShouldContain("push:");
+        onBlock.ShouldContain("branches: [main]");
     }
 
     [Fact]
     public void BuildAndTestJob_IsBlockingAndHasGovernanceTelemetryGate() {
+        // REL-2 (2026-07-13): the FrontComposer-only Gate 2b governance lane moved from the
+        // inline ci.yml build-and-test job into the supplemental quality.yml (ci.yml now delegates
+        // to the shared reusable domain-ci.yml). quality.yml is CI-authoritative for this gate.
         string root = RepositoryRoot();
-        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
 
         string buildJob = workflow[workflow.IndexOf("  build-and-test:", StringComparison.Ordinal)..];
         string buildJobHeader = buildJob[..buildJob.IndexOf("    steps:", StringComparison.Ordinal)];
@@ -53,8 +53,9 @@ public sealed class CiGovernanceTests {
         // job-header check above only proves the job is not advisory at job scope; a future
         // edit that marked the governance STEP advisory would slip through. Find the named
         // step body and assert its block does not contain a step-level continue-on-error flag.
+        // REL-2 (2026-07-13): Gate 2b lives in the supplemental quality.yml after the CI migration.
         string root = RepositoryRoot();
-        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         string gateName = "Gate 2b: Infrastructure governance and telemetry contracts";
         int idx = workflow.IndexOf(gateName, StringComparison.Ordinal);
         idx.ShouldBeGreaterThanOrEqualTo(0, $"workflow is missing the named step '{gateName}'.");
@@ -68,27 +69,31 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void BlockingTestLanes_ExcludeQuarantinedTestsWithoutSkippingGovernance() {
+        // REL-2 (2026-07-13): the trait-filtered test lanes moved from the inline ci.yml into the
+        // supplemental quality.yml; the release path no longer re-runs tests (the reusable
+        // domain-release.yml publishes and CI already gated the head). The re-homed FR24
+        // release-evidence.yml re-runs the release tests excluding Quarantined for evidence.
         string root = RepositoryRoot();
-        string ci = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
-        string release = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+        string releaseEvidence = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
 
-        string defaultLane = ExtractNamedStep(ci, "Gate 3a: Unit + bUnit (default lane)");
+        string defaultLane = ExtractNamedStep(quality, "Gate 3a: Unit + bUnit (default lane)");
         defaultLane.ShouldContain("Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined");
         defaultLane.ShouldNotContain("continue-on-error: true");
 
-        string governanceLane = ExtractNamedStep(ci, "Gate 2b: Infrastructure governance and telemetry contracts");
+        string governanceLane = ExtractNamedStep(quality, "Gate 2b: Infrastructure governance and telemetry contracts");
         governanceLane.ShouldContain("Category=Governance");
         governanceLane.ShouldNotContain("Category!=Quarantined");
         governanceLane.ShouldNotContain("continue-on-error: true");
 
-        release.ShouldContain("--filter \"Category!=Quarantined\"");
-        release.ShouldNotContain("continue-on-error: true");
+        releaseEvidence.ShouldContain("--filter \"Category!=Quarantined\"");
     }
 
     [Fact]
     public void QuarantineLane_IsWarningOnlyAndPublishesBoundedEvidence() {
+        // REL-2 (2026-07-13): the advisory quarantine lane + telemetry moved to quality.yml.
         string root = RepositoryRoot();
-        string ci = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
+        string ci = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
 
         string quarantineLane = ExtractNamedStep(ci, "Gate 3d: Quarantined tests (warning-only)");
         quarantineLane.ShouldContain("continue-on-error: true");
@@ -268,75 +273,53 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void ReleaseWorkflow_BuildsContractsNetStandard20BeforeContractTests() {
+    public void QualityWorkflow_BuildsContractsNetStandard20InIsolation() {
+        // REL-2 (2026-07-13): the Contracts netstandard2.0 isolation build (Gate 1) is a
+        // FrontComposer-specific gate the shared reusable domain-ci.yml does not run, so it moved
+        // from the bespoke release.yml into the supplemental quality.yml and runs before the full
+        // solution build (Gate 2). The release path no longer builds/tests inline.
         string root = RepositoryRoot();
-        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
-        string releaseJob = ExtractJobBlock(workflow, "release");
-        const string prerequisiteName = "Build Contracts test prerequisite (netstandard2.0)";
-        string prerequisite = FindStepBlockContaining(releaseJob, $"- name: {prerequisiteName}");
-        string releaseTests = FindStepBlockContaining(releaseJob, "- name: Run release tests");
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+        string gate1 = ExtractNamedStep(workflow, "Gate 1: Contracts Build (netstandard2.0)");
 
         const string restoreCommand = "dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release";
-        const string buildCommand = "dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -f netstandard2.0 --configuration Release --no-restore -m:1 /nr:false";
-        prerequisite.ShouldStartWith($"      - name: {prerequisiteName}");
-        ExtractRunScriptLines(prerequisite).ShouldBe([restoreCommand, buildCommand]);
-        prerequisite.ShouldNotContain("if:");
-        prerequisite.ShouldNotContain("continue-on-error");
-        releaseTests.ShouldStartWith("      - name: Run release tests");
-        releaseTests.ShouldContain(
-            "tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj");
+        const string buildCommand = "dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -f netstandard2.0 --configuration Release --no-restore";
+        gate1.ShouldContain(restoreCommand);
+        gate1.ShouldContain(buildCommand);
+        gate1.ShouldNotContain("if:");
+        gate1.ShouldNotContain("continue-on-error");
 
-        int prerequisiteIndex = releaseJob.IndexOf(prerequisite, StringComparison.Ordinal);
-        int releaseTestsIndex = releaseJob.IndexOf(releaseTests, StringComparison.Ordinal);
-        (prerequisiteIndex + prerequisite.Length).ShouldBe(releaseTestsIndex);
-        releaseTestsIndex.ShouldBeLessThan(releaseJob.IndexOf("- name: Run semantic-release", StringComparison.Ordinal));
+        workflow.IndexOf("Gate 1: Contracts Build (netstandard2.0)", StringComparison.Ordinal)
+            .ShouldBeLessThan(workflow.IndexOf("Gate 2: Solution Build", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void ReleaseWorkflow_RunsAutomaticPackageReleaseAfterBlockingTests() {
+    public void ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate() {
+        // REL-2 (2026-07-13): release.yml no longer runs an inline per-project test loop, package
+        // inventory attestation, or attest-build-provenance steps. It delegates to the shared
+        // reusable Hexalith.Builds domain-release.yml (Tenants parity); CI (the upstream
+        // workflow_run gate) already tested the same head, so the release path does not duplicate
+        // test compute. semantic-release still packs+publishes via this repo's .releaserc.json.
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
 
-        workflow.ShouldContain("push:");
-        workflow.ShouldContain("branches: [main]");
+        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main");
+        workflow.ShouldContain("solution: Hexalith.FrontComposer.slnx");
+        workflow.ShouldContain("test-projects: ''");
+        workflow.ShouldContain("NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}");
         workflow.ShouldContain("contents: write");
         workflow.ShouldContain("issues: write");
         workflow.ShouldContain("pull-requests: write");
-        workflow.ShouldNotContain("contents: read");
-        workflow.ShouldNotContain("attestations: read");
-        workflow.ShouldContain("attestations: write");
-        workflow.ShouldContain("id-token: write");
-        workflow.ShouldNotContain("packages: write");
-        workflow.ShouldContain("submodules: false");
         workflow.ShouldNotContain("submodules: recursive");
-        workflow.ShouldContain("Initialize build submodules");
-        workflow.ShouldContain("global-json-file: global.json");
 
-        workflow.IndexOf("Run release tests", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
-        workflow.IndexOf("Validate package inventory before release", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
-        workflow.ShouldContain("tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj");
-        workflow.ShouldContain("tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj");
-        workflow.ShouldContain("tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj");
-        workflow.ShouldContain("tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj");
-        workflow.ShouldContain("tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj");
-        workflow.ShouldContain("tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj");
-        workflow.ShouldContain("release-evidence/package-inventory.json");
-        workflow.ShouldContain("NUGET_API_KEY");
-        workflow.ShouldContain("Upload package artifacts");
-        workflow.ShouldContain("actions/upload-artifact");
-        workflow.ShouldContain("nupkgs/*.nupkg");
-        workflow.ShouldContain("nupkgs/*.snupkg");
+        // The bespoke inline release job is gone: no duplicated test loop, no inline attestation,
+        // no container publishing (FrontComposer ships NuGet packages only).
+        workflow.ShouldNotContain("Run release tests");
+        workflow.ShouldNotContain("Run semantic-release");
+        workflow.ShouldNotContain("attest-build-provenance");
+        workflow.ShouldNotContain("publish-containers");
         workflow.ShouldNotContain("workflow_dispatch:");
-        workflow.ShouldNotContain("release_owner_approved");
-        workflow.ShouldNotContain("dry_run:");
-        workflow.ShouldNotContain("Require bootstrap tag");
-        workflow.ShouldNotContain("Release owner approval gate");
-        workflow.ShouldNotContain("ATTESTATION_UNSUPPORTED");
-        workflow.ShouldContain("actions/attest-build-provenance@v4");
-        workflow.ShouldNotContain("|| true");
-        workflow.IndexOf("actions/attest-build-provenance@v4", StringComparison.Ordinal)
-            .ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
 
         releaseConfig.ShouldContain("@semantic-release/commit-analyzer");
         releaseConfig.ShouldContain("@semantic-release/release-notes-generator");
@@ -416,22 +399,41 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void SemanticReleasePack_EnablesEvaluatedPackageValidationAgainst112Baseline() {
+    public void SemanticReleasePack_EvaluatesBaseAndContractsUiPackageValidationBaselines() {
+        // REL-2 (2026-07-13, D5): the 2.0 package split landed (b6e985f4). The base
+        // package-validation baseline stays 1.12.0 (Contracts and the other base packages),
+        // while Contracts.UI overrides it to 2.0.0 for its binary-breaking public surface. Prove
+        // BOTH baselines are evaluated under EnableFrontComposerPackageValidation=true — "update
+        // to the 2.0 reality" does NOT mean every package jumped to 2.0.
         string root = RepositoryRoot();
-        string project = Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts", "Hexalith.FrontComposer.Contracts.csproj");
-        ProcessResult result = RunProcess(root, "dotnet", [
-            "msbuild",
-            project,
-            "-getProperty:EnablePackageValidation,PackageValidationBaselineVersion",
-            "-p:EnableFrontComposerPackageValidation=true",
-            "-nologo",
-        ]);
 
-        result.ExitCode.ShouldBe(0, result.Error);
-        using JsonDocument evaluated = JsonDocument.Parse(result.Output);
-        JsonElement properties = evaluated.RootElement.GetProperty("Properties");
-        properties.GetProperty("EnablePackageValidation").GetString().ShouldBe("true");
-        properties.GetProperty("PackageValidationBaselineVersion").GetString().ShouldBe("1.12.0");
+        static (string enable, string baseline) EvaluatePackageValidation(string root, string project) {
+            ProcessResult result = RunProcess(root, "dotnet", [
+                "msbuild",
+                project,
+                "-getProperty:EnablePackageValidation,PackageValidationBaselineVersion",
+                "-p:EnableFrontComposerPackageValidation=true",
+                "-nologo",
+            ]);
+            result.ExitCode.ShouldBe(0, result.Error);
+            using JsonDocument evaluated = JsonDocument.Parse(result.Output);
+            JsonElement properties = evaluated.RootElement.GetProperty("Properties");
+            return (
+                properties.GetProperty("EnablePackageValidation").GetString() ?? string.Empty,
+                properties.GetProperty("PackageValidationBaselineVersion").GetString() ?? string.Empty);
+        }
+
+        (string baseEnable, string baseBaseline) = EvaluatePackageValidation(
+            root,
+            Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts", "Hexalith.FrontComposer.Contracts.csproj"));
+        baseEnable.ShouldBe("true");
+        baseBaseline.ShouldBe("1.12.0");
+
+        (string uiEnable, string uiBaseline) = EvaluatePackageValidation(
+            root,
+            Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"));
+        uiEnable.ShouldBe("true");
+        uiBaseline.ShouldBe("2.0.0");
     }
 
     [Fact]
@@ -861,20 +863,23 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void ReleaseWorkflow_PublishesFromMainWithoutManualDispatchGates() {
+    public void ReleaseWorkflow_RunsViaWorkflowRunAfterCiSuccess() {
+        // REL-2 (2026-07-13): Tenants-aligned model — release runs from workflow_run after a
+        // successful CI push (not directly on push). The conclusion=='success' + event=='push'
+        // guard stops failed or non-push (PR/scheduled) CI runs from releasing. No manual
+        // dispatch / approval / dry-run gating is reintroduced. semantic-release decides from the
+        // commit history whether to publish, via this repo's .releaserc.json.
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
 
-        workflow.ShouldMatch(@"(?m)^on:\s*\n\s*push:\s*\n\s*branches:\s*\[main\]");
-        workflow.ShouldContain("Run semantic-release");
-        workflow.ShouldContain("GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}");
-        workflow.ShouldContain("NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}");
-        workflow.ShouldContain("Validate package inventory before release");
+        workflow.ShouldContain("workflow_run:");
+        workflow.ShouldContain("workflows: [CI]");
+        workflow.ShouldContain("github.event.workflow_run.conclusion == 'success'");
+        workflow.ShouldContain("github.event.workflow_run.event == 'push'");
+        // The bespoke on: push[main] trigger is gone; the on: block is workflow_run only.
+        ExtractOnBlock(workflow).ShouldNotContain("push:");
         workflow.ShouldNotContain("workflow_dispatch:");
-        workflow.ShouldNotContain("pull_request:");
-        workflow.ShouldNotContain("workflow_run:");
-        workflow.ShouldNotContain("schedule:");
         workflow.ShouldNotContain("release_owner_approved");
         workflow.ShouldNotContain("release_approver");
         workflow.ShouldNotContain("RELEASE_OWNER_APPROVED");
@@ -899,15 +904,17 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void ReleaseWorkflow_ProducesAdvisoryFr24EvidenceBundleWithoutGating() {
-        // REL-1 (2026-07-05, evidence-only model): the release workflow must produce an
-        // auditable FR24 evidence bundle (test-results, SBOM, checksums, sealed manifest,
-        // advisory readiness classification) over the published packages. This ADDS an
-        // evidence layer WITHOUT reintroducing the gated-dispatch/approval/dry-run model
-        // that the 2026-07-03 streamline deliberately removed — the two model-guard tests
-        // above remain the source of truth for triggers and publish behavior.
+    public void ReleaseEvidenceWorkflow_ProducesFr24EvidenceBundleUnderG1() {
+        // REL-2 (2026-07-13): FR24 evidence is re-homed from release.yml into the supplemental
+        // release-evidence.yml, because the shared reusable domain-release.yml (which release.yml
+        // now delegates to) exposes no evidence hook and must not be edited. G1 posture: publish
+        // proceeds under the reusable workflow; this workflow produces the full evidence bundle
+        // over a deterministic re-pack, signs+verifies packages, and classifies readiness WITHOUT
+        // --require-publishable (advisory for the release that just published) while failing closed
+        // on missing/invalid evidence.
         string root = RepositoryRoot();
-        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
+        string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
 
         // Required FR24 evidence commands, all orchestrated in the workflow (never in
         // .releaserc.json, which the model-guard tests keep evidence-free).
@@ -921,21 +928,30 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("release-evidence/test-results.json");
         workflow.ShouldContain("Upload release evidence artifact");
         workflow.ShouldContain("release-evidence/**");
+        // AC10: packages are signed and verified (RFC 3161 timestamp).
+        workflow.ShouldContain("dotnet nuget verify");
         string normalizedWorkflow = workflow.Replace("\r\n", "\n", StringComparison.Ordinal);
-
-        // Test-evidence must be recorded before publish so a failed/skipped lane is
-        // captured even though the auto-publish proceeds.
         normalizedWorkflow.ShouldContain("- name: Record release test evidence\n        if: always()");
-        workflow.IndexOf("release_evidence.py test-results", StringComparison.Ordinal)
-            .ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
         normalizedWorkflow.ShouldContain("- name: Install CycloneDX .NET tool\n        if: always()");
 
-        // Evidence is ADVISORY: classification must not carry --require-publishable, and
-        // the workflow must not reintroduce dispatch/approval/dry-run gating.
+        // Runs after CI success via workflow_run; root-only submodule init (also enforced by
+        // Workflows_UseRootLevelSubmodulesOnly).
+        workflow.ShouldContain("workflow_run:");
+        workflow.ShouldContain("workflows: [CI]");
+        workflow.ShouldContain("github.event.workflow_run.event == 'push'");
+        workflow.ShouldContain("submodules: false");
+        workflow.ShouldContain("Initialize build submodules");
+
+        // G1 advisory-at-publish: classification must not carry --require-publishable, and the
+        // workflow must not reintroduce dispatch/dry-run/best-effort-suppression gating.
         workflow.ShouldNotContain("--require-publishable");
         workflow.ShouldNotContain("workflow_dispatch:");
         workflow.ShouldNotContain("RELEASE_DRY_RUN");
         workflow.ShouldNotContain("|| true");
+
+        // Evidence stays out of .releaserc.json — the model-guard tests keep it evidence-free.
+        releaseConfig.ShouldNotContain("classify-release");
+        releaseConfig.ShouldNotContain("CycloneDX");
     }
 
     [Fact]
@@ -1822,33 +1838,6 @@ public sealed class CiGovernanceTests {
         idx.ShouldBeGreaterThanOrEqualTo(0, $"workflow is missing the named step '{name}'.");
         int nextStep = workflow.IndexOf("      - name:", idx + name.Length, StringComparison.Ordinal);
         return nextStep < 0 ? workflow[idx..] : workflow[idx..nextStep];
-    }
-
-    private static string ExtractJobBlock(string workflow, string jobId) {
-        Match job = Regex.Match(
-            workflow,
-            $@"^  {Regex.Escape(jobId)}:[ \t]*\r?$",
-            RegexOptions.Multiline);
-        job.Success.ShouldBeTrue($"workflow is missing jobs.{jobId}.");
-
-        int start = job.Index;
-        Match nextJob = Regex.Match(
-            workflow[(start + job.Length)..],
-            @"^  [A-Za-z0-9_-]+:[ \t]*\r?$",
-            RegexOptions.Multiline);
-        int end = nextJob.Success ? start + job.Length + nextJob.Index : workflow.Length;
-        return workflow[start..end];
-    }
-
-    private static string[] ExtractRunScriptLines(string step) {
-        string[] lines = step.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
-        int runIndex = Array.FindIndex(lines, line => string.Equals(line.Trim(), "run: |", StringComparison.Ordinal));
-        runIndex.ShouldBeGreaterThanOrEqualTo(0, "step must use a multiline run script.");
-
-        return lines[(runIndex + 1)..]
-            .Where(line => !string.IsNullOrWhiteSpace(line))
-            .Select(line => line.Trim())
-            .ToArray();
     }
 
     internal static string FindStepBlockContaining(string workflow, string needle) {
