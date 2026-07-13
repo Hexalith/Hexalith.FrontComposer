@@ -168,7 +168,7 @@ public sealed class CommandPaletteEffects : IDisposable {
     }
 
     private async Task HydrateRecentRoutesAsync(IDispatcher dispatcher) {
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Palette", DirectionHydrate)) {
             return;
         }
 
@@ -627,7 +627,7 @@ public sealed class CommandPaletteEffects : IDisposable {
     [EffectMethod]
     public async Task HandleRecentRouteVisited(RecentRouteVisitedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Palette", DirectionPersist)) {
             return;
         }
 

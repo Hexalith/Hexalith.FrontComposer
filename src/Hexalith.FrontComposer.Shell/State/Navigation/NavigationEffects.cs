@@ -157,7 +157,7 @@ public sealed class NavigationEffects(
         // Scope guard — do not pollute in-memory LastActiveRoute with anon navigation that persist
         // cannot write. Symmetric with PersistAsync's fail-closed behavior; prevents cross-user
         // leak when a later scoped hydrate returns null blob.
-        if (!_scopeResolver.TryResolveScope(out _, out _, "persist")) {
+        if (!_scopeResolver.TryResolveScope(out _, out _, "Navigation", "persist")) {
             return Task.CompletedTask;
         }
 
@@ -207,7 +207,7 @@ public sealed class NavigationEffects(
     }
 
     private async Task HydrateAsync(IDispatcher dispatcher) {
-        if (!_scopeResolver.TryResolveScope(out string tenantId, out string userId, "hydrate")) {
+        if (!_scopeResolver.TryResolveScope(out string tenantId, out string userId, "Navigation", "hydrate")) {
             return;
         }
 
@@ -350,7 +350,7 @@ public sealed class NavigationEffects(
     }
 
     private async Task PersistAsync() {
-        if (!_scopeResolver.TryResolveScope(out string tenantId, out string userId, "persist")) {
+        if (!_scopeResolver.TryResolveScope(out string tenantId, out string userId, "Navigation", "persist")) {
             return;
         }
 

@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-13T11:40:02+02:00
+# last_updated: 2026-07-13T13:05:00+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-13T11:40:02+02:00
+last_updated: 2026-07-13T13:05:00+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -414,7 +414,8 @@ development_status:
   # 11-15 moved in-progress -> review on 2026-07-13 (dev-story; all 3 tasks complete. M19 clusters 4 & 5 consolidated: 6 effect-local TryResolveScope -> 1 Scoped Services/StorageScopeResolver [6 defs/16 invocations -> 0 defs/16 shared invocations; adopts CommandPalette throwing-accessor guard, fixes latent throw-propagation in the other 5]; 2 hand-rolled replayable snapshot containers -> 1 Services/SnapshotPublisher<T> + 2 thin owners [ProjectionConnection + Reconciliation retain distinct epoch/dedup/reconnect/logging/telemetry, unchanged interfaces]. New Roslyn governance guard blocks effect-local TryResolveScope recurrence [+ synthetic negative]; direct resolver tests incl. throwing-accessor Reason=AccessorThrew hardening; SnapshotPublisher<T> matrix tests; Scoped-lifetime pins. Effects consume the internal resolver via IServiceProvider [CS0051 blocks internal-type ctor injection into public effects] with accessor fallback -> six *EffectsScopeTests retained green unchanged. Decisions A/B exclusions untouched; M19/Rx-removal follow-up deferred [cross-ref DW-0285]. Release build 0/0 TWAE; full Shell default lane 2277/0, Governance 126/0. No package/generated/schema/wire/public-API baseline change.)
   # 11-15 moved review -> in-progress on 2026-07-13 (bmad-code-review; all 11 patches applied: support-safe accessor/subscriber logging, exact constructor compatibility and production DI identity, unsubscribe/teardown race hardening, deterministic concurrency and Roslyn local-function coverage, docs, submodule cleanup, and commit metadata. Release build 0/0; focused 35/35; full Shell default 2281/2281; Governance 126/126. One verified medium pre-existing concurrent delivery-ordering item remains deferred.)
   # 11-15 moved in-progress -> review on 2026-07-13 (dev-story completion reconciliation; restored EventStore and Memories root gitlinks to baseline after squash merge 8b8e002d retained unrelated upgrades. Restore passed; Release solution build 0 warnings/0 errors; full default lane 4053/4053; Governance 258/258; artifact and diff checks green.)
-  11-15-storage-scope-and-snapshot-publisher-consolidation: review
+  # 11-15 moved review -> done on 2026-07-13 (bmad-code-review round 2; 4-layer adversarial review over e914c615..HEAD. 2 decision-needed + 2 patch all applied+validated; 3 defer [1 already tracked], 7 dismissed. Patches: [1] corrected the story record — EventStore/Memories gitlinks intentionally KEPT at post-merge 58761c50/8fc57cf4 [user ACCEPTED the upgrades], NOT restored to baseline as the prior reconciliation claimed [HEAD commit daa667f8 had reverted 5560bc53's restore]; [2] restored HFC2105 per-feature attribution via a feature discriminator threaded through StorageScopeResolver + 16 call sites + new test; [3] rewrote the replay-ordering test to race Publish vs Subscribe [prior version fired the publish from inside the replay handler and could not catch a regression]; [4] guarded SnapshotPublisher.InvokeSafe's fault-handler so a throwing fault handler can't abort the fan-out. Release build 0/0 TWAE; focused 36/36; full Shell default 2282/2282; Governance 126/126; git diff --check clean. NOTE: the 4 patches are applied to the working tree but NOT yet committed. Defers: advance-vs-advance fan-out race [pre-existing, already tracked DW], ProjectionConnection.Apply post-dispose log-bucket loss, name-coupled Roslyn guard.)
+  11-15-storage-scope-and-snapshot-publisher-consolidation: done
   11-16-fatal-hydration-json-and-generated-literal-helper-consolidation: backlog
   11-17-mechanical-one-type-per-file-split: backlog
   11-18-loggermessage-migration-for-warnings-and-hot-paths: backlog

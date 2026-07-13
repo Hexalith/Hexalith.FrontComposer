@@ -42,7 +42,7 @@ internal sealed class StorageScopeResolver : IStorageScopeResolver {
     }
 
     /// <inheritdoc/>
-    public bool TryResolveScope(out string tenantId, out string userId, string direction) {
+    public bool TryResolveScope(out string tenantId, out string userId, string feature, string direction) {
         // The accessor property getters may throw (claims principal disposed, JWT parse error in an
         // adopter implementation). Wrap the reads so the fail-closed branch fires consistently with
         // HFC2105 instead of bubbling an unhandled effect exception into Fluxor's pipeline.
@@ -54,8 +54,9 @@ internal sealed class StorageScopeResolver : IStorageScopeResolver {
         }
         catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
             _logger.LogInformation(
-                "{DiagnosticId}: Storage {Direction} skipped — IUserContextAccessor threw on TenantId/UserId access. Reason=AccessorThrew. FailureCategory={FailureCategory}.",
+                "{DiagnosticId}: {Feature} {Direction} skipped — IUserContextAccessor threw on TenantId/UserId access. Reason=AccessorThrew. FailureCategory={FailureCategory}.",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
+                feature,
                 direction,
                 ex.GetType().Name);
             tenantId = string.Empty;
@@ -65,8 +66,9 @@ internal sealed class StorageScopeResolver : IStorageScopeResolver {
 
         if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
             _logger.LogInformation(
-                "{DiagnosticId}: Storage {Direction} skipped — null/empty/whitespace tenant or user context.",
+                "{DiagnosticId}: {Feature} {Direction} skipped — null/empty/whitespace tenant or user context.",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
+                feature,
                 direction);
             tenantId = string.Empty;
             userId = string.Empty;
