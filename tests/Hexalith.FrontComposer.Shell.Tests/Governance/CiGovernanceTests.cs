@@ -107,6 +107,105 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void QualityWorkflow_PinsContractPactStaleAndArtifactGates() {
+        // REL-2 code-review P3 (2026-07-13): Gate 2c (Contract pacts + contract-artifact validation +
+        // the stale-pact-diff guard) relocated from the inline ci.yml into the supplemental
+        // quality.yml. Pin it at its new home so a future edit cannot silently drop the sole
+        // enforcement that drifted EventStore consumer pacts are caught (AC8 / PRD NFR-11).
+        string root = RepositoryRoot();
+        string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+
+        string pactLane = ExtractNamedStep(quality, "Gate 2c: Contract pacts");
+        pactLane.ShouldContain("--filter \"Category=Contract\"");
+        pactLane.ShouldNotContain("continue-on-error: true");
+
+        quality.ShouldContain("Gate 2c: Validate contract artifacts");
+        quality.ShouldContain("./eng/validate-contract-artifacts.ps1");
+
+        string stalePactGuard = ExtractNamedStep(quality, "Gate 2c: Fail on stale pact diff");
+        stalePactGuard.ShouldContain("git diff --exit-code -- tests/Hexalith.FrontComposer.Shell.Tests/Pact");
+        stalePactGuard.ShouldContain("exit 1");
+        stalePactGuard.ShouldNotContain("continue-on-error: true");
+    }
+
+    [Fact]
+    public void QualityWorkflow_PinsAccessibilityVisualGate() {
+        // REL-2 code-review P3 (2026-07-13): the Playwright a11y/visual job (the sole automated
+        // accessibility + visual-regression gate) relocated from ci.yml into quality.yml. Pin the job
+        // and its non-advisory test step so it cannot be silently dropped or made advisory (AC8 / PRD
+        // NFR-11 requires e2e a11y/visual for the changed surface).
+        string root = RepositoryRoot();
+        string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+
+        quality.ShouldContain("accessibility-visual:");
+        quality.ShouldContain("npm run validate:visual-governance");
+        quality.ShouldContain("npm run validate:a11y-artifacts");
+
+        string a11yStep = ExtractNamedStep(quality, "Run accessibility, keyboard, media, zoom, and visual specimen gate");
+        a11yStep.ShouldContain("npm run test:a11y");
+        a11yStep.ShouldNotContain("continue-on-error: true");
+    }
+
+    [Fact]
+    public void QualityWorkflow_PinsCliSmokeAndDocsGates() {
+        // REL-2 code-review P3 (2026-07-13): Gate 2a (CLI tool package smoke) and Gate 2d (DocFX docs
+        // validation) relocated from ci.yml into quality.yml. Pin both so neither is silently dropped
+        // (AC8 / PRD NFR-11).
+        string root = RepositoryRoot();
+        string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+
+        quality.ShouldContain("Gate 2a: CLI Tool Package Smoke");
+
+        string docsGate = ExtractNamedStep(quality, "Gate 2d: Docs Validation");
+        docsGate.ShouldContain("./eng/validate-docs.ps1");
+        docsGate.ShouldNotContain("continue-on-error: true");
+    }
+
+    [Fact]
+    public void CiWorkflow_DelegatesToReusableDomainCiWithConsumerValidation() {
+        // REL-2 code-review P3 (2026-07-13): AC2/AC6 — the primary CI job must delegate to the shared
+        // reusable domain-ci.yml with FrontComposer's trait-clean unit-test-projects and
+        // run-consumer-validation: true (the ONLY trigger for the FR24 scripts/ pack+validate+consumer
+        // trio). Pin the delegation so a silent removal of the flag or a dropped project fails a test.
+        string root = RepositoryRoot();
+        string ci = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
+
+        ci.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        ci.ShouldContain("solution: Hexalith.FrontComposer.slnx");
+        ci.ShouldContain("run-consumer-validation: true");
+        ci.ShouldContain("unit-test-projects:");
+        ci.ShouldContain("tests/Hexalith.FrontComposer.Cli.Tests");
+        ci.ShouldContain("tests/Hexalith.FrontComposer.Testing.Tests");
+    }
+
+    [Fact]
+    public void ValidateNugetPackagesScript_FailsClosedOnEmptyPackageDirectory() {
+        // REL-2 code-review P4 (2026-07-13): the scripts/ consumer-validation trio is the sole
+        // enforcement of the 8-package inventory + kernel-split invariant (AC6), but had no automated
+        // test — a validator logic error (e.g. a wrong forbidden-fragment, or the license/count check)
+        // would let a broken package set pass CI silently. Negative pin: a package directory that is
+        // NOT the 8 expected packages MUST exit non-zero so the reusable domain-ci lane fails closed
+        // rather than green-lighting an incomplete pack.
+        string root = RepositoryRoot();
+        string emptyDir = Path.Combine(Path.GetTempPath(), $"fc-empty-nupkgs-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(emptyDir);
+        try {
+            ProcessResult result = RunPython(root, ["scripts/validate-nuget-packages.py", emptyDir]);
+            result.ExitCode.ShouldNotBe(
+                0,
+                $"validate-nuget-packages.py must fail closed on a package set that is not the 8 expected packages. stdout={result.Output} stderr={result.Error}");
+            (result.Output + result.Error).ShouldContain(
+                "Expected 8 packages",
+                customMessage: "the failure must name the package-count mismatch so operators can act.");
+        }
+        finally {
+            if (Directory.Exists(emptyDir)) {
+                Directory.Delete(emptyDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void Workflows_UseRootLevelSubmodulesOnly() {
         // Story 11.7 code review P-7 — match enabling forms of recursive submodule commands
         // and flag values with whitespace tolerance. Explicitly allow disable-forms
@@ -934,15 +1033,22 @@ public sealed class CiGovernanceTests {
         // produced and bound into the sealed manifest — a required manifest field.
         workflow.ShouldContain("llm_benchmark.py run-benchmark");
         workflow.ShouldContain("--benchmark-summary-hash");
+        // REL-2 code-review P1 (2026-07-13): the FR24 evidence steps that previously ran
+        // `if: always()` reddened the job on every non-releasing push (tests are tag-gated, so
+        // ./TestResults was legitimately absent and `test-results` exited 1). They are now gated on a
+        // resolved release tag, so a no-release run is a clean green no-op while a real release still
+        // fails closed on missing/invalid test evidence.
         string normalizedWorkflow = workflow.Replace("\r\n", "\n", StringComparison.Ordinal);
-        normalizedWorkflow.ShouldContain("- name: Record release test evidence\n        if: always()");
-        normalizedWorkflow.ShouldContain("- name: Install CycloneDX .NET tool\n        if: always()");
+        normalizedWorkflow.ShouldContain("- name: Record release test evidence\n        if: ${{ steps.tag.outputs.tag != '' }}");
+        normalizedWorkflow.ShouldContain("- name: Install CycloneDX .NET tool\n        if: ${{ steps.tag.outputs.tag != '' }}");
 
-        // Runs after CI success via workflow_run; root-only submodule init (also enforced by
+        // REL-2 code-review P1: keyed off the RELEASE workflow's completion (not CI) so the git tag +
+        // GitHub Release exist by the time evidence binds (keying off CI raced the concurrent release
+        // job and never found the tag). Root-only submodule init (also enforced by
         // Workflows_UseRootLevelSubmodulesOnly).
         workflow.ShouldContain("workflow_run:");
-        workflow.ShouldContain("workflows: [CI]");
-        workflow.ShouldContain("github.event.workflow_run.event == 'push'");
+        workflow.ShouldContain("workflows: [Release]");
+        workflow.ShouldContain("github.event.workflow_run.conclusion == 'success'");
         workflow.ShouldContain("submodules: false");
         workflow.ShouldContain("Initialize build submodules");
 

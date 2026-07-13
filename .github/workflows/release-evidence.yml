@@ -18,8 +18,14 @@ name: Release Evidence
 # owner-approved dependency, not implemented in this repo. No workflow_dispatch / dry-run /
 # approval gating is reintroduced.
 on:
+  # REL-2 code-review P1 (2026-07-13): keyed off the RELEASE workflow's completion, NOT CI.
+  # release.yml (delegating to the reusable domain-release.yml) runs semantic-release on a
+  # push-derived CI success, so by the time Release completes the git tag AND GitHub Release
+  # exist — the evidence bundle can bind + upload to the release it documents. Keying off CI
+  # raced the concurrent release job and never found the tag. NOTE: workflow_run -> workflow_run
+  # chaining is GitHub-Actions-authoritative; confirm the first real release fires this (REL-AI-1).
   workflow_run:
-    workflows: [CI]
+    workflows: [Release]
     types: [completed]
     branches: [main]
 
@@ -32,9 +38,9 @@ permissions:
 
 jobs:
   release-evidence:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'
+    # release.yml already guards `event == 'push'`, so any successful Release completion is
+    # push-derived — gate only on the upstream Release run having succeeded.
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     permissions:
@@ -47,6 +53,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          # Build/pack/sign the exact commit CI validated and semantic-release published from,
+          # not whatever main has advanced to since (e.g. the chore(release) commit).
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           # Root-declared references submodules only; no recursive nested submodule checkout.
           submodules: false
@@ -100,11 +109,12 @@ jobs:
               fh.write("\n")
           PYEOF
 
-      # Resolve the tag/version that the release workflow published for this commit. If no tag
-      # points at this commit there was no releasable change this run, so evidence is a no-op
-      # (G1: the next release still fails closed if it lacks evidence). The evidence bundle is
-      # built over a deterministic re-pack of the inventory at the resolved version — the
-      # supplemental workflow never depends on the concurrent release job's runner artifacts.
+      # Resolve the tag/version the Release workflow just published for this commit. semantic-release
+      # (@semantic-release/git, per .releaserc.json) tags the `chore(release)` commit whose first
+      # PARENT is the released head_sha — so a plain `--points-at head_sha` finds nothing. Match the
+      # tag whose commit IS head_sha (no git-plugin) OR whose first parent IS head_sha. If none,
+      # semantic-release published no version this run, and every evidence step below no-ops (each is
+      # guarded on `tag != ''`), so the workflow is a clean green no-op — not a false failure.
       - name: Resolve release tag
         id: tag
         shell: bash
@@ -113,9 +123,16 @@ jobs:
           if ! git fetch --tags --force origin >/dev/null 2>&1; then
             echo "::notice::tag fetch skipped (tags already present or origin unreachable)."
           fi
-          tag="$(git tag --points-at "${{ github.event.workflow_run.head_sha }}" 'v*' | sort -V | tail -n1)"
+          head_sha="${{ github.event.workflow_run.head_sha }}"
+          tag=""
+          for candidate in $(git tag --list 'v*' --sort=-v:refname); do
+            target="$(git rev-list -n1 "$candidate" 2>/dev/null)" || continue
+            if [ "$target" = "$head_sha" ]; then tag="$candidate"; break; fi
+            parents="$(git rev-list --parents -n1 "$target" 2>/dev/null | cut -d' ' -f2-)"
+            case " $parents " in *" $head_sha "*) tag="$candidate"; break ;; esac
+          done
           if [ -z "$tag" ]; then
-            echo "No release tag points at this commit; no releasable change this run." >> "$GITHUB_STEP_SUMMARY"
+            echo "No release tag corresponds to this commit; semantic-release published no version this run." >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
@@ -154,14 +171,16 @@ jobs:
               --logger "trx;LogFileName=${name}.trx"
           done <<< "$TEST_PROJECTS"
 
-      # Record test-evidence: a failed/skipped lane is captured in the FR24 bundle. This is a
-      # G1 fail-closed step (no best-effort suppression): missing/invalid test evidence fails.
+      # Record test-evidence for the released commit: a failed/skipped lane is captured in the FR24
+      # bundle. G1 fail-closed (no best-effort suppression) — missing/invalid test evidence fails
+      # the job. Gated on a resolved tag so a non-releasing run (where `Run release tests` correctly
+      # did not run) does NOT fail on a legitimately-absent ./TestResults.
       - name: Record release test evidence
-        if: always()
+        if: ${{ steps.tag.outputs.tag != '' }}
         run: python3 eng/release_evidence.py test-results --results-dir ./TestResults --output release-evidence/test-results.json
 
       - name: Install CycloneDX .NET tool
-        if: always()
+        if: ${{ steps.tag.outputs.tag != '' }}
         run: dotnet tool install --global CycloneDX --version 5.*
 
       - name: Re-pack release inventory for evidence
@@ -181,7 +200,7 @@ jobs:
       # release artifacts before release readiness is claimed (bound into the evidence bundle).
       - name: Attest release evidence provenance
         if: ${{ steps.tag.outputs.tag != '' }}
-        uses: actions/attest-build-provenance@v4
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4
         with:
           subject-path: nupkgs/*.nupkg
 
@@ -322,6 +341,23 @@ jobs:
           GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
         run: |
           set -euo pipefail
+          # P2 (2026-07-13, code-review "record-and-proceed"): when signing IS provisioned every
+          # evidence step is fail-closed. When it is NOT (the documented default until the Release
+          # Owner provisions the cert) the Sign step recorded a blocking signing-readiness reason and
+          # did not emit signing-verification.txt; the manifest still SEALS carrying that unsigned
+          # status and the run proceeds to classify-release, which records it (G1 advisory-at-publish)
+          # instead of the job dying here at prepare-manifest. No blanket error-suppression: a
+          # *signed*-release failure is still hard; only the acknowledged-unsigned state is
+          # recorded-not-fatal (see require_or_record below).
+          if [ -f release-evidence/signing-verification.txt ]; then signed=1; else signed=0; fi
+          require_or_record() {
+            if "$@"; then return 0; fi
+            if [ "$signed" = 1 ]; then
+              echo "::error::signed-release evidence step failed: $*"
+              exit 1
+            fi
+            echo "::warning::unsigned release — evidence step reported a blocking readiness reason (recorded, not fatal under G1): $*"
+          }
           if [ -f release-evidence/sbom.json ]; then
             sbom_hash="$(sha256sum release-evidence/sbom.json | cut -d' ' -f1)"
           else
@@ -342,7 +378,7 @@ jobs:
             --pattern 'release-evidence/package-inventory.json' \
             --pattern 'release-evidence/benchmark-summary.json' \
             --output release-evidence/checksums.json
-          python3 eng/release_evidence.py prepare-manifest \
+          require_or_record python3 eng/release_evidence.py prepare-manifest \
             --inventory release-evidence/package-inventory.json \
             --checksums release-evidence/checksums.json \
             --version "${{ steps.tag.outputs.version }}" \
@@ -354,7 +390,7 @@ jobs:
           python3 eng/release_evidence.py seal-manifest \
             --manifest release-evidence/pre-manifest.json \
             --output release-evidence/sealed-manifest.json
-          python3 eng/release_evidence.py verify-manifest \
+          require_or_record python3 eng/release_evidence.py verify-manifest \
             --manifest release-evidence/sealed-manifest.json \
             --root . \
             --output release-evidence/manifest-verification.json

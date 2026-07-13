@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-13T17:30:00+02:00
+last_updated: 2026-07-13T18:30:00+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -432,7 +432,8 @@ development_status:
   # rel-2 moved backlog -> ready-for-dev on 2026-07-13 (create-story; comprehensive context engine pass baseline_commit d05d723d. Dev Notes capture current-vs-target CI/CD, 3-layer split-homing, reusable domain-ci/domain-release input contracts, Tenants copy-templates, the governance-test flip spec incl. the broader-than-4 breakage set (CiGovernanceTests now 42, plus BuildsContractsNetStandard20Before / BlockingTestLanes / Gate2b / QuarantineLane / Workflows_UseRootLevelSubmodulesOnly), FR24 evidence chain via eng/release_evidence.py (12 subcmds, no sign/sbom/consumer-validation), and resolved decisions D1-D7 incl. DiffEngine ModuleInitializer, scripts/ positional signature, Contracts-only vs Shell/UI consumer boundaries. REL-AI-1 stays open; G2 raised upstream only.)
   # rel-2 moved ready-for-dev -> in-progress on 2026-07-13 (dev-story; baseline_commit d05d723d preserved. Implementing T1-T10: commitlint push trigger, scripts/ consumer-validation trio, ci.yml->domain-ci.yml, supplemental quality workflow(s), release.yml->domain-release.yml, release-evidence.yml (FR24 G1), governance-test reconciliation, G2 upstream request, docs/status reconciliation.)
   # rel-2 moved in-progress -> review on 2026-07-13 (dev-story; T1-T10 complete. commitlint PR+push; ci.yml->domain-ci.yml (run-consumer-validation + 5 trait-clean unit-test-projects); new quality.yml retains all FrontComposer gates (CI-authoritative); release.yml->domain-release.yml via workflow_run; new release-evidence.yml FR24 G1 + signing + attestation; scripts/ trio (pack/validate-nuget/validate-consumer) sanity-run green (8+8 pkgs, kernel-split held, both consumers 0/0); DiffEngine ModuleInitializer (D1). Governance lane reconciled: CiGovernanceTests 44/44 + Story12_4_RedPhaseDefTests 11/11 via direct xUnit runner (attestation re-homed to release-evidence.yml). Builds 0/0. G2 upstream request doc authored (no submodule edit). REL-AI-1 STAYS OPEN pending Release-Owner real-release evidence.)
-  rel-2-align-frontcomposer-cicd-with-tenants: review
+  # rel-2 moved review -> done on 2026-07-13 (bmad-code-review, 4-layer adversarial + fixes). AC1-AC8/AC12 + D1-D7 verified against actual code. Found the FR24 evidence half (AC9-AC11) structurally broken: release-evidence.yml keyed off CI raced the concurrent publish and gated on a tag `--points-at head_sha` never matched (semantic-release/git tags the chore(release) commit), + an if:always() test-evidence step reddened the job on every non-releasing push. Resolved 3 decisions + 7 patches: P1 rewired evidence off the Release workflow's completion (parent-aware tag resolver, ref:-pinned checkout, tag-gated no-op); P2 unsigned record-and-proceed to classify-release (workflow-level, no release_evidence.py change); P3 +4 governance pins (Contract-pact/stale-pact, a11y, CLI/docs, ci.yml consumer-validation delegation); P4 negative-input validator test; P5-P7 scripts fixes (.Test/.Testing over-match, case-insensitive kernel-split, rglob DLL scan); P8 SHA-pinned attest-build-provenance; P9 File List. 3 minor edge cases deferred, 1 cosmetic dismissed. CiGovernanceTests+Story12_4 = 62/62 via direct xUnit runner; Shell.Tests Release build 0/0. P1 workflow_run->workflow_run chaining + real-release evidence remain CI-authoritative under the still-open REL-AI-1.
+  rel-2-align-frontcomposer-cicd-with-tenants: done
 
 action_items:
   - epic: 2

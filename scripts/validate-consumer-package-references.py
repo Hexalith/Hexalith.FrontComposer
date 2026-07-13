@@ -99,11 +99,17 @@ def assert_package_only(project_file: Path, required_package_ids: list[str]) -> 
 
 
 def assert_no_ui_runtime_deps(output_directory: Path) -> None:
-    """Kernel-split guard: no Blazor/Fluent/Fluxor assembly may resolve into the output."""
+    """Kernel-split guard: no Blazor/Fluent/Fluxor assembly may resolve into the output.
+
+    Uses ``rglob`` so a forbidden assembly delivered under a RID-specific ``runtimes/<rid>/lib/``
+    subfolder is also caught, and casefolds the comparison because assembly file names are not
+    guaranteed case-stable across build hosts.
+    """
+    prefixes = tuple(prefix.casefold() for prefix in FORBIDDEN_UI_ASSEMBLY_PREFIXES)
     offenders = sorted(
         assembly.name
-        for assembly in output_directory.glob("*.dll")
-        if any(assembly.name.startswith(prefix) for prefix in FORBIDDEN_UI_ASSEMBLY_PREFIXES)
+        for assembly in output_directory.rglob("*.dll")
+        if assembly.name.casefold().startswith(prefixes)
     )
     if offenders:
         raise ValueError(

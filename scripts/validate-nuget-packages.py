@@ -119,12 +119,33 @@ def get_metadata(package_path: Path) -> PackageMetadata:
         return PackageMetadata(package_id, version, readme, bool(license_value or license_file), dependencies)
 
 
+def _matches_forbidden_project(dependency: str) -> bool:
+    """Match a host/test/sample fragment at a dot-delimited segment boundary.
+
+    NuGet package ids compare case-insensitively, so both sides are casefolded. The boundary
+    check (endswith / ``fragment + "."``) prevents ``.Test`` from spuriously matching the shipped
+    ``Hexalith.FrontComposer.Testing`` package (``.Test`` is a substring of ``.Testing``).
+    """
+    dep = dependency.casefold()
+    for fragment in FORBIDDEN_DEPENDENCY_FRAGMENTS:
+        needle = fragment.casefold()
+        if dep.endswith(needle) or (needle + ".") in dep:
+            return True
+    return False
+
+
+def _matches_forbidden_kernel(dependency: str) -> bool:
+    """Case-insensitive substring match for UI runtime packages the Contracts kernel must not pull."""
+    dep = dependency.casefold()
+    return any(fragment.casefold() in dep for fragment in FORBIDDEN_KERNEL_FRAGMENTS)
+
+
 def validate_dependency_boundaries(package_path: Path, metadata: PackageMetadata) -> None:
     """Validate package dependency metadata against the intended package boundaries."""
     forbidden = sorted(
         dependency
         for dependency in metadata.dependencies
-        if any(fragment in dependency for fragment in FORBIDDEN_DEPENDENCY_FRAGMENTS)
+        if _matches_forbidden_project(dependency)
     )
     if forbidden:
         raise ValueError(
@@ -136,7 +157,7 @@ def validate_dependency_boundaries(package_path: Path, metadata: PackageMetadata
         kernel_violations = sorted(
             dependency
             for dependency in metadata.dependencies
-            if any(fragment in dependency for fragment in FORBIDDEN_KERNEL_FRAGMENTS)
+            if _matches_forbidden_kernel(dependency)
         )
         if kernel_violations:
             raise ValueError(

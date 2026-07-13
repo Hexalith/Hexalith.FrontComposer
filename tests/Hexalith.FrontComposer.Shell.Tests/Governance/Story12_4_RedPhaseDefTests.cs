@@ -43,9 +43,13 @@ public sealed class Story12_4_RedPhaseDefTests {
         string root = CiGovernanceTests.RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
 
-        string attestStep = CiGovernanceTests.FindStepBlockContaining(workflow, "actions/attest-build-provenance@v4");
+        // REL-2 code-review P8 (2026-07-13): the action is now SHA-pinned (`@<sha> # v4`) for
+        // supply-chain hardening, so match the version-agnostic `actions/attest-build-provenance@`
+        // prefix rather than the mutable `@v4` tag. A comment reference ("attest-build-provenance
+        // mints…") lacks the `actions/…@` form, so only the real `uses:` step matches.
+        string attestStep = CiGovernanceTests.FindStepBlockContaining(workflow, "actions/attest-build-provenance@");
         attestStep.ShouldNotBeNullOrEmpty(
-            "AC9/Def14: release-evidence.yml must include a workflow STEP whose `uses:` invokes actions/attest-build-provenance@v4. A reference inside a comment does not count.");
+            "AC9/Def14: release-evidence.yml must include a workflow STEP whose `uses:` invokes actions/attest-build-provenance@<pinned-sha>. A reference inside a comment does not count.");
 
         attestStep.Contains("if: false", StringComparison.Ordinal).ShouldBeFalse(
             "AC9/Def14: the attest-build-provenance step must not be conditionally disabled (`if: false`).");

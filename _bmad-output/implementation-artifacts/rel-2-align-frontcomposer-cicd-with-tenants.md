@@ -5,7 +5,7 @@ owner: Release Owner + Developer + QA/Test Architect
 baseline_commit: d05d723d0732ef062c9a1b18be9af971136c3086
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-09-tenants-cicd-alignment.md
 fr24Proposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md
-status: review
+status: done
 approval: approved-by-administrator-2026-07-09
 fr24Approval: approved-by-administrator-2026-07-13
 fr24Owner: true
@@ -15,7 +15,7 @@ scope: moderate
 
 # REL-2: Align FrontComposer CI/CD With Tenants Reusable Workflows
 
-Status: review.
+Status: done.
 
 Approval: approved by Administrator on 2026-07-09. FR24 fold-in approved 2026-07-13.
 
@@ -522,6 +522,56 @@ tests where configured, docs validation, and e2e a11y/visual for the changed sur
         ran Governance via the direct xUnit v3 runner; all 5 workflow YAMLs parse. Reconciled
         `validate-story-artifacts.py` with `--base <HEAD>` + Documented Unrelated Changes.
 
+### Review Findings
+
+_Adversarial code review 2026-07-13 (`/bmad-code-review`: Blind Hunter · Edge Case Hunter · Verification Gap · Acceptance Auditor), diff `d05d723d..HEAD`. **AC1–AC8 + AC12 and decisions D1–D7 verified compliant against the actual code** (not just the self-report). Findings below concentrate on the FR24 release-evidence half (AC9–AC11 — marked ❌/⚠️ by the Acceptance Auditor) and on script/test-coverage robustness. 1 cosmetic note dismissed (`DiffEngineModuleInitializer` XML comment says it protects "the reusable CI lane", but those assemblies actually run in `quality.yml`/`release-evidence.yml` — self-flagged not-a-bug)._
+
+**Decision-needed** (resolve before patches)
+
+- [x] [Review][Decision] `release-evidence.yml` never produces the FR24 bundle and goes red on every push — `Record release test evidence` (`.github/workflows/release-evidence.yml:159`) is `if: always()` with no tag guard while `Run release tests` (:133) is tag-gated, and `eng/release_evidence.py:2146` returns 1 on an empty `./TestResults` (`:2128-2131`), so the job fails on every non-releasing push (the majority). On a releasing push the resolver `git tag --points-at <CI head_sha>` (:116) finds nothing: `release.yml` runs semantic-release **concurrently** (both trigger on `workflow_run:[CI]`) and `@semantic-release/git` (`.releaserc.json`) tags the `chore(release)` commit, not `head_sha` — so every evidence step (`if: tag != ''`) skips and the always() step still fails. Contributing: checkout has no `ref:` (:47) → builds latest `main`, not the released tree; `gh release upload` (:402) can precede the GH Release object. FIX (needs Release-Owner intent): key the evidence workflow off the **Release** workflow's completion (or have Release emit the tag as an output/artifact), resolve + `ref:`-check-out the actual release tag, and tag-guard the test-evidence + CycloneDX-install steps so a no-release run is a clean no-op. Sources: blind-hunter + edge-case-hunter + acceptance-auditor. **Resolved 2026-07-13 (Administrator): "Rewire off Release" → PATCH.**
+
+- [x] [Review][Decision] Unsigned release makes `prepare-manifest` fail closed, contradicting the G1 "record blocking reason and proceed" design — when `NUGET_SIGNING_CERTIFICATE_BASE64` is absent (the documented default until the cert is provisioned) the Sign step records `signing-readiness.json` and proceeds without creating `nupkgs-signed/`/`signing-verification.txt` (`.github/workflows/release-evidence.yml:205-221`), but `prepare-manifest` is always invoked with `--signing-verification` (:352) and hard-fails on the missing file + unsigned per-package checksums + unverified signing/timestamp (`eng/release_evidence.py:2234,2283-2292`), so the bundle step dies and `classify-release` is never reached. Latent behind the tag defect above; activates once it is fixed. DECISION: should an unsigned release hard-fail the evidence job (current behavior), or record-and-proceed with `classify-release` flagging it (the stated G1 narrative)? Source: blind-hunter. **Resolved 2026-07-13 (Administrator): "Record-and-proceed" → PATCH.**
+
+- [x] [Review][Decision] Release publishes on CI-success alone — the FrontComposer-only gates in `quality.yml` are no longer release-blocking — `release.yml` triggers on `workflow_run:[CI]`; the reusable `domain-ci.yml` runs only build + consumer-validation + the 5 unit projects, so Governance / Contract-pact / stale-pact / docs / a11y (all relocated to `quality.yml`) no longer gate publish (the prior `release.yml` re-ran all 7 test projects incl. Governance + Contract before `semantic-release`). This is the approved Tenants model (AC5/AC8) and `quality.yml` runs on `pull_request[main]`, so a break is caught at PR time **iff** `quality.yml`/`commitlint` are required status checks in branch protection. DECISION: confirm branch protection requires them on `main`, or add an explicit release dependency on the Quality workflow. Source: blind-hunter. **Resolved 2026-07-13 (Administrator): "Rely on branch protection" → OPERATIONAL NOTE (no code change). Action for Release Owner: ensure `quality.yml` and `commitlint` are configured as required status checks on `main` in GitHub branch protection so a Governance/Contract-pact/stale-pact/docs/a11y break is blocked at PR time before it can reach the CI-success-triggered release. Not repo-visible; verify in repo settings.**
+
+**Patch**
+
+- [x] [Review][Patch] Governance suite doesn't pin several relocated/delegated gates (silent-drop risk) — no `CiGovernanceTests` assertion pins: the Contract-pact lane + stale-pact-diff guard + `validate-contract-artifacts.ps1`, the `accessibility-visual` job, `ci.yml`'s `uses: domain-ci.yml@main` + `run-consumer-validation: true` + `unit-test-projects`, or Gate 2a CLI-smoke + Gate 2d docs — all now in `quality.yml`/`ci.yml`. A future edit could drop/disable any of them with the whole Governance lane still green (the exact risk §7/AC7 exists to prevent). Add `ShouldContain` pins at their new homes. [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs] Source: verification-gap.
+
+- [x] [Review][Patch] New consumer-validation scripts have no automated test — the `scripts/` trio is the sole enforcement of the 8-package inventory + kernel-split invariant, exercised only by a one-off local sanity run; a validator logic error (see `.Test` below) would let a broken package set pass. Add a negative-input test feeding a known-bad set and asserting non-zero exit. [scripts/validate-nuget-packages.py, scripts/validate-consumer-package-references.py] Source: verification-gap.
+
+- [x] [Review][Patch] `.Test` forbidden-fragment over-matches the shipped `Testing` package — `FORBIDDEN_DEPENDENCY_FRAGMENTS` substring-matches `.Test`, which is ⊂ `.Testing`; a packable package that legitimately depends on `Hexalith.FrontComposer.Testing` would be falsely rejected (latent today; fails closed). Match on id equality / `.Tests` suffix / word boundary. [scripts/validate-nuget-packages.py:39] Source: edge-case-hunter.
+
+- [x] [Review][Patch] Kernel-split guards are case-sensitive substring matches — NuGet package ids are case-insensitive; a dep differing only in case from `Microsoft.FluentUI`/`Fluxor`/`Microsoft.AspNetCore.Components` slips past. Casefold both sides. [scripts/validate-nuget-packages.py:49, scripts/validate-consumer-package-references.py:105] Source: edge-case-hunter.
+
+- [x] [Review][Patch] Consumer kernel-split DLL scan is non-recursive — `output_directory.glob("*.dll")` scans only the flat `bin/…/net10.0`; a forbidden UI runtime asset under `runtimes/<rid>/lib/` is missed. Use `rglob`. [scripts/validate-consumer-package-references.py:104] Source: edge-case-hunter.
+
+- [x] [Review][Patch] `attest-build-provenance` pinned to a mutable `@v4` tag — every other third-party action here is SHA-pinned; the one action underwriting provenance integrity is on a movable tag. Pin to a release SHA. [.github/workflows/release-evidence.yml:184] Source: blind-hunter.
+
+- [x] [Review][Patch] `eng/release_evidence.py` changed (128 lines, signing-verification parser rewrite) but is absent from the File List — a security-relevant change bypassing the File-List review contract; the parser itself is correct and now test-covered. Add the file to the File List. [File List, this story] Source: blind-hunter.
+
+**Deferred (minor — logged to `deferred-work.md`)**
+
+- [x] [Review][Defer] Partial `benchmark-summary.json` from a crashed `run-benchmark` seals as valid evidence — the hash is computed over corrupt content and `verify-manifest` only checks `looks_like_sha256`, not content. [.github/workflows/release-evidence.yml:331; eng/release_evidence.py:832] — deferred (needs a mid-write crash; candidate/offline evidence). Source: edge-case-hunter.
+
+- [x] [Review][Defer] Valid RFC-3161 timestamp behind a >80-line cert chain scored "missing" — the verify region is truncated to the last `_TIMESTAMP_BLOCK_MAX_LINES=80`; a `Timestamp:` line pushed beyond that by verbose chain output is missed → spurious "missing". [eng/release_evidence.py:642,669] — deferred (unlikely with `-v normal` output). Source: edge-case-hunter.
+
+- [x] [Review][Defer] Consumer script uses a fixed `/tmp` work dir with no cleanup-on-failure — two concurrent local runs share the path and the second `rmtree` corrupts the first's build tree. [scripts/validate-consumer-package-references.py:248] — deferred (local-only; CI runners are isolated). Source: edge-case-hunter.
+
+**Review resolution (2026-07-13):** all 3 decisions + 7 patches applied. Verified locally: `Shell.Tests`
+built Release clean (0 warn/0 err); `CiGovernanceTests` + `Story12_4_RedPhaseDefTests` = **62/62** via the
+direct xUnit v3 runner (incl. the 5 new pins: 4 relocated-gate pins + the `validate-nuget-packages`
+negative test); all 5 workflow YAMLs parse; the `.Test`/`.Testing` boundary + case-insensitive kernel-split
+matchers unit-checked; `require_or_record` unsigned-vs-signed semantics simulated. **P2 required NO change to
+`eng/release_evidence.py`** — it is purely workflow-level, so the `ReleaseEvidenceScript_*` suite is untouched.
+- **P1** rewired `release-evidence.yml` to trigger off the **Release** workflow's completion, resolve+`ref:`
+  the actual release tag (parent-aware for the `@semantic-release/git` commit), and tag-gate the previously
+  `always()` steps. ⚠️ **CI-authoritative:** `workflow_run`→`workflow_run` chaining and real-release evidence
+  production can only be confirmed in GitHub Actions — remains under the open **REL-AI-1**.
+- **P2** unsigned releases now record-and-proceed to `classify-release` (advisory G1) instead of dying at
+  `prepare-manifest`; a *signed*-release failure is still hard.
+- **P8** `attest-build-provenance` pinned to `0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4` (current v4 tip).
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -592,6 +642,7 @@ Story-owned changes:
 - `.github/workflows/quality.yml` (new — supplemental FrontComposer gates; T4)
 - `.github/workflows/release.yml` (modify — reusable `domain-release.yml` caller via workflow_run; T5)
 - `.github/workflows/release-evidence.yml` (new — FR24 evidence, G1, + attestation; T6)
+- `eng/release_evidence.py` (modify — LLM-benchmark hash binding + signing-verification parser rewrite consumed by release-evidence.yml; T6. Added to File List 2026-07-13 via code-review patch P9)
 - `scripts/pack-release-packages.py` (new — T2)
 - `scripts/validate-nuget-packages.py` (new — T2)
 - `scripts/validate-consumer-package-references.py` (new — T2)
@@ -630,6 +681,22 @@ Documented Unrelated Changes (dirty at session start, not owned by this dev-stor
 
 ## Change Log
 
+- 2026-07-13: **Code review (`/bmad-code-review`, 4-layer adversarial) + fixes.** Verified AC1–AC8/AC12 +
+  D1–D7 compliant against the actual code. Found the FR24 release-evidence half (AC9–AC11) structurally
+  broken: `release-evidence.yml` keyed off CI raced the concurrent publish and gated on a tag `--points-at
+  head_sha` never matched (semantic-release/git tags the `chore(release)` commit), and an `if: always()`
+  test-evidence step reddened the job on every non-releasing push. Resolved 3 decisions + applied 7 patches:
+  **P1** rewired the evidence workflow off the **Release** workflow's completion with a parent-aware tag
+  resolver, `ref:`-pinned checkout, and tag-gated no-op; **P2** made unsigned releases record-and-proceed to
+  `classify-release` (workflow-level; no `eng/release_evidence.py` change); **P3** added 4 governance pins for
+  the relocated Contract-pact/stale-pact, a11y/visual, CLI/docs gates + the ci.yml consumer-validation
+  delegation; **P4** a negative-input test for the package validators; **P5–P7** fixed the `.Test`/`.Testing`
+  over-match, case-sensitive kernel-split, and non-recursive DLL scan in `scripts/`; **P8** SHA-pinned
+  `attest-build-provenance`; **P9** added `eng/release_evidence.py` to the File List. 3 minor edge cases
+  deferred to `deferred-work.md`; 1 cosmetic note dismissed. `Shell.Tests` built Release clean;
+  `CiGovernanceTests` + `Story12_4_RedPhaseDefTests` = 62/62 via the direct xUnit v3 runner. Status
+  `review` → `done`. ⚠️ P1's `workflow_run`→`workflow_run` chaining + real-release evidence remain
+  CI-authoritative under the still-open **REL-AI-1**.
 - 2026-07-13: **Implemented (dev-story).** Migrated FrontComposer primary CI/CD to the Tenants-aligned reusable
   Hexalith.Builds workflows via 3-layer split-homing: `commitlint.yml` widened to PR+push; `ci.yml` →
   `domain-ci.yml` (consumer validation + trait-clean unit tests); new `quality.yml` retains all FrontComposer-only
