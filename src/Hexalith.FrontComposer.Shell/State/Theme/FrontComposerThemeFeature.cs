@@ -11,5 +11,5 @@ public class FrontComposerThemeFeature : Feature<FrontComposerThemeState> {
 
     /// <inheritdoc/>
     protected override FrontComposerThemeState GetInitialState()
-        => new(ThemeValue.Light, ThemeHydrationState.Idle);
+        => new(ThemeValue.Light, HydrationState.Idle);
 }

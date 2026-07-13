@@ -261,43 +261,5 @@ public static class McpManifestEmitter {
         return value;
     }
 
-    private static string Escape(string value) {
-        var sb = new StringBuilder(value.Length);
-        foreach (char c in value) {
-            switch (c) {
-                case '\\':
-                    _ = sb.Append("\\\\");
-                    break;
-                case '"':
-                    _ = sb.Append("\\\"");
-                    break;
-                case '\r':
-                    _ = sb.Append("\\r");
-                    break;
-                case '\n':
-                    _ = sb.Append("\\n");
-                    break;
-                case '\t':
-                    _ = sb.Append("\\t");
-                    break;
-                case '\0':
-                    _ = sb.Append("\\0");
-                    break;
-                default:
-                    // Escape all other control characters and the JS line separators U+2028/U+2029
-                    // so the generated source compiles deterministically and downstream JSON encoders
-                    // do not face ambiguous payloads.
-                    if (char.IsControl(c) || c == '\u2028' || c == '\u2029') {
-                        _ = sb.Append("\\u").Append(((int)c).ToString("x4", System.Globalization.CultureInfo.InvariantCulture));
-                    }
-                    else {
-                        _ = sb.Append(c);
-                    }
-
-                    break;
-            }
-        }
-
-        return sb.ToString();
-    }
+    private static string Escape(string value) => GeneratedLiteral.Escape(value);
 }

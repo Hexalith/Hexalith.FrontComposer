@@ -241,7 +241,7 @@ public static class CommandPaletteReducers {
         // broadcasts Hydrating and Story 3-6's StorageReady recovery hook stays rearmed.
         return state with {
             IsOpen = false,
-            HydrationState = CommandPaletteHydrationState.Idle,
+            HydrationState = HydrationState.Idle,
             RecentRouteUrls = ImmutableArray<string>.Empty,
             Results = ImmutableArray<PaletteResult>.Empty,
             Query = string.Empty,
@@ -252,8 +252,8 @@ public static class CommandPaletteReducers {
 
     /// <summary>
     /// Flips <see cref="FrontComposerCommandPaletteState.HydrationState"/> from
-    /// <see cref="CommandPaletteHydrationState.Idle"/> to
-    /// <see cref="CommandPaletteHydrationState.Hydrating"/> at the start of the hydrate path
+    /// <see cref="HydrationState.Idle"/> to
+    /// <see cref="HydrationState.Hydrating"/> at the start of the hydrate path
     /// (Story 3-6 D19). No-op when already <c>Hydrated</c>.
     /// </summary>
     /// <param name="state">The current palette state.</param>
@@ -265,14 +265,14 @@ public static class CommandPaletteReducers {
         PaletteHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == CommandPaletteHydrationState.Hydrated
+        return state.HydrationState == HydrationState.Hydrated
             ? state
-            : state with { HydrationState = CommandPaletteHydrationState.Hydrating };
+            : state with { HydrationState = HydrationState.Hydrating };
     }
 
     /// <summary>
     /// Flips <see cref="FrontComposerCommandPaletteState.HydrationState"/> to
-    /// <see cref="CommandPaletteHydrationState.Hydrated"/> at the end of the hydrate path
+    /// <see cref="HydrationState.Hydrated"/> at the end of the hydrate path
     /// (Story 3-6 D19). Called on BOTH happy path AND fail-closed path.
     /// </summary>
     /// <param name="state">The current palette state.</param>
@@ -284,8 +284,8 @@ public static class CommandPaletteReducers {
         PaletteHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == CommandPaletteHydrationState.Hydrated
+        return state.HydrationState == HydrationState.Hydrated
             ? state
-            : state with { HydrationState = CommandPaletteHydrationState.Hydrated };
+            : state with { HydrationState = HydrationState.Hydrated };
     }
 }

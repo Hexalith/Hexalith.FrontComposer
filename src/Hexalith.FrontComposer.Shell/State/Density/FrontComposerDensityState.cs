@@ -20,11 +20,11 @@ namespace Hexalith.FrontComposer.Shell.State.Density;
 /// current options + current viewport tier.
 /// </param>
 /// <param name="HydrationState">
-/// Transient three-state hydration marker (Story 3-6 D19). Initial value <see cref="DensityHydrationState.Idle"/>;
+/// Transient three-state hydration marker (Story 3-6 D19). Initial value <see cref="HydrationState.Idle"/>;
 /// flips <c>Idle → Hydrating → Hydrated</c> via dedicated reducers. NEVER persisted. Re-hydrate
-/// via <c>StorageReadyAction</c> only runs when this is <see cref="DensityHydrationState.Idle"/>.
+/// via <c>StorageReadyAction</c> only runs when this is <see cref="HydrationState.Idle"/>.
 /// </param>
 public record FrontComposerDensityState(
     DensityLevel? UserPreference,
     DensityLevel EffectiveDensity,
-    DensityHydrationState HydrationState = DensityHydrationState.Idle);
+    HydrationState HydrationState = HydrationState.Idle);

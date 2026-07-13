@@ -494,7 +494,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         }
 
         FrontComposerNavigationState snapshot = NavigationState.Value;
-        if (snapshot.HydrationState != NavigationHydrationState.Hydrated) {
+        if (snapshot.HydrationState != HydrationState.Hydrated) {
             return;
         }
 

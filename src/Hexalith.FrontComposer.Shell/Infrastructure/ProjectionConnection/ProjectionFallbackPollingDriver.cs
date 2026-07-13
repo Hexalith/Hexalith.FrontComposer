@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.Logging;
@@ -101,7 +102,7 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
                     "Projection fallback polling driver disposal timed out waiting for the in-flight loop. FailureCategory={FailureCategory}",
                     nameof(TimeoutException));
             }
-            catch (Exception ex) when (ex is not OutOfMemoryException) {
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                 // Loop already logs failures; swallow to keep disposal safe.
                 _logger.LogWarning(
                     "Projection fallback polling driver disposal observed an in-flight loop failure. FailureCategory={FailureCategory}",
@@ -183,7 +184,7 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                     return;
                 }
-                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                     FrontComposerLog.ProjectionFallbackPollingIterationFailed(_logger, ex.GetType().Name);
                 }
 
@@ -195,7 +196,7 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
                 }
             }
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 "Projection fallback polling loop terminated unexpectedly. FailureCategory={FailureCategory}",
                 ex.GetType().Name);

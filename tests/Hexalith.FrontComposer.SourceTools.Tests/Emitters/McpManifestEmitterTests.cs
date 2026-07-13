@@ -3,11 +3,47 @@ using System.Collections.Immutable;
 using Hexalith.FrontComposer.SourceTools.Emitters;
 using Hexalith.FrontComposer.SourceTools.Parsing;
 
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 
 public sealed class McpManifestEmitterTests {
+    [Fact]
+    public void Emit_LiteralEdgeCases_CompileAndRoundTripRuntimeConstants() {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        const string edge = "quote:\" slash:\\ controls:\0\a\b\f\n\r\t\v next:\u0085 line:\u2028 paragraph:\u2029";
+        string inputLiteral = GeneratedLiteral.Escape(edge);
+        string commandSource = $$"""
+            using System.ComponentModel.DataAnnotations;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace EdgeCases;
+
+            [Command]
+            [Display(Name = "{{inputLiteral}}", Description = "{{inputLiteral}}")]// Literal edge-case input.
+            public partial class LiteralCommand {
+                [Display(Name = "{{inputLiteral}}", Description = "{{inputLiteral}}")]// Literal edge-case input.
+                public string Value { get; set; } = string.Empty;
+            }
+            """;
+        CommandModel command = CompilationHelper.ParseCommand(commandSource, "EdgeCases.LiteralCommand").Model!;
+
+        string generated = McpManifestEmitter.Emit(ImmutableArray.Create(command), []);
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(generated);
+        SyntaxTree tree = CSharpSyntaxTree.ParseText(generated, cancellationToken: cancellationToken);
+
+        compilation.GetDiagnostics(cancellationToken)
+            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty("MCP manifest source with literal edge cases must compile.");
+        tree.GetRoot(cancellationToken).DescendantTokens()
+            .Where(token => token.IsKind(SyntaxKind.StringLiteralToken))
+            .Select(token => token.ValueText)
+            .ShouldContain(edge);
+    }
+
     [Fact]
     public void Emit_CommandDescriptors_OnePerCommand_WithNamespaceDisambiguationForDuplicateBaseNames() {
         const string OrdersSource = """

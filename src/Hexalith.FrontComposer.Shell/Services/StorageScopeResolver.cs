@@ -52,7 +52,7 @@ internal sealed class StorageScopeResolver : IStorageScopeResolver {
             rawTenant = _accessor?.TenantId;
             rawUser = _accessor?.UserId;
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogInformation(
                 "{DiagnosticId}: {Feature} {Direction} skipped — IUserContextAccessor threw on TenantId/UserId access. Reason=AccessorThrew. FailureCategory={FailureCategory}.",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,

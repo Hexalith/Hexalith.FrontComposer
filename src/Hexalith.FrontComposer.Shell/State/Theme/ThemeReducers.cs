@@ -20,8 +20,8 @@ public static class ThemeReducers {
     }
 
     /// <summary>
-    /// Flips <see cref="FrontComposerThemeState.HydrationState"/> from <see cref="ThemeHydrationState.Idle"/>
-    /// to <see cref="ThemeHydrationState.Hydrating"/> at the start of the hydrate path
+    /// Flips <see cref="FrontComposerThemeState.HydrationState"/> from <see cref="HydrationState.Idle"/>
+    /// to <see cref="HydrationState.Hydrating"/> at the start of the hydrate path
     /// (Story 3-6 D19). No-op when already <c>Hydrated</c>.
     /// </summary>
     /// <param name="state">The current theme state.</param>
@@ -33,13 +33,13 @@ public static class ThemeReducers {
         ThemeHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == ThemeHydrationState.Hydrated
+        return state.HydrationState == HydrationState.Hydrated
             ? state
-            : state with { HydrationState = ThemeHydrationState.Hydrating };
+            : state with { HydrationState = HydrationState.Hydrating };
     }
 
     /// <summary>
-    /// Flips <see cref="FrontComposerThemeState.HydrationState"/> to <see cref="ThemeHydrationState.Hydrated"/>
+    /// Flips <see cref="FrontComposerThemeState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>
     /// at the end of the hydrate path (Story 3-6 D19). Called on BOTH happy and fail-closed paths.
     /// </summary>
     /// <param name="state">The current theme state.</param>
@@ -51,8 +51,8 @@ public static class ThemeReducers {
         ThemeHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == ThemeHydrationState.Hydrated
+        return state.HydrationState == HydrationState.Hydrated
             ? state
-            : state with { HydrationState = ThemeHydrationState.Hydrated };
+            : state with { HydrationState = HydrationState.Hydrated };
     }
 }

@@ -9,6 +9,47 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
 public class GeneratorDriverTests {
     [Fact]
+    public void RunGenerators_LiteralEdgeCases_ViewAndMcpSourcesCompileAndRoundTripConstants() {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        const string edge = "quote:\" slash:\\ controls:\0\a\b\f\n\r\t\v next:\u0085 line:\u2028 paragraph:\u2029";
+        string inputLiteral = Hexalith.FrontComposer.SourceTools.Emitters.GeneratedLiteral.Escape(edge);
+        string source = $$"""
+            using System.ComponentModel.DataAnnotations;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace LiteralFixtures;
+
+            [Projection]
+            public partial class LiteralProjection {
+                [Display(Name = "{{inputLiteral}}")]// Literal edge-case input.
+                public string Value { get; set; } = string.Empty;
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+
+        driver = driver.RunGenerators(compilation, cancellationToken);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+        CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees.ToArray());
+
+        result.Diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        outputCompilation.GetDiagnostics(cancellationToken)
+            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty("Generated view and MCP manifest sources with literal edge cases must compile.");
+
+        foreach (string hintName in new[] {
+            "LiteralFixtures.LiteralProjection.g.razor.cs",
+            "FrontComposerMcpManifest.g.cs",
+        }) {
+            SyntaxTree generatedTree = result.GeneratedTrees.Single(tree => Path.GetFileName(tree.FilePath) == hintName);
+            generatedTree.GetRoot(cancellationToken).DescendantTokens()
+                .Where(token => token.IsKind(SyntaxKind.StringLiteralToken))
+                .Select(token => token.ValueText)
+                .ShouldContain(edge, $"{hintName} must recover the original runtime string constant.");
+        }
+    }
+
+    [Fact]
     public void RunGenerators_BasicProjection_Produces6Files() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.BasicProjection);

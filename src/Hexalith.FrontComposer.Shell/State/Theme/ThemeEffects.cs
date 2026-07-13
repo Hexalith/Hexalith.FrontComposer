@@ -77,7 +77,7 @@ public class ThemeEffects(
 
     /// <summary>
     /// Re-runs hydrate on <see cref="Navigation.StorageReadyAction"/> iff the theme hydration state
-    /// is still <see cref="ThemeHydrationState.Idle"/> (Story 3-6 D19).
+    /// is still <see cref="HydrationState.Idle"/> (Story 3-6 D19).
     /// </summary>
     /// <param name="action">The storage-ready action.</param>
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
@@ -86,7 +86,7 @@ public class ThemeEffects(
     public async Task HandleStorageReady(Navigation.StorageReadyAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        if (state is not null && state.Value.HydrationState != ThemeHydrationState.Idle) {
+        if (state is not null && state.Value.HydrationState != HydrationState.Idle) {
             return;
         }
 

@@ -120,8 +120,8 @@ public static class DataGridNavigationReducers {
     }
 
     /// <summary>
-    /// Flips <see cref="DataGridNavigationState.HydrationState"/> from <see cref="DataGridNavigationHydrationState.Idle"/>
-    /// to <see cref="DataGridNavigationHydrationState.Hydrating"/> at the start of the hydrate path
+    /// Flips <see cref="DataGridNavigationState.HydrationState"/> from <see cref="HydrationState.Idle"/>
+    /// to <see cref="HydrationState.Hydrating"/> at the start of the hydrate path
     /// (Story 3-6 D19 / A7). No-op when already <c>Hydrated</c>.
     /// </summary>
     /// <param name="state">The current DataGrid navigation state.</param>
@@ -133,13 +133,13 @@ public static class DataGridNavigationReducers {
         DataGridNavigationHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == DataGridNavigationHydrationState.Hydrated
+        return state.HydrationState == HydrationState.Hydrated
             ? state
-            : state with { HydrationState = DataGridNavigationHydrationState.Hydrating };
+            : state with { HydrationState = HydrationState.Hydrating };
     }
 
     /// <summary>
-    /// Flips <see cref="DataGridNavigationState.HydrationState"/> to <see cref="DataGridNavigationHydrationState.Hydrated"/>
+    /// Flips <see cref="DataGridNavigationState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>
     /// at the end of the hydrate path (Story 3-6 D19 / A7). Called on BOTH happy path AND
     /// fail-closed path.
     /// </summary>
@@ -152,8 +152,8 @@ public static class DataGridNavigationReducers {
         DataGridNavigationHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == DataGridNavigationHydrationState.Hydrated
+        return state.HydrationState == HydrationState.Hydrated
             ? state
-            : state with { HydrationState = DataGridNavigationHydrationState.Hydrated };
+            : state with { HydrationState = HydrationState.Hydrated };
     }
 }

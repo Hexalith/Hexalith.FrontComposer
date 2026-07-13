@@ -19,15 +19,15 @@ public sealed record GridViewHydratedAction(string ViewKey, GridViewSnapshot Sna
 /// <summary>
 /// Dispatched by <c>DataGridNavigationEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c>
 /// at the start of the hydrate path (Story 3-6 D19 / A7). Reducer flips
-/// <see cref="DataGridNavigationState.HydrationState"/> from <see cref="DataGridNavigationHydrationState.Idle"/>
-/// to <see cref="DataGridNavigationHydrationState.Hydrating"/>. NEVER persisted.
+/// <see cref="DataGridNavigationState.HydrationState"/> from <see cref="HydrationState.Idle"/>
+/// to <see cref="HydrationState.Hydrating"/>. NEVER persisted.
 /// </summary>
 public sealed record DataGridNavigationHydratingAction;
 
 /// <summary>
 /// Dispatched by <c>DataGridNavigationEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c>
 /// as the final step of the hydrate path (Story 3-6 D19 / A7). Reducer flips
-/// <see cref="DataGridNavigationState.HydrationState"/> to <see cref="DataGridNavigationHydrationState.Hydrated"/>.
+/// <see cref="DataGridNavigationState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>.
 /// Called on BOTH happy path AND fail-closed path.
 /// </summary>
 public sealed record DataGridNavigationHydratedCompletedAction;

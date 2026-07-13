@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Shell.Infrastructure.PendingCommands;
 using Hexalith.FrontComposer.Shell.Infrastructure.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
@@ -310,7 +311,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 // Expected on disposal; swallow.
                 FrontComposerTelemetry.SetOutcome(activity, "canceled");
             }
-            catch (Exception ex) when (ex is not OutOfMemoryException) {
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                 // A buggy subscriber must not kill the SignalR callback dispatcher.
                 FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
                 _logger.LogWarning(
@@ -350,7 +351,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         catch (OperationCanceledException) when (_disposalCts.IsCancellationRequested) {
             FrontComposerTelemetry.SetOutcome(activity, "canceled");
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             // A buggy detail subscriber must not kill the SignalR callback dispatcher.
             FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
             _logger.LogWarning(
@@ -454,7 +455,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             // Expected on disposal.
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 "Reconnection reconciliation threw out of the hub callback. FailureCategory={FailureCategory}",
                 ex.GetType().Name);
@@ -534,7 +535,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                         "Timeout");
                     shouldRetry = true;
                 }
-                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                     _connectionState.Apply(new ProjectionConnectionTransition(
                         ProjectionConnectionStatus.Disconnected,
                         FailureCategory: "RestartFailed"));
@@ -665,7 +666,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                     return false;
                 }
-                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                     // DN2 — mark degraded; nudges skip until the next successful rejoin.
                     // P4 — TryUpdate so a concurrent unsubscribe doesn't resurrect a removed key.
                     if (_activeGroups.TryGetValue(key, out GroupState current)) {
@@ -841,7 +842,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 operationName,
                 nameof(TimeoutException));
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 "EventStore projection subscription disposal operation failed. Operation={Operation}, FailureCategory={FailureCategory}",
                 operationName,
@@ -868,7 +869,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                 operationName,
                 nameof(TimeoutException));
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 "EventStore projection subscription disposal operation failed. Operation={Operation}, FailureCategory={FailureCategory}",
                 operationName,

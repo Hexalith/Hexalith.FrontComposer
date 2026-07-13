@@ -91,7 +91,7 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
             return _registry.GetManifests();
         }
         // P-4: keep cancellation/OOM signals propagating; only swallow domain-level registry errors.
-        catch (Exception ex) when (ex is not OperationCanceledException and not OutOfMemoryException) {
+        catch (Exception ex) when (ex is not OperationCanceledException && !ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(ex, "Failed to resolve empty-state CTA because the FrontComposer registry threw.");
             return null;
         }

@@ -17,11 +17,11 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 /// contamination that a mutable process-static would incur.
 /// </param>
 /// <param name="HydrationState">
-/// Transient three-state hydration marker (Story 3-6 D19 / A7). Initial value <see cref="DataGridNavigationHydrationState.Idle"/>;
+/// Transient three-state hydration marker (Story 3-6 D19 / A7). Initial value <see cref="HydrationState.Idle"/>;
 /// flips <c>Idle → Hydrating → Hydrated</c> via dedicated reducers. NEVER persisted. Re-hydrate
-/// via <c>StorageReadyAction</c> only runs when this is <see cref="DataGridNavigationHydrationState.Idle"/>.
+/// via <c>StorageReadyAction</c> only runs when this is <see cref="HydrationState.Idle"/>.
 /// </param>
 public sealed record DataGridNavigationState(
     ImmutableDictionary<string, GridViewSnapshot> ViewStates,
     int Cap = 50,
-    DataGridNavigationHydrationState HydrationState = DataGridNavigationHydrationState.Idle);
+    HydrationState HydrationState = HydrationState.Idle);

@@ -1,5 +1,6 @@
 using Fluxor;
 
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
@@ -81,7 +82,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
         try {
             _state.Start(epoch);
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 "Reconciliation state.Start threw. Epoch={Epoch}, FailureCategory={FailureCategory}",
                 epoch,
@@ -103,7 +104,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
             DisposeCompletedCts(linked);
             return ProjectionReconciliationRefreshResult.Empty;
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 "Reconnection reconciliation failed. Epoch={Epoch}, FailureCategory={FailureCategory}",
                 epoch,
@@ -125,7 +126,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                 try {
                     _dispatcher.Dispatch(new MarkReconciliationSweepAction(epoch, result.ChangedViewKeys, expiresAt, now));
                 }
-                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                     _logger.LogWarning(
                         "Sweep marker dispatch failed. Epoch={Epoch}, FailureCategory={FailureCategory}",
                         epoch,
@@ -148,7 +149,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                 catch (OperationCanceledException) when (linked.IsCancellationRequested) {
                     // Disposal or epoch supersession; nothing to do.
                 }
-                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                     _logger.LogWarning(
                         "Pending command resolution from reconnect failed. Epoch={Epoch} FailureCategory={FailureCategory}",
                         epoch,
@@ -191,7 +192,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
         try {
             _state.Reset();
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 "Reconciliation state.Reset threw during dispose. FailureCategory={FailureCategory}",
                 ex.GetType().Name);
@@ -214,7 +215,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                 try {
                     _dispatcher.Dispatch(new ClearExpiredReconciliationSweepsAction(_timeProvider.GetUtcNow()));
                 }
-                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                     _logger.LogWarning(
                         "Sweep cleanup dispatch failed. Epoch={Epoch}, FailureCategory={FailureCategory}",
                         epoch,

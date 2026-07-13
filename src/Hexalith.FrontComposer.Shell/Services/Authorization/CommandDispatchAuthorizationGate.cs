@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
@@ -106,7 +107,7 @@ public sealed class CommandDispatchAuthorizationGate(
             // Honour cancellation as cancellation, not as a permission denial. Pass-4 DN-7-3-4-5.
             throw;
         }
-        catch (Exception ex) when (IsRecoverable(ex)) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             logger.LogWarning(
                 ex,
                 "Direct command dispatch failed closed because authorization evaluation threw. CommandType={CommandType} PolicyName={PolicyName}",
@@ -211,12 +212,6 @@ public sealed class CommandDispatchAuthorizationGate(
             out policyName,
             out boundedContext);
     }
-
-    private static bool IsRecoverable(Exception ex)
-        => ex is not (OutOfMemoryException
-            or StackOverflowException
-            or System.Threading.ThreadAbortException
-            or AccessViolationException);
 
     private static string DisplayLabel(Type commandType) {
         // Strip the trailing "Command" suffix using ordinal comparison so types named MyCOMMAND

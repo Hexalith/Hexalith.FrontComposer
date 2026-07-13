@@ -143,14 +143,14 @@ internal sealed class SnapshotPublisher<T>
         try {
             handler(snapshot);
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             // Per-subscriber fault isolation stays shared, while the owner controls the exact logging
             // contract (ProjectionConnection redacts the exception; Reconciliation preserves its
             // existing diagnostic shape).
             try {
                 _subscriberFaultHandler(ex);
             }
-            catch (Exception faultEx) when (faultEx is not OutOfMemoryException and not StackOverflowException) {
+            catch (Exception faultEx) when (!ExceptionGuard.IsFatal(faultEx)) {
                 // A faulting fault handler (e.g. a throwing logger) must not abort the remaining
                 // fan-out or escalate into the caller's Apply/Publish/Deliver path; swallow it so
                 // per-subscriber isolation holds even when reporting the fault itself fails.

@@ -27,9 +27,9 @@ namespace Hexalith.FrontComposer.Shell.State.Navigation;
 /// reset the flag; future writes fail-closed on the L03 scope guard (ADR-049 load-bearing invariant).
 /// </param>
 /// <param name="HydrationState">
-/// Transient three-state hydration marker (Story 3-6 D19). Initial value <see cref="NavigationHydrationState.Idle"/>;
+/// Transient three-state hydration marker (Story 3-6 D19). Initial value <see cref="HydrationState.Idle"/>;
 /// flips <c>Idle → Hydrating → Hydrated</c> via dedicated reducers. NEVER persisted. Re-hydrate
-/// via <see cref="StorageReadyAction"/> only runs when this is <see cref="NavigationHydrationState.Idle"/>.
+/// via <see cref="StorageReadyAction"/> only runs when this is <see cref="HydrationState.Idle"/>.
 /// </param>
 public record FrontComposerNavigationState(
     bool SidebarCollapsed,
@@ -38,4 +38,4 @@ public record FrontComposerNavigationState(
     string? CurrentBoundedContext = null,
     string? LastActiveRoute = null,
     bool StorageReady = false,
-    NavigationHydrationState HydrationState = NavigationHydrationState.Idle);
+    HydrationState HydrationState = HydrationState.Idle);

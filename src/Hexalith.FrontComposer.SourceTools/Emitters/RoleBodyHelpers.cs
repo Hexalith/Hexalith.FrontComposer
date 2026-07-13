@@ -1,5 +1,3 @@
-using System.Text;
-
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 namespace Hexalith.FrontComposer.SourceTools.Emitters;
@@ -170,36 +168,11 @@ internal static class RoleBodyHelpers {
     }
 
     /// <summary>
-    /// C-style string escape for StringBuilder literal emission. Handles backslash, double quote,
-    /// control characters (BEL/BS/FF/CR/LF/HT/VT), and the Unicode line/paragraph separators
-    /// (U+2028, U+2029) so multi-line authored strings (e.g., a
-    /// <c>[Description("line one\nline two")]</c> annotation) emit valid C# string literals AND
-    /// stay safe across JS-interop hops where U+2028/U+2029 break JSON parse.
+    /// Escapes a value for embedding in a generated C# string literal through the canonical formatter.
     /// </summary>
-    public static string EscapeString(string value) {
-        if (string.IsNullOrEmpty(value)) {
-            return value;
-        }
-
-        StringBuilder sb = new(value.Length + 8);
-        foreach (char c in value) {
-            _ = c switch {
-                '\\' => sb.Append("\\\\"),
-                '"' => sb.Append("\\\""),
-                '\r' => sb.Append("\\r"),
-                '\n' => sb.Append("\\n"),
-                '\t' => sb.Append("\\t"),
-                '\b' => sb.Append("\\b"),
-                '\f' => sb.Append("\\f"),
-                '\v' => sb.Append("\\v"),
-                '\u2028' => sb.Append("\\u2028"),
-                '\u2029' => sb.Append("\\u2029"),
-                _ => sb.Append(c),
-            };
-        }
-
-        return sb.ToString();
-    }
+    /// <param name="value">The raw literal value.</param>
+    /// <returns>The escaped literal body without surrounding quotes.</returns>
+    public static string EscapeString(string value) => GeneratedLiteral.Escape(value);
 
     /// <summary>
     /// Story 4-4 T2 / D2 — strategies that emit a <c>FluentDataGrid</c> and therefore receive

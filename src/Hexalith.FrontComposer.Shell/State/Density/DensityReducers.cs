@@ -105,8 +105,8 @@ public static class DensityReducers {
     }
 
     /// <summary>
-    /// Flips <see cref="FrontComposerDensityState.HydrationState"/> from <see cref="DensityHydrationState.Idle"/>
-    /// to <see cref="DensityHydrationState.Hydrating"/> at the start of the hydrate path
+    /// Flips <see cref="FrontComposerDensityState.HydrationState"/> from <see cref="HydrationState.Idle"/>
+    /// to <see cref="HydrationState.Hydrating"/> at the start of the hydrate path
     /// (Story 3-6 D19). No-op when already <c>Hydrated</c>.
     /// </summary>
     /// <param name="state">The current density state.</param>
@@ -118,13 +118,13 @@ public static class DensityReducers {
         DensityHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == DensityHydrationState.Hydrated
+        return state.HydrationState == HydrationState.Hydrated
             ? state
-            : state with { HydrationState = DensityHydrationState.Hydrating };
+            : state with { HydrationState = HydrationState.Hydrating };
     }
 
     /// <summary>
-    /// Flips <see cref="FrontComposerDensityState.HydrationState"/> to <see cref="DensityHydrationState.Hydrated"/>
+    /// Flips <see cref="FrontComposerDensityState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>
     /// at the end of the hydrate path (Story 3-6 D19). Called on BOTH happy and fail-closed paths.
     /// </summary>
     /// <param name="state">The current density state.</param>
@@ -136,8 +136,8 @@ public static class DensityReducers {
         DensityHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == DensityHydrationState.Hydrated
+        return state.HydrationState == HydrationState.Hydrated
             ? state
-            : state with { HydrationState = DensityHydrationState.Hydrated };
+            : state with { HydrationState = HydrationState.Hydrated };
     }
 }

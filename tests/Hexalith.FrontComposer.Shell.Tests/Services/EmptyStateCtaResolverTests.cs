@@ -264,6 +264,24 @@ public sealed class EmptyStateCtaResolverTests {
     }
 
     [Fact]
+    public void RegistryThrowsOperationCanceled_PropagatesCancellation() {
+        IWriteAwareRegistry registry = Substitute.For<IWriteAwareRegistry>();
+        registry.GetManifests().Returns(_ => throw new OperationCanceledException());
+        var resolver = new EmptyStateCtaResolver(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+
+        Should.Throw<OperationCanceledException>(() => resolver.Resolve(typeof(OrderProjection)));
+    }
+
+    [Fact]
+    public void RegistryThrowsAccessViolation_PropagatesFatalException() {
+        IWriteAwareRegistry registry = Substitute.For<IWriteAwareRegistry>();
+        registry.GetManifests().Returns(_ => throw new AccessViolationException());
+        var resolver = new EmptyStateCtaResolver(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+
+        Should.Throw<AccessViolationException>(() => resolver.Resolve(typeof(OrderProjection)));
+    }
+
+    [Fact]
     public void HumanizeCommandName_HandlesAcronymBoundaries() {
         // Acronym + suffix-Lowercase: URLImportCommand → "URL Import" (vs the pre-fix algorithm
         // that produced "URLImport" by missing the upper→upper-followed-by-lower boundary).

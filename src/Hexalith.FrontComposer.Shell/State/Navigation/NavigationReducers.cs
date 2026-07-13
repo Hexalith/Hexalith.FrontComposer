@@ -173,8 +173,8 @@ public static class NavigationReducers {
     }
 
     /// <summary>
-    /// Flips <see cref="FrontComposerNavigationState.HydrationState"/> from <see cref="NavigationHydrationState.Idle"/>
-    /// to <see cref="NavigationHydrationState.Hydrating"/> at the start of the hydrate path
+    /// Flips <see cref="FrontComposerNavigationState.HydrationState"/> from <see cref="HydrationState.Idle"/>
+    /// to <see cref="HydrationState.Hydrating"/> at the start of the hydrate path
     /// (Story 3-6 D19). Idempotent when already <c>Hydrating</c>; no-op when already <c>Hydrated</c>
     /// (re-hydrate gate upstream already guards this path).
     /// </summary>
@@ -187,13 +187,13 @@ public static class NavigationReducers {
         NavigationHydratingAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == NavigationHydrationState.Hydrated
+        return state.HydrationState == HydrationState.Hydrated
             ? state
-            : state with { HydrationState = NavigationHydrationState.Hydrating };
+            : state with { HydrationState = HydrationState.Hydrating };
     }
 
     /// <summary>
-    /// Flips <see cref="FrontComposerNavigationState.HydrationState"/> to <see cref="NavigationHydrationState.Hydrated"/>
+    /// Flips <see cref="FrontComposerNavigationState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>
     /// at the end of the hydrate path (Story 3-6 D19). Called on BOTH happy path AND fail-closed
     /// path so subsequent <see cref="StorageReadyAction"/> re-triggers hydrate only when the state
     /// is still <c>Idle</c>.
@@ -207,8 +207,8 @@ public static class NavigationReducers {
         NavigationHydratedCompletedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.HydrationState == NavigationHydrationState.Hydrated
+        return state.HydrationState == HydrationState.Hydrated
             ? state
-            : state with { HydrationState = NavigationHydrationState.Hydrated };
+            : state with { HydrationState = HydrationState.Hydrated };
     }
 }

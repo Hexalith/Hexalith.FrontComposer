@@ -61,15 +61,15 @@ public sealed record EffectiveDensityRecomputedAction(DensityLevel NewEffective)
 /// <summary>
 /// Dispatched by <c>DensityEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> at the start
 /// of the hydrate path (Story 3-6 D19). Reducer flips
-/// <see cref="FrontComposerDensityState.HydrationState"/> from <see cref="DensityHydrationState.Idle"/>
-/// to <see cref="DensityHydrationState.Hydrating"/>. NEVER persisted.
+/// <see cref="FrontComposerDensityState.HydrationState"/> from <see cref="HydrationState.Idle"/>
+/// to <see cref="HydrationState.Hydrating"/>. NEVER persisted.
 /// </summary>
 public sealed record DensityHydratingAction;
 
 /// <summary>
 /// Dispatched by <c>DensityEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> as the final
 /// step of the hydrate path (Story 3-6 D19). Reducer flips
-/// <see cref="FrontComposerDensityState.HydrationState"/> to <see cref="DensityHydrationState.Hydrated"/>.
+/// <see cref="FrontComposerDensityState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>.
 /// Called on BOTH happy path AND fail-closed path.
 /// </summary>
 public sealed record DensityHydratedCompletedAction;

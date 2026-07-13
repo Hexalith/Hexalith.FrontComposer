@@ -151,7 +151,7 @@ public sealed class CommandPaletteEffects : IDisposable {
 
     /// <summary>
     /// Re-runs hydrate on <see cref="Navigation.StorageReadyAction"/> iff the palette hydration
-    /// state is still <see cref="CommandPaletteHydrationState.Idle"/> (Story 3-6 D19).
+    /// state is still <see cref="HydrationState.Idle"/> (Story 3-6 D19).
     /// </summary>
     /// <param name="action">The storage-ready action.</param>
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
@@ -160,7 +160,7 @@ public sealed class CommandPaletteEffects : IDisposable {
     public async Task HandleStorageReady(Navigation.StorageReadyAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        if (_paletteState.Value.HydrationState != CommandPaletteHydrationState.Idle) {
+        if (_paletteState.Value.HydrationState != HydrationState.Idle) {
             return;
         }
 
@@ -190,7 +190,7 @@ public sealed class CommandPaletteEffects : IDisposable {
             dispatcher.Dispatch(new PaletteHydratedCompletedAction());
             return;
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             // P8 (Pass-6): distinguish deserialisation/schema corruption from transient I/O so
             // operators can triage HFC2111 without misdiagnosing a network blip as data corruption.
             // P6 (Pass-1 review): InvalidOperationException is too broad to classify as "Corrupt"
@@ -357,7 +357,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         try {
             manifests = (scoringRegistry?.GetManifests() ?? []).ToList();
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 ex,
                 "{DiagnosticId}: Registry enumeration threw during palette scoring — dispatching empty result set.",
@@ -416,7 +416,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                         IsInCurrentContext: inContext));
                 }
             }
-            catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                 _logger.LogWarning(
                     ex,
                     "{DiagnosticId}: Manifest '{BoundedContext}' threw during palette scoring — skipping manifest, keeping other results.",
@@ -672,7 +672,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         catch (OperationCanceledException) {
             _logger.LogDebug("Palette recent-route persist cancelled — circuit disposing.");
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogInformation(
                 ex,
                 "{DiagnosticId}: Palette recent-route persistence failed.",
@@ -777,7 +777,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         try {
             manifests = (registry?.GetManifests() ?? []).OrderBy(static m => m.Name, StringComparer.Ordinal).ToList();
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 ex,
                 "{DiagnosticId}: Registry enumeration failed during palette open — falling back to empty projection preview.",
@@ -807,7 +807,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                     projectionCount++;
                 }
             }
-            catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                 _logger.LogWarning(
                     ex,
                     "{DiagnosticId}: Manifest '{BoundedContext}' threw during palette open preview — skipping manifest, keeping other projection rows.",

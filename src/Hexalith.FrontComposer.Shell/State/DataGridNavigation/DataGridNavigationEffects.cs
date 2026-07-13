@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using System.Text.Json;
 
 using Fluxor;
 
@@ -47,11 +46,6 @@ public sealed class DataGridNavigationEffects : IDisposable {
 
     /// <summary>Per-view debounce interval (Story 3-6 D16).</summary>
     private static readonly TimeSpan DebounceInterval = TimeSpan.FromMilliseconds(250);
-
-    /// <summary>JSON options cached on the type (D18). Web defaults + default-omit for compact blobs.</summary>
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) {
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault,
-    };
 
     private readonly IStorageService _storage;
     private readonly IUserContextAccessor _userContextAccessor;
@@ -139,7 +133,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
 
     /// <summary>
     /// Re-runs hydrate on <see cref="StorageReadyAction"/> iff hydration state is still
-    /// <see cref="DataGridNavigationHydrationState.Idle"/> (Story 3-6 D19).
+    /// <see cref="HydrationState.Idle"/> (Story 3-6 D19).
     /// </summary>
     /// <param name="action">The storage-ready action.</param>
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
@@ -152,7 +146,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
-        if (_state.Value.HydrationState != DataGridNavigationHydrationState.Idle) {
+        if (_state.Value.HydrationState != HydrationState.Idle) {
             return;
         }
 
@@ -566,6 +560,4 @@ public sealed class DataGridNavigationEffects : IDisposable {
         }
     }
 
-    // Retained for future source-gen migration (D18). Unused until Story 9-x.
-    private static JsonSerializerOptions CurrentJsonOptions() => JsonOptions;
 }

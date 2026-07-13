@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-13T15:30:00+02:00
+# last_updated: 2026-07-13T19:59:10+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-13T18:30:00+02:00
+last_updated: 2026-07-13T19:22:40+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -416,7 +416,10 @@ development_status:
   # 11-15 moved in-progress -> review on 2026-07-13 (dev-story completion reconciliation; restored EventStore and Memories root gitlinks to baseline after squash merge 8b8e002d retained unrelated upgrades. Restore passed; Release solution build 0 warnings/0 errors; full default lane 4053/4053; Governance 258/258; artifact and diff checks green.)
   # 11-15 moved review -> done on 2026-07-13 (bmad-code-review round 2; 4-layer adversarial review over e914c615..HEAD. 2 decision-needed + 2 patch all applied+validated; 3 defer [1 already tracked], 7 dismissed. Patches: [1] corrected the story record — EventStore/Memories gitlinks intentionally KEPT at post-merge 58761c50/8fc57cf4 [user ACCEPTED the upgrades], NOT restored to baseline as the prior reconciliation claimed [HEAD commit daa667f8 had reverted 5560bc53's restore]; [2] restored HFC2105 per-feature attribution via a feature discriminator threaded through StorageScopeResolver + 16 call sites + new test; [3] rewrote the replay-ordering test to race Publish vs Subscribe [prior version fired the publish from inside the replay handler and could not catch a regression]; [4] guarded SnapshotPublisher.InvokeSafe's fault-handler so a throwing fault handler can't abort the fan-out. Release build 0/0 TWAE; focused 36/36; full Shell default 2282/2282; Governance 126/126; git diff --check clean. NOTE: the 4 patches are applied to the working tree but NOT yet committed. Defers: advance-vs-advance fan-out race [pre-existing, already tracked DW], ProjectionConnection.Apply post-dispose log-bucket loss, name-coupled Roslyn guard.)
   11-15-storage-scope-and-snapshot-publisher-consolidation: done
-  11-16-fatal-hydration-json-and-generated-literal-helper-consolidation: backlog
+  # 11-16 moved backlog -> ready-for-dev on 2026-07-13 (create-story; consolidate 35 fatal filters through one four-type ExceptionGuard while preserving per-site cancellation behavior; replace 5 public hydration enums with one HydrationState plus explicit 2.0 breaking-change/consumer evidence; centralize 3 production JSON configurations into 2 named read-only FcJson profiles; delegate the 2 live hand-rolled C# literal seams [RoleBodyHelpers + McpManifestEmitter] to GeneratedLiteral; add child-specific source guards, synthetic negatives, focused tests, and before/after counts.)
+  # 11-16 moved ready-for-dev -> in-progress on 2026-07-13 (dev-story; baseline 83a791c78f589f896bcc21c50c4cc29e061ffbe2 preserved; starting fatal taxonomy, hydration state, JSON profile, and generated-literal consolidation.)
+  # 11-16 moved in-progress -> review on 2026-07-13 (dev-story; fatal 35 sites/12 files/2 classifiers -> 35 ExceptionGuard sites/0 classifiers/0 ad-hoc lists; hydration 5 duplicate public enums -> 1 shared HydrationState with explicit 2.0 migration evidence; JSON 3 configurations -> 1 FcJson holder/2 read-only profiles/0 dead DataGrid configuration; literals 2 hand-rolled paths -> 2 GeneratedLiteral delegates/0 hand-rolled paths. Four non-vacuous source guards + synthetic negatives. Release build 0/0 TWAE; focused Shell 302/302; focused SourceTools 97/97; full default 4100/4100; Governance 277/277; snapshots, CRLF, exact File List, and diff checks clean.)
+  11-16-fatal-hydration-json-and-generated-literal-helper-consolidation: review
   11-17-mechanical-one-type-per-file-split: backlog
   11-18-loggermessage-migration-for-warnings-and-hot-paths: backlog
   11-19-enforcement-and-policy-alignment: backlog

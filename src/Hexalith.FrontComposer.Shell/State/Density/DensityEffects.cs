@@ -109,7 +109,7 @@ public sealed class DensityEffects(
     public async Task HandleStorageReady(StorageReadyAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        if (densityState.Value.HydrationState == DensityHydrationState.Hydrated) {
+        if (densityState.Value.HydrationState == HydrationState.Hydrated) {
             return;
         }
 

@@ -285,6 +285,18 @@ public sealed class EventStoreClientTests {
     }
 
     [Fact]
+    public async Task RequestContent_PreservesExactPlainWebJsonBytes() {
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        var request = new { DisplayName = (string?)null, Enabled = false, Count = 0 };
+
+        using ByteArrayContent content = EventStoreRequestContent.Create(request, maxBytes: 1_024);
+        byte[] body = await content.ReadAsByteArrayAsync(cancellationToken);
+
+        body.ShouldBe(Encoding.UTF8.GetBytes("{\"displayName\":null,\"enabled\":false,\"count\":0}"));
+        content.Headers.ContentType!.MediaType.ShouldBe("application/json");
+    }
+
+    [Fact]
     public async Task CommandClient_RejectsTenantMismatch_BeforeSend() {
         // DN1: command body declares one tenant; authenticated user belongs to another.
         // Authenticated tenant must always win — mismatched override is a privilege-escalation hazard.

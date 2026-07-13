@@ -84,7 +84,7 @@ public sealed class NavigationEffects(
 
     /// <summary>
     /// Re-runs hydrate on <see cref="StorageReadyAction"/> iff hydration state is still
-    /// <see cref="NavigationHydrationState.Idle"/> (Story 3-6 D19).
+    /// <see cref="HydrationState.Idle"/> (Story 3-6 D19).
     /// </summary>
     /// <param name="action">The storage-ready action.</param>
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
@@ -93,7 +93,7 @@ public sealed class NavigationEffects(
     public async Task HandleStorageReady(StorageReadyAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        if (state.Value.HydrationState != NavigationHydrationState.Idle) {
+        if (state.Value.HydrationState != HydrationState.Idle) {
             return;
         }
 

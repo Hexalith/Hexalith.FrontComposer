@@ -5,6 +5,7 @@ using System.Threading.Channels;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -48,9 +49,7 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
     /// Exposed <c>internal</c> so schema-lock tests pin the actual production wire format rather
     /// than the default serializer (Story 3-6 Review Finding F-AA-001 / F-BH-003).
     /// </summary>
-    internal static JsonSerializerOptions SchemaLockJsonOptions { get; } = new(JsonSerializerDefaults.Web) {
-        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault,
-    };
+    internal static JsonSerializerOptions SchemaLockJsonOptions { get; } = FcJson.StorageCompact;
 
     private readonly IJSRuntime _js;
     private readonly FcShellOptions _options;

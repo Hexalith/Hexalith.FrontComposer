@@ -22,5 +22,5 @@ public sealed class FrontComposerNavigationFeature : Feature<FrontComposerNaviga
             CurrentBoundedContext: null,
             LastActiveRoute: null,
             StorageReady: false,
-            HydrationState: NavigationHydrationState.Idle);
+            HydrationState: HydrationState.Idle);
 }

@@ -42,29 +42,29 @@ public sealed class NavigationReducersStorageReadyTests {
     [Fact]
     public void ReduceNavigationHydrating_FromIdle_FlipsToHydrating() {
         FrontComposerNavigationState state = BaseState();
-        state.HydrationState.ShouldBe(NavigationHydrationState.Idle);
+        state.HydrationState.ShouldBe(HydrationState.Idle);
 
         FrontComposerNavigationState next = NavigationReducers.ReduceNavigationHydrating(
             state,
             new NavigationHydratingAction());
 
-        next.HydrationState.ShouldBe(NavigationHydrationState.Hydrating);
+        next.HydrationState.ShouldBe(HydrationState.Hydrating);
     }
 
     [Fact]
     public void ReduceNavigationHydratedCompleted_FromHydrating_FlipsToHydrated() {
-        FrontComposerNavigationState state = BaseState() with { HydrationState = NavigationHydrationState.Hydrating };
+        FrontComposerNavigationState state = BaseState() with { HydrationState = HydrationState.Hydrating };
 
         FrontComposerNavigationState next = NavigationReducers.ReduceNavigationHydratedCompleted(
             state,
             new NavigationHydratedCompletedAction());
 
-        next.HydrationState.ShouldBe(NavigationHydrationState.Hydrated);
+        next.HydrationState.ShouldBe(HydrationState.Hydrated);
     }
 
     [Fact]
     public void ReduceNavigationHydrating_FromHydrated_IsNoOp() {
-        FrontComposerNavigationState state = BaseState() with { HydrationState = NavigationHydrationState.Hydrated };
+        FrontComposerNavigationState state = BaseState() with { HydrationState = HydrationState.Hydrated };
 
         FrontComposerNavigationState next = NavigationReducers.ReduceNavigationHydrating(
             state,

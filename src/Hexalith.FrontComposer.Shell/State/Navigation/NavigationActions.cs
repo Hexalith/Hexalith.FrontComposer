@@ -79,15 +79,15 @@ public sealed record StorageReadyAction(string CorrelationId);
 /// <summary>
 /// Dispatched by <c>NavigationEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> at the
 /// start of the hydrate path (Story 3-6 D19). Reducer flips
-/// <see cref="FrontComposerNavigationState.HydrationState"/> from <see cref="NavigationHydrationState.Idle"/>
-/// to <see cref="NavigationHydrationState.Hydrating"/>. NEVER persisted.
+/// <see cref="FrontComposerNavigationState.HydrationState"/> from <see cref="HydrationState.Idle"/>
+/// to <see cref="HydrationState.Hydrating"/>. NEVER persisted.
 /// </summary>
 public sealed record NavigationHydratingAction;
 
 /// <summary>
 /// Dispatched by <c>NavigationEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> as the
 /// final step of the hydrate path (Story 3-6 D19). Reducer flips
-/// <see cref="FrontComposerNavigationState.HydrationState"/> to <see cref="NavigationHydrationState.Hydrated"/>.
+/// <see cref="FrontComposerNavigationState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>.
 /// Called on BOTH happy path AND fail-closed path so subsequent <c>StorageReadyAction</c>
 /// re-triggers hydrate only when the state is still <c>Idle</c>. NEVER persisted.
 /// </summary>

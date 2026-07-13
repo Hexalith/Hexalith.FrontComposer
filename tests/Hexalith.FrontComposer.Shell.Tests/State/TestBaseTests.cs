@@ -42,14 +42,14 @@ public class TestBaseTests : FrontComposerTestBase {
         await InitializeStoreAsync();
 
         Services.GetRequiredService<IState<FrontComposerNavigationState>>().Value.HydrationState
-            .ShouldBe(NavigationHydrationState.Idle);
+            .ShouldBe(HydrationState.Idle);
         Services.GetRequiredService<IState<FrontComposerThemeState>>().Value.HydrationState
-            .ShouldBe(ThemeHydrationState.Idle);
+            .ShouldBe(HydrationState.Idle);
         Services.GetRequiredService<IState<FrontComposerDensityState>>().Value.HydrationState
-            .ShouldBe(DensityHydrationState.Idle);
+            .ShouldBe(HydrationState.Idle);
         Services.GetRequiredService<IState<DataGridNavigationState>>().Value.HydrationState
-            .ShouldBe(DataGridNavigationHydrationState.Idle);
+            .ShouldBe(HydrationState.Idle);
         Services.GetRequiredService<IState<FrontComposerCommandPaletteState>>().Value.HydrationState
-            .ShouldBe(CommandPaletteHydrationState.Idle);
+            .ShouldBe(HydrationState.Idle);
     }
 }

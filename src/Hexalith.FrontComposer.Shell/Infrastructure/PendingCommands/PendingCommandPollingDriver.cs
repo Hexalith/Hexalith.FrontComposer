@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.Extensions.Logging;
@@ -146,7 +147,7 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
         }
         catch (OperationCanceledException) when (_disposalCts.IsCancellationRequested) {
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 "Pending command polling driver tick failed. FailureCategory={FailureCategory}",
                 ex.GetType().Name);
@@ -171,7 +172,7 @@ public sealed class PendingCommandPollingDriver : IAsyncDisposable {
                 nameof(TimeoutException));
             return false;
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogWarning(
                 "Pending command polling driver disposal observed an in-flight poll failure. FailureCategory={FailureCategory}",
                 ex.GetType().Name);

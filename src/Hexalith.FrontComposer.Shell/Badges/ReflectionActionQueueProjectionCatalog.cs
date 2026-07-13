@@ -3,6 +3,7 @@ using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Badges;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
 
@@ -71,7 +72,7 @@ public sealed class ReflectionActionQueueProjectionCatalog : IActionQueueProject
                 try {
                     attribute = type.GetCustomAttribute<ProjectionRoleAttribute>(inherit: false);
                 }
-                catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                     // Metadata read can fail on exotic generated types; skip rather than abort.
                     continue;
                 }
@@ -103,7 +104,7 @@ public sealed class ReflectionActionQueueProjectionCatalog : IActionQueueProject
                 assembly.FullName);
             return ex.Types.Where(static t => t is not null)!;
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException and not StackOverflowException) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             _logger.LogInformation(
                 ex,
                 "ReflectionActionQueueProjectionCatalog: skipped assembly '{AssemblyName}' — GetTypes threw.",

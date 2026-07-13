@@ -2,10 +2,13 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
+using Hexalith.FrontComposer.Shell.Services;
+
 namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
 internal static class EventStoreRequestContent {
-    internal static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    /// <summary>Gets the canonical plain-web JSON profile retained for schema-lock consumers.</summary>
+    internal static JsonSerializerOptions JsonOptions { get; } = FcJson.PlainWeb;
 
     [UnconditionalSuppressMessage(
         "Trimming",

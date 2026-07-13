@@ -35,5 +35,5 @@ public sealed class DataGridNavigationFeature : Feature<DataGridNavigationState>
         => new(
             ViewStates: ImmutableDictionary<string, GridViewSnapshot>.Empty,
             Cap: _cap,
-            HydrationState: DataGridNavigationHydrationState.Idle);
+            HydrationState: HydrationState.Idle);
 }

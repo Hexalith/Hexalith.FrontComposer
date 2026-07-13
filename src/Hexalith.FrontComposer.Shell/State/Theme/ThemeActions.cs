@@ -10,15 +10,15 @@ public record ThemeChangedAction(string CorrelationId, ThemeValue NewTheme);
 /// <summary>
 /// Dispatched by <c>ThemeEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> at the start
 /// of the hydrate path (Story 3-6 D19). Reducer flips
-/// <see cref="FrontComposerThemeState.HydrationState"/> from <see cref="ThemeHydrationState.Idle"/>
-/// to <see cref="ThemeHydrationState.Hydrating"/>. NEVER persisted.
+/// <see cref="FrontComposerThemeState.HydrationState"/> from <see cref="HydrationState.Idle"/>
+/// to <see cref="HydrationState.Hydrating"/>. NEVER persisted.
 /// </summary>
 public sealed record ThemeHydratingAction;
 
 /// <summary>
 /// Dispatched by <c>ThemeEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> as the final
 /// step of the hydrate path (Story 3-6 D19). Reducer flips
-/// <see cref="FrontComposerThemeState.HydrationState"/> to <see cref="ThemeHydrationState.Hydrated"/>.
+/// <see cref="FrontComposerThemeState.HydrationState"/> to <see cref="HydrationState.Hydrated"/>.
 /// Called on BOTH happy path AND fail-closed path.
 /// </summary>
 public sealed record ThemeHydratedCompletedAction;

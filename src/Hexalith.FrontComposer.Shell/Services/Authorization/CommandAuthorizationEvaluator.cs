@@ -1,6 +1,7 @@
 using System.Security.Claims;
 
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -44,7 +45,7 @@ public sealed class CommandAuthorizationEvaluator(
             LogBlocked(request, CommandAuthorizationReason.Canceled, trimmedPolicy, correlationId);
             return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
         }
-        catch (Exception ex) when (IsRecoverable(ex)) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             logger.LogWarning(
                 ex,
                 "Command authorization failed closed resolving authentication state. CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
@@ -69,7 +70,7 @@ public sealed class CommandAuthorizationEvaluator(
         try {
             tenant = tenantContextAccessor.TryGetContext(operationKind: "command-authorization");
         }
-        catch (Exception ex) when (IsRecoverable(ex)) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             logger.LogWarning(
                 ex,
                 "Command authorization failed closed resolving tenant context. Reason={Reason} CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
@@ -152,7 +153,7 @@ public sealed class CommandAuthorizationEvaluator(
                 correlationId);
             return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.MissingPolicy, correlationId);
         }
-        catch (Exception ex) when (IsRecoverable(ex)) {
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             logger.LogWarning(
                 ex,
                 "Command authorization failed closed. Reason={Reason} CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
@@ -163,14 +164,6 @@ public sealed class CommandAuthorizationEvaluator(
             return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
         }
     }
-
-    // Excludes corrupted-state and async-thread-abort exceptions in addition to OOM. Catching
-    // these would mask process-fatal conditions; operators must see them surface.
-    private static bool IsRecoverable(Exception ex)
-        => ex is not (OutOfMemoryException
-            or StackOverflowException
-            or System.Threading.ThreadAbortException
-            or AccessViolationException);
 
     private void LogBlocked(
         CommandAuthorizationRequest request,

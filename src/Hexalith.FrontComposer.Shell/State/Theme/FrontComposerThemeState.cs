@@ -6,10 +6,10 @@ namespace Hexalith.FrontComposer.Shell.State.Theme;
 /// </summary>
 /// <param name="CurrentTheme">The currently active theme value.</param>
 /// <param name="HydrationState">
-/// Transient three-state hydration marker (Story 3-6 D19). Initial value <see cref="ThemeHydrationState.Idle"/>;
+/// Transient three-state hydration marker (Story 3-6 D19). Initial value <see cref="HydrationState.Idle"/>;
 /// flips <c>Idle → Hydrating → Hydrated</c> via dedicated reducers. NEVER persisted. Re-hydrate
-/// via <c>StorageReadyAction</c> only runs when this is <see cref="ThemeHydrationState.Idle"/>.
+/// via <c>StorageReadyAction</c> only runs when this is <see cref="HydrationState.Idle"/>.
 /// </param>
 public record FrontComposerThemeState(
     ThemeValue CurrentTheme,
-    ThemeHydrationState HydrationState = ThemeHydrationState.Idle);
+    HydrationState HydrationState = HydrationState.Idle);

@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.SignalR.Client;
 using Microsoft.Extensions.Logging;
@@ -116,7 +117,7 @@ internal sealed class SignalRProjectionHubConnectionFactory(
                 try {
                     await handler(change).ConfigureAwait(false);
                 }
-                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                     _logger.LogWarning(
                         "EventStore projection hub state subscriber threw. State={State}, FailureCategory={FailureCategory}",
                         change.State,
