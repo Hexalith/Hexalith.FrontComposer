@@ -87,10 +87,11 @@ release tag pointing at the commit, and over a **deterministic re-pack** of the 
 
 1. `release_evidence.py test-results` (`release-evidence/test-results.json`) — release tests re-run excluding `Category=Quarantined`.
 2. `release_evidence.py inventory` (`package-inventory.json`) → `actions/attest-build-provenance@v4` over the re-packed `.nupkg` (AC9).
-3. CycloneDX **SBOM** (`sbom.json`) → **sign + verify** (`dotnet nuget sign` / `dotnet nuget verify --all`, RFC 3161) when the signing cert secret is provisioned — otherwise a **blocking readiness reason** is recorded (AC2).
-4. `checksums` → `prepare-manifest` → `seal-manifest` → `verify-manifest` — the sealed manifest binds commit SHA / tag / run-id / workflow-ref / package-set fingerprint / version.
-5. `classify-release` **without** `--require-publishable` (G1 = advisory for the release that just published).
-6. `gh release upload <tag> release-evidence/*.json` + `upload-artifact` archives `release-evidence/**` (30-day retention).
+3. CycloneDX **SBOM** (`sbom.json`), then — when the signing cert secret is provisioned — the re-packed `.nupkg` are signed into **`nupkgs-signed/`** (`dotnet nuget sign`, RFC 3161 timestamp) and verified (`dotnet nuget verify --all -v normal`); the path-sanitized transcript `signing-verification.txt` feeds `prepare-manifest`, so each package's `signing_status`/`timestamp_status` (**both blocking checks**) become `verified`. When absent, a **blocking readiness reason** is recorded (AC2). See [Provisioning the signing certificate](#provisioning-the-signing-certificate).
+4. **LLM benchmark candidate evidence** (`llm_benchmark.py` validate-prompt-set → budget-status → run-benchmark, offline / **no provider spend**) → `benchmark-summary.json`, whose hash is bound into the manifest (a required field; the pass/fail benchmark *gate* remains a nightly concern).
+5. `checksums` (over `nupkgs-signed/`) → `prepare-manifest` (`--signing-verification`, `--benchmark-summary-hash`) → `seal-manifest` → `verify-manifest` — the sealed manifest binds commit SHA / tag / run-id / workflow-ref / package-set fingerprint / version / sbom hash / benchmark summary hash.
+6. `classify-release` **without** `--require-publishable` (G1 = advisory for the release that just published).
+7. `gh release upload <tag> release-evidence/*.json` + `upload-artifact` archives `release-evidence/**` (30-day retention).
 
 **Gating posture G1 (approved 2026-07-13):** publish proceeds under the reusable workflow; the evidence
 workflow's core steps (test-results, inventory, verify-manifest, classify-release) are **real gating
@@ -106,7 +107,7 @@ release**. **G2** — an opt-in inline pre-publish gate (`classify-release --req
 |---|---|---|
 | Package-consumer validation (Contracts-only vs Shell/UI boundaries) | AC1/AC6 | **Implemented** — `scripts/` trio, run by `domain-ci.yml` `run-consumer-validation: true` |
 | SBOM + checksums + sealed manifest + classify-release + evidence assets | AC3/AC4–5/AC8 | **Implemented (G1)** in `release-evidence.yml` |
-| Certificate signing + RFC 3161 timestamp | AC2 | **Wired, secret-gated** — provision `NUGET_SIGNING_CERTIFICATE_BASE64`/`_PASSWORD` to activate; unsigned runs record a blocking readiness reason |
+| Certificate signing + RFC 3161 timestamp | AC2 | **Wired end-to-end, secret-gated** — provision a code-signing **chain** as `NUGET_SIGNING_CERTIFICATE_BASE64`/`_PASSWORD` ([recipe below](#provisioning-the-signing-certificate)) to activate; signing/timestamp then populate the sealed manifest's blocking `signing_status`/`timestamp_status`. Unsigned runs record a blocking readiness reason |
 | Attestation generated before readiness claimed | AC9 | **Implemented** — `attest-build-provenance` over re-packed `.nupkg` |
 | Inline pre-publish gate (`--require-publishable` before push) | — (G2) | **Deferred** — upstream Hexalith.Builds follow-up |
 | Release Owner records evidence paths from a real run | AC8/AC12 | **Pending** — a real release must run `release-evidence.yml` once and its paths be recorded; `REL-AI-1` stays open until then |
@@ -119,6 +120,49 @@ release**. **G2** — an opt-in inline pre-publish gate (`classify-release --req
 | `GITHUB_TOKEN` | provided | GitHub Release + evidence asset upload |
 | `NUGET_SIGNING_CERTIFICATE_BASE64` / `NUGET_SIGNING_CERTIFICATE_PASSWORD` | secret (optional) | package signing in `release-evidence.yml`; when absent, signing is recorded as a blocking readiness reason |
 | `NUGET_SIGNING_TIMESTAMPER` | var (optional) | RFC 3161 timestamp authority (default `http://timestamp.digicert.com`) |
+
+### Provisioning the signing certificate
+
+The FR24 evidence gate signs a **re-pack** of the release packages (it does not sign what
+`domain-release.yml` publishes to nuget.org — that is the separate G2 track). To clear the AC2
+blocking readiness reason cheapest, provision a **self-signed code-signing chain** — a self-signed
+**root CA plus a leaf it issues**. A bare self-signed *leaf* will not work: `dotnet nuget sign`
+rejects it (`NU3018 InvalidBasicConstraints`) because it builds and validates a chain to a CA.
+
+> **Why a chain + why the PFX must embed the root:** on Linux, `dotnet nuget sign`/`verify` trust
+> code-signing roots **only** via the SDK's own bundle `…/sdk/<ver>/trustedroots/codesignctl.pem`,
+> not the OS trust store, `SSL_CERT_FILE`, or the .NET user cert stores. The workflow recovers the
+> issuing CA from the PFX chain (`openssl pkcs12 -cacerts`) and appends it to that bundle **before
+> signing** — so the PFX must be exported **with** the root (`-certfile root.crt`), or the run fails
+> with a clear error.
+
+```bash
+# 1. self-signed ROOT CA (CA:TRUE, keyCertSign)
+openssl req -newkey rsa:3072 -nodes -keyout root.key -out root.csr \
+  -subj "/CN=Hexalith FrontComposer Release Evidence Root"
+openssl x509 -req -in root.csr -signkey root.key -days 3650 -sha256 -out root.crt \
+  -extfile <(printf 'basicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\n')
+
+# 2. code-signing LEAF issued by the root (CA:FALSE, EKU=codeSigning)
+openssl req -newkey rsa:3072 -nodes -keyout leaf.key -out leaf.csr \
+  -subj "/CN=Hexalith FrontComposer Release Evidence"
+openssl x509 -req -in leaf.csr -CA root.crt -CAkey root.key -CAcreateserial -days 825 -sha256 -out leaf.crt \
+  -extfile <(printf 'basicConstraints=critical,CA:FALSE\nkeyUsage=critical,digitalSignature\nextendedKeyUsage=critical,codeSigning\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n')
+
+# 3. PFX = leaf key + leaf cert + root chain  (the -certfile root.crt is REQUIRED)
+openssl pkcs12 -export -out signing-cert.pfx -inkey leaf.key -in leaf.crt -certfile root.crt \
+  -passout pass:'CHOOSE_A_PASSWORD'
+
+# 4. provision the two secrets (base64 has NO newlines: -w0)
+base64 -w0 signing-cert.pfx | gh secret set NUGET_SIGNING_CERTIFICATE_BASE64 --repo <org>/<repo>
+gh secret set NUGET_SIGNING_CERTIFICATE_PASSWORD --repo <org>/<repo> --body 'CHOOSE_A_PASSWORD'
+rm -f signing-cert.pfx leaf.key root.key   # keep root.key offline if you plan to re-issue the leaf
+```
+
+On the next tagged release, `release-evidence.yml` signs into `nupkgs-signed/`, verifies with an
+RFC 3161 timestamp, and records `signing-readiness.json` as `signed:true, verified:true`. This is an
+**internal evidence** signature — the root is not publicly trusted, so it is not for author-signing on
+nuget.org. For publicly-trusted publishing use Azure Trusted/Artifact Signing or a CA cert (G2 track).
 
 ## Consuming the packages
 

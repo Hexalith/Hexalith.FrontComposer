@@ -930,6 +930,10 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("release-evidence/**");
         // AC10: packages are signed and verified (RFC 3161 timestamp).
         workflow.ShouldContain("dotnet nuget verify");
+        // FR24: an LLM benchmark summary hash (candidate evidence, no provider spend) is
+        // produced and bound into the sealed manifest — a required manifest field.
+        workflow.ShouldContain("llm_benchmark.py run-benchmark");
+        workflow.ShouldContain("--benchmark-summary-hash");
         string normalizedWorkflow = workflow.Replace("\r\n", "\n", StringComparison.Ordinal);
         normalizedWorkflow.ShouldContain("- name: Record release test evidence\n        if: always()");
         normalizedWorkflow.ShouldContain("- name: Install CycloneDX .NET tool\n        if: always()");
@@ -1911,6 +1915,132 @@ public sealed class CiGovernanceTests {
         }
 
         return workflow[start..cursor];
+    }
+
+    // REL-2/FR24 (2026-07-13): parse_signing_verification must accept the REAL
+    // `dotnet nuget verify --all -v normal` transcript emitted by the .NET SDK, where the
+    // `Timestamp: <datetime>` line carries no status keyword and precedes the trailing
+    // `Successfully verified package '<id>'` confirmation. This locks the fixed parser so a
+    // regression to the old keyword/forward-block model (which scored every real RFC 3161
+    // timestamp `missing`) cannot silently return.
+    [Fact]
+    public void PrepareManifest_ScoresSigningAndTimestampVerifiedFromRealDotnetVerifyOutput() {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"fc-signing-verify-{Guid.NewGuid():N}");
+        try {
+            const string version = "1.2.3";
+            const string pkg = "Hexalith.FrontComposer.Contracts";
+            string transcript = string.Join('\n', [
+                $"Verifying {pkg}.{version}",
+                "Content hash: abc==",
+                "<path>",
+                "Signature type: Author",
+                "  Subject Name: CN=FC Release Evidence",
+                "  Issued by: CN=FC Release Evidence Root",
+                "Timestamp: 07/13/2026 17:16:10",
+                "Verifying author primary signature's timestamp with timestamping service certificate:",
+                $"Successfully verified package '{pkg}.{version}'.",
+                string.Empty,
+            ]);
+
+            (ProcessResult result, string preManifest, string diagnostics) = PrepareManifestWithSigningTranscript(tempRoot, pkg, version, transcript);
+
+            result.ExitCode.ShouldBe(0, File.Exists(diagnostics) ? File.ReadAllText(diagnostics) : result.Error);
+            using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(preManifest));
+            JsonElement row = doc.RootElement.GetProperty("packages")[0];
+            row.GetProperty("signing_status").GetString().ShouldBe("verified");
+            row.GetProperty("timestamp_status").GetString().ShouldBe("verified");
+        }
+        finally {
+            if (Directory.Exists(tempRoot)) {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    // A `Timestamp:` line carrying an explicit failure marker must NOT count as evidence
+    // (CR-12-4-P146 intent), so the manifest fails closed with a per-package diagnostic.
+    [Fact]
+    public void PrepareManifest_RejectsTimestampLineWithFailureMarker() {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"fc-signing-verify-neg-{Guid.NewGuid():N}");
+        try {
+            const string version = "1.2.3";
+            const string pkg = "Hexalith.FrontComposer.Contracts";
+            string transcript = string.Join('\n', [
+                $"Verifying {pkg}.{version}",
+                "Signature type: Author",
+                "Timestamp: invalid certificate",
+                $"Successfully verified package '{pkg}.{version}'.",
+                string.Empty,
+            ]);
+
+            (ProcessResult result, _, string diagnostics) = PrepareManifestWithSigningTranscript(tempRoot, pkg, version, transcript);
+
+            result.ExitCode.ShouldBe(1);
+            File.ReadAllText(diagnostics).ShouldContain("timestamp not verified");
+        }
+        finally {
+            if (Directory.Exists(tempRoot)) {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    private static (ProcessResult Result, string PreManifest, string Diagnostics) PrepareManifestWithSigningTranscript(
+        string tempRoot, string packageId, string version, string transcript) {
+        string root = RepositoryRoot();
+        Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
+        Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs"));
+        Directory.CreateDirectory(Path.Combine(tempRoot, "release-evidence"));
+
+        string signedNupkg = Path.Combine(tempRoot, "nupkgs-signed", $"{packageId}.{version}.nupkg");
+        string snupkg = Path.Combine(tempRoot, "nupkgs", $"{packageId}.{version}.snupkg");
+        string sbom = Path.Combine(tempRoot, "release-evidence", "sbom.json");
+        File.WriteAllText(signedNupkg, "signed package bytes");
+        File.WriteAllText(snupkg, "symbol package bytes");
+        File.WriteAllText(sbom, "{\"bomFormat\":\"CycloneDX\"}");
+
+        string inventory = Path.Combine(tempRoot, "release-evidence", "package-inventory.json");
+        File.WriteAllText(inventory, JsonSerializer.Serialize(new Dictionary<string, object?> {
+            ["rows"] = new[] {
+                new Dictionary<string, object?> {
+                    ["package_id"] = packageId,
+                    ["packable"] = true,
+                    ["symbol_required"] = true,
+                    ["exception"] = "not-required",
+                },
+            },
+        }));
+
+        string checksums = Path.Combine(tempRoot, "release-evidence", "checksums.json");
+        File.WriteAllText(checksums, JsonSerializer.Serialize(new Dictionary<string, object?> {
+            ["files"] = new[] {
+                new Dictionary<string, object?> { ["path"] = $"nupkgs-signed/{packageId}.{version}.nupkg", ["sha256"] = Sha256File(signedNupkg) },
+                new Dictionary<string, object?> { ["path"] = $"nupkgs/{packageId}.{version}.snupkg", ["sha256"] = Sha256File(snupkg) },
+                new Dictionary<string, object?> { ["path"] = "release-evidence/sbom.json", ["sha256"] = Sha256File(sbom) },
+            },
+        }));
+
+        // --signing-verification is normalized under --root, so it must be relative (the
+        // workflow passes the same `release-evidence/signing-verification.txt`).
+        const string signingVerificationRelative = "release-evidence/signing-verification.txt";
+        File.WriteAllText(Path.Combine(tempRoot, "release-evidence", "signing-verification.txt"), transcript);
+
+        string preManifest = Path.Combine(tempRoot, "release-evidence", "pre-manifest.json");
+        string diagnostics = Path.Combine(tempRoot, "release-evidence", "prep-diagnostics.json");
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "prepare-manifest",
+            "--inventory", inventory,
+            "--checksums", checksums,
+            "--version", version,
+            "--tag", $"v{version}",
+            "--sbom-hash", Sha256File(sbom),
+            "--root", tempRoot,
+            "--signing-verification", signingVerificationRelative,
+            "--diagnostics-output", diagnostics,
+            "--output", preManifest,
+        ]);
+        return (result, preManifest, diagnostics);
     }
 
     internal static string RepositoryRoot() {

@@ -619,83 +619,83 @@ def fingerprint_diff(current: dict[str, str], baseline: dict[str, str]) -> list[
     return diagnostics
 
 
-# CR-12-4-P98 (round-5): bound the per-package timestamp block tighter — was 40 lines,
-# now 80 lines (covers worst-case multi-line cert chain output) AND require the regex
-# to anchor on `Timestamp signature` or `Timestamp signing certificate` rather than the
-# bare word `Timestamp`. The trailing summary line `All packages verified valid` could
-# previously match the last package's block when it bled to EOF; the new regex matches
-# only true per-line Timestamp evidence.
+# CR-12-4-P98 (round-5): bound the per-package timestamp region to at most 80 lines
+# (covers worst-case multi-line cert-chain output) so evidence from one package can never
+# bleed into another's status.
+#
+# REL-2/FR24 (2026-07-13): the block model was INVERTED to match the real
+# `dotnet nuget verify --all -v normal` output emitted by the .NET SDK. That output orders
+# each package as:
+#     Verifying <Id>.<Ver>
+#     ... Signature type: Author ...
+#     Timestamp: <mm/dd/yyyy hh:mm:ss>            # present, but carries NO status keyword
+#     Verifying author primary signature's timestamp with timestamping service certificate:
+#     ...
+#     Successfully verified package '<Id>.<Ver>'. # the confirmation comes LAST
+# The prior parser anchored each per-package block at the trailing "Successfully verified"
+# line and scanned FORWARD, so the `Timestamp:` line (which precedes it) fell outside the
+# block and every real, valid RFC 3161 timestamp was scored `missing`. It also required a
+# `verified|valid|trusted|RFC 3161` keyword the SDK never prints on the `Timestamp:` line.
+# The region for a package therefore runs from the previous confirmation (or start of text)
+# up to and including its own confirmation line, and a bare `Timestamp: <value>` line is
+# accepted as evidence unless it carries an explicit failure marker (below).
 _TIMESTAMP_BLOCK_MAX_LINES = 80
-_TIMESTAMP_EVIDENCE = re.compile(
-    # CR-12-4-P130 (round-6): modifier (`signature` | `signing certificate`) is OPTIONAL
-    # so legitimate releases with bare `Timestamp:` form (older NuGet, alternate
-    # timestamper output) are still recognized. The per-package 80-line block bound
-    # plus the start-of-line anchor keep the cross-section bleed risk (P98) contained.
-    # CR-12-4-P146 (round-7): word-bound the success markers (`\bvalid\b`, `\bverified\b`,
-    # `\btrusted\b`, `\bRFC 3161\b`) so a `dotnet nuget verify` line containing
-    # "Timestamp: invalid certificate" / "Timestamp: untrusted authority" / "Timestamp:
-    # unverified" does not match as success via substring overlap. Without the boundaries
-    # `valid` matched inside `invalid` and drove `timestamp_status="verified"` for a
-    # timestamp the tooling actually rejected.
-    r"^[ \t]*Timestamp(?:[ \t]+(?:signature|signing[ \t]+certificate))?[: \t][^\n]*\b(?:verified|valid|trusted|RFC[ \t]*3161)\b",
+
+# A per-line Timestamp evidence line: real `Timestamp: <datetime>` output, or the older
+# keyworded `Timestamp signature: verified` / `... RFC 3161` forms. `rest` captures the
+# trailing value so a failure timestamp line can be rejected.
+_TIMESTAMP_LINE = re.compile(
+    r"^[ \t]*Timestamp(?:[ \t]+(?:signature|signing[ \t]+certificate))?[: \t]+(?P<rest>\S[^\n]*)",
     re.IGNORECASE | re.MULTILINE,
 )
+# CR-12-4-P146 (round-7) intent preserved: a `dotnet nuget verify` line such as
+# "Timestamp: invalid certificate" / "Timestamp: untrusted authority" / "Timestamp:
+# unverified" must NOT count as evidence. Because a bare `Timestamp: <value>` is now
+# accepted, the failure words are matched explicitly and reject the line instead.
+_TIMESTAMP_NEGATIVE = re.compile(
+    r"\b(?:invalid|untrusted|unverified|not[ \t]+trusted|expired|revoked|"
+    r"fail(?:ed|ure)?|error|missing|unknown|no[ \t]+timestamp)\b",
+    re.IGNORECASE,
+)
+_SUCCESS_LINE = re.compile(r"Successfully verified package '(.+?)\.(\d+(?:\.[0-9A-Za-z.+\-]+)*)'")
 
 
-def _bounded_timestamp_evidence(block: str) -> bool:
-    """Return True when the per-package block contains a real Timestamp evidence line.
+def _timestamp_verified_in_region(region: str) -> bool:
+    """Return True when this package's evidence region carries a non-failing Timestamp line.
 
-    The block is intentionally truncated to the first _TIMESTAMP_BLOCK_MAX_LINES so trailing
-    `dotnet nuget verify` summary text following the last verified package cannot leak
-    "valid" / "trusted" matches across packages.
+    The region is truncated to the last _TIMESTAMP_BLOCK_MAX_LINES so unbounded header text
+    preceding the first package cannot be scanned, and cross-package bleed stays contained.
     """
-    bounded = "\n".join(block.splitlines()[:_TIMESTAMP_BLOCK_MAX_LINES])
-    return bool(_TIMESTAMP_EVIDENCE.search(bounded))
+    bounded = "\n".join(region.splitlines()[-_TIMESTAMP_BLOCK_MAX_LINES:])
+    for match in _TIMESTAMP_LINE.finditer(bounded):
+        if not _TIMESTAMP_NEGATIVE.search(match.group("rest")):
+            return True
+    return False
 
 
 def parse_signing_verification(text: str, package_ids: list[str] | None = None) -> dict[str, dict[str, str]]:
-    """Parse `dotnet nuget verify --all` output for per-package verification status.
+    """Parse `dotnet nuget verify --all -v normal` output for per-package status.
 
-    `dotnet nuget verify --all` succeeds only when both the author signature and the
-    RFC 3161 timestamp counter-signature are valid for the package, so a per-package
-    'Successfully verified package' line is sufficient evidence for both gates.
+    Each `Successfully verified package '<Id>.<Ver>'` confirmation proves the author
+    signature is valid; the RFC 3161 timestamp is scored `verified` only when a non-failing
+    `Timestamp:` line is present in that package's region (a package signed without a
+    timestamp stays `timestamp_status="missing"`). When `package_ids` is supplied only those
+    packable ids are reported. The lazy `(.+?)\\.(\\d+...)` split (CR-12-4-P142/P153) keeps
+    digit-containing ids like `Foo.NET6.1.0.0` attributed correctly, and matching a longer id
+    (`Alpha.Pkg`) is unambiguous because the version anchor forces the boundary.
     """
     statuses: dict[str, dict[str, str]] = {}
-    if package_ids:
-        for package_id in sorted(package_ids, key=len, reverse=True):
-            pattern = re.compile(
-                rf"Successfully verified package '{re.escape(package_id)}\.(\d[0-9A-Za-z.+\-]*)'"
-            )
-            match = pattern.search(text)
-            if match:
-                next_match = re.search(r"Successfully verified package '", text[match.end():])
-                block_end = match.end() + next_match.start() if next_match else len(text)
-                block = text[match.start():block_end]
-                statuses[package_id.lower()] = {
-                    "signing_status": "verified",
-                    "timestamp_status": "verified" if _bounded_timestamp_evidence(block) else "missing",
-                }
-        return statuses
-
-    # CR-12-4-P113 (round-5): anchor the fallback pattern at the start of a line so a
-    # maliciously crafted `dotnet nuget verify` line cannot embed a fake "verified" line
-    # inside another package's evidence and shift the package_id capture. Caller always
-    # supplies `package_ids` in production; this fallback is for tests/fixtures.
-    # CR-12-4-P142 (round-6): `\d+` (one or more digits) — the prior `\d[0-9]+` required
-    # at least TWO digits in the major and failed `1.0.0`/`0.1.0` style versions.
-    # CR-12-4-P153 (round-7): the EH-6 concern about digit-containing package ids
-    # (`Foo.NET6.1.0.0`) was analyzed and found unfounded — the lazy `(.+?)` paired with
-    # the literal `\.\d+` and the trailing `'` anchor backtracks correctly: for
-    # `Foo.NET6.1.0.0'` it greedy-matches `Foo.NET6` as the package and `1.0.0` as the
-    # version. Pattern left intact; no code change.
-    pattern = re.compile(r"(?:^|\n)\s*Successfully verified package '(.+?)\.(\d+(?:\.[0-9A-Za-z.+\-]+)*)'")
-    for match in pattern.finditer(text):
-        next_match = re.search(r"Successfully verified package '", text[match.end():])
-        block_end = match.end() + next_match.start() if next_match else len(text)
-        block = text[match.start():block_end]
-        statuses[match.group(1).lower()] = {
+    allowed = {p.lower() for p in package_ids} if package_ids else None
+    prev_end = 0
+    for match in _SUCCESS_LINE.finditer(text):
+        region = text[prev_end:match.end()]
+        prev_end = match.end()
+        key = match.group(1).lower()
+        if allowed is not None and key not in allowed:
+            continue
+        statuses[key] = {
             "signing_status": "verified",
-            "timestamp_status": "verified" if _bounded_timestamp_evidence(block) else "missing",
+            "timestamp_status": "verified" if _timestamp_verified_in_region(region) else "missing",
         }
     return statuses
 
