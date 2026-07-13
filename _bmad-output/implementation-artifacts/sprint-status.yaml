@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-12T18:20:34+02:00
+last_updated: 2026-07-13T00:00:00+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -409,7 +409,8 @@ development_status:
   # 11-14 moved review -> done on 2026-07-12 (bmad-code-review; 7 approved patches applied, 3 pre-existing findings deferred, package-validation execution/expiry governance hardened, QueryRequest 3.0 removal approved, and focused/docs/package gates passed.)
   11-14-update-architecture-context-ux-and-package-compat-docs: done
   11-9-shell-layering-declaration-and-route-label-relocation: done
-  11-15-storage-scope-and-snapshot-publisher-consolidation: backlog
+  # 11-15 moved backlog -> ready-for-dev on 2026-07-13 (create-story; consolidate 6 duplicated effect-local TryResolveScope resolvers into one Scoped Services/StorageScopeResolver [adopting CommandPalette's throwing-accessor guard, fixing 5 latent throw-propagation bugs] and reuse a Services/SnapshotPublisher<T> primitive across the two replayable snapshot twins [ProjectionConnection + Reconciliation]. Both spec-11-15 intent-gap decisions resolved with user: A=six effects only [LastUsed/ScopeReadinessGate near-variants excluded]; B=two replayable twins only [BadgeCount Rx/Lifecycle/Feedback/events excluded; full M19 Rx-removal deferred to a follow-up]. New Roslyn source guard blocks effect-local TryResolveScope recurrence.)
+  11-15-storage-scope-and-snapshot-publisher-consolidation: ready-for-dev
   11-16-fatal-hydration-json-and-generated-literal-helper-consolidation: backlog
   11-17-mechanical-one-type-per-file-split: backlog
   11-18-loggermessage-migration-for-warnings-and-hot-paths: backlog
