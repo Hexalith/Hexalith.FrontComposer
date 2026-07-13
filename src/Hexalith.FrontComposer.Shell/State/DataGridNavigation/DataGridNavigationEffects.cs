@@ -179,7 +179,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "persist")) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "DataGrid", "persist")) {
             return;
         }
 
@@ -214,7 +214,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
-        if (!ScopeResolver.TryResolveScope(out tenantId, out userId, "persist")) {
+        if (!ScopeResolver.TryResolveScope(out tenantId, out userId, "DataGrid", "persist")) {
             return;
         }
 
@@ -264,7 +264,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             TryCancelAndDispose(pending);
         }
 
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "persist")) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "DataGrid", "persist")) {
             return;
         }
 
@@ -304,7 +304,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
             return;
         }
 
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "hydrate")) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "DataGrid", "hydrate")) {
             return;
         }
 
@@ -353,7 +353,7 @@ public sealed class DataGridNavigationEffects : IDisposable {
     }
 
     private async Task HydrateAsync(IDispatcher dispatcher) {
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "hydrate")) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "DataGrid", "hydrate")) {
             return;
         }
 

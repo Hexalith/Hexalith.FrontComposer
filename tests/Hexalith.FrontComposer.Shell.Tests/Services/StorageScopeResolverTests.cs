@@ -26,7 +26,7 @@ public sealed class StorageScopeResolverTests {
         CapturingLogger logger = new();
         StorageScopeResolver sut = new(Accessor(Tenant, User), logger);
 
-        bool ok = sut.TryResolveScope(out string tenantId, out string userId, "hydrate");
+        bool ok = sut.TryResolveScope(out string tenantId, out string userId, "Theme", "hydrate");
 
         ok.ShouldBeTrue();
         // Raw (un-escaped, un-lowercased) — canonicalization stays centralized in StorageKeys.
@@ -40,7 +40,7 @@ public sealed class StorageScopeResolverTests {
         CapturingLogger logger = new();
         StorageScopeResolver sut = new(accessor: null, logger);
 
-        bool ok = sut.TryResolveScope(out string tenantId, out string userId, "persist");
+        bool ok = sut.TryResolveScope(out string tenantId, out string userId, "Theme", "persist");
 
         ok.ShouldBeFalse();
         tenantId.ShouldBeEmpty();
@@ -59,7 +59,7 @@ public sealed class StorageScopeResolverTests {
         CapturingLogger logger = new();
         StorageScopeResolver sut = new(Accessor(tenant, user), logger);
 
-        bool ok = sut.TryResolveScope(out string tenantId, out string userId, "hydrate");
+        bool ok = sut.TryResolveScope(out string tenantId, out string userId, "Theme", "hydrate");
 
         ok.ShouldBeFalse();
         tenantId.ShouldBeEmpty();
@@ -75,7 +75,7 @@ public sealed class StorageScopeResolverTests {
         _ = accessor.UserId.Returns(_ => throw new InvalidOperationException("secret-user@corp"));
         StorageScopeResolver sut = new(accessor, logger);
 
-        bool ok = sut.TryResolveScope(out string tenantId, out string userId, "persist");
+        bool ok = sut.TryResolveScope(out string tenantId, out string userId, "Theme", "persist");
 
         ok.ShouldBeFalse();
         tenantId.ShouldBeEmpty();
@@ -93,10 +93,30 @@ public sealed class StorageScopeResolverTests {
         // Tenant blank → fail-closed; the (present) user value must never appear in any log message.
         StorageScopeResolver sut = new(Accessor(tenantId: "   ", userId: "secret-user@corp"), logger);
 
-        _ = sut.TryResolveScope(out _, out _, "persist");
+        _ = sut.TryResolveScope(out _, out _, "Theme", "persist");
 
         logger.Entries.ShouldNotBeEmpty();
         logger.Entries.ShouldAllBe(e => !e.Message.Contains("secret-user@corp", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void TryResolveScope_FailClosed_LogsPerFeatureAttribution() {
+        // Story 11.15 review (round 2): the consolidated resolver must still name the failing feature in
+        // the HFC2105 skip log — the six removed effect-local copies each logged a feature-specific
+        // message, so a generic "Storage {direction} skipped" line (which loses per-feature attribution
+        // and the effect logger category) is an observability regression.
+        CapturingLogger logger = new();
+        StorageScopeResolver sut = new(accessor: null, logger);
+
+        _ = sut.TryResolveScope(out _, out _, "Density", "hydrate");
+
+        logger.Entries.ShouldContain(
+            e => e.Level == LogLevel.Information
+                && e.Message.Contains(FcDiagnosticIds.HFC2105_StoragePersistenceSkipped, StringComparison.Ordinal)
+                && e.Message.Contains("Density", StringComparison.Ordinal)
+                && e.Message.Contains("hydrate", StringComparison.Ordinal),
+            customMessage: "HFC2105 skip log must name the failing feature (Density), not a generic 'Storage' message.");
+        logger.Entries.ShouldAllBe(e => !e.Message.Contains("Storage hydrate", StringComparison.Ordinal));
     }
 
     private static IUserContextAccessor Accessor(string? tenantId, string? userId) {

@@ -117,7 +117,7 @@ public sealed class DensityEffects(
     }
 
     private async Task HydrateAsync(IDispatcher dispatcher, bool useBootstrapTierCap) {
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Density", DirectionHydrate)) {
             return;
         }
 
@@ -223,7 +223,7 @@ public sealed class DensityEffects(
     }
 
     private async Task PersistAsync(DensityLevel? value) {
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Density", DirectionPersist)) {
             return;
         }
 

@@ -14,10 +14,15 @@ internal interface IStorageScopeResolver {
     /// </summary>
     /// <param name="tenantId">On success, the raw tenant identity; otherwise <see cref="string.Empty"/>.</param>
     /// <param name="userId">On success, the raw user identity; otherwise <see cref="string.Empty"/>.</param>
+    /// <param name="feature">
+    /// The persisted-feature name (e.g. <c>Theme</c> / <c>Density</c> / <c>Navigation</c> /
+    /// <c>DataGrid</c> / <c>Capability</c> / <c>Palette</c>) surfaced in the fail-closed diagnostic so a
+    /// skip log identifies which feature failed closed. Never a tenant/user value.
+    /// </param>
     /// <param name="direction">
     /// The operation direction (e.g. <c>hydrate</c> / <c>persist</c>) surfaced in the fail-closed
     /// diagnostic. Never a tenant/user value.
     /// </param>
     /// <returns><see langword="true"/> when both identities resolved; otherwise <see langword="false"/> (fail closed).</returns>
-    bool TryResolveScope(out string tenantId, out string userId, string direction);
+    bool TryResolveScope(out string tenantId, out string userId, string feature, string direction);
 }

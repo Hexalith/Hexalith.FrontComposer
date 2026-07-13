@@ -158,7 +158,7 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
     [EffectMethod]
     public async Task HandleCapabilityVisited(CapabilityVisitedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Capability", DirectionPersist)) {
             return;
         }
 
@@ -192,7 +192,7 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
     }
 
     private async Task HydrateSeenSetAsync(IDispatcher dispatcher) {
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Capability", DirectionHydrate)) {
             dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
                 ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
             return;

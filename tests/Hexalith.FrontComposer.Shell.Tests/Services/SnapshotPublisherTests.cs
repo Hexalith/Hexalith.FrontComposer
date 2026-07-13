@@ -162,28 +162,47 @@ public sealed class SnapshotPublisherTests {
     }
 
     [Fact]
-    public void Subscribe_ReplayRacingPublish_ObservesCurrentBeforeFresherSnapshot() {
-        SnapshotPublisher<Snap> sut = new(new Snap(1), NoOpFaultHandler);
-        var observed = new System.Collections.Concurrent.ConcurrentQueue<int>();
-        Thread? publisher = null;
+    public void Subscribe_ReplayRacingConcurrentPublish_NeverObservesFreshThenStale() {
+        // Story 11.15 review (round 2): the previous version triggered the competing Publish from INSIDE
+        // the replay handler, which forced [1,2] regardless of whether replay ran under the publisher
+        // lock — so it could not catch a regression that moves replay outside the lock. This version
+        // races Subscribe(replay:true) against Publish on independent threads (aligned by a Barrier) and
+        // asserts the joining subscriber's observation stream is monotonic non-decreasing (a fresher
+        // snapshot is never followed by a staler one). Correct code satisfies the invariant on EVERY
+        // interleaving, so there are zero false failures; a replay-outside-the-lock regression violates
+        // it under repeated load.
+        const int iterations = 1000;
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
 
-        using IDisposable _ = sut.Subscribe(
-            snapshot => {
-                if (snapshot.Value == 1) {
-                    publisher = new Thread(() => sut.Publish(new Snap(2))) { IsBackground = true };
-                    publisher.Start();
-                    SpinWait.SpinUntil(
-                            () => (publisher.ThreadState & (ThreadState.WaitSleepJoin | ThreadState.Stopped)) != 0,
-                            TimeSpan.FromSeconds(5))
-                        .ShouldBeTrue("The concurrent publisher must reach the publisher lock before replay returns.");
-                }
+        for (int i = 0; i < iterations; i++) {
+            SnapshotPublisher<Snap> sut = new(new Snap(1), NoOpFaultHandler);
+            var observed = new System.Collections.Concurrent.ConcurrentQueue<int>();
+            using Barrier gate = new(2);
+            IDisposable? subscription = null;
 
-                observed.Enqueue(snapshot.Value);
-            },
-            replay: true);
+            var subscriber = new Thread(() => {
+                gate.SignalAndWait(cancellationToken);
+                subscription = sut.Subscribe(s => observed.Enqueue(s.Value), replay: true);
+            }) { IsBackground = true };
+            var publisher = new Thread(() => {
+                gate.SignalAndWait(cancellationToken);
+                sut.Publish(new Snap(2));
+            }) { IsBackground = true };
 
-        publisher.ShouldNotBeNull();
-        publisher.Join(TimeSpan.FromSeconds(5)).ShouldBeTrue();
-        observed.ToArray().ShouldBe([1, 2]);
+            subscriber.Start();
+            publisher.Start();
+            subscriber.Join(TimeSpan.FromSeconds(5)).ShouldBeTrue();
+            publisher.Join(TimeSpan.FromSeconds(5)).ShouldBeTrue();
+            subscription?.Dispose();
+
+            int[] sequence = observed.ToArray();
+            for (int j = 1; j < sequence.Length; j++) {
+                sequence[j].ShouldBeGreaterThanOrEqualTo(
+                    sequence[j - 1],
+                    $"Iteration {i}: subscriber observed fresh-then-stale ordering [{string.Join(",", sequence)}].");
+            }
+
+            sut.Current.Value.ShouldBe(2);
+        }
     }
 }

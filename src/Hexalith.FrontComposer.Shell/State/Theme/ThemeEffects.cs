@@ -94,7 +94,7 @@ public class ThemeEffects(
     }
 
     private async Task HydrateAsync(string correlationId, IDispatcher dispatcher) {
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Theme", DirectionHydrate)) {
             return;
         }
 
@@ -145,7 +145,7 @@ public class ThemeEffects(
             _ => ThemeMode.System,
         };
 
-        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
+        if (!ScopeResolver.TryResolveScope(out string tenantId, out string userId, "Theme", DirectionPersist)) {
             await ApplyThemeAsync(mode).ConfigureAwait(false);
             return;
         }
