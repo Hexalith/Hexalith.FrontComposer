@@ -1,3 +1,32 @@
+## [3.0.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v2.0.4...v3.0.0) (2026-07-14)
+
+### ⚠ BREAKING CHANGES
+
+* update package validation baselines to 2.0.4 and adjust tests accordingly
+
+### Features
+
+* Add scripts for packing and validating FrontComposer NuGet packages ([54cd414](https://github.com/Hexalith/Hexalith.FrontComposer/commit/54cd4147e5bb6ab935a739979f7d7d156173e17c))
+* Enhance release evidence workflow with LLM benchmark and signing verification improvements ([19f8903](https://github.com/Hexalith/Hexalith.FrontComposer/commit/19f8903774c619b75c609af71130557244b771ef))
+
+### Bug Fixes
+
+* **build:** build the Aspire AppHost in Debug only, not the Release CI build ([4e49e4a](https://github.com/Hexalith/Hexalith.FrontComposer/commit/4e49e4ab94fea71f63cc2d3747f76092cdbbc813))
+* **build:** resolve Hexalith dependency mode independent of Configuration ([50d86fa](https://github.com/Hexalith/Hexalith.FrontComposer/commit/50d86fac88e8de9d18ecc819d7e7f6353d85ad1d))
+* **build:** restore the Aspire AppHost by building it in all configurations ([f7c4503](https://github.com/Hexalith/Hexalith.FrontComposer/commit/f7c45039e9a4e23d4854163f377e8ee3725cb82e))
+* **release:** recognize conventional breaking markers ([67d7c19](https://github.com/Hexalith/Hexalith.FrontComposer/commit/67d7c19c0c2f588b6d56e1b655dab0eea6ab1327))
+* **shell:** restore scope-skip attribution and guard fault fan-out ([#58](https://github.com/Hexalith/Hexalith.FrontComposer/issues/58)) ([6cfaad8](https://github.com/Hexalith/Hexalith.FrontComposer/commit/6cfaad8d687b8b36c1ba4b9f7d36213f34007c05))
+* update ExceptionGuard to unwrap wrapped process-fatal exceptions and restore null/empty guard in GeneratedLiteral ([23a59ad](https://github.com/Hexalith/Hexalith.FrontComposer/commit/23a59ad919b1c67ee05eede5a130c396841f6bbe))
+* update package validation baselines to 2.0.4 and adjust tests accordingly ([9ca3c82](https://github.com/Hexalith/Hexalith.FrontComposer/commit/9ca3c825a851ebbdd158e7ae13f5e91446da4fe7))
+* update status to review and restore subproject references for EventStore and Memories ([daa667f](https://github.com/Hexalith/Hexalith.FrontComposer/commit/daa667f8ac9a18cec39fcba32e6eb0dbd80e84b8))
+* update subproject reference for Hexalith.Builds ([3c6542f](https://github.com/Hexalith/Hexalith.FrontComposer/commit/3c6542fb9805e2613c12ae765cfc557b05f6bbf8))
+* update subproject references and document review findings for storage scope and snapshot publisher consolidation ([8af6e14](https://github.com/Hexalith/Hexalith.FrontComposer/commit/8af6e141aed0df941a6f0a8299e995191045a0b6))
+* update subproject references for Hexalith.Builds and Hexalith.Memories ([d05d723](https://github.com/Hexalith/Hexalith.FrontComposer/commit/d05d723d0732ef062c9a1b18be9af971136c3086))
+* update subproject references for Hexalith.EventStore and Hexalith.Memories ([5560bc5](https://github.com/Hexalith/Hexalith.FrontComposer/commit/5560bc5340def0e0cbaba7fa8f597e5b28f2d6da))
+* update subproject references for Hexalith.EventStore and Hexalith.Memories ([def2724](https://github.com/Hexalith/Hexalith.FrontComposer/commit/def2724572e098eee7577f1191e43945b218c073))
+* update subproject references for Hexalith.EventStore and Hexalith.Parties ([e914c61](https://github.com/Hexalith/Hexalith.FrontComposer/commit/e914c615ea395b469c6ca3fd53dafdad159e559e))
+* update subproject references for Hexalith.EventStore and Hexalith.Tenants ([91873c0](https://github.com/Hexalith/Hexalith.FrontComposer/commit/91873c0c845fa97cdb380109efdf200ed7e2a2e2))
+
 ## [2.0.4](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v2.0.3...v2.0.4) (2026-07-12)
 
 
