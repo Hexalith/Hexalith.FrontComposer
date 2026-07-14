@@ -3,7 +3,7 @@ title: 'Fix release run 29316660112 compatibility lifecycle'
 type: 'bugfix'
 created: '2026-07-14'
 status: 'in-review'
-review_loop_iteration: 0
+review_loop_iteration: 1
 baseline_commit: '6188288a0ccdf3394389019b732d630f25726925'
 context:
   - '{project-root}/references/Hexalith.AI.Tools/hexalith-llm-instructions.md'
