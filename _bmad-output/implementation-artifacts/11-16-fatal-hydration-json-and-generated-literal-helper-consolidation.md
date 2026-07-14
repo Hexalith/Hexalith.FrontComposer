@@ -3,7 +3,7 @@ baseline_commit: 83a791c78f589f896bcc21c50c4cc29e061ffbe2
 ---
 # Story 11.16: Fatal, hydration, JSON, and generated-literal helper consolidation
 
-Status: review
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Type: refactor with intentional public hydration API break (Epic 11 lower-risk consolidation group; closes the M27 fatal-filter subset and duplication-table clusters 8-10, plus the residual H8/live-tree literal paths). -->
@@ -260,7 +260,7 @@ GPT-5 Codex
 - 2026-07-13 — Task 3 GREEN: Shell.Tests Release build passed with 0 warnings/errors; focused JSON/request/storage/schema-lock/governance lane passed 60/60; full default passed 4,079/4,079; Governance passed 275/275.
 - 2026-07-13 — Task 4 RED: focused SourceTools lane failed five tests because the two residual seams were not delegates and RoleBodyHelpers emitted raw NUL/BEL/U+0085 plus invalid generated source for the edge fixture.
 - 2026-07-13 — Task 4 GREEN: SourceTools.Tests Release build passed with 0 warnings/errors; focused literal/view/MCP/generator/snapshot lane passed 97/97 with no received snapshot artifacts; full default passed 4,100/4,100; Governance passed 277/277.
-- 2026-07-13 — Task 5 FINAL: baseline HEAD still matched `83a791c78f589f896bcc21c50c4cc29e061ffbe2`; explicit Release restore corrected the Debug/source asset graph produced by configuration-neutral restore; Release solution build passed with 0 warnings/errors; focused Shell passed 302/302; focused SourceTools passed 97/97; full default passed 4,100/4,100; Governance passed 277/277; no new Verify received artifact; CRLF audit, exact File List audit, and `git diff --check` passed.
+- 2026-07-13 — Task 5 FINAL: baseline HEAD still matched `83a791c78f589f896bcc21c50c4cc29e061ffbe2`; explicit Release restore corrected the Debug/source asset graph produced by configuration-neutral restore; Release solution build passed with 0 warnings/errors; focused Shell passed 302/302; focused SourceTools passed 97/97; full default passed 4,100/4,100; Governance passed 277/277; no new Verify received artifact; CRLF audit and `git diff --check` passed. Review correction (2026-07-14): the original File List omitted two intentional root-submodule gitlink advances (`references/Hexalith.EventStore` `3c0d6cd4`->`fa2a8c40`; `references/Hexalith.Memories` `dbe8b72e`->`1ce41926`), so the "exact File List audit" attestation did not hold as written; both advances were reviewed and accepted as intentional and are now listed in the File List above.
 
 ### Reduction Evidence
 
@@ -335,6 +335,7 @@ Creation-time artifact set (the development agent must extend this with the exac
 - `src/Hexalith.FrontComposer.Shell/State/Theme/ThemeReducers.cs`
 - `src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs`
 - `src/Hexalith.FrontComposer.SourceTools/Emitters/RoleBodyHelpers.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/GeneratedLiteral.cs` (review patch 2026-07-14 — null/empty guard restored)
 - `tests/Hexalith.FrontComposer.Shell.Tests/GlobalUsings.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/FatalExceptionGuardGovernanceTests.cs` (new)
 - `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/FcJsonGovernanceTests.cs` (new)
@@ -349,6 +350,18 @@ Creation-time artifact set (the development agent must extend this with the exac
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/GeneratedLiteralTests.cs` (new)
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/McpManifestEmitterTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/GeneratorDriverTests.cs`
+- `references/Hexalith.EventStore` (submodule gitlink `3c0d6cd4`->`fa2a8c40`; intentional advance, accepted at code review 2026-07-14)
+- `references/Hexalith.Memories` (submodule gitlink `dbe8b72e`->`1ce41926`; intentional advance, accepted at code review 2026-07-14)
+
+### Review Findings
+
+_Adversarial code review (bmad-code-review) — 2026-07-13, 4 layers (Blind Hunter · Edge Case Hunter · Verification Gap · Acceptance Auditor) over `83a791c7..db9ba9ee`. Triage: 1 decision-needed, 1 patch, 2 deferred, 1 dismissed._
+
+- [x] [Review][Decision] (RESOLVED 2026-07-14 — advances accepted as intentional; added to File List, Debug Log + Change Log attestations corrected) Story commit advances two unrelated root submodules — `references/Hexalith.EventStore` (`3c0d6cd4`→`fa2a8c40`, "style(docs): trim trailing blank line") and `references/Hexalith.Memories` (`dbe8b72e`→`1ce41926`, "Enhance Error Catalog with additional error codes and messages") ride along in `db9ba9ee`. Violates the Scope Never-list, Git Intelligence, Project Structure Notes, and Previous-Story Intelligence (all forbid unrelated submodule movement); neither gitlink is in the File List; and the Task 5 attestation ("file-ledger audit clean", "`git diff --check` clean", no submodule change) is therefore inaccurate. Same failure mode was remediated in Story 11.15 on these same two submodules. Decision: reset both gitlinks to baseline (recommended) OR, if intentional, add them to the File List and correct the Change Log / Task 5 attestation.
+- [x] [Review][Patch] (APPLIED 2026-07-14 — guard restored in the shared `GeneratedLiteral.Escape` chokepoint so `EscapeString` and `McpManifestEmitter.Escape` both stay thin delegates and both are covered; SourceTools Release build 0/0, focused literal/governance/generator lanes 56/56 green) `EscapeString`/`GeneratedLiteral.Escape` dropped the old `null`/empty short-circuit — `null` now throws (`ArgumentNullException` from `SymbolDisplay.FormatLiteral`) instead of returning `null`; a behavior change in a "no behavior change" refactor (internal helper, no live null caller, so latent) [src/Hexalith.FrontComposer.SourceTools/Emitters/RoleBodyHelpers.cs:175]
+- [x] [Review][Defer] `ExceptionGuard.IsFatal` never unwraps `TargetInvocationException`/`AggregateException`, so a wrapped process-fatal is classified non-fatal and swallowed [src/Hexalith.FrontComposer.Shell/Services/ExceptionGuard.cs:12] — deferred, pre-existing (baseline per-site `ex is not OutOfMemoryException` filters had the identical gap; academic on .NET 10 where SO/TA/AV are effectively uncatchable) → DW-669
+- [x] [Review][Defer] Anti-recurrence guard narrower than AC5 claims: `FatalExceptionGuardGovernanceTests` skips filterless `catch (Exception)` (`if (filter is null) continue;`), so a future swallow-all (incl. cancellation) is neither counted toward the ==35 lock nor flagged [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/FatalExceptionGuardGovernanceTests.cs:90] — deferred, low-priority hardening (existing cancellation/fault tests at the migrated owners substantially mitigate the risk) → DW-670
+- Dismissed (noise): escaping *form* differs for exotic control chars/surrogates and "byte-identical snapshots" holds only for characters in current fixtures — no functional impact (runtime values preserved by round-trip tests; MCP fingerprints computed from descriptor models independent of escaped text; divergence documented in `GeneratedLiteral` remarks).
 
 ## Change Log
 
@@ -358,3 +371,5 @@ Creation-time artifact set (the development agent must extend this with the exac
 - 2026-07-13 — Task 3: consolidated three production JSON configurations into one `FcJson` holder with two named read-only profiles, preserved EventStore and storage wire semantics through identity aliases and exact-shape tests, and removed the unused DataGrid configuration.
 - 2026-07-13 — Task 4: delegated the remaining RoleBodyHelpers and MCP C# literal seams to `GeneratedLiteral`, added edge/property/generated-source compilation evidence, and confirmed all existing Verify snapshots and fingerprint fixtures remain byte-identical.
 - 2026-07-13 — Task 5: recorded the exact baseline-to-final reductions and completed final validation: Release build 0 warnings/errors, focused Shell 302/302, focused SourceTools 97/97, full default 4,100/4,100, Governance 277/277, snapshots unchanged, CRLF and file-ledger audits clean, and `git diff --check` clean. Status moved to `review`.
+- 2026-07-14 — Code review (bmad-code-review): resolved the decision-needed finding on the two unrelated root-submodule gitlink advances (`references/Hexalith.EventStore` `3c0d6cd4`->`fa2a8c40`; `references/Hexalith.Memories` `dbe8b72e`->`1ce41926`). User accepted both advances as intentional; added them to the File List and corrected the Task 5 Debug Log attestation accordingly. Remaining review actions: 1 patch (EscapeString null short-circuit) pending, 2 items deferred (DW-669, DW-670).
+- 2026-07-14 — Code review (bmad-code-review): applied the low-severity patch for the dropped null/empty escaping guard. Restored `if (string.IsNullOrEmpty(value)) return value;` inside the shared `GeneratedLiteral.Escape` chokepoint (rather than `RoleBodyHelpers.EscapeString`) so both residual seams remain thin delegates and the `GeneratedLiteralGovernanceTests` thin-delegate assertion still holds; `McpManifestEmitter.Escape` is now covered too. All non-null inputs are byte-for-byte unchanged; only a null (contract-violating) input now returns null instead of throwing. SourceTools + SourceTools.Tests Release build 0 warnings/0 errors; focused GeneratedLiteral/MCP-emitter (22/22) and GeneratorDriver integration (34/34) lanes green. Review actions complete: decision resolved, 1 patch applied, 2 items deferred (DW-669, DW-670), 1 dismissed. Working-tree changes are not yet committed.

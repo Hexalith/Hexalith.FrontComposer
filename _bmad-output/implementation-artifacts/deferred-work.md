@@ -1546,3 +1546,17 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/rel-2-align-frontcomposer-cicd-with-tenants.md`
   summary: `validate-consumer-package-references.py` uses a fixed `/tmp` work dir with no cleanup-on-failure, so concurrent local runs corrupt each other.
   evidence: `work_directory` (default `/tmp/hexalith-frontcomposer-consumer-package-smoke`) is wiped only at the *start* of a run (no `finally`/cleanup on exit). Two concurrent local invocations share the fixed path, so the second run's `shutil.rmtree` deletes the first run's in-flight build tree. Deferred: local-only — CI runners are isolated per job, so this has no CI impact. Evidence: `scripts/validate-consumer-package-references.py:248-251`.
+
+## Deferred from: code review of story-11.16 (2026-07-13)
+
+### DW-669: `ExceptionGuard.IsFatal` does not unwrap wrapped process-fatal exceptions
+
+- source_spec: `_bmad-output/implementation-artifacts/11-16-fatal-hydration-json-and-generated-literal-helper-consolidation.md`
+  summary: `ExceptionGuard.IsFatal` classifies only the outer exception type, so a process-fatal exception wrapped in `TargetInvocationException`/`AggregateException` is treated as non-fatal and swallowed.
+  evidence: `ExceptionGuard.IsFatal` (`src/Hexalith.FrontComposer.Shell/Services/ExceptionGuard.cs:12-16`) pattern-matches only the outer type against the four-type fatal set. A fatal one level down — e.g. an `OutOfMemoryException` as the `InnerException` of a `TargetInvocationException` from `type.GetCustomAttribute<...>()` in `Badges/ReflectionActionQueueProjectionCatalog.cs`, or aggregated in an `AggregateException` — returns `false` and is swallowed by the 35 `catch when (!ExceptionGuard.IsFatal(ex))` sites. Deferred: pre-existing — the baseline per-site `ex is not OutOfMemoryException` filters had the identical gap, so Story 11.16 centralizes but does not regress it; academic on .NET 10 where SO/TA/AV are effectively uncatchable. Centralization now makes an `InnerException` unwrap a one-line fix. Evidence: `src/Hexalith.FrontComposer.Shell/Services/ExceptionGuard.cs:12`.
+
+### DW-670: Fatal-guard governance test does not flag a filterless `catch (Exception)`
+
+- source_spec: `_bmad-output/implementation-artifacts/11-16-fatal-hydration-json-and-generated-literal-helper-consolidation.md`
+  summary: `FatalExceptionGuardGovernanceTests` skips catch clauses with no filter, so AC5's "cannot silently recur" guarantee does not cover a filterless swallow-all that could absorb cancellation.
+  evidence: `FatalExceptionGuardGovernanceTests.FindViolations` continues past any unfiltered catch (`if (filter is null) continue;`, `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/FatalExceptionGuardGovernanceTests.cs:90`). A future `catch (Exception) { }` — including one that swallows `OperationCanceledException` — would be neither counted toward the ==35 `IsFatal`-invocation lock nor flagged as an ad-hoc taxonomy, and the synthetic negative only exercises a filtered catch. Deferred: low-priority hardening; existing cancellation/fault-injection tests at the migrated infra owners (`ProjectionSubscriptionServiceTests`/`...FaultTests`, `ReconnectionReconciliationCoordinatorTests`, `ProjectionFallbackPollingDriverTests`, `PendingCommandPollingDriverTests`) substantially mitigate the silent-cancellation-regression risk. Harden by adding a synthetic-negative row for a filterless catch-all. Evidence: `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/FatalExceptionGuardGovernanceTests.cs:90`.
