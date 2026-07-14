@@ -648,8 +648,35 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v2.0");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v3.0");
         JsonArray suppressions = json["suppressions"]!.AsArray();
+
+        suppressions.Count.ShouldBe(23, "the 2.0.4 baseline leaves 20 hydration breaks and three worker relocations to govern for v3.0.");
+        JsonObject[] hydrationSuppressions = [.. suppressions
+            .Select(node => node!.AsObject())
+            .Where(item => item["ownerStory"]!.GetValue<string>() == "11-16-fatal-hydration-json-and-generated-literal-helper-consolidation")];
+        hydrationSuppressions.Length.ShouldBe(20);
+        hydrationSuppressions.Count(item => item["apiCompatDiagnosticId"]!.GetValue<string>() == "CP0001").ShouldBe(5);
+        hydrationSuppressions.Count(item => item["apiCompatDiagnosticId"]!.GetValue<string>() == "CP0002").ShouldBe(15);
+        hydrationSuppressions
+            .Where(item => item["apiCompatDiagnosticId"]!.GetValue<string>() == "CP0001")
+            .Select(item => item["oldSignature"]!.GetValue<string>())
+            .OrderBy(value => value, Ordinal)
+            .ShouldBe([
+                "T:Hexalith.FrontComposer.Shell.State.CommandPalette.CommandPaletteHydrationState",
+                "T:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationHydrationState",
+                "T:Hexalith.FrontComposer.Shell.State.Density.DensityHydrationState",
+                "T:Hexalith.FrontComposer.Shell.State.Navigation.NavigationHydrationState",
+                "T:Hexalith.FrontComposer.Shell.State.Theme.ThemeHydrationState",
+            ], ignoreOrder: false);
+        suppressions
+            .Select(node => node!.AsObject())
+            .Count(item => item["ownerStory"]!.GetValue<string>() == "11-9-shell-layering-declaration-and-route-label-relocation")
+            .ShouldBe(3);
+        suppressions
+            .Select(node => node!.AsObject())
+            .ShouldAllBe(item => item["targetRelease"]!.GetValue<string>() == "v3.0"
+                && item["expiresAfter"]!.GetValue<string>() == "v3.1");
 
         HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008"];
         Regex targetReleaseRegex = TargetReleaseRegex();
@@ -695,7 +722,7 @@ public sealed partial class DiagnosticRegistryTests {
                 newAssembly.ShouldBe("Hexalith.FrontComposer.Shell");
                 namespacePreserved.ShouldBeFalse($"{oldSig} is a namespace relocation and cannot claim namespace preservation.");
                 newSignature.ShouldNotBe(oldSig[2..], $"{oldSig} must name a different destination namespace.");
-                target.ShouldBe("v3.0", "Story 11.9 public worker relocations are next-major changes.");
+                target.ShouldBe("v3.0", "public hydration-type consolidation and worker relocations are next-major changes.");
                 Version.Parse(item["expiresAfter"]!.GetValue<string>()[1..])
                     .ShouldBeGreaterThan(Version.Parse(target[1..]), "CP0001 evidence must expire after its target release.");
             }
@@ -896,15 +923,17 @@ public sealed partial class DiagnosticRegistryTests {
 
         string directoryBuildTargets = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "Directory.Build.targets"), Encoding.UTF8);
         directoryBuildTargets.ShouldContain("<EnableFrontComposerPackageValidation Condition=\"'$(EnableFrontComposerPackageValidation)' == ''\">false</EnableFrontComposerPackageValidation>");
-        directoryBuildTargets.ShouldContain("<FrontComposerPackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationBaselineVersion)' == ''\">1.12.0</FrontComposerPackageValidationBaselineVersion>");
+        directoryBuildTargets.ShouldContain("<FrontComposerPackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationBaselineVersion)' == ''\">2.0.4</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
         directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldContain("<ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>");
         directoryBuildTargets.ShouldNotContain(">0.1.0</FrontComposerPackageValidationBaselineVersion>");
+        directoryBuildTargets.ShouldNotContain(">1.12.0</FrontComposerPackageValidationBaselineVersion>");
 
         string contractsUiProject = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"), Encoding.UTF8);
-        contractsUiProject.ShouldContain("<FrontComposerPackageValidationBaselineVersion>2.0.0</FrontComposerPackageValidationBaselineVersion>");
+        contractsUiProject.ShouldContain("<FrontComposerPackageValidationBaselineVersion>2.0.4</FrontComposerPackageValidationBaselineVersion>");
+        contractsUiProject.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.0</FrontComposerPackageValidationBaselineVersion>");
         contractsUiProject.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");
         contractsUiProject.ShouldNotContain("<EnablePackageValidation>false</EnablePackageValidation>");
 

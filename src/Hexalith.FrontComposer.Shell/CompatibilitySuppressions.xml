@@ -1,282 +1,30 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <!-- https://learn.microsoft.com/dotnet/fundamentals/package-validation/diagnostic-ids -->
 <Suppressions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreCommandClient.#ctor(System.Net.Http.IHttpClientFactory,Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreOptions},Hexalith.FrontComposer.Contracts.Lifecycle.IUlidFactory,Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor,Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreResponseClassifier,Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreCommandClient},Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions})</Target>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Hexalith.FrontComposer.Shell.State.CommandPalette.CommandPaletteHydrationState</Target>
     <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
     <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>
   </Suppression>
   <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreQueryClient.#ctor(System.Net.Http.IHttpClientFactory,Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreOptions},Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor,Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreResponseClassifier,Hexalith.FrontComposer.Shell.State.ETagCache.IETagCache,Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector,Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreQueryClient},Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions})</Target>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationHydrationState</Target>
     <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
     <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>
   </Suppression>
   <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.Infrastructure.Storage.LocalStorageService.#ctor(Microsoft.JSInterop.IJSRuntime,Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions},System.TimeProvider,Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.Infrastructure.Storage.LocalStorageService})</Target>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Hexalith.FrontComposer.Shell.State.Density.DensityHydrationState</Target>
     <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
     <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>
   </Suppression>
   <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.FrontComposerTenantContextAccessor.#ctor(Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor,Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions},Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.Infrastructure.Tenancy.FrontComposerTenantContextAccessor})</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.Options.FcShellOptionsThresholdValidator.Validate(System.String,Hexalith.FrontComposer.Contracts.FcShellOptions)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.Services.DevMode.ClipboardJSModule.#ctor(Microsoft.JSInterop.IJSRuntime,Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions},Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.Services.DevMode.ClipboardJSModule})</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.Services.DevMode.RazorEmitter.#ctor(Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions},Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.Services.DevMode.RazorEmitter})</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.ColumnVisibilityPersistenceEffect.HandleColumnVisibilityChangedAsync(Hexalith.FrontComposer.Contracts.Rendering.ColumnVisibilityChangedAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.ColumnVisibilityPersistenceEffect.HandleResetColumnVisibilityAsync(Hexalith.FrontComposer.Contracts.Rendering.ResetColumnVisibilityAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationEffects.HandleCaptureGridState(Hexalith.FrontComposer.Contracts.Rendering.CaptureGridStateAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationEffects.HandleClearGridState(Hexalith.FrontComposer.Contracts.Rendering.ClearGridStateAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationEffects.HandleRestoreGridState(Hexalith.FrontComposer.Contracts.Rendering.RestoreGridStateAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationFeature.#ctor(Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions})</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationReducers.ReduceCapture(Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState,Hexalith.FrontComposer.Contracts.Rendering.CaptureGridStateAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationReducers.ReduceClear(Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState,Hexalith.FrontComposer.Contracts.Rendering.ClearGridStateAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationReducers.ReducePruneExpired(Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState,Hexalith.FrontComposer.Contracts.Rendering.PruneExpiredAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationReducers.ReduceRestore(Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState,Hexalith.FrontComposer.Contracts.Rendering.RestoreGridStateAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.FilterEffects.HandleColumnFilterChanged(Hexalith.FrontComposer.Contracts.Rendering.ColumnFilterChangedAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.FilterEffects.HandleFiltersReset(Hexalith.FrontComposer.Contracts.Rendering.FiltersResetAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.FilterEffects.HandleGlobalSearchChanged(Hexalith.FrontComposer.Contracts.Rendering.GlobalSearchChangedAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.FilterEffects.HandleSortChanged(Hexalith.FrontComposer.Contracts.Rendering.SortChangedAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.FilterEffects.HandleStatusFilterToggled(Hexalith.FrontComposer.Contracts.Rendering.StatusFilterToggledAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageReducers.#ctor(Microsoft.Extensions.Options.IOptionsMonitor{Hexalith.FrontComposer.Contracts.FcShellOptions},Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageReducers})</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageReducers.ReduceClearPendingPages(Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState,Hexalith.FrontComposer.Contracts.Rendering.ClearPendingPagesAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageReducers.ReduceLoadPage(Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState,Hexalith.FrontComposer.Contracts.Rendering.LoadPageAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageReducers.ReduceLoadPageCancelled(Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState,Hexalith.FrontComposer.Contracts.Rendering.LoadPageCancelledAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageReducers.ReduceLoadPageFailed(Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState,Hexalith.FrontComposer.Contracts.Rendering.LoadPageFailedAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageReducers.ReduceLoadPageNotModified(Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState,Hexalith.FrontComposer.Contracts.Rendering.LoadPageNotModifiedAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageReducers.ReduceLoadPageSucceeded(Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState,Hexalith.FrontComposer.Contracts.Rendering.LoadPageSucceededAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageEffects.#ctor(Fluxor.IState{Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState},Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader,Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageEffects},Microsoft.Extensions.Options.IOptionsMonitor{Hexalith.FrontComposer.Contracts.FcShellOptions},System.TimeProvider,Microsoft.Extensions.Localization.IStringLocalizer{Hexalith.FrontComposer.Shell.Resources.FcShellResources})</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageEffects.HandleLoadPageAsync(Hexalith.FrontComposer.Contracts.Rendering.LoadPageAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.ScrollPersistenceEffect.HandleScrollCapturedAsync(Hexalith.FrontComposer.Contracts.Rendering.ScrollCapturedAction,Fluxor.IDispatcher)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.VirtualizationViewStateReducers.ReduceColumnVisibilityChanged(Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState,Hexalith.FrontComposer.Contracts.Rendering.ColumnVisibilityChangedAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.VirtualizationViewStateReducers.ReduceResetColumnVisibility(Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState,Hexalith.FrontComposer.Contracts.Rendering.ResetColumnVisibilityAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.VirtualizationViewStateReducers.ReduceScrollCaptured(Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState,Hexalith.FrontComposer.Contracts.Rendering.ScrollCapturedAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.Density.DensityEffects.#ctor(Hexalith.FrontComposer.Contracts.Storage.IStorageService,Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor,Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.Density.DensityEffects},Fluxor.IState{Hexalith.FrontComposer.Shell.State.Navigation.FrontComposerNavigationState},Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions},Fluxor.IState{Hexalith.FrontComposer.Shell.State.Density.FrontComposerDensityState})</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.ETagCache.ETagCacheService.#ctor(Hexalith.FrontComposer.Contracts.Storage.IStorageService,Microsoft.Extensions.Options.IOptionsMonitor{Hexalith.FrontComposer.Contracts.FcShellOptions},System.TimeProvider,Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.ETagCache.ETagCacheService})</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowReducers.ReduceCollapseRow(Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowState,Hexalith.FrontComposer.Contracts.Rendering.CollapseRowAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowReducers.ReduceExpandRow(Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowState,Hexalith.FrontComposer.Contracts.Rendering.ExpandRowAction)</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandPollingCoordinator.#ctor(Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService,Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandOutcomeResolver,Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStatusQuery,Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions},Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandPollingCoordinator},System.TimeProvider)</Target>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Hexalith.FrontComposer.Shell.State.Navigation.NavigationHydrationState</Target>
     <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
     <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>
@@ -284,20 +32,6 @@
   <Suppression>
     <DiagnosticId>CP0001</DiagnosticId>
     <Target>T:Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandPollingDriver</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStateService.#ctor(Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions},Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleStateService,Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor,System.TimeProvider,Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStateService})</Target>
-    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
-    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
-    <IsBaselineSuppression>true</IsBaselineSuppression>
-  </Suppression>
-  <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStateService.#ctor(Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions},Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleStateService,System.TimeProvider,Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStateService})</Target>
     <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
     <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>
@@ -317,15 +51,113 @@
     <IsBaselineSuppression>true</IsBaselineSuppression>
   </Suppression>
   <Suppression>
-    <DiagnosticId>CP0002</DiagnosticId>
-    <Target>M:Hexalith.FrontComposer.Shell.State.Theme.ThemeEffects.#ctor(Hexalith.FrontComposer.Contracts.Storage.IStorageService,Microsoft.Extensions.Options.IOptions{Hexalith.FrontComposer.Contracts.FcShellOptions},Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor,Microsoft.Extensions.Logging.ILogger{Hexalith.FrontComposer.Shell.State.Theme.ThemeEffects},Microsoft.FluentUI.AspNetCore.Components.IThemeService,Fluxor.IState{Hexalith.FrontComposer.Shell.State.Theme.FrontComposerThemeState})</Target>
+    <DiagnosticId>CP0001</DiagnosticId>
+    <Target>T:Hexalith.FrontComposer.Shell.State.Theme.ThemeHydrationState</Target>
     <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
     <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>
   </Suppression>
   <Suppression>
-    <DiagnosticId>CP0008</DiagnosticId>
-    <Target>T:Hexalith.FrontComposer.Shell.Options.FcShellOptionsThresholdValidator</Target>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.CommandPalette.FrontComposerCommandPaletteState.#ctor(System.Boolean,System.String,System.Collections.Immutable.ImmutableArray{Hexalith.FrontComposer.Shell.State.CommandPalette.PaletteResult},System.Collections.Immutable.ImmutableArray{System.String},System.Int32,Hexalith.FrontComposer.Shell.State.CommandPalette.PaletteLoadState,Hexalith.FrontComposer.Shell.State.CommandPalette.CommandPaletteHydrationState)</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.CommandPalette.FrontComposerCommandPaletteState.Deconstruct(System.Boolean@,System.String@,System.Collections.Immutable.ImmutableArray{Hexalith.FrontComposer.Shell.State.CommandPalette.PaletteResult}@,System.Collections.Immutable.ImmutableArray{System.String}@,System.Int32@,Hexalith.FrontComposer.Shell.State.CommandPalette.PaletteLoadState@,Hexalith.FrontComposer.Shell.State.CommandPalette.CommandPaletteHydrationState@)</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.CommandPalette.FrontComposerCommandPaletteState.get_HydrationState</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState.#ctor(System.Collections.Immutable.ImmutableDictionary{System.String,Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot},System.Int32,Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationHydrationState)</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState.Deconstruct(System.Collections.Immutable.ImmutableDictionary{System.String,Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot}@,System.Int32@,Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationHydrationState@)</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState.get_HydrationState</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.Density.FrontComposerDensityState.#ctor(System.Nullable{Hexalith.FrontComposer.Contracts.Rendering.DensityLevel},Hexalith.FrontComposer.Contracts.Rendering.DensityLevel,Hexalith.FrontComposer.Shell.State.Density.DensityHydrationState)</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.Density.FrontComposerDensityState.Deconstruct(System.Nullable{Hexalith.FrontComposer.Contracts.Rendering.DensityLevel}@,Hexalith.FrontComposer.Contracts.Rendering.DensityLevel@,Hexalith.FrontComposer.Shell.State.Density.DensityHydrationState@)</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.Density.FrontComposerDensityState.get_HydrationState</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.Navigation.FrontComposerNavigationState.#ctor(System.Boolean,System.Collections.Immutable.ImmutableDictionary{System.String,System.Boolean},Hexalith.FrontComposer.Shell.State.Navigation.ViewportTier,System.String,System.String,System.Boolean,Hexalith.FrontComposer.Shell.State.Navigation.NavigationHydrationState)</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.Navigation.FrontComposerNavigationState.Deconstruct(System.Boolean@,System.Collections.Immutable.ImmutableDictionary{System.String,System.Boolean}@,Hexalith.FrontComposer.Shell.State.Navigation.ViewportTier@,System.String@,System.String@,System.Boolean@,Hexalith.FrontComposer.Shell.State.Navigation.NavigationHydrationState@)</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.Navigation.FrontComposerNavigationState.get_HydrationState</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.Theme.FrontComposerThemeState.#ctor(Hexalith.FrontComposer.Shell.State.Theme.ThemeValue,Hexalith.FrontComposer.Shell.State.Theme.ThemeHydrationState)</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.Theme.FrontComposerThemeState.Deconstruct(Hexalith.FrontComposer.Shell.State.Theme.ThemeValue@,Hexalith.FrontComposer.Shell.State.Theme.ThemeHydrationState@)</Target>
+    <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
+    <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
+    <IsBaselineSuppression>true</IsBaselineSuppression>
+  </Suppression>
+  <Suppression>
+    <DiagnosticId>CP0002</DiagnosticId>
+    <Target>M:Hexalith.FrontComposer.Shell.State.Theme.FrontComposerThemeState.get_HydrationState</Target>
     <Left>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Left>
     <Right>lib/net10.0/Hexalith.FrontComposer.Shell.dll</Right>
     <IsBaselineSuppression>true</IsBaselineSuppression>

@@ -2,7 +2,7 @@
 
 ## Breaking-change disposition
 
-Story 11.16 intentionally replaces five public, source- and binary-distinct enum types with the single public `Hexalith.FrontComposer.Shell.State.HydrationState` type. The repository's approved `2.0.0` major-release posture is the compatibility boundary for this change; no alias or obsolete compatibility enum is retained.
+Story 11.16 intentionally replaces five public, source- and binary-distinct enum types with the single public `Hexalith.FrontComposer.Shell.State.HydrationState` type. Published `2.0.4` still exposes the five former enum types, so the approved `3.0.0` major release is the compatibility boundary for this change; no alias or obsolete compatibility enum is retained.
 
 Exact consumer migration mapping:
 
@@ -31,7 +31,7 @@ refactor(shell)!: consolidate hydration state
 
 BREAKING CHANGE: replace the five feature-specific hydration enums with
 Hexalith.FrontComposer.Shell.State.HydrationState. Consumers must update type
-references and recompile for FrontComposer 2.0.0.
+references and recompile for FrontComposer 3.0.0.
 ```
 
 This evidence does not authorize a direct commit to `main`; repository branch, commitlint, review, and PR rules still apply.

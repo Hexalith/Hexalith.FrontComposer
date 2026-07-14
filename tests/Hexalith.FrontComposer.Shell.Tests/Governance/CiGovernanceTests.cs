@@ -498,12 +498,9 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void SemanticReleasePack_EvaluatesBaseAndContractsUiPackageValidationBaselines() {
-        // REL-2 (2026-07-13, D5): the 2.0 package split landed (b6e985f4). The base
-        // package-validation baseline stays 1.12.0 (Contracts and the other base packages),
-        // while Contracts.UI overrides it to 2.0.0 for its binary-breaking public surface. Prove
-        // BOTH baselines are evaluated under EnableFrontComposerPackageValidation=true — "update
-        // to the 2.0 reality" does NOT mean every package jumped to 2.0.
+    public void SemanticReleasePack_EvaluatesPublished204PackageValidationBaseline() {
+        // The shared package-validation policy and the Contracts.UI explicit pin must both resolve
+        // to the latest published 2.x surface before semantic-release packs the 3.0 line.
         string root = RepositoryRoot();
 
         static (string enable, string baseline) EvaluatePackageValidation(string root, string project) {
@@ -526,13 +523,13 @@ public sealed class CiGovernanceTests {
             root,
             Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts", "Hexalith.FrontComposer.Contracts.csproj"));
         baseEnable.ShouldBe("true");
-        baseBaseline.ShouldBe("1.12.0");
+        baseBaseline.ShouldBe("2.0.4");
 
         (string uiEnable, string uiBaseline) = EvaluatePackageValidation(
             root,
             Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"));
         uiEnable.ShouldBe("true");
-        uiBaseline.ShouldBe("2.0.0");
+        uiBaseline.ShouldBe("2.0.4");
     }
 
     [Fact]

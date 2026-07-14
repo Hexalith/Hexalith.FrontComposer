@@ -50,17 +50,19 @@ public sealed class PackageBoundaryTests {
     }
 
     [Fact]
-    public void PackageValidation_Published20UsesItsReleasedBaseline() {
+    public void PackageValidation_Published204UsesLatestReleasedBaseline() {
         string root = FindRepoRoot();
         string project = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"));
         string targets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
 
-        project.ShouldContain("<FrontComposerPackageValidationBaselineVersion>2.0.0</FrontComposerPackageValidationBaselineVersion>");
+        project.ShouldContain("<FrontComposerPackageValidationBaselineVersion>2.0.4</FrontComposerPackageValidationBaselineVersion>");
+        project.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.0</FrontComposerPackageValidationBaselineVersion>");
         project.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");
         project.ShouldNotContain("<EnablePackageValidation>false</EnablePackageValidation>");
-        targets.ShouldContain("<FrontComposerPackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationBaselineVersion)' == ''\">1.12.0</FrontComposerPackageValidationBaselineVersion>");
+        targets.ShouldContain("<FrontComposerPackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationBaselineVersion)' == ''\">2.0.4</FrontComposerPackageValidationBaselineVersion>");
         targets.ShouldContain("Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\"");
         targets.ShouldNotContain(">0.1.0</FrontComposerPackageValidationBaselineVersion>");
+        targets.ShouldNotContain(">1.12.0</FrontComposerPackageValidationBaselineVersion>");
     }
 
     [Fact]
