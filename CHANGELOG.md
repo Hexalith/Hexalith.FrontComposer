@@ -1,3 +1,13 @@
+## [3.1.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.0.0...v3.1.0) (2026-07-14)
+
+### Features
+
+* add core migration and file handling functionality to Hexalith FrontComposer CLI ([7f53cf3](https://github.com/Hexalith/Hexalith.FrontComposer/commit/7f53cf3fede00fa1e4911bd0078b18d35b0b6978))
+
+### Bug Fixes
+
+* **release:** validate packages against 3.0 baseline ([bbdb02a](https://github.com/Hexalith/Hexalith.FrontComposer/commit/bbdb02aac40a02104a15f064761ae27e3958d2a2))
+
 ## [3.0.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v2.0.4...v3.0.0) (2026-07-14)
 
 ### ⚠ BREAKING CHANGES
