@@ -507,6 +507,8 @@ def check_checked_tasks(root: Path, story: Path, changed_files: list[str], metad
     for line_number, task in metadata.checked_tasks:
         if not task_needs_evidence(task):
             continue
+        if task_is_classified_defer(task):
+            continue
         task_paths = extract_path_mentions(task)
         missing_paths = sorted(
             path
@@ -532,6 +534,15 @@ def check_checked_tasks(root: Path, story: Path, changed_files: list[str], metad
 def task_needs_evidence(task: str) -> bool:
     lowered = task.lower()
     return any(keyword in lowered for keyword in TASK_EVIDENCE_KEYWORDS)
+
+
+def task_is_classified_defer(task: str) -> bool:
+    lowered = task.lower()
+    return (
+        lowered.startswith("[review][defer]")
+        and "deferred" in lowered
+        and ("pre-existing" in lowered or "preexisting" in lowered)
+    )
 
 
 def extract_path_mentions(text: str) -> set[str]:

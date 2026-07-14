@@ -269,6 +269,40 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("Story artifact validation passed.", result.stdout)
 
+    def test_checked_deferred_review_task_accepts_preexisting_path_classification(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                story_text(
+                    baseline=baseline,
+                    file_list="- `README.md` - test evidence.",
+                    tasks=(
+                        "- [x] [Review][Defer] Parse `.gitmodules` section and key names "
+                        "case-insensitively - deferred, pre-existing."
+                    ),
+                ),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("Story artifact validation passed.", result.stdout)
+
     def test_dotfile_file_list_entry_reconciles_without_stripping_leading_dot(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

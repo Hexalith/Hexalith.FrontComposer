@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-14T18:00:08+02:00
+# last_updated: 2026-07-14T18:54:21+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-14T18:00:08+02:00
+last_updated: 2026-07-14T18:54:21+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -426,7 +426,8 @@ development_status:
   # 11.17a moved ready-for-dev -> in-progress on 2026-07-14 (dev-story; baseline 6188288a0ccdf3394389019b732d630f25726925 preserved; starting mechanical CLI type split and non-vacuous organization/identity guards.)
   # 11.17a moved in-progress -> review on 2026-07-14 (dev-story; 3 modified + 36 new CLI production files, 39 internal declarations preserved, non-vacuous organization/identity guard added, Release/default/Governance/package/artifact gates green.)
   # 11.17a moved review -> in-progress on 2026-07-14 (bmad-code-review chunk 1; migration split reviewed by Blind Hunter, Verification Gap Reviewer, and Acceptance Auditor; Edge Case Hunter timed out. Removed one redundant split-time using, deferred 12 pre-existing migration behaviors, dismissed 7 non-findings; focused Release build 0 warnings/0 errors. Remaining agreed review chunks are still pending.)
-  11-17-cli-package-split: in-progress
+  # 11.17a moved in-progress -> review on 2026-07-14 (dev-story completion reconciliation; explicit deferred-review artifact classification fixed, Release/default/Governance/package/artifact/CRLF/diff gates green.)
+  11-17-cli-package-split: review
   # 11.17b backlog child (SourceTools DriftDetection package split; independently validated by drift/HFC/generated-byte lanes).
   # 11.17b moved backlog -> ready-for-dev on 2026-07-14 (create-story; 17 internal DriftDetection declarations -> 17 same-named files; preserve drift/HFC/generated-byte/P12 behavior and add a non-vacuous Drift organization/identity guard.)
   # 11.17b moved ready-for-dev -> in-progress on 2026-07-14 (dev-story; baseline 9a870d07ddf8c919e33f272cb3e17eb63dc040b8 preserved; starting mechanical SourceTools Drift split and non-vacuous organization/identity guard.)
