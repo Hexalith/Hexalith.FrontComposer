@@ -44,11 +44,11 @@ class PackReleasePackagesTests(unittest.TestCase):
         )
 
     def test_plan_for_current_release_forwards_validation_to_every_command(self) -> None:
-        result = self.run_plan("3.1.0-review.plan")
+        result = self.run_plan("3.2.0-review.plan")
 
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual("v3.1", payload["releaseLine"])
+        self.assertEqual("v3.2", payload["releaseLine"])
         self.assertEqual(8, len(payload["packages"]))
         self.assertEqual(16, len(payload["commands"]))
         self.assertEqual(8, sum(command[1] == "build" for command in payload["commands"]))
@@ -60,22 +60,22 @@ class PackReleasePackagesTests(unittest.TestCase):
         payload = json.loads(SUPPRESSIONS.read_text(encoding="utf-8"))
         self.assertEqual([], payload["suppressions"])
 
-        result = self.run_plan("3.1.0")
+        result = self.run_plan("3.2.0")
 
         self.assertEqual(0, result.returncode, result.stderr)
 
     def test_plan_rejects_release_line_that_differs_from_ledger(self) -> None:
         payload = json.loads(SUPPRESSIONS.read_text(encoding="utf-8"))
-        payload["currentRelease"] = "v3.2"
+        payload["currentRelease"] = "v3.3"
 
         with tempfile.TemporaryDirectory() as directory:
             ledger = pathlib.Path(directory) / "compatibility-suppressions.json"
             ledger.write_text(json.dumps(payload), encoding="utf-8")
-            result = self.run_plan("3.1.0", ledger)
+            result = self.run_plan("3.2.0", ledger)
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn(
-            "--version release line v3.1 does not match currentRelease v3.2",
+            "--version release line v3.2 does not match currentRelease v3.3",
             result.stderr,
         )
 
@@ -86,7 +86,7 @@ class PackReleasePackagesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             ledger = pathlib.Path(directory) / "compatibility-suppressions.json"
             ledger.write_text(json.dumps(payload), encoding="utf-8")
-            result = self.run_plan("3.1.0", ledger)
+            result = self.run_plan("3.2.0", ledger)
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("suppressions must be an array", result.stderr)
@@ -94,30 +94,30 @@ class PackReleasePackagesTests(unittest.TestCase):
     def test_plan_rejects_suppression_before_its_target_release(self) -> None:
         payload = json.loads(SUPPRESSIONS.read_text(encoding="utf-8"))
         payload["suppressions"] = [
-            {"targetRelease": "v3.2", "expiresAfter": "v4.0"}
+            {"targetRelease": "v3.3", "expiresAfter": "v4.0"}
         ]
 
         with tempfile.TemporaryDirectory() as directory:
             ledger = pathlib.Path(directory) / "compatibility-suppressions.json"
             ledger.write_text(json.dumps(payload), encoding="utf-8")
-            result = self.run_plan("3.1.0", ledger)
+            result = self.run_plan("3.2.0", ledger)
 
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("targetRelease v3.2 is later than --version 3.1.0", result.stderr)
+        self.assertIn("targetRelease v3.3 is later than --version 3.2.0", result.stderr)
 
     def test_plan_rejects_suppression_at_its_expiry_release(self) -> None:
         payload = json.loads(SUPPRESSIONS.read_text(encoding="utf-8"))
         payload["suppressions"] = [
-            {"targetRelease": "v3.0", "expiresAfter": "v3.1"}
+            {"targetRelease": "v3.0", "expiresAfter": "v3.2"}
         ]
 
         with tempfile.TemporaryDirectory() as directory:
             ledger = pathlib.Path(directory) / "compatibility-suppressions.json"
             ledger.write_text(json.dumps(payload), encoding="utf-8")
-            result = self.run_plan("3.1.0", ledger)
+            result = self.run_plan("3.2.0", ledger)
 
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("expiresAfter v3.1 has been reached by --version 3.1.0", result.stderr)
+        self.assertIn("expiresAfter v3.2 has been reached by --version 3.2.0", result.stderr)
 
 
 if __name__ == "__main__":
