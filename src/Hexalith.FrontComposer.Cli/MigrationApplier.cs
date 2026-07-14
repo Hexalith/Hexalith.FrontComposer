@@ -1,5 +1,3 @@
-using System.Text;
-
 namespace Hexalith.FrontComposer.Cli;
 
 internal static class MigrationApplier {

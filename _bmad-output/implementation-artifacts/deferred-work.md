@@ -1566,3 +1566,42 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-29319125606-fix-release-breaking-parser.md`
   summary: Make Release wait for both Commitlint and Quality so malformed commit metadata or a failing release-parser governance check cannot race publication.
   evidence: `.github/workflows/release.yml` starts after successful `CI` only; direct push `d9d2656e` demonstrated that Release still ran while the separate Commitlint and Quality workflows failed. The v3 compatibility package guard prevents the observed wrong-line publication, so changing workflow dependencies is broader pre-existing hardening and is explicitly outside this fix's approved trigger scope.
+
+## Deferred from: code review of 11-17-cli-package-split.md (2026-07-14)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Semantically bind obsolete API migration before replacing matching identifiers.
+  evidence: `MigrationDiagnosticScanner` reports every non-`nameof` identifier spelled `AddFrontComposerDebugOverlay`, and `FrontComposerMigrationCodeFixProvider` validates only token text/syntax before replacement (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticScanner.cs:17-25`; `FrontComposerMigrationCodeFixProvider.cs:38-44`). This can rewrite an unrelated local or API with the same spelling. The behavior is byte-for-byte pre-existing in the bundled baseline and the story explicitly excludes identifier-only migration-scanner cleanup.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Preserve SDK default compile items when a project also declares explicit linked sources.
+  evidence: `ProjectDocumentLoader.Load` uses the SDK-style default glob only when there are zero explicit `Compile Include` items; one linked source therefore suppresses discovery of ordinary default sources (`src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:20-37`). The loader behavior predates the mechanical split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Honor wildcard `Compile Exclude` patterns beyond exact paths and trailing `/**`.
+  evidence: `ProjectDocumentLoader.IsExcluded` recognizes only exact paths and directory-prefix exclusions ending in `/**`; patterns such as `**/*.g.cs` are not evaluated (`src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:137-151`). The README documents conservative MSBuild semantics, and this limitation predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Surface syntactically valid migration sidecars whose root has the wrong shape.
+  evidence: A JSON object without a `diagnostics` array resolves to an empty entry sequence rather than the sentinel used for malformed/unreadable sidecars (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:34-43,74-83`). The synthetic-only sidecar reader behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Fail closed when `.gitmodules` exists but cannot be read.
+  evidence: `SubmoduleBoundaryReader.Read` returns an empty boundary set on `IOException` or `UnauthorizedAccessException`, allowing apply-time safety checks to proceed without known submodule roots (`src/Hexalith.FrontComposer.Cli/SubmoduleBoundaryReader.cs:19-33`). This explicit fail-open policy predates Story 11.17a.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Parse `.gitmodules` section and key names case-insensitively.
+  evidence: Section and `path` recognition use `StringComparison.Ordinal` even though Git configuration names are case-insensitive, so legal case variants can evade boundary detection (`src/Hexalith.FrontComposer.Cli/SubmoduleBoundaryReader.cs:35-45`). This parser behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Include source encoding and BOM state in apply-time drift detection.
+  evidence: Planning and apply compare SHA-256 over decoded UTF-8 text only, then write with the planning-time encoding; an encoding-only change between phases can therefore be silently reverted (`src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:266-267`; `MigrationApplier.cs:21-35`). The story requires preserving the existing encoding/write behavior.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Preserve source-file metadata when replacing a migrated file.
+  evidence: `SourceFile.WriteAsync` writes a new same-directory temporary file and moves it over the target without copying Unix mode bits, ACLs, or other attributes (`src/Hexalith.FrontComposer.Cli/SourceFile.cs:20-35`). The replacement semantics are pre-existing and explicitly frozen by this mechanical story.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Recheck the 16 MiB limit after reading concurrently changing source files.
+  evidence: `SourceFile.ReadAsync` checks `FileInfo.Length` before `ReadAllBytesAsync` but does not bound or recheck the returned byte array, so a concurrently growing file can exceed the advertised cap (`src/Hexalith.FrontComposer.Cli/SourceFile.cs:8-17`). The race predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Represent terminal-newline state accurately in informational unified diffs.
+  evidence: `UnifiedDiff.SplitLines` maps a terminal newline to an extra empty element and cannot emit the conventional missing-final-newline marker (`src/Hexalith.FrontComposer.Cli/UnifiedDiff.cs:205-206`). Diffs are documented as informational rather than patch-applicable, and the behavior predates Story 11.17a.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Retain the configured trailing context at end-of-file in unified-diff hunks.
+  evidence: `ComputeHunks` decrements `hunkEnd` for up to `context` equal lines, removing rather than retaining the intended trailing context when the hunk reaches EOF (`src/Hexalith.FrontComposer.Cli/UnifiedDiff.cs:81-90`). The behavior predates the mechanical split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Preserve specific manual-only sidecar findings when a code action is unsupported.
+  evidence: `MigrationPlanner` builds sidecar-derived `fileEntries`, but the `unsupportedOperation` branch adds one generic entry and continues without appending those specific manual-only findings (`src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:104-121,174-179`). The behavior predates Story 11.17a.

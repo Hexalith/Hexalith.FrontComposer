@@ -225,7 +225,7 @@ public sealed class DriftByteStabilityRegressionTests {
 
     [Fact]
     public void GeneratedOutput_BomVsNoBom_IsByteIdentical() {
-        // CH-11 — production strips UTF-8 BOM (DriftDetection.cs ~480-496); a regression must show.
+        // CH-11 — production strips UTF-8 BOM (DriftBaselineLoader.cs); a regression must show.
         string bomBaseline = "﻿" + ValidBaseline;
         (string Hint, string Source)[] withBom = RunAndCollectGenerated([ProjectionA], bomBaseline);
         (string Hint, string Source)[] withoutBom = RunAndCollectGenerated([ProjectionA], ValidBaseline);

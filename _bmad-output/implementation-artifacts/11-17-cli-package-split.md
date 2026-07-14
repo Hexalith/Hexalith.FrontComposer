@@ -3,7 +3,7 @@ baseline_commit: 6188288a0ccdf3394389019b732d630f25726925
 ---
 # Story 11.17a: CLI package split
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Type: mechanical refactor; first child of the non-implementable Story 11.17 decomposition parent. -->
@@ -105,7 +105,23 @@ This story refines FR25, FR28, and FR29 and closes only the CLI slice of archite
   - [x] Inspect the final diff against the baseline. Every production change must be attributable to declaration movement or per-file using cleanup; reject behavioral edits, formatting churn, generated files, package/project changes, documentation drift, or gitlink movement.
   - [x] Build the final path ledger from both `git diff --name-status <baseline>` and `git ls-files --others --exclude-standard`; `git diff` alone does not see the 36 new unstaged files. Over that union, verify every changed/new `.cs` file has CRLF with no lone LF, no trailing-whitespace defect, and no unexpected generated/`*.received.*` artifact. Audit root gitlinks separately with `git diff --submodule=short <baseline> -- references`.
   - [x] Run configuration-aligned Release restore/build, the focused CLI executable lane, solution default lane, Governance lane, packaging smoke, received/generated artifact audit, changed-C# CRLF audit, and `git diff --check`.
-  - [x] Update this story's Dev Agent Record, exact File List, PublicAPI disposition, validation commands/results, and Change Log before moving the story to review. Test totals are evidence, not hard-coded expected counts.
+- [x] Update this story's Dev Agent Record, exact File List, PublicAPI disposition, validation commands/results, and Change Log before moving the story to review. Test totals are evidence, not hard-coded expected counts.
+
+### Review Findings
+
+- [x] [Review][Patch] Remove the redundant `System.Text` import introduced by the split [src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:1]
+- [x] [Review][Defer] Semantically bind obsolete API migration before replacing matching identifiers [src/Hexalith.FrontComposer.Cli/MigrationDiagnosticScanner.cs:17] — deferred, pre-existing
+- [x] [Review][Defer] Preserve SDK default compile items when a project also declares explicit linked sources [src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:30] — deferred, pre-existing
+- [x] [Review][Defer] Honor wildcard `Compile Exclude` patterns beyond exact paths and trailing `/**` [src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:137] — deferred, pre-existing
+- [x] [Review][Defer] Surface syntactically valid migration sidecars whose root has the wrong shape [src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:39] — deferred, pre-existing
+- [x] [Review][Defer] Fail closed when `.gitmodules` exists but cannot be read [src/Hexalith.FrontComposer.Cli/SubmoduleBoundaryReader.cs:24] — deferred, pre-existing
+- [x] [Review][Defer] Parse `.gitmodules` section and key names case-insensitively [src/Hexalith.FrontComposer.Cli/SubmoduleBoundaryReader.cs:38] — deferred, pre-existing
+- [x] [Review][Defer] Include source encoding and BOM state in apply-time drift detection [src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:30] — deferred, pre-existing
+- [x] [Review][Defer] Preserve source-file metadata when replacing a migrated file [src/Hexalith.FrontComposer.Cli/SourceFile.cs:20] — deferred, pre-existing
+- [x] [Review][Defer] Recheck the 16 MiB limit after reading concurrently changing source files [src/Hexalith.FrontComposer.Cli/SourceFile.cs:8] — deferred, pre-existing
+- [x] [Review][Defer] Represent terminal-newline state accurately in informational unified diffs [src/Hexalith.FrontComposer.Cli/UnifiedDiff.cs:205] — deferred, pre-existing
+- [x] [Review][Defer] Retain the configured trailing context at end-of-file in unified-diff hunks [src/Hexalith.FrontComposer.Cli/UnifiedDiff.cs:81] — deferred, pre-existing
+- [x] [Review][Defer] Preserve specific manual-only sidecar findings when a code action is unsupported [src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:174] — deferred, pre-existing
 
 ## Dev Notes
 
@@ -318,3 +334,4 @@ GPT-5 Codex
 
 - 2026-07-14: Created Story 11.17a from the mandatory 11.17 package/defect-class decomposition; resolved the nonexistent CLI PublicAPI baseline wording with internal type-shape plus shipped tool-contract evidence.
 - 2026-07-14: Split all 39 CLI offender declarations into same-named files (3 modified + 36 new production files), added non-vacuous organization/identity governance, preserved shipped CLI contracts, and passed Release/default/Governance/package/artifact integrity gates.
+- 2026-07-14: Completed the chunked migration-split code review; removed one redundant split-time import, deferred twelve pre-existing migration behaviors, dismissed seven non-findings, and revalidated the CLI test project Release build with 0 warnings and 0 errors.

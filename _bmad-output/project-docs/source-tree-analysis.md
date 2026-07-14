@@ -83,8 +83,25 @@ src/
 │   ├── Parsing/    # AttributeParser, CommandParser, ProjectionTemplateMarkerParser; IR: DomainModel, EquatableArray, FieldTypeMapper
 │   ├── Transforms/ # IR → emitter models (RazorModel, FluxorModel, CommandFluxorModel, RegistrationModel, SchemaFingerprintTransform…)
 │   ├── Emitters/   # RazorEmitter, FluxorEmitter, RegistrationEmitter, McpManifestEmitter, CommandFormEmitter…
-│   └── Diagnostics/# DiagnosticDescriptors (HFC1001–HFC1070), accessibility analyzers, hot-reload classifier
-│   └── Drift/      # DriftDetection.cs — options, baseline load/parse, comparison, fact types
+│   ├── Diagnostics/# DiagnosticDescriptors (HFC1001–HFC1070), accessibility analyzers, hot-reload classifier
+│   └── Drift/      # one internal top-level type per file
+│       ├── DriftConstants.cs
+│       ├── DriftOptions.cs
+│       ├── DriftOptionsResult.cs
+│       ├── DriftBaselineInput.cs
+│       ├── DriftBaselineLoadResult.cs
+│       ├── DriftBaselineSet.cs
+│       ├── DriftBaselineContract.cs
+│       ├── DriftBaselineProperty.cs
+│       ├── DriftBaselineLoader.cs
+│       ├── DriftCurrentContract.cs
+│       ├── DriftCurrentProperty.cs
+│       ├── DriftCurrentSnapshot.cs
+│       ├── DriftComparisonResult.cs
+│       ├── DriftComparisonService.cs
+│       ├── DriftDiagnosticFact.cs
+│       ├── DriftSanitizer.cs
+│       └── DriftDiagnosticDescriptors.cs
 │
 ├── Hexalith.FrontComposer.Shell/          # LAYER 2 — Blazor front shell (net10.0)
 │   ├── Components/   # ★ Blazor components (see component-inventory.md): Layout, Navigation, Badges,
