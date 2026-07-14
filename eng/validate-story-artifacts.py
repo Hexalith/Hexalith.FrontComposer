@@ -89,6 +89,28 @@ TASK_EVIDENCE_KEYWORDS = (
     "verification",
     "wire",
 )
+TASK_PATH_SUFFIXES = {
+    ".cs",
+    ".csproj",
+    ".css",
+    ".js",
+    ".json",
+    ".md",
+    ".props",
+    ".ps1",
+    ".py",
+    ".razor",
+    ".sh",
+    ".slnx",
+    ".targets",
+    ".toml",
+    ".ts",
+    ".tsx",
+    ".txt",
+    ".xml",
+    ".yaml",
+    ".yml",
+}
 
 
 @dataclass(frozen=True)
@@ -520,7 +542,14 @@ def extract_path_mentions(text: str) -> set[str]:
             continue
         if any(token in normalized for token in ("*", "?")):
             continue
-        if "/" in normalized or "." in Path(normalized).name:
+        if "/" in normalized:
+            paths.add(normalized)
+            continue
+        if normalized.startswith("."):
+            if normalized.lower() not in TASK_PATH_SUFFIXES:
+                paths.add(normalized)
+            continue
+        if Path(normalized).suffix.lower() in TASK_PATH_SUFFIXES:
             paths.add(normalized)
     return paths
 

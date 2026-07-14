@@ -235,6 +235,40 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertIn("checked task lacks evidence", result.stderr)
             self.assertIn("src/missing.txt", result.stderr)
 
+    def test_checked_task_ignores_extension_and_assembly_name_tokens(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                story_text(
+                    baseline=baseline,
+                    file_list="- `README.md` - test evidence.",
+                    tasks=(
+                        "- [x] Parse production `.cs` files for direct declarations.\n"
+                        "- [x] Run the `Hexalith.FrontComposer.Cli.Tests` suite."
+                    ),
+                ),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("Story artifact validation passed.", result.stdout)
+
     def test_dotfile_file_list_entry_reconciles_without_stripping_leading_dot(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -1,7 +1,5 @@
 namespace Hexalith.FrontComposer.Cli;
 
-internal sealed class CommandLineException(string message) : Exception(message);
-
 internal sealed class CommandOptions {
     private static readonly HashSet<string> AllowedShortOptions = new(StringComparer.Ordinal) { "h" };
 
