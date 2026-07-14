@@ -18,5 +18,6 @@ namespace, and source migration steps.
 
 Available guides:
 
+- [3.1 to 4.0](3.1-to-4.0.md)
 - [9.1 to 9.2](9.1-to-9.2.md)
 - [1.12 to 2.0](1.12-to-2.0.md)

@@ -15,11 +15,16 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Mcp\Hexalith.FrontComposer.Mcp.csproj" />
     <PackageReference Include="BenchmarkDotNet" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.v3.assert" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\docs\skills\frontcomposer\benchmark-prompts\v1\prompt-set.json"
+                      LogicalName="Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json" />
   </ItemGroup>
 </Project>

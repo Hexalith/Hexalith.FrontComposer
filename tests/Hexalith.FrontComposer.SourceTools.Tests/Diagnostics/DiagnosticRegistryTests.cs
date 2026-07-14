@@ -33,6 +33,34 @@ public sealed partial class DiagnosticRegistryTests {
     private static readonly StringComparer OrdinalIgnoreCase = StringComparer.OrdinalIgnoreCase;
     private static readonly (int Start, int End)[] ExpectedRangeBounds =
         [(1, 999), (1000, 1999), (2000, 2999), (3000, 3999), (4000, 4999), (5000, 5999)];
+    private static readonly string[] ExpectedMcpBenchmarkRemovalTargets = [
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkArtifactBuildResult",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkArtifactWriter",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkBaselineArtifact",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkBaselinePolicy",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkBaselineWriteDecision",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkBudgetPolicy",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkBudgetState",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkBudgetStatus",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkCacheKey",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkCachePolicy",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkDeterminismPolicy",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkEvidencePath",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkEvidenceStatus",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkGate",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkGateResult",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkGateStatus",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkModelConfig",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkOfflineScorer",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkPrompt",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkPromptSet",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkProviderCapabilities",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkProviderRequest",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkRedactionStatus",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkResult",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkScore",
+        "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkSummarySanitizer",
+    ];
 
     private static readonly HashSet<string> AllowedRedactionClasses = new(Ordinal) {
         "source-metadata-only",
@@ -648,14 +676,15 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v3.1");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.0");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
-        suppressions.ShouldBeEmpty("the published 3.0.0 baseline makes the prior v3.0 compatibility suppressions stale.");
+        suppressions.Count.ShouldBe(26, "v4.0 governs one exact row per removed public MCP benchmark type.");
 
         HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008"];
         Regex targetReleaseRegex = TargetReleaseRegex();
         HashSet<(string Package, string Tfm, string Diagnostic, string Old)> uniqueness = [];
+        var mcpBenchmarkRemovalTargets = new List<string>();
 
         foreach (JsonNode? node in suppressions) {
             JsonObject item = node!.AsObject();
@@ -702,6 +731,19 @@ public sealed partial class DiagnosticRegistryTests {
                     .ShouldBeGreaterThan(Version.Parse(target[1..]), "CP0001 evidence must expire after its target release.");
             }
 
+            if (package == "Hexalith.FrontComposer.Mcp") {
+                tfm.ShouldBe("net10.0");
+                apiCompatDiagnosticId.ShouldBe("CP0001", "MCP benchmark removals are exact baseline type removals.");
+                ExpectedMcpBenchmarkRemovalTargets.ShouldContain(oldSig);
+                newState.ShouldBe(
+                    "removed from the MCP runtime; repository harness relocated to Hexalith.FrontComposer.Shell.Tests.Bench; no runtime NuGet replacement");
+                target.ShouldBe("v4.0");
+                item["expiresAfter"]!.GetValue<string>().ShouldBe("v4.1");
+                item["ownerStory"]!.GetValue<string>().ShouldBe("11-17-mcp-runtime-split-and-benchmark-relocation");
+                item["reason"]!.GetValue<string>().ShouldBe("intentional-major-break");
+                mcpBenchmarkRemovalTargets.Add(oldSig);
+            }
+
             string trimmed = rationale.Trim();
             trimmed.Length.ShouldBeInRange(16, 400, $"rationale must be 16-400 visible chars (got {trimmed.Length}).");
             if (trimmed.Any(char.IsControl)) {
@@ -710,6 +752,11 @@ public sealed partial class DiagnosticRegistryTests {
 
             uniqueness.Add((package, tfm, apiCompatDiagnosticId, oldSig)).ShouldBeTrue($"duplicate suppression row for ({package}, {tfm}, {apiCompatDiagnosticId}, {oldSig}).");
         }
+
+        mcpBenchmarkRemovalTargets.OrderBy(value => value, Ordinal).ShouldBe(
+            ExpectedMcpBenchmarkRemovalTargets.OrderBy(value => value, Ordinal),
+            ignoreOrder: false,
+            customMessage: "The v4.0 MCP ledger must contain exactly one row for each removed public benchmark type.");
 
         string[] trackedRows = [.. suppressions
             .Select(node => node!.AsObject())
@@ -732,6 +779,10 @@ public sealed partial class DiagnosticRegistryTests {
                     new[] { "CP0001", "CP0002", "CP0008" }.ShouldContain(
                         diagnosticId,
                         "Shell suppressions are exact type relocations, member assembly-binding changes, or interface changes.");
+                }
+                else if (package == "Hexalith.FrontComposer.Mcp") {
+                    diagnosticId.ShouldBe("CP0001", "MCP suppressions are exact benchmark type removals.");
+                    ExpectedMcpBenchmarkRemovalTargets.ShouldContain(item.Element("Target")!.Value);
                 }
                 else {
                     Assert.Fail($"{package} has an unreviewed package-validation suppression file.");

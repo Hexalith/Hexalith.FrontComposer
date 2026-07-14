@@ -102,8 +102,8 @@ python eng/llm_benchmark.py validate-prompt-set --root . --output artifacts/benc
 # Check monthly provider budget metadata. Non-zero exit means no API spend is allowed.
 python eng/llm_benchmark.py budget-status --budget .github/benchmark-budget.json --output artifacts/benchmark/budget.json
 
-# Run the benchmark contract tests.
-dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --filter FullyQualifiedName~BenchmarkHarnessTests
+# Run the repository-maintainer benchmark contract tests from the non-packable Bench executable.
+dotnet test tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj --filter "Category=Performance&FullyQualifiedName~BenchmarkHarnessTests"
 
 # Dry-run package inventory and release evidence gates.
 python eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output artifacts/release/package-inventory.json

@@ -18,6 +18,21 @@ VALIDATION_PROPERTY = "-p:EnableFrontComposerPackageValidation=true"
 
 
 class PackReleasePackagesTests(unittest.TestCase):
+    @staticmethod
+    def current_release_version(payload: dict[str, object]) -> str:
+        return f"{str(payload['currentRelease'])[1:]}.0"
+
+    @staticmethod
+    def approved_v4_payload() -> dict[str, object]:
+        return {
+            "schemaVersion": "2.0",
+            "currentRelease": "v4.0",
+            "suppressions": [
+                {"targetRelease": "v4.0", "expiresAfter": "v4.1"}
+                for _ in range(26)
+            ],
+        }
+
     def run_plan(
         self,
         version: str,
@@ -44,11 +59,13 @@ class PackReleasePackagesTests(unittest.TestCase):
         )
 
     def test_plan_for_current_release_forwards_validation_to_every_command(self) -> None:
-        result = self.run_plan("3.1.0-review.plan")
+        ledger = json.loads(SUPPRESSIONS.read_text(encoding="utf-8"))
+        version = f"{self.current_release_version(ledger)}-review.plan"
+        result = self.run_plan(version)
 
         self.assertEqual(0, result.returncode, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual("v3.1", payload["releaseLine"])
+        self.assertEqual(ledger["currentRelease"], payload["releaseLine"])
         self.assertEqual(8, len(payload["packages"]))
         self.assertEqual(16, len(payload["commands"]))
         self.assertEqual(8, sum(command[1] == "build" for command in payload["commands"]))
@@ -56,26 +73,26 @@ class PackReleasePackagesTests(unittest.TestCase):
         for command in payload["commands"]:
             self.assertIn(VALIDATION_PROPERTY, command)
 
-    def test_plan_accepts_empty_current_suppression_ledger(self) -> None:
+    def test_plan_accepts_current_suppression_ledger(self) -> None:
         payload = json.loads(SUPPRESSIONS.read_text(encoding="utf-8"))
-        self.assertEqual([], payload["suppressions"])
-
-        result = self.run_plan("3.1.0")
+        result = self.run_plan(self.current_release_version(payload))
 
         self.assertEqual(0, result.returncode, result.stderr)
 
     def test_plan_rejects_release_line_that_differs_from_ledger(self) -> None:
         payload = json.loads(SUPPRESSIONS.read_text(encoding="utf-8"))
-        payload["currentRelease"] = "v3.2"
+        requested_version = self.current_release_version(payload)
+        requested_line = f"v{requested_version.rsplit('.', 1)[0]}"
+        payload["currentRelease"] = "v9.9"
 
         with tempfile.TemporaryDirectory() as directory:
             ledger = pathlib.Path(directory) / "compatibility-suppressions.json"
             ledger.write_text(json.dumps(payload), encoding="utf-8")
-            result = self.run_plan("3.1.0", ledger)
+            result = self.run_plan(requested_version, ledger)
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn(
-            "--version release line v3.1 does not match currentRelease v3.2",
+            f"--version release line {requested_line} does not match currentRelease v9.9",
             result.stderr,
         )
 
@@ -118,6 +135,45 @@ class PackReleasePackagesTests(unittest.TestCase):
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("expiresAfter v3.1 has been reached by --version 3.1.0", result.stderr)
+
+    def test_v4_plan_rejects_suppressions_before_target_release(self) -> None:
+        payload = self.approved_v4_payload()
+
+        with tempfile.TemporaryDirectory() as directory:
+            ledger = pathlib.Path(directory) / "compatibility-suppressions.json"
+            ledger.write_text(json.dumps(payload), encoding="utf-8")
+            result = self.run_plan("3.1.1", ledger)
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("targetRelease v4.0 is later than --version 3.1.1", result.stderr)
+
+    def test_v4_plan_accepts_exact_approved_release_line(self) -> None:
+        payload = self.approved_v4_payload()
+        self.assertEqual(26, len(payload["suppressions"]))
+
+        with tempfile.TemporaryDirectory() as directory:
+            ledger = pathlib.Path(directory) / "compatibility-suppressions.json"
+            ledger.write_text(json.dumps(payload), encoding="utf-8")
+            result = self.run_plan("4.0.0-review.1117c", ledger)
+
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_v41_plan_rejects_stale_v4_suppressions_until_removed(self) -> None:
+        payload = self.approved_v4_payload()
+
+        with tempfile.TemporaryDirectory() as directory:
+            ledger = pathlib.Path(directory) / "compatibility-suppressions.json"
+            ledger.write_text(json.dumps(payload), encoding="utf-8")
+            stale_result = self.run_plan("4.1.0", ledger)
+
+            payload["currentRelease"] = "v4.1"
+            payload["suppressions"] = []
+            ledger.write_text(json.dumps(payload), encoding="utf-8")
+            advanced_result = self.run_plan("4.1.0", ledger)
+
+        self.assertNotEqual(0, stale_result.returncode)
+        self.assertIn("expiresAfter v4.1 has been reached by --version 4.1.0", stale_result.stderr)
+        self.assertEqual(0, advanced_result.returncode, advanced_result.stderr)
 
 
 if __name__ == "__main__":

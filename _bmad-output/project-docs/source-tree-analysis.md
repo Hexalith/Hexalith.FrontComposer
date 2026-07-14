@@ -119,7 +119,7 @@ src/
 │   ├── Invocation/   # CommandInvoker, ProjectionReader, LifecycleTracker, ToolAdmissionService
 │   ├── Schema/       # SchemaNegotiation (McpSchemaNegotiator), runtime baseline/aggregator
 │   ├── Rendering/    # Markdown projection renderer
-│   ├── Skills/       # ★ SkillCorpus.cs — parser/loader/validators + skill resource provider
+│   ├── Skills/       # ★ one-type-per-file runtime corpus parser/loader/validators + skill resource provider
 │   ├── docs/skills/frontcomposer/   # markdown corpus embedded as assembly resources
 │   └── FrontComposerMcpDescriptorRegistry.cs, HttpFrontComposerMcpAgentContextAccessor.cs, FrontComposerMcpOptions.cs
 │
@@ -150,9 +150,9 @@ tests/
 ├── Hexalith.FrontComposer.Contracts.UI.Tests/  # UI ownership, API, and package-consumer tests
 ├── Hexalith.FrontComposer.Shell.Tests/         # ★ largest: bUnit component tests, Fluxor E2E, Pact, a11y,
 │                                               #   Architecture/ tripwires, Governance/, SlotMappingRegressionTests
-├── Hexalith.FrontComposer.Shell.Tests.Bench/   # standalone BenchmarkDotNet exe (PaletteScorerBench)
+├── Hexalith.FrontComposer.Shell.Tests.Bench/   # non-packable benchmark exe: PaletteScorerBench + LLM Skills harness
 ├── Hexalith.FrontComposer.SourceTools.Tests/   # generator tests: CompilationHelper + Verify snapshots, drift
-├── Hexalith.FrontComposer.Mcp.Tests/           # MCP hosting/auth/manifest/skill/schema/invocation tests (NSubstitute)
+├── Hexalith.FrontComposer.Mcp.Tests/           # MCP hosting/auth/manifest/runtime-skill/schema/invocation tests (NSubstitute)
 ├── Hexalith.FrontComposer.Cli.Tests/           # CLI inspect/migrate via CliApplication.RunAsync + CliFixture
 ├── Hexalith.FrontComposer.Testing.Tests/       # self-verification + PackageBoundaryTests (public API lock)
 └── e2e/                                         # Playwright e2e (npm) — a11y + visual suites (see package.json)

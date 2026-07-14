@@ -213,12 +213,11 @@ public sealed class SkillResourceTests {
     }
 
     [Fact]
-    public void PackagingFootprint_EmbedsAllSkillCorpusMarkdownAndPromptSet() {
+    public void PackagingFootprint_EmbedsAllSkillCorpusMarkdownButNoBenchmarkPrompt() {
         // P-30: the .Mcp assembly carries every skill corpus markdown file as an embedded
-        // resource plus the v1 benchmark prompt-set JSON. A regression that drops the embed
-        // (e.g., csproj edit) would cause the loader to silently see fewer resources, so we
-        // assert the count + presence here. This stands in for a full `dotnet pack` content
-        // assertion which is heavier to execute in test.
+        // resource. The benchmark prompt-set belongs only to the non-packable Bench executable.
+        // A regression that drops markdown or re-embeds benchmark evidence in MCP would violate
+        // the runtime/package boundary, so both sides are asserted here.
         System.Reflection.Assembly mcpAssembly = typeof(FrontComposerSkillResourceProvider).Assembly;
         string[] embeddedNames = mcpAssembly.GetManifestResourceNames();
 
@@ -226,7 +225,7 @@ public sealed class SkillResourceTests {
                 && n.EndsWith(".md", StringComparison.Ordinal))
             .Count()
             .ShouldBeGreaterThanOrEqualTo(11);
-        embeddedNames.ShouldContain("Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json");
+        embeddedNames.ShouldNotContain("Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json");
     }
 
     private static RequestContext<ReadResourceRequestParams> Request(

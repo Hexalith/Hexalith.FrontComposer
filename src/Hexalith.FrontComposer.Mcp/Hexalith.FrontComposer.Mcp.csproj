@@ -17,6 +17,7 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.FrontComposer.Mcp.Tests" />
+    <InternalsVisibleTo Include="Hexalith.FrontComposer.Shell.Tests.Bench" />
   </ItemGroup>
   <ItemGroup>
     <!-- Story 8-5 packaging contract: corpus markdown ships as embedded resources only.
@@ -27,7 +28,5 @@
          either way via SkillCorpusLoader.ToPath. -->
     <EmbeddedResource Include="..\..\docs\skills\frontcomposer\**\*.md"
                       LogicalName="Hexalith.FrontComposer.Mcp.Skills.%(RecursiveDir)%(Filename)%(Extension)" />
-    <EmbeddedResource Include="..\..\docs\skills\frontcomposer\benchmark-prompts\v1\prompt-set.json"
-                      LogicalName="Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json" />
   </ItemGroup>
 </Project>

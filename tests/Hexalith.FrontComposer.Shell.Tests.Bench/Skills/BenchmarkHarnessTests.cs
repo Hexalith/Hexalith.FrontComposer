@@ -1,17 +1,95 @@
+using System.Reflection;
+
 using Hexalith.FrontComposer.Mcp.Skills;
 
 using Shouldly;
 
-namespace Hexalith.FrontComposer.Mcp.Tests.Skills;
+namespace Hexalith.FrontComposer.Shell.Tests.Bench.Skills;
 
+[Trait("Category", "Performance")]
 public sealed class BenchmarkHarnessTests {
+    private static readonly string[] BenchmarkTypeNames = [
+        "SkillBenchmarkPrompt",
+        "SkillBenchmarkPromptSet",
+        "SkillBenchmarkModelConfig",
+        "SkillBenchmarkCacheKey",
+        "SkillBenchmarkCachePolicy",
+        "SkillBenchmarkRedactionStatus",
+        "SkillBenchmarkResult",
+        "SkillBenchmarkEvidenceStatus",
+        "SkillBenchmarkBudgetStatus",
+        "SkillBenchmarkBaselineWriteDecision",
+        "SkillBenchmarkGateStatus",
+        "SkillBenchmarkProviderCapabilities",
+        "SkillBenchmarkProviderRequest",
+        "SkillBenchmarkBudgetState",
+        "SkillBenchmarkGateResult",
+        "SkillBenchmarkBaselineArtifact",
+        "SkillBenchmarkDeterminismPolicy",
+        "SkillBenchmarkBudgetPolicy",
+        "SkillBenchmarkBaselinePolicy",
+        "SkillBenchmarkGate",
+        "SkillBenchmarkEvidencePath",
+        "SkillBenchmarkSummarySanitizer",
+        "SkillBenchmarkArtifactBuildResult",
+        "SkillBenchmarkArtifactWriter",
+        "SkillBenchmarkScore",
+        "SkillBenchmarkOfflineScorer",
+        "SkillBenchmarkPromptSetDto",
+        "SkillBenchmarkPromptDto",
+        "SkillBenchmarkJsonContext",
+    ];
+
+    private static readonly string[] BenchmarkFactNames = [
+        "PromptSet_LoadsTwentyV1PromptsWithDeterministicIds",
+        "CacheKey_ChangesWhenContractInputsChange",
+        "CacheKey_ChangesWhenExpectedShapeChanges",
+        "CacheKey_ChangesWhenSeedChangesEvenIfOtherwiseEqual",
+        "ResultPersistence_BlocksWhenRedactionFails",
+        "ResultPersistence_BlocksWhenSanitizedDiagnosticsContainRawLocalPath",
+        "ResultPersistence_PersistsWhenRedactionPassedAndSanitizationLooksClean",
+        "OfflineScorer_PicksHighestPriorityCategoryWhenMultipleAreReported",
+        "OfflineScorer_UsesStructuralValidatorCategories",
+        "OneShotPassRate_ComputesAggregateAndComparesAgainstTarget",
+        "ProviderConfigHash_IsStableAcrossEqualConfigsAndDifferentForVariations",
+        "DeterminismPolicy_SendsTemperatureZeroAndSeedOnlyWhenSupported",
+        "BudgetPolicy_FailsClosedForMissingAtLimitExpiredMalformedAndRetryStormState",
+        "BenchmarkGate_RequiresExactlyTwentyValidPromptResultsAndApprovedBaseline",
+        "SummarySanitizerAndArtifactWriter_BlockHostileEvidenceContent",
+        "ResultPersistenceAndGate_BlockMissingProviderMetadata",
+        "EvidencePath_NormalizesUnderApprovedRootAndRejectsEscapes",
+        "PromptSet_LoadsExpectedTwentyIdsByOrdinalOrderingFromFixture",
+    ];
+
     [Fact]
     public void PromptSet_LoadsTwentyV1PromptsWithDeterministicIds() {
         var promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        Assembly assembly = typeof(SkillBenchmarkPromptSet).Assembly;
 
         promptSet.Prompts.Count.ShouldBe(20);
         promptSet.Prompts.Select(p => p.Id).ShouldBe(promptSet.Prompts.Select(p => p.Id).Order(StringComparer.Ordinal));
         promptSet.Prompts.ShouldAllBe(p => p.ExpectedShape.Count > 0);
+        assembly.ShouldBe(typeof(BenchmarkHarnessTests).Assembly);
+        Type[] benchmarkTypes = BenchmarkTypeNames
+            .Select(name => assembly.GetType("Hexalith.FrontComposer.Mcp.Skills." + name, throwOnError: true)!)
+            .ToArray();
+        benchmarkTypes.Length.ShouldBe(29);
+        benchmarkTypes.Count(type => type.IsPublic).ShouldBe(26);
+        benchmarkTypes.Where(type => !type.IsPublic).Select(type => type.Name).Order(StringComparer.Ordinal).ShouldBe(
+            new[] { "SkillBenchmarkJsonContext", "SkillBenchmarkPromptDto", "SkillBenchmarkPromptSetDto" });
+        assembly.GetManifestResourceNames().ShouldContain(
+            "Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json");
+
+        MethodInfo[] facts = typeof(BenchmarkHarnessTests).GetMethods(BindingFlags.Instance | BindingFlags.Public)
+            .Where(method => method.CustomAttributes.Any(attribute => attribute.AttributeType.Name == "FactAttribute"))
+            .ToArray();
+        facts.Select(method => method.Name).Order(StringComparer.Ordinal).ShouldBe(
+            BenchmarkFactNames.Order(StringComparer.Ordinal));
+        typeof(BenchmarkHarnessTests).CustomAttributes.ShouldContain(attribute =>
+            attribute.AttributeType.Name == "TraitAttribute"
+            && attribute.ConstructorArguments.Count == 2
+            && string.Equals(attribute.ConstructorArguments[0].Value as string, "Category", StringComparison.Ordinal)
+            && string.Equals(attribute.ConstructorArguments[1].Value as string, "Performance", StringComparison.Ordinal));
     }
 
     [Fact]

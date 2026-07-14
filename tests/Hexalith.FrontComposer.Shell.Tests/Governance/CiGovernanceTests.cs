@@ -362,6 +362,9 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("SkillBenchmarkPromptSet.LoadEmbeddedV1");
         workflow.ShouldContain("budget-status");
         workflow.ShouldContain("BenchmarkHarnessTests");
+        workflow.ShouldContain("tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj");
+        workflow.ShouldContain("Category=Performance&FullyQualifiedName~BenchmarkHarnessTests");
+        workflow.ShouldNotContain("tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release --filter FullyQualifiedName~BenchmarkHarnessTests");
         workflow.ShouldContain("candidate evidence only");
         workflow.ShouldContain("28-day ratchet");
 
