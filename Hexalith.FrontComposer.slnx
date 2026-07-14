@@ -26,9 +26,12 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
-    <Project Path="src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj">
-      <Build Solution="Debug|*" Project="false" />
-    </Project>
+    <!-- Built in all solution configurations so the configuration-less `dotnet restore <slnx>`
+         (which resolves the default Debug configuration) generates this Aspire AppHost's
+         obj/project.assets.json. Excluding it from Debug previously left the Release build with
+         no restored assets (NETSDK1004 / ASPIRE002). Dependency mode is uniform source (see
+         Directory.Build.props), so there is no longer a per-configuration reason to skip it. -->
+    <Project Path="src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj" />
