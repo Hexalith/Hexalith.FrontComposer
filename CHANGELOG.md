@@ -1,3 +1,9 @@
+## [3.2.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.2.0...v3.2.1) (2026-07-14)
+
+### Bug Fixes
+
+* **release:** support immutable evidence bundles ([e0a56f8](https://github.com/Hexalith/Hexalith.FrontComposer/commit/e0a56f81d07024097db976ab20371ca8e3ca6394))
+
 ## [3.2.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.1.1...v3.2.0) (2026-07-14)
 
 ### Features
