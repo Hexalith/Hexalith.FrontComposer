@@ -1,3 +1,10 @@
+## [3.2.2](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.2.1...v3.2.2) (2026-07-14)
+
+### Bug Fixes
+
+* **release:** prepare v3.2 suppression ledger ([832ba09](https://github.com/Hexalith/Hexalith.FrontComposer/commit/832ba09599e2da368f53e97c1251086ae1530e99))
+* **release:** support immutable evidence bundles ([8045b34](https://github.com/Hexalith/Hexalith.FrontComposer/commit/8045b34e0b4a6cd298c1755a41a6589789d7c163))
+
 ## [3.2.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.2.0...v3.2.1) (2026-07-14)
 
 ### Bug Fixes
