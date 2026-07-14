@@ -1605,3 +1605,18 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
   summary: Preserve specific manual-only sidecar findings when a code action is unsupported.
   evidence: `MigrationPlanner` builds sidecar-derived `fileEntries`, but the `unsupportedOperation` branch adds one generic entry and continues without appending those specific manual-only findings (`src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:104-121,174-179`). The behavior predates Story 11.17a.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Treat non-object diagnostic JSON roots and entries as unreadable sidecars.
+  evidence: `DiagnosticFileReader.Read` calls `TryGetProperty` on every non-array root and on every array entry without first requiring `JsonValueKind.Object`; valid scalar, `null`, string, or numeric JSON therefore throws `InvalidOperationException` outside the reader's catches and aborts `frontcomposer inspect` instead of emitting `HFCM0002` (`src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:14-20,64-67`). Both paths are byte-for-byte pre-existing in the bundled baseline.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Handle diagnostic-sidecar directory enumeration races inside the reader.
+  evidence: The lazy `Directory.EnumerateFiles(...).Order(...)` enumeration runs outside the per-file `try`, so deletion, permission changes, or I/O failure while enumeration advances escapes `DiagnosticFileReader` and is mapped by the outer CLI to the generic apply/write failure path rather than the generated-output-unavailable contract (`src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:8-10`; `CliApplication.cs:35-38`). The placement predates the mechanical split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Normalize absent or null diagnostic related types so type filtering retains global diagnostics.
+  evidence: Missing or JSON-null `relatedType` becomes `string.Empty` in `DiagnosticFileReader`, while `TypeMatcher.Filter` retains global diagnostics only when `RelatedType is null`; a valid global diagnostic therefore disappears whenever `frontcomposer inspect --type` is used (`src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:29,64-67`; `TypeMatcher.cs:35`). This behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Validate the requested framework before invoking `dotnet build`.
+  evidence: `GeneratedOutputLoader.LoadAsync` launches `dotnet build` before `SelectFramework` calls `IsValidFrameworkName`, so `--build --framework ../../etc` reaches both the `--framework` argument and compiler-generated-output property before the CLI returns its intended invalid-argument result (`src/Hexalith.FrontComposer.Cli/GeneratedOutputLoader.cs:25-34,131-162`). The ordering is pre-existing and behavior changes are excluded from Story 11.17a.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Reject path-like configuration names before building or resolving generated output.
+  evidence: User-controlled `configuration` is passed to `dotnet build`, embedded in `CompilerGeneratedFilesOutputPath`, and combined under the project `obj` directory without the framework validator's traversal/separator checks (`src/Hexalith.FrontComposer.Cli/GeneratedOutputLoader.cs:131-153`). A path-like configuration can therefore redirect generated-output writes or inspection outside the intended configuration subtree. The behavior predates the split.
