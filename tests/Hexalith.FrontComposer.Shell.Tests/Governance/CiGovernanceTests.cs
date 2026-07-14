@@ -1160,6 +1160,14 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("release-evidence/test-results.json");
         workflow.ShouldContain("Upload release evidence artifact");
         workflow.ShouldContain("release-evidence/**");
+        string attachmentStep = ExtractNamedStep(workflow, "Attach release evidence to GitHub Release");
+        attachmentStep.ShouldContain("gh api");
+        attachmentStep.ShouldContain("--jq '.immutable'");
+        attachmentStep.ShouldContain("GitHub Release ${RELEASE_TAG} is immutable");
+        attachmentStep.ShouldContain("checksummed evidence bundle remains available as the Actions artifact");
+        attachmentStep.ShouldContain("gh release upload");
+        attachmentStep.ShouldNotContain("continue-on-error");
+        attachmentStep.ShouldNotContain("|| true");
         // AC10: packages are signed and verified (RFC 3161 timestamp).
         workflow.ShouldContain("dotnet nuget verify");
         // FR24: an LLM benchmark summary hash (candidate evidence, no provider spend) is
