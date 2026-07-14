@@ -1,3 +1,9 @@
+## [3.1.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.1.0...v3.1.1) (2026-07-14)
+
+### Bug Fixes
+
+* **tooling:** accept deferred review paths ([0f8a6f2](https://github.com/Hexalith/Hexalith.FrontComposer/commit/0f8a6f22a76df6a9a62e9f06a01270b15a1d6636))
+
 ## [3.1.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.0.0...v3.1.0) (2026-07-14)
 
 ### Features
