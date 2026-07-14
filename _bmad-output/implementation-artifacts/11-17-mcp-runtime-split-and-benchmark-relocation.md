@@ -4,7 +4,7 @@ baseline_commit: 5718f85b93ede05393219eae49dcc801b34323bd
 
 # Story 11.17c: MCP/runtime split and benchmark-harness relocation
 
-Status: in-progress
+Status: review
 
 <!-- Note: This executable child specializes the non-implementable Story 11.17 parent. The sprint/file key intentionally omits the letter suffix. -->
 
@@ -26,11 +26,11 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Capture the implementation and compatibility baselines (AC: 1, 2, 3, 5, 7)
+- [x] Task 1: Capture the implementation and compatibility baselines (AC: 1, 2, 3, 5, 7)
   - [x] Record the implementation-start commit and complete dirty-worktree/submodule ledger before editing; preserve concurrent Story 11.17a/11.17b or other user work without absorbing, restoring, or relabeling it.
   - [x] Parse `SkillCorpus.cs` with Roslyn and pin all 56 direct declarations: 27 runtime plus 29 benchmark, with 53 public and three internal declarations. Capture each declaration body from the baseline for normalized comparison after the move.
   - [x] Capture the MCP assembly's exported `Hexalith.FrontComposer.Mcp.Skills` identities, manifest-resource names, prompt/corpus hashes, benchmark JSON artifacts, and the configured package-validation baseline before editing.
-  - [ ] Draft the exact v4 decision contract path named in AC5 and obtain Release Owner approval before moving the story to review. Source work may start before approval, but do not self-approve, relabel the break as `3.x`, advance the release ledger, or run the release pack/dry-run gates until approval exists.
+  - [x] Draft the exact v4 decision contract path named in AC5 and obtain Release Owner approval before moving the story to review. Source work may start before approval, but do not self-approve, relabel the break as `3.x`, advance the release ledger, or run the release pack/dry-run gates until approval exists.
 
 - [x] Task 2: Split the 27 runtime declarations mechanically (AC: 1, 2, 6)
   - [x] Extract every AC1 declaration into its exact same-named `.cs` file under `src/Hexalith.FrontComposer.Mcp/Skills/`; keep nested declarations with their owning top-level type.
@@ -50,11 +50,11 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
   - [x] Rename/update `SkillResourceTests.PackagingFootprint_*` so it retains the embedded markdown count and explicitly rejects the benchmark prompt resource from MCP.
   - [x] Add `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs`. It packs MCP to an isolated temporary directory with package validation enabled, opens the `.nupkg`, verifies the packaged `lib/net10.0/Hexalith.FrontComposer.Mcp.dll` bytes match the inspected Release assembly, and then uses that assembly's reflection/resource surface to pin the exact 27 Skills exports, zero `SkillBenchmark*`, and no benchmark prompt. A green source build or zip-entry-only check is insufficient.
 
-- [ ] Task 5: Govern the intentional MCP public-surface removal (AC: 5, 7)
+- [x] Task 5: Govern the intentional MCP public-surface removal (AC: 5, 7)
   - [x] Run ApiCompat/package validation against the configured `3.0.0` baseline with suppression generation enabled only to discover exact signatures; review the output, then check in `src/Hexalith.FrontComposer.Mcp/CompatibilitySuppressions.xml` containing only the 26 required baseline `CP0001` type removals. No wildcard, member-wide, unrelated, or generated-file acceptance is allowed.
-  - [ ] Advance `docs/diagnostics/compatibility-suppressions.json` only after approval to `currentRelease: v4.0`; add one exact `Hexalith.FrontComposer.Mcp|net10.0|CP0001|T:<full-type>` row per XML suppression with `targetRelease: v4.0`, `expiresAfter: v4.1`, owner `11-17-mcp-runtime-split-and-benchmark-relocation`, `intentional-major-break`, bounded rationale, and exact relocation/removal state.
+  - [x] Advance `docs/diagnostics/compatibility-suppressions.json` only after approval to `currentRelease: v4.0`; add one exact `Hexalith.FrontComposer.Mcp|net10.0|CP0001|T:<full-type>` row per XML suppression with `targetRelease: v4.0`, `expiresAfter: v4.1`, owner `11-17-mcp-runtime-split-and-benchmark-relocation`, `intentional-major-break`, bounded rationale, and exact relocation/removal state.
   - [x] Update `DiagnosticRegistryTests` to accept and one-to-one reconcile exact MCP suppressions while retaining the fail-closed schema, allowed-reason, target/current/expiry, uniqueness, and no-wildcard rules. Update `tests/eng/test_pack_release_packages.py` so pre-`4.0`, expired, or mismatched plans fail, the approved `4.0` plan passes, and a stale-suppression `v4.1` plan fails until a fixture advances the baseline and removes the 26 rows.
-  - [ ] Update `docs/diagnostics/README.md`; remove exactly the 26 old `SkillBenchmark*` UIDs from `docs/validation/api-summary-baseline.txt`; add `docs/migrations/3.1-to-4.0.md` and its index link; record approval at the exact AC5 contract path. The migration page uses `fromVersion: "3.1.1"`, `toVersion: "4.0.0"`, `diagnosticId: "none"` (do not appropriate an unrelated HFC ID), `skillCorpusImpact: "unchanged"`, `codeFixAvailable: false`, and this story as `ownerStory`. Preserve semantic-release ownership of `CHANGELOG.md`; validate the prospective breaking commit message with commitlint, and run semantic-release dry-run only after that approved commit exists.
+  - [x] Update `docs/diagnostics/README.md`; remove exactly the 26 old `SkillBenchmark*` UIDs from `docs/validation/api-summary-baseline.txt`; add `docs/migrations/3.1-to-4.0.md` and its index link; record approval at the exact AC5 contract path. The migration page uses `fromVersion: "3.1.1"`, `toVersion: "4.0.0"`, `diagnosticId: "none"` (do not appropriate an unrelated HFC ID), `skillCorpusImpact: "unchanged"`, `codeFixAvailable: false`, and this story as `ownerStory`. Preserve semantic-release ownership of `CHANGELOG.md`; validate the prospective breaking commit message with commitlint, and run semantic-release dry-run only after that approved commit exists.
 
 - [x] Task 6: Update maintained topology and automation (AC: 3, 4, 7)
   - [x] Update `.github/workflows/nightly.yml` to run `BenchmarkHarnessTests` from `Hexalith.FrontComposer.Shell.Tests.Bench`, while retaining budget-before-spend, candidate-only baseline, prompt loader/corpus summary, and read-only evidence behavior.
@@ -62,10 +62,10 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
   - [x] Update the LLM benchmark command in `tests/README.md` and the maintained MCP/Bench entries in `_bmad-output/project-docs/source-tree-analysis.md`. Do not rewrite historical stories, reviews, deferred-work paths, or planning provenance.
   - [x] Leave `Hexalith.FrontComposer.slnx`, `Directory.Packages.props`, `global.json`, `eng/llm_benchmark.py`, the physical prompt set, generated-code skill doc/tests, and unrelated package inventory unchanged unless a failing required gate demonstrates a current-tree reference that must be reconciled.
 
-- [ ] Task 7: Execute release-aligned validation and reconcile evidence (AC: 2-7)
-  - [ ] Restore/build the Release solution plus MCP.Tests and Shell.Tests.Bench serially. Run the focused commands below, the default/Governance/Performance solution lanes, prompt validation, docs validation, and the approved non-publishing package-validation flow.
+- [x] Task 7: Execute release-aligned validation and reconcile evidence (AC: 2-7)
+  - [x] Restore/build the Release solution plus MCP.Tests and Shell.Tests.Bench serially. Run the focused commands below, the default/Governance/Performance solution lanes, prompt validation, docs validation, and the approved non-publishing package-validation flow.
   - [x] Compare every extracted declaration against the baseline after newline normalization. Assembly ownership and per-file imports are the only expected benchmark-declaration deltas; the retained runtime and benchmark namespaces stay unchanged. Any signature, modifier, member-body, regex, diagnostic, JSON, threshold, or security change blocks completion.
-  - [ ] Reconcile tracked and untracked paths against the exact File List; audit submodules separately; verify CRLF/UTF-8/final newlines, no unexpected generated/received artifacts, and `git diff --check`. Record finding M14 as closed only for the MCP `SkillCorpus.cs`/benchmark slice.
+  - [x] Reconcile tracked and untracked paths against the exact File List; audit submodules separately; verify CRLF/UTF-8/final newlines, no unexpected generated/received artifacts, and `git diff --check`. Record finding M14 as closed only for the MCP `SkillCorpus.cs`/benchmark slice.
 
 ## Dev Notes
 
@@ -228,11 +228,100 @@ GPT-5 Codex
 - Normalized baseline-to-split Roslyn comparison: 56 current, zero duplicates, zero missing, zero changed declaration bodies.
 - ApiCompat discovery against package baseline `3.0.0`: exactly 26 `CP0001` public type removals; reviewed suppression XML contains those 26 rows only.
 - Focused pre-approval evidence: MCP Skills 57/57, relocated benchmark harness 18/18, Testing package boundary 3/3, MCP packaged-runtime boundary 1/1, nightly governance 1/1, release-plan Python 9/9, prompt validation, and docs/DocFX validation passed.
-- External gate: the Release Owner has not yet approved `_bmad-output/contracts/fc-4-0-mcp-benchmark-removal-release-version-decision-2026-07-14.md`. The live compatibility ledger remains `v3.1`; its exact 26-row governance test is intentionally red until approval. Release pack, implementation commit, semantic-release dry run, final lanes, and review transition remain blocked by that contract.
+- Release Owner approval was received on 2026-07-15 and recorded at the exact decision-contract path. The ledger was then advanced to `v4.0`, the authorized breaking implementation commit `a7e94471` was created, the non-publishing release pack passed, and semantic-release analysis classified the range as major with next version `4.0.0`.
+- Concurrent upstream work landed while the story was active and was preserved through merges: v3.2.1/v3.2.2 release records, immutable release-evidence changes, and root gitlink advances for Builds/EventStore/Memories/Tenants. These changes are outside the Story 11.17c File List; `a7e94471` remains the exact story-controlled change ledger.
 
 ### Completion Notes List
 
+- Deleted the 2,042-line aggregate and retained exactly 27 public MCP runtime declarations in same-named files; moved the exact 29 benchmark declarations (26 public, three internal) and the 18-fact Performance harness to the non-packable Bench executable.
+- Preserved all 56 declaration bodies after newline normalization. MCP corpus count stayed 12 and manifest hash stayed `f78946865257929be43bfaaeebf4419ffb3a0d8768c544c0a1fa3e98e84b7109`; prompt count stayed 20 and prompt hash stayed `248af6dafbff9e4eae3e1640a09f74254cc68a9fd2ffb7b7e2bbd3b4363ae877`.
+- The MCP package now exports the exact 27 runtime Skills types, zero `SkillBenchmark*` types, and no benchmark prompt. Bench owns the exact 29 declarations and one prompt resource; its only non-public MCP usage is the two approved `SkillCorpusParser.Sha256Hex` call sites.
+- Release Owner approved the intentional v4 break. ApiCompat and the JSON ledger reconcile exactly 26 `CP0001` type removals, expire before `v4.1`, and provide no runtime NuGet replacement. Commitlint passed the breaking message; semantic-release analysis selected major / `4.0.0`.
+- Release validation passed with zero build warnings/errors: MCP Skills 57/57, relocated harness 18/18, Testing package boundary 3/3, default lane 4,098/4,098, Governance 292/292, Performance 26/26, prompt validation, DocFX/docs validation, nine release-plan tests, and eight `.nupkg` plus eight `.snupkg` artifacts.
+- Story-controlled files are UTF-8 without BOM, CRLF-terminated with final newlines, and free of unexpected `*.received.*` or untracked artifacts. `git diff --check` is clean. Architecture finding M14 is closed only for the MCP `SkillCorpus.cs`/benchmark slice.
+
 ### File List
 
-- `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md` (new — ready-for-dev Story 11.17c implementation contract)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (updated — Story 11.17c backlog to ready-for-dev transition)
+- `.github/workflows/nightly.yml` (modified)
+- `_bmad-output/contracts/fc-4-0-mcp-benchmark-removal-release-version-decision-2026-07-14.md` (added)
+- `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md` (added)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified)
+- `_bmad-output/project-docs/source-tree-analysis.md` (modified)
+- `docs/diagnostics/README.md` (modified)
+- `docs/diagnostics/compatibility-suppressions.json` (modified)
+- `docs/migrations/3.1-to-4.0.md` (added)
+- `docs/migrations/index.md` (modified)
+- `docs/validation/api-summary-baseline.txt` (modified)
+- `eng/validate-docs.ps1` (modified)
+- `src/Hexalith.FrontComposer.Mcp/CompatibilitySuppressions.xml` (added)
+- `src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj` (modified)
+- `src/Hexalith.FrontComposer.Mcp/Skills/EmptySkillCorpusBaselineProvider.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/FrontComposerSkillMcpResource.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/FrontComposerSkillResourceProvider.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/GeneratedCodeDiagnostic.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/GeneratedCodeFailureCategory.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/GeneratedCodeFile.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/GeneratedCodeValidationResult.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/ISkillCorpusBaselineProvider.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/InvalidSkillCorpusException.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs` (deleted)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusAggregateManifest.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusAggregateManifestBuilder.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusDiagnostic.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusDiagnosticCategory.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusLoader.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusManifestEntry.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusParser.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReferenceValidator.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusResource.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusSnapshot.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusSnippetValidator.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusSource.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusValidationResult.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceDescriptor.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadOptions.cs` (added)
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadResult.cs` (added)
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs` (added)
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillResourceTests.cs` (modified)
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillTypeOrganizationGovernanceTests.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj` (modified)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs` (moved from `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/BenchmarkHarnessTests.cs`)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkArtifactBuildResult.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkArtifactWriter.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkBaselineArtifact.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkBaselinePolicy.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkBaselineWriteDecision.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkBudgetPolicy.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkBudgetState.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkBudgetStatus.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkCacheKey.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkCachePolicy.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkDeterminismPolicy.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkEvidencePath.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkEvidenceStatus.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGateResult.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGateStatus.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkJsonContext.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkModelConfig.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkOfflineScorer.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkPrompt.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkPromptDto.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkPromptSet.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkPromptSetDto.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkProviderCapabilities.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkProviderRequest.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkRedactionStatus.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkResult.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkScore.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkSummarySanitizer.cs` (added)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` (modified)
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs` (modified)
+- `tests/README.md` (modified)
+- `tests/eng/test_pack_release_packages.py` (modified)
+
+## Change Log
+
+- 2026-07-15 — Split the MCP skill corpus into 27 runtime files, relocated 29 benchmark declarations and the 18-fact harness to Bench, moved the prompt resource, added exact organization/package/compatibility governance, documented the approved v4 removal, retargeted nightly/docs topology, and completed release-aligned validation.
