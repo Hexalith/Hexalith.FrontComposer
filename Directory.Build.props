@@ -9,15 +9,28 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <!-- Hexalith dependency mode:
-         Debug uses root-declared submodule ProjectReference paths for source debugging.
-         Release uses published NuGet packages for reproducible package/release builds.
-         UseNuGetDeps is kept as the legacy inverse switch for existing scripts. -->
+    <!-- Hexalith dependency mode.
+
+         This root slnx BUNDLES every root-declared Hexalith dependency as source (the
+         references/* submodules are members of the solution), so the default is source
+         (ProjectReference) references, NOT published packages: the sibling module packages
+         (Hexalith.Parties.*, Hexalith.Tenants.*, ...) are not published at the versions this
+         repo consumes, and FrontComposer.UI plus the Aspire AppHost only compile against
+         sibling source.
+
+         CRITICAL: the mode MUST NOT depend on $(Configuration). `dotnet restore <slnx>` runs
+         with an empty Configuration while `dotnet build -c Release` runs with
+         'Release'. Keying the mode off Configuration made restore resolve source references
+         and the Release build resolve packages, so the two phases saw different dependency
+         graphs; the Aspire AppHost then never obtained a valid obj/project.assets.json, failing
+         with NETSDK1004 (assets file not found) and ASPIRE002. A Configuration-independent
+         default guarantees restore and build resolve the same graph.
+
+         Package mode is an explicit opt-in for the pack/publish path via UseNuGetDeps=true. Only
+         FrontComposer's own projects read this file; each references/* submodule keeps its own
+         Directory.Build.props (its "Release must use packages" guard therefore stays dormant). -->
     <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(UseNuGetDeps)' == 'true'">false</UseHexalithProjectReferences>
-    <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(UseNuGetDeps)' == 'false'">true</UseHexalithProjectReferences>
-    <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(Configuration)' == ''">true</UseHexalithProjectReferences>
-    <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == '' AND '$(Configuration)' == 'Debug'">true</UseHexalithProjectReferences>
-    <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == ''">false</UseHexalithProjectReferences>
+    <UseHexalithProjectReferences Condition="'$(UseHexalithProjectReferences)' == ''">true</UseHexalithProjectReferences>
     <UseNuGetDeps Condition="'$(UseNuGetDeps)' == '' AND '$(UseHexalithProjectReferences)' == 'true'">false</UseNuGetDeps>
     <UseNuGetDeps Condition="'$(UseNuGetDeps)' == ''">true</UseNuGetDeps>
   </PropertyGroup>
