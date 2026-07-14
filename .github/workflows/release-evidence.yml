@@ -137,6 +137,12 @@ jobs:
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
+      - name: Install npm dependencies
+        if: ${{ steps.tag.outputs.tag != '' }}
+        env:
+          HUSKY: 0
+        run: npm ci
+
       - name: Build Contracts test prerequisite (netstandard2.0)
         if: ${{ steps.tag.outputs.tag != '' }}
         run: |

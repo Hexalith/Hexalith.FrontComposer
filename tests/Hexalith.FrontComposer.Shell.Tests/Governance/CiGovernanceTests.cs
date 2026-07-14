@@ -438,6 +438,132 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void SemanticReleaseAnalyzer_ConventionalCommitsMatrix_SelectsExpectedReleaseTypes() {
+        string root = RepositoryRoot();
+
+        using (JsonDocument releaseConfig = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, ".releaserc.json")))) {
+            JsonElement plugins = releaseConfig.RootElement.GetProperty("plugins");
+            JsonElement analyzer = plugins.EnumerateArray().Single(static plugin =>
+                plugin.ValueKind == JsonValueKind.Array
+                && plugin.GetArrayLength() > 0
+                && string.Equals(plugin[0].GetString(), "@semantic-release/commit-analyzer", StringComparison.Ordinal));
+            JsonElement notes = plugins.EnumerateArray().Single(static plugin =>
+                plugin.ValueKind == JsonValueKind.Array
+                && plugin.GetArrayLength() > 0
+                && string.Equals(plugin[0].GetString(), "@semantic-release/release-notes-generator", StringComparison.Ordinal));
+
+            analyzer[1].GetProperty("preset").GetString().ShouldBe("conventionalcommits");
+            notes[1].GetProperty("preset").GetString().ShouldBe("conventionalcommits");
+        }
+
+        using (JsonDocument package = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "package.json")))) {
+            package.RootElement
+                .GetProperty("devDependencies")
+                .GetProperty("conventional-changelog-conventionalcommits")
+                .GetString()
+                .ShouldBe("^9.3.1");
+        }
+
+        using (JsonDocument packageLock = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, "package-lock.json")))) {
+            packageLock.RootElement
+                .GetProperty("packages")
+                .GetProperty(string.Empty)
+                .GetProperty("devDependencies")
+                .GetProperty("conventional-changelog-conventionalcommits")
+                .GetString()
+                .ShouldBe("^9.3.1");
+        }
+
+        const string analyzerHarness = """
+            import { spawnSync } from 'node:child_process';
+            import fs from 'node:fs/promises';
+            import { analyzeCommits } from '@semantic-release/commit-analyzer';
+            import { generateNotes } from '@semantic-release/release-notes-generator';
+
+            const config = JSON.parse(await fs.readFile('.releaserc.json', 'utf8'));
+            const analyzerEntry = config.plugins.find(entry =>
+              Array.isArray(entry) && entry[0] === '@semantic-release/commit-analyzer');
+            if (!analyzerEntry) {
+              throw new Error('Configured semantic-release commit analyzer was not found.');
+            }
+            const notesEntry = config.plugins.find(entry =>
+              Array.isArray(entry) && entry[0] === '@semantic-release/release-notes-generator');
+            if (!notesEntry) {
+              throw new Error('Configured semantic-release notes generator was not found.');
+            }
+
+            const cases = [
+              { name: 'fixBreakingHeader', message: 'fix!: break the public API' },
+              { name: 'featBreakingHeader', message: 'feat!: break the public API' },
+              { name: 'scopedBreakingHeader', message: 'fix(release)!: break the scoped public API' },
+              { name: 'breakingFooter', message: 'fix: adjust the public API\n\nBREAKING CHANGE: replace the public contract' },
+              { name: 'ordinaryFix', message: 'fix: adjust the public API' },
+              { name: 'ordinaryFeat', message: 'feat: add a public API' },
+              { name: 'malformedBreakingSubject', message: 'BREAKING CHANGE: break the public API' },
+            ];
+            const releaseTypes = {};
+            const commitlintValid = {};
+            const logger = { log() {} };
+            for (const testCase of cases) {
+              const releaseType = await analyzeCommits(
+                analyzerEntry[1],
+                { commits: [{ message: testCase.message }], logger });
+              releaseTypes[testCase.name] = releaseType ?? null;
+
+              const lintResult = spawnSync(
+                process.execPath,
+                ['node_modules/@commitlint/cli/cli.js'],
+                { cwd: process.cwd(), input: `${testCase.message}\n`, encoding: 'utf8' });
+              if (lintResult.error) {
+                throw lintResult.error;
+              }
+              commitlintValid[testCase.name] = lintResult.status === 0;
+            }
+
+            const releaseNotes = await generateNotes(
+              notesEntry[1],
+              {
+                commits: [
+                  { message: cases.find(testCase => testCase.name === 'fixBreakingHeader').message, hash: '1111111111111111' },
+                  { message: cases.find(testCase => testCase.name === 'breakingFooter').message, hash: '2222222222222222' },
+                ],
+                lastRelease: { gitTag: 'v2.0.4', gitHead: 'old' },
+                nextRelease: { version: '3.0.0', gitTag: 'v3.0.0', gitHead: 'new' },
+                options: { repositoryUrl: 'https://github.com/Hexalith/Hexalith.FrontComposer.git' },
+                cwd: process.cwd(),
+              });
+
+            process.stdout.write(JSON.stringify({ releaseTypes, commitlintValid, releaseNotes }));
+            """;
+        ProcessResult result = RunProcess(root, "node", ["--input-type=module", "--eval", analyzerHarness]);
+        result.ExitCode.ShouldBe(0, $"stdout={result.Output} stderr={result.Error}");
+
+        using JsonDocument behavior = JsonDocument.Parse(result.Output);
+        JsonElement releaseTypes = behavior.RootElement.GetProperty("releaseTypes");
+        releaseTypes.GetProperty("fixBreakingHeader").GetString().ShouldBe("major");
+        releaseTypes.GetProperty("featBreakingHeader").GetString().ShouldBe("major");
+        releaseTypes.GetProperty("scopedBreakingHeader").GetString().ShouldBe("major");
+        releaseTypes.GetProperty("breakingFooter").GetString().ShouldBe("major");
+        releaseTypes.GetProperty("ordinaryFix").GetString().ShouldBe("patch");
+        releaseTypes.GetProperty("ordinaryFeat").GetString().ShouldBe("minor");
+        releaseTypes.GetProperty("malformedBreakingSubject").ValueKind.ShouldBe(JsonValueKind.Null);
+
+        JsonElement commitlintValid = behavior.RootElement.GetProperty("commitlintValid");
+        commitlintValid.GetProperty("fixBreakingHeader").GetBoolean().ShouldBeTrue();
+        commitlintValid.GetProperty("featBreakingHeader").GetBoolean().ShouldBeTrue();
+        commitlintValid.GetProperty("scopedBreakingHeader").GetBoolean().ShouldBeTrue();
+        commitlintValid.GetProperty("breakingFooter").GetBoolean().ShouldBeTrue();
+        commitlintValid.GetProperty("ordinaryFix").GetBoolean().ShouldBeTrue();
+        commitlintValid.GetProperty("ordinaryFeat").GetBoolean().ShouldBeTrue();
+        commitlintValid.GetProperty("malformedBreakingSubject").GetBoolean().ShouldBeFalse();
+
+        string releaseNotes = behavior.RootElement.GetProperty("releaseNotes").GetString() ?? string.Empty;
+        releaseNotes.ShouldContain("BREAKING CHANGES");
+        releaseNotes.ShouldContain("break the public API");
+        releaseNotes.ShouldContain("replace the public contract");
+    }
+
+    [Fact]
     public void PackageInventory_IsExplicitLockstepAndReviewable() {
         string root = RepositoryRoot();
         string inventory = File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json"));
@@ -1038,6 +1164,9 @@ public sealed class CiGovernanceTests {
         string normalizedWorkflow = workflow.Replace("\r\n", "\n", StringComparison.Ordinal);
         normalizedWorkflow.ShouldContain("- name: Record release test evidence\n        if: ${{ steps.tag.outputs.tag != '' }}");
         normalizedWorkflow.ShouldContain("- name: Install CycloneDX .NET tool\n        if: ${{ steps.tag.outputs.tag != '' }}");
+        normalizedWorkflow.ShouldContain("- name: Install npm dependencies\n        if: ${{ steps.tag.outputs.tag != '' }}");
+        workflow.IndexOf("- name: Install npm dependencies", StringComparison.Ordinal).ShouldBeLessThan(
+            workflow.IndexOf("- name: Run release tests", StringComparison.Ordinal));
 
         // REL-2 code-review P1: keyed off the RELEASE workflow's completion (not CI) so the git tag +
         // GitHub Release exist by the time evidence binds (keying off CI raced the concurrent release
