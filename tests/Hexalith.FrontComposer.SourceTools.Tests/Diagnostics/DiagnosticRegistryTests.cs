@@ -648,7 +648,7 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v3.1");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v3.2");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
         suppressions.ShouldBeEmpty("the published 3.0.0 baseline makes the prior v3.0 compatibility suppressions stale.");
