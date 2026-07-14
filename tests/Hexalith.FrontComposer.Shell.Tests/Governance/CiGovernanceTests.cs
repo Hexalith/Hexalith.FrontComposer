@@ -149,6 +149,7 @@ public sealed class CiGovernanceTests {
         a11yStep.ShouldNotContain("continue-on-error: true");
 
         string initializeBuildSubmodules = ExtractNamedStep(a11yJob, "Initialize build submodules");
+        a11yJob.ShouldContain("fetch-depth: 0");
         initializeBuildSubmodules.ShouldContain("GIT_CONFIG_COUNT: 1");
         initializeBuildSubmodules.ShouldContain("GIT_CONFIG_KEY_0: core.symlinks");
         initializeBuildSubmodules.ShouldContain("GIT_CONFIG_VALUE_0: 'false'");
