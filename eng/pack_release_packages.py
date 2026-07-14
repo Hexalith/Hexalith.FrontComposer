@@ -52,8 +52,8 @@ def validate_suppression_release(suppressions_path: pathlib.Path, version: str) 
         raise SystemExit(f"{suppressions_path}: currentRelease must be a version token")
 
     rows = payload.get("suppressions")
-    if not isinstance(rows, list) or not rows:
-        raise SystemExit(f"{suppressions_path}: suppressions must be a non-empty array")
+    if not isinstance(rows, list):
+        raise SystemExit(f"{suppressions_path}: suppressions must be an array")
 
     actual_line = release_line(version, "--version")
     current_line = release_line(current_value, "currentRelease")

@@ -136,6 +136,9 @@ public sealed class CiGovernanceTests {
         // NFR-11 requires e2e a11y/visual for the changed surface).
         string root = RepositoryRoot();
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
+        int a11yJobStart = quality.LastIndexOf("  accessibility-visual:", StringComparison.Ordinal);
+        a11yJobStart.ShouldBeGreaterThanOrEqualTo(0);
+        string a11yJob = quality[a11yJobStart..];
 
         quality.ShouldContain("accessibility-visual:");
         quality.ShouldContain("npm run validate:visual-governance");
@@ -144,6 +147,13 @@ public sealed class CiGovernanceTests {
         string a11yStep = ExtractNamedStep(quality, "Run accessibility, keyboard, media, zoom, and visual specimen gate");
         a11yStep.ShouldContain("npm run test:a11y");
         a11yStep.ShouldNotContain("continue-on-error: true");
+
+        string initializeBuildSubmodules = ExtractNamedStep(a11yJob, "Initialize build submodules");
+        a11yJob.ShouldContain("fetch-depth: 0");
+        initializeBuildSubmodules.ShouldContain("GIT_CONFIG_COUNT: 1");
+        initializeBuildSubmodules.ShouldContain("GIT_CONFIG_KEY_0: core.symlinks");
+        initializeBuildSubmodules.ShouldContain("GIT_CONFIG_VALUE_0: 'false'");
+        initializeBuildSubmodules.ShouldNotContain("git config --global");
     }
 
     [Fact]
@@ -624,9 +634,9 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void SemanticReleasePack_EvaluatesPublished204PackageValidationBaseline() {
+    public void SemanticReleasePack_EvaluatesPublished300PackageValidationBaseline() {
         // The shared package-validation policy and the Contracts.UI explicit pin must both resolve
-        // to the latest published 2.x surface before semantic-release packs the 3.0 line.
+        // to the latest published 3.0 surface before semantic-release packs the 3.1 line.
         string root = RepositoryRoot();
 
         static (string enable, string baseline) EvaluatePackageValidation(string root, string project) {
@@ -649,13 +659,13 @@ public sealed class CiGovernanceTests {
             root,
             Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts", "Hexalith.FrontComposer.Contracts.csproj"));
         baseEnable.ShouldBe("true");
-        baseBaseline.ShouldBe("2.0.4");
+        baseBaseline.ShouldBe("3.0.0");
 
         (string uiEnable, string uiBaseline) = EvaluatePackageValidation(
             root,
             Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"));
         uiEnable.ShouldBe("true");
-        uiBaseline.ShouldBe("2.0.4");
+        uiBaseline.ShouldBe("3.0.0");
     }
 
     [Fact]

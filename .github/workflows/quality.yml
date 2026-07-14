@@ -404,13 +404,18 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          fetch-depth: 1
+          fetch-depth: 0
           persist-credentials: false
           # Root-declared references submodules only; do not use recursive nested submodule checkout.
           submodules: false
 
       - name: Initialize build submodules
         uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+        env:
+          # Override only this action's Git processes so the runner's global setting is untouched.
+          GIT_CONFIG_COUNT: 1
+          GIT_CONFIG_KEY_0: core.symlinks
+          GIT_CONFIG_VALUE_0: 'false'
 
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
