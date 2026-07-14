@@ -26,12 +26,16 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/src/">
-    <!-- Built in all solution configurations so the configuration-less `dotnet restore <slnx>`
-         (which resolves the default Debug configuration) generates this Aspire AppHost's
-         obj/project.assets.json. Excluding it from Debug previously left the Release build with
-         no restored assets (NETSDK1004 / ASPIRE002). Dependency mode is uniform source (see
-         Directory.Build.props), so there is no longer a per-configuration reason to skip it. -->
-    <Project Path="src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj" />
+    <!-- Source-mode Aspire host: built only in Debug, like Hexalith.FrontComposer.UI and every
+         references/* source project below (all '<Build Solution="Release|*" Project="false" />').
+         The AppHost hard-references source-only dependencies (EventStore.Aspire, FrontComposer.UI,
+         Counter.Web), so it cannot participate in the Release package-boundary build, which excludes
+         those sources. Building it in Release previously left it with no restored assets and no
+         source graph (NETSDK1004 / ASPIRE002 / CS0234). CI builds Release, so the AppHost is
+         exercised by Debug/local builds and the Aspire test tier rather than the Release CI build. -->
+    <Project Path="src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj">
+      <Build Solution="Release|*" Project="false" />
+    </Project>
     <Project Path="src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj" />
     <Project Path="src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj" />
