@@ -67,6 +67,10 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
   - [x] Compare every extracted declaration against the baseline after newline normalization. Assembly ownership and per-file imports are the only expected benchmark-declaration deltas; the retained runtime and benchmark namespaces stay unchanged. Any signature, modifier, member-body, regex, diagnostic, JSON, threshold, or security change blocks completion.
   - [x] Reconcile tracked and untracked paths against the exact File List; audit submodules separately; verify CRLF/UTF-8/final newlines, no unexpected generated/received artifacts, and `git diff --check`. Record finding M14 as closed only for the MCP `SkillCorpus.cs`/benchmark slice.
 
+### Review Findings
+
+- [x] [Review][Patch] Move the exact 18-fact census into an independent governance test so deleting its current host fact cannot also delete the guard [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:43]
+
 ## Dev Notes
 
 ### Scope and Current-State Decisions
@@ -287,6 +291,7 @@ GPT-5 Codex
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillResourceTests.cs` (modified)
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillTypeOrganizationGovernanceTests.cs` (added)
 - `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj` (modified)
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Governance/BenchmarkHarnessGovernanceTests.cs` (added during code review; independent exact 18-fact and Performance-trait guard)
 - `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs` (moved from `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/BenchmarkHarnessTests.cs`)
 - `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkArtifactBuildResult.cs` (added)
 - `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkArtifactWriter.cs` (added)

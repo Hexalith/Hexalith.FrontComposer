@@ -40,27 +40,6 @@ public sealed class BenchmarkHarnessTests {
         "SkillBenchmarkJsonContext",
     ];
 
-    private static readonly string[] BenchmarkFactNames = [
-        "PromptSet_LoadsTwentyV1PromptsWithDeterministicIds",
-        "CacheKey_ChangesWhenContractInputsChange",
-        "CacheKey_ChangesWhenExpectedShapeChanges",
-        "CacheKey_ChangesWhenSeedChangesEvenIfOtherwiseEqual",
-        "ResultPersistence_BlocksWhenRedactionFails",
-        "ResultPersistence_BlocksWhenSanitizedDiagnosticsContainRawLocalPath",
-        "ResultPersistence_PersistsWhenRedactionPassedAndSanitizationLooksClean",
-        "OfflineScorer_PicksHighestPriorityCategoryWhenMultipleAreReported",
-        "OfflineScorer_UsesStructuralValidatorCategories",
-        "OneShotPassRate_ComputesAggregateAndComparesAgainstTarget",
-        "ProviderConfigHash_IsStableAcrossEqualConfigsAndDifferentForVariations",
-        "DeterminismPolicy_SendsTemperatureZeroAndSeedOnlyWhenSupported",
-        "BudgetPolicy_FailsClosedForMissingAtLimitExpiredMalformedAndRetryStormState",
-        "BenchmarkGate_RequiresExactlyTwentyValidPromptResultsAndApprovedBaseline",
-        "SummarySanitizerAndArtifactWriter_BlockHostileEvidenceContent",
-        "ResultPersistenceAndGate_BlockMissingProviderMetadata",
-        "EvidencePath_NormalizesUnderApprovedRootAndRejectsEscapes",
-        "PromptSet_LoadsExpectedTwentyIdsByOrdinalOrderingFromFixture",
-    ];
-
     [Fact]
     public void PromptSet_LoadsTwentyV1PromptsWithDeterministicIds() {
         var promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
@@ -79,17 +58,6 @@ public sealed class BenchmarkHarnessTests {
             new[] { "SkillBenchmarkJsonContext", "SkillBenchmarkPromptDto", "SkillBenchmarkPromptSetDto" });
         assembly.GetManifestResourceNames().ShouldContain(
             "Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json");
-
-        MethodInfo[] facts = typeof(BenchmarkHarnessTests).GetMethods(BindingFlags.Instance | BindingFlags.Public)
-            .Where(method => method.CustomAttributes.Any(attribute => attribute.AttributeType.Name == "FactAttribute"))
-            .ToArray();
-        facts.Select(method => method.Name).Order(StringComparer.Ordinal).ShouldBe(
-            BenchmarkFactNames.Order(StringComparer.Ordinal));
-        typeof(BenchmarkHarnessTests).CustomAttributes.ShouldContain(attribute =>
-            attribute.AttributeType.Name == "TraitAttribute"
-            && attribute.ConstructorArguments.Count == 2
-            && string.Equals(attribute.ConstructorArguments[0].Value as string, "Category", StringComparison.Ordinal)
-            && string.Equals(attribute.ConstructorArguments[1].Value as string, "Performance", StringComparison.Ordinal));
     }
 
     [Fact]
