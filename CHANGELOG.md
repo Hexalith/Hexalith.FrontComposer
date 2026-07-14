@@ -1,3 +1,22 @@
+## [3.2.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.2.0...v3.2.1) (2026-07-14)
+
+### Bug Fixes
+
+* **release:** support immutable evidence bundles ([e0a56f8](https://github.com/Hexalith/Hexalith.FrontComposer/commit/e0a56f81d07024097db976ab20371ca8e3ca6394))
+
+## [3.2.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.1.1...v3.2.0) (2026-07-14)
+
+### Features
+
+* **cli:** add new review patches for CLI package split and update submodule references ([1142847](https://github.com/Hexalith/Hexalith.FrontComposer/commit/1142847b4935c2a00d4c75a981483cd9c988a987))
+
+### Bug Fixes
+
+* **ci:** preserve visual diff merge base ([0d4ff6d](https://github.com/Hexalith/Hexalith.FrontComposer/commit/0d4ff6d06831cb5bcdc34bfb1be70b3f0d605bed))
+* **cli:** update story status to in-progress and refresh sprint status timestamps ([5718f85](https://github.com/Hexalith/Hexalith.FrontComposer/commit/5718f85b93ede05393219eae49dcc801b34323bd))
+* **release:** prepare v3.2 suppression ledger ([c3636db](https://github.com/Hexalith/Hexalith.FrontComposer/commit/c3636dbd570044275c8590175cfd466755ec7167))
+* **release:** validate packages against 3.0 baseline ([5e3398c](https://github.com/Hexalith/Hexalith.FrontComposer/commit/5e3398cc1e36e6f5010df435223dadbaf86999a8))
+
 ## [3.1.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.1.0...v3.1.1) (2026-07-14)
 
 ### Bug Fixes

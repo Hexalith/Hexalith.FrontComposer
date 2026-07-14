@@ -22,7 +22,9 @@ on:
   # release.yml (delegating to the reusable domain-release.yml) runs semantic-release on a
   # push-derived CI success, so by the time Release completes the git tag AND GitHub Release
   # exist — the evidence bundle can bind + upload to the release it documents. Keying off CI
-  # raced the concurrent release job and never found the tag. NOTE: workflow_run -> workflow_run
+  # raced the concurrent release job and never found the tag. Immutable releases cannot accept
+  # post-publication assets, so their bundle remains in the checksummed Actions artifact; mutable
+  # releases also receive the JSON assets. NOTE: workflow_run -> workflow_run
   # chaining is GitHub-Actions-authoritative; confirm the first real release fires this (REL-AI-1).
   workflow_run:
     workflows: [Release]
@@ -439,9 +441,28 @@ jobs:
         if: ${{ steps.tag.outputs.tag != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -euo pipefail
-          gh release upload "${{ steps.tag.outputs.tag }}" release-evidence/*.json --clobber
+          immutable="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq '.immutable')"
+          case "$immutable" in
+            true)
+              echo "::notice::GitHub Release ${RELEASE_TAG} is immutable; the checksummed evidence bundle remains available as the Actions artifact uploaded by this run."
+              {
+                echo '### GitHub Release evidence attachment'
+                echo
+                echo "- Release \`${RELEASE_TAG}\` is immutable, so GitHub rejects post-publication assets."
+                echo "- The checksummed evidence bundle is retained in this run's Actions artifact."
+              } >> "$GITHUB_STEP_SUMMARY"
+              ;;
+            false)
+              gh release upload "$RELEASE_TAG" release-evidence/*.json --clobber
+              ;;
+            *)
+              echo "::error::GitHub returned an unsupported immutable value '${immutable}' for ${RELEASE_TAG}."
+              exit 1
+              ;;
+          esac
 
       - name: Upload release evidence artifact
         if: always()
