@@ -3,7 +3,7 @@ baseline_commit: 6188288a0ccdf3394389019b732d630f25726925
 ---
 # Story 11.17a: CLI package split
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Type: mechanical refactor; first child of the non-implementable Story 11.17 decomposition parent. -->
@@ -122,10 +122,10 @@ This story refines FR25, FR28, and FR29 and closes only the CLI slice of archite
 - [x] [Review][Defer] Represent terminal-newline state accurately in informational unified diffs [src/Hexalith.FrontComposer.Cli/UnifiedDiff.cs:205] — deferred, pre-existing
 - [x] [Review][Defer] Retain the configured trailing context at end-of-file in unified-diff hunks [src/Hexalith.FrontComposer.Cli/UnifiedDiff.cs:81] — deferred, pre-existing
 - [x] [Review][Defer] Preserve specific manual-only sidecar findings when a code action is unsupported [src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:174] — deferred, pre-existing
-- [ ] [Review][Patch] Fail the production organization scan when no CLI sources are found [tests/Hexalith.FrontComposer.Cli.Tests/Architecture/CliTypeOrganizationGovernanceTests.cs:59]
-- [ ] [Review][Patch] Recursively count declarations directly owned by nested namespaces [tests/Hexalith.FrontComposer.Cli.Tests/Architecture/CliTypeOrganizationGovernanceTests.cs:140]
-- [ ] [Review][Patch] Count conditionally compiled top-level declarations instead of hiding inactive branches [tests/Hexalith.FrontComposer.Cli.Tests/Architecture/CliTypeOrganizationGovernanceTests.cs:138]
-- [ ] [Review][Patch] Pin exported public types across the whole CLI assembly, including other namespaces [tests/Hexalith.FrontComposer.Cli.Tests/Architecture/CliTypeOrganizationGovernanceTests.cs:110]
+- [x] [Review][Patch] Fail the production organization scan when no CLI sources are found [tests/Hexalith.FrontComposer.Cli.Tests/Architecture/CliTypeOrganizationGovernanceTests.cs:59]
+- [x] [Review][Patch] Recursively count declarations directly owned by nested namespaces [tests/Hexalith.FrontComposer.Cli.Tests/Architecture/CliTypeOrganizationGovernanceTests.cs:140]
+- [x] [Review][Patch] Count conditionally compiled top-level declarations instead of hiding inactive branches [tests/Hexalith.FrontComposer.Cli.Tests/Architecture/CliTypeOrganizationGovernanceTests.cs:138]
+- [x] [Review][Patch] Pin exported public types across the whole CLI assembly, including other namespaces [tests/Hexalith.FrontComposer.Cli.Tests/Architecture/CliTypeOrganizationGovernanceTests.cs:110]
 - [x] [Review][Defer] Treat non-object diagnostic JSON roots and entries as unreadable sidecars [src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:14] — deferred, pre-existing
 - [x] [Review][Defer] Handle diagnostic-sidecar directory enumeration races inside the reader [src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:8] — deferred, pre-existing
 - [x] [Review][Defer] Normalize absent or null diagnostic related types so type filtering retains global diagnostics [src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:29] — deferred, pre-existing

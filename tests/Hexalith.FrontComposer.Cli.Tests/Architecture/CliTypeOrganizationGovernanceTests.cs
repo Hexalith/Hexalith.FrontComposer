@@ -57,6 +57,7 @@ public sealed class CliTypeOrganizationGovernanceTests {
     [Fact]
     public void ProductionSources_DirectTopLevelDeclarations_HaveAtMostOnePerFile() {
         (string Path, string Content)[] sources = LoadProductionSources(LocateCliRoot());
+        sources.ShouldNotBeEmpty("The CLI source locator must not let the governance scan pass vacuously.");
 
         IReadOnlyList<string> violations = FindMultiTypeViolations(sources);
 
@@ -85,6 +86,45 @@ public sealed class CliTypeOrganizationGovernanceTests {
     }
 
     [Fact]
+    public void OrganizationGuard_NestedNamespaceMultiTypeSource_ReportsPathAndNames() {
+        (string Path, string Content)[] sources = [
+            (
+                "Synthetic/NestedNamespace.cs",
+                "namespace Hexalith { namespace FrontComposer { namespace Cli {\n"
+                + "internal sealed class First { }\n"
+                + "internal delegate void Second();\n"
+                + "} } }\n"),
+        ];
+
+        IReadOnlyList<string> violations = FindMultiTypeViolations(sources);
+
+        violations.Count.ShouldBe(1);
+        violations[0].ShouldContain("Synthetic/NestedNamespace.cs");
+        violations[0].ShouldContain("First");
+        violations[0].ShouldContain("Second");
+    }
+
+    [Fact]
+    public void OrganizationGuard_ConditionallyCompiledMultiTypeSource_ReportsPathAndNames() {
+        (string Path, string Content)[] sources = [
+            (
+                "Synthetic/Conditional.cs",
+                "namespace Hexalith.FrontComposer.Cli;\n"
+                + "#if NEVER_DEFINED\n"
+                + "internal sealed class First { }\n"
+                + "internal delegate void Second();\n"
+                + "#endif\n"),
+        ];
+
+        IReadOnlyList<string> violations = FindMultiTypeViolations(sources);
+
+        violations.Count.ShouldBe(1);
+        violations[0].ShouldContain("Synthetic/Conditional.cs");
+        violations[0].ShouldContain("First");
+        violations[0].ShouldContain("Second");
+    }
+
+    [Fact]
     [Trait("Category", "Contract")]
     public void TargetTypes_AfterMechanicalSplit_PreserveInternalTopLevelIdentity() {
         Assembly assembly = typeof(CliApplication).Assembly;
@@ -107,15 +147,16 @@ public sealed class CliTypeOrganizationGovernanceTests {
     public void ExportedAuthoredTypes_AfterMechanicalSplit_RemainExact() {
         Assembly assembly = typeof(CliApplication).Assembly;
 
-        string[] exportedTypeNames = assembly.GetTypes()
-            .Where(type => string.Equals(type.Namespace, CliNamespace, StringComparison.Ordinal)
-                && type.IsPublic
-                && !type.IsNested)
-            .Select(type => type.Name)
+        string[] exportedTypeNames = assembly.GetExportedTypes()
+            .Select(type => type.FullName ?? type.Name)
             .OrderBy(name => name, StringComparer.Ordinal)
             .ToArray();
 
-        exportedTypeNames.ShouldBe(["CliApplication", "ExitCodes", "OutputSanitizer"]);
+        exportedTypeNames.ShouldBe([
+            "Hexalith.FrontComposer.Cli.CliApplication",
+            "Hexalith.FrontComposer.Cli.ExitCodes",
+            "Hexalith.FrontComposer.Cli.OutputSanitizer",
+        ]);
     }
 
     private static IReadOnlyList<string> FindMultiTypeViolations(
@@ -135,13 +176,49 @@ public sealed class CliTypeOrganizationGovernanceTests {
     }
 
     private static IReadOnlyList<MemberDeclarationSyntax> GetDirectTopLevelDeclarations(string source) {
-        CompilationUnitSyntax root = CSharpSyntaxTree.ParseText(source).GetCompilationUnitRoot();
-        return root.Members
-            .SelectMany(member => member is BaseNamespaceDeclarationSyntax namespaceDeclaration
-                ? namespaceDeclaration.Members
-                : [member])
+        string allConditionalBranches = ActivateAllConditionalBranches(source);
+        CompilationUnitSyntax root = CSharpSyntaxTree.ParseText(
+            allConditionalBranches,
+            new CSharpParseOptions(LanguageVersion.Latest))
+            .GetCompilationUnitRoot();
+        return ExpandNamespaceMembers(root.Members)
             .Where(member => member is BaseTypeDeclarationSyntax or DelegateDeclarationSyntax)
             .ToArray();
+    }
+
+    private static string ActivateAllConditionalBranches(string source) {
+        char[] text = source.ToCharArray();
+        var root = CSharpSyntaxTree.ParseText(source, new CSharpParseOptions(LanguageVersion.Latest)).GetRoot();
+        foreach (var trivia in root.DescendantTrivia(descendIntoTrivia: true)) {
+            if (trivia.GetStructure() is not (IfDirectiveTriviaSyntax
+                or ElifDirectiveTriviaSyntax
+                or ElseDirectiveTriviaSyntax
+                or EndIfDirectiveTriviaSyntax)) {
+                continue;
+            }
+
+            for (int index = trivia.FullSpan.Start; index < trivia.FullSpan.End; index++) {
+                if (text[index] is not ('\r' or '\n')) {
+                    text[index] = ' ';
+                }
+            }
+        }
+
+        return new string(text);
+    }
+
+    private static IEnumerable<MemberDeclarationSyntax> ExpandNamespaceMembers(
+        IEnumerable<MemberDeclarationSyntax> members) {
+        foreach (MemberDeclarationSyntax member in members) {
+            if (member is BaseNamespaceDeclarationSyntax namespaceDeclaration) {
+                foreach (MemberDeclarationSyntax nestedMember in ExpandNamespaceMembers(namespaceDeclaration.Members)) {
+                    yield return nestedMember;
+                }
+            }
+            else {
+                yield return member;
+            }
+        }
     }
 
     private static string GetDeclarationName(MemberDeclarationSyntax declaration)
