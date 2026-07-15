@@ -1620,3 +1620,42 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
   summary: Reject path-like configuration names before building or resolving generated output.
   evidence: User-controlled `configuration` is passed to `dotnet build`, embedded in `CompilerGeneratedFilesOutputPath`, and combined under the project `obj` directory without the framework validator's traversal/separator checks (`src/Hexalith.FrontComposer.Cli/GeneratedOutputLoader.cs:131-153`). A path-like configuration can therefore redirect generated-output writes or inspection outside the intended configuration subtree. The behavior predates the split.
+
+## Deferred from: code review of 11-17-cli-package-split.md (2026-07-15)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Preserve evaluated conditional-compilation symbols when scanning migration sources.
+  evidence: `MigrationPlanner` creates its Roslyn project with `CSharpParseOptions.Default`, so obsolete APIs that exist only in an active project-defined conditional branch can remain disabled syntax and escape scanning (`src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:43-52`). The parse behavior predates the mechanical split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Evaluate the complete MSBuild `Compile` item set, including `Remove`, conditions, child `Link` metadata, and include globs.
+  evidence: `ProjectDocumentLoader` approximates evaluated SDK items from raw XML `Include` attributes and a limited glob implementation; it does not evaluate `Remove`, conditions/properties, child `Link` metadata, or general directory wildcards (`src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:20-37,100-151`). The loader behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Report malformed, missing, and unauthorized project-load failures instead of returning unchanged or crashing.
+  evidence: XML and I/O failures return an empty document set that later produces an `unchanged` entry, while `UnauthorizedAccessException` is not caught (`src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:14-16,48-57`; `MigrationPlanner.cs:246-257`). This behavior predates Story 11.17a.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Convert project source-enumeration I/O and access failures into controlled planning failures.
+  evidence: `Directory.EnumerateFiles` is returned lazily and materialized by `AddRange` outside an I/O/access guard, so an inaccessible subtree aborts migration rather than producing a failed entry (`src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:114-134`). The behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Treat primitive migration-sidecar roots and entries as unreadable payloads.
+  evidence: The reader calls `TryGetProperty` on non-object roots and array entries; scalar or `null` JSON throws `InvalidOperationException` outside the existing catches (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:37-46,74-83`). The behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Canonicalize and validate migration-sidecar source keys before lookup so diagnostics cannot be silently disconnected.
+  evidence: Relative dot segments and redundant separators are not canonicalized, long/control-bearing keys are sanitized before dictionary lookup, and rooted path normalization can throw; the planner consumes only exact document-key matches (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:50-59,124-146`; `MigrationPlanner.cs:100-103`). These cases can silently drop or abort manual diagnostics and predate the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Surface migration-sidecar directory enumeration failures instead of returning an empty diagnostic set.
+  evidence: I/O or access failure while materializing the diagnostics directory returns an empty dictionary, making all generated manual diagnostics disappear without a sentinel (`src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:21-31`). The behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Refresh submodule boundaries immediately before each migration write.
+  evidence: Apply snapshots `.gitmodules` once before iterating edits; a newly added or changed submodule boundary during the run is not reflected in later `WriteSafetyPolicy` checks (`src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:7-14`). Canonical target drift is rechecked, but manifest drift remains pre-existing.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Preserve unapplied planned entries in cancellation results.
+  evidence: Apply removes all planned safe-fix entries up front, then on cancellation records only the current edit and breaks, so later unapplied edits disappear from the result and summary (`src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:5-9,36-39`). The behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Escape multiline filenames before emitting unified-diff headers.
+  evidence: `UnifiedDiff.Create` writes the raw project-relative path into `---`/`+++` headers, and later multiline sanitation intentionally preserves newlines, allowing a legal Unix filename to inject extra diff header/body lines (`src/Hexalith.FrontComposer.Cli/UnifiedDiff.cs:12-13`; `OutputSanitizer.cs:6-31`). The behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Keep per-entry and aggregate migration diff budgets hard after adding truncation suffixes.
+  evidence: `SanitizeMultiLine` may append a truncation suffix beyond the supplied maximum; `MigrationJson` then subtracts the expanded length only after rendering, so an entry and aggregate can exceed the documented caps (`src/Hexalith.FrontComposer.Cli/MigrationJson.cs:45-53`; `OutputSanitizer.cs:8-31`). The behavior predates Story 11.17a.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
+  summary: Avoid reporting unchanged when every discovered project document was skipped.
+  evidence: The final fallback ignores `skipped` entries when deciding to add `HFCM0001 unchanged`, so a plan that scanned no eligible source can contain both skipped and unchanged claims (`src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:246-257`). The behavior predates the split.

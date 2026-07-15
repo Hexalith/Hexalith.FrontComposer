@@ -1,8 +1,6 @@
 using System.Globalization;
 
 using Fluxor;
-
-using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Icons;
 using Hexalith.FrontComposer.Shell.Resources;
 
@@ -111,31 +109,4 @@ public partial class FcColumnPrioritizer : ComponentBase {
         _popoverOpen = false;
         return Task.CompletedTask;
     }
-}
-
-/// <summary>
-/// Descriptor for one column exposed by the prioritizer's popover. Carried by the generator-emitted
-/// wrap.
-/// </summary>
-/// <param name="Key">Declared property name (the column's stable key).</param>
-/// <param name="Header">Human-readable header text (post-<c>CamelCaseHumanizer</c> / <c>[Display]</c>).</param>
-/// <param name="Priority">Declared priority or <see langword="null"/> when unannotated.</param>
-public sealed record ColumnDescriptor(string Key, string Header, int? Priority);
-
-/// <summary>
-/// Render context passed to the prioritizer's child fragment so the wrapped <c>FluentDataGrid</c>
-/// can omit rendering hidden columns via <c>@if (!Context.IsHidden(key))</c>.
-/// </summary>
-/// <param name="HiddenKeys">Set of hidden column keys (case-sensitive).</param>
-public sealed class ColumnVisibilityContext {
-    private readonly ISet<string> _hiddenKeys;
-
-    /// <summary>Initializes the visibility context.</summary>
-    public ColumnVisibilityContext(ISet<string> hiddenKeys) {
-        ArgumentNullException.ThrowIfNull(hiddenKeys);
-        _hiddenKeys = hiddenKeys;
-    }
-
-    /// <summary>Returns <see langword="true"/> when <paramref name="columnKey"/> is hidden.</summary>
-    public bool IsHidden(string columnKey) => _hiddenKeys.Contains(columnKey);
 }

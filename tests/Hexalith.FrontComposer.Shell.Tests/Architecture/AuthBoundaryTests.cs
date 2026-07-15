@@ -23,12 +23,21 @@ public sealed class AuthBoundaryTests {
             // circuit-safe bearer relay, so this is a legitimate Shell auth-area file.
             Normalize("src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerTokenRelayServiceExtensions.cs"),
             Normalize("src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthenticationOptions.cs"),
+            Normalize("src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthenticationProviderKind.cs"),
+            Normalize("src/Hexalith.FrontComposer.Shell/Options/FrontComposerGitHubOAuthOptions.cs"),
+            Normalize("src/Hexalith.FrontComposer.Shell/Options/FrontComposerOpenIdConnectOptions.cs"),
+            Normalize("src/Hexalith.FrontComposer.Shell/Options/FrontComposerSaml2Options.cs"),
+            Normalize("src/Hexalith.FrontComposer.Shell/Options/FrontComposerTokenRelayOptions.cs"),
             // AppHost owns local orchestration and may call provider-specific Aspire security helpers.
             Normalize("src/Hexalith.FrontComposer.AppHost/Program.cs"),
             Normalize("src/Hexalith.FrontComposer.Shell/Services/Auth/"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Extensions/FrontComposerAuthenticationServiceExtensionsTests.cs"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs"),
+            // The Shell organization guard pins the exact source identities of the split auth
+            // option declarations. Those manifest strings are governance evidence, not a runtime
+            // dependency on provider-specific authentication types.
+            Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs"),
             Normalize("_bmad-output/implementation-artifacts/7-1-oidc-saml-authentication-integration.md"),
@@ -91,7 +100,7 @@ public sealed class AuthBoundaryTests {
             // OUTBOUND request (`request.Headers.Authorization = Bearer ...`). That is its whole job
             // and is not a write to framework token STORAGE — the storage check above still guards
             // against IStorageService/localStorage/.SetAsync, which this file does not use.
-            [Normalize("FrontComposerTokenRelay.cs")] = new(StringComparer.Ordinal) { "Headers.Authorization" },
+            [Normalize("FrontComposerGatewayAuthorizationHandler.cs")] = new(StringComparer.Ordinal) { "Headers.Authorization" },
         };
 
         List<string> violations = [];

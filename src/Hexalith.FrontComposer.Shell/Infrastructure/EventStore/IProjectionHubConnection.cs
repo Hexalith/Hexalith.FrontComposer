@@ -33,19 +33,3 @@ internal interface IProjectionHubConnection : IAsyncDisposable {
 
     Task StopAsync(CancellationToken cancellationToken);
 }
-
-internal interface IProjectionHubConnectionFactory {
-    IProjectionHubConnection Create(Uri hubUri, Func<CancellationToken, ValueTask<string?>>? accessTokenProvider);
-}
-
-internal enum ProjectionHubConnectionState {
-    Connected,
-    Reconnecting,
-    Reconnected,
-    Closed,
-}
-
-internal sealed record ProjectionHubConnectionStateChanged(
-    ProjectionHubConnectionState State,
-    Exception? Exception = null,
-    string? ConnectionId = null);

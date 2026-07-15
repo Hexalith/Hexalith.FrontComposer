@@ -142,6 +142,35 @@ src/
 └── Hexalith.FrontComposer.UI/             # non-packable combined module UI/container host
 ```
 
+### Shell source organization
+
+Handwritten `Hexalith.FrontComposer.Shell` C# sources use one direct top-level type or delegate per
+same-named file; a component code-behind such as `Foo.razor.cs` has the normalized owner name `Foo`.
+The complete grandfathered exception is the following six pure Fluxor action groups (38 public
+records total):
+
+- `State/CapabilityDiscovery/CapabilityDiscoveryActions.cs`: `BadgeCountsSeededAction`,
+  `BadgeCountChangedAction`, `CapabilityVisitedAction`, `SeenCapabilitiesHydratedAction`.
+- `State/CommandPalette/CommandPaletteActions.cs`: `PaletteOpenedAction`, `PaletteClosedAction`,
+  `PaletteQueryChangedAction`, `PaletteScopeChangedAction`, `PaletteResultsComputedAction`,
+  `PaletteSelectionMovedAction`, `PaletteResultActivatedAction`, `RecentRouteVisitedAction`,
+  `PaletteHydratedAction`, `PaletteHydratingAction`, `PaletteHydratedCompletedAction`.
+- `State/DataGridNavigation/GridViewHydratedAction.cs`: `GridViewHydratedAction`,
+  `DataGridNavigationHydratingAction`, `DataGridNavigationHydratedCompletedAction`.
+- `State/Density/DensityActions.cs`: `DensityChangedAction`, `UserPreferenceChangedAction`,
+  `UserPreferenceClearedAction`, `DensityHydratedAction`, `EffectiveDensityRecomputedAction`,
+  `DensityHydratingAction`, `DensityHydratedCompletedAction`.
+- `State/Navigation/NavigationActions.cs`: `SidebarToggledAction`, `NavGroupToggledAction`,
+  `ViewportTierChangedAction`, `SidebarExpandedAction`, `NavigationHydratedAction`,
+  `LastActiveRouteChangedAction`, `LastActiveRouteHydratedAction`, `StorageReadyAction`,
+  `NavigationHydratingAction`, `NavigationHydratedCompletedAction`.
+- `State/Theme/ThemeActions.cs`: `ThemeChangedAction`, `ThemeHydratingAction`,
+  `ThemeHydratedCompletedAction`; `ThemeChangedAction` remains intentionally non-sealed.
+
+Every direct declaration in these files ends in `Action`. The exception is an exact path-and-identity
+set, not a filename pattern or folder allowance: new action groups are forbidden, and mixed
+action/state/feature/reducer bundles must be split.
+
 ## `tests/` — test projects (xUnit v3)
 
 ```

@@ -8,15 +8,6 @@ using Microsoft.Extensions.Localization;
 
 namespace Hexalith.FrontComposer.Shell.Components.Badges;
 
-/// <summary>Visible optimistic badge state rendered as whole text, not color alone.</summary>
-public enum OptimisticBadgeState {
-    Confirming,
-    Confirmed,
-    Rejected,
-    IdempotentConfirmed,
-    NeedsReview,
-}
-
 /// <summary>
 /// Story 5-5 optimistic status badge wrapper. Reuses <see cref="FcStatusBadge"/> for semantic color
 /// mapping while adding text-first pending/rejected/idempotent state labels via

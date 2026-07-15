@@ -7,45 +7,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
-/// <summary>EventStore projection hub connectivity states surfaced to Shell components.</summary>
-public enum ProjectionConnectionStatus {
-    Connected,
-    Reconnecting,
-    Disconnected,
-}
-
-/// <summary>Immutable public snapshot of the current EventStore projection connection state.</summary>
-/// <param name="Status">Current connection status.</param>
-/// <param name="LastTransitionAt">UTC timestamp of the latest transition.</param>
-/// <param name="ReconnectAttempt">Current reconnect attempt count, if known.</param>
-/// <param name="LastFailureCategory">Bounded non-sensitive failure category.</param>
-public sealed record ProjectionConnectionSnapshot(
-    ProjectionConnectionStatus Status,
-    DateTimeOffset LastTransitionAt,
-    int ReconnectAttempt,
-    string? LastFailureCategory) {
-    /// <summary>Gets a value indicating whether realtime projection nudges are unavailable.</summary>
-    public bool IsDisconnected => Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected;
-}
-
-/// <summary>Connection-state transition produced by the EventStore hub wrapper/subscription service.</summary>
-/// <param name="Status">New status.</param>
-/// <param name="FailureCategory">Bounded non-sensitive category for logging and UI diagnostics.</param>
-/// <param name="ReconnectAttempt">Reconnect attempt count, if known.</param>
-public sealed record ProjectionConnectionTransition(
-    ProjectionConnectionStatus Status,
-    string? FailureCategory = null,
-    int ReconnectAttempt = 0);
-
-/// <summary>Scoped read/subscribe API for projection connection state.</summary>
-public interface IProjectionConnectionState {
-    ProjectionConnectionSnapshot Current { get; }
-
-    IDisposable Subscribe(Action<ProjectionConnectionSnapshot> handler, bool replay = true);
-
-    void Apply(ProjectionConnectionTransition transition);
-}
-
 /// <summary>Scoped per-circuit projection connection state service.</summary>
 /// <remarks>
 /// Story 11.15 (M19 cluster 5): the handler-list / current-and-replay / fault-isolation /

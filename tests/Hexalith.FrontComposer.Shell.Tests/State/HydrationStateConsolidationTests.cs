@@ -172,7 +172,7 @@ public sealed class HydrationStateConsolidationTests {
             hydrationEnums[0].Name.ShouldBe("HydrationState");
 
             SourceFile capabilitySource = sources.Single(
-                source => source.Path == "State/CapabilityDiscovery/FrontComposerCapabilityDiscoveryState.cs");
+                source => source.Path == "State/CapabilityDiscovery/CapabilityDiscoveryHydrationState.cs");
             EnumDeclarationSyntax capability = CSharpSyntaxTree.ParseText(capabilitySource.Content)
                 .GetCompilationUnitRoot()
                 .DescendantNodes()

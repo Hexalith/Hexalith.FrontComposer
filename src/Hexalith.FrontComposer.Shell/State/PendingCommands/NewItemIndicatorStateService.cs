@@ -5,26 +5,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 
-/// <summary>Transient indicator for a confirmed created entity that is relevant to a lane but outside current filters.</summary>
-public sealed record NewItemIndicatorEntry(
-    string ViewKey,
-    string EntityKey,
-    string MessageId,
-    DateTimeOffset CreatedAt);
-
-/// <summary>Circuit-local state for Story 5-5 new-item indicators.</summary>
-public interface INewItemIndicatorStateService : IDisposable {
-    void Add(NewItemIndicatorEntry entry);
-
-    IReadOnlyList<NewItemIndicatorEntry> Snapshot(string viewKey);
-
-    void DismissForFilterChange(string viewKey);
-
-    void DismissMaterialized(string viewKey, string entityKey);
-
-    void Clear(string reason);
-}
-
 /// <inheritdoc />
 public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService {
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromSeconds(10);

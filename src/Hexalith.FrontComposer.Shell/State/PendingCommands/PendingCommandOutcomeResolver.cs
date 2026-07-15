@@ -3,63 +3,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 
-/// <summary>Delivery path that observed a terminal pending-command outcome.</summary>
-public enum PendingCommandOutcomeSource {
-    LiveNudgeRefresh,
-    ReconnectReconciliation,
-    FallbackPolling,
-    IdempotencyStatusQuery,
-}
-
-/// <summary>Shared resolver status across live, reconnect, polling, and status-query inputs.</summary>
-public enum PendingCommandOutcomeResolutionStatus {
-    Resolved,
-    DuplicateIgnored,
-    Unknown,
-    InvalidMessageId,
-    AmbiguousMatch,
-    LifecycleDispatchFailed,
-}
-
-/// <summary>
-/// Transport-neutral terminal outcome metadata. Raw command payloads and form values must never be
-/// used to populate this record.
-/// </summary>
-public sealed record PendingCommandOutcomeObservation(
-    PendingCommandOutcomeSource Source,
-    PendingCommandTerminalOutcome Outcome,
-    string? MessageId = null,
-    string? ProjectionTypeName = null,
-    string? LaneKey = null,
-    string? EntityKey = null,
-    string? ExpectedStatusSlot = null,
-    string? RejectionTitle = null,
-    string? RejectionDetail = null,
-    string? RejectionDataImpact = null,
-    DateTimeOffset? ObservedAt = null);
-
-/// <summary>Result returned by the shared pending-command outcome resolver.</summary>
-public sealed record PendingCommandOutcomeResolutionResult(
-    PendingCommandOutcomeResolutionStatus Status,
-    PendingCommandEntry? Entry = null) {
-    public static PendingCommandOutcomeResolutionResult From(PendingCommandResolutionResult result) {
-        ArgumentNullException.ThrowIfNull(result);
-
-        return result.Status switch {
-            PendingCommandResolutionStatus.Resolved => new(PendingCommandOutcomeResolutionStatus.Resolved, result.Entry),
-            PendingCommandResolutionStatus.DuplicateIgnored => new(PendingCommandOutcomeResolutionStatus.DuplicateIgnored, result.Entry),
-            PendingCommandResolutionStatus.InvalidMessageId => new(PendingCommandOutcomeResolutionStatus.InvalidMessageId),
-            PendingCommandResolutionStatus.LifecycleDispatchFailed => new(PendingCommandOutcomeResolutionStatus.LifecycleDispatchFailed, result.Entry),
-            _ => new(PendingCommandOutcomeResolutionStatus.Unknown),
-        };
-    }
-}
-
-/// <summary>Shared pending-command outcome resolver used by nudge, reconnect, polling, and status-query paths.</summary>
-public interface IPendingCommandOutcomeResolver {
-    PendingCommandOutcomeResolutionResult Resolve(PendingCommandOutcomeObservation observation);
-}
-
 /// <inheritdoc />
 public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolver {
     private readonly IPendingCommandStateService _pendingCommands;

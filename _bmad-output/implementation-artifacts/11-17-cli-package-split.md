@@ -3,7 +3,7 @@ baseline_commit: 6188288a0ccdf3394389019b732d630f25726925
 ---
 # Story 11.17a: CLI package split
 
-Status: in-progress
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Type: mechanical refactor; first child of the non-implementable Story 11.17 decomposition parent. -->
@@ -131,6 +131,18 @@ This story refines FR25, FR28, and FR29 and closes only the CLI slice of archite
 - [x] [Review][Defer] Normalize absent or null diagnostic related types so type filtering retains global diagnostics [src/Hexalith.FrontComposer.Cli/DiagnosticFileReader.cs:29] — deferred, pre-existing
 - [x] [Review][Defer] Validate the requested framework before invoking `dotnet build` [src/Hexalith.FrontComposer.Cli/GeneratedOutputLoader.cs:25] — deferred, pre-existing
 - [x] [Review][Defer] Reject path-like configuration names before building or resolving generated output [src/Hexalith.FrontComposer.Cli/GeneratedOutputLoader.cs:143] — deferred, pre-existing
+- [x] [Review][Defer] Preserve evaluated conditional-compilation symbols when scanning migration sources [src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:43] — deferred, pre-existing
+- [x] [Review][Defer] Evaluate the complete MSBuild `Compile` item set, including `Remove`, conditions, child `Link` metadata, and include globs [src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:20] — deferred, pre-existing
+- [x] [Review][Defer] Report malformed, missing, and unauthorized project-load failures instead of returning unchanged or crashing [src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:14] — deferred, pre-existing
+- [x] [Review][Defer] Convert project source-enumeration I/O and access failures into controlled planning failures [src/Hexalith.FrontComposer.Cli/ProjectDocumentLoader.cs:114] — deferred, pre-existing
+- [x] [Review][Defer] Treat primitive migration-sidecar roots and entries as unreadable payloads [src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:39] — deferred, pre-existing
+- [x] [Review][Defer] Canonicalize and validate migration-sidecar source keys before lookup so diagnostics cannot be silently disconnected [src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:50] — deferred, pre-existing
+- [x] [Review][Defer] Surface migration-sidecar directory enumeration failures instead of returning an empty diagnostic set [src/Hexalith.FrontComposer.Cli/MigrationDiagnosticSidecarReader.cs:21] — deferred, pre-existing
+- [x] [Review][Defer] Refresh submodule boundaries immediately before each migration write [src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:7] — deferred, pre-existing
+- [x] [Review][Defer] Preserve unapplied planned entries in cancellation results [src/Hexalith.FrontComposer.Cli/MigrationApplier.cs:5] — deferred, pre-existing
+- [x] [Review][Defer] Escape multiline filenames before emitting unified-diff headers [src/Hexalith.FrontComposer.Cli/UnifiedDiff.cs:12] — deferred, pre-existing
+- [x] [Review][Defer] Keep per-entry and aggregate migration diff budgets hard after adding truncation suffixes [src/Hexalith.FrontComposer.Cli/MigrationJson.cs:50] — deferred, pre-existing
+- [x] [Review][Defer] Avoid reporting unchanged when every discovered project document was skipped [src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:246] — deferred, pre-existing
 
 ## Dev Notes
 
@@ -283,6 +295,8 @@ GPT-5 Codex
 - 2026-07-14 completion RED: the real story artifact audit rejected the checked `[Review][Defer]` `.gitmodules` finding because the validator treated a classified pre-existing input path as a required story-owned output.
 - 2026-07-14 completion GREEN: explicit `[Review][Defer]` items classified as deferred and pre-existing now bypass output-path evidence reconciliation; the focused regression and active validator suite pass 11/11, and the real 44-path story audit passes.
 - 2026-07-14 completion gates at HEAD `f70713d2`: Release restore/build passed with 0 warnings/0 errors; CLI executable 71/71; default solution 4,109/4,109; Governance 286/286; packaging smoke 1/1; received-artifact, CRLF, PublicAPI/project/package/docs/submodule, and diff-integrity audits passed. The unrelated dirty `references/Hexalith.Memories` checkout was preserved and excluded.
+- 2026-07-15 completion revalidation at HEAD `0a84e818`: Release restore/build passed with 0 warnings/0 errors; CLI executable 73/73; default solution 4,099/4,099; Governance 293/293; packaging smoke 1/1; active artifact-validator tests 11/11; and the real 44-path story artifact audit passed.
+- 2026-07-15 integrity revalidation: the implementation commit remains exactly 3 modified + 36 added CLI production files; all 40 story-listed C# files are CRLF-only with no trailing whitespace; CLI PublicAPI diff, story-owned submodule diff, received-artifact scan, and `git diff --check` are empty. The full Python validator module still has the documented 2 pre-existing `ReviewVerifierTests` import errors because `story_automator` is absent.
 
 ### Completion Notes List
 
@@ -295,6 +309,7 @@ GPT-5 Codex
 - Task 6 required a narrow artifact-validator false-positive correction so checked task prose can name a source extension or test assembly without fabricating File List paths; slash-qualified and real filename evidence remains fail-closed.
 - Completion reconciliation extended that narrow correction to explicit `[Review][Defer]` findings classified as deferred and pre-existing, without weakening active task or unclassified path evidence.
 - Task 6 reconciled exact file/declaration counts and passed every required Release, focused, default, Governance, packaging, artifact, CRLF, submodule, and diff-integrity gate.
+- Completion revalidation on current `main` reconfirmed every acceptance criterion and required gate, with only the already-documented non-authoritative Python review-verifier import blocker remaining.
 
 ### File List
 
@@ -349,3 +364,4 @@ GPT-5 Codex
 - 2026-07-14: Split all 39 CLI offender declarations into same-named files (3 modified + 36 new production files), added non-vacuous organization/identity governance, preserved shipped CLI contracts, and passed Release/default/Governance/package/artifact integrity gates.
 - 2026-07-14: Completed the chunked migration-split code review; removed one redundant split-time import, deferred twelve pre-existing migration behaviors, dismissed seven non-findings, and revalidated the CLI test project Release build with 0 warnings and 0 errors.
 - 2026-07-14: Reconciled completion after review, fixed explicit deferred-review path classification in the artifact validator, reran all required gates, and moved the story to review.
+- 2026-07-15: Revalidated the completed CLI package split on current `main`; all Release, CLI, default, Governance, packaging, artifact, CRLF, PublicAPI, submodule, and diff-integrity gates passed, and the story returned to review.

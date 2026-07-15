@@ -1,4 +1,3 @@
-using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
@@ -6,26 +5,6 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
-
-/// <summary>Status-query seam for pending command fallback polling.</summary>
-public interface IPendingCommandStatusQuery {
-    ValueTask<PendingCommandOutcomeObservation?> QueryAsync(
-        PendingCommandEntry pendingCommand,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>No-op provider used until an adopter/EventStore status endpoint is registered.</summary>
-public sealed class NullPendingCommandStatusQuery : IPendingCommandStatusQuery {
-    public ValueTask<PendingCommandOutcomeObservation?> QueryAsync(
-        PendingCommandEntry pendingCommand,
-        CancellationToken cancellationToken = default) =>
-        ValueTask.FromResult<PendingCommandOutcomeObservation?>(null);
-}
-
-/// <summary>Runs bounded pending-command status polling from the existing projection fallback polling loop.</summary>
-public interface IPendingCommandPollingCoordinator {
-    Task<int> PollOnceAsync(CancellationToken cancellationToken = default);
-}
 
 /// <inheritdoc />
 public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoordinator {

@@ -4,33 +4,6 @@ using Microsoft.Extensions.Logging;
 
 namespace Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
-/// <summary>Transient status for the active reconnect reconciliation pass.</summary>
-public enum ReconnectionReconciliationStatus {
-    Idle,
-    Reconciling,
-    Refreshed,
-}
-
-/// <summary>Immutable snapshot consumed by Shell status components.</summary>
-public sealed record ReconnectionReconciliationSnapshot(
-    ReconnectionReconciliationStatus Status,
-    long Epoch,
-    bool Changed,
-    DateTimeOffset LastTransitionAt);
-
-/// <summary>Scoped per-circuit reconciliation state.</summary>
-public interface IReconnectionReconciliationState {
-    ReconnectionReconciliationSnapshot Current { get; }
-
-    IDisposable Subscribe(Action<ReconnectionReconciliationSnapshot> handler, bool replay = true);
-
-    void Start(long epoch);
-
-    void Complete(long epoch, bool changed);
-
-    void Reset(long? expectedEpoch = null);
-}
-
 /// <summary>In-memory reconciliation status service. History is intentionally not persisted.</summary>
 /// <remarks>
 /// Story 11.15 (M19 cluster 5): the handler-list / current-and-replay / fault-isolation /

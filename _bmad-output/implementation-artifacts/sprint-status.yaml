@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-15T01:20:39+02:00
+# last_updated: 2026-07-15T12:37:38+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-14T22:28:36+02:00
+last_updated: 2026-07-15T12:37:38+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -428,7 +428,9 @@ development_status:
   # 11.17a moved review -> in-progress on 2026-07-14 (bmad-code-review chunk 1; migration split reviewed by Blind Hunter, Verification Gap Reviewer, and Acceptance Auditor; Edge Case Hunter timed out. Removed one redundant split-time using, deferred 12 pre-existing migration behaviors, dismissed 7 non-findings; focused Release build 0 warnings/0 errors. Remaining agreed review chunks are still pending.)
   # 11.17a moved in-progress -> review on 2026-07-14 (dev-story completion reconciliation; explicit deferred-review artifact classification fixed, Release/default/Governance/package/artifact/CRLF/diff gates green.)
   # 11.17a moved review -> in-progress on 2026-07-14 (bmad-code-review rerun chunk 1; Inspect/CommandOptions split and organization guard reviewed by all four configured layers. Four governance patches applied and validated: non-empty source scan, recursive namespace traversal, conditional-branch counting, and assembly-wide exported-type pin. Five pre-existing Inspect behaviors deferred; 12 non-findings dismissed. Release CLI test build 0 warnings/0 errors; governance 6/6; full CLI 73/73. Migration and tooling/artifact rerun chunks remain pending.)
-  11-17-cli-package-split: in-progress
+  # 11.17a moved in-progress -> review on 2026-07-15 (dev-story completion revalidation; Release build 0/0, CLI 73/73, default 4,099/4,099, Governance 293/293, packaging 1/1, active artifact validator 11/11, and integrity audits green.)
+  # 11.17a moved review -> done on 2026-07-15 (bmad-code-review migration/parser split re-review; all four configured layers completed. Acceptance Auditor found no AC violations; 0 decision-needed findings, 0 patches, 23 pre-existing behaviors deferred, and 3 non-findings dismissed. The separately agreed Inspect and governance/validator follow-up chunks remain available for targeted re-review.)
+  11-17-cli-package-split: done
   # 11.17b backlog child (SourceTools DriftDetection package split; independently validated by drift/HFC/generated-byte lanes).
   # 11.17b moved backlog -> ready-for-dev on 2026-07-14 (create-story; 17 internal DriftDetection declarations -> 17 same-named files; preserve drift/HFC/generated-byte/P12 behavior and add a non-vacuous Drift organization/identity guard.)
   # 11.17b moved ready-for-dev -> in-progress on 2026-07-14 (dev-story; baseline 9a870d07ddf8c919e33f272cb3e17eb63dc040b8 preserved; starting mechanical SourceTools Drift split and non-vacuous organization/identity guard.)
@@ -440,8 +442,17 @@ development_status:
   # 11.17c moved in-progress -> review on 2026-07-15 (dev-story; 56 declaration bodies preserved across 27 MCP runtime and 29 Bench files; 26 exact v4.0 CP0001 removals approved and governed; Release/default/Governance/Performance/package/docs/artifact/CRLF gates green; M14 closed for this slice only.)
   11-17-mcp-runtime-split-and-benchmark-relocation: review
   # 11.17d backlog child (Shell bundle split with only the documented Fluxor action-group exception; independently validated by Shell/Governance/API lanes).
-  11-17-shell-bundle-split: backlog
-  11-18-loggermessage-migration-for-warnings-and-hot-paths: backlog
+  # 11.17d moved backlog -> ready-for-dev on 2026-07-15 (create-story; live Shell census 35 files/149 declarations, exact six action groups retained, 29 bundles/111 declarations in split scope, and Shell guard/API/non-Contract/package preservation context recorded.)
+  # 11.17d moved ready-for-dev -> in-progress on 2026-07-15 (dev-story; existing baseline_commit preserved; starting mechanical Shell split and organization/identity governance.)
+  # 11.17d moved in-progress -> review on 2026-07-15 (dev-story; 29 bundles/111 declarations split into 23 retained + 6 deleted + 88 new files with zero normalized body differences; exact six action groups/38 records preserved; non-vacuous organization/source/reflection guard added; Release build 0/0, focused 18/18, broad Shell 2,314/2,314, default 4,108/4,108, Governance 302/302, package/API/artifact/CRLF gates green; M14 closed for Shell only.)
+  11-17-shell-bundle-split: review
+  # Story 11.18 is a non-implementable decomposition parent; replaced on 2026-07-15 by three independently reviewable defect-class children before any ready-for-dev transition.
+  # 11.18a moved backlog -> ready-for-dev on 2026-07-15 (create-story; security-first MCP + Shell slice: reconcile a creation-time minimum of 36 direct calls / 13 files, preserve Story 11.3 generated events, eliminate raw exception stacks and sensitive identifiers, add collision-free LoggerMessage events plus non-vacuous MCP/Shell Governance and sanitization lanes.)
+  11-18-fail-closed-security-log-sites: ready-for-dev
+  # 11.18b backlog child (all remaining Shell Warning+ sites; independently validated by Shell unit and source-generated Warning+ governance lanes).
+  11-18-warning-and-above-log-sites: backlog
+  # 11.18c backlog child (command-lifecycle, projection-refresh, and polling hot paths; independently validated by LoggerMessage governance and a documented direct-call remainder ledger).
+  11-18-hot-path-log-sites: backlog
   11-19-enforcement-and-policy-alignment: backlog
   epic-11-retrospective: optional
   # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
