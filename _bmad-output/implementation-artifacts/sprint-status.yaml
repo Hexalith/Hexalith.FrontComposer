@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-15T22:09:47+02:00
+last_updated: 2026-07-16T00:41:59+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -460,7 +460,9 @@ development_status:
   11-18-hot-path-log-sites: review
   # Story 11.19 is a nonimplementable decomposition parent; its queue state belongs only to 11.19a-d.
   # 11.19a moved backlog -> ready-for-dev on 2026-07-15 (create-story; CS1591 enforcement realignment).
-  11-19-doc-comment-enforcement-realignment: ready-for-dev
+  # 11.19a moved ready-for-dev -> in-progress on 2026-07-16 (dev-story).
+  # 11.19a moved in-progress -> review on 2026-07-16 (dev-story; scoped CS1591 policy, docs, and Governance green).
+  11-19-doc-comment-enforcement-realignment: review
   # 11.19b moved backlog -> ready-for-dev on 2026-07-15 (create-story; per-advisory AppHost NuGet audit suppression).
   11-19-apphost-nuget-audit-suppression: ready-for-dev
   # 11.19c moved backlog -> ready-for-dev on 2026-07-15 (create-story; localization and public diagnostic-identifier alignment).

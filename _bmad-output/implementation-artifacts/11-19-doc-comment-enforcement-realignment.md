@@ -8,11 +8,12 @@ owner: Developer + Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
 status: ready-for-dev
 implementationGate: post-correction-readiness-pass
+baseline_commit: 32db5c3460a4aa0ae6382ae9db36fa42e512ffd3
 ---
 
 # Story 11.19a: Doc-Comment Enforcement Realignment
 
-Status: ready-for-dev.
+Status: review.
 
 ## Story
 
@@ -49,11 +50,11 @@ so that public documentation policy matches what Release builds actually verify.
 
 ## Tasks / Subtasks
 
-- [ ] Capture the effective CS1591 configuration and exact in-scope public-symbol/doc-gap census.
-- [ ] Remove the effective compiler-level `1591` suppression and make default vs freeze-scope policy explicit.
-- [ ] Close in-scope XML-doc gaps without changing public signatures or behavior.
-- [ ] Add non-vacuous config, source-set, and synthetic compile governance tests.
-- [ ] Run Release/Contracts/Governance/docs/artifact validation and reconcile the File List.
+- [x] Capture the effective CS1591 configuration and exact in-scope public-symbol/doc-gap census.
+- [x] Remove the effective compiler-level `1591` suppression and make default vs freeze-scope policy explicit.
+- [x] Close in-scope XML-doc gaps without changing public signatures or behavior.
+- [x] Add non-vacuous config, source-set, and synthetic compile governance tests.
+- [x] Run Release/Contracts/Governance/docs/artifact validation and reconcile the File List.
 
 ## Dev Notes
 
@@ -108,12 +109,45 @@ python3 eng/validate-story-artifacts.py --story \
 
 ### Agent Model Used
 
+GPT-5 Codex
+
+### Implementation Plan
+
+- Prove the current effective `NoWarn` and CS1591 gap census before policy changes.
+- Express non-freeze suppression in `.editorconfig`, retain the four recursive warning scopes, and remove compiler-level `1591` suppression.
+- Document the bounded in-scope API gaps without altering signatures or runtime behavior.
+- Add Governance coverage that evaluates effective configuration, non-empty source scopes, and positive/negative synthetic builds.
+- Run the focused and repository-wide validation gates, then reconcile changed files and story evidence.
+
 ### Debug Log References
+
+- 2026-07-16: `dotnet msbuild ... -getProperty:NoWarn` returned `;0419;1570;1572;1573;1574;1591;1734` for both `net10.0` and `netstandard2.0`.
+- 2026-07-16: Release compilation with `1591` removed from the command-line `NoWarn` failed as expected. The approved scopes produced 56 CS1591 errors across both TFMs: 28 unique undocumented public symbols, all in `Rendering/FrontComposerRenderContract.cs`; source-set counts were Attributes 17, Rendering 36, Mcp 6, Conformance 1.
+- 2026-07-16: Config Governance tests failed red on the effective `NoWarn` and absent non-freeze default, then passed 3/3 after realignment. Recursive `**.cs` globs were compiler-proven; the prior `**/*.cs` form did not match files directly under a freeze folder.
+- 2026-07-16: The normal Release Contracts build failed red with the same 56 scoped CS1591 errors after policy activation, then passed 0 warnings/0 errors after documenting the 28 unique public symbols.
+- 2026-07-16: Governance passed 6/6, including evaluated `NoWarn` on both TFMs, root-owned suppression scanning, all four non-empty source scopes, four nested undocumented negative specimens, documented positive specimens, and an undocumented out-of-scope positive specimen.
+- 2026-07-16: Release solution build passed with 0 warnings/0 errors; Governance passed 315/315; the configured regression lane passed 4,132/4,132; DocFX and story-artifact validation passed; whitespace, submodule, generated-output, package/public-API-baseline, release-workflow, and changed-file integrity checks passed.
 
 ### Completion Notes List
 
+- Captured a deterministic red baseline proving the effective suppression and the exact bounded documentation gap before implementation.
+- Removed `1591` from effective compiler `NoWarn`, explicitly disabled CS1591 outside the freeze surface, and activated the four recursive warning scopes.
+- Added XML summaries and parameter documentation to the only in-scope gap file without changing declarations, signatures, or behavior; Release Contracts build and all 209 Contracts tests pass.
+- Added non-vacuous Governance coverage; all six policy cases and the complete 209-test Contracts project pass.
+- Ratcheted the DocFX missing-summary baseline by removing only the four resolved rendering-contract UIDs; no package/public API shape or runtime behavior changed.
+- Completed every required Release, Contracts, Governance, docs, artifact, regression, and file-integrity gate without submodule or release-workflow changes.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/11-19-doc-comment-enforcement-realignment.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `.editorconfig`
+- `src/Directory.Build.props`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/FrontComposerRenderContract.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Architecture/Cs1591DocumentationPolicyTests.cs`
+- `docs/validation/api-summary-baseline.txt`
 
 ## Change Log
 
 - 2026-07-15: Materialized approved 11.19a child from the live inert-CS1591 configuration.
+- 2026-07-16: Activated scoped CS1591 enforcement, documented the bounded rendering-contract gaps, added non-vacuous Governance coverage, and passed all completion gates.

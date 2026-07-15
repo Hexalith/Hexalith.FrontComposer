@@ -1,9 +1,5 @@
 # Public API type UIDs that currently lack generated DocFX summaries.
 # Remove entries as XML summaries are added; validation fails on new or resolved entries.
-Hexalith.FrontComposer.Contracts.Rendering.FrontComposerRenderContract
-Hexalith.FrontComposer.Contracts.Rendering.RenderBounds
-Hexalith.FrontComposer.Contracts.Rendering.RenderCapability
-Hexalith.FrontComposer.Contracts.Rendering.RenderSurfaceKind
 Hexalith.FrontComposer.Contracts.Schema.SchemaBaselineProvenance
 Hexalith.FrontComposer.Contracts.Schema.SchemaBaselineSnapshot
 Hexalith.FrontComposer.Contracts.Schema.SchemaCanonicalPayload
