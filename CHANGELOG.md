@@ -1,3 +1,34 @@
+## [4.0.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.2.2...v4.0.0) (2026-07-15)
+
+### ⚠ BREAKING CHANGES
+
+* **mcp:** remove the public SkillBenchmark* surface from
+Hexalith.FrontComposer.Mcp; repository maintainers now run the
+non-packable Shell.Tests.Bench harness.
+
+### Features
+
+* **tests:** add BenchmarkHarnessGovernanceTests and update BenchmarkHarnessTests ([0a84e81](https://github.com/Hexalith/Hexalith.FrontComposer/commit/0a84e818b0ce220f291510ad094340f7296bb488))
+
+### Bug Fixes
+
+* add logging governance tests and capturing logger implementations ([3356ae7](https://github.com/Hexalith/Hexalith.FrontComposer/commit/3356ae7e9758fc95d86bcccf8b485d9a497ace91))
+* add unit tests for FrontComposerHotPathLog telemetry events ([615605e](https://github.com/Hexalith/Hexalith.FrontComposer/commit/615605e3a358a542dcbb49b5b82601e60db7eb28))
+* add unit tests for FrontComposerWarningLog to validate logging behavior ([32db5c3](https://github.com/Hexalith/Hexalith.FrontComposer/commit/32db5c3460a4aa0ae6382ae9db36fa42e512ffd3))
+* **ci:** restore MCP package baseline in boundary test ([a47041e](https://github.com/Hexalith/Hexalith.FrontComposer/commit/a47041e6b032264c6627706a8d404bfe3b752b82))
+* realign CS1591 documentation policy and add governance tests for compliance ([d17cacd](https://github.com/Hexalith/Hexalith.FrontComposer/commit/d17cacd2e1d2bdc1b439089290954a62615e4434))
+* **shell:** implement route contract ([ddc32c0](https://github.com/Hexalith/Hexalith.FrontComposer/commit/ddc32c0ebfe18886a303558c9a3a038a1d65948d))
+* **shell:** restore scope-skip attribution and guard fault fan-out ([65a72a6](https://github.com/Hexalith/Hexalith.FrontComposer/commit/65a72a62c51d406e0a06466d051e354bf496b914))
+* update AppHost NuGet audit suppression policy and add governance tests ([84273ba](https://github.com/Hexalith/Hexalith.FrontComposer/commit/84273bac14c00e0051872d91ee9be8761317b2af))
+* update subproject commits for Hexalith.Builds, Hexalith.Memories, and Hexalith.Tenants ([c410e4d](https://github.com/Hexalith/Hexalith.FrontComposer/commit/c410e4d109ca266b65c5525afd3960af68e488e8))
+* update subproject references and add blocked status for branch mismatch ([426a864](https://github.com/Hexalith/Hexalith.FrontComposer/commit/426a864710a36a47dae2f6c542c9ad3455fe8cff))
+* update subproject references for Hexalith.EventStore and Hexalith.Memories ([634d2de](https://github.com/Hexalith/Hexalith.FrontComposer/commit/634d2de66801ce1956e70b6c57052c805b31882e))
+* update subproject references for Hexalith.EventStore and Hexalith.Memories ([bdc7779](https://github.com/Hexalith/Hexalith.FrontComposer/commit/bdc77790c46e6074ec279cd61c6dfbe2652775da))
+
+### Code Refactoring
+
+* **mcp:** relocate benchmark harness ([a7e9447](https://github.com/Hexalith/Hexalith.FrontComposer/commit/a7e94471243a97bfe9493486ffff84a740a6f315))
+
 ## [3.2.2](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.2.1...v3.2.2) (2026-07-14)
 
 ### Bug Fixes
