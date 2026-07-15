@@ -3,6 +3,7 @@ using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Diagnostics;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 
@@ -75,11 +76,11 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
         // values so RenderDefault cannot be invoked either; the only safe fallback is to log and
         // render nothing.
         if (Parent is null || Field is null || RenderContext is null) {
-            Logger.LogWarning(
-                "{DiagnosticId}: FcFieldSlotHost<{Projection},{FieldType}> received null required parameter(s). ParentNull: {ParentNull}; FieldNull: {FieldNull}; RenderContextNull: {RenderContextNull}. Field renders nothing. Fix: ensure the calling generated emitter or adopter component supplies all required parameters.",
+            FrontComposerWarningLog.FieldSlotMissingParameters(
+                Logger,
                 FcDiagnosticIds.HFC2120_ProjectionSlotHostMissingParameter,
-                typeof(TProjection).FullName,
-                typeof(TField).FullName,
+                typeof(TProjection),
+                typeof(TField),
                 Parent is null,
                 Field is null,
                 RenderContext is null);
@@ -106,13 +107,13 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
         // is not the host's TField). Without this check the Blazor parameter cast would throw
         // InvalidCastException at OpenComponent time and abort the row render.
         if (descriptor is not null && descriptor.FieldType != typeof(TField)) {
-            Logger.LogWarning(
-                "{DiagnosticId}: Level 3 slot descriptor for projection {Projection} field {Field} has FieldType {DescriptorFieldType} which does not match the host's TField {HostFieldType}. Descriptor ignored; default rendering used. Fix: re-register the slot using the typed AddSlotOverride extension so FieldType is derived from the expression.",
+            FrontComposerWarningLog.FieldSlotTypeMismatch(
+                Logger,
                 FcDiagnosticIds.HFC1039_ProjectionSlotComponentInvalid,
-                typeof(TProjection).FullName,
+                typeof(TProjection),
                 Field.Name,
-                descriptor.FieldType.FullName,
-                typeof(TField).FullName);
+                descriptor.FieldType,
+                typeof(TField));
             descriptor = null;
         }
 
@@ -149,14 +150,14 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
             if (!_publishedFault) {
                 // P15 — defensive null-conditional: the RenderFailure lambda is captured by
                 // ErrorBoundary and may be invoked after parameter teardown clears Field.
-                Logger.LogWarning(
-                    "{DiagnosticId}: Level 3 slot render fault isolated. Projection: {Projection}; Component: {Component}; Role: {Role}; Field: {Field}; ExceptionCategory: {ExceptionCategory}. Item payloads, field values, localized strings, raw exception messages, and render fragments are intentionally omitted.",
+                FrontComposerWarningLog.FieldSlotRenderFailed(
+                    Logger,
                     diagnostic.Id,
-                    typeof(TProjection).FullName,
-                    descriptor.ComponentType.FullName,
-                    ProjectionRole?.ToString() ?? "<default>",
-                    Field?.Name ?? "<unknown>",
-                    exception.GetType().Name);
+                    typeof(TProjection),
+                    descriptor.ComponentType,
+                    ProjectionRole,
+                    Field?.Name,
+                    exception);
                 CustomizationDiagnosticPublisher.Publish(Services?.GetService<IDiagnosticSink>(), diagnostic);
                 _publishedFault = true;
             }

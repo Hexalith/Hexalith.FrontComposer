@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -133,12 +134,10 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             types = _catalog.ActionQueueTypes;
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogWarning(
-                ex,
-                "{DiagnosticId}: Badge catalog enumeration threw — skipping initial fetch. ExceptionType={ExceptionType}; ExceptionMessage={ExceptionMessage}.",
+            FrontComposerWarningLog.BadgeCatalogEnumerationFailed(
+                _logger,
                 FcDiagnosticIds.HFC2112_BadgeInitialFetchFault,
-                ex.GetType().Name,
-                ex.Message);
+                ex);
             return;
         }
 
@@ -206,13 +205,11 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             // Expected on dispose or 5-second umbrella timeout; no log.
         }
         catch (Exception ex) {
-            _logger.LogWarning(
-                ex,
-                "{DiagnosticId}: Badge reader threw for projection '{ProjectionTypeName}'. ExceptionType={ExceptionType}; ExceptionMessage={ExceptionMessage}.",
+            FrontComposerWarningLog.BadgeReaderFailed(
+                _logger,
                 FcDiagnosticIds.HFC2112_BadgeInitialFetchFault,
-                projectionType.FullName,
-                ex.GetType().Name,
-                ex.Message);
+                projectionType,
+                ex);
         }
     }
 
@@ -220,11 +217,11 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         if (newCount < 0) {
             // Reader contract implies non-negative counts; drop and log rather than publish
             // negative values through CountChanged (would skew TotalActionableItems sums).
-            _logger.LogWarning(
-                "{DiagnosticId}: Badge reader returned negative count {NewCount} for projection '{ProjectionTypeName}' — dropping emission.",
+            FrontComposerWarningLog.BadgeNegativeCount(
+                _logger,
                 FcDiagnosticIds.HFC2112_BadgeInitialFetchFault,
                 newCount,
-                projectionType.FullName);
+                projectionType);
             return false;
         }
 
@@ -328,13 +325,11 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             // Expected on dispose; no log.
         }
         catch (Exception ex) {
-            _logger.LogWarning(
-                ex,
-                "{DiagnosticId}: Badge notifier handler threw for projection '{ProjectionTypeName}'. ExceptionType={ExceptionType}; ExceptionMessage={ExceptionMessage}.",
+            FrontComposerWarningLog.BadgeNotifierFailed(
+                _logger,
                 FcDiagnosticIds.HFC2112_BadgeInitialFetchFault,
                 projectionTypeName,
-                ex.GetType().Name,
-                ex.Message);
+                ex);
         }
     }
 

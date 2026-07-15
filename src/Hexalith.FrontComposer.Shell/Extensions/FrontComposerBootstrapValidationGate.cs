@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -45,7 +47,7 @@ internal sealed class FrontComposerBootstrapValidationGate : IHostedService {
         catch (InvalidOperationException ex) {
             // Mirror CustomizationContractValidationGate: log the message first, then throw so the
             // host start fails fast with the same named diagnostic surfaced in both channels.
-            _logger.LogError(ex, "FrontComposer bootstrap validation failed: {Message}", ex.Message);
+            FrontComposerWarningLog.BootstrapValidationFailed(_logger, ex);
             throw;
         }
 

@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 
@@ -22,8 +23,8 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         ILogger<FrontComposerRegistry> logger) {
         _logger = logger;
         foreach (DomainRegistrationWarning warning in warnings) {
-            logger.LogWarning(
-                "Skipping registration type {RegistrationType}: expected a static Manifest member and RegisterDomain(IFrontComposerRegistry) method. Found Manifest={HasManifest}, RegisterDomain={HasRegisterMethod}.",
+            FrontComposerWarningLog.RegistryRegistrationSkipped(
+                logger,
                 warning.RegistrationType,
                 warning.HasManifest,
                 warning.HasRegisterMethod);
@@ -141,8 +142,8 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             string trimmedCandidate = candidate.Trim();
             if (policyName.Length > 0
                 && !string.Equals(policyName, trimmedCandidate, StringComparison.Ordinal)) {
-                _logger.LogWarning(
-                    "FrontComposer registry policy lookup: command {CommandTypeName} resolved to multiple policies across manifests ({PriorPolicy} vs {IncomingPolicy}). Last-write-wins is the legacy default — duplicate cross-bounded-context policy declarations should be reconciled by the adopter.",
+                FrontComposerWarningLog.RegistryPolicyConflict(
+                    _logger,
                     trimmedKey,
                     policyName,
                     trimmedCandidate);
@@ -288,8 +289,8 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             string incomingTrimmed = pair.Value.Trim();
             if (merged.TryGetValue(keyTrimmed, out string? prior)
                 && !string.Equals(prior, incomingTrimmed, StringComparison.Ordinal)) {
-                _logger.LogWarning(
-                    "FrontComposer registry merge: command {CommandTypeName} policy was overwritten from {PriorPolicy} to {IncomingPolicy} during manifest merge. Last-write-wins is the legacy default — duplicate policy declarations across manifests should be reconciled by the adopter.",
+                FrontComposerWarningLog.RegistryPolicyOverwritten(
+                    _logger,
                     keyTrimmed,
                     prior,
                     incomingTrimmed);

@@ -82,14 +82,16 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
         // log message MUST contain HFC2121, the projection field "PayloadValueMustNotLog"
         // MUST NOT appear, the raw exception text MUST NOT appear, and tenant/user values
         // MUST NOT appear (only their hashes).
-        (LogLevel Level, string Message, Exception? Exception) entry = _logger.Entries
-            .ShouldHaveSingleItem();
+        var entry = _logger.Entries.ShouldHaveSingleItem();
         entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5812);
+        entry.EventId.Name.ShouldBe("ProjectionViewOverrideRenderFailed");
+        entry.Exception.ShouldBeNull();
         entry.Message.ShouldContain(FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault);
         entry.Message.ShouldNotContain("PayloadValueMustNotLog");
         entry.Message.ShouldNotContain("raw replacement message");
-        entry.Message.ShouldContain("TenantHash:");
-        entry.Message.ShouldContain("UserHash:");
+        entry.Message.ShouldContain("TenantDigest=sha256:");
+        entry.Message.ShouldContain("UserDigest=sha256:");
 
         DevDiagnosticEvent evt = sink.RecentEvents.ShouldHaveSingleItem();
         evt.Code.ShouldBe(FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault);
@@ -245,7 +247,7 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
     }
 
     private sealed class ListLogger<T> : ILogger<T> {
-        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
+        public List<(LogLevel Level, EventId EventId, string Message, Exception? Exception)> Entries { get; } = [];
 
         public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
@@ -257,7 +259,7 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
             TState state,
             Exception? exception,
             Func<TState, Exception?, string> formatter)
-            => Entries.Add((logLevel, formatter(state, exception), exception));
+            => Entries.Add((logLevel, eventId, formatter(state, exception), exception));
 
         private sealed class NullScope : IDisposable {
             public static readonly NullScope Instance = new();

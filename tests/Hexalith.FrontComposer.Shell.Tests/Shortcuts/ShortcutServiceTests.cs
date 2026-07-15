@@ -17,6 +17,7 @@ public class ShortcutServiceTests {
     private static ShortcutService BuildService(out FakeTimeProvider time, out ILogger<ShortcutService> logger) {
         time = new FakeTimeProvider();
         logger = Substitute.For<ILogger<ShortcutService>>();
+        logger.IsEnabled(LogLevel.Warning).Returns(true);
         return new ShortcutService(time, logger);
     }
 
@@ -182,13 +183,18 @@ public class ShortcutServiceTests {
         fired.ShouldBeTrue();
 
         LoggedEntry entry = GetLogEntries(logger)
-            .Single(e => e.Level == LogLevel.Warning && e.Message.Contains(FcDiagnosticIds.HFC2109_ShortcutHandlerFault, StringComparison.Ordinal));
+            .Single(e => e.Level == LogLevel.Warning && e.EventId.Id == 5837);
 
-        entry.Exception.ShouldBeOfType<InvalidOperationException>().Message.ShouldBe("boom");
-        entry.State["Binding"].ShouldBe("ctrl+k");
-        entry.State["DescriptionKey"].ShouldBe("Desc");
-        entry.State["ExceptionType"].ShouldBe(typeof(InvalidOperationException).FullName);
-        entry.State["ExceptionMessage"].ShouldBe("boom");
+        entry.EventId.Name.ShouldBe("ShortcutHandlerFailed");
+        entry.Exception.ShouldBeNull();
+        entry.State["DiagnosticId"].ShouldBe(FcDiagnosticIds.HFC2109_ShortcutHandlerFault);
+        entry.State["BindingDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
+        entry.State["DescriptionKeyDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
+        entry.State["ExceptionType"].ShouldBe(nameof(InvalidOperationException));
+        entry.State["ExceptionMessageDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
+        entry.Message.ShouldNotContain("ctrl+k");
+        entry.Message.ShouldNotContain("DescriptionKeyDigest=Desc");
+        entry.Message.ShouldNotContain("boom");
     }
 
     [Fact]
@@ -201,13 +207,18 @@ public class ShortcutServiceTests {
         fired.ShouldBeTrue();
 
         LoggedEntry entry = GetLogEntries(logger)
-            .Single(e => e.Level == LogLevel.Warning && e.Message.Contains(FcDiagnosticIds.HFC2109_ShortcutHandlerFault, StringComparison.Ordinal));
+            .Single(e => e.Level == LogLevel.Warning && e.EventId.Id == 5837);
 
-        entry.Exception.ShouldBeOfType<OperationCanceledException>().Message.ShouldBe("cancelled");
-        entry.State["Binding"].ShouldBe("ctrl+k");
-        entry.State["DescriptionKey"].ShouldBe("Desc");
-        entry.State["ExceptionType"].ShouldBe(typeof(OperationCanceledException).FullName);
-        entry.State["ExceptionMessage"].ShouldBe("cancelled");
+        entry.EventId.Name.ShouldBe("ShortcutHandlerFailed");
+        entry.Exception.ShouldBeNull();
+        entry.State["DiagnosticId"].ShouldBe(FcDiagnosticIds.HFC2109_ShortcutHandlerFault);
+        entry.State["BindingDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
+        entry.State["DescriptionKeyDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
+        entry.State["ExceptionType"].ShouldBe(nameof(OperationCanceledException));
+        entry.State["ExceptionMessageDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
+        entry.Message.ShouldNotContain("ctrl+k");
+        entry.Message.ShouldNotContain("DescriptionKeyDigest=Desc");
+        entry.Message.ShouldNotContain("cancelled");
     }
 
     [Theory]
@@ -260,7 +271,7 @@ public class ShortcutServiceTests {
                 }
             }
 
-            entries.Add(new LoggedEntry(level, args[2]?.ToString() ?? string.Empty, args[3] as Exception, state));
+            entries.Add(new LoggedEntry(level, (EventId)args[1]!, args[2]?.ToString() ?? string.Empty, args[3] as Exception, state));
         }
 
         return entries;
@@ -315,6 +326,7 @@ public class ShortcutServiceTests {
 
     private sealed record LoggedEntry(
         LogLevel Level,
+        EventId EventId,
         string Message,
         Exception? Exception,
         IReadOnlyDictionary<string, object?> State);

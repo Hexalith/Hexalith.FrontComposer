@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Theme;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -150,7 +151,7 @@ public class ThemeEffectsTests {
         _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<ThemeValue>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Storage failure"));
         IThemeService themeService = Substitute.For<IThemeService>();
-        ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
+        CapturingLogger<ThemeEffects> logger = new();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
         var sut = new ThemeEffects(storage, MsOptions.Create(new FcShellOptions()), StubAccessor(TestTenant, TestUser), logger, themeService);
         var action = new ThemeChangedAction("corr-1", ThemeValue.Dark);
@@ -158,13 +159,11 @@ public class ThemeEffectsTests {
         // Act — should not throw
         await sut.HandleThemeChanged(action, dispatcher);
 
-        // Assert — logger was called (warning level)
-        logger.ReceivedWithAnyArgs(1).Log(
-            LogLevel.Warning,
-            default,
-            default!,
-            default,
-            default!);
+        CapturedLogEntry warning = logger.Entries.ShouldHaveSingleItem();
+        warning.Level.ShouldBe(LogLevel.Warning);
+        warning.EventId.Id.ShouldBe(5853);
+        warning.EventId.Name.ShouldBe("ThemePersistenceFailed");
+        warning.Exception.ShouldBeNull();
     }
 
     private static IUserContextAccessor StubAccessor(string? tenantId, string? userId) {

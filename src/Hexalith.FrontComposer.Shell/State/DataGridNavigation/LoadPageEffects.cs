@@ -5,6 +5,7 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Resources;
 
 using Microsoft.Extensions.Localization;
@@ -140,8 +141,8 @@ public sealed class LoadPageEffects {
             // P37 — structured Warning log on the schema-mismatch path. Diagnostic is bounded
             // to redacted projection type + exception type — no payload bodies, no stack-traces
             // (the EventStore client already logged the FailureCategory at the wire boundary).
-            _logger.LogWarning(
-                "Projection load failed schema check. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
+            FrontComposerWarningLog.ProjectionLoadSchemaFailed(
+                _logger,
                 ex.ProjectionType,
                 ex.GetType().Name);
             dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, sectionUpdatingCopy, action.Completion));
@@ -165,11 +166,11 @@ public sealed class LoadPageEffects {
                         completion: action.Completion));
                 }
                 catch (Exception defensiveEx) {
-                    _logger.LogWarning(
-                        defensiveEx,
-                        "Defensive terminal dispatch failed during finally — TCS may orphan. viewKey={ViewKey}, skip={Skip}",
+                    FrontComposerWarningLog.ProjectionLoadTerminalDispatchFailed(
+                        _logger,
                         action.ViewKey,
-                        action.Skip);
+                        action.Skip,
+                        defensiveEx);
                 }
             }
         }

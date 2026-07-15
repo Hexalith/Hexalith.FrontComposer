@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 
@@ -186,8 +187,8 @@ public sealed class EventStoreResponseClassifier {
 
         if (response.Content.Headers.ContentLength is { } contentLength
             && contentLength > MaxProblemDetailsBytes) {
-            _logger.LogWarning(
-                "EventStoreResponseClassifier: ProblemDetails body exceeded {MaxBytes} bytes (Content-Type={ContentType}); falling back to empty payload.",
+            FrontComposerWarningLog.ProblemDetailsContentLengthExceeded(
+                _logger,
                 MaxProblemDetailsBytes,
                 response.Content.Headers.ContentType?.MediaType);
             return ProblemDetailsPayload.Empty;
@@ -204,8 +205,8 @@ public sealed class EventStoreResponseClassifier {
                 }
 
                 if (bounded.Length + read > MaxProblemDetailsBytes) {
-                    _logger.LogWarning(
-                        "EventStoreResponseClassifier: ProblemDetails body exceeded {MaxBytes} bytes while reading (Content-Type={ContentType}); falling back to empty payload.",
+                    FrontComposerWarningLog.ProblemDetailsReadExceeded(
+                        _logger,
                         MaxProblemDetailsBytes,
                         response.Content.Headers.ContentType?.MediaType);
                     return ProblemDetailsPayload.Empty;
@@ -220,8 +221,8 @@ public sealed class EventStoreResponseClassifier {
         }
         catch (JsonException ex) {
             // Body intentionally not echoed: JsonException.Message can leak server payload fragments.
-            _logger.LogWarning(
-                "EventStoreResponseClassifier: ProblemDetails parse failed (Content-Type={ContentType}); falling back to empty payload. FailureCategory={FailureCategory}",
+            FrontComposerWarningLog.ProblemDetailsParseFailed(
+                _logger,
                 response.Content?.Headers.ContentType?.MediaType,
                 ex.GetType().Name);
             return ProblemDetailsPayload.Empty;

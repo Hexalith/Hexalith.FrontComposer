@@ -3,6 +3,7 @@ using System.Runtime.CompilerServices;
 
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.Logging;
@@ -222,14 +223,12 @@ public sealed class ShortcutService : IShortcutService, IDisposable {
             return true;
         }
         catch (Exception ex) {
-            _logger.LogWarning(
-                ex,
-                "{DiagnosticId}: Registered shortcut handler threw. Binding={Binding} DescriptionKey={DescriptionKey} ExceptionType={ExceptionType} ExceptionMessage={ExceptionMessage}",
+            FrontComposerWarningLog.ShortcutHandlerFailed(
+                _logger,
                 FcDiagnosticIds.HFC2109_ShortcutHandlerFault,
                 entry.Binding,
                 entry.DescriptionKey,
-                ex.GetType().FullName,
-                ex.Message);
+                ex);
             return true;
         }
     }

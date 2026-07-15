@@ -2,6 +2,8 @@ using System.Collections.Immutable;
 
 using Fluxor;
 
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -99,10 +101,7 @@ public sealed class LoadedPageReducers {
         }
 
         if (action.Items is null) {
-            _logger.LogWarning(
-                "LoadPageSucceededAction received null Items payload. ViewKey={ViewKey}, Skip={Skip}.",
-                action.ViewKey,
-                action.Skip);
+            FrontComposerWarningLog.LoadedPageNullItems(_logger, action.ViewKey, action.Skip);
 
             if (state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? nullTcs)) {
                 _ = nullTcs.TrySetException(new InvalidOperationException(

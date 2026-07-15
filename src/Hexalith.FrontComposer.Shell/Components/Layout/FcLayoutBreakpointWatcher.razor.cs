@@ -1,5 +1,6 @@
 using Fluxor;
 
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
@@ -48,7 +49,7 @@ public partial class FcLayoutBreakpointWatcher : ComponentBase, IAsyncDisposable
         // exactly; ViewportTier is byte-backed, so cast before the check.
         if (tier < byte.MinValue || tier > byte.MaxValue
             || !Enum.IsDefined(typeof(ViewportTier), (byte)tier)) {
-            Logger.LogWarning("FcLayoutBreakpointWatcher received unknown viewport tier {Tier}; ignoring.", tier);
+            FrontComposerWarningLog.LayoutUnknownViewportTier(Logger, tier);
             return Task.CompletedTask;
         }
 
@@ -91,10 +92,7 @@ public partial class FcLayoutBreakpointWatcher : ComponentBase, IAsyncDisposable
             await SafeDisposeAsync(module).ConfigureAwait(false);
         }
         catch (Exception ex) {
-            Logger.LogWarning(
-                ex,
-                "FcLayoutBreakpointWatcher subscribe failed; viewport stays at {Default}.",
-                ViewportTier.Desktop);
+            FrontComposerWarningLog.LayoutSubscribeFailed(Logger, ViewportTier.Desktop, ex);
             await SafeDisposeAsync(subscription).ConfigureAwait(false);
             await SafeDisposeAsync(module).ConfigureAwait(false);
         }

@@ -141,9 +141,8 @@ public sealed class FrontComposerBootstrapGuardTests {
 
     [Fact]
     public async Task Gate_StartAsync_MisorderedMarkers_LogsErrorWithNamedMessage_BeforeThrowing() {
-        // Task 1 explicitly requires the gate to write the message to the logger AND throw it
-        // (mirrors CustomizationContractValidationGate). Pin the log channel so the named diagnostic
-        // is not silently dropped before the throw.
+        // The thrown exception remains actionable, while the support log uses the stable generated
+        // event contract and a digest instead of repeating the raw bootstrap details.
         CapturingLogger<FrontComposerBootstrapValidationGate> logger = new();
         FrontComposerBootstrapValidationGate gate = new(
             Markers(FrontComposerBootstrapStage.EventStore, FrontComposerBootstrapStage.Quickstart),
@@ -155,8 +154,12 @@ public sealed class FrontComposerBootstrapGuardTests {
         CapturingLogger<FrontComposerBootstrapValidationGate>.Entry error =
             logger.Entries.ShouldHaveSingleItem();
         error.Level.ShouldBe(LogLevel.Error);
-        error.Message.ShouldContain("AddHexalithEventStore");
-        error.Message.ShouldContain("AddHexalithFrontComposerQuickstart");
+        error.EventId.Id.ShouldBe(5813);
+        error.EventId.Name.ShouldBe("BootstrapValidationFailed");
+        error.Exception.ShouldBeNull();
+        error.Message.ShouldContain("MessageDigest=sha256:");
+        error.Message.ShouldNotContain("AddHexalithEventStore");
+        error.Message.ShouldNotContain("AddHexalithFrontComposerQuickstart");
     }
 
     [Fact]
@@ -329,8 +332,8 @@ public sealed class FrontComposerBootstrapGuardTests {
             TState state,
             Exception? exception,
             Func<TState, Exception?, string> formatter)
-            => Entries.Add(new Entry(logLevel, formatter(state, exception)));
+            => Entries.Add(new Entry(logLevel, eventId, formatter(state, exception), exception));
 
-        public sealed record Entry(LogLevel Level, string Message);
+        public sealed record Entry(LogLevel Level, EventId EventId, string Message, Exception? Exception);
     }
 }

@@ -335,15 +335,16 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             markup.ShouldContain(">Count<");
         });
 
-        // HFC1039 fired with the canonical Expected/Got/Fix teaching shape.
+        // HFC1039 fired through the support-safe generated event contract.
         capturedLogger.Entries.ShouldContain(e =>
             e.Level == LogLevel.Warning
+            && e.EventId.Id == 5826
+            && e.EventId.Name == "ProjectionSlotInvalidComponent"
             && e.Message.Contains("HFC1039", StringComparison.Ordinal)
-            && e.Message.Contains("Expected:", StringComparison.Ordinal)
-            && e.Message.Contains("Got:", StringComparison.Ordinal)
-            && e.Message.Contains("Fix:", StringComparison.Ordinal)
-            && e.Message.Contains(typeof(CounterProjection).FullName!, StringComparison.Ordinal)
-            && e.Message.Contains(typeof(InvalidSlotMissingContext).FullName!, StringComparison.Ordinal));
+            && e.Message.Contains("ExpectedProjectionTypeDigest=sha256:", StringComparison.Ordinal)
+            && e.Message.Contains("ComponentTypeDigest=sha256:", StringComparison.Ordinal)
+            && !e.Message.Contains(typeof(CounterProjection).FullName!, StringComparison.Ordinal)
+            && !e.Message.Contains(typeof(InvalidSlotMissingContext).FullName!, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -516,12 +517,13 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
         capturedLogger.Entries.ShouldContain(e =>
             e.Level == LogLevel.Warning
+            && e.EventId.Id == 5833
+            && e.EventId.Name == "ProjectionViewOverrideInvalidComponent"
             && e.Message.Contains("HFC1043", StringComparison.Ordinal)
-            && e.Message.Contains("Expected:", StringComparison.Ordinal)
-            && e.Message.Contains("Got:", StringComparison.Ordinal)
-            && e.Message.Contains("Fix:", StringComparison.Ordinal)
-            && e.Message.Contains(typeof(CounterProjection).FullName!, StringComparison.Ordinal)
-            && e.Message.Contains(typeof(InvalidViewMissingContext).FullName!, StringComparison.Ordinal));
+            && e.Message.Contains("ProjectionTypeDigest=sha256:", StringComparison.Ordinal)
+            && e.Message.Contains("ComponentTypeDigest=sha256:", StringComparison.Ordinal)
+            && !e.Message.Contains(typeof(CounterProjection).FullName!, StringComparison.Ordinal)
+            && !e.Message.Contains(typeof(InvalidViewMissingContext).FullName!, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -625,7 +627,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
     }
 
     private sealed class ListLogger<T> : ILogger<T> {
-        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+        public List<(LogLevel Level, EventId EventId, string Message)> Entries { get; } = [];
 
         public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
@@ -637,7 +639,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             TState state,
             Exception? exception,
             Func<TState, Exception?, string> formatter)
-            => Entries.Add((logLevel, formatter(state, exception)));
+            => Entries.Add((logLevel, eventId, formatter(state, exception)));
 
         private sealed class NullScope : IDisposable {
             public static readonly NullScope Instance = new();

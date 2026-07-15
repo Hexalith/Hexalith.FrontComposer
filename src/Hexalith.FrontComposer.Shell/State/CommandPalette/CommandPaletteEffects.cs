@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Routing;
 using Hexalith.FrontComposer.Shell.Services;
@@ -325,8 +326,8 @@ public sealed class CommandPaletteEffects : IDisposable {
                 // P10 (Pass-6): log when the alias bypass falls through to an empty result set
                 // because IShortcutService is unregistered. Adopters who forget the registration
                 // saw silent UX degradation (typing "?" produced an empty list with no clue why).
-                _logger.LogWarning(
-                    "{DiagnosticId}: Palette shortcuts query bypassed scoring but IShortcutService is unregistered; dispatching empty result set.",
+                FrontComposerWarningLog.PaletteShortcutServiceMissing(
+                    _logger,
                     FcDiagnosticIds.HFC2110_PaletteScoringFault);
                 dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ImmutableArray<PaletteResult>.Empty));
                 return;
@@ -358,10 +359,10 @@ public sealed class CommandPaletteEffects : IDisposable {
             manifests = (scoringRegistry?.GetManifests() ?? []).ToList();
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogWarning(
-                ex,
-                "{DiagnosticId}: Registry enumeration threw during palette scoring — dispatching empty result set.",
-                FcDiagnosticIds.HFC2110_PaletteScoringFault);
+            FrontComposerWarningLog.PaletteRegistryEnumerationFailed(
+                _logger,
+                FcDiagnosticIds.HFC2110_PaletteScoringFault,
+                ex);
             dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ImmutableArray<PaletteResult>.Empty));
             return;
         }
@@ -417,11 +418,11 @@ public sealed class CommandPaletteEffects : IDisposable {
                 }
             }
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                _logger.LogWarning(
-                    ex,
-                    "{DiagnosticId}: Manifest '{BoundedContext}' threw during palette scoring — skipping manifest, keeping other results.",
+                FrontComposerWarningLog.PaletteManifestScoringFailed(
+                    _logger,
                     FcDiagnosticIds.HFC2110_PaletteScoringFault,
-                    manifest.BoundedContext ?? "<unknown>");
+                    manifest.BoundedContext,
+                    ex);
             }
         }
 
@@ -562,8 +563,8 @@ public sealed class CommandPaletteEffects : IDisposable {
             if (navigation is null) {
                 // P6 (2026-04-21 pass-3): log when NavigationManager is unresolvable. Prior behaviour
                 // silently closed the palette with no navigation and no diagnostic breadcrumb.
-                _logger.LogWarning(
-                    "{DiagnosticId}: Palette activation resolved no NavigationManager from the service provider; navigation dropped.",
+                FrontComposerWarningLog.PaletteNavigationServiceMissing(
+                    _logger,
                     FcDiagnosticIds.HFC2110_PaletteScoringFault);
                 SafeDispatchClose(dispatcher);
                 return Task.CompletedTask;
@@ -581,10 +582,10 @@ public sealed class CommandPaletteEffects : IDisposable {
                 // P6: NavigateTo throws on invalid / forced-external URLs with hostile shapes. Log
                 // and let the RecentRouteVisitedAction dispatch below be skipped — the user sees the
                 // palette close without navigating, which is the correct behaviour for a rejected URL.
-                _logger.LogWarning(
-                    ex,
-                    "{DiagnosticId}: NavigationManager.NavigateTo refused target URL.",
-                    FcDiagnosticIds.HFC2110_PaletteScoringFault);
+                FrontComposerWarningLog.PaletteNavigationRefused(
+                    _logger,
+                    FcDiagnosticIds.HFC2110_PaletteScoringFault,
+                    ex);
                 return Task.CompletedTask;
             }
 
@@ -778,10 +779,10 @@ public sealed class CommandPaletteEffects : IDisposable {
             manifests = (registry?.GetManifests() ?? []).OrderBy(static m => m.Name, StringComparer.Ordinal).ToList();
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogWarning(
-                ex,
-                "{DiagnosticId}: Registry enumeration failed during palette open — falling back to empty projection preview.",
-                FcDiagnosticIds.HFC2110_PaletteScoringFault);
+            FrontComposerWarningLog.PaletteOpenRegistryEnumerationFailed(
+                _logger,
+                FcDiagnosticIds.HFC2110_PaletteScoringFault,
+                ex);
             return builder.ToImmutable();
         }
 
@@ -808,11 +809,11 @@ public sealed class CommandPaletteEffects : IDisposable {
                 }
             }
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                _logger.LogWarning(
-                    ex,
-                    "{DiagnosticId}: Manifest '{BoundedContext}' threw during palette open preview — skipping manifest, keeping other projection rows.",
+                FrontComposerWarningLog.PaletteOpenManifestFailed(
+                    _logger,
                     FcDiagnosticIds.HFC2110_PaletteScoringFault,
-                    manifest.BoundedContext ?? "<unknown>");
+                    manifest.BoundedContext,
+                    ex);
             }
         }
 
@@ -868,8 +869,7 @@ public sealed class CommandPaletteEffects : IDisposable {
             // Pass 3 — surface a one-line per-session warning so adopters that bypass AddHexalithFrontComposer*
             // see a clear signal that protected commands will be hidden from the palette.
             if (System.Threading.Interlocked.Exchange(ref _evaluatorMissingLogged, 1) == 0) {
-                _logger.LogWarning(
-                    "Command palette filter could not resolve ICommandAuthorizationEvaluator; protected commands will be hidden. Ensure the host registers FrontComposer authorization services via AddHexalithFrontComposer* or equivalent.");
+                FrontComposerWarningLog.PaletteAuthorizationEvaluatorMissing(_logger);
             }
 
             return false;

@@ -92,7 +92,11 @@ public sealed class FcFieldSlotHostTests : BunitContext {
             .Add(p => p.RenderContext, NewRenderContext()));
 
         cut.Markup.Trim().ShouldBeEmpty();
-        _logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning && e.Message.Contains("HFC2120") && e.Message.Contains("ParentNull: True"));
+        _logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning
+            && e.EventId.Id == 5806
+            && e.EventId.Name == "FieldSlotMissingParameters"
+            && e.Message.Contains("HFC2120")
+            && e.Message.Contains("ParentNull=True"));
     }
 
     [Fact]
@@ -105,7 +109,11 @@ public sealed class FcFieldSlotHostTests : BunitContext {
             .Add(p => p.RenderContext, NewRenderContext()));
 
         cut.Markup.Trim().ShouldBeEmpty();
-        _logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning && e.Message.Contains("HFC2120") && e.Message.Contains("FieldNull: True"));
+        _logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning
+            && e.EventId.Id == 5806
+            && e.EventId.Name == "FieldSlotMissingParameters"
+            && e.Message.Contains("HFC2120")
+            && e.Message.Contains("FieldNull=True"));
     }
 
     [Fact]
@@ -176,7 +184,7 @@ public sealed class FcFieldSlotHostTests : BunitContext {
         cut.Markup.ShouldContain("role=\"alert\"");
 
         // Log entry redaction.
-        (LogLevel Level, string Message) = _logger.Entries
+        var (_, _, Message) = _logger.Entries
             .Where(e => e.Message.Contains(FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault))
             .ShouldHaveSingleItem();
         Message.ShouldContain("HFC2115");
@@ -273,7 +281,7 @@ public sealed class FcFieldSlotHostTests : BunitContext {
     }
 
     private sealed class ListLogger<T> : ILogger<T> {
-        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+        public List<(LogLevel Level, EventId EventId, string Message)> Entries { get; } = [];
 
         public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
@@ -285,7 +293,7 @@ public sealed class FcFieldSlotHostTests : BunitContext {
             TState state,
             Exception? exception,
             Func<TState, Exception?, string> formatter)
-            => Entries.Add((logLevel, formatter(state, exception)));
+            => Entries.Add((logLevel, eventId, formatter(state, exception)));
 
         private sealed class NullScope : IDisposable {
             public static readonly NullScope Instance = new();

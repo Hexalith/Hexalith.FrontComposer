@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services.Customization;
 
 using Microsoft.AspNetCore.Components;
@@ -83,9 +84,9 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
 
         // GB-P5 — distinguish "invalid" (≤ 0) from "incompatible major" so adopters see actionable text.
         if (descriptor.ContractVersion <= 0) {
-            _logger.LogWarning(
-                "HFC1041: Level 3 slot descriptor for projection {Projection} field {Field} declares an invalid contract version {ContractVersion}. Expected: a positive integer packed as Major*1_000_000 + Minor*1_000 + Build. Descriptor ignored.",
-                descriptor.ProjectionType.FullName,
+            FrontComposerWarningLog.ProjectionSlotInvalidContractVersion(
+                _logger,
+                descriptor.ProjectionType,
                 descriptor.FieldName,
                 descriptor.ContractVersion);
             return;
@@ -95,10 +96,10 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
             CustomizationContractVersion.Compare(descriptor.ContractVersion, ProjectionSlotContractVersion.Current);
         if (!comparison.CanSelect) {
             // P13 — branch on Decision so the message identifies the comparison outcome.
-            _logger.LogWarning(
-                "{DiagnosticId}: Level 3 slot descriptor for projection {Projection} field {Field} has incompatible contract version ({Decision}) expected {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} got {ActualMajor}.{ActualMinor}.{ActualBuild}. Descriptor ignored. Fix: rebuild the slot component against the installed framework. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1041",
+            FrontComposerWarningLog.ProjectionSlotIncompatibleContractVersion(
+                _logger,
                 FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch,
-                descriptor.ProjectionType.FullName,
+                descriptor.ProjectionType,
                 descriptor.FieldName,
                 comparison.Decision,
                 comparison.Expected.Major,
@@ -139,13 +140,13 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
         }
 
         if (!IsCompatibleComponent(descriptor, out string? reason)) {
-            _logger.LogWarning(
-                "HFC1039: Invalid Level 3 slot component for projection {Projection} field {Field}. Expected: Razor component with [Parameter] Context of type FieldSlotContext<{ExpectedProjection},{ExpectedFieldType}>. Got: {Component}. Fix: add the matching Context parameter or register a compatible component. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1039. Reason: {Reason}",
-                descriptor.ProjectionType.FullName,
+            FrontComposerWarningLog.ProjectionSlotInvalidComponent(
+                _logger,
+                descriptor.ProjectionType,
                 descriptor.FieldName,
-                descriptor.ProjectionType.FullName,
-                descriptor.FieldType.FullName,
-                descriptor.ComponentType.FullName,
+                descriptor.ProjectionType,
+                descriptor.FieldType,
+                descriptor.ComponentType,
                 reason);
             return;
         }
@@ -159,13 +160,13 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
                     return existing;
                 }
 
-                _logger.LogWarning(
-                    "HFC1040: Duplicate Level 3 slot overrides registered for projection {Projection} role {Role} field {Field}. Expected: one descriptor. Got: {Existing} and {New}. Fix: remove one registration or make one role-specific. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1040.",
-                    descriptor.ProjectionType.FullName,
-                    descriptor.Role?.ToString() ?? "<any>",
+                FrontComposerWarningLog.ProjectionSlotDuplicate(
+                    _logger,
+                    descriptor.ProjectionType,
+                    descriptor.Role,
                     descriptor.FieldName,
-                    existing.Descriptor.ComponentType.FullName,
-                    descriptor.ComponentType.FullName);
+                    existing.Descriptor.ComponentType,
+                    descriptor.ComponentType);
                 return new RegistryEntry(existing.Descriptor, Ambiguous: true);
             });
     }

@@ -1,10 +1,8 @@
-using System.Security.Cryptography;
-using System.Text;
-
 using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Diagnostics;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 
@@ -142,20 +140,15 @@ public sealed class FcProjectionViewOverrideHost<TProjection> : ComponentBase, I
                     _circuitOpen = true;
                 }
 
-                // DN5 — tenant/user redacted via SHA256-truncated hash so operators can
-                // correlate incidents within a tenant without leaking identifiers.
-                string? tenantHash = HashIdentifier(Context?.RenderContext?.TenantId);
-                string? userHash = HashIdentifier(Context?.RenderContext?.UserId);
-
-                Logger?.LogWarning(
-                    "{DiagnosticId}: Level 4 view replacement render fault isolated. Projection: {Projection}; Component: {Component}; Role: {Role}; ExceptionCategory: {ExceptionCategory}; TenantHash: {TenantHash}; UserHash: {UserHash}; ConsecutiveFailures: {ConsecutiveFailures}; CircuitOpen: {CircuitOpen}. Item payloads, field values, localized strings, raw exception messages, and render fragments are intentionally omitted.",
+                FrontComposerWarningLog.ProjectionViewOverrideRenderFailed(
+                    Logger,
                     FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault,
-                    typeof(TProjection).FullName,
-                    Descriptor.ComponentType.FullName,
-                    Context?.Role?.ToString() ?? "<default>",
+                    typeof(TProjection),
+                    Descriptor.ComponentType,
+                    Context?.Role,
                     exceptionCategory,
-                    tenantHash,
-                    userHash,
+                    Context?.RenderContext?.TenantId,
+                    Context?.RenderContext?.UserId,
                     _consecutiveFailures,
                     _circuitOpen);
 
@@ -198,16 +191,4 @@ public sealed class FcProjectionViewOverrideHost<TProjection> : ComponentBase, I
                 ["category"] = "RenderFault",
             });
 
-    private static string? HashIdentifier(string? value) {
-        if (string.IsNullOrWhiteSpace(value)) {
-            return null;
-        }
-
-        Span<byte> hashBytes = stackalloc byte[32];
-        if (!SHA256.TryHashData(Encoding.UTF8.GetBytes(value), hashBytes, out _)) {
-            return null;
-        }
-
-        return Convert.ToHexString(hashBytes[..4]).ToLowerInvariant();
-    }
 }

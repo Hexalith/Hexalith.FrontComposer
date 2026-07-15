@@ -82,6 +82,7 @@ public sealed class BadgeCountServiceTests {
             ? throw new InvalidOperationException("boom")
             : new ValueTask<int>(7));
         ILogger<BadgeCountService> logger = Substitute.For<ILogger<BadgeCountService>>();
+        logger.IsEnabled(LogLevel.Warning).Returns(true);
         using BadgeCountService sut = new(
             catalog, reader, EmptyProvider(), logger, new FakeTimeProvider());
 
@@ -180,6 +181,7 @@ public sealed class BadgeCountServiceTests {
         });
         StubNotifier notifier = new();
         ILogger<BadgeCountService> logger = Substitute.For<ILogger<BadgeCountService>>();
+        logger.IsEnabled(LogLevel.Warning).Returns(true);
         using BadgeCountService sut = new(
             catalog, reader, WithNotifier(notifier), logger, new FakeTimeProvider());
 

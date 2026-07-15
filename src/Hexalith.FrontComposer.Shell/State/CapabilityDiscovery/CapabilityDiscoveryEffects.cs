@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
@@ -171,13 +172,11 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
             _logger.LogDebug("Capability-seen persist cancelled — circuit disposing.");
         }
         catch (Exception ex) {
-            _logger.LogWarning(
-                ex,
-                "{DiagnosticId}: Capability-seen persistence failed for '{CapabilityId}'. ExceptionType={ExceptionType}; ExceptionMessage={ExceptionMessage}.",
+            FrontComposerWarningLog.CapabilityPersistFailed(
+                _logger,
                 FcDiagnosticIds.HFC2112_BadgeInitialFetchFault,
                 action.CapabilityId,
-                ex.GetType().Name,
-                ex.Message);
+                ex);
         }
     }
 
@@ -215,12 +214,10 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
             // D13 hydrate-side parity: storage faults during hydrate are fail-soft — dispatch
             // the empty seen-set so the rendering pipeline unblocks. Log HFC2112 with the same
             // call-site-hint convention.
-            _logger.LogWarning(
-                ex,
-                "{DiagnosticId}: Capability-seen hydrate failed — defaulting to empty set. ExceptionType={ExceptionType}; ExceptionMessage={ExceptionMessage}.",
+            FrontComposerWarningLog.CapabilityHydrateFailed(
+                _logger,
                 FcDiagnosticIds.HFC2112_BadgeInitialFetchFault,
-                ex.GetType().Name,
-                ex.Message);
+                ex);
         }
 
         dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(hydrated));
@@ -237,12 +234,10 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
             snapshot = ImmutableDictionary.CreateRange(_badgeCountService.Counts);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogWarning(
-                ex,
-                "{DiagnosticId}: Badge counts snapshot threw during seed — dispatching empty dictionary. ExceptionType={ExceptionType}; ExceptionMessage={ExceptionMessage}.",
+            FrontComposerWarningLog.BadgeSnapshotFailed(
+                _logger,
                 FcDiagnosticIds.HFC2112_BadgeInitialFetchFault,
-                ex.GetType().Name,
-                ex.Message);
+                ex);
             snapshot = ImmutableDictionary<Type, int>.Empty;
         }
 

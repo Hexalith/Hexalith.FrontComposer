@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
@@ -122,7 +123,7 @@ public class ThemeEffects(
             return;
         }
         catch (Exception ex) {
-            logger.LogWarning(ex, "Failed to hydrate theme state from storage");
+            FrontComposerWarningLog.ThemeHydrationFailed(logger, ex);
             dispatcher.Dispatch(new ThemeHydratedCompletedAction());
             return;
         }
@@ -156,7 +157,7 @@ public class ThemeEffects(
             await storage.SetAsync(key, action.NewTheme).ConfigureAwait(false);
         }
         catch (Exception ex) {
-            logger.LogWarning(ex, "Failed to persist theme state");
+            FrontComposerWarningLog.ThemePersistenceFailed(logger, ex);
         }
     }
 

@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Diagnostics;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 
@@ -57,13 +58,13 @@ public sealed class FcProjectionTemplateHost<TProjection> : ComponentBase {
         => builder => {
             CustomizationDiagnostic diagnostic = CreateDiagnostic(exception);
             if (!_publishedFault) {
-                Logger.LogWarning(
-                    "{DiagnosticId}: Level 2 template render fault isolated. Projection: {Projection}; Component: {Component}; Role: {Role}; ExceptionCategory: {ExceptionCategory}. Item payloads, field values, localized strings, raw exception messages, and render fragments are intentionally omitted.",
+                FrontComposerWarningLog.ProjectionTemplateRenderFailed(
+                    Logger,
                     diagnostic.Id,
-                    typeof(TProjection).FullName,
-                    Descriptor.TemplateType.FullName,
-                    Context.Role?.ToString() ?? "<default>",
-                    exception.GetType().Name);
+                    typeof(TProjection),
+                    Descriptor.TemplateType,
+                    Context.Role,
+                    exception);
                 CustomizationDiagnosticPublisher.Publish(Services?.GetService<IDiagnosticSink>(), diagnostic);
                 _publishedFault = true;
             }

@@ -157,7 +157,7 @@ public sealed class ProjectionSlotRegistryTests {
     }
 
     [Fact]
-    public void Register_IncompatibleComponent_LogsHfc1039_WithExpectedAndGotShape() {
+    public void Register_IncompatibleComponent_LogsHfc1039_WithSupportSafeShape() {
         ListLogger<ProjectionSlotRegistry> logger = new();
         ProjectionSlotRegistry registry = new(
             logger,
@@ -165,10 +165,12 @@ public sealed class ProjectionSlotRegistryTests {
 
         registry.Resolve(typeof(SlotProjection), null, "Priority").ShouldBeNull();
         logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning
+            && e.EventId.Id == 5826
+            && e.EventId.Name == "ProjectionSlotInvalidComponent"
             && e.Message.Contains("HFC1039")
-            && e.Message.Contains("Expected:")
-            && e.Message.Contains("Got:")
-            && e.Message.Contains("Fix:"));
+            && e.Message.Contains("ExpectedProjectionTypeDigest=sha256:")
+            && e.Message.Contains("ComponentTypeDigest=sha256:")
+            && !e.Message.Contains(typeof(WrongContextSlot).FullName!, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -185,9 +187,13 @@ public sealed class ProjectionSlotRegistryTests {
 
         registry.Resolve(typeof(SlotProjection), null, "Priority").ShouldBeNull();
         logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning
+            && e.EventId.Id == 5827
+            && e.EventId.Name == "ProjectionSlotDuplicate"
             && e.Message.Contains("HFC1040")
-            && e.Message.Contains(typeof(AnyPrioritySlot).FullName!)
-            && e.Message.Contains(typeof(SecondPrioritySlot).FullName!));
+            && e.Message.Contains("ExistingComponentDigest=sha256:")
+            && e.Message.Contains("NewComponentDigest=sha256:")
+            && !e.Message.Contains(typeof(AnyPrioritySlot).FullName!, StringComparison.Ordinal)
+            && !e.Message.Contains(typeof(SecondPrioritySlot).FullName!, StringComparison.Ordinal));
     }
 
     // GB-P12 — abstract / interface component rejection.
@@ -293,7 +299,7 @@ public sealed class ProjectionSlotRegistryTests {
 #pragma warning restore BL0001
 
     private sealed class ListLogger<T> : ILogger<T> {
-        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+        public List<(LogLevel Level, EventId EventId, string Message)> Entries { get; } = [];
 
         public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
@@ -305,7 +311,7 @@ public sealed class ProjectionSlotRegistryTests {
             TState state,
             Exception? exception,
             Func<TState, Exception?, string> formatter)
-            => Entries.Add((logLevel, formatter(state, exception)));
+            => Entries.Add((logLevel, eventId, formatter(state, exception)));
 
         private sealed class NullScope : IDisposable {
             public static readonly NullScope Instance = new();

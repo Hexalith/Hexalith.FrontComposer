@@ -3,6 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Threading.Channels;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
@@ -108,7 +109,7 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
             return JsonSerializer.Deserialize<T>(json, SchemaLockJsonOptions);
         }
         catch (JsonException ex) {
-            _logger.LogWarning(ex, "LocalStorageService: failed to deserialize value for key '{Key}'", key);
+            FrontComposerWarningLog.LocalStorageDeserializeFailed(_logger, key, ex);
             return default;
         }
     }
@@ -238,7 +239,7 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
                 }
                 catch (Exception ex) {
                     _pendingDrainFailure ??= ex;
-                    _logger.LogWarning(ex, "LocalStorageService: drain write failed for key '{Key}'", write.Key);
+                    FrontComposerWarningLog.LocalStorageDrainWriteFailed(_logger, write.Key, ex);
                     _ = (write.FlushSignal?.TrySetException(ex));
                 }
             }

@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -99,10 +100,7 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
                     // Form disposed during the callback sequence. Nothing to do.
                 }
                 catch (Exception ex) {
-                    _logger.LogError(
-                        ex,
-                        "Lifecycle callback threw for MessageId={MessageId}. Syncing/Confirmed notifications were skipped.",
-                        messageId);
+                    FrontComposerWarningLog.StubLifecycleCallbackFailed(_logger, messageId, ex);
                 }
             },
             cancellationToken);
@@ -110,7 +108,9 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
         _ = continuation.ContinueWith(
             static (t, state) => {
                 if (t.IsFaulted && t.Exception is not null) {
-                    ((ILogger)state!).LogError(t.Exception.Flatten(), "StubCommandService background task faulted.");
+                    FrontComposerWarningLog.StubBackgroundTaskFaulted(
+                        (ILogger)state!,
+                        t.Exception.Flatten());
                 }
             },
             _logger,

@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.FrontComposer.Shell.Services;
@@ -49,7 +51,7 @@ public sealed class InMemoryDiagnosticSink : IDiagnosticSink {
 
         // Rate-limit duplicate logs to once-per-circuit per code (D31 behavior preserved for prod observability).
         if (firstTime) {
-            _logger?.LogWarning("[{Code}/{Category}] {Message}", evt.Code, evt.Category, evt.Message);
+            FrontComposerWarningLog.DiagnosticSinkPublished(_logger, evt.Code, evt.Category, evt.Message);
         }
     }
 }

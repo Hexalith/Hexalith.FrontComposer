@@ -4,6 +4,7 @@ using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Badges;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Resources;
 
 using Microsoft.AspNetCore.Components;
@@ -104,10 +105,7 @@ public partial class FcProjectionSubtitle : IAsyncDisposable, IDisposable {
         }
         catch (Exception ex) {
             _subscribeFailed = true;
-            Logger.LogWarning(
-                ex,
-                "FcProjectionSubtitle failed to subscribe to IBadgeCountService.CountChanged for {ProjectionType}; falling back to cascading count.",
-                ProjectionType?.FullName ?? "(null)");
+            FrontComposerWarningLog.ProjectionSubtitleSubscribeFailed(Logger, ProjectionType, ex);
         }
     }
 
@@ -250,7 +248,7 @@ public partial class FcProjectionSubtitle : IAsyncDisposable, IDisposable {
             _countSubscription?.Dispose();
         }
         catch (Exception ex) {
-            Logger.LogWarning(ex, "FcProjectionSubtitle disposal threw while unsubscribing CountChanged.");
+            FrontComposerWarningLog.ProjectionSubtitleDisposeFailed(Logger, ex);
         }
 
         _countSubscription = null;

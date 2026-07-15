@@ -3,6 +3,7 @@ using System.Text;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -98,7 +99,11 @@ internal sealed class CustomizationContractValidationGate : IHostedService {
         }
 
         string final = message.ToString();
-        _logger.LogError("{DiagnosticId}: {Message}", FcDiagnosticIds.HFC1601_ManifestInvalid, final);
+        FrontComposerWarningLog.CustomizationValidationFailed(
+            _logger,
+            FcDiagnosticIds.HFC1601_ManifestInvalid,
+            rejections.Count,
+            final);
         throw new InvalidOperationException(final);
     }
 

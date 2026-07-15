@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services.Customization;
 
 using Microsoft.AspNetCore.Components;
@@ -43,9 +44,7 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
             // P14 — defend against null elements from misconfigured DI registrations so a
             // single bad source does not take the whole registry boot down without diagnostics.
             if (source is null) {
-                _logger.LogWarning(
-                    "Null ProjectionViewOverrideDescriptorSource at index {Index} skipped during registry construction. Fix the DI registration that produced a null source.",
-                    sourceIndex);
+                FrontComposerWarningLog.ProjectionViewOverrideNullSource(_logger, sourceIndex);
                 continue;
             }
 
@@ -114,11 +113,11 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
 
         if (descriptor.ContractVersion <= 0) {
             // P10 — include RegistrationSource so adopters can find the originating call site.
-            _logger.LogWarning(
-                "{DiagnosticId}: Invalid Level 4 view override contract version for projection {Projection} role {Role}. Expected: positive packed version. Got: {ContractVersion}. Source: {Source}. Fix: register with ProjectionViewOverrideContractVersion.Current. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1045.",
+            FrontComposerWarningLog.ProjectionViewOverrideInvalidContractVersion(
+                _logger,
                 FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch,
-                descriptor.ProjectionType.FullName,
-                descriptor.Role?.ToString() ?? "<any>",
+                descriptor.ProjectionType,
+                descriptor.Role,
                 descriptor.ContractVersion,
                 descriptor.RegistrationSource);
             return;
@@ -129,11 +128,11 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
         if (!comparison.CanSelect) {
             // P13 — branch the message on Decision (currently MajorMismatch is the only
             // !CanSelect outcome) so the log identifies the comparison outcome explicitly.
-            _logger.LogWarning(
-                "{DiagnosticId}: Incompatible Level 4 view override contract version for projection {Projection} role {Role}. Decision: {Decision}. Expected: {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild}. Got: {ActualMajor}.{ActualMinor}.{ActualBuild}. Source: {Source}. Fix: rebuild the replacement against the installed FrontComposer contracts. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1045.",
+            FrontComposerWarningLog.ProjectionViewOverrideIncompatibleContractVersion(
+                _logger,
                 FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch,
-                descriptor.ProjectionType.FullName,
-                descriptor.Role?.ToString() ?? "<any>",
+                descriptor.ProjectionType,
+                descriptor.Role,
                 comparison.Decision,
                 comparison.Expected.Major,
                 comparison.Expected.Minor,
@@ -185,12 +184,12 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
         }
 
         if (!IsCompatibleComponent(descriptor, out string? reason)) {
-            _logger.LogWarning(
-                "{DiagnosticId}: Invalid Level 4 view override component for projection {Projection} role {Role}. Expected: concrete Razor component with public [Parameter] Context of the projection view type. Got: {Component}. Source: {Source}. Fix: add the matching Context parameter or register a compatible component. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1043. Reason: {Reason}",
+            FrontComposerWarningLog.ProjectionViewOverrideInvalidComponent(
+                _logger,
                 FcDiagnosticIds.HFC1043_ProjectionViewOverrideComponentInvalid,
-                descriptor.ProjectionType.FullName,
-                descriptor.Role?.ToString() ?? "<any>",
-                descriptor.ComponentType.FullName,
+                descriptor.ProjectionType,
+                descriptor.Role,
+                descriptor.ComponentType,
                 descriptor.RegistrationSource,
                 reason);
             return;
@@ -229,11 +228,11 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
                     bSource = existing.Descriptor.RegistrationSource;
                 }
 
-                _logger.LogError(
-                    "{DiagnosticId}: Duplicate Level 4 view overrides registered for projection {Projection} role {Role}. Got: {ComponentA} (source: {SourceA}) and {ComponentB} (source: {SourceB}). Fix: remove one registration or make one role-specific. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1044.",
+                FrontComposerWarningLog.ProjectionViewOverrideDuplicate(
+                    _logger,
                     FcDiagnosticIds.HFC1044_ProjectionViewOverrideDuplicate,
-                    descriptor.ProjectionType.FullName,
-                    descriptor.Role?.ToString() ?? "<any>",
+                    descriptor.ProjectionType,
+                    descriptor.Role,
                     a,
                     aSource,
                     b,

@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services.Customization;
 
 using Microsoft.Extensions.Logging;
@@ -65,11 +66,11 @@ public sealed class ProjectionTemplateRegistry : IProjectionTemplateRegistry {
             // P13 — branch the message on Decision so MajorMismatch is named distinctly from
             // other reject paths. Currently MajorMismatch is the only !CanSelect outcome, but
             // future enum members may add more — Decision in the log lets operators triage.
-            _logger.LogWarning(
-                "{DiagnosticId}: ProjectionTemplateDescriptor for projection {Projection} (role {Role}) uses incompatible contract version {Decision} expected {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} got {ActualMajor}.{ActualMinor}.{ActualBuild}; descriptor ignored. Fix: rebuild the template against the installed framework. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1035",
+            FrontComposerWarningLog.ProjectionTemplateIncompatibleContractVersion(
+                _logger,
                 FcDiagnosticIds.HFC1035_ProjectionTemplateContractVersionMismatch,
-                descriptor.ProjectionType.FullName,
-                descriptor.Role?.ToString() ?? "<any>",
+                descriptor.ProjectionType,
+                descriptor.Role,
                 comparison.Decision,
                 comparison.Expected.Major,
                 comparison.Expected.Minor,
@@ -119,12 +120,12 @@ public sealed class ProjectionTemplateRegistry : IProjectionTemplateRegistry {
                     return existing;
                 }
 
-                _logger.LogWarning(
-                    "Duplicate ProjectionTemplateDescriptor registered for projection {Projection} (role {Role}) — ignoring both. Existing: {Existing}; new: {New}.",
-                    descriptor.ProjectionType.FullName,
-                    descriptor.Role?.ToString() ?? "<any>",
-                    existing.Descriptor.TemplateType.FullName,
-                    descriptor.TemplateType.FullName);
+                FrontComposerWarningLog.ProjectionTemplateDuplicate(
+                    _logger,
+                    descriptor.ProjectionType,
+                    descriptor.Role,
+                    existing.Descriptor.TemplateType,
+                    descriptor.TemplateType);
                 return new RegistryEntry(existing.Descriptor, Ambiguous: true);
             });
     }

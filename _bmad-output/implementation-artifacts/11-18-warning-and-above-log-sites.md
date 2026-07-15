@@ -8,11 +8,12 @@ owner: Developer + Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
 status: ready-for-dev
 implementationGate: post-correction-readiness-pass
+baseline_commit: 615605e3a358a542dcbb49b5b82601e60db7eb28
 ---
 
 # Story 11.18b: Residual Warning-And-Above Log Sites
 
-Status: ready-for-dev.
+Status: review.
 
 ## Story
 
@@ -59,13 +60,13 @@ so that operator-relevant failures follow one performant, structured, support-sa
 
 ## Tasks / Subtasks
 
-- [ ] Freeze the implementation baseline and the exact 11.18a/11.18c exclusion ledgers.
-- [ ] Re-run the Roslyn direct-call census and record the residual Warning+ path/member/line inventory.
-- [ ] Add or extend eponymous source-generated logging helpers with collision-free EventIds.
-- [ ] Migrate every residual Warning/Error/Critical site while preserving behavior and severity.
-- [ ] Add focused event-contract, cardinality, exception, and adversarial-redaction tests.
-- [ ] Replace the temporary severity-only ownership guard with the final exclusive child ledger.
-- [ ] Run the required validation and reconcile the story File List from tracked plus untracked files.
+- [x] Freeze the implementation baseline and the exact 11.18a/11.18c exclusion ledgers.
+- [x] Re-run the Roslyn direct-call census and record the residual Warning+ path/member/line inventory.
+- [x] Add or extend eponymous source-generated logging helpers with collision-free EventIds.
+- [x] Migrate every residual Warning/Error/Critical site while preserving behavior and severity.
+- [x] Add focused event-contract, cardinality, exception, and adversarial-redaction tests.
+- [x] Replace the temporary severity-only ownership guard with the final exclusive child ledger.
+- [x] Run the required validation and reconcile the story File List from tracked plus untracked files.
 
 ## Dev Notes
 
@@ -129,12 +130,72 @@ python3 eng/validate-story-artifacts.py --story \
 
 ### Agent Model Used
 
+GPT-5 Codex
+
+### Implementation Plan
+
+- Freeze the 54-site post-11.18a/post-11.18c residual Warning+ ledger before production edits.
+- Migrate the ledger to one eponymous generated event family with explicit identities, preserved severity/cardinality, and enabled-check support-safety wrappers.
+- Replace the temporary ownership partition with exact implementation-start and post-migration ledgers, synthetic negative guards, and focused event/redaction tests.
+- Reconcile affected behavior tests to the generated contract, then run focused, broad, Governance, build, authoring, and artifact gates.
+
 ### Debug Log References
+
+- 2026-07-15: Aspire runtime baseline could not start because the referenced `Hexalith.Parties` project already fails HFC0001 obsolete-API enforcement; `aspire stop` confirmed no AppHost remained running. Focused Release builds remained clean.
+- 2026-07-15: RED — `ResidualWarningAndAboveLedger_DirectCalls_AreFullyMigrated` reported the exact 54 implementation-start sites: 49 Warning and 5 Error calls across 22 files.
+- 2026-07-15: GREEN — all 54 sites migrated to EventIds 5800–5853; focused event contracts passed 2/2 and the exact ownership/governance class passed 5/5.
+- 2026-07-15: RED — the broad Shell lane found 14 behavior assertions coupled to raw free-form text, attached exceptions, or `LoggerExtensions` call shapes.
+- 2026-07-15: GREEN — owner tests now pin EventId/EventName, null exception attachment, and digested payloads; the Release solution build passed with 0 warnings/errors, broad non-Contract Shell passed 2,332/2,332, and Governance passed 158/158.
 
 ### Completion Notes List
 
+- Frozen baseline commit `615605e3a358a542dcbb49b5b82601e60db7eb28` and the exact precedence-aware 54-site residual Warning+ census: 49 Warning and 5 Error calls across 22 files after the 11.18a security and 11.18c semantic hot-path owners were excluded.
+- Migrated every owned site to `FrontComposerWarningLog` EventIds 5800–5853 with explicit EventNames and levels; no direct Shell `LogWarning`, `LogError`, or `LogCritical` call remains.
+- Preserved branch cardinality, cancellation handling, control flow, and severity. Documented support-safety replacements convert raw exception messages to SHA-256 digests, omit attached exceptions/stacks, and digest projection/component/field/registration/policy/source/key/view/message/tenant/user/capability/bounded-context identifiers behind `ILogger.IsEnabled`.
+- Replaced the temporary severity owner with an exclusive implementation-start ledger, an empty residual Warning+ owner, and the exact remaining 73 low-severity direct calls across 20 files. Governance now rejects duplicate EventIds, placeholder/signature drift, residual Warning+ calls, and unowned calls with synthetic negative coverage.
+- Added exhaustive 54-event identity/severity/redaction coverage and disabled-path deferred-evaluation coverage; updated affected owner tests to assert generated contracts and support-safe payloads.
+- Final validation passed: Release solution and Shell Tests builds with 0 warnings/errors; 2 focused helper tests; 5 exact ownership/governance tests; 2,332 broad non-Contract Shell tests; 158 Governance tests; exact File List, CRLF/UTF-8/final-newline, submodule, story-artifact, and `git diff --check` gates.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/11-18-warning-and-above-log-sites.md` (modified — baseline, implementation record, validation evidence, exact File List, and review transition)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — surgical Story 11.18b in-progress/review transitions)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerWarningLog.cs` (added — generated EventIds 5800–5853, enabled-check wrappers, bounded categories, and SHA-256 digests)
+- `src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs` (modified — generated badge catalog, reader, negative-count, and notifier diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Components/Layout/FcLayoutBreakpointWatcher.razor.cs` (modified — generated viewport-tier and subscription diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldSlotHost.cs` (modified — generated missing-parameter, type-mismatch, and render-fault diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionSubtitle.razor.cs` (modified — generated subscription and disposal diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionTemplateHost.cs` (modified — generated template render-fault diagnostic)
+- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionViewOverrideHost.cs` (modified — deferred tenant/user hashing and generated replacement render-fault diagnostic)
+- `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerBootstrapValidationGate.cs` (modified — generated support-safe bootstrap validation error)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs` (modified — generated bounded ProblemDetails diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Storage/LocalStorageService.cs` (modified — generated digested-key storage diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs` (modified — generated registration and policy-conflict diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Services/Customization/CustomizationContractValidationGate.cs` (modified — generated support-safe customization validation error)
+- `src/Hexalith.FrontComposer.Shell/Services/InMemoryDiagnosticSink.cs` (modified — generated message-digest diagnostic)
+- `src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs` (modified — generated contract, component, and duplicate slot diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Services/ProjectionTemplates/ProjectionTemplateRegistry.cs` (modified — generated contract and duplicate template diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideRegistry.cs` (modified — generated construction, contract, component, and duplicate override diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Services/StubCommandService.cs` (modified — generated callback and background-task errors)
+- `src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs` (modified — generated digested shortcut-handler diagnostic)
+- `src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryEffects.cs` (modified — generated persistence, hydration, and badge-snapshot diagnostics)
+- `src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs` (modified — generated palette dependency, enumeration, manifest, navigation, and authorization diagnostics)
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs` (modified — generated schema and terminal-dispatch diagnostics)
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs` (modified — generated null-items diagnostic)
+- `src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs` (modified — generated theme hydration and persistence diagnostics)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs` (modified — exact exclusive ledgers, 54-event contracts, placeholder drift guard, and synthetic negatives)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerWarningLogTests.cs` (added — exhaustive event identity, severity, exception, redaction, digest, and deferred-evaluation tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Badges/BadgeCountServiceTests.cs` (modified — enabled generated-warning capture)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FcFieldSlotHostTests.cs` (modified — generated event and support-safe payload assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FcProjectionViewOverrideHostTests.cs` (modified — generated event, digest, and null-exception assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Extensions/FrontComposerBootstrapGuardTests.cs` (modified — generated bootstrap error and message-digest assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs` (modified — generated slot/view registration event and digest assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Registration/FrontComposerRegistryTests.cs` (modified — generated registration event and digest assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/ProjectionSlots/ProjectionSlotRegistryTests.cs` (modified — generated invalid/duplicate event and digest assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutServiceTests.cs` (modified — generated shortcut event, deferred logging, digest, and null-exception assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/Theme/ThemeEffectsTests.cs` (modified — generated persistence event and null-exception assertions)
 
 ## Change Log
 
 - 2026-07-15: Materialized approved 11.18b child with live post-11.18a census and exclusive ownership gate.
+- 2026-07-15: Implemented Story 11.18b, migrated the exact 54 residual Warning+ sites to generated support-safe logging, finalized the exclusive remainder ledger, and passed Release, broad Shell, and Governance gates.

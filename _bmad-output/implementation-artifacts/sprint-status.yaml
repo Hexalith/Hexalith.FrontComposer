@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-15T19:53:18+02:00
+last_updated: 2026-07-15T22:09:47+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -453,7 +453,9 @@ development_status:
   # 11.18a moved in-progress -> review on 2026-07-15 (dev-story; 36/36 security calls migrated to generated MCP 8315-8318 and Shell 5660-5691 events; exact residual 11.18b/11.18c ownership pinned; Release build, focused/full/broad/Governance/artifact/diff gates green.)
   11-18-fail-closed-security-log-sites: review
   # 11.18b moved backlog -> ready-for-dev on 2026-07-15 (create-story; residual Warning/Error/Critical sites after 11.18a security and 11.18c hot-path ownership is frozen; exact post-11.18a census is 208 direct calls / 49 files).
-  11-18-warning-and-above-log-sites: ready-for-dev
+  # 11.18b moved ready-for-dev -> in-progress on 2026-07-15 (dev-story; baseline 615605e3a358a542dcbb49b5b82601e60db7eb28 captured after 11.18c froze the exact 54-site residual Warning+ ledger.)
+  # 11.18b moved in-progress -> review on 2026-07-15 (dev-story; all 54 residual Warning+ sites migrated to EventIds 5800-5853; exact 73-site low-severity remainder, Release build, 2,332 broad Shell tests, and 158 Governance tests passed.)
+  11-18-warning-and-above-log-sites: review
   # 11.18c moved backlog -> ready-for-dev on 2026-07-15 (create-story; freeze and migrate command-lifecycle, projection-refresh, and polling hot paths before 11.18b residual ownership is finalized).
   11-18-hot-path-log-sites: review
   # Story 11.19 is a nonimplementable decomposition parent; its queue state belongs only to 11.19a-d.

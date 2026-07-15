@@ -66,7 +66,11 @@ public class FrontComposerRegistryTests {
         using ServiceProvider sp = services.BuildServiceProvider();
         _ = sp.GetRequiredService<IFrontComposerRegistry>();
 
-        loggerProvider.Messages.ShouldContain(message => message.Contains("PartialLoggingRegistration", StringComparison.Ordinal));
+        EventId warning = loggerProvider.EventIds.ShouldHaveSingleItem();
+        warning.Id.ShouldBe(5819);
+        warning.Name.ShouldBe("RegistryRegistrationSkipped");
+        loggerProvider.Messages.ShouldContain(message => message.Contains("RegistrationTypeDigest=sha256:", StringComparison.Ordinal));
+        loggerProvider.Messages.ShouldAllBe(message => !message.Contains("PartialLoggingRegistration", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -282,15 +286,17 @@ public class FrontComposerRegistryTests {
 
     private sealed class CollectingLoggerProvider : ILoggerProvider {
         private readonly List<string> _messages = [];
+        private readonly List<EventId> _eventIds = [];
 
         public IReadOnlyList<string> Messages => _messages;
+        public IReadOnlyList<EventId> EventIds => _eventIds;
 
-        public ILogger CreateLogger(string categoryName) => new CollectingLogger(_messages);
+        public ILogger CreateLogger(string categoryName) => new CollectingLogger(_messages, _eventIds);
 
         public void Dispose() {
         }
 
-        private sealed class CollectingLogger(List<string> messages) : ILogger {
+        private sealed class CollectingLogger(List<string> messages, List<EventId> eventIds) : ILogger {
 
             public IDisposable BeginScope<TState>(TState state)
                 where TState : notnull
@@ -303,7 +309,10 @@ public class FrontComposerRegistryTests {
                 EventId eventId,
                 TState state,
                 Exception? exception,
-                Func<TState, Exception?, string> formatter) => messages.Add(formatter(state, exception));
+                Func<TState, Exception?, string> formatter) {
+                eventIds.Add(eventId);
+                messages.Add(formatter(state, exception));
+            }
         }
 
         private sealed class NullScope : IDisposable {
