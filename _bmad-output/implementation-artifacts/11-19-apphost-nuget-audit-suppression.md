@@ -8,11 +8,12 @@ owner: Developer + Security/Release Owner
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
 status: ready-for-dev
 implementationGate: post-correction-readiness-pass
+baseline_commit: c410e4d109ca266b65c5525afd3960af68e488e8
 ---
 
 # Story 11.19b: AppHost NuGet Audit Suppression
 
-Status: ready-for-dev.
+Status: review.
 
 ## Story
 
@@ -51,11 +52,11 @@ so that new high/critical vulnerabilities cannot be hidden by a permanent warnin
 
 ## Tasks / Subtasks
 
-- [ ] Capture the effective AppHost dependency graph and online NuGet audit output.
-- [ ] Remove the blanket NU1902–NU1904 `NoWarn` entry.
-- [ ] Remediate dependencies where feasible; add only reviewed exact advisory suppressions when needed.
-- [ ] Add non-vacuous governance for warning-family and per-advisory policy.
-- [ ] Run online restore/audit, Release build, Governance, artifact, and file-integrity validation.
+- [x] Capture the effective AppHost dependency graph and online NuGet audit output.
+- [x] Remove the blanket NU1902–NU1904 `NoWarn` entry.
+- [x] Remediate dependencies where feasible; add only reviewed exact advisory suppressions when needed.
+- [x] Add non-vacuous governance for warning-family and per-advisory policy.
+- [x] Run online restore/audit, Release build, Governance, artifact, and file-integrity validation.
 
 ## Dev Notes
 
@@ -110,12 +111,48 @@ python3 eng/validate-story-artifacts.py --story \
 
 ### Agent Model Used
 
+GPT-5 Codex
+
+### Implementation Plan
+
+- Capture the effective AppHost audit configuration, online vulnerability result, and a non-empty dependency graph before changing policy.
+- Add red Governance coverage for blanket warning-family suppressions and malformed/duplicate advisory exceptions, then remove the AppHost `NoWarn` entry.
+- Keep the project suppression-free when the online audit reports no accepted advisory; do not change package versions without an identified minimum remediation.
+- Run focused Governance, Release restore/build, broad regression, artifact, and changed-file integrity gates before review promotion.
+
 ### Debug Log References
+
+- 2026-07-16: Effective Release properties were `NoWarn=;0419;1570;1572;1573;1574;1734;NU1902;NU1903;NU1904`, empty `WarningsNotAsErrors`, `NuGetAudit=true`, `NuGetAuditMode=all`, and `TreatWarningsAsErrors=true`.
+- 2026-07-16: The required pre-change `aspire start` baseline reached online restore but could not start resources because package-only dependencies `Hexalith.EventStore` 3.67.1 and `Hexalith.Memories` 2.6.17 were not yet published; NuGet reported nearest versions 3.67.0 and 2.6.16.
+- 2026-07-16: Release/source-override online restore with command-line `NoWarn` cleared passed. The generated AppHost assets graph contained 81 package nodes plus the EventStore Aspire project node; `dotnet list package --include-transitive --vulnerable` queried nuget.org and reported no vulnerable packages.
+- 2026-07-16: Governance RED was reproduced: 1/4 failed because effective AppHost `NoWarn` contained `NU1902`; after the blanket entry was removed, the focused policy lane passed 4/4.
+- 2026-07-16: The configured Release/source-override regression lane passed 4,136/4,136 after the policy change (Contracts 209, Contracts.UI 10, CLI 73, MCP 364, SourceTools 1,088, Shell 2,334, Testing 57, benchmark discovery 1).
+- 2026-07-16: Exact online AppHost Release restore passed without audit warnings. The AppHost-only Release compile passed with `BuildProjectReferences=false` (0 warnings, 0 errors); the repository's broader combined-UI Release graph remains blocked before AppHost compilation by pre-existing unpublished UI module packages, while its source fallback reaches three pre-existing HFC0001 violations in the Parties submodule.
+- 2026-07-16: The full Governance lane passed 319/319 (including the four new audit-policy cases).
+- 2026-07-16: Final baseline regression passed 4,136/4,136 after a clean build, excluding only the unrelated concurrent `PackageValidation_MissingBaseline_FailsWithActionableRestoreDiagnostics` test. Including that new test concurrently contaminates shared package-validation assets with its intentional `9999.0.0-frontcomposer-missing-baseline` value and causes the independent SourceTools pack test to fail; both the test and its companion artifact remain outside this story.
+- 2026-07-16: Story artifact validation passed with all Story 11.19b files accounted for and the two concurrent files classified as unrelated.
 
 ### Completion Notes List
 
+- Captured a non-empty effective AppHost dependency graph and online audit baseline before implementation; no advisory currently requires an accepted exception.
+- Removed the AppHost `NU1902;NU1903;NU1904` warning-family suppression; no package version or advisory suppression was added because the online audit is clean.
+- Added non-vacuous Governance coverage for effective/imported warning policy, non-empty project graph, exact unique advisory URLs, complete rationale metadata, dates, remediation links, and synthetic fail-closed cases.
+- Verified the online Release audit, focused AppHost Release compile, full configured regression lane, and Governance lane. The existing combined-UI Release graph blocker is documented separately and is outside this story's changed files.
+- Confirmed file-list integrity against baseline commit `c410e4d109ca266b65c5525afd3960af68e488e8`; Story 11.19b is ready for review.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/11-19-apphost-nuget-audit-suppression.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/AppHostNuGetAuditPolicyTests.cs`
+
+### Documented Unrelated Changes
+
+- `_bmad-output/implementation-artifacts/spec-actions-29456680414-fix-cicd.md` — unrelated concurrent CI-fix artifact created after the Story 11.19b baseline.
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs` — unrelated concurrent MCP package-boundary fix created after the Story 11.19b baseline.
 
 ## Change Log
 
 - 2026-07-15: Materialized approved 11.19b child from the live AppHost blanket audit suppression.
+- 2026-07-16: Removed the audit warning-family suppression, added fail-closed AppHost audit governance, captured online audit/build evidence, and promoted the story to review.
