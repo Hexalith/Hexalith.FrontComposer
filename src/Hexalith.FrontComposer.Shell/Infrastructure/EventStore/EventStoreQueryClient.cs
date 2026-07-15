@@ -215,8 +215,7 @@ public sealed class EventStoreQueryClient(
                         // client doesn't have. AC4 / D10: retry once uncached, fail loudly otherwise.
                         if (!allowProtocolDriftRetry) {
                             FrontComposerTelemetry.SetFailure(activity, "ProtocolDriftNoCache");
-                            logger.LogWarning(
-                                "EventStore returned 304 Not Modified twice without a matching cache entry — failing loudly to preserve visible UI state.");
+                            FrontComposerHotPathLog.QueryNotModifiedWithoutCacheRepeated(logger);
                             throw new HttpRequestException(
                                 "EventStore returned 304 Not Modified but no compatible cached payload exists.",
                                 inner: null,
@@ -224,8 +223,7 @@ public sealed class EventStoreQueryClient(
                         }
 
                         FrontComposerTelemetry.SetOutcome(activity, "protocol_drift_retry");
-                        logger.LogInformation(
-                            "EventStore returned 304 Not Modified without a matching cache entry — retrying once uncached (Story 5-2 D10).");
+                        FrontComposerHotPathLog.QueryNotModifiedWithoutCacheRetry(logger);
                         return await ExecuteAsync<T>(
                             request: request with { ETag = null, ETags = null },
                             current,

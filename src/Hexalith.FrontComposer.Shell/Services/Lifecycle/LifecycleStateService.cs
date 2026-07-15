@@ -123,9 +123,9 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                     IdempotencyResolved: false));
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
-                _logger.LogError(
-                    "Lifecycle subscribe replay callback faulted. CorrelationId={CorrelationId} FailureCategory={FailureCategory}",
-                    FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
+                FrontComposerHotPathLog.LifecycleReplayCallbackFaulted(
+                    _logger,
+                    correlationId,
                     ex.GetType().Name);
             }
         }
@@ -191,11 +191,10 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             && _seenMessageIds.ContainsKey(messageId);
 
         if (crossCorrelationCollision) {
-            _logger.LogWarning(
-                "HFC2005: duplicate MessageId detected across CorrelationIds (treated as fresh submission). " +
-                "CorrelationId={CorrelationId} MessageId={MessageId}",
-                FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
-                FrontComposerTelemetry.SafeIdentifier(messageId));
+            FrontComposerHotPathLog.LifecycleCrossCorrelationDuplicate(
+                _logger,
+                correlationId,
+                messageId);
         }
 
         LifecycleEntry entry = _entries.GetOrAdd(
@@ -218,23 +217,21 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             previous = entry.State;
 
             if (!IsValidTransition(previous, newState)) {
-                _logger.LogError(
-                    "HFC2004: invalid lifecycle transition dropped. " +
-                    "CorrelationId={CorrelationId} From={From} To={To} MessageId={MessageId}",
-                    FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
+                FrontComposerHotPathLog.LifecycleInvalidTransition(
+                    _logger,
+                    correlationId,
                     previous,
                     newState,
-                    FrontComposerTelemetry.SafeIdentifier(messageId));
+                    messageId);
                 return;
             }
 
             if (!entryExistedBefore && previous == CommandLifecycleState.Idle
                 && newState != CommandLifecycleState.Submitting
                 && newState != CommandLifecycleState.Idle) {
-                _logger.LogWarning(
-                    "HFC2007: transition arrived for a CorrelationId without a prior Submitted observation. " +
-                    "CorrelationId={CorrelationId} State={State}",
-                    FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
+                FrontComposerHotPathLog.LifecycleMissingSubmitted(
+                    _logger,
+                    correlationId,
                     newState);
             }
 
@@ -324,9 +321,9 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                 sub.Callback(transition);
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
-                _logger.LogError(
-                    "Lifecycle subscriber callback faulted. CorrelationId={CorrelationId} NewState={NewState} FailureCategory={FailureCategory}",
-                    FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
+                FrontComposerHotPathLog.LifecycleSubscriberFaulted(
+                    _logger,
+                    correlationId,
                     transition.NewState,
                     ex.GetType().Name);
             }
@@ -348,7 +345,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             while (_seenMessageIds.Count > _options.MessageIdCacheCapacity
                 && _seenOrder.TryDequeue(out string? oldest)) {
                 _ = _seenMessageIds.TryRemove(oldest, out _);
-                _logger.LogDebug("Lifecycle MessageId cache evicted oldest. Evicted={Evicted}", oldest);
+                FrontComposerHotPathLog.LifecycleMessageCacheEvicted(_logger, oldest);
             }
         }
     }

@@ -98,14 +98,14 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
             }
             catch (TimeoutException) {
                 loopCompleted = false;
-                _logger.LogWarning(
-                    "Projection fallback polling driver disposal timed out waiting for the in-flight loop. FailureCategory={FailureCategory}",
+                FrontComposerHotPathLog.ProjectionFallbackPollingDisposeTimedOut(
+                    _logger,
                     nameof(TimeoutException));
             }
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                 // Loop already logs failures; swallow to keep disposal safe.
-                _logger.LogWarning(
-                    "Projection fallback polling driver disposal observed an in-flight loop failure. FailureCategory={FailureCategory}",
+                FrontComposerHotPathLog.ProjectionFallbackPollingDisposeFailed(
+                    _logger,
                     ex.GetType().Name);
             }
         }
@@ -197,8 +197,8 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
             }
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogWarning(
-                "Projection fallback polling loop terminated unexpectedly. FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ProjectionFallbackPollingTerminated(
+                _logger,
                 ex.GetType().Name);
         }
     }

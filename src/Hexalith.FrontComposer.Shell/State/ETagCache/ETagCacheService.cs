@@ -1,9 +1,8 @@
 using System.Collections.Concurrent;
-using System.Security.Cryptography;
-using System.Text;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -115,10 +114,10 @@ public sealed class ETagCacheService : IETagCache {
             throw;
         }
         catch (System.Exception ex) {
-            _logger.LogWarning(
+            FrontComposerHotPathLog.ETagStorageReadFailed(
+                _logger,
                 ex,
-                "ETagCacheService: storage read failed for redacted key {KeyHash} — degrading to cache miss.",
-                RedactKey(key));
+                key);
             return null;
         }
 
@@ -131,9 +130,9 @@ public sealed class ETagCacheService : IETagCache {
             || entry.PayloadVersion < expectedPayloadVersion
             || string.IsNullOrWhiteSpace(entry.ETag)
             || string.IsNullOrEmpty(entry.Payload)) {
-            _logger.LogInformation(
-                "ETagCacheService: incompatible cache entry for redacted key {KeyHash} (FormatVersion={FormatVersion}, PayloadVersion={PayloadVersion}, ExpectedPayloadVersion={ExpectedPayloadVersion}) — diagnostic miss.",
-                RedactKey(key),
+            FrontComposerHotPathLog.ETagIncompatibleEntry(
+                _logger,
+                key,
                 entry.FormatVersion,
                 entry.PayloadVersion,
                 expectedPayloadVersion);
@@ -144,10 +143,10 @@ public sealed class ETagCacheService : IETagCache {
                 throw;
             }
             catch (System.Exception ex) {
-                _logger.LogWarning(
+                FrontComposerHotPathLog.ETagRemoveIncompatibleFailed(
+                    _logger,
                     ex,
-                    "ETagCacheService: failed to remove incompatible entry for redacted key {KeyHash} — best-effort cleanup.",
-                    RedactKey(key));
+                    key);
             }
 
             _ = _lru.TryRemove(key, out _);
@@ -186,10 +185,10 @@ public sealed class ETagCacheService : IETagCache {
             throw;
         }
         catch (System.Exception ex) {
-            _logger.LogWarning(
+            FrontComposerHotPathLog.ETagStorageWriteFailed(
+                _logger,
                 ex,
-                "ETagCacheService: storage write failed for redacted key {KeyHash} — entry not persisted.",
-                RedactKey(key));
+                key);
         }
     }
 
@@ -204,10 +203,10 @@ public sealed class ETagCacheService : IETagCache {
             throw;
         }
         catch (System.Exception ex) {
-            _logger.LogWarning(
+            FrontComposerHotPathLog.ETagStorageRemoveFailed(
+                _logger,
                 ex,
-                "ETagCacheService: storage remove failed for redacted key {KeyHash} — best-effort cleanup.",
-                RedactKey(key));
+                key);
         }
     }
 
@@ -229,8 +228,7 @@ public sealed class ETagCacheService : IETagCache {
             || string.IsNullOrWhiteSpace(userId)) {
             // P14 — log a sanitized warning so a silent no-op cannot mask a stale-cache window.
             // Raw identifiers are not logged; we only signal that invalidation was skipped.
-            _logger.LogWarning(
-                "ETagCacheService: tenant-scoped family invalidation skipped — tenant or user identifier failed segment validation.");
+            FrontComposerHotPathLog.ETagFamilyInvalidationSegmentInvalid(_logger);
             return;
         }
 
@@ -249,8 +247,7 @@ public sealed class ETagCacheService : IETagCache {
             // not valid Unicode (e.g. an unpaired surrogate). Mirror TryBuildKey's fail-closed catch
             // and skip invalidation with a sanitized warning rather than faulting the caller (an
             // uncaught throw out of this Fluxor effect path could drop the Blazor circuit).
-            _logger.LogWarning(
-                "ETagCacheService: tenant-scoped family invalidation skipped — tenant or user identifier failed canonicalization.");
+            FrontComposerHotPathLog.ETagFamilyInvalidationCanonicalizationInvalid(_logger);
             return;
         }
 
@@ -289,10 +286,10 @@ public sealed class ETagCacheService : IETagCache {
                 throw;
             }
             catch (Exception ex) {
-                _logger.LogWarning(
+                FrontComposerHotPathLog.ETagFamilyInvalidationReadFailed(
+                    _logger,
                     ex,
-                    "ETagCacheService: family invalidation read failed for redacted key {KeyHash} — skipping.",
-                    RedactKey(key));
+                    key);
                 continue;
             }
 
@@ -342,8 +339,8 @@ public sealed class ETagCacheService : IETagCache {
             throw;
         }
         catch (Exception ex) {
-            _logger.LogWarning(
-                "ETagCacheService: failed to enumerate persisted keys for cache LRU seeding. FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ETagLruEnumerationFailed(
+                _logger,
                 ex.GetType().Name);
             return false;
         }
@@ -371,9 +368,9 @@ public sealed class ETagCacheService : IETagCache {
                 // strand every later key outside LRU accounting (leaving them un-evictable). anyFailed
                 // keeps the seed gate retryable so a transient per-key fault re-seeds on the next call.
                 anyFailed = true;
-                _logger.LogWarning(
-                    "ETagCacheService: failed to seed LRU timestamp for redacted key {KeyHash}. FailureCategory={FailureCategory}",
-                    RedactKey(key),
+                FrontComposerHotPathLog.ETagLruTimestampSeedFailed(
+                    _logger,
+                    key,
                     ex.GetType().Name);
             }
         }
@@ -403,16 +400,12 @@ public sealed class ETagCacheService : IETagCache {
                 throw;
             }
             catch (System.Exception ex) {
-                _logger.LogWarning(
+                FrontComposerHotPathLog.ETagLruEvictionRemoveFailed(
+                    _logger,
                     ex,
-                    "ETagCacheService: LRU eviction storage remove failed for redacted key {KeyHash}.",
-                    RedactKey(oldestKey));
+                    oldestKey);
             }
         }
     }
 
-    private static string RedactKey(string key) {
-        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(key));
-        return Convert.ToHexString(hash, 0, 8);
-    }
 }

@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
@@ -37,8 +39,8 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
         // the silent drop is observable in diagnostics. EntityKey alone is not sufficient
         // identification (Matches enforces that), but losing this without trace is the dangerous part.
         if (string.IsNullOrWhiteSpace(observation.EntityKey)) {
-            _logger.LogWarning(
-                "Pending command outcome dropped because both MessageId and EntityKey were absent. Source={Source} Outcome={Outcome}",
+            FrontComposerHotPathLog.PendingOutcomeMissingIdentity(
+                _logger,
                 observation.Source,
                 observation.Outcome);
             return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
@@ -46,8 +48,8 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
 
         if (string.IsNullOrWhiteSpace(observation.ProjectionTypeName)
             || string.IsNullOrWhiteSpace(observation.LaneKey)) {
-            _logger.LogDebug(
-                "Pending command outcome ignored because fallback row identity metadata was incomplete. Source={Source}",
+            FrontComposerHotPathLog.PendingOutcomeFallbackIdentityIncomplete(
+                _logger,
                 observation.Source);
             return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
         }
@@ -57,15 +59,15 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
             .Where(entry => Matches(entry, observation))];
 
         if (matches.Length == 0) {
-            _logger.LogDebug(
-                "Pending command outcome ignored because no framework-controlled match was found. Source={Source}",
+            FrontComposerHotPathLog.PendingOutcomeNoMatch(
+                _logger,
                 observation.Source);
             return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
         }
 
         if (matches.Length > 1) {
-            _logger.LogWarning(
-                "Pending command outcome left unresolved because framework-controlled matching was ambiguous. Source={Source} CandidateCount={CandidateCount}",
+            FrontComposerHotPathLog.PendingOutcomeAmbiguous(
+                _logger,
                 observation.Source,
                 matches.Length);
             return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.AmbiguousMatch);
@@ -116,8 +118,8 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
             || string.IsNullOrWhiteSpace(entry.LaneKey)
             || string.IsNullOrWhiteSpace(entry.EntityKey)
             || string.IsNullOrWhiteSpace(entry.MessageId)) {
-            _logger.LogDebug(
-                "New-item indicator skipped because pending command row metadata is incomplete. MessageId={MessageId}",
+            FrontComposerHotPathLog.NewItemMetadataIncomplete(
+                _logger,
                 entry.MessageId);
             return;
         }

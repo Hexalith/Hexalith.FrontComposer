@@ -185,8 +185,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
 
         bool gateAcquired = await _gate.WaitAsync(GateWaitTimeout).ConfigureAwait(false);
         if (!gateAcquired) {
-            _logger.LogWarning(
-                "EventStore projection subscription disposal timed out waiting for the operation gate. FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ProjectionSubscriptionGateTimeout(
+                _logger,
                 "Timeout");
         }
 
@@ -224,7 +224,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             }
         }
         catch (Exception ex) {
-            _logger.LogWarning("EventStore projection subscription disposal failed. FailureCategory={FailureCategory}", ex.GetType().Name);
+            FrontComposerHotPathLog.ProjectionSubscriptionDisposalFailed(_logger, ex.GetType().Name);
         }
         finally {
             if (gateAcquired) {
@@ -314,8 +314,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                 // A buggy subscriber must not kill the SignalR callback dispatcher.
                 FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
-                _logger.LogWarning(
-                    "Projection change subscriber threw while handling nudge. FailureCategory={FailureCategory}",
+                FrontComposerHotPathLog.ProjectionChangeSubscriberFailed(
+                    _logger,
                     ex.GetType().Name);
             }
         }
@@ -354,8 +354,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
             // A buggy detail subscriber must not kill the SignalR callback dispatcher.
             FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
-            _logger.LogWarning(
-                "Projection change detail subscriber threw while handling nudge. FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ProjectionChangeDetailSubscriberFailed(
+                _logger,
                 ex.GetType().Name);
         }
     }
@@ -437,8 +437,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         if (_reconciliationCoordinator is null) {
             // P8 — log once when DI did not provide the coordinator so a regression is
             // visible instead of silently no-op'ing reconciliation.
-            _logger.LogInformation(
-                "Projection reconciliation coordinator is not registered. Reconnect catch-up will not run.");
+            FrontComposerHotPathLog.ReconciliationCoordinatorMissing(_logger);
             return;
         }
 
@@ -456,8 +455,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             // Expected on disposal.
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogWarning(
-                "Reconnection reconciliation threw out of the hub callback. FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ReconnectionReconciliationCallbackFailed(
+                _logger,
                 ex.GetType().Name);
         }
     }
@@ -479,8 +478,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
 
                 bool gateAcquired = await _gate.WaitAsync(GateWaitTimeout, token).ConfigureAwait(false);
                 if (!gateAcquired) {
-                    _logger.LogWarning(
-                        "EventStore projection hub closed-restart skipped because the operation gate was unavailable. FailureCategory={FailureCategory}",
+                    FrontComposerHotPathLog.HubClosedRestartGateUnavailable(
+                        _logger,
                         "Timeout");
                     await DelayClosedRestartRetryAsync(token).ConfigureAwait(false);
                     continue;
@@ -530,8 +529,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                     _connectionState.Apply(new ProjectionConnectionTransition(
                         ProjectionConnectionStatus.Disconnected,
                         FailureCategory: "RestartTimeout"));
-                    _logger.LogWarning(
-                        "EventStore projection hub closed-restart attempt timed out. FailureCategory={FailureCategory}",
+                    FrontComposerHotPathLog.HubClosedRestartTimedOut(
+                        _logger,
                         "Timeout");
                     shouldRetry = true;
                 }
@@ -539,8 +538,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
                     _connectionState.Apply(new ProjectionConnectionTransition(
                         ProjectionConnectionStatus.Disconnected,
                         FailureCategory: "RestartFailed"));
-                    _logger.LogWarning(
-                        "EventStore projection hub closed-restart failed. FailureCategory={FailureCategory}",
+                    FrontComposerHotPathLog.HubClosedRestartFailed(
+                        _logger,
                         ex.GetType().Name);
                     shouldRetry = true;
                 }
@@ -561,16 +560,16 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             }
         }
         catch (OperationCanceledException ex) when (_disposalCts.IsCancellationRequested) {
-            _logger.LogWarning(
-                "EventStore projection hub closed-restart canceled during disposal. FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.HubClosedRestartCanceledDuringDisposal(
+                _logger,
                 ex.GetType().Name);
         }
         catch (OperationCanceledException ex) {
             _connectionState.Apply(new ProjectionConnectionTransition(
                 ProjectionConnectionStatus.Disconnected,
                 FailureCategory: "RestartCanceled"));
-            _logger.LogWarning(
-                "EventStore projection hub closed-restart timed out or was canceled. FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.HubClosedRestartTimedOutOrCanceled(
+                _logger,
                 ex.GetType().Name);
         }
         catch (ObjectDisposedException ex) {
@@ -579,8 +578,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             // CreateLinkedTokenSource(_disposalCts.Token) observed the disposed source). Treat it
             // as a clean teardown so the "no exception escapes the callback" invariant is upheld
             // here rather than only by the factory's outer per-handler guard.
-            _logger.LogWarning(
-                "EventStore projection hub closed-restart canceled during disposal. FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.HubClosedRestartDisposedSource(
+                _logger,
                 ex.GetType().Name);
         }
         finally {
@@ -604,8 +603,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         }
 
         if (!gateAcquired) {
-            _logger.LogWarning(
-                "Projection reconnect rejoin skipped because the operation gate was unavailable. FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ProjectionReconnectRejoinGateUnavailable(
+                _logger,
                 "Timeout");
             return false;
         }
@@ -828,8 +827,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             await operation(timeout.Token).WaitAsync(DisposalWaitTimeout).ConfigureAwait(false);
         }
         catch (TimeoutException) {
-            _logger.LogWarning(
-                "EventStore projection subscription disposal operation timed out. Operation={Operation}, FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ProjectionDisposalOperationWaitTimedOut(
+                _logger,
                 operationName,
                 nameof(TimeoutException));
         }
@@ -837,14 +836,14 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             // H-F7 — the bounded-disposal timeout token cancelled the operation itself (StopAsync
             // observed timeout.Token before the WaitAsync deadline), so this is the timeout path,
             // not a generic failure. Log it as a timeout to keep disposal diagnostics accurate.
-            _logger.LogWarning(
-                "EventStore projection subscription disposal operation timed out. Operation={Operation}, FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ProjectionDisposalOperationCanceledByTimeout(
+                _logger,
                 operationName,
                 nameof(TimeoutException));
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogWarning(
-                "EventStore projection subscription disposal operation failed. Operation={Operation}, FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ProjectionDisposalOperationFailed(
+                _logger,
                 operationName,
                 ex.GetType().Name);
         }
@@ -864,14 +863,14 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
             await dispose.AsTask().WaitAsync(DisposalWaitTimeout).ConfigureAwait(false);
         }
         catch (TimeoutException) {
-            _logger.LogWarning(
-                "EventStore projection subscription disposal operation timed out. Operation={Operation}, FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ProjectionDisposeBoundedTimedOut(
+                _logger,
                 operationName,
                 nameof(TimeoutException));
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogWarning(
-                "EventStore projection subscription disposal operation failed. Operation={Operation}, FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ProjectionDisposeBoundedFailed(
+                _logger,
                 operationName,
                 ex.GetType().Name);
         }

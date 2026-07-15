@@ -31,7 +31,7 @@ public sealed class SnapshotPublisherOwnerLoggingTests {
     }
 
     [Fact]
-    public void Reconciliation_ThrowingSubscriber_RetainsOwnerDiagnosticAndContinuesFanOut() {
+    public void Reconciliation_ThrowingSubscriber_RedactsExceptionAndContinuesFanOut() {
         CapturingLogger<ReconnectionReconciliationStateService> logger = new();
         ReconnectionReconciliationStateService sut = new(TimeProvider.System, logger);
         bool healthyCalled = false;
@@ -45,6 +45,8 @@ public sealed class SnapshotPublisherOwnerLoggingTests {
         healthyCalled.ShouldBeTrue();
         CapturedLogEntry warning = logger.Entries.Single(entry => entry.Level == LogLevel.Warning);
         warning.Message.ShouldContain("Reconnection reconciliation state subscriber threw");
-        warning.Exception.ShouldBeOfType<InvalidOperationException>();
+        warning.Message.ShouldContain(nameof(InvalidOperationException));
+        warning.Message.ShouldNotContain("reconciliation failure");
+        warning.Exception.ShouldBeNull();
     }
 }

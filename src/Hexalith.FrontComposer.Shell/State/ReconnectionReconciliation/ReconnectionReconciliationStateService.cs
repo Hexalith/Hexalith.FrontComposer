@@ -1,5 +1,7 @@
 using Hexalith.FrontComposer.Shell.Services;
 
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
@@ -22,10 +24,7 @@ public sealed class ReconnectionReconciliationStateService(
             Epoch: 0,
             Changed: false,
             timeProvider.GetUtcNow()),
-        ex => logger.LogWarning(
-            ex,
-            "Reconnection reconciliation state subscriber threw. FailureCategory={FailureCategory}",
-            ex.GetType().Name));
+        ex => FrontComposerHotPathLog.ReconciliationStateSubscriberFailed(logger, ex.GetType().Name));
 
     public ReconnectionReconciliationSnapshot Current => _publisher.Current;
 

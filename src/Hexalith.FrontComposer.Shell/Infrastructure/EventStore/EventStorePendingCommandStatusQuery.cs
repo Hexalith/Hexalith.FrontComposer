@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.Extensions.Logging;
@@ -131,8 +132,8 @@ public sealed class EventStorePendingCommandStatusQuery(
     }
 
     private InvalidOperationException ProtocolFailure(string messageId, string failureCategory) {
-        logger.LogWarning(
-            "EventStore pending-command status response could not be used. FailureCategory={FailureCategory} MessageId={MessageId}",
+        FrontComposerHotPathLog.PendingStatusProtocolFailure(
+            logger,
             failureCategory,
             messageId);
         return new InvalidOperationException("EventStore command status response did not match the expected contract.");

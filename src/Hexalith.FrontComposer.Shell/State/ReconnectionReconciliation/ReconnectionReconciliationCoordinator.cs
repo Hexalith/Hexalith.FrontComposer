@@ -1,6 +1,7 @@
 using Fluxor;
 
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
@@ -78,8 +79,8 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
             _state.Start(epoch);
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogWarning(
-                "Reconciliation state.Start threw. Epoch={Epoch}, FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ReconciliationStateStartFailed(
+                _logger,
                 epoch,
                 ex.GetType().Name);
         }
@@ -100,8 +101,8 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
             return ProjectionReconciliationRefreshResult.Empty;
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogWarning(
-                "Reconnection reconciliation failed. Epoch={Epoch}, FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ReconciliationFailed(
+                _logger,
                 epoch,
                 ex.GetType().Name);
             if (IsCurrent(epoch)) {
@@ -122,8 +123,8 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                     _dispatcher.Dispatch(new MarkReconciliationSweepAction(epoch, result.ChangedViewKeys, expiresAt, now));
                 }
                 catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                    _logger.LogWarning(
-                        "Sweep marker dispatch failed. Epoch={Epoch}, FailureCategory={FailureCategory}",
+                    FrontComposerHotPathLog.ReconciliationSweepMarkerFailed(
+                        _logger,
                         epoch,
                         ex.GetType().Name);
                 }
@@ -145,8 +146,8 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                     // Disposal or epoch supersession; nothing to do.
                 }
                 catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                    _logger.LogWarning(
-                        "Pending command resolution from reconnect failed. Epoch={Epoch} FailureCategory={FailureCategory}",
+                    FrontComposerHotPathLog.ReconciliationPendingResolutionFailed(
+                        _logger,
                         epoch,
                         ex.GetType().Name);
                 }
@@ -188,8 +189,8 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
             _state.Reset();
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogWarning(
-                "Reconciliation state.Reset threw during dispose. FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.ReconciliationStateResetFailed(
+                _logger,
                 ex.GetType().Name);
         }
     }
@@ -211,8 +212,8 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                     _dispatcher.Dispatch(new ClearExpiredReconciliationSweepsAction(_timeProvider.GetUtcNow()));
                 }
                 catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                    _logger.LogWarning(
-                        "Sweep cleanup dispatch failed. Epoch={Epoch}, FailureCategory={FailureCategory}",
+                    FrontComposerHotPathLog.ReconciliationSweepCleanupFailed(
+                        _logger,
                         epoch,
                         ex.GetType().Name);
                 }

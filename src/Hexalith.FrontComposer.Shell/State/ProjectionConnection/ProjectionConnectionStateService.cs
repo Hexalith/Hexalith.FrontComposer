@@ -33,9 +33,7 @@ public sealed class ProjectionConnectionStateService(
             timeProvider.GetUtcNow(),
             ReconnectAttempt: 0,
             LastFailureCategory: null),
-        ex => logger.LogWarning(
-            "Projection connection state subscriber threw. FailureCategory={FailureCategory}",
-            ex.GetType().Name));
+        ex => FrontComposerHotPathLog.ProjectionStateSubscriberFailed(logger, ex.GetType().Name));
 
     private int _disposed;
 

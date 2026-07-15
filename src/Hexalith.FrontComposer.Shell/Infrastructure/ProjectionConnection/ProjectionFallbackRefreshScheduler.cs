@@ -150,8 +150,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
         // P22 — log when the configured budget is zero so misconfiguration is visible instead
         // of silently suppressing every reconcile pass.
         if (budget == 0) {
-            logger.LogWarning(
-                "Reconciliation budget is zero (MaxProjectionFallbackPollingLanes={Budget}); reconcile pass skipped.",
+            FrontComposerHotPathLog.ReconciliationBudgetZero(
+                logger,
                 budget);
             return ProjectionReconciliationRefreshResult.Empty;
         }
@@ -176,8 +176,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
             // The cache layer would itself fail-closed on missing tenant, but we want this to
             // surface as a structured "lane skipped" diagnostic rather than as a silent miss.
             if (string.IsNullOrWhiteSpace(lane.TenantId)) {
-                logger.LogInformation(
-                    "Reconciliation skipped lane without tenant context. ViewKey={ViewKey}, ProjectionType={ProjectionType}",
+                FrontComposerHotPathLog.ReconciliationLaneMissingTenant(
+                    logger,
                     lane.ViewKey,
                     lane.ProjectionType);
                 continue;
@@ -188,8 +188,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
             }
 
             if (!IsGroupEligibleForReconciliation(lane)) {
-                logger.LogInformation(
-                    "Reconciliation skipped lane for degraded projection group. ViewKey={ViewKey}, ProjectionType={ProjectionType}",
+                FrontComposerHotPathLog.ReconciliationLaneDegraded(
+                    logger,
                     lane.ViewKey,
                     lane.ProjectionType);
                 continue;
@@ -273,8 +273,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
         // P25 — negative TotalCount is a protocol issue, not a Changed signal.
         if (result.TotalCount < 0) {
-            logger.LogWarning(
-                "Projection refresh returned negative TotalCount; treating as protocol failure. ViewKey={ViewKey}",
+            FrontComposerHotPathLog.ProjectionRefreshNegativeCount(
+                logger,
                 lane.ViewKey);
             return ProjectionLaneRefreshResult.Skipped;
         }

@@ -84,13 +84,13 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
                         processed++;
                         break;
                     case PendingCommandOutcomeResolutionStatus.DuplicateIgnored:
-                        _logger.LogDebug(
-                            "Pending command polling observed duplicate terminal. MessageId={MessageId}",
+                        FrontComposerHotPathLog.PendingPollDuplicateTerminal(
+                            _logger,
                             entry.MessageId);
                         break;
                     default:
-                        _logger.LogWarning(
-                            "Pending command polling produced non-resolved status. Status={Status} MessageId={MessageId}",
+                        FrontComposerHotPathLog.PendingPollNonResolved(
+                            _logger,
                             result.Status,
                             entry.MessageId);
                         break;

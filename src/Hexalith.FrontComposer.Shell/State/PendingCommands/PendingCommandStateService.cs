@@ -56,12 +56,12 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         ArgumentNullException.ThrowIfNull(registration);
 
         if (!TryNormalizeUlid(registration.MessageId, out string? canonicalMessageId, out string? reason)) {
-            _logger.LogWarning("Pending command registration rejected. Reason={Reason}", reason);
+            FrontComposerHotPathLog.PendingRegistrationMessageRejected(_logger, reason);
             return PendingCommandRegistrationResult.InvalidMessageId();
         }
 
         if (!TryNormalizeUlid(registration.CorrelationId, out string? canonicalCorrelationId, out reason)) {
-            _logger.LogWarning("Pending command registration rejected. Reason={Reason}", reason);
+            FrontComposerHotPathLog.PendingRegistrationCorrelationRejected(_logger, reason);
             return PendingCommandRegistrationResult.InvalidCorrelationId();
         }
 
@@ -84,8 +84,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
 
             if (_byMessageId.TryGetValue(canonicalMessageId, out PendingCommandEntry? existing)) {
                 if (!existing.HasSameFrameworkMetadata(normalized)) {
-                    _logger.LogWarning(
-                        "Pending command duplicate registration rejected because framework metadata conflicts. MessageId={MessageId}",
+                    FrontComposerHotPathLog.PendingRegistrationMetadataConflict(
+                        _logger,
                         canonicalMessageId);
                     return PendingCommandRegistrationResult.ConflictingMetadata(existing);
                 }
@@ -138,7 +138,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         ArgumentNullException.ThrowIfNull(observation);
 
         if (!TryNormalizeUlid(observation.MessageId, out string? canonicalMessageId, out string? reason)) {
-            _logger.LogWarning("Pending command terminal observation rejected. Reason={Reason}", reason);
+            FrontComposerHotPathLog.PendingTerminalRejected(_logger, reason);
             return PendingCommandResolutionResult.InvalidMessageId();
         }
 
@@ -153,8 +153,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             }
 
             if (!_byMessageId.TryGetValue(canonicalMessageId, out PendingCommandEntry? entry)) {
-                _logger.LogDebug(
-                    "Pending command terminal observation ignored for unknown MessageId. MessageId={MessageId}",
+                FrontComposerHotPathLog.PendingTerminalUnknown(
+                    _logger,
                     canonicalMessageId);
                 return PendingCommandResolutionResult.UnknownMessageId();
             }
@@ -283,8 +283,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             }
         }
 
-        _logger.LogInformation(
-            "Pending command state cleared. Reason={Reason} OutstandingPendingCount={Count}",
+        FrontComposerHotPathLog.PendingStateCleared(
+            _logger,
             reason,
             outstanding.Count);
         NotifyChanged();
@@ -346,8 +346,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             _byMessageId[evicted.MessageId] = evicted;
             evictedQueue.Add(evicted);
             pendingCount--;
-            _logger.LogWarning(
-                "Pending command evicted unresolved because MaxPendingCommandEntries was exceeded. MessageId={MessageId}",
+            FrontComposerHotPathLog.PendingEvictedUnresolved(
+                _logger,
                 evicted.MessageId);
         }
 
@@ -381,8 +381,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             }
 
             if (current is null || current.Status != PendingCommandStatus.NeedsReview) {
-                _logger.LogDebug(
-                    "Skipping evicted lifecycle dispatch because the entry is no longer in NeedsReview state. MessageId={MessageId} CurrentStatus={CurrentStatus}",
+                FrontComposerHotPathLog.PendingEvictedDispatchSkipped(
+                    _logger,
                     entry.MessageId,
                     current?.Status);
                 continue;
@@ -409,14 +409,14 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         catch (ObjectDisposedException) {
             // P2-P9 — the lifecycle service may have been disposed first during circuit teardown;
             // the rest of the iteration would only repeat the same warning per entry.
-            _logger.LogDebug(
-                "Pending command lifecycle dispatch skipped because LifecycleStateService is disposed. Reason={Reason}",
+            FrontComposerHotPathLog.PendingLifecycleDisposed(
+                _logger,
                 reason);
             return false;
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogWarning(
-                "Pending command lifecycle dispatch failed during {Reason}. MessageId={MessageId} FailureCategory={FailureCategory}",
+            FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
+                _logger,
                 reason,
                 entry.MessageId,
                 ex.GetType().Name);
@@ -463,7 +463,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             // The gate is released before Clear() reacquires it; this preserves the rule that
             // lifecycle dispatch happens off the lock. Tenant/user transition is rare in the
             // scoped circuit but must fail-closed when it does occur.
-            _logger.LogWarning("Pending command tenant/user transition detected; flushing pending state.");
+            FrontComposerHotPathLog.PendingScopeTransition(_logger);
             Clear("TenantOrUserTransition");
         }
     }

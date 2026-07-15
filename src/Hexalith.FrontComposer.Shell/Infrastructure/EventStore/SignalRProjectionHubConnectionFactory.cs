@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.SignalR.Client;
@@ -118,8 +119,8 @@ internal sealed class SignalRProjectionHubConnectionFactory(
                     await handler(change).ConfigureAwait(false);
                 }
                 catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                    _logger.LogWarning(
-                        "EventStore projection hub state subscriber threw. State={State}, FailureCategory={FailureCategory}",
+                    FrontComposerHotPathLog.ProjectionHubStateSubscriberFailed(
+                        _logger,
                         change.State,
                         ex.GetType().Name);
                 }

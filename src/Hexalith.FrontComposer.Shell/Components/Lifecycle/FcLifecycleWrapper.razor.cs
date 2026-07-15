@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.AspNetCore.Components;
@@ -160,18 +161,18 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
         // HFC2100 race guard — wrapper received a transition for a CorrelationId it isn't bound to.
         if (!string.Equals(transition.CorrelationId, _boundCorrelationId, StringComparison.Ordinal)) {
-            Logger.LogWarning(
-                "{Diag} — FcLifecycleWrapper received transition for unexpected CorrelationId={Cid}",
+            FrontComposerHotPathLog.LifecycleUnexpectedCorrelation(
+                Logger,
                 FcDiagnosticIds.HFC2100_UnknownCorrelationId,
-                RedactForLog(transition.CorrelationId));
+                transition.CorrelationId);
             return;
         }
 
         if (transition.IdempotencyResolved) {
-            Logger.LogInformation(
-                "{Diag} — idempotency-resolved transition observed for CorrelationId={Cid}",
+            FrontComposerHotPathLog.LifecycleIdempotencyResolved(
+                Logger,
                 FcDiagnosticIds.HFC2101_IdempotencyResolvedObserved,
-                RedactForLog(transition.CorrelationId));
+                transition.CorrelationId);
         }
 
         _ = InvokeAsync(() => {
@@ -207,10 +208,10 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                         IdempotentDismissAt = dismissAt,
                     };
 
-                    Logger.LogInformation(
-                        "{Diag} FcLifecycleWrapper rendered idempotent Info bar. CorrelationId={Cid}",
+                    FrontComposerHotPathLog.LifecycleIdempotentInfoBarRendered(
+                        Logger,
                         FcDiagnosticIds.HFC2104_IdempotentInfoBarRendered,
-                        RedactForLog(transition.CorrelationId));
+                        transition.CorrelationId);
                 }
                 else {
                     int confirmedMs = ShellOptions.CurrentValue.ConfirmedToastDurationMs;
@@ -251,8 +252,8 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         }
 
         // HFC2102 — timer callback runs on the thread pool; render updates must go through InvokeAsync.
-        Logger.LogDebug(
-            "{Diag} Threshold timer phase update received off the UI thread; marshaling render work via InvokeAsync.",
+        FrontComposerHotPathLog.LifecycleTimerPhaseMarshaled(
+            Logger,
             FcDiagnosticIds.HFC2102_ThresholdTimerOffUiThread);
 
         _ = InvokeAsync(() => {
@@ -374,8 +375,4 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         return ValueTask.CompletedTask;
     }
 
-    // Review 2026-04-17 — "hash" is a misnomer: this is a prefix-redaction helper, not a cryptographic hash.
-    // Renamed from HashForLog so the name matches the behavior (first 8 chars + ellipsis).
-    private static string RedactForLog(string correlationId)
-        => correlationId.Length <= 8 ? correlationId : string.Concat(correlationId.AsSpan(0, 8), "…");
 }

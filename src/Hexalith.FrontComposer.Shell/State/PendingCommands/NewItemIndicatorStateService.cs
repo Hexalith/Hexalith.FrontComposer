@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -163,7 +164,7 @@ public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService
             timer.Dispose();
         }
 
-        _logger.LogInformation("New-item indicator state cleared. Reason={Reason}", reason);
+        FrontComposerHotPathLog.NewItemStateCleared(_logger, reason);
     }
 
     /// <inheritdoc />
@@ -228,7 +229,7 @@ public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService
         }
 
         if (needsClear) {
-            _logger.LogWarning("New-item indicator tenant/user transition detected; flushing state.");
+            FrontComposerHotPathLog.NewItemScopeTransition(_logger);
             Clear("TenantOrUserTransition");
         }
     }
