@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Shell.Services.Auth;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Shouldly;
 
@@ -47,6 +48,11 @@ public sealed class AuthRedactionStressTests {
         accessor.TenantId.ShouldBeNull();
         logger.Messages.ShouldContain(m => m.Contains(FcDiagnosticIds.HFC2012_AuthenticationClaimExtractionFailed, StringComparison.Ordinal));
         logger.Messages.ShouldNotContain(m => m.Contains(forbidden, StringComparison.Ordinal));
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5662);
+        entry.Exception.ShouldBeNull();
+        entry.State.Values.ShouldAllBe(value => value == null || !value.ToString()!.Contains(forbidden, StringComparison.Ordinal));
     }
 
     [Theory]
@@ -65,6 +71,10 @@ public sealed class AuthRedactionStressTests {
         logger.Messages.ShouldContain(m => m.Contains(FcDiagnosticIds.HFC2012_AuthenticationClaimExtractionFailed, StringComparison.Ordinal));
         logger.Messages.ShouldNotContain(m => m.Contains(forbidden + "-a", StringComparison.Ordinal));
         logger.Messages.ShouldNotContain(m => m.Contains(forbidden + "-b", StringComparison.Ordinal));
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5662);
+        entry.Exception.ShouldBeNull();
     }
 
     [Fact]
@@ -78,18 +88,24 @@ public sealed class AuthRedactionStressTests {
         options.TenantClaimTypes.Add("tenant_id");
         options.UserClaimTypes.Add("sub");
 
+        CapturingLogger<FrontComposerAccessTokenProvider> logger = new();
         FrontComposerAccessTokenProvider sut = new(
             new HttpContextAccessor(),
             new CircuitServicesAccessor(),
             new FrontComposerUserTokenStore(),
             Microsoft.Extensions.Options.Options.Create(options),
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<FrontComposerAccessTokenProvider>.Instance);
+            logger);
 
         FrontComposerAuthenticationException ex = Should.Throw<FrontComposerAuthenticationException>(
             () => sut.GetAccessTokenAsync(TestContext.Current.CancellationToken).AsTask().GetAwaiter().GetResult());
 
         ex.Message.ShouldNotContain(JwtShaped);
         ex.Message.ShouldNotContain("inner failure"); // sanitized — operators read the inner exception, not the message
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5666);
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain(JwtShaped);
     }
 
     [Fact]

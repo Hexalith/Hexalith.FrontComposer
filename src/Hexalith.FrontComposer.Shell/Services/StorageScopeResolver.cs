@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 
@@ -53,23 +54,18 @@ internal sealed class StorageScopeResolver : IStorageScopeResolver {
             rawUser = _accessor?.UserId;
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogInformation(
-                "{DiagnosticId}: {Feature} {Direction} skipped — IUserContextAccessor threw on TenantId/UserId access. Reason=AccessorThrew. FailureCategory={FailureCategory}.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
+            FrontComposerSecurityLog.StorageAccessorFailed(
+                _logger,
                 feature,
                 direction,
-                ex.GetType().Name);
+                ex.GetType().FullName ?? "Exception");
             tenantId = string.Empty;
             userId = string.Empty;
             return false;
         }
 
         if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
-            _logger.LogInformation(
-                "{DiagnosticId}: {Feature} {Direction} skipped — null/empty/whitespace tenant or user context.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
-                feature,
-                direction);
+            FrontComposerSecurityLog.StorageScopeMissing(_logger, feature, direction);
             tenantId = string.Empty;
             userId = string.Empty;
             return false;

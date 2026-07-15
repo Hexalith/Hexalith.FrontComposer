@@ -2,6 +2,7 @@ using System.Text;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Routing;
 
@@ -92,7 +93,9 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
         }
         // P-4: keep cancellation/OOM signals propagating; only swallow domain-level registry errors.
         catch (Exception ex) when (ex is not OperationCanceledException && !ExceptionGuard.IsFatal(ex)) {
-            _logger.LogWarning(ex, "Failed to resolve empty-state CTA because the FrontComposer registry threw.");
+            FrontComposerSecurityLog.EmptyStateRegistryFailed(
+                _logger,
+                ex.GetType().FullName ?? "Exception");
             return null;
         }
     }
@@ -115,16 +118,16 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
             .ToList();
 
         if (matches.Count == 0) {
-            _logger.LogWarning(
-                "Projection {ProjectionType} requested empty-state CTA command {CommandName}, but no reachable writable registered command matched.",
+            FrontComposerSecurityLog.EmptyStateExplicitCommandMissing(
+                _logger,
                 projectionFqn,
                 explicitCommandName);
             return null;
         }
 
         if (matches.Count > 1) {
-            _logger.LogWarning(
-                "Projection {ProjectionType} requested empty-state CTA command {CommandName}, which matched {Count} registered commands across bounded contexts. Picking the first ({BoundedContext}.{Command}); annotate with [ProjectionEmptyStateCta] using the fully qualified name to disambiguate.",
+            FrontComposerSecurityLog.EmptyStateExplicitCommandAmbiguous(
+                _logger,
                 projectionFqn,
                 explicitCommandName,
                 matches.Count,
@@ -156,8 +159,8 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
             // P-12: attribute named a BC with no matching manifest — log + fall through to
             // FQN-based ownership lookup so a typo doesn't silently disable the CTA.
             if (boundedContextFromAttribute) {
-                _logger.LogWarning(
-                    "Projection {ProjectionType} declares [BoundedContext({BoundedContext})] but no manifest matches that bounded context. Falling back to FQN-based ownership lookup.",
+                FrontComposerSecurityLog.EmptyStateBoundedContextMissing(
+                    _logger,
                     projectionFqn,
                     boundedContext);
 
@@ -220,8 +223,8 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
         // The palette already filters via IsInternalRoute (Story 3-4 D10); empty-state CTAs are
         // generated identically and must clear the same gate.
         if (!CommandRouteBuilder.IsInternalRoute(route)) {
-            _logger.LogWarning(
-                "Empty-state CTA route {Route} for command {CommandFqn} did not pass internal-route validation; suppressing CTA.",
+            FrontComposerSecurityLog.EmptyStateUnsafeRoute(
+                _logger,
                 route,
                 commandFqn);
             return null;

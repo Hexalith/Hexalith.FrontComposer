@@ -2,6 +2,7 @@ using System.Security.Claims;
 
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -151,13 +152,19 @@ public sealed class CommandAuthorizationEvaluatorTests {
     public async Task EvaluateAsync_AuthorizationHandler_ThrowsGenericException_FailsClosedAsHandlerFailed() {
         IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
         authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), "OrderApprover")
-            .Returns<Task<AuthorizationResult>>(_ => throw new InvalidCastException("custom handler bug"));
-        CommandAuthorizationEvaluator sut = Create(authorization);
+            .Returns<Task<AuthorizationResult>>(_ => throw new InvalidCastException("jwt.payload.signature"));
+        CapturingLogger<CommandAuthorizationEvaluator> logger = new();
+        CommandAuthorizationEvaluator sut = Create(authorization, logger: logger);
 
         CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
 
         result.Kind.ShouldBe(CommandAuthorizationDecisionKind.FailedClosed);
         result.Reason.ShouldBe(CommandAuthorizationReason.HandlerFailed);
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5671);
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain("jwt.payload.signature");
     }
 
     [Fact]
@@ -288,7 +295,7 @@ public sealed class CommandAuthorizationEvaluatorTests {
         _ = tenant.TryGetContext(Arg.Any<string?>(), Arg.Any<string>())
             .Returns(TenantContextResult.Success(new TenantContextSnapshot(sentinelTenant, sentinelUser, true, "corr-blocked")));
 
-        var capturingLogger = new CapturingLogger<CommandAuthorizationEvaluator>();
+        CapturingLogger<CommandAuthorizationEvaluator> capturingLogger = new();
         ClaimsIdentity identity = new([new Claim(ClaimTypes.NameIdentifier, sentinelUser)], "Test");
         var stateProvider = new FakeAuthenticationStateProvider(new AuthenticationState(new ClaimsPrincipal(identity)));
         var sut = new CommandAuthorizationEvaluator(authorization, stateProvider, tenant, capturingLogger);
@@ -296,29 +303,22 @@ public sealed class CommandAuthorizationEvaluatorTests {
         CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
 
         result.IsAllowed.ShouldBeFalse();
-        foreach (string entry in capturingLogger.RenderedEntries) {
-            entry.ShouldNotContain(sentinelTenant);
-            entry.ShouldNotContain(sentinelUser);
-        }
-    }
-
-    private sealed class CapturingLogger<T> : ILogger<T> {
-        private readonly List<string> _entries = [];
-
-        public IReadOnlyList<string> RenderedEntries => _entries;
-
-        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) => _entries.Add(formatter(state, exception));
+        CapturedLogEntry entry = capturingLogger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5672);
+        entry.EventId.Name.ShouldBe("AuthorizationBlocked");
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain(sentinelTenant);
+        entry.Message.ShouldNotContain(sentinelUser);
+        entry.Message.ShouldNotContain("OrderApprover");
     }
 
     private static CommandAuthorizationEvaluator Create(
         IAuthorizationService authorizationService,
         FakeAuthenticationStateProvider? stateProvider = null,
         IFrontComposerTenantContextAccessor? tenant = null,
-        bool authenticated = true) {
+        bool authenticated = true,
+        ILogger<CommandAuthorizationEvaluator>? logger = null) {
         ArgumentNullException.ThrowIfNull(authorizationService);
 
         if (stateProvider is null) {
@@ -334,7 +334,7 @@ public sealed class CommandAuthorizationEvaluatorTests {
             authorizationService,
             stateProvider,
             tenant,
-            NullLogger<CommandAuthorizationEvaluator>.Instance);
+            logger ?? NullLogger<CommandAuthorizationEvaluator>.Instance);
     }
 
     private static IFrontComposerTenantContextAccessor DefaultTenant() {

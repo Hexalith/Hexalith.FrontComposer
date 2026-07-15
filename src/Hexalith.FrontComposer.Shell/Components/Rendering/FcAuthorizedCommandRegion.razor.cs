@@ -1,3 +1,4 @@
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
 
 using Microsoft.AspNetCore.Components;
@@ -127,12 +128,12 @@ public partial class FcAuthorizedCommandRegion : ComponentBase, IDisposable {
         catch (Exception ex) {
             // Fail-closed on evaluator throw, null result, or any other unexpected failure. Without
             // this catch the exception escapes to the Blazor error boundary and tears the circuit.
-            Logger?.LogWarning(
-                ex,
-                "FcAuthorizedCommandRegion authorization evaluation failed; falling back to Blocked. CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
+            FrontComposerSecurityLog.ComponentAuthorizationEvaluationFailed(
+                Logger,
                 commandType.FullName ?? commandType.Name,
                 trimmedPolicy,
-                correlationId);
+                correlationId,
+                ex.GetType().FullName ?? "Exception");
             next = CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
         }
 

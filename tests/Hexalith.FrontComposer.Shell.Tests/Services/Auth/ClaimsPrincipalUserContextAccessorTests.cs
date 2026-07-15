@@ -64,7 +64,13 @@ public sealed class ClaimsPrincipalUserContextAccessorTests {
 
         accessor.TenantId.ShouldBeNull();
         accessor.UserId.ShouldBeNull();
-        logger.Messages.ShouldContain(m => m.Contains("tenant_id", StringComparison.Ordinal) && m.Contains("tid", StringComparison.Ordinal));
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.EventId.Id.ShouldBe(5662);
+        entry.EventId.Name.ShouldBe("RequestClaimExtractionFailed");
+        entry.State["TenantAliasCount"].ShouldBe(2);
+        entry.State["UserAliasCount"].ShouldBe(0);
+        entry.Exception.ShouldBeNull();
+        logger.Messages.ShouldNotContain(m => m.Contains("tenant_id", StringComparison.Ordinal) || m.Contains("tid", StringComparison.Ordinal));
         logger.Messages.ShouldNotContain(m => m.Contains("tenant-a", StringComparison.Ordinal) || m.Contains("tenant-b", StringComparison.Ordinal));
     }
 

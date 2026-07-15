@@ -1,5 +1,6 @@
 using System.Security.Claims;
 
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Services;
 
@@ -46,12 +47,12 @@ public sealed class CommandAuthorizationEvaluator(
             return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            logger.LogWarning(
-                ex,
-                "Command authorization failed closed resolving authentication state. CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
+            FrontComposerSecurityLog.AuthorizationAuthenticationStateFailed(
+                logger,
                 request.CommandType.FullName ?? request.CommandType.Name,
                 trimmedPolicy,
-                correlationId);
+                correlationId,
+                ex.GetType().FullName ?? "Exception");
             return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
         }
 
@@ -71,13 +72,13 @@ public sealed class CommandAuthorizationEvaluator(
             tenant = tenantContextAccessor.TryGetContext(operationKind: "command-authorization");
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            logger.LogWarning(
-                ex,
-                "Command authorization failed closed resolving tenant context. Reason={Reason} CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
+            FrontComposerSecurityLog.AuthorizationTenantContextFailed(
+                logger,
                 CommandAuthorizationReason.StaleTenantContext,
                 request.CommandType.FullName ?? request.CommandType.Name,
                 trimmedPolicy,
-                correlationId);
+                correlationId,
+                ex.GetType().FullName ?? "Exception");
             return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, correlationId);
         }
 
@@ -107,8 +108,8 @@ public sealed class CommandAuthorizationEvaluator(
             }
 
             if (result is null) {
-                logger.LogWarning(
-                    "Command authorization failed closed: AuthorizationService returned null result. CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
+                FrontComposerSecurityLog.AuthorizationNullResult(
+                    logger,
                     request.CommandType.FullName ?? request.CommandType.Name,
                     trimmedPolicy,
                     correlationId);
@@ -144,23 +145,21 @@ public sealed class CommandAuthorizationEvaluator(
             // diagnose deployment misconfigurations, but the principal/claims/tokens are never
             // included. Other InvalidOperationException causes (scope-resolution etc.) also fail
             // closed under MissingPolicy — operators investigate via the log message.
-            logger.LogWarning(
-                ex,
-                "Command authorization failed closed. Reason={Reason} CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
-                CommandAuthorizationReason.MissingPolicy,
+            FrontComposerSecurityLog.AuthorizationMissingPolicyFailed(
+                logger,
                 request.CommandType.FullName ?? request.CommandType.Name,
                 trimmedPolicy,
-                correlationId);
+                correlationId,
+                ex.GetType().FullName ?? "Exception");
             return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.MissingPolicy, correlationId);
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            logger.LogWarning(
-                ex,
-                "Command authorization failed closed. Reason={Reason} CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
-                CommandAuthorizationReason.HandlerFailed,
+            FrontComposerSecurityLog.AuthorizationHandlerFailed(
+                logger,
                 request.CommandType.FullName ?? request.CommandType.Name,
                 trimmedPolicy,
-                correlationId);
+                correlationId,
+                ex.GetType().FullName ?? "Exception");
             return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
         }
     }
@@ -170,8 +169,8 @@ public sealed class CommandAuthorizationEvaluator(
         CommandAuthorizationReason reason,
         string trimmedPolicy,
         string correlationId)
-        => logger.LogWarning(
-            "Command authorization blocked. Reason={Reason} CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
+        => FrontComposerSecurityLog.AuthorizationBlocked(
+            logger,
             reason,
             request.CommandType.FullName ?? request.CommandType.Name,
             trimmedPolicy,

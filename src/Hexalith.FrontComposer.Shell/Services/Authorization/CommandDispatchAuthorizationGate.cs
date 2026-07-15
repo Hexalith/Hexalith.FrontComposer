@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services;
@@ -49,8 +50,8 @@ public sealed class CommandDispatchAuthorizationGate(
             }
             else {
                 if (declaredCommandType.FullName is null && runtimeCommandType.FullName is null) {
-                    logger.LogWarning(
-                        "Direct command dispatch failed closed because command type {CommandShortName} has no fully qualified name; refusing to authorize. Wrap such commands in a concrete type before dispatching.",
+                    FrontComposerSecurityLog.DispatchDeclaredAndRuntimeCommandUnnamed(
+                        logger,
                         runtimeCommandType.Name);
                     throw CreateForbiddenWarning(runtimeCommandType);
                 }
@@ -66,8 +67,8 @@ public sealed class CommandDispatchAuthorizationGate(
             // Open generics, dynamic assemblies, and reflection-emitted types can produce a null
             // FullName. The legacy fallback to commandType.Name would let two unrelated commands
             // collide in the manifest lookup → silent fail-OPEN. Fail-closed instead.
-            logger.LogWarning(
-                "Direct command dispatch failed closed because command type {CommandShortName} has no fully qualified name; refusing to authorize. Wrap such commands in a concrete type before dispatching.",
+            FrontComposerSecurityLog.DispatchResolvedCommandUnnamed(
+                logger,
                 runtimeCommandType.Name);
             throw CreateForbiddenWarning(runtimeCommandType);
         }
@@ -77,17 +78,15 @@ public sealed class CommandDispatchAuthorizationGate(
             evaluator = serviceProvider.GetService<ICommandAuthorizationEvaluator>();
         }
         catch (Exception ex) when (ex is InvalidOperationException or ObjectDisposedException) {
-            logger.LogWarning(
-                ex,
-                "Direct command dispatch failed closed because command authorization services could not be resolved. CommandType={CommandType}",
-                commandTypeName);
+            FrontComposerSecurityLog.DispatchServiceResolutionFailed(
+                logger,
+                commandTypeName,
+                ex.GetType().FullName ?? "Exception");
             throw CreateForbiddenWarning(commandType);
         }
 
         if (evaluator is null) {
-            logger.LogWarning(
-                "Direct command dispatch failed closed because ICommandAuthorizationEvaluator is not registered. CommandType={CommandType}",
-                commandTypeName);
+            FrontComposerSecurityLog.DispatchEvaluatorMissing(logger, commandTypeName);
             throw CreateForbiddenWarning(commandType);
         }
 
@@ -108,19 +107,19 @@ public sealed class CommandDispatchAuthorizationGate(
             throw;
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            logger.LogWarning(
-                ex,
-                "Direct command dispatch failed closed because authorization evaluation threw. CommandType={CommandType} PolicyName={PolicyName}",
+            FrontComposerSecurityLog.DispatchEvaluationFailed(
+                logger,
                 commandTypeName,
-                policyName);
+                policyName,
+                ex.GetType().FullName ?? "Exception");
             throw CreateForbiddenWarning(commandType);
         }
 
         if (decision is null) {
             // Defensive: a broken IAuthorizationService stub returning null Task<AuthorizationResult>
             // could surface here as a null decision; fail-closed.
-            logger.LogWarning(
-                "Direct command dispatch failed closed because the evaluator returned a null decision. CommandType={CommandType} PolicyName={PolicyName}",
+            FrontComposerSecurityLog.DispatchNullDecision(
+                logger,
                 commandTypeName,
                 policyName);
             throw CreateForbiddenWarning(commandType);
@@ -136,22 +135,22 @@ public sealed class CommandDispatchAuthorizationGate(
         // it from authorization denial; everything else (Denied, FailedClosed-other) → Forbidden.
         switch (decision.Kind) {
             case CommandAuthorizationDecisionKind.Pending:
-                logger.LogInformation(
-                    "Direct command dispatch deferred — authorization decision pending. CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
+                FrontComposerSecurityLog.DispatchPending(
+                    logger,
                     commandTypeName,
                     policyName,
                     decision.CorrelationId);
                 throw CreatePendingWarning(commandType);
             case CommandAuthorizationDecisionKind.FailedClosed when decision.Reason == CommandAuthorizationReason.Canceled:
-                logger.LogDebug(
-                    "Direct command dispatch cancelled before authorization completed. CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
+                FrontComposerSecurityLog.DispatchCanceled(
+                    logger,
                     commandTypeName,
                     policyName,
                     decision.CorrelationId);
                 throw new OperationCanceledException(cancellationToken);
             default:
-                logger.LogWarning(
-                    "Direct command dispatch blocked by authorization. Reason={Reason} CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
+                FrontComposerSecurityLog.DispatchBlocked(
+                    logger,
                     decision.Reason,
                     commandTypeName,
                     policyName,

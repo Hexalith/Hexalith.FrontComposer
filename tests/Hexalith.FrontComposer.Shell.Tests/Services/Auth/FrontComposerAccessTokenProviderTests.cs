@@ -79,18 +79,25 @@ public sealed class FrontComposerAccessTokenProviderTests {
             () => sut.GetAccessTokenAsync(TestContext.Current.CancellationToken).AsTask());
 
         ex.DiagnosticId.ShouldBe(FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed);
-        logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning
-            && e.Message.Contains(FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed, StringComparison.Ordinal));
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5665);
+        entry.EventId.Name.ShouldBe("AccessTokenMissing");
+        entry.Message.ShouldContain(FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed);
+        entry.Exception.ShouldBeNull();
     }
 
     [Fact]
     public async Task GetAccessTokenAsync_PropagatesInnerExceptionFromHostProvider() {
         // P6 — adopter token-broker errors must surface as inner exception so operators can diagnose.
         InvalidOperationException root = new("token broker offline");
-        FrontComposerAccessTokenProvider sut = Build(options => {
-            options.CustomBrokered.Enabled = true;
-            options.TokenRelay.HostAccessTokenProvider = _ => throw root;
-        });
+        CapturingLogger<FrontComposerAccessTokenProvider> logger = new();
+        FrontComposerAccessTokenProvider sut = Build(
+            options => {
+                options.CustomBrokered.Enabled = true;
+                options.TokenRelay.HostAccessTokenProvider = _ => throw root;
+            },
+            logger);
 
         FrontComposerAuthenticationException ex = await Should.ThrowAsync<FrontComposerAuthenticationException>(
             () => sut.GetAccessTokenAsync(TestContext.Current.CancellationToken).AsTask());
@@ -98,6 +105,11 @@ public sealed class FrontComposerAccessTokenProviderTests {
         ex.DiagnosticId.ShouldBe(FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed);
         ex.InnerException.ShouldBe(root);
         ex.Message.ShouldNotContain("token broker offline"); // sanitized message
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.EventId.Id.ShouldBe(5666);
+        entry.EventId.Name.ShouldBe("AccessTokenAcquisitionFailed");
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain("token broker offline");
     }
 
     [Fact]

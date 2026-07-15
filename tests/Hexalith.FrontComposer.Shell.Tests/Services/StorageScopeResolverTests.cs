@@ -85,6 +85,10 @@ public sealed class StorageScopeResolverTests {
         logger.Entries.ShouldContain(e => e.Message.Contains(nameof(InvalidOperationException), StringComparison.Ordinal));
         logger.Entries.ShouldAllBe(e => e.Exception == null);
         logger.Entries.ShouldAllBe(e => !e.Message.Contains("secret-user@corp", StringComparison.Ordinal));
+        CapturingLogger.CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Information);
+        entry.EventId.Id.ShouldBe(5690);
+        entry.EventId.Name.ShouldBe("StorageAccessorFailed");
     }
 
     [Fact]
@@ -112,10 +116,13 @@ public sealed class StorageScopeResolverTests {
 
         logger.Entries.ShouldContain(
             e => e.Level == LogLevel.Information
+                && e.EventId.Id == 5691
+                && e.EventId.Name == "StorageScopeMissing"
                 && e.Message.Contains(FcDiagnosticIds.HFC2105_StoragePersistenceSkipped, StringComparison.Ordinal)
-                && e.Message.Contains("Density", StringComparison.Ordinal)
+                && e.Message.Contains("sha256:77a283d69258c2ae", StringComparison.Ordinal)
                 && e.Message.Contains("hydrate", StringComparison.Ordinal),
-            customMessage: "HFC2105 skip log must name the failing feature (Density), not a generic 'Storage' message.");
+            customMessage: "HFC2105 skip log must retain stable pseudonymous feature attribution.");
+        logger.Entries.ShouldAllBe(e => !e.Message.Contains("Density", StringComparison.Ordinal));
         logger.Entries.ShouldAllBe(e => !e.Message.Contains("Storage hydrate", StringComparison.Ordinal));
     }
 
@@ -127,7 +134,7 @@ public sealed class StorageScopeResolverTests {
     }
 
     private sealed class CapturingLogger : ILogger {
-        public List<(LogLevel Level, string Message, Exception? Exception)> Entries { get; } = [];
+        public List<CapturedLogEntry> Entries { get; } = [];
 
         public IDisposable? BeginScope<TState>(TState state)
             where TState : notnull => null;
@@ -139,8 +146,12 @@ public sealed class StorageScopeResolverTests {
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter)
-            => Entries.Add((logLevel, formatter(state, exception), exception));
+            Func<TState, Exception?, string> formatter) {
+            IReadOnlyDictionary<string, object?> structuredState = state is IEnumerable<KeyValuePair<string, object?>> values
+                ? values.ToDictionary(static value => value.Key, static value => value.Value, StringComparer.Ordinal)
+                : new Dictionary<string, object?>(StringComparer.Ordinal);
+            Entries.Add(new(logLevel, eventId, structuredState, formatter(state, exception), exception));
+        }
 
         public void ShouldHaveInformation(string diagnosticId, string direction)
             => Entries.ShouldContain(
@@ -148,5 +159,12 @@ public sealed class StorageScopeResolverTests {
                     && e.Message.Contains(diagnosticId, StringComparison.Ordinal)
                     && e.Message.Contains(direction, StringComparison.Ordinal),
                 customMessage: $"Expected Information log referencing '{diagnosticId}' AND '{direction}'.");
+
+        public sealed record CapturedLogEntry(
+            LogLevel Level,
+            EventId EventId,
+            IReadOnlyDictionary<string, object?> State,
+            string Message,
+            Exception? Exception);
     }
 }

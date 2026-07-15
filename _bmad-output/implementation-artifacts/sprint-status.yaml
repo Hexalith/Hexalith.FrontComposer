@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-15T12:37:38+02:00
+# last_updated: 2026-07-15T17:38:52+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-15T12:37:38+02:00
+last_updated: 2026-07-15T18:54:41+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -308,7 +308,8 @@ development_status:
   # Epic 9: Fresh-Row Producer and Row Identity (post-MVP follow-up)
   # Added 2026-07-01 via Correct Course (sprint-change-proposal-2026-07-01.md).
   # epic-9 moved backlog -> in-progress on 2026-07-04 (create-story; first story of Fresh-Row Producer and Row Identity)
-  epic-9: in-progress
+  # epic-9 moved in-progress -> done on 2026-07-15 (planning reconciliation; Stories 9.1 and 9.2 are done; retrospective remains optional)
+  epic-9: done
   # 9-1 moved backlog -> ready-for-dev on 2026-07-04 (create-story; confirm FC-NIP row-identity producer contract. Scope is contract/documentation confirmation: prove the minimum payload for INewItemIndicatorStateService.Add(ViewKey/lane key, EntityKey, MessageId, ProjectionTypeName, optional status-slot metadata), verify EventStore status/projection nudge/pending-command seams, and record a blocking owner/date follow-up instead of fabricating row identity if precise EntityKey cannot be supplied.)
   # 9-1 moved ready-for-dev -> in-progress on 2026-07-04 (dev-story; baseline b85aec624624b7128096d5ce645118c6f8f1d4e8 captured; starting FC-NIP row-identity producer contract confirmation.)
   # 9-1 moved in-progress -> review on 2026-07-04 (dev-story; FC-NIP row-identity producer contract confirmed with upstream blocking gap, architecture ownership wording pinned, and focused SourceTools governance guard added. Focused SourceTools test project build 0/0 and FC-NIP guard 2/2 passed via direct xUnit v3 in-process runner. Broad solution build/test and DocFX lanes are locally blocked by NuGet network denial, existing CLI Roslyn package conflict, DocFX build-host socket, and VSTest socket restrictions.)
@@ -352,7 +353,7 @@ development_status:
   # epic-10-retrospective moved optional -> done on 2026-07-05 (bmad-retrospective YOLO/autonomous; Epic 10 reviewed, Epic 7/Epic 8 follow-through closed, Epic 11 readiness constraints recorded, and verified documentation updates applied only where code/docs drift existed)
   epic-10-retrospective: done
 
-  # Epic 11: Architecture Review Remediation (post-MVP quality hardening)
+  # Epic 11: Release Readiness Remediation Program (post-MVP quality hardening)
   # Added 2026-07-04 via Correct Course (sprint-change-proposal-2026-07-04.md), then restructured
   # 2026-07-05 via Correct Course readiness remediation (sprint-change-proposal-2026-07-05.md).
   # Story 11.0 route-contract decision completed on 2026-07-05:
@@ -361,8 +362,8 @@ development_status:
   # Story 11.8 Contracts-kernel split decision completed on 2026-07-05:
   # approved netstandard2.0-clean Contracts kernel + net10-only Contracts.UI target
   # (contract: _bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md).
-  # Suggested order: 11.0 -> 11.1 -> 11.2 -> 11.4 -> 11.3 -> 11.5 -> 11.6 -> 11.7 -> 11.9/11.15/11.16 -> 11.17/11.18/11.19 -> 11.8/11.11-11.14.
-  # Story creation order is authoritative: do not infer the next story from file order or numeric sort.
+  # Four workstreams are authoritative: runtime reliability/security; adopter testing/route integrity;
+  # Contracts/package boundary; maintainability/enforcement. Parents 11.17/11.18/11.19 are nonimplementable.
   # epic-11 added backlog on 2026-07-04 (correct-course; Architecture Review Remediation, stories 11.1-11.10, from sprint-change-proposal-2026-07-04.md; Minor fix batch applied in-tree under the same proposal)
   # epic-11 moved backlog -> in-progress on 2026-07-05 (create-story; first Epic 11 implementation story, Story 11.1)
   epic-11: in-progress
@@ -448,12 +449,22 @@ development_status:
   11-17-shell-bundle-split: review
   # Story 11.18 is a non-implementable decomposition parent; replaced on 2026-07-15 by three independently reviewable defect-class children before any ready-for-dev transition.
   # 11.18a moved backlog -> ready-for-dev on 2026-07-15 (create-story; security-first MCP + Shell slice: reconcile a creation-time minimum of 36 direct calls / 13 files, preserve Story 11.3 generated events, eliminate raw exception stacks and sensitive identifiers, add collision-free LoggerMessage events plus non-vacuous MCP/Shell Governance and sanitization lanes.)
-  11-18-fail-closed-security-log-sites: ready-for-dev
-  # 11.18b backlog child (all remaining Shell Warning+ sites; independently validated by Shell unit and source-generated Warning+ governance lanes).
-  11-18-warning-and-above-log-sites: backlog
-  # 11.18c backlog child (command-lifecycle, projection-refresh, and polling hot paths; independently validated by LoggerMessage governance and a documented direct-call remainder ledger).
-  11-18-hot-path-log-sites: backlog
-  11-19-enforcement-and-policy-alignment: backlog
+  # 11.18a moved ready-for-dev -> in-progress on 2026-07-15 (dev-story; implementation-start HEAD 77e58b31, reconciling the Roslyn-backed security census before production changes.)
+  # 11.18a moved in-progress -> review on 2026-07-15 (dev-story; 36/36 security calls migrated to generated MCP 8315-8318 and Shell 5660-5691 events; exact residual 11.18b/11.18c ownership pinned; Release build, focused/full/broad/Governance/artifact/diff gates green.)
+  11-18-fail-closed-security-log-sites: review
+  # 11.18b moved backlog -> ready-for-dev on 2026-07-15 (create-story; residual Warning/Error/Critical sites after 11.18a security and 11.18c hot-path ownership is frozen; exact post-11.18a census is 208 direct calls / 49 files).
+  11-18-warning-and-above-log-sites: ready-for-dev
+  # 11.18c moved backlog -> ready-for-dev on 2026-07-15 (create-story; freeze and migrate command-lifecycle, projection-refresh, and polling hot paths before 11.18b residual ownership is finalized).
+  11-18-hot-path-log-sites: ready-for-dev
+  # Story 11.19 is a nonimplementable decomposition parent; its queue state belongs only to 11.19a-d.
+  # 11.19a moved backlog -> ready-for-dev on 2026-07-15 (create-story; CS1591 enforcement realignment).
+  11-19-doc-comment-enforcement-realignment: ready-for-dev
+  # 11.19b moved backlog -> ready-for-dev on 2026-07-15 (create-story; per-advisory AppHost NuGet audit suppression).
+  11-19-apphost-nuget-audit-suppression: ready-for-dev
+  # 11.19c moved backlog -> ready-for-dev on 2026-07-15 (create-story; localization and public diagnostic-identifier alignment).
+  11-19-localization-and-identifier-alignment: ready-for-dev
+  # 11.19d moved backlog -> ready-for-dev on 2026-07-15 (create-story; AnalysisMode elevation decision record only).
+  11-19-analyzer-elevation-decision: ready-for-dev
   epic-11-retrospective: optional
   # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
   # rel-1 moved backlog -> in-progress on 2026-07-05 (dev-story; owner decision: keep Jul 3 auto-publish model, add FR24 evidence only. baseline 2d1a1290. Signing deferred; REL-AI-1 stays open.)
@@ -468,6 +479,13 @@ development_status:
   # rel-2 moved in-progress -> review on 2026-07-13 (dev-story; T1-T10 complete. commitlint PR+push; ci.yml->domain-ci.yml (run-consumer-validation + 5 trait-clean unit-test-projects); new quality.yml retains all FrontComposer gates (CI-authoritative); release.yml->domain-release.yml via workflow_run; new release-evidence.yml FR24 G1 + signing + attestation; scripts/ trio (pack/validate-nuget/validate-consumer) sanity-run green (8+8 pkgs, kernel-split held, both consumers 0/0); DiffEngine ModuleInitializer (D1). Governance lane reconciled: CiGovernanceTests 44/44 + Story12_4_RedPhaseDefTests 11/11 via direct xUnit runner (attestation re-homed to release-evidence.yml). Builds 0/0. G2 upstream request doc authored (no submodule edit). REL-AI-1 STAYS OPEN pending Release-Owner real-release evidence.)
   # rel-2 moved review -> done on 2026-07-13 (bmad-code-review, 4-layer adversarial + fixes). AC1-AC8/AC12 + D1-D7 verified against actual code. Found the FR24 evidence half (AC9-AC11) structurally broken: release-evidence.yml keyed off CI raced the concurrent publish and gated on a tag `--points-at head_sha` never matched (semantic-release/git tags the chore(release) commit), + an if:always() test-evidence step reddened the job on every non-releasing push. Resolved 3 decisions + 7 patches: P1 rewired evidence off the Release workflow's completion (parent-aware tag resolver, ref:-pinned checkout, tag-gated no-op); P2 unsigned record-and-proceed to classify-release (workflow-level, no release_evidence.py change); P3 +4 governance pins (Contract-pact/stale-pact, a11y, CLI/docs, ci.yml consumer-validation delegation); P4 negative-input validator test; P5-P7 scripts fixes (.Test/.Testing over-match, case-insensitive kernel-split, rglob DLL scan); P8 SHA-pinned attest-build-provenance; P9 File List. 3 minor edge cases deferred, 1 cosmetic dismissed. CiGovernanceTests+Story12_4 = 62/62 via direct xUnit runner; Shell.Tests Release build 0/0. P1 workflow_run->workflow_run chaining + real-release evidence remain CI-authoritative under the still-open REL-AI-1.
   rel-2-align-frontcomposer-cicd-with-tenants: done
+  # rel-3 added ready-for-dev on 2026-07-15 (approved correct-course sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md). Live v3.2.1/v3.2.2 evidence proved G1 can publish unsigned packages and finish green with invalid manifests, blocked classification, and publish_authorized=false. REL-3 owns pack-once exact-artifact pre-publication enforcement, durable initial-release evidence, downloaded NuGet/GitHub verification, partial-publish response, and historical reconciliation. Stop-the-line before the next publish-capable release; REL-2 remains done.
+  # rel-3 amended 2026-07-15 (approved correct-course sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md). Upstream scope corrected: signing-secret forwarding is under-scoped — release_evidence.py manifest validity requires attestation_status=attested with a bundle, and attestation needs id-token/attestations permissions plus a candidate phase only the shared workflow can host. G2 request expanded to the full BUILD-REL-1 opt-in governed contract (live upstream search 2026-07-15: no matching issue/PR in Hexalith.Builds). REL-3 gains AC18 (attestation before classification; sealed approved-unsupported fallback is the only alternative), AC19 (verification on Release completion regardless of conclusion + partial-publish reconciliation), the approval-mechanism resolution (REL-4 variable stays the caller-side authorization; no approval tokens in release.yml; protected environment lives upstream), and task/boundary updates. Operational authority (identity, certificates, approvals, first-release evidence, REL-AI-1 closure) moved to REL-5.
+  rel-3-enforce-fr24-pre-publish-and-reconcile-releases: ready-for-dev
+  # rel-4 added ready-for-dev on 2026-07-15 (approved correct-course sprint-change-proposal-2026-07-15-release-freeze-enforcement.md). The REL-3 freeze was administrative only: release.yml (workflow_run after push-CI success) delegates to the reusable domain-release.yml whose last step runs npx semantic-release, so any fix:/feat: merge to main could publish another unsigned release with the v3.2.2 defects. REL-4 adds the fail-closed freeze-guard publish gate to release.yml — publication disabled by default; enabled only when Release Owner-controlled var HEXALITH_RELEASE_PUBLISH_ENABLED is exactly 'true' (exact POSIX bash match, NOT GitHub's case-insensitive expression ==); missing/malformed values and guard failure/skip all keep the freeze; frozen runs conclude green with an explicit notice. Plus governance pins (gate wiring, exact-match comparison, no alternate publish path across all workflows, REL-3 removal-condition marker; amend ReleaseWorkflow_RunsViaWorkflowRunAfterCiSuccess stale no-gating comment) and the deployment-guide freeze runbook. Per Administrator directive the mechanism must be COMMON TO ALL HEXALITH MODULES: the identical gate contract was added to the mandatory Hexalith.Builds request (default-frozen ecosystem rollout; caller-vars resolution). REL-4 is stop-the-line and executes BEFORE rel-3 dev; the gate is removed/re-scoped only on REL-3 real-release evidence.
+  rel-4-enforce-temporary-release-freeze: ready-for-dev
+  # rel-5 added ready-for-dev on 2026-07-15 (approved correct-course sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md). Release Owner enablement split out of REL-3: select/record the production package-signing identity and trust model, provision/rotate certificate secrets, approve the RFC 3161 timestamp authority, file BUILD-REL-1 upstream (full governed contract; filing is immediate), configure protected-environment reviewers when the upstream input lands, authorize the first gated release only on ready/authorized pre-publication evidence, verify downloaded NuGet/GitHub assets, record the first compliant ledger entry, and close REL-AI-1 only on durable passing evidence. Owner-executed; developer assists with verification tooling only. ACs 5-9 trail REL-3 completion.
+  rel-5-provision-signing-identity-and-first-governed-release: ready-for-dev
 
 action_items:
   - epic: 2
@@ -520,25 +538,40 @@ action_items:
     assigned: "2026-07-05"
     due: "before Epic 11 dev kickoff"
     status: done
+  - epic: 11
+    action: "E11-AI-4: Apply the approved 2026-07-15 readiness correction package, materialize 11.18b-c and 11.19a-d, and rerun implementation readiness against reconciled planning."
+    owner: "Product Owner + Architect + Developer"
+    assigned: "2026-07-15"
+    due: "before selecting the next Epic 11 implementation child"
+    status: done
+    closed: "2026-07-15"
+    evidence: "_bmad-output/planning-artifacts/implementation-readiness-report-2026-07-15-post-correction.md"
+    result: "READY — 29/29 FR coverage, zero critical/major findings, three controlled minor concerns; all six missing Epic 11 children materialized and parent records remain nonimplementable."
   - epic: release
-    action: "REL-AI-1: Own FR24 release evidence gate for signed packages, symbols, SBOM, checksums, package inventory, release manifest/evidence chain, GitHub Release assets, and package-consumer validation before v1.0 RC."
+    action: "REL-AI-1: Own the FR24 exact-artifact pre-publication gate for signed/timestamped packages, symbols, SBOM, checksums, package inventory, consumer validation, sealed manifest/readiness, durable GitHub Release evidence, published-byte verification, and historical reconciliation."
     owner: "Release Owner"
     assigned: "2026-07-05"
-    due: "before v1.0 release candidate"
+    due: "before the next NuGet or GitHub package release"
     status: open
-    implementation_story: "REL-2"
-    progress: "2026-07-13: approved correct-course (sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md) RE-HOMED FR24 into REL-2 and CLOSED REL-1 as superseded. Reusable domain-release.yml provides NO FR24 evidence and is a shared submodule we cannot edit, so FR24 uses 3-layer split-homing: CI (domain-ci.yml run-consumer-validation + new scripts/) for AC1/AC6; pristine reusable domain-release.yml for publish; new supplemental release-evidence.yml (reusing eng/release_evidence.py) for AC2/AC3/AC4-5/AC8. Gating: G1 now (post-publish + next-release fail-closed), G2 (Hexalith.Builds inline gate) flagged as durable upstream follow-up. Re-validate inventory/consumer refs against the landed 2.0 split (Contracts.UI packable @ 2.0.0). Three model-guard governance tests (PublishesFromMainWithoutManualDispatchGates, RunsAutomaticPackageReleaseAfterBlockingTests, ProducesAdvisoryFr24EvidenceBundleWithoutGating) must flip; the 1.12 package-validation baseline test moves to 2.0.0. 2026-07-09: Tenants CI/CD alignment superseded the July 5 auto-publish model; REL-2 created. 2026-07-05 (REL-1): advisory FR24 evidence layer + requiring governance test (superseded). STILL OPEN — remaining: AC2 signing, AC4-5 gating (G1), AC6 consumer-validation, AC8 Release Owner records evidence on a real release."
+    implementation_story: "REL-3 (development) + REL-5 (Release Owner enablement and closure)"
+    release_control: "frozen — product development may continue, but automated package publication is prohibited until REL-3 real-release evidence passes; technically enforced by REL-4's fail-closed HEXALITH_RELEASE_PUBLISH_ENABLED gate in release.yml (disabled by default; Release Owner-only enable)"
+    progress: "2026-07-15 (governed upstream contract): approved correct-course sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md corrects the Hexalith.Builds dependency from signing-secret forwarding to the full BUILD-REL-1 opt-in governed release contract (environment, signing secrets, timestamp input, id-token/attestations permissions, version-aware candidate phase, attest-build-provenance over exact candidates with bundle-to-manifest handoff, no-repack publish; live search confirmed no upstream issue/PR exists). REL-3 amended (AC18 attestation-before-classification, AC19 failed-run verification, approval-mechanism resolution). REL-5 added for Release Owner enablement; REL-AI-1 closure now routes through REL-5. 2026-07-15 (freeze enforcement): approved correct-course sprint-change-proposal-2026-07-15-release-freeze-enforcement.md makes the frozen release_control technical. REL-4 adds the fail-closed freeze-guard publish gate to release.yml (publication disabled unless HEXALITH_RELEASE_PUBLISH_ENABLED is exactly 'true'; exact bash match; governance tests pin the gate and the single publish path). The gate contract is a required common Hexalith.Builds control for all Hexalith modules. Removal/re-scope only on REL-3 real-release evidence. 2026-07-15: approved correct-course sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md supersedes the G1 gating decision without reopening REL-2. Real v3.2.1/v3.2.2 releases published unsigned packages; their evidence workflows succeeded while signing-readiness was blocking, manifests were invalid, classification was blocked, and publish_authorized=false. REL-3 now owns pack-once exact-artifact validation/signing/manifest/classification before publication, same-byte NuGet/GitHub publication, durable evidence, downloaded-artifact verification, partial-publish handling, and the historical ledger. Hexalith.Builds signing-secret forwarding is mandatory unless the Release Owner explicitly approves the bounded FrontComposer-owned gated-workflow contingency. 2026-07-13: REL-2 delivered reusable CI/CD alignment, package-consumer validation, and G1 post-publication evidence; REL-2 remains done. REL-AI-1 STAYS OPEN until a real release satisfies every corrected FR24 criterion."
+    trigger_evidence:
+      - "v3.2.1 Release Evidence run 29368682294: success; signing-readiness blocking/unsigned; manifest invalid; classification blocked; publish_authorized=false"
+      - "v3.2.2 Release Evidence run 29375505915: success; signing-readiness blocking/unsigned; manifest invalid; classification blocked; publish_authorized=false"
+      - "Published Contracts packages v3.2.1 and v3.2.2: dotnet nuget verify --all returns NU3004 (package is not signed)"
     evidence_required:
-      - "validated package inventory"
-      - "signed .nupkg verification with timestamp"
-      - "required .snupkg symbol packages"
-      - "SBOM"
-      - "checksums"
-      - "sealed release manifest and verify-manifest output"
-      - "release-readiness classification"
-      - "GitHub Release assets or dry-run asset evidence"
-      - "package-consumer validation"
-    closure_rule: "Move to done only after Release Owner records evidence paths or approved fallback with reopen criteria."
+      - "exact expected package inventory (8 packable + 2 explicit non-packable)"
+      - "tests and package-consumer validation against the release candidates"
+      - "signed .nupkg author-signature verification with RFC 3161 timestamp"
+      - "required .snupkg symbol packages and SBOM bound by checksums"
+      - "complete checksums over packages, symbols, and evidence"
+      - "valid sealed release manifest and verify-manifest output for exact publishable paths"
+      - "classify-release --require-publishable: classification=ready and publish_authorized=true"
+      - "initial GitHub Release durable evidence assets"
+      - "downloaded NuGet and GitHub package hashes match the authorized manifest"
+      - "v3.2.1 and v3.2.2 historical compliance-ledger entries"
+    closure_rule: "Move to done only after a real release is authorized before publication, publishes the same signed manifest-bound bytes, passes downloaded NuGet/GitHub verification, and records durable evidence paths for every FR24 artifact. No unsigned or post-publication fallback can close the gate."
   - epic: prd
     action: "PRD-AI-1: Resolve, route, or explicitly accept PRD open questions and assumptions; update PRD status only after Product approval."
     owner: "Product Owner"

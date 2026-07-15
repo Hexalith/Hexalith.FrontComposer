@@ -4,6 +4,7 @@ using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 
@@ -131,8 +132,7 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
                     "LastUsed",
                     "LastUsed persistence disabled: tenant/user context missing. Register an IUserContextAccessor bound to your auth stack, or set FcShellOptions.LastUsedDisabled=true to silence.",
                     DateTimeOffset.UtcNow));
-                _logger?.LogWarning(
-                    "LastUsed persistence disabled: tenantId or userId is null/empty — D31 fail-closed. Register an IUserContextAccessor in the host.");
+                FrontComposerSecurityLog.LastUsedScopeMissing(_logger);
             }
 
             tenantId = null;

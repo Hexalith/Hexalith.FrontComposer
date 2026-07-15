@@ -1,21 +1,21 @@
 ---
 name: Hexalith Common Application UX
 description: Common visual identity for Hexalith web applications that compose Hexalith modules through FrontComposer and Fluent UI Blazor V5.
-status: draft
-updated: 2026-07-11
+status: accepted-supplement
+updated: 2026-07-15
 sources:
-  - ../../prd.md
-  - ../../architecture.md
-  - ../../ux-design.md
-  - ../../epics.md
-  - ../../prds/prd-frontcomposer-2026-07-05/prd.md
-  - ../../sprint-change-proposal-2026-06-17-fluent-ui-project-policy.md
-  - ../../sprint-change-proposal-2026-06-17-fluent-accordion-page-sections.md
-  - ../../sprint-change-proposal-2026-06-19-fluent-layout-components.md
-  - ../../sprint-change-proposal-2026-06-19-fluent-theme-redefinition.md
-  - ../../sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md
-  - ../../sprint-change-proposal-2026-07-01-tenants-ui-menu-icon-label-stack.md
-  - ../../sprint-change-proposal-2026-07-05.md
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/planning-artifacts/ux-design.md
+  - _bmad-output/planning-artifacts/epics.md
+  - _bmad-output/planning-artifacts/prds/prd-frontcomposer-2026-07-05/prd.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-17-fluent-ui-project-policy.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-17-fluent-accordion-page-sections.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-19-fluent-layout-components.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-19-fluent-theme-redefinition.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-01-tenants-ui-menu-icon-label-stack.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05.md
 colors:
   surface-canvas: 'Fluent 2 --colorNeutralBackground1'
   surface-chrome: 'Fluent 2 --colorNeutralBackground2'
@@ -70,6 +70,10 @@ components:
   status-icon:
     component: 'FluentIcon with FluentTooltip and aria-label'
 ---
+
+This accepted visual/style supplement adds detailed design tokens and component presentation. The
+canonical authority is `_bmad-output/planning-artifacts/ux-design.md`, which wins any conflict in IA,
+routes, accessibility, interaction behavior, or timing.
 
 ## Brand & Style
 

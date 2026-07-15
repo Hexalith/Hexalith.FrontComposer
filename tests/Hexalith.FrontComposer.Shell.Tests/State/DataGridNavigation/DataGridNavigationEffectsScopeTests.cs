@@ -78,7 +78,7 @@ public sealed class DataGridNavigationEffectsScopeTests {
     [Fact]
     public async Task Hydrate_NullTenant_ShortCircuits() {
         var storage = new InMemoryStorageService();
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLogger<DataGridNavigationEffects>();
         var sut = new DataGridNavigationEffects(storage, MakeAccessor(null, "alice"), logger, FakeState());
 
         await sut.HandleAppInitialized(
@@ -91,7 +91,7 @@ public sealed class DataGridNavigationEffectsScopeTests {
     [Fact]
     public async Task Hydrate_NullUser_ShortCircuits() {
         var storage = new InMemoryStorageService();
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLogger<DataGridNavigationEffects>();
         var sut = new DataGridNavigationEffects(storage, MakeAccessor("acme", null), logger, FakeState());
 
         await sut.HandleAppInitialized(
@@ -104,7 +104,7 @@ public sealed class DataGridNavigationEffectsScopeTests {
     [Fact]
     public async Task Persist_WhitespaceTenant_DoesNotTouchStorage() {
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLogger<DataGridNavigationEffects>();
         var sut = new DataGridNavigationEffects(storage, MakeAccessor("  ", "alice"), logger, FakeState(Snap()));
 
         await sut.HandleCaptureGridState(
@@ -117,11 +117,16 @@ public sealed class DataGridNavigationEffectsScopeTests {
     [Fact]
     public async Task Clear_NullUser_DoesNotTouchStorage() {
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<DataGridNavigationEffects> logger = Substitute.For<ILogger<DataGridNavigationEffects>>();
+        ILogger<DataGridNavigationEffects> logger = EnabledLogger<DataGridNavigationEffects>();
         var sut = new DataGridNavigationEffects(storage, MakeAccessor("acme", null), logger, FakeState());
 
         await sut.HandleClearGridState(new ClearGridStateAction(ViewKey), Substitute.For<IDispatcher>());
 
         await storage.DidNotReceiveWithAnyArgs().RemoveAsync(default!, default!);
+    }
+    private static ILogger<T> EnabledLogger<T>() {
+        ILogger<T> logger = Substitute.For<ILogger<T>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        return logger;
     }
 }

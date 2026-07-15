@@ -20,9 +20,17 @@ internal sealed class CapturingLogger<T> : ILogger<T> {
         Exception? exception,
         Func<TState, Exception?, string> formatter) {
         string message = formatter(state, exception);
+        IReadOnlyDictionary<string, object?> structuredState = state is IEnumerable<KeyValuePair<string, object?>> values
+            ? values.ToDictionary(static value => value.Key, static value => value.Value, StringComparer.Ordinal)
+            : new Dictionary<string, object?>(StringComparer.Ordinal);
         Messages.Add(message);
-        Entries.Add(new CapturedLogEntry(logLevel, message, exception));
+        Entries.Add(new CapturedLogEntry(logLevel, eventId, structuredState, message, exception));
     }
 }
 
-internal sealed record CapturedLogEntry(LogLevel Level, string Message, Exception? Exception);
+internal sealed record CapturedLogEntry(
+    LogLevel Level,
+    EventId EventId,
+    IReadOnlyDictionary<string, object?> State,
+    string Message,
+    Exception? Exception);

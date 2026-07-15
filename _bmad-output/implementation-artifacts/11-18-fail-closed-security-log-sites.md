@@ -3,7 +3,7 @@ baseline_commit: 0a84e818b0ce220f291510ad094340f7296bb488
 ---
 # Story 11.18a: Fail-closed and security log sites
 
-Status: ready-for-dev
+Status: review
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Type: security/observability remediation; first executable child of the non-implementable Story 11.18 decomposition parent. -->
@@ -32,38 +32,38 @@ This story refines PRD **FR-29**, canonical **NFR-6** (privacy/support safety), 
 
 ## Tasks / Subtasks
 
-- [ ] **Task 1 — Freeze the implementation baseline and security census (AC: #1, #4, #6)**
-  - [ ] Wait for or incorporate the final Story 11.17d file topology, record the implementation-start commit, and inventory tracked/untracked/root-gitlink state before editing. Preserve all unrelated Story 11.17 work and shared sprint-history changes.
-  - [ ] Re-run the full direct-call census for MCP and Shell with Roslyn, not a regex-only completion claim. Record the full counts and the exact 13-file/36-call minimum scope below; reconcile any path or count drift in this story before production changes.
-  - [ ] Apply this deterministic inclusion rule: a direct log site is in 11.18a when its branch denies/hides/suppresses side effects or resource exposure because authentication, token relay, tenant/user context, authorization policy, safe internal routing, MCP admission/schema/downstream handling, or tenant/user-scoped persistence cannot be trusted; or when it reports invalid/missing security configuration. Ordinary non-security Warning+ sites remain 11.18b, and lifecycle/projection/polling performance sites remain 11.18c.
-  - [ ] Audit existing Story 11.3 events 8310-8314 and Shell tenant event 5650 as preservation evidence. Do not count them as residual direct calls or create duplicate events.
+- [x] **Task 1 — Freeze the implementation baseline and security census (AC: #1, #4, #6)**
+  - [x] Wait for or incorporate the final Story 11.17d file topology, record the implementation-start commit, and inventory tracked/untracked/root-gitlink state before editing. Preserve all unrelated Story 11.17 work and shared sprint-history changes.
+  - [x] Re-run the full direct-call census for MCP and Shell with Roslyn, not a regex-only completion claim. Record the full counts and the exact 13-file/36-call minimum scope below; reconcile any path or count drift in this story before production changes.
+  - [x] Apply this deterministic inclusion rule: a direct log site is in 11.18a when its branch denies/hides/suppresses side effects or resource exposure because authentication, token relay, tenant/user context, authorization policy, safe internal routing, MCP admission/schema/downstream handling, or tenant/user-scoped persistence cannot be trusted; or when it reports invalid/missing security configuration. Ordinary non-security Warning+ sites remain 11.18b, and lifecycle/projection/polling performance sites remain 11.18c.
+  - [x] Audit existing Story 11.3 events 8310-8314 and Shell tenant event 5650 as preservation evidence. Do not count them as residual direct calls or create duplicate events.
 
-- [ ] **Task 2 — Add collision-free source-generated security helpers (AC: #2, #3, #5)**
-  - [ ] Extend `src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs` for the four residual MCP sites using IDs 8315 upward. Preserve the wrapper pattern: nullable logger where required, `IsEnabled` before hashing/formatting, bounded category/type conversion, and private generated partial methods.
-  - [ ] Add `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerSecurityLog.cs` as one eponymous `internal static partial` helper type using IDs 5660-5699. Do not create `FrontComposerLog.Security.cs`: the Story 11.17d filename/declaration guard rejects a second non-eponymous `FrontComposerLog` partial file.
-  - [ ] Implement a bounded sanitizer for free-form identifiers only when a stable forensic handle is required: trim, UTF-8 encode, SHA-256 hash, emit `sha256:` plus the first eight bytes as lowercase hex, and zero temporary byte/hash buffers. Prefer bounded category, count, presence flag, or exception type over hashing when correlation is unnecessary.
-  - [ ] Never declare an `Exception` parameter on 11.18a generated methods. Convert caught failures to `ex.GetType().FullName ?? "Exception"` only after preserving the original catch/throw/result behavior.
+- [x] **Task 2 — Add collision-free source-generated security helpers (AC: #2, #3, #5)**
+  - [x] Extend `src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs` for the four residual MCP sites using IDs 8315 upward. Preserve the wrapper pattern: nullable logger where required, `IsEnabled` before hashing/formatting, bounded category/type conversion, and private generated partial methods.
+  - [x] Add `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerSecurityLog.cs` as one eponymous `internal static partial` helper type using IDs 5660-5699. Do not create `FrontComposerLog.Security.cs`: the Story 11.17d filename/declaration guard rejects a second non-eponymous `FrontComposerLog` partial file.
+  - [x] Implement a bounded sanitizer for free-form identifiers only when a stable forensic handle is required: trim, UTF-8 encode, SHA-256 hash, emit `sha256:` plus the first eight bytes as lowercase hex, and zero temporary byte/hash buffers. Prefer bounded category, count, presence flag, or exception type over hashing when correlation is unnecessary.
+  - [x] Never declare an `Exception` parameter on 11.18a generated methods. Convert caught failures to `ex.GetType().FullName ?? "Exception"` only after preserving the original catch/throw/result behavior.
 
-- [ ] **Task 3 — Migrate the residual MCP sites (AC: #2, #3, #4)**
-  - [ ] Replace the three direct calls in `FrontComposerMcpCommandInvoker` with generated events for schema-category failure, known MCP failure, and unexpected downstream failure. Remove the stale comment that deliberately preserved exception stacks; the unexpected event records only `DownstreamFailed` plus exception type.
-  - [ ] Replace `SchemaNegotiationRuntimeGate`'s non-exact decision log with a generated Information event whose fields remain bounded (`Category`, `MessageKey`, `DocsCode`, `DecisionKind`) and contain no fingerprint, path, tenant, descriptor, or request value.
-  - [ ] Preserve every current `FrontComposerMcpResult`, structured failure payload, cancellation arm, command rejection/validation behavior, lifecycle handle, and hidden/unknown response.
+- [x] **Task 3 — Migrate the residual MCP sites (AC: #2, #3, #4)**
+  - [x] Replace the three direct calls in `FrontComposerMcpCommandInvoker` with generated events for schema-category failure, known MCP failure, and unexpected downstream failure. Remove the stale comment that deliberately preserved exception stacks; the unexpected event records only `DownstreamFailed` plus exception type.
+  - [x] Replace `SchemaNegotiationRuntimeGate`'s non-exact decision log with a generated Information event whose fields remain bounded (`Category`, `MessageKey`, `DocsCode`, `DecisionKind`) and contain no fingerprint, path, tenant, descriptor, or request value.
+  - [x] Preserve every current `FrontComposerMcpResult`, structured failure payload, cancellation arm, command rejection/validation behavior, lifecycle handle, and hidden/unknown response.
 
-- [ ] **Task 4 — Migrate the Shell auth, authorization, scope, and CTA sites (AC: #2, #3, #4)**
-  - [ ] Replace all 32 direct calls in the 11 Shell files in the map with `FrontComposerSecurityLog` wrappers/generated methods while preserving their current levels and diagnostic IDs HFC2012/HFC2013/HFC2014/HFC2105.
-  - [ ] For token/claim paths, log no token, claim value, raw alias list, user key, client secret, provider exception, or exception object. Preserve token-store lookup, authentication exception/inner-exception behavior, and per-principal claim-result caching.
-  - [ ] For authorization paths, replace raw command type, policy, bounded-context, route, projection/command name, correlation ID, and missing-policy list fields with bounded counts/categories/presence flags or stable pseudonyms. Preserve Pending/Canceled/Denied/FailedClosed distinctions, generic forbidden payloads, policy-catalog strict-mode throw behavior, and the invariant that denied dispatch never reaches the inner command service.
-  - [ ] For storage/LastUsed/CTA paths, preserve fail-closed return values, D31/HFC2105 behavior, feature/direction attribution, CTA selection/suppression and internal-route checks. Remove raw exception/identifier fields without changing the branch result.
+- [x] **Task 4 — Migrate the Shell auth, authorization, scope, and CTA sites (AC: #2, #3, #4)**
+  - [x] Replace all 32 direct calls in the 11 Shell files in the map with `FrontComposerSecurityLog` wrappers/generated methods while preserving their current levels and diagnostic IDs HFC2012/HFC2013/HFC2014/HFC2105.
+  - [x] For token/claim paths, log no token, claim value, raw alias list, user key, client secret, provider exception, or exception object. Preserve token-store lookup, authentication exception/inner-exception behavior, and per-principal claim-result caching.
+  - [x] For authorization paths, replace raw command type, policy, bounded-context, route, projection/command name, correlation ID, and missing-policy list fields with bounded counts/categories/presence flags or stable pseudonyms. Preserve Pending/Canceled/Denied/FailedClosed distinctions, generic forbidden payloads, policy-catalog strict-mode throw behavior, and the invariant that denied dispatch never reaches the inner command service.
+  - [x] For storage/LastUsed/CTA paths, preserve fail-closed return values, D31/HFC2105 behavior, feature/direction attribution, CTA selection/suppression and internal-route checks. Remove raw exception/identifier fields without changing the branch result.
 
-- [ ] **Task 5 — Add sanitization, event-contract, and behavioral tests (AC: #2, #3, #4)**
-  - [ ] Extend MCP command-invoker/schema tests to assert one entry, exact level/EventId/event name, bounded structured keys, null captured exception, unchanged result category, and absence of raw tenant/user/tool/argument/payload/JWT/exception/correlation sentinels. Retain existing Story 11.3 redaction assertions as regression coverage.
-  - [ ] Strengthen Shell auth, authorization, storage-scope, LastUsed, CTA, component-region, and authentication-extension tests with adversarial sentinels. Assert event ID/level/cardinality, null captured exception, and behavior preservation—not message substring alone.
-  - [ ] Where current test loggers capture only formatted text, extend the shared/local capture seam to retain `EventId`, structured state, level, formatted message, and exception without weakening existing assertions or creating multi-type production files.
+- [x] **Task 5 — Add sanitization, event-contract, and behavioral tests (AC: #2, #3, #4)**
+  - [x] Extend MCP command-invoker/schema tests to assert one entry, exact level/EventId/event name, bounded structured keys, null captured exception, unchanged result category, and absence of raw tenant/user/tool/argument/payload/JWT/exception/correlation sentinels. Retain existing Story 11.3 redaction assertions as regression coverage.
+  - [x] Strengthen Shell auth, authorization, storage-scope, LastUsed, CTA, component-region, and authentication-extension tests with adversarial sentinels. Assert event ID/level/cardinality, null captured exception, and behavior preservation—not message substring alone.
+  - [x] Where current test loggers capture only formatted text, extend the shared/local capture seam to retain `EventId`, structured state, level, formatted message, and exception without weakening existing assertions or creating multi-type production files.
 
-- [ ] **Task 6 — Add scoped governance and run the full validation lane (AC: #1, #5, #6)**
-  - [ ] Add one eponymous Governance test type per test project, reusing the repository's reviewed Roslyn patterns: non-empty source location, explicit narrow inventory, unique event-ID scan, direct-call classification, repository-relative diagnostics, and synthetic negatives.
-  - [ ] Pin the exact post-migration inventory and document every remaining direct MCP/Shell call outside this child as owned by 11.18b, 11.18c, or an explicit below-threshold/intentional rationale; do not use folder-wide or wildcard exemptions.
-  - [ ] Run the commands in **Testing Requirements**, reconcile the complete story-owned File List from tracked plus untracked paths, audit root gitlinks separately, check for received/generated artifacts, and record results before promotion to review.
+- [x] **Task 6 — Add scoped governance and run the full validation lane (AC: #1, #5, #6)**
+  - [x] Add one eponymous Governance test type per test project, reusing the repository's reviewed Roslyn patterns: non-empty source location, explicit narrow inventory, unique event-ID scan, direct-call classification, repository-relative diagnostics, and synthetic negatives.
+  - [x] Pin the exact post-migration inventory and document every remaining direct MCP/Shell call outside this child as owned by 11.18b, 11.18c, or an explicit below-threshold/intentional rationale; do not use folder-wide or wildcard exemptions.
+  - [x] Run the commands in **Testing Requirements**, reconcile the complete story-owned File List from tracked plus untracked paths, audit root gitlinks separately, check for received/generated artifacts, and record results before promotion to review.
 
 ## Dev Notes
 
@@ -212,6 +212,15 @@ GPT-5 Codex
 
 ### Debug Log References
 
+- 2026-07-15 implementation baseline: Story 11.17d topology is committed at implementation-start HEAD `77e58b31047ead105090dc95a56f118049ed3e80`; `main` and `origin/main` were aligned. The only pre-edit working-tree item was unrelated untracked `_bmad-output/planning-artifacts/implementation-readiness-report-2026-07-15.md`; it is preserved and excluded from story ownership. Root gitlinks were clean at their HEAD revisions.
+- 2026-07-15 Roslyn implementation-start census: MCP has 4 direct `ILogger.Log*` calls / 2 files; Shell has 240 / 60; combined 244 / 62. The deterministic security inclusion rule selects exactly the frozen 36 calls / 13 files (MCP 4 / 2 plus Shell 32 / 11), with no creation-map path/count drift. The census parses invocation syntax, including nullable conditional-access member bindings.
+- 2026-07-15 preservation audit: existing generated MCP events 8310-8314 remain in `FrontComposerMcpLog`; Shell tenant event 5650 remains in `FrontComposerLog`. None is counted as a residual direct call or duplicated by this child.
+- 2026-07-15 runtime baseline: `aspire start --apphost src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj --non-interactive --format Json` was attempted before production edits and stopped before resource startup because the Parties submodule has six pre-existing HFC0001 errors for deprecated flattened `QueryRequest` construction. `aspire stop` confirmed no AppHost remained running.
+- 2026-07-15 red-green evidence: helper tests first failed to compile before the generated APIs existed; MCP caller tests then failed on the four legacy `EventId == 0` direct sites, and Shell caller tests failed on eight representative legacy contracts. The same focused tests passed after helper and caller migration.
+- 2026-07-15 post-migration Roslyn census: the frozen security set is 0 direct calls / 0 files. MCP has no residual direct call. Shell has 208 residual calls / 49 exact files: 117 Warning/Error calls are pinned to Story 11.18b and 91 Debug/Information calls are pinned to Story 11.18c.
+- 2026-07-15 broad regression resolution: the first Shell broad lane exposed 29 failures. Twenty-eight legacy scope tests used disabled substitute loggers and were updated to enable generated events; the remaining AuthBoundary failure was resolved by keeping provider-enum allowlisting in `FrontComposerAccessTokenProvider` and passing only an already-bounded provider category into the telemetry helper. The rerun passed all 2,319 selected tests.
+- 2026-07-15 validation evidence: Release restore passed; the final serial Release solution build passed with 0 warnings / 0 errors; focused MCP passed 15/15; focused Shell passed 61/61; full MCP passed 364/364; broad Shell passed 2,319/2,319; MCP Governance passed 6/6; Shell Governance passed 155/155. Root gitlinks have no implementation-start drift, and no `*.received.*` artifact exists outside excluded roots.
+- 2026-07-15 workspace reconciliation: additional planning, release-story, release-ledger, and deployment-guide edits appeared concurrently after implementation started. They were preserved, not modified or absorbed by this story, and are enumerated under **Documented Unrelated Workspace State** together with the already-committed creation-baseline-to-implementation-start delta.
 - 2026-07-15 creation: loaded the complete Epic 11, PRD/addendum, architecture/quality review, approved correction proposals, UX artifacts, all discovered project-context files, repository instructions, sibling/previous stories, current source/tests, Git history/worktree state, and current official .NET logging guidance.
 - 2026-07-15 creation census: full Shell text baseline 240 direct sites / 60 files, Warning+ 144 / 48; MCP residual four / two. Security-first minimum is 36 direct sites / 13 files (four MCP, 32 Shell), with existing MCP 8310-8314 and Shell 5650 retained as generated evidence.
 - 2026-07-15 creation decision: canonical later-applied decomposition wins over the older child-name suggestion; create 11.18a only, keep 11.18b/c backlog, and leave the parent non-implementable.
@@ -219,11 +228,204 @@ GPT-5 Codex
 
 ### Completion Notes List
 
-- Ultimate context engine analysis completed - comprehensive developer guide created.
-- Story 11.18a is independently executable; the parent remains non-implementable and 11.18b/c remain separately tracked.
-- Historical/live census drift, Story 11.3 overlap, raw MCP exception-stack conflict, collision-free event ranges, safe pseudonym rules, one-type helper topology, non-vacuous governance, validation commands, and unrelated dirty-worktree preservation are resolved for implementation.
+- Migrated the frozen 36-call / 13-file security set to generated logging: MCP events 8315-8318 and Shell events 5660-5691. Existing MCP 8310-8314 and Shell 5650 remain unchanged and globally collision-free.
+- Added support-safe wrappers that emit only bounded categories, counts, booleans, exception type names, and audited `sha256:` pseudonyms; all generated security signatures reject `Exception` parameters, and captured exceptions remain null.
+- Preserved fail-closed behavior across MCP results, cancellation, authorization, dispatch suppression, token acquisition, claim caching, policy strict mode, storage scope, derived values, CTA selection, and component rendering.
+- Added exact MCP and Shell Roslyn governance with non-empty inventories and synthetic negatives. The post-migration direct security census is zero; the 208 remaining Shell calls / 49 files are pinned exactly to 11.18b (117 Warning/Error) or 11.18c (91 Debug/Information).
+- Release validation is green: solution build 0 warnings / 0 errors; focused MCP 15, focused Shell 61, full MCP 364, broad Shell 2,319, MCP Governance 6, and Shell Governance 155 tests passed. The only runtime-baseline limitation is the recorded pre-existing Parties HFC0001 compilation blocker before Aspire resource startup.
 
 ### File List
 
-- `_bmad-output/implementation-artifacts/11-18-fail-closed-security-log-sites.md` (added — executable Story 11.18a specification)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — parent decomposition plus 11.18a ready-for-dev transition only)
+- `_bmad-output/implementation-artifacts/11-18-fail-closed-security-log-sites.md` (modified — implementation record, validation evidence, ownership reconciliation, and review transition)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — surgical Story 11.18a status transitions while preserving concurrent sprint history)
+- `src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs` (modified — generated MCP security events 8315-8318 and support-safe wrappers)
+- `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs` (modified — migrate schema, known-failure, and downstream-failure direct logs)
+- `src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiationRuntimeGate.cs` (modified — migrate bounded schema decision log)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerSecurityLog.cs` (added — generated Shell security event family 5660-5691 and audited sanitizers)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerLog.Security.cs` (not created — named exception required by the checked one-type helper task and enforced as forbidden topology)
+- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcAuthorizedCommandRegion.razor.cs` (modified — generated fail-closed evaluator diagnostic)
+- `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerAuthenticationServiceExtensions.cs` (modified — generated authentication bridge diagnostic)
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/ClaimsPrincipalUserContextAccessor.cs` (modified — bounded claim-resolution diagnostic)
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerAccessTokenProvider.cs` (modified — bounded token-provider diagnostics and provider allowlist boundary)
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/ServerCircuitUserContextAccessor.cs` (modified — bounded circuit claim-resolution diagnostic)
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationEvaluator.cs` (modified — generated authorization decision diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandDispatchAuthorizationGate.cs` (modified — generated dispatch denial/defer/cancel diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidator.cs` (modified — count/digest-only policy catalog diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Services/DerivedValues/LastUsedValueProvider.cs` (modified — generated D31 fail-closed diagnostic)
+- `src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs` (modified — sanitized CTA resolution diagnostics)
+- `src/Hexalith.FrontComposer.Shell/Services/StorageScopeResolver.cs` (modified — generated HFC2105 scope diagnostics)
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs` (modified — exact generated-event, redaction, and behavior assertions)
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerSchemaGateTests.cs` (modified — schema-gate generated-event and redaction assertions)
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Logging/CapturedLogEntry.cs` (added — structured MCP log capture model)
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Logging/CapturingLogger.cs` (added — structured MCP logger seam)
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Logging/FrontComposerMcpLogTests.cs` (added — MCP helper event-contract and sanitization tests)
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Logging/FailClosedLoggingGovernanceTests.cs` (added — non-vacuous MCP Roslyn logging governance)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FcAuthorizedCommandRegionTests.cs` (modified — fail-closed rendering log contract assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Extensions/FrontComposerAuthenticationServiceExtensionsTests.cs` (modified — authentication bridge log contract assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/AuthRedactionStressTests.cs` (modified — adversarial security-log redaction assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/CapturingLogger.cs` (modified — retain structured state, EventId, level, and exception)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/ClaimsPrincipalUserContextAccessorTests.cs` (modified — request claim log and behavior assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/FrontComposerAccessTokenProviderTests.cs` (modified — token-provider event, redaction, and behavior assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/ServerCircuitUserContextAccessorTests.cs` (modified — circuit claim log contract assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/CommandAuthorizationEvaluatorTests.cs` (modified — authorization event/redaction and result preservation tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/CommandDispatchAuthorizationGateTests.cs` (modified — dispatch event/redaction and no-inner-dispatch tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidatorTests.cs` (modified — catalog count/digest and strict-mode tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/DerivedValueProviderChainTests.cs` (modified — LastUsed fail-closed log contract assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/EmptyStateCtaResolverTests.cs` (modified — CTA sanitization and selection preservation tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/StorageScopeResolverTests.cs` (modified — HFC2105 generated-event and scope behavior tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/CapabilityDiscovery/CapabilityDiscoveryEffectsScopeTests.cs` (modified — enable generated logging in legacy scope regression tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/DataGridNavigation/DataGridNavigationEffectsScopeTests.cs` (modified — enable generated logging in legacy scope regression tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/Density/DensityEffectsScopeTests.cs` (modified — enable generated logging in legacy scope regression tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/Navigation/NavigationEffectsScopeTests.cs` (modified — enable generated logging in legacy scope regression tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/Theme/ThemeEffectsScopeTests.cs` (modified — enable generated logging in legacy scope regression tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/CapturedLogEntry.cs` (added — structured Shell security-log capture model)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/CapturingLogger.cs` (added — structured Shell security logger seam)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerSecurityLogTests.cs` (added — Shell event-contract, sanitizer, and adversarial redaction tests)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs` (added — exact Shell inventory and Roslyn logging governance)
+
+### Documented Unrelated Workspace State
+
+- `.agents/skills/pushall/SKILL.md` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `.claude/skills/pushall/SKILL.md` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `.github/skills/pushall/SKILL.md` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `_bmad-output/implementation-artifacts/11-17-cli-package-split.md` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `_bmad-output/implementation-artifacts/deferred-work.md` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md` (unrelated — concurrent workspace change outside Story 11.18a, preserved without modification)
+- `_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md` (unrelated — concurrent workspace change outside Story 11.18a, preserved without modification)
+- `_bmad-output/planning-artifacts/architecture.md` (unrelated — concurrent workspace change outside Story 11.18a, preserved without modification)
+- `_bmad-output/planning-artifacts/epics.md` (unrelated — concurrent workspace change outside Story 11.18a, preserved without modification)
+- `_bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md` (unrelated — concurrent workspace change outside Story 11.18a, preserved without modification)
+- `_bmad-output/planning-artifacts/implementation-readiness-report-2026-07-15.md` (unrelated — concurrent workspace change outside Story 11.18a, preserved without modification)
+- `_bmad-output/planning-artifacts/prd.md` (unrelated — concurrent workspace change outside Story 11.18a, preserved without modification)
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md` (unrelated — concurrent workspace change outside Story 11.18a, preserved without modification)
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md` (unrelated — concurrent workspace change outside Story 11.18a, preserved without modification)
+- `_bmad-output/project-docs/deployment-guide.md` (unrelated — concurrent workspace change outside Story 11.18a, preserved without modification)
+- `_bmad-output/project-docs/source-tree-analysis.md` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `references/Hexalith.AI.Tools` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `references/Hexalith.Builds` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `references/Hexalith.EventStore` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `references/Hexalith.Memories` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `references/Hexalith.Tenants` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Components/Badges/FcDesaturatedBadge.razor.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Components/Badges/OptimisticBadgeState.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Components/DataGrid/ColumnDescriptor.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Components/DataGrid/ColumnVisibilityContext.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcColumnPrioritizer.razor.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Components/Home/FcHomeDirectory.razor.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Components/Home/HomeCardModel.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Components/Home/HomeProjectionRow.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Components/Lifecycle/LifecycleTimerPhase.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Components/Lifecycle/LifecycleUiState.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Extensions/DomainBootstrapMarker.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Extensions/EventStoreBootstrapMarker.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerBootstrapMarkers.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerBootstrapStage.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Extensions/IFrontComposerBootstrapMarker.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Extensions/QuickstartBootstrapMarker.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClassification.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClassification.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/IProjectionHubConnection.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/IProjectionHubConnectionFactory.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionHubConnectionState.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionHubConnectionStateChanged.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/QueryClassificationOutcome.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Storage/LocalStorageService.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Storage/PendingWrite.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthCookieOptions.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthRedirectOptions.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthenticationOptions.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthenticationProviderKind.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Options/FrontComposerCustomBrokeredOptions.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Options/FrontComposerGitHubOAuthOptions.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Options/FrontComposerOpenIdConnectOptions.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Options/FrontComposerSaml2Options.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Options/FrontComposerTokenRelayOptions.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/CircuitServicesAccessor.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerCircuitServicesHandler.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerClaimExtractionResult.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerClaimExtractor.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerGatewayAuthorizationHandler.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerTokenRelay.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerUserTokenStore.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationDecision.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationDecisionKind.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationReason.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationRequest.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationResource.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationSurface.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/EmptyStateCta.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/ExpandInRowJSModule.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Feedback/CommandFeedbackWarning.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/Feedback/ICommandFeedbackPublisher.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/IEmptyStateCtaResolver.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/Services/IExpandInRowJSModule.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryHydrationState.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/FrontComposerCapabilityDiscoveryState.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/CommandPalette/PaletteLoadState.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/CommandPalette/PaletteResult.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/CommandPalette/PaletteResultCategory.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/IProjectionPageLoader.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/NullProjectionPageLoader.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/ProjectionPageResult.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/VirtualizationViewStateReducers.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/CommandExecutionAdmission.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/CommandExecutionAdmissionDenialReason.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/CommandExecutionAdmissionRequest.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/ICommandExecutionAdmissionGate.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/ICommandExecutionAdmissionReleaser.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/INewItemIndicatorStateService.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/IPendingCommandOutcomeResolver.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/IPendingCommandPollingCoordinator.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/IPendingCommandStatusQuery.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorEntry.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/NullPendingCommandStatusQuery.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandEntry.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandModels.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeObservation.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolutionResult.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolutionStatus.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeSource.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandPollingCoordinator.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRegistration.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRegistrationResult.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRegistrationStatus.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandResolutionResult.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandResolutionStatus.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStatus.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandTerminalObservation.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandTerminalOutcome.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/IProjectionConnectionState.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/IProjectionFallbackRefreshScheduler.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionSnapshot.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionStateService.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionStatus.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionTransition.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackGroupKey.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackLane.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackLaneRefreshOutcome.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshContracts.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionReconciliationRefreshResult.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ClearExpiredReconciliationSweepsAction.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/IReconnectionReconciliationCoordinator.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/IReconnectionReconciliationState.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/MarkReconciliationSweepAction.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconciliationSweepFeature.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconciliationSweepMarker.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconciliationSweepReducers.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconciliationSweepState.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinator.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationSnapshot.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationStateService.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationStatus.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/HydrationStateConsolidationTests.cs` (unrelated — committed before implementation-start HEAD and outside Story 11.18a)
+
+### Change Log
+
+- 2026-07-15: Implemented Story 11.18a generated security logging, sanitization, behavioral coverage, Roslyn governance, exact residual ownership ledger, and Release validation evidence.

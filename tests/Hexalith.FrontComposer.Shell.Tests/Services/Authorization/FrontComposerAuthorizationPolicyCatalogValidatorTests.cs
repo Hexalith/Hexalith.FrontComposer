@@ -26,7 +26,9 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidatorTests {
 
         await sut.StartAsync(TestContext.Current.CancellationToken);
 
-        string warning = logger.Messages.Single(m => m.Level == LogLevel.Warning).Message;
+        (LogLevel _, EventId eventId, IReadOnlyDictionary<string, object?> state, string warning) = logger.Messages.Single(m => m.Level == LogLevel.Warning);
+        eventId.Id.ShouldBe(5682);
+        state["DeclaredPolicyCount"].ShouldBe(1);
         warning.ShouldContain("catalog is empty");
         warning.ShouldNotContain("Orders.ApproveOrderCommand");
         warning.ShouldNotContain("tenant-a");
@@ -35,7 +37,7 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidatorTests {
     }
 
     [Fact]
-    public async Task StartAsync_NonStrictMissingPolicy_WarnsWithPolicyNamesOnly() {
+    public async Task StartAsync_NonStrictMissingPolicy_WarnsWithCountOnly() {
         TestLogger<FrontComposerAuthorizationPolicyCatalogValidator> logger = new();
         FrontComposerAuthorizationOptions options = new();
         options.KnownPolicies.Add("OtherPolicy");
@@ -43,8 +45,10 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidatorTests {
 
         await sut.StartAsync(TestContext.Current.CancellationToken);
 
-        string warning = logger.Messages.Single(m => m.Level == LogLevel.Warning).Message;
-        warning.ShouldContain("OrderApprover");
+        (LogLevel _, EventId eventId, IReadOnlyDictionary<string, object?> state, string warning) = logger.Messages.Single(m => m.Level == LogLevel.Warning);
+        eventId.Id.ShouldBe(5683);
+        state["MissingPolicyCount"].ShouldBe(1);
+        warning.ShouldNotContain("OrderApprover");
         warning.ShouldNotContain("Orders.ApproveOrderCommand");
         warning.ShouldNotContain("tenant-a");
         warning.ShouldNotContain("user-a");
@@ -160,7 +164,7 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidatorTests {
     }
 
     private sealed class TestLogger<T> : ILogger<T> {
-        public List<(LogLevel Level, string Message)> Messages { get; } = [];
+        public List<(LogLevel Level, EventId EventId, IReadOnlyDictionary<string, object?> State, string Message)> Messages { get; } = [];
 
         IDisposable? ILogger.BeginScope<TState>(TState state) => NullScope.Instance;
 
@@ -171,8 +175,12 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidatorTests {
             EventId eventId,
             TState state,
             Exception? exception,
-            Func<TState, Exception?, string> formatter)
-            => Messages.Add((logLevel, formatter(state, exception)));
+            Func<TState, Exception?, string> formatter) {
+            IReadOnlyDictionary<string, object?> structuredState = state is IEnumerable<KeyValuePair<string, object?>> values
+                ? values.ToDictionary(static value => value.Key, static value => value.Value, StringComparer.Ordinal)
+                : new Dictionary<string, object?>(StringComparer.Ordinal);
+            Messages.Add((logLevel, eventId, structuredState, formatter(state, exception)));
+        }
 
         private sealed class NullScope : IDisposable {
             public static readonly NullScope Instance = new();

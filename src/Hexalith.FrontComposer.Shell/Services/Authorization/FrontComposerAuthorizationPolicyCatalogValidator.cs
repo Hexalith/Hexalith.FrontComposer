@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Options;
 
 using Microsoft.Extensions.Hosting;
@@ -55,9 +56,7 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidator(
             // forgetting to populate KnownPolicies is a security-relevant configuration gap that
             // many production logging configs filter at Information level.
             if (declaredPolicies.Count > 0) {
-                logger.LogWarning(
-                    "FrontComposer command authorization policy catalog is empty but {DeclaredPolicyCount} command(s) declare policies. Configure FrontComposerAuthorizationOptions.KnownPolicies so missing-policy diagnostics surface at startup.",
-                    declaredPolicies.Count);
+                FrontComposerSecurityLog.AuthorizationPolicyCatalogEmpty(logger, declaredPolicies.Count);
             }
 
             return Task.CompletedTask;
@@ -86,15 +85,13 @@ public sealed class FrontComposerAuthorizationPolicyCatalogValidator(
             return Task.CompletedTask;
         }
 
-        string payload = string.Join(", ", missing.OrderBy(static x => x, StringComparer.Ordinal));
         if (value.StrictPolicyCatalogValidation) {
+            string payload = string.Join(", ", missing.OrderBy(static x => x, StringComparer.Ordinal));
             throw new InvalidOperationException(
                 "FrontComposer command authorization policy catalog is missing entries for generated command policies: " + payload);
         }
 
-        logger.LogWarning(
-            "FrontComposer command authorization policy catalog is missing entries for generated command policies: {MissingPolicies}",
-            payload);
+        FrontComposerSecurityLog.AuthorizationPolicyCatalogMissing(logger, missing.Count);
         return Task.CompletedTask;
     }
 

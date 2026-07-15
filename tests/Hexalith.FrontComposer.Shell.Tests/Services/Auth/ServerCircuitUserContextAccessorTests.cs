@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Shell.Services.Auth;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 using Shouldly;
@@ -68,6 +69,13 @@ public sealed class ServerCircuitUserContextAccessorTests {
         accessor.TenantId.ShouldBeNull();
         accessor.UserId.ShouldBeNull();
         logger.Messages.ShouldContain(m => m.Contains(FcDiagnosticIds.HFC2012_AuthenticationClaimExtractionFailed, StringComparison.Ordinal));
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5663);
+        entry.EventId.Name.ShouldBe("CircuitClaimExtractionFailed");
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain("tenant-a");
+        entry.Message.ShouldNotContain("carol");
     }
 
     private static ServerCircuitUserContextAccessor Build(

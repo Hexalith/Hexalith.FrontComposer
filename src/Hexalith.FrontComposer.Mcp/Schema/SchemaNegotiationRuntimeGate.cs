@@ -177,17 +177,12 @@ internal sealed class SchemaNegotiationRuntimeGate {
             scope.GetService<ILogger<SchemaNegotiationRuntimeGate>>()
             ?? NullLogger<SchemaNegotiationRuntimeGate>.Instance;
 
-        // 8-6a re-review: convert the enum to its name explicitly so structured-log sinks
-        // produce a deterministic string instead of choosing between numeric and name based on
-        // enricher configuration. The bounded D4 contract is `(category, messageKey, docsCode,
-        // decisionKind)` — all string fields, all coarse, no fingerprint values, paths, tenant
-        // identifiers, exception text, or runtime values.
-        logger.LogInformation(
-            "MCP schema negotiation decision {Category} {MessageKey} {DocsCode} {DecisionKind}.",
+        FrontComposerMcpLog.SchemaNegotiationDecision(
+            logger,
             result.AgentCategory,
             result.MessageKey,
             result.DocsCode,
-            result.Kind.ToString());
+            result.Kind);
         return result;
     }
 

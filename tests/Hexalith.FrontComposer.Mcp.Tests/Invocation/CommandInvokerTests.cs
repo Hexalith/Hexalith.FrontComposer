@@ -6,6 +6,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Invocation;
+using Hexalith.FrontComposer.Mcp.Tests.Logging;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -72,7 +73,10 @@ public sealed class CommandInvokerTests {
     [Fact]
     public async Task InvokeAsync_MissingUlidFactory_FailsClosedBeforeDispatch() {
         RecordingCommandService service = new();
-        ServiceProvider provider = Services(service, ulidFactory: null).BuildServiceProvider();
+        var services = (ServiceCollection)Services(service, ulidFactory: null);
+        CapturingLogger<FrontComposerMcpCommandInvoker> logger = new();
+        _ = services.AddSingleton<ILogger<FrontComposerMcpCommandInvoker>>(logger);
+        ServiceProvider provider = services.BuildServiceProvider();
         FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
@@ -83,6 +87,66 @@ public sealed class CommandInvokerTests {
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchema);
         service.Dispatched.ShouldBeNull();
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Information);
+        entry.EventId.Id.ShouldBe(8315);
+        entry.EventId.Name.ShouldBe("McpCommandSchemaFailed");
+        entry.Exception.ShouldBeNull();
+        entry.State.Keys.OrderBy(static key => key, StringComparer.Ordinal).ShouldBe(["Category", "{OriginalFormat}"]);
+    }
+
+    [Fact]
+    public async Task InvokeAsync_KnownMcpFailure_UsesGeneratedBoundedEvent() {
+        RecordingCommandService service = new();
+        var services = (ServiceCollection)Services(service, new CountingUlidFactory());
+        CapturingLogger<FrontComposerMcpCommandInvoker> logger = new();
+        _ = services.AddSingleton<ILogger<FrontComposerMcpCommandInvoker>>(logger);
+        ServiceProvider provider = services.BuildServiceProvider();
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42,"TenantId":"secret-tenant"}"""),
+            TestContext.Current.CancellationToken);
+
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.ValidationFailed);
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(8316);
+        entry.EventId.Name.ShouldBe("McpCommandKnownFailure");
+        entry.Exception.ShouldBeNull();
+        entry.State.Keys.OrderBy(static key => key, StringComparer.Ordinal).ShouldBe(["Category", "{OriginalFormat}"]);
+        entry.Message.ShouldNotContain("secret-tenant");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_UnexpectedFailure_DropsExceptionObjectAndSecretMessage() {
+        const string Secret = "jwt.payload.signature";
+        ThrowingCommandService service = new(new InvalidOperationException(Secret));
+        var services = (ServiceCollection)Services(service, new CountingUlidFactory());
+        CapturingLogger<FrontComposerMcpCommandInvoker> logger = new();
+        _ = services.AddSingleton<ILogger<FrontComposerMcpCommandInvoker>>(logger);
+        ServiceProvider provider = services.BuildServiceProvider();
+        FrontComposerMcpCommandInvoker invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.DownstreamFailed);
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(8317);
+        entry.EventId.Name.ShouldBe("McpCommandDownstreamFailed");
+        entry.Exception.ShouldBeNull();
+        entry.State.Keys.OrderBy(static key => key, StringComparer.Ordinal).ShouldBe([
+            "Category",
+            "ExceptionType",
+            "{OriginalFormat}",
+        ]);
+        entry.Message.ShouldNotContain(Secret);
+        entry.State["ExceptionType"].ShouldBe(typeof(InvalidOperationException).FullName);
     }
 
     [Fact]
@@ -180,6 +244,12 @@ public sealed class CommandInvokerTests {
         private static string? ReadString<TCommand>(TCommand command, string propertyName)
             where TCommand : class
             => command.GetType().GetProperty(propertyName)?.GetValue(command) as string;
+    }
+
+    private sealed class ThrowingCommandService(Exception exception) : ICommandService {
+        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+            where TCommand : class
+            => Task.FromException<CommandResult>(exception);
     }
 
     private sealed class StaticAgentContextAccessor(string tenantId = "tenant-a", string userId = "agent-a") : IFrontComposerMcpAgentContextAccessor {

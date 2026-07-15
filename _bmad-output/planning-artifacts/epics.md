@@ -34,61 +34,68 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 
 ## Requirements Inventory
 
-### Functional Requirements
+### Legacy Functional Requirements (Provenance Only)
+
+> These identifiers predate the canonical PRD and are retained only to explain brownfield
+> provenance. They are not planning identifiers. New and corrected traceability uses the canonical
+> `FR-1` through `FR-29` requirements in `prd.md` and the canonical coverage map below.
 
 **Source generator (`Hexalith.FrontComposer.SourceTools`)**
 
-- FR1: From each `[Projection]`-annotated `partial` type, generate 5 files — projection view (`{T}.g.razor.cs` with Loading/Empty/Data states dispatched by `ProjectionRole`), `{T}Feature.g.cs`, `{T}Actions.g.cs`, `{T}Reducers.g.cs`, `{T}Registration.g.cs`.
-- FR2: From each `[Command]`-annotated type (public parameterless ctor + `MessageId`), generate 6–7 files (`CommandForm`, `CommandActions`, `CommandLifecycleFeature`, `CommandRegistration`, `CommandRenderer`, `CommandLastUsedSubscriber`, `CommandLifecycleBridge`, plus `CommandPage` when density = `FullPage`).
-- FR3: Apply the spec-locked command **density rule** — non-derivable property count ≤1 → `Inline`, 2–4 → `CompactInline`, ≥5 → `FullPage` — excluding derivable fields (`MessageId`, `CommandId`, `CorrelationId`, `TenantId`, `UserId`, `Timestamp`, `CreatedAt`, `ModifiedAt`, `[DerivedFrom]`).
-- FR4: Emit compilation-level `FrontComposerMcpManifest.g.cs` and `FrontComposerProjectionTemplateManifest.g.cs`, each carrying schema fingerprints.
-- FR5: Honor the full attribute vocabulary: `[BoundedContext]`, `[ProjectionRole]`, `[ProjectionBadge]`, `[ColumnPriority]`, `[ProjectionFieldGroup]`, `[ProjectionEmptyStateCta]`, `[Destructive]`, `[RequiresPolicy]`, `[DerivedFrom]`, `[Icon]`, `[RelativeTime]`, `[Currency]`, `[ProjectionTemplate]` (plus `[Display]`, `[Description]`, `[DefaultValue]`, `[Flags]`).
-- FR6: Emit the HFC1001–HFC1070 diagnostic catalog (build-time `HFC1xxx`) for invalid annotation/usage, with severities as cataloged.
-- FR7: Provide opt-in **drift detection** (`HfcDriftDetectionEnabled=true`) comparing the current snapshot to a checked-in JSON baseline `AdditionalText` → structural HFC1065 / metadata HFC1066; pipeline must not depend on `CompilationProvider`.
-- FR8: Support 4-level customization (Level-2 `ProjectionTemplate`, Level-3 field-slot, Level-4 full-view overrides) so external assemblies can inject alternate render fragments.
+- LEGACY-FR-1: From each `[Projection]`-annotated `partial` type, generate 5 files — projection view (`{T}.g.razor.cs` with Loading/Empty/Data states dispatched by `ProjectionRole`), `{T}Feature.g.cs`, `{T}Actions.g.cs`, `{T}Reducers.g.cs`, `{T}Registration.g.cs`.
+- LEGACY-FR-2: From each `[Command]`-annotated type (public parameterless ctor + `MessageId`), generate seven non-page files (`CommandForm`, `CommandActions`, `CommandLifecycleFeature`, `CommandRegistration`, `CommandRenderer`, `CommandLastUsedSubscriber`, `CommandLifecycleBridge`), plus `CommandPage` when density = `FullPage`.
+- LEGACY-FR-3: Apply the spec-locked command **density rule** — non-derivable property count ≤1 → `Inline`, 2–4 → `CompactInline`, ≥5 → `FullPage` — excluding derivable fields (`MessageId`, `CommandId`, `CorrelationId`, `TenantId`, `UserId`, `Timestamp`, `CreatedAt`, `ModifiedAt`, `[DerivedFrom]`).
+- LEGACY-FR-4: Emit compilation-level `FrontComposerMcpManifest.g.cs` and `FrontComposerProjectionTemplateManifest.g.cs`, each carrying schema fingerprints.
+- LEGACY-FR-5: Honor the full attribute vocabulary: `[BoundedContext]`, `[ProjectionRole]`, `[ProjectionBadge]`, `[ColumnPriority]`, `[ProjectionFieldGroup]`, `[ProjectionEmptyStateCta]`, `[Destructive]`, `[RequiresPolicy]`, `[DerivedFrom]`, `[Icon]`, `[RelativeTime]`, `[Currency]`, `[ProjectionTemplate]` (plus `[Display]`, `[Description]`, `[DefaultValue]`, `[Flags]`).
+- LEGACY-FR-6: Emit the HFC1001–HFC1070 diagnostic catalog (build-time `HFC1xxx`) for invalid annotation/usage, with severities as cataloged.
+- LEGACY-FR-7: Provide opt-in **drift detection** (`HfcDriftDetectionEnabled=true`) comparing the current snapshot to a checked-in JSON baseline `AdditionalText` → structural HFC1065 / metadata HFC1066; pipeline must not depend on `CompilationProvider`.
+- LEGACY-FR-8: Support 4-level customization (Level-2 `ProjectionTemplate`, Level-3 field-slot, Level-4 full-view overrides) so external assemblies can inject alternate render fragments.
 
 **Blazor Shell (`Hexalith.FrontComposer.Shell`)**
 
-- FR9: Compose generated UI into a complete app frame via `<FrontComposerShell>@Body</FrontComposerShell>` — `FluentLayout` Header/Navigation/Content/Footer, skip links, `FluentProviders`, global shortcuts (`Ctrl+,` settings, `Ctrl+K` palette).
-- FR10: Provide the DI bootstrap path: `AddHexalithFrontComposerQuickstart()` → `AddHexalithDomain<TMarker>()` → `AddHexalithEventStore(...)`.
-- FR11: Render projections in `FluentDataGrid` with column filtering, expand-in-row detail, status badges, empty/loading states, slow-query/max-items notices, and column prioritization for >15-column projections.
-- FR12: Drive the command lifecycle UI (`Idle→Submitting→Acknowledged→Syncing→Confirmed/Rejected`) with form-abandonment guard and destructive-command confirmation dialog.
-- FR13: Connect to EventStore via SignalR (projection subscriptions) and HTTP (commands/queries), surfacing reconnect/reconciliation status.
-- FR14: Provide registry-driven navigation, home directory (urgency-sorted bounded-context cards), command palette (ARIA combobox), and badge counts.
-- FR15: Manage theme, density, and settings, persisted via `IStorageService` (`LocalStorageService`).
+- LEGACY-FR-9: Compose generated UI into a complete app frame via `<FrontComposerShell>@Body</FrontComposerShell>` — `FluentLayout` Header/Navigation/Content/Footer, skip links, `FluentProviders`, global shortcuts (`Ctrl+,` settings, `Ctrl+K` palette).
+- LEGACY-FR-10: Provide the DI bootstrap path: `AddHexalithFrontComposerQuickstart()` → `AddHexalithDomain<TMarker>()` → `AddHexalithEventStore(...)`.
+- LEGACY-FR-11: Render projections in `FluentDataGrid` with column filtering, expand-in-row detail, status badges, empty/loading states, slow-query/max-items notices, and column prioritization for >15-column projections.
+- LEGACY-FR-12: Drive the command lifecycle UI (`Idle→Submitting→Acknowledged→Syncing→Confirmed/Rejected`) with form-abandonment guard and destructive-command confirmation dialog.
+- LEGACY-FR-13: Connect to EventStore via SignalR (projection subscriptions) and HTTP (commands/queries), surfacing reconnect/reconciliation status.
+- LEGACY-FR-14: Provide registry-driven navigation, home directory (urgency-sorted bounded-context cards), command palette (ARIA combobox), and badge counts.
+- LEGACY-FR-15: Manage theme, density, and settings, persisted via `IStorageService` (`LocalStorageService`).
 
 **MCP server (`Hexalith.FrontComposer.Mcp`)**
 
-- FR16: Expose each generated command as an MCP tool (built dynamically at every `tools/list`) plus a fixed `frontcomposer.lifecycle.subscribe` polling tool.
-- FR17: Expose projections (`frontcomposer://<bounded-context>/projections/<projection-name>`, tenant-scoped Markdown) and skill-corpus docs (`frontcomposer://skills/<id>`) as MCP resources.
-- FR18: Enforce fail-closed security — both `IFrontComposerMcpTenantToolGate` and `IFrontComposerMcpResourceVisibilityGate` required or startup throws; opaque error shape; server-controlled fields (`TenantId`/`UserId`/`MessageId`/`CorrelationId`) blocked from tool input.
-- FR19: Negotiate schema compatibility (`McpSchemaNegotiator`: Exact / CompatibleAdditive / CompatibleWarning / Incompatible) and block side-effects on mismatch.
+- LEGACY-FR-16: Expose each generated command as an MCP tool (built dynamically at every `tools/list`) plus a fixed `frontcomposer.lifecycle.subscribe` polling tool.
+- LEGACY-FR-17: Expose projections (`frontcomposer://<bounded-context>/projections/<projection-name>`, tenant-scoped Markdown) and skill-corpus docs (`frontcomposer://skills/<id>`) as MCP resources.
+- LEGACY-FR-18: Enforce fail-closed security — both `IFrontComposerMcpTenantToolGate` and `IFrontComposerMcpResourceVisibilityGate` required or startup throws; opaque error shape; server-controlled fields (`TenantId`/`UserId`/`MessageId`/`CorrelationId`) blocked from tool input.
+- LEGACY-FR-19: Negotiate schema compatibility (`McpSchemaNegotiator`: Exact / CompatibleAdditive / CompatibleWarning / Incompatible) and block side-effects on mismatch.
 
 **CLI (`Hexalith.FrontComposer.Cli`)**
 
-- FR20: `frontcomposer inspect` reads generated output + `*.diagnostics.json` sidecars and reports forms/grids/registrations/manifest entries/warnings/errors in text or JSON (`frontcomposer.cli.inspect.v1`).
-- FR21: `frontcomposer migrate` plans/applies allowlisted Roslyn code-fixes across catalog version edges (dry-run default, atomic apply, path-safety refusals), JSON `frontcomposer.cli.migrate.v1`.
+- LEGACY-FR-20: `frontcomposer inspect` reads generated output + `*.diagnostics.json` sidecars and reports forms/grids/registrations/manifest entries/warnings/errors in text or JSON (`frontcomposer.cli.inspect.v1`).
+- LEGACY-FR-21: `frontcomposer migrate` plans/applies allowlisted Roslyn code-fixes across catalog version edges (dry-run default, atomic apply, path-safety refusals), JSON `frontcomposer.cli.migrate.v1`.
 
 **Testing library (`Hexalith.FrontComposer.Testing`)**
 
-- FR22: Provide a pre-wired bUnit host + deterministic fakes (command/query/projection/fault-injection), evidence recorders, and assertion helpers for adopters testing generated components.
+- LEGACY-FR-22: Provide a pre-wired bUnit host + deterministic fakes (command/query/projection/configurable outcomes), evidence recorders, and assertion helpers for adopters testing generated components.
 
-### NonFunctional Requirements
+### Legacy Nonfunctional Requirements (Provenance Only)
 
-- NFR1: `TreatWarningsAsErrors=true` everywhere; built-in .NET/Roslyn analyzers only (no Sonar/StyleCop/Roslynator).
-- NFR2: ULIDs (26-char Crockford base32) via `IUlidFactory` — never GUIDs — for `messageId`/`correlationId`.
-- NFR3: Incremental-cache invariant — pure, fully-equatable IR; no `ISymbol` escapes the parse stage; `EquatableArray<T>` for collections.
-- NFR4: Schema fingerprint determinism — `CanonicalSchemaMaterial` pins `JavaScriptEncoder.Create(UnicodeRanges.All)`, STJ source-gen context, `AbsentValueSentinel="<absent>"`, `StringComparer.Ordinal`; changing any invalidates all baselines.
-- NFR5: Contracts kernel split — `SourceTools` and the `Contracts` kernel stay netstandard2.0-clean; net10/Blazor/Fluent rendering contracts move to `Contracts.UI`; pre-split net10/FluentUI code remains guarded by `#if NET10_0_OR_GREATER` until Story 11.11 moves it.
-- NFR6: **Accessibility (WCAG)** — `aria-label`/`role`/`aria-live`/`data-testid` on every interactive element; focus visibility, reduced-motion and forced-colors fallbacks; override-accessibility diagnostics HFC1050–HFC1055.
-- NFR7: Generated-output path is a public contract (`GeneratedOutputPathContract.Template`) validated in Debug **and** Release.
-- NFR8: Ships as signed NuGet packages (`.nupkg`+`.snupkg`); semantic-release from Conventional Commits; no Dockerfiles/containers.
-- NFR9: Fluxor single-writer discipline per slice (ADR-007); scoped-lifetime discipline for storage/effects/auth/tenant accessors (ADR-030).
-- NFR10: Test discipline — solution-level `dotnet test` + trait filters, `DiffEngine_Disabled=true`, Governance + Contract lanes blocking; committed `.verified.txt`, `PublicAPI.Shipped.txt`, pacts updated intentionally.
-- NFR11: Telemetry via `FrontComposerActivitySource` (OpenTelemetry `ActivitySource`).
-- NFR12: Dependency direction points down to the `Contracts` kernel; `SourceTools` references only `Contracts` to stay netstandard2.0-clean, while Shell/UI consumers may reference `Contracts.UI` after Story 11.11.
-- NFR13: **Confirmed (2026-06-21)** Trim/AOT readiness — `PublishTrimmed`/`PublishAot` enable the HFC1070 advisory; reflection projection catalog needs an `IActionQueueProjectionCatalog` override.
-- NFR14: Root-declared Hexalith submodules live under `references/Hexalith.*`; initialize only those root `.gitmodules` entries, never recurse into nested submodules, and never modify submodule files without explicit approval. Debug/source builds consume Hexalith libraries through local `ProjectReference`s, while Release/package builds consume published NuGet packages.
+> These `LEGACY-NFR-*` identifiers are likewise provenance-only. Canonical nonfunctional
+> requirements are the `NFR-*` entries in `prd.md`.
+
+- LEGACY-NFR-1: `TreatWarningsAsErrors=true` everywhere; built-in .NET/Roslyn analyzers only (no Sonar/StyleCop/Roslynator).
+- LEGACY-NFR-2: ULIDs (26-char Crockford base32) via `IUlidFactory` — never GUIDs — for `messageId`/`correlationId`.
+- LEGACY-NFR-3: Incremental-cache invariant — pure, fully-equatable IR; no `ISymbol` escapes the parse stage; `EquatableArray<T>` for collections.
+- LEGACY-NFR-4: Schema fingerprint determinism — `CanonicalSchemaMaterial` pins `JavaScriptEncoder.Create(UnicodeRanges.All)`, STJ source-gen context, `AbsentValueSentinel="<absent>"`, `StringComparer.Ordinal`; changing any invalidates all baselines.
+- LEGACY-NFR-5: Contracts kernel split — `SourceTools` and the `Contracts` kernel stay netstandard2.0-clean; net10/Blazor/Fluent rendering contracts move to `Contracts.UI`.
+- LEGACY-NFR-6: **Accessibility (WCAG)** — `aria-label`/`role`/`aria-live`/`data-testid` on every interactive element; focus visibility, reduced-motion and forced-colors fallbacks; override-accessibility diagnostics HFC1050–HFC1055.
+- LEGACY-NFR-7: Generated-output path is a public contract (`GeneratedOutputPathContract.Template`) validated in Debug **and** Release.
+- LEGACY-NFR-8: Ships as signed NuGet packages (`.nupkg`+`.snupkg`); semantic-release from Conventional Commits; no Dockerfiles/containers.
+- LEGACY-NFR-9: Fluxor single-writer discipline per slice (ADR-007); scoped-lifetime discipline for storage/effects/auth/tenant accessors (ADR-030).
+- LEGACY-NFR-10: Test discipline — solution-level `dotnet test` + trait filters, `DiffEngine_Disabled=true`, Governance + Contract lanes blocking; committed `.verified.txt`, `PublicAPI.Shipped.txt`, pacts updated intentionally.
+- LEGACY-NFR-11: Telemetry via `FrontComposerActivitySource` (OpenTelemetry `ActivitySource`).
+- LEGACY-NFR-12: Dependency direction points down to the `Contracts` kernel; `SourceTools` references only `Contracts`, while Shell/UI consumers may reference `Contracts.UI`.
+- LEGACY-NFR-13: **Confirmed (2026-06-21)** Trim/AOT readiness — `PublishTrimmed`/`PublishAot` enable the HFC1070 advisory; reflection projection catalog needs an `IActionQueueProjectionCatalog` override.
+- LEGACY-NFR-14: Root-declared Hexalith submodules live under `references/Hexalith.*`; initialize only those root `.gitmodules` entries, never recurse into nested submodules, and never modify submodule files without explicit approval. Debug/source builds consume Hexalith libraries through local `ProjectReference`s, while Release/package builds consume published NuGet packages.
 
 ### Additional Requirements
 
@@ -135,7 +142,7 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 > to match `architecture.md` §4.
 
 - UX-DR1: **Design tokens** — `Typography` (9 `FcTypoToken` role constants → FluentUI v5 `TextSize`/`TextWeight`/`TextTag`, pinned `TypographyMappingVersion="3.1.0"`); `DensityLevel`/`DensitySurface` density tokens applied via `<body data-fc-density>`.
-- UX-DR2: **Semantic status slots** — `[ProjectionBadge]` enum-member → a status indicator with a mandatory accessible name. **Amended 2026-06-25 (Epic 8 / Story 8.7 — `sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md`):** *status* members render as a **colored Fluent icon** (success = green checkmark, error = red cross, unknown/neutral = grey question; warning/info as extensions) with the status label revealed **on hover _and_ keyboard focus** via `FluentTooltip`, plus an always-present `aria-label` so the accessible name is never hover-only (NFR6/WCAG preserved). Numeric **count** slots keep the `FluentBadge` pill (`FcDesaturatedBadge` desaturated variant for non-urgent counts). This **supersedes the prior pill-only status model** (`FcStatusBadge` `FluentBadge` Color/Appearance) and is a contract amendment that touches the `[ProjectionBadge]` generator emit.
+- UX-DR2: **Semantic status slots** — `[ProjectionBadge]` enum-member → a status indicator with a mandatory accessible name. **Amended 2026-06-25 (Epic 8 / Story 8.7 — `sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md`):** *status* members render as a **colored Fluent icon** (success = green checkmark, error = red cross, unknown/neutral = grey question; warning/info as extensions) with the status label revealed **on hover _and_ keyboard focus** via `FluentTooltip`, plus an always-present `aria-label` so the accessible name is never hover-only (NFR-3 / WCAG 2.2 AA preserved). Numeric **count** slots keep the `FluentBadge` pill (`FcDesaturatedBadge` desaturated variant for non-urgent counts). This **supersedes the prior pill-only status model** (`FcStatusBadge` `FluentBadge` Color/Appearance) and is a contract amendment that touches the `[ProjectionBadge]` generator emit.
 - UX-DR3: **Responsive layout** — breakpoint behaviour (`FcLayoutBreakpointWatcher`) with the unified `FrontComposerNavigation` rail rendered at 72px labelled or 48px icon-only width. `FcHamburgerToggle` is **always visible** and at Desktop toggles labelled ↔ icon-only rail (`SidebarToggledAction`) — **supersedes the earlier "D9 / no Desktop hamburger" decision** (architecture §4). The framework sidebar keeps **exactly one active item** (longest segment-prefix, `NavLinkMatch.Prefix`).
 - UX-DR4: **Reusable interaction components** — `FcCommandPalette` (ARIA combobox, keyboard nav), `FcSettingsDialog`, `FcDestructiveConfirmationDialog`, `FcFormAbandonmentGuard`, `FcLifecycleWrapper`.
 - UX-DR5: **Status & empty/loading UX** — `FcProjectionLoadingSkeleton` (Card/Timeline/Grid), `FcProjectionEmptyPlaceholder`, `FcProjectionConnectionStatus`, `FcPendingCommandSummary` (`aria-live`).
@@ -161,45 +168,53 @@ This document provides the complete epic and story breakdown for Hexalith.FrontC
 
 ### FR Coverage Map
 
-- FR1 (projection generation): **Epic 2** — read-only projection views
-- FR2 (command generation): **Epic 3** — command form/lifecycle emission
-- FR3 (density rule): **Epic 3** — form density from non-derivable property count
-- FR4 (MCP/template manifests): **Epic 5** — manifest consumed by the MCP server
-- FR5 (attribute vocabulary): **Epic 2** (projection attrs) + **Epic 6** (template/slot/override attrs)
-- FR6 (HFC diagnostics): **Epic 7** — surfaced via `inspect` + build
-- FR7 (drift detection): **Epic 7** — baseline compare + HFC1065/66
-- FR8 (4-level customization): **Epic 6** — external override assemblies
-- FR9 (shell frame): **Epic 1** — `<FrontComposerShell>` layout/shortcuts/skip links
-- FR10 (DI bootstrap): **Epic 1** — Quickstart → Domain → EventStore
-- FR11 (DataGrid surface): **Epic 2** — filter/expand/status/prioritizer
-- FR12 (command lifecycle UI): **Epic 3** (core lifecycle) + **Epic 4** (destructive/abandonment)
-- FR13 (EventStore clients): **Epic 2** (query/SignalR read path) + **Epic 3** (command + status poll) + **Epic 9** (fresh-row producer evidence) + **Epic 11** (11.1 circuit-safe auth, 11.2 realtime resilience)
-- FR14 (nav/home/palette/badges): **Epic 2** (registry-driven discovery) + **Epic 9** (row-level new-item indicator producer) + **Epic 11** (11.7 command-route contract unification)
-- FR15 (theme/density/settings): **Epic 1** — persisted shell preferences
-- FR16 (MCP command tools): **Epic 5**
-- FR17 (MCP projection/skill resources): **Epic 5**
-- FR18 (fail-closed MCP security): **Epic 5**
-- FR19 (MCP schema negotiation): **Epic 5**
-- FR20 (`frontcomposer inspect`): **Epic 7** + **Epic 10** (text-output parity guard)
-- FR21 (`frontcomposer migrate`): **Epic 7** + **Epic 10** (HFCM9002 production-emission decision)
-- FR22 (Testing library): **Epic 7** + **Epic 10** (default-lane redaction guard) + **Epic 11** (11.6 harness failure modes)
-- FR23 (component and skill documentation): **Epic 1** (1.5 component docs), **Epic 5** (skill resources), **Epic 7** (diagnostics/tooling docs), **Epic 10** (10.2/10.4 docs cleanup), and **Epic 11** (11.14 package-compat docs)
-- FR24 (signed package artifacts with evidence): **Release Governance Gate RG-1**, owner **Release Owner**, tracked in `sprint-status.yaml` action `REL-AI-1`
-- FR25 (public contracts and deprecation paths): **Epic 7**, **Epic 10**, and **Epic 11** (11.8, 11.11-11.14, 11.19)
-- FR26 (post-MVP hardening backlog): **Epic 9**, **Epic 10**, and **Epic 11**
+This is the sole planning coverage map. Requirement semantics and identifiers come from canonical
+`prd.md`; the legacy inventory above is provenance only.
 
-**Release Governance Gate RG-1 (FR24):** the Release Owner must capture expected package inventory,
-signed `.nupkg`/`.snupkg` evidence, SBOM, checksums, release manifest/evidence chain, GitHub Release
-assets or dry-run evidence, and package-consumer validation before the v1.0 release candidate. If
-workflow, release-helper, governance-test, or product-code changes are required to produce that evidence,
-create a focused release-governance implementation story (`REL-1` or the team's equivalent) before RC
-publication. The story must close the gap between `.releaserc.json`, `.github/workflows/release.yml`,
-`eng/release_evidence.py`, governance tests, release docs, and package-consumer validation evidence.
+| Canonical requirement | Planning ownership |
+| --- | --- |
+| FR-1 | Epic 2: Stories 2.1 and 7.3 diagnostic support |
+| FR-2 | Epic 3: Stories 3.1 and 3.2 |
+| FR-3 | Epic 2: Stories 2.1, 2.3, 2.5; Epic 4: Stories 4.1, 4.4; Epic 6: Stories 6.1–6.4 |
+| FR-4 | Epic 3: Story 3.2 |
+| FR-5 | Epic 6: Stories 6.1–6.4 |
+| FR-6 | Epic 7: Stories 7.3 and 7.4; Epic 5: Story 5.5 |
+| FR-7 | Epic 1: Stories 1.0 and 1.1; Epic 11: scoped-lifetime remediation |
+| FR-8 | Epic 1: Stories 1.1 and 1.3; UX-DR8; Epic 8 refinements |
+| FR-9 | Epic 1: Stories 1.2, 1.4, 1.6; Epic 8: Story 8.4 |
+| FR-10 | Epic 2: Stories 2.2 and 2.7; Epic 8: Story 8.5; Epic 11: Stories 11.0 and 11.7 |
+| FR-11 | Epic 2: Stories 2.3–2.5; Epic 8: Stories 8.4 and 8.7 |
+| FR-12 | Epic 2: Story 2.6; Epic 11: Story 11.2 |
+| FR-13 | Epic 9: Stories 9.1 and 9.2; Story 2.6 preserves the ownership boundary |
+| FR-14 | Epic 3: Stories 3.1–3.3; Epic 4: Story 4.5 |
+| FR-15 | Epic 3: Stories 3.4–3.6 |
+| FR-16 | Epic 4: Stories 4.1–4.5 |
+| FR-17 | Epic 5: Stories 5.1 and 5.2 |
+| FR-18 | Epic 5: Story 5.3 |
+| FR-19 | Epic 5: Stories 5.4 and 5.5; Epic 11: Story 11.3 |
+| FR-20 | Epic 7: Stories 7.1 and 7.3; Epic 10: Story 10.3 |
+| FR-21 | Epic 7: Story 7.2; Epic 10: Stories 10.3 and 10.4 |
+| FR-22 | Epic 7: Story 7.5; Epic 10: Story 10.5; Epic 11: Story 11.6 |
+| FR-23 | Stories 1.5, 5.3, 7.2–7.4, 10.2, 10.4, and 11.14 |
+| FR-24 | Release Governance Gate RG-1; REL-AI-1 remains open; REL-3 owns correction, REL-4 the technical freeze, REL-5 Release Owner enablement; REL-2 is completed evidence, not closure |
+| FR-25 | Epics 7 and 10; Epic 11: Stories 11.8, 11.11–11.14, and 11.19 children |
+| FR-26 | Epic 9: Story 9.2; Story 2.6 preserves the ownership boundary |
+| FR-27 | Epic 10: Stories 10.1–10.5 |
+| FR-28 | Epic 11: completed decision records 11.0 and 11.8 |
+| FR-29 | Epic 11: Stories 11.1–11.19 through their materialized children |
 
-**Update (correct-course 2026-07-13):** FR24 implementation is now owned by **`REL-2`** (Tenants
+**Release Governance Gate RG-1 (FR-24):** before any NuGet or GitHub package publication, the Release
+Owner must prove that the exact expected package artifacts passed inventory, tests, package-consumer
+validation, symbol/SBOM generation, signature and RFC 3161 timestamp verification, checksum coverage,
+sealed-manifest verification, and `classify-release --require-publishable`. Passing evidence requires
+`classification=ready` and `publish_authorized=true`; the same authorized bytes must be published and
+then independently verified from NuGet and GitHub. Durable release evidence is required. Product work
+may continue while the gate is open, but automated package publication may not.
+
+**Update (correct-course 2026-07-13):** FR-24 implementation is now owned by **`REL-2`** (Tenants
 reusable-workflow alignment), and `REL-1` is closed as superseded. Because the release trigger moves to
 `workflow_run`-after-CI on the shared reusable `domain-release.yml` (which has no evidence hook and is a
-non-editable submodule), FR24 evidence is re-homed via 3-layer split-homing: package inventory +
+non-editable submodule), FR-24 evidence is re-homed via 3-layer split-homing: package inventory +
 consumer validation in shared CI (`domain-ci.yml` + FrontComposer `scripts/`), publish on the pristine
 reusable release, and a supplemental FrontComposer `release-evidence.yml` for signing, SBOM, checksums,
 manifest, `classify-release`, and evidence assets. Inventory + consumer validation run against the final
@@ -207,18 +222,45 @@ post-2.0-split package set (`Contracts.UI` packable @ 2.0.0). Gating posture: G1
 next-release fail-closed) now, G2 (optional Hexalith.Builds inline gate) as a durable follow-up. See
 `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md`.
 
-### PRD V1 Readiness Coverage Addendum
+**Update (correct-course 2026-07-15):** keep `REL-2` done against its accepted G1 criteria, but do not
+use it to close FR-24. Live v3.2.2 evidence reported unsigned packages, an invalid manifest,
+`classification=blocked`, and `publish_authorized=false` while the evidence workflow concluded
+successfully. **`REL-3: Enforce FR-24 before publication and reconcile affected releases`** now owns
+the correction. Hexalith.Builds must forward signing credentials into semantic-release, or the Release
+Owner must explicitly approve a bounded FrontComposer-owned gated workflow. REL-3 packs once, validates
+and signs the exact candidates, seals/verifies/classifies them before publication, publishes those same
+bytes with durable evidence, verifies downloaded NuGet/GitHub bytes, handles partial publication, and
+records v3.2.1/v3.2.2 in the compliance ledger. This stop-the-line gate blocks the next publish-capable
+release; no new product epic is required. See
+`_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md`.
 
-The legacy FR Coverage Map above is retained for brownfield continuity. The canonical PRD adds explicit
-v1-readiness requirements FR-27 through FR-29:
+**Update (correct-course 2026-07-15, freeze enforcement):** the REL-3 freeze is now technically
+enforced. `REL-4: Technically enforce the temporary release freeze` adds a fail-closed publish gate to
+`release.yml` (publication disabled unless the Release Owner-controlled
+`HEXALITH_RELEASE_PUBLISH_ENABLED` variable is exactly `true`, evaluated by an exact bash match;
+governance tests pin the gate and the absence of alternate publish paths). The identical gate contract
+is a required Hexalith.Builds upstream item so all Hexalith modules share the same default-frozen
+control. REL-4 precedes REL-3 implementation; the gate is removed/re-scoped only on REL-3 real-release
+evidence. See `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md`.
 
-- PRD FR-27 (tooling-governance follow-through): Epic 10.
-- PRD FR-28 (Epic 11 decision gates): Story 11.0 route-contract decision and Story 11.8 Contracts split decision.
-- PRD FR-29 (architecture-review release risks): Epic 11 implementation stories 11.1 through 11.19, with Stories 11.11 through 11.14 deliberately last.
+**Update (correct-course 2026-07-15, upstream governed contract):** the Hexalith.Builds dependency
+is corrected from signing-secret forwarding to the full **BUILD-REL-1 opt-in governed NuGet release
+contract** (protected release environment, signing secrets, RFC 3161 timestamp input,
+`id-token`/`attestations` permissions, a version-aware pre-publication candidate phase,
+`actions/attest-build-provenance` over the exact candidates with the bundle bound into manifest
+finalization, no-repack publication, backward compatibility, root-only submodule init). A live
+upstream search found no matching issue or PR; filing is a Release Owner action. `REL-3` is amended
+in place (attestation-before-classification AC, failed-run verification AC, approval-mechanism
+resolution — the REL-4 variable remains the caller-side authorization; no approval tokens enter
+`release.yml`). New **`REL-5: Provision the production signing identity and prove the first
+governed release`** separates operational authority (identity/trust model, certificate custody,
+timestamp-authority approval, upstream filing, first-release authorization, download verification,
+ledger sign-off, REL-AI-1 closure) from REL-3 development work. See
+`_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md`.
 
 **Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic) · AR11 (FC-NIP) → Epic 9 · AR12 (FC-TOOL-GOV) → Epic 10.
-**Cross-cutting NFRs** (NFR1–NFR13) apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. **NFR11 (telemetry)** is owned cross-cutting (not per-AC traced) — emitting through `FrontComposerActivitySource` on the Shell command-lifecycle/projection paths and the MCP tool/resource paths.
-**Epic 11 (Architecture Review Remediation)** refines the FRs noted above (FR13 · FR14 · FR22) and **amends cross-cutting NFRs**: NFR5/NFR12 (Contracts kernel split approved by Story 11.8) and NFR6 (visual-conformance guards). Its split stories trace primarily to the 2026-07-04 architecture-quality-review findings (H1-H12 / M-series), not to net-new FRs. Story 11.0 is a completed route-contract decision gate; Story 11.8 is a completed package-boundary decision gate. See the Epic 11 section.
+**Cross-cutting canonical NFRs** apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. Telemetry is owned cross-cutting rather than per-AC — emitting through `FrontComposerActivitySource` on Shell command-lifecycle/projection paths and MCP tool/resource paths.
+**Epic 11 (Release Readiness Remediation Program)** traces canonical FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, and FR-29 plus the 2026-07-04 architecture-quality-review findings. Story 11.0 and Story 11.8 are completed decision records. Stories 11.17, 11.18, and 11.19 are decomposition parents, not implementation candidates; their child stories carry delivery status.
 
 ## Epic List
 
@@ -229,7 +271,7 @@ page layout, and is accessible, localized, and documented from day one. Delivers
 enabler: the confirmed `FC-LYT` layout contract, `FC-A11Y` accessibility primitives, `FC-L10N`
 string ownership, `FC-DOC` component docs, and the Shell-integration spike (Story 1.0) + bootstrap
 (Story 1.1).
-**FRs covered:** FR9, FR10, FR15 · **ARs:** AR1 (FC-LYT), AR2 (FC-A11Y), AR3 (FC-L10N), AR4 (FC-DOC), AR5 (spike)
+**Canonical FRs covered:** FR-7–FR-9, FR-23 · **ARs:** AR1 (FC-LYT), AR2 (FC-A11Y), AR3 (FC-L10N), AR4 (FC-DOC), AR5 (spike)
 **Standalone:** a bootable, accessible, empty shell — no later epic required to function.
 
 ### Epic 2: Read-Only Projection Experience  *(the read-only MVP)*
@@ -238,7 +280,7 @@ directory, the command palette, and projections rendered from `[Projection]` typ
 `FluentDataGrid` with filtering, expand-in-row detail, status badges, and column prioritization —
 fed live from EventStore over SignalR/HTTP, with row-level fresh-item indicators delegated to
 Epic 9 / FC-NIP. Confirms the `FC-TBL` table API.
-**FRs covered:** FR1, FR5 (projection attributes), FR11, FR13 (read/query path), FR14
+**Canonical FRs covered:** FR-1, FR-3, FR-10–FR-13
 **UX-DRs:** UX-DR1, UX-DR2, UX-DR3, UX-DR5, UX-DR6, UX-DR7
 **Standalone:** complete read-only operations console; builds on Epic 1, needs no command epic.
 
@@ -248,7 +290,7 @@ An **operator** can submit a command from a generated form and watch it through 
 density rule. Pins the **FC-CMD** contract (pending-identity / correlation-key shape, uniqueness
 scope, `alreadyApplied`, reconciliation), binds the polling coordinator to the confirmed EventStore
 status endpoint, and applies the agreed numeric budgets.
-**FRs covered:** FR2, FR3, FR12 (core lifecycle), FR13 (command + status poll)
+**Canonical FRs covered:** FR-2, FR-4, FR-14, FR-15
 **ARs:** AR6 (FC-CMD), AR8 (budgets — confirming→degraded, polling), AR9 (EventStore status contract)
 **Standalone:** single-command submit→confirm works end-to-end; builds on Epics 1–2.
 
@@ -257,7 +299,7 @@ An **operator** can run destructive and rapid command sequences safely: destruct
 dialogs, unsaved-form abandonment guard, the **one-at-a-time** (`FC-CNC`) v1 execution policy with
 approved fallback, policy-gated authorization (`[RequiresPolicy]`), and degraded/retry behavior from
 the numeric budgets.
-**FRs covered:** FR12 (destructive/abandonment/authorization paths)
+**Canonical FRs covered:** FR-16
 **ARs:** AR7 (FC-CNC), AR8 (retry/degraded budgets)
 **Standalone:** safe command UX layered on Epic 3.
 > ✅ *Split accepted (2026-06-21).* Epics 3 & 4 both touch the generated command pipeline + `FcAuthorizedCommandRegion`, split on a genuine **risk boundary** (FC-CMD identity contract vs. FC-CNC concurrency policy). This is the **final v1 structure**: both epics shipped and retro'd (2026-06-04 / 2026-06-05), the dependency is backward (4→3, allowed), and retro-consolidating completed work would be churn with no benefit. Consolidation offer withdrawn.
@@ -267,7 +309,7 @@ An **AI agent** can discover every generated command as an MCP tool (rebuilt at 
 read tenant-scoped projections and the skill corpus as resources, poll command lifecycle via
 `frontcomposer.lifecycle.subscribe`, and operate within fail-closed tenant/resource security with
 schema-fingerprint negotiation blocking side-effects on mismatch.
-**FRs covered:** FR4 (manifest), FR16, FR17, FR18, FR19
+**Canonical FRs covered:** FR-17–FR-19
 **Standalone:** the same domain surface exposed to agents; builds on the generated manifest, independent of the human UI epics.
 
 ### Epic 6: Customization & Extensibility
@@ -275,7 +317,7 @@ An **adopter developer** can override the generated UI without forking: Level-2 
 Level-3 field slots, and Level-4 full-view overrides from external assemblies, with the
 override-accessibility diagnostics (HFC1050–HFC1055) and customization-contract version checks
 keeping overrides safe.
-**FRs covered:** FR8, FR5 (template/slot/override attributes)
+**Canonical FRs covered:** FR-3 and FR-5
 **Standalone:** extension surface on top of the generated baseline; builds on Epics 2–3.
 
 ### Epic 7: Authoring Tooling & Drift Safety
@@ -283,7 +325,7 @@ An **adopter developer** can inspect generated output and diagnostics (`frontcom
 migrate across version edges (`frontcomposer migrate`), test generated components with the Testing
 library's bUnit host + deterministic fakes, and catch structural/metadata drift against a checked-in
 baseline (HFC1065/66) before it ships.
-**FRs covered:** FR6, FR7, FR20, FR21, FR22
+**Canonical FRs covered:** FR-6, FR-20–FR-22, FR-25
 **Standalone:** the developer-confidence toolchain; usable against any annotated domain, independent of runtime epics.
 
 ### Epic 8: Aspire-grade Visual Refresh  *(post-MVP chrome parity)*
@@ -294,7 +336,7 @@ accent demoted to a *thread* — active nav, focus, primary, links, badges — n
 density** + sticky-header grids, a reusable **`FcPageToolbar`** (search + filter + view-menu + underline
 tabs), and **colored-icon status** (green check / red cross / grey question, hover+focus label). Aspire runs
 Fluent v4/FAST tokens that §4.1 bans here, so every pattern is **translated**, not copied.
-**Refines:** FR9 (shell frame), FR14 (nav), FR15 (theme/density) · **UX-DRs:** UX-DR1, UX-DR2 (amended), UX-DR3 (refined) · **introduces no new FRs**
+**Canonical refinements:** FR-8–FR-11 · **UX-DRs:** UX-DR1, UX-DR2 (amended), UX-DR3 (refined) · **introduces no new FRs**
 **Standalone:** each story (8.1–8.7) ships independently; Story 8.1 (header/footer) is a Minor change shippable on its own.
 **Source of record:** `sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md` (Correct Course, 2026-06-25).
 **Out of framework scope:** Tenants.UI page-body adoption (neutral page titles, `FcPageToolbar` adoption) is a separate **Host-A** Tenants correct-course under submodule approval.
@@ -302,7 +344,7 @@ Fluent v4/FAST tokens that §4.1 bans here, so every pattern is **translated**, 
 ### Epic 9: Fresh-Row Producer and Row Identity  *(post-MVP follow-up)*
 An **operator** can see newly materialized projection rows marked after command outcomes, using a
 framework-controlled row identity payload and the confirmed `FcNewItemIndicator` component.
-**FRs covered:** FR13, FR14
+**Canonical FRs covered:** FR-13 and FR-26
 **ARs:** AR11 (FC-NIP)
 **Standalone:** post-MVP enhancement; builds on Epics 2 and 3, and does not reopen the projection nudge seam.
 **Source of record:** `sprint-change-proposal-2026-07-01.md` (Correct Course, 2026-07-01).
@@ -311,12 +353,12 @@ framework-controlled row identity payload and the confirmed `FcNewItemIndicator`
 An **adopter developer** can trust FrontComposer's authoring-tooling evidence because story file
 lists are mechanically reconciled, CLI text output is covered like JSON output, migration sidecar
 promises stay honest, and Testing package evidence remains redacted by default.
-**FRs covered:** FR20, FR21, FR22
+**Canonical FRs covered:** FR-20–FR-23 and FR-27
 **ARs:** AR12 (FC-TOOL-GOV)
 **Standalone:** post-MVP quality hardening; builds on Epic 7 and does not reopen completed stories.
 **Source of record:** `sprint-change-proposal-2026-07-01-epic-7-retro-follow-through.md` (Correct Course, 2026-07-01).
 
-### Epic 11: Architecture Review Remediation  *(post-MVP quality hardening)*
+### Epic 11: Release Readiness Remediation Program  *(post-MVP quality hardening)*
 An **adopter developer / operator** gets a FrontComposer whose worst blind-spot defects are closed:
 circuit-safe EventStore auth and self-healing projection realtime (no silent production-circuit
 degradation), fail-closed MCP paths that log and survive across requests, a hardened
@@ -324,18 +366,18 @@ open-redirect/storage-key security surface, dead scoped-CSS remediated behind du
 visual-conformance guards, a genuinely fault-injectable Testing harness (the key Tenants-adoption
 unblock), a unified command/projection route contract (so palette command activation lands on a page
 that exists), a leaner Contracts kernel, and consolidated shell layering + convention alignment.
-Remediation-framed, but each story is justified by operator/adopter/security impact.
-**Refines:** FR13 (11.1 circuit-safe auth, 11.2 realtime resilience), FR14 (11.0 route decision + 11.7 command-route implementation), FR22 (11.6 testing-harness failure modes) · **Amends NFRs:** NFR5/NFR12 (11.8/11.11-11.14 Contracts kernel split path), NFR6 (11.5 visual-conformance guards) · **Introduces:** architecture-review-finding requirements H1–H12 / M-series · **no net-new user-facing FRs**
-**Standalone:** each implementation story ships independently after the completed decision gates; risk-ordered (11.0 → 11.1 → 11.2 → 11.4 → 11.3 → 11.5 → 11.6 → 11.7 → 11.9/11.15/11.16 → 11.17/11.18/11.19 → 11.8/11.11-11.14 last); independent of Epics 9/10; does not reopen completed Epics 1–8.
+Remediation-framed, but each story is justified by operator/adopter/security impact and organized into four coherent release workstreams.
+**Canonical FRs covered:** FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, FR-29 · **Introduces:** architecture-review-finding requirements H1–H12 / M-series · **no net-new user-facing FRs**
+**Delivery model:** four workstreams govern implementation and current state. Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents; only their named children enter the queue. Epic 11 consumes completed Epic 10 evidence where referenced and does not reopen completed Epics 1–10.
 **Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), triggered by `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`. A Minor-scope quick-win fix batch was applied in-tree under the same proposal (PR #48).
-**Decisions (contract-confirmation DoD — tracked, owned, dated blocking gates):** **11.0** route-contract decision → **Architect + Product**, assigned 2026-07-05, resolved 2026-07-05 with `/commands/{BoundedContext}/{CommandTypeName}`; **11.8** Contracts kernel split decision and compatibility plan → **Architect + PM**, assigned 2026-07-04, resolved 2026-07-05 with the approved `Contracts` kernel + `Contracts.UI` target. Stories 11.11-11.14 implement and evidence the package-boundary change last in the pre-v1.0 window.
+**Decisions (contract-confirmation DoD — tracked, owned, dated blocking gates):** **11.0** route-contract decision → **Architect + Product**, assigned 2026-07-05, resolved 2026-07-05 with `/commands/{BoundedContext}/{CommandTypeName}`; **11.8** Contracts kernel split decision and compatibility plan → **Architect + PM**, assigned 2026-07-04, resolved 2026-07-05 with the approved `Contracts` kernel + `Contracts.UI` target. Stories 11.11–11.14 are completed delivery records for that package-boundary change.
 
 > **Out of scope (fast-follow, not an epic):** `<AuditTimeline>` and `<ConsequencePreview>` rich
 > components (AR10) — approved fallbacks stand; tracked for a later cycle.
 
 ## Epic 1: Shell Foundation & Bootstrap
 
-An adopter developer can stand up a FrontComposer admin shell that boots, lays out, and is accessible, localized, and documented from day one — delivering the read-only-MVP enabler (FC-LYT, FC-A11Y, FC-L10N, FC-DOC, the Shell-integration spike, and the bootstrap). Covers FR9, FR10, FR15; AR1–AR5; ready-gated by NFR6 (a11y), NFR9 (Fluxor single-writer / scoped lifetime).
+An adopter developer can stand up a FrontComposer admin shell that boots, lays out, and is accessible, localized, and documented from day one — delivering the read-only-MVP enabler (FC-LYT, FC-A11Y, FC-L10N, FC-DOC, the Shell-integration spike, and the bootstrap). Covers canonical FR-7–FR-9 and FR-23; AR1–AR5; ready-gated by canonical accessibility and scoped-lifetime NFRs.
 
 ### Story 1.0: Shell-integration spike — verify the bootstrap & table APIs
 
@@ -366,7 +408,7 @@ So that I get the complete Header/Navigation/Content/Footer frame with zero hand
 **Given** an app calling `AddHexalithFrontComposerQuickstart()` → `AddHexalithDomain<TMarker>()` → `AddHexalithEventStore(...)` in that order,
 **When** the app starts,
 **Then** Fluxor (with `StoreInitializer`), `IStorageService`, `IFrontComposerRegistry`, command/query stubs, and badge/lifecycle/slot/template/view registries are all registered,
-**And** the shell renders `FluentLayout` with skip links, `FluentProviders`, and the global shortcuts `Ctrl+,` (settings) and `Ctrl+K` (palette) active. *(FR9, FR10)*
+**And** the shell renders `FluentLayout` with skip links, `FluentProviders`, and the global shortcuts `Ctrl+,` (settings) and `Ctrl+K` (palette) active. *(FR-7, FR-8)*
 
 **Given** the registration calls are made out of order or one is missing,
 **When** the app starts,
@@ -386,7 +428,7 @@ So that every page renders at the correct measure without per-page layout hacks.
 
 **Given** the `FC-LYT` contract is documented (full-width vs constrained, default, opt-in mechanism),
 **When** a page declares constrained layout,
-**Then** content renders within the constrained max-measure; full-width pages span the content area. *(AR1, FR9)*
+**Then** content renders within the constrained max-measure; full-width pages span the content area. *(AR1, FR-8)*
 
 **Given** the contract document,
 **When** Product/UX reviews it,
@@ -405,7 +447,7 @@ So that every later story can satisfy a single, testable accessibility ready-gat
 
 **Given** the shell frame,
 **When** rendered,
-**Then** skip links target the content region, every interactive element carries an accessible name, and focus indicators are visible (no suppressed focus). *(AR2, NFR6)*
+**Then** skip links target the content region, every interactive element carries an accessible name, and focus indicators are visible (no suppressed focus). *(AR2, NFR-3)*
 
 **Given** the documented FC-A11Y primitive set,
 **When** a custom override violates one (missing accessible name, keyboard trap, suppressed focus, missing `aria-live` parity, motion without reduced-motion, color without forced-colors),
@@ -449,7 +491,8 @@ So that I can adopt components without reading their source.
 
 **Given** the read-only-MVP component set (layout, navigation, DataGrid surface, settings),
 **When** Epic 1 closes,
-**Then** each has a conforming doc page, or a tracked gap with an owner.
+**Then** each has a conforming doc page, or the gap is a dated, owned, blocking backlog item that
+names the missing page, owner, due date, and release gate it blocks; an undated owner note is not Done.
 
 ### Story 1.6: Theme, density, and settings persistence
 
@@ -461,20 +504,20 @@ So that the shell remembers my display preferences across sessions.
 
 **Given** the shell is running,
 **When** I press `Ctrl+,` or activate the settings button,
-**Then** `FcSettingsDialog` opens with a density radio group, theme toggle, and a density preview panel. *(FR15, UX-DR4)*
+**Then** `FcSettingsDialog` opens with a density radio group, theme toggle, and a density preview panel. *(FR-9, UX-DR4)*
 
 **Given** I change theme or density and confirm,
 **When** I reload the app,
 **Then** the chosen theme and `data-fc-density` are restored from `IStorageService` (`LocalStorageService`),
-**And** density changes are announced via the `aria-live` density announcer. *(NFR6)*
+**And** density changes are announced via the `aria-live` density announcer. *(NFR-3)*
 
 **Given** the Theme and Density Fluxor slices,
 **When** a preference changes,
-**Then** exactly one effect owns persistence + JS interop (single-writer discipline, ADR-007). *(NFR9)*
+**Then** exactly one effect owns persistence + JS interop (single-writer discipline, ADR-007).
 
 ## Epic 2: Read-Only Projection Experience *(the read-only MVP)*
 
-An operator can browse domain read-models through registry-driven navigation, an urgency-sorted home directory, the command palette, and projections rendered into a filterable, accessible `FluentDataGrid` fed live from EventStore, with row-level fresh-item indicators delegated to Epic 9 / FC-NIP. Covers FR1, FR5 (projection attributes), FR11, FR13 (read path), FR14; UX-DR1, 2, 3, 5, 6, 7; confirms FC-TBL.
+An operator can browse domain read-models through registry-driven navigation, an urgency-sorted home directory, the command palette, and projections rendered into a filterable, accessible `FluentDataGrid` fed live from EventStore, with row-level fresh-item indicators delegated to Epic 9 / FC-NIP. Covers canonical FR-1, FR-3, and FR-10–FR-13; UX-DR1, 2, 3, 5, 6, 7; confirms FC-TBL.
 
 ### Story 2.1: Render a projection from a `[Projection]` type
 
@@ -486,15 +529,15 @@ So that operators get a working read-model page with no hand-written UI.
 
 **Given** a `partial` class annotated `[Projection]` with a `[ProjectionRole]`,
 **When** the project builds,
-**Then** the 5 generated files appear under the public generated-output path, and the view dispatches Loading / Empty / Data states per the role. *(FR1, NFR7)*
+**Then** the 5 generated files appear under the public generated-output path, and the view dispatches Loading / Empty / Data states per the role. *(FR-1, FR-25)*
 
 **Given** the projection declares `[ProjectionRole.WhenState]`, `[ProjectionEmptyStateCta]`, and badge/format attributes,
 **When** rendered,
-**Then** the role strategy, empty-state CTA, and Level-1 display formats (`[RelativeTime]`, `[Currency]`) apply. *(FR5, UX-DR1)*
+**Then** the role strategy, empty-state CTA, and Level-1 display formats (`[RelativeTime]`, `[Currency]`) apply. *(FR-3, UX-DR1)*
 
 **Given** a `[Projection]` type that is not `partial`,
 **When** built,
-**Then** HFC1003 is reported and the build fails under TWAE. *(FR6, NFR1)*
+**Then** HFC1003 is reported and the build fails under TWAE. *(FR-1, FR-25, NFR-1)*
 
 ### Story 2.2: Registry-driven navigation and home directory
 
@@ -506,11 +549,11 @@ So that I can find every bounded context and projection without a hand-built men
 
 **Given** registered `DomainManifest`s,
 **When** the shell renders,
-**Then** `FrontComposerNavigation` shows a `FluentNav` tree grouped by bounded context with per-projection count and "New" badges. *(FR14, UX-DR2)*
+**Then** `FrontComposerNavigation` shows a `FluentNav` tree grouped by bounded context with per-projection count and "New" badges. *(FR-10, UX-DR2)*
 
 **Given** the home route (`/`, `/home`),
 **When** loaded,
-**Then** `FcHomeDirectory` shows urgency-sorted bounded-context cards across its four progressive states. *(FR14)*
+**Then** `FcHomeDirectory` shows urgency-sorted bounded-context cards across its four progressive states. *(FR-10)*
 
 **Given** a compact viewport,
 **When** the shell renders,
@@ -526,21 +569,21 @@ So that I can narrow large read-models and always know the grid's state.
 
 **Given** a projection grid,
 **When** I type in a column filter,
-**Then** a debounced `ColumnFilterChangedAction` filters rows, with a filter summary and reset button shown. *(FR11)*
+**Then** a debounced `ColumnFilterChangedAction` filters rows, with a filter summary and reset button shown. *(FR-11)*
 
 **Given** the query is loading or returns no rows,
 **When** rendered,
-**Then** `FcProjectionLoadingSkeleton` (Card/Timeline/Grid) or `FcProjectionEmptyPlaceholder` shows respectively. *(FR11, UX-DR5)*
+**Then** `FcProjectionLoadingSkeleton` (Card/Timeline/Grid) or `FcProjectionEmptyPlaceholder` shows respectively. *(FR-11, UX-DR5)*
 
 **Given** status-enum columns mapped via `[ProjectionBadge]`,
 **When** rendered,
 **Then** status members render as colored Fluent icons with hover and keyboard-focus tooltip labels plus
 an always-present `aria-label`; numeric count slots remain `FluentBadge` / `FcDesaturatedBadge` pills.
-*(UX-DR2, NFR6)*
+*(UX-DR2, NFR-3)*
 
 **Given** a query exceeding the slow-query threshold or the max-items cap,
 **When** rendered,
-**Then** a non-blocking slow-query / max-items-truncation notice is surfaced above the grid. *(FR11)*
+**Then** a non-blocking slow-query / max-items-truncation notice is surfaced above the grid. *(FR-11)*
 
 ### Story 2.4: Accessible expand-in-row detail
 
@@ -552,7 +595,7 @@ So that expanded content and filter-hidden expansions are perceivable.
 
 **Given** a row with detail,
 **When** I expand it,
-**Then** the detail renders in an always-present `role="region"` panel. *(FR11, NFR6, UX-DR6)*
+**Then** the detail renders in an always-present `role="region"` panel. *(FR-11, NFR-3, UX-DR6)*
 
 **Given** an expanded row that a filter then hides,
 **When** the filter applies,
@@ -572,7 +615,7 @@ So that >15-column grids stay usable without horizontal overload.
 
 **Given** a projection with more than 15 columns,
 **When** rendered,
-**Then** `FcColumnPrioritizer` activates and HFC1029 is reported as info at build. *(FR11, FR6)*
+**Then** `FcColumnPrioritizer` activates and HFC1029 is reported as info at build. *(FR-11, FR-25)*
 
 **Given** `[ColumnPriority(n)]` annotations,
 **When** rendered,
@@ -593,12 +636,14 @@ without marking individual rows as new. *(PRD FR-12, UX-DR5)*
 
 **Given** automatic row-level fresh-item marking is required,
 **When** a command outcome carries the confirmed FC-NIP row metadata,
-**Then** Epic 9 / Story 9.2 owns producing and rendering `FcNewItemIndicator`; Story 2.6 does not infer
-row identity from projection nudges. *(PRD FR-13, FR-26)*
+**Then** Story 2.6 does not infer row identity from projection nudges. *(PRD FR-13, FR-26)*
 
 **Given** the SignalR connection drops,
 **When** it reconnects,
 **Then** `FcProjectionConnectionStatus` surfaces reconnect/reconciliation state and the grid reconciles missed changes. *(UX-DR5)*
+
+**Historical delivery dependency:** Epic 9 / Story 9.2, now done, supplied the row-level producer and
+consumer evidence. This is delivery provenance, not acceptance work owned by Story 2.6.
 
 ### Story 2.7: Command palette discovery and global search
 
@@ -610,7 +655,7 @@ So that I can jump to any projection or action quickly.
 
 **Given** the shell is focused,
 **When** I press `Ctrl+K`,
-**Then** `FcCommandPalette` opens as an ARIA combobox with a search input and keyboard-navigable results. *(FR14, UX-DR4)*
+**Then** `FcCommandPalette` opens as an ARIA combobox with a search input and keyboard-navigable results. *(FR-10, UX-DR4)*
 
 **Given** a search query,
 **When** I type,
@@ -626,11 +671,11 @@ So that I can build on the DataGrid without breaking-change risk.
 
 **Given** the FC-TBL API surface exercised by the Story 1.0 spike,
 **When** documented and reviewed,
-**Then** the column/filter/expand API is marked confirmed-stable — or, per the Contract-confirmation Definition-of-Done (2026-06-21), any open items are recorded as tracked, dated, owned blocking follow-ups ("escalated with owners" alone is **not** Done) — and reflected in `PublicAPI.Shipped.txt` if public. *(NFR10)*
+**Then** the column/filter/expand API is marked confirmed-stable — or, per the Contract-confirmation Definition-of-Done (2026-06-21), any open items are recorded as tracked, dated, owned blocking follow-ups ("escalated with owners" alone is **not** Done) — and reflected in `PublicAPI.Shipped.txt` if public. *(NFR-11)*
 
 ## Epic 3: Command Authoring & Lifecycle
 
-An operator can submit a command from a generated form and watch it through its full lifecycle, with form shape driven by the density rule and confirmation bound to the EventStore status endpoint. Covers FR2, FR3, FR12 (core), FR13; AR6 (FC-CMD), AR8 (budgets), AR9 (status contract).
+An operator can submit a command from a generated form and watch it through its full lifecycle, with form shape driven by the density rule and confirmation bound to the EventStore status endpoint. Covers canonical FR-2, FR-4, FR-14, and FR-15; AR6 (FC-CMD), AR8 (budgets), AR9 (status contract).
 
 ### Story 3.1: Generate a command form from a `[Command]` type
 
@@ -642,15 +687,18 @@ So that operators get a working submit form with no hand-written UI.
 
 **Given** a `[Command]` type with a public parameterless ctor and a `MessageId`,
 **When** built,
-**Then** the 6–7 generated files appear (form, actions, lifecycle feature, registration, renderer, last-used subscriber, lifecycle bridge). *(FR2)*
+**Then** exactly seven non-page files appear: `CommandForm`, `CommandActions`,
+`CommandLifecycleFeature`, `CommandRegistration`, `CommandRenderer`, `CommandLastUsedSubscriber`, and
+`CommandLifecycleBridge`; `CommandPage` is additionally emitted only when density is `FullPage`.
+*(PRD FR-14)*
 
 **Given** a `[Command]` missing the parameterless ctor or `MessageId`,
 **When** built,
-**Then** HFC1009 / HFC1006 are reported respectively. *(FR6)*
+**Then** HFC1009 / HFC1006 are reported respectively. *(FR-2, FR-25)*
 
 **Given** an unsupported field type,
 **When** rendered,
-**Then** `FcFieldPlaceholder` renders it and HFC1002 is reported. *(FR2)*
+**Then** `FcFieldPlaceholder` renders it and HFC1002 is reported. *(FR-14)*
 
 ### Story 3.2: Apply the density rule to command forms
 
@@ -662,15 +710,15 @@ So that simple commands are inline and complex ones get a full page.
 
 **Given** a command's non-derivable property count,
 **When** generated,
-**Then** ≤1 → `Inline`, 2–4 → `CompactInline`, ≥5 → `FullPage` (with `CommandPage`). *(FR3)*
+**Then** ≤1 → `Inline`, 2–4 → `CompactInline`, ≥5 → `FullPage` (with `CommandPage`). *(FR-4)*
 
 **Given** derivable fields (`MessageId`, `CorrelationId`, `TenantId`, `UserId`, timestamps, `[DerivedFrom]`),
 **When** the form renders,
-**Then** they are excluded from the form and injected server/infrastructure-side. *(FR3)*
+**Then** they are excluded from the form and injected server/infrastructure-side. *(FR-4, FR-14)*
 
 **Given** a command exceeding the property thresholds,
 **When** built,
-**Then** HFC1007 (warn >30 / error >100) and HFC1011 (error >200) apply. *(FR6)*
+**Then** HFC1007 (warn >30 / error >100) and HFC1011 (error >200) apply. *(FR-2, FR-25)*
 
 ### Story 3.3: Confirm the FC-CMD pending-identity and correlation contract
 
@@ -686,7 +734,7 @@ So that all command epics share one agreed pending-identity / correlation model.
 
 **Given** the confirmed contract,
 **When** a command is dispatched,
-**Then** its `messageId`/`correlationId` are ULIDs generated via `IUlidFactory` (never GUIDs). *(NFR2)*
+**Then** its `messageId`/`correlationId` are ULIDs generated via `IUlidFactory` (never GUIDs). *(FR-14)*
 
 ### Story 3.4: Command lifecycle UI
 
@@ -698,7 +746,10 @@ So that I know whether it was acknowledged, confirmed, or rejected.
 
 **Given** a submitted command,
 **When** it progresses,
-**Then** `FcLifecycleWrapper` surfaces `Submitting → Acknowledged → Syncing → Confirmed/Rejected` via badge/message-bar. *(FR12, UX-DR4)*
+**Then** `FcLifecycleWrapper` surfaces `Submitting → Acknowledged → Syncing` and the terminal or
+degraded outcomes `Confirmed`, `IdempotentConfirmed`, `Rejected`, `NeedsReview`, `Warning`, and
+`Degraded` via badge/message-bar without treating HTTP acceptance as projection confirmation.
+*(PRD FR-15, UX-DR4)*
 
 **Given** a rejection,
 **When** received,
@@ -706,7 +757,7 @@ So that I know whether it was acknowledged, confirmed, or rejected.
 
 **Given** the lifecycle Fluxor slice,
 **When** state transitions,
-**Then** a single dispatch source owns each transition (single-writer). *(NFR9)*
+**Then** a single dispatch source owns each transition (single-writer, architecture invariant).
 
 ### Story 3.5: Bind the polling coordinator to the EventStore status endpoint
 
@@ -718,7 +769,7 @@ So that confirmed/rejected outcomes reflect backend truth.
 
 **Given** an acknowledged command,
 **When** the coordinator polls,
-**Then** it binds to `GET /api/v1/commands/status/{id}` (confirmed-stable, not newly built) and transitions to Confirmed/Rejected on the result. *(FR13, AR9)*
+**Then** it binds to `GET /api/v1/commands/status/{id}` (confirmed-stable, not newly built) and transitions to Confirmed/Rejected on the result. *(FR-15, AR9)*
 
 **Given** the endpoint contract,
 **When** EventStore maintainers review,
@@ -740,11 +791,11 @@ So that slow commands degrade gracefully instead of hanging.
 **When** Product/UX and EventStore evidence is reviewed,
 **Then** the implementation verifies the recorded values: confirming-to-degraded threshold `10_000` ms,
 polling cadence `1_000` ms, polling max `120_000` ms, Epic 3 retry budget `0`, and Epic 4 retry
-budget `1 x 250` ms, all deterministic and testable via `FakeTimeProvider`. *(NFR10)*
+budget `1 x 250` ms, all deterministic and testable via `FakeTimeProvider`. *(NFR-8, NFR-11)*
 
 ## Epic 4: Safe & Concurrent Command Execution
 
-An operator can run destructive and rapid command sequences safely — confirmation, abandonment guard, one-at-a-time execution, policy-gated authorization, and degraded/retry handling. Covers FR12 (destructive/authz paths); AR7 (FC-CNC), AR8 (retry/degraded).
+An operator can run destructive and rapid command sequences safely — confirmation, abandonment guard, one-at-a-time execution, policy-gated authorization, and degraded/retry handling. Covers canonical FR-16; AR7 (FC-CNC), AR8 (retry/degraded).
 
 ### Story 4.1: Destructive-command confirmation
 
@@ -756,11 +807,11 @@ So that I can't trigger irreversible actions by accident.
 
 **Given** a `[Destructive]` command,
 **When** I submit it,
-**Then** `FcDestructiveConfirmationDialog` shows the configured title/body and requires confirm before dispatch. *(FR12, UX-DR4)*
+**Then** `FcDestructiveConfirmationDialog` shows the configured title/body and requires confirm before dispatch. *(FR-16, UX-DR4)*
 
 **Given** a destructive-verb-named command without `[Destructive]`,
 **When** built,
-**Then** HFC1020 (info) advises adding it; a `[Destructive]` command with zero non-derivable properties reports HFC1021 (error). *(FR6)*
+**Then** HFC1020 (info) advises adding it; a `[Destructive]` command with zero non-derivable properties reports HFC1021 (error). *(FR-16, FR-25)*
 
 ### Story 4.2: Unsaved-form abandonment guard
 
@@ -772,7 +823,7 @@ So that I don't lose in-progress input.
 
 **Given** a dirty command form,
 **When** I attempt to navigate away,
-**Then** `FcFormAbandonmentGuard` (`NavigationLock`) intercepts and shows a `FluentMessageBar` to confirm or cancel. *(FR12, UX-DR4)*
+**Then** `FcFormAbandonmentGuard` (`NavigationLock`) intercepts and shows a `FluentMessageBar` to confirm or cancel. *(FR-16, UX-DR4)*
 
 **Given** a clean form,
 **When** I navigate,
@@ -805,15 +856,18 @@ So that I only see and run actions I'm permitted to.
 
 **Given** a `[RequiresPolicy]` command,
 **When** the region renders,
-**Then** `FcAuthorizedCommandRegion` shows Pending/Authorized/NotAuthorized per `CommandAuthorizationDecisionKind`. *(FR12)*
+**Then** `FcAuthorizedCommandRegion` shows Pending/Authorized/NotAuthorized per `CommandAuthorizationDecisionKind`. *(FR-16)*
 
 **Given** an invalid or duplicate `[RequiresPolicy]`,
 **When** built,
-**Then** HFC1056 / HFC1057 (errors) are reported. *(FR6)*
+**Then** HFC1056 / HFC1057 (errors) are reported. *(FR-16, FR-25)*
 
 **Given** the command service,
 **When** dispatching,
-**Then** the `AuthorizingCommandServiceDecorator` enforces the policy before dispatch.
+**Then** authorization is evaluated before `BeforeSubmit`, `BeforeSubmit` runs only when authorized,
+and protected commands are authorized again after `BeforeSubmit` immediately before dispatch; the
+`AuthorizingCommandServiceDecorator` remains the service-boundary fail-closed enforcement.
+*(PRD FR-16)*
 
 ### Story 4.5: Retry and degraded-state handling
 
@@ -825,11 +879,12 @@ So that transient faults recover without manual resubmission.
 
 **Given** a transient dispatch fault,
 **When** it occurs,
-**Then** the command retries within the agreed retry budget; exceeding it surfaces a retryable degraded state. *(AR8)*
+**Then** the command performs exactly one retry after exactly `250` ms using the same pre-accept
+`MessageId`; a second failure surfaces a retryable degraded state. *(AR8, PRD FR-14)*
 
 **Given** pending/rejected commands,
 **When** present,
-**Then** `FcPendingCommandSummary` lists them in an `aria-live` region. *(NFR6)*
+**Then** `FcPendingCommandSummary` lists them in an `aria-live` region. *(NFR-3)*
 
 ### Command FR subclause traceability (PRD FR-14 / FR-15 / FR-16)
 
@@ -846,21 +901,20 @@ passing test method(s), or add a short AC-refinement note. This addendum does no
 | FR-14 form state preserved on retryable pre-accept failures | 4.5 | retry/degraded path | Implicit | Cite retry test + `FcFormAbandonmentGuardTests`. |
 | FR-14 `MessageId` is a ULID reused across pre-accept retry attempts | 3.3 + 4.5 | FC-CMD identity + `IUlidFactory` | Implicit | Cite `LifecycleStateServiceTests` / pending-command tests. |
 | FR-15 Submitting / Acknowledged / Syncing / Confirmed / Rejected | 3.4 | `FcLifecycleWrapper` | In AC | Covered. |
-| FR-15 IdempotentConfirmed, NeedsReview, Warning | 3.4 (+ runtime) | `ILifecycleStateService` + `LifecycleStateService` | Implicit — states exist, not named in AC | Add AC-refinement note naming these terminals; cite `FcLifecycleWrapperRejectionTests` / `FcLifecycleWrapperThresholdTests`. |
+| FR-15 IdempotentConfirmed, NeedsReview, Warning | 3.4 (+ runtime) | `ILifecycleStateService` + `LifecycleStateService` | In AC | Cite `FcLifecycleWrapperRejectionTests` / `FcLifecycleWrapperThresholdTests` in delivery evidence. |
 | FR-15 Degraded / accepted-HTTP is not projection-confirmed | 3.5 / 3.6 | `GET /api/v1/commands/status/{id}` confirmed-stable | In AC | Covered (3.5 + 3.6 budgets). |
-| FR-16 `[RequiresPolicy]` evaluated before `BeforeSubmit` and again after for protected commands | 4.4 | `AuthorizingCommandServiceDecorator` + `CommandDispatchAuthorizationGate` | Implicit — sequencing not named | Add AC-refinement note pinning before/after sequencing; cite `RequiresPolicyAttributeTests` + authorization tests. |
+| FR-16 `[RequiresPolicy]` evaluated before `BeforeSubmit` and again after for protected commands | 4.4 | `AuthorizingCommandServiceDecorator` + `CommandDispatchAuthorizationGate` | In AC | Cite `RequiresPolicyAttributeTests` + authorization tests in delivery evidence. |
 | FR-16 service boundary enforces authorization | 4.4 | `AuthorizingCommandServiceDecorator` | In AC | Covered. |
 | FR-16 FC-CNC v1 blocks later local submits (no queue/batch) | 4.3 | FC-CNC one-at-a-time | In AC | Covered. |
 | FR-16 destructive confirmation / abandonment guard | 4.1 / 4.2 | `FcDestructiveConfirmationDialog` / `FcFormAbandonmentGuard` | In AC | Covered. |
 
-Two AC-refinement notes are the only story-text changes: (1) name `IdempotentConfirmed` / `NeedsReview`
-/ `Warning` as surfaced lifecycle terminals in Story 3.4's evidence; (2) name the `[RequiresPolicy]`
-before/after `BeforeSubmit` sequencing in Story 4.4's evidence. Both reference existing code and tests;
-neither changes implemented behavior.
+The AC refinements are applied in Stories 3.4 and 4.4: the lifecycle terminals and the
+`[RequiresPolicy]` before/after `BeforeSubmit` sequence are now explicit. Both reference existing code
+and tests; neither changes implemented behavior.
 
 ## Epic 5: AI-Agent (MCP) Surface
 
-An AI agent can discover generated commands as MCP tools, read projections and skill docs as resources, poll lifecycle, and operate within fail-closed security with schema negotiation. Covers FR4, FR16, FR17, FR18, FR19.
+An AI agent can discover generated commands as MCP tools, read projections and skill docs as resources, poll lifecycle, and operate within fail-closed security with schema negotiation. Covers canonical FR-17–FR-19.
 
 ### Story 5.1: Expose generated commands as MCP tools
 
@@ -872,15 +926,15 @@ So that I can invoke domain commands through the protocol.
 
 **Given** a generated `McpManifest`,
 **When** I call `tools/list`,
-**Then** one tool per `McpCommandDescriptor` is built dynamically with its per-descriptor JSON schema. *(FR16, FR4)*
+**Then** one tool per `McpCommandDescriptor` is built dynamically with its per-descriptor JSON schema. *(FR-17)*
 
 **Given** a `tools/call`,
 **When** the args pass admission → schema negotiation → validation,
-**Then** the command instantiates, derivable values inject server-side, and dispatch returns an `McpCommandAcknowledgement`. *(FR16)*
+**Then** the command instantiates, derivable values inject server-side, and dispatch returns an `McpCommandAcknowledgement`. *(FR-17)*
 
 **Given** server-controlled fields (`TenantId`/`UserId`/`MessageId`/`CorrelationId`) in tool input,
 **When** received,
-**Then** they are blocked/ignored. *(FR18)*
+**Then** they are blocked/ignored. *(FR-19)*
 
 ### Story 5.2: Lifecycle subscription tool
 
@@ -892,7 +946,12 @@ So that I can await confirmation after invoking it.
 
 **Given** the fixed `frontcomposer.lifecycle.subscribe` tool,
 **When** I pass a `correlationId`/`messageId` (ULID, ≤64 ASCII),
-**Then** I receive an `McpLifecycleSnapshot` (state, terminal, outcome, bounded transitions, nested `retry.retryAfterMs` and `retry.maxLongPollMs`). *(FR16)*
+**Then** I receive an `McpLifecycleSnapshot` (state, terminal, outcome, bounded transitions, nested `retry.retryAfterMs` and `retry.maxLongPollMs`). *(FR-17)*
+
+**Given** a command is invoked in one MCP request/service scope,
+**When** `frontcomposer.lifecycle.subscribe` is called from a later, separate request/service scope,
+**Then** it resolves the same lifecycle snapshot from cross-request storage without relying on scoped
+in-memory state, and the hosting test creates and disposes both scopes independently. *(PRD FR-17)*
 
 **Given** a malformed identifier,
 **When** passed,
@@ -908,11 +967,11 @@ So that I can read tenant data and reference material.
 
 **Given** a projection resource URI `frontcomposer://<bounded-context>/projections/<projection-name>`,
 **When** read,
-**Then** tenant-scoped results render as Markdown via `McpMarkdownProjectionRenderer`. *(FR17)*
+**Then** tenant-scoped results render as Markdown via `McpMarkdownProjectionRenderer`. *(FR-18)*
 
 **Given** a skill resource `frontcomposer://skills/<id>`,
 **When** read,
-**Then** only the `agent-reference` section of the conforming doc is served, within the 32 KB cap (oversized → `SkillResourceTooLarge`). *(FR17)*
+**Then** only the `agent-reference` section of the conforming doc is served, within the 32 KB cap (oversized → `SkillResourceTooLarge`). *(FR-18)*
 
 ### Story 5.4: Fail-closed security gates
 
@@ -924,11 +983,11 @@ So that missing gates or auth failures never leak the domain surface.
 
 **Given** startup without both `IFrontComposerMcpTenantToolGate` and `IFrontComposerMcpResourceVisibilityGate`,
 **When** the server starts,
-**Then** startup throws. *(FR18)*
+**Then** startup throws. *(FR-19)*
 
 **Given** an auth/tenant/unknown failure,
 **When** it occurs,
-**Then** a single opaque shape is returned (callers can't fingerprint the cause); `tools/list` returns an empty list, not an error. *(FR18)*
+**Then** a single opaque shape is returned (callers can't fingerprint the cause); `tools/list` returns an empty list, not an error. *(FR-19)*
 
 ### Story 5.5: Schema fingerprint negotiation
 
@@ -940,15 +999,15 @@ So that incompatible clients can't dispatch commands.
 
 **Given** a client `x-frontcomposer-schema-fingerprint` header,
 **When** a `tools/call` arrives,
-**Then** `McpSchemaNegotiator` classifies the pair (Exact / CompatibleAdditive / CompatibleWarning / Incompatible). *(FR19)*
+**Then** `McpSchemaNegotiator` classifies the pair (Exact / CompatibleAdditive / CompatibleWarning / Incompatible). *(FR-19)*
 
 **Given** an Incompatible classification,
 **When** the call would cause a side-effect,
-**Then** it is blocked. *(FR19, NFR4)*
+**Then** it is blocked. *(FR-19, NFR-7)*
 
 ## Epic 6: Customization & Extensibility
 
-An adopter developer can override the generated UI at three levels from external assemblies, with accessibility-safety diagnostics keeping overrides correct. Covers FR8, FR5 (template/slot/override attributes); NFR6.
+An adopter developer can override the generated UI at three levels from external assemblies, with accessibility-safety diagnostics keeping overrides correct. Covers canonical FR-3 and FR-5 plus the canonical accessibility NFR.
 
 ### Story 6.1: Level-2 ProjectionTemplate overrides
 
@@ -960,11 +1019,11 @@ So that I can replace the generated layout without forking.
 
 **Given** a Blazor component annotated `[ProjectionTemplate]` with a typed `Context` parameter,
 **When** registered via `AddHexalithProjectionTemplates<TMarker>`,
-**Then** it renders in place of the generated view for its projection+role. *(FR8, FR5, FR4)*
+**Then** it renders in place of the generated view for its projection+role. *(FR-3, FR-5)*
 
 **Given** an invalid template (bad projection type, missing context, duplicate, version mismatch),
 **When** built,
-**Then** HFC1033 / HFC1034 / HFC1037 / HFC1035–HFC1036 are reported respectively. *(FR6)*
+**Then** HFC1033 / HFC1034 / HFC1037 / HFC1035–HFC1036 are reported respectively. *(FR-5, FR-25)*
 
 ### Story 6.2: Level-3 field-slot overrides
 
@@ -976,11 +1035,15 @@ So that I can customize one field without replacing the whole view.
 
 **Given** a registered field-slot override with a valid selector and component,
 **When** the projection renders,
-**Then** the slot's custom fragment replaces the default field render via the slot registry. *(FR8)*
+**Then** the slot's custom fragment replaces the default field render via the slot registry. *(FR-5)*
 
 **Given** an invalid/duplicate slot selector or component,
-**When** built,
-**Then** HFC1038–HFC1041 are reported per the catalog. *(FR6)*
+**When** the corresponding registration or render phase executes,
+**Then** HFC1038 is reported at adopter call-site/startup for an invalid selector; HFC1039 is reported
+at startup or render for an incompatible component/field type; HFC1040 is reported at startup for a
+duplicate projection/role/field tuple; and HFC1041 is reported at startup for an incompatible slot
+contract version. Call-site tests, registry-startup tests, and `FcFieldSlotHost` render tests pin those
+phases; these are not claimed as SourceTools build diagnostics. *(PRD FR-5)*
 
 ### Story 6.3: Level-4 full-view overrides
 
@@ -992,11 +1055,13 @@ So that I have a final escape hatch for bespoke pages.
 
 **Given** a registered Level-4 view override,
 **When** the projection route resolves,
-**Then** the override registry supplies the full custom view in place of the generated one. *(FR8)*
+**Then** the override registry supplies the full custom view in place of the generated one. *(FR-5)*
 
 **Given** both a Level-2 template and a Level-4 override exist,
 **When** resolved,
-**Then** precedence follows the documented override-resolution order deterministically.
+**Then** precedence is deterministic: Level-4 full-view override, then Level-2 projection template,
+then the generated default. Level-3 field slots are consulted only inside a renderer that delegates
+field rendering; they do not outrank or compose into a Level-4 replacement. *(PRD FR-5)*
 
 ### Story 6.4: Override-accessibility safety diagnostics
 
@@ -1008,7 +1073,7 @@ So that customization can't silently break a11y.
 
 **Given** a custom override,
 **When** built,
-**Then** HFC1050–HFC1055 flag missing accessible name, keyboard reachability, suppressed focus, missing `aria-live` parity, motion-without-reduced-motion, and color-without-forced-colors. *(FR8, NFR6)*
+**Then** HFC1050–HFC1055 flag missing accessible name, keyboard reachability, suppressed focus, missing `aria-live` parity, motion-without-reduced-motion, and color-without-forced-colors. *(FR-5, NFR-3)*
 
 **Given** DEBUG + `IsDevelopment()`,
 **When** a customization-contract mismatch exists,
@@ -1016,7 +1081,7 @@ So that customization can't silently break a11y.
 
 ## Epic 7: Authoring Tooling & Drift Safety
 
-An adopter developer can inspect generated output, migrate across version edges, test generated components, and catch drift before it ships. Covers FR6, FR7, FR20, FR21, FR22.
+An adopter developer can inspect generated output, migrate across version edges, test generated components, and catch drift before it ships. Covers canonical FR-6, FR-20–FR-22, and FR-25.
 
 ### Story 7.1: `frontcomposer inspect`
 
@@ -1028,11 +1093,11 @@ So that I can verify what the generator produced without opening `obj/`.
 
 **Given** generated files + `*.diagnostics.json` sidecars,
 **When** I run `frontcomposer inspect [--build] [--format json]`,
-**Then** it reports generatedFiles/forms/grids/registrations/mcpManifestEntries/warnings/errors (schema `frontcomposer.cli.inspect.v1`). *(FR20)*
+**Then** it reports generatedFiles/forms/grids/registrations/mcpManifestEntries/warnings/errors (schema `frontcomposer.cli.inspect.v1`). *(FR-20)*
 
 **Given** `--fail-on-warning` / `--fail-on-error`,
 **When** matching diagnostics exist,
-**Then** the exit code reflects ActionableFindings (1); unavailable output → 3. *(FR20)*
+**Then** the exit code reflects ActionableFindings (1); unavailable output → 3. *(FR-20)*
 
 ### Story 7.2: `frontcomposer migrate`
 
@@ -1044,11 +1109,11 @@ So that I can upgrade safely with a dry-run preview.
 
 **Given** `--from`/`--to` matching a `MigrationCatalog` edge,
 **When** I run `migrate` (dry-run default),
-**Then** it plans entries (safe-fix/unchanged/skipped/failed/manual-only/conflict) without writing; `--apply` writes atomically. *(FR21)*
+**Then** it plans entries (safe-fix/unchanged/skipped/failed/manual-only/conflict) without writing; `--apply` writes atomically. *(FR-21)*
 
 **Given** a target inside `bin`/`obj`/`.git`/`/generated/`/submodule roots,
 **When** `--apply` runs,
-**Then** the write is refused (path-safety) and out-of-root paths are `[redacted-path]`. *(FR21)*
+**Then** the write is refused (path-safety) and out-of-root paths are `[redacted-path]`. *(FR-21)*
 
 ### Story 7.3: Surface the HFC diagnostic catalog
 
@@ -1060,7 +1125,7 @@ So that I can act on annotation/usage problems.
 
 **Given** any HFC1001–HFC1070 condition,
 **When** built under TWAE,
-**Then** the diagnostic appears with its cataloged severity (errors break the build). *(FR6, NFR1)*
+**Then** the diagnostic appears with its cataloged severity (errors break the build). *(FR-20, FR-25, NFR-1)*
 
 **Given** `inspect --severity`,
 **When** filtered,
@@ -1076,11 +1141,11 @@ So that unintended generated-surface changes are caught before release.
 
 **Given** `HfcDriftDetectionEnabled=true` and a valid baseline `AdditionalText`,
 **When** the generated surface changes structurally or in metadata,
-**Then** HFC1065 / HFC1066 are reported at the configured severity. *(FR7)*
+**Then** HFC1065 / HFC1066 are reported at the configured severity. *(FR-6)*
 
 **Given** a missing/malformed/oversized/unsupported baseline,
 **When** built,
-**Then** HFC1058–HFC1064 are reported per the catalog; the drift pipeline does not depend on `CompilationProvider`. *(FR6)*
+**Then** HFC1058–HFC1064 are reported per the catalog; the drift pipeline does not depend on `CompilationProvider`. *(FR-6, FR-25)*
 
 ### Story 7.5: Testing library — bUnit host and deterministic fakes
 
@@ -1092,15 +1157,18 @@ So that I can unit-test generated components reliably.
 
 **Given** `FrontComposerTestBase` / `AddFrontComposerTestHost()`,
 **When** I write a bUnit test,
-**Then** the host auto-registers fakes (`TestCommandService`/`TestQueryService`/`TestProjectionPageLoader`) with `JSInterop.Mode = Loose`. *(FR22)*
+**Then** the host auto-registers fakes (`TestCommandService`/`TestQueryService`/`TestProjectionPageLoader`) with `JSInterop.Mode = Loose`. *(FR-22)*
 
-**Given** `TestFaultInjectionProvider` and the evidence recorders,
+**Given** the configurable command/query/projection fakes,
 **When** I drive a scenario,
-**Then** deterministic faults (Drop/Delay/PartialDelivery/Reorder/ReconnectNudge) and redacted evidence are assertable. *(FR22)*
+**Then** rejection, timeout, stall, paging, filtering, sorting, authorization, and async-initialization
+outcomes are deterministic and assertable. `TestFaultEvidenceRecorder` records redacted
+Drop/Delay/PartialDelivery/Reorder/ReconnectNudge evidence only; it does not claim to inject those
+faults. *(PRD FR-22)*
 
 **Given** the Testing library's `PublicAPI.Shipped.txt`,
 **When** its exported surface drifts,
-**Then** `PackageBoundaryTests` fails until the baseline is intentionally updated. *(NFR10)*
+**Then** `PackageBoundaryTests` fails until the baseline is intentionally updated. *(NFR-11)*
 
 ## Epic 8: Aspire-grade Visual Refresh *(post-MVP chrome parity)*
 
@@ -1123,7 +1191,7 @@ So that the app looks modern instead of a saturated colored band.
 **When** rendered in light or dark theme,
 **Then** the header band uses `--colorNeutralBackground2` with a `--colorNeutralStroke2` bottom divider, the
 app title + action icons read in neutral foreground with sufficient contrast, and no brand-accent surface
-fill remains. *(FR9; §4.1)*
+fill remains. *(FR-8; §4.1)*
 
 **Given** the shell footer,
 **Then** it renders a matching top divider + subtle (`Color.Lightweight`) text on the same neutral chrome.
@@ -1157,8 +1225,13 @@ So that the header reads as a branded product surface like the Aspire logo cell.
 **Acceptance Criteria:**
 
 **Given** the header-start cluster,
-**Then** an optional logo-mark slot renders before the `AppTitle` (adopter-supplied or a default
-`FcFluentIcons` mark) with tightened lockup spacing; behavior is additive (no change when no logo is supplied).
+**When** an adopter supplies a logo-mark fragment,
+**Then** it renders exactly once before `AppTitle` with tightened lockup spacing and an accessible name.
+
+**Given** no logo-mark fragment is supplied,
+**When** the header renders,
+**Then** no logo placeholder or default icon is injected, `AppTitle` remains aligned, and the no-logo
+DOM/accessibility baseline is deterministic.
 
 ### Story 8.4: Compact default density + grid polish
 
@@ -1169,12 +1242,13 @@ So that more data is readable at a glance, while I can still change density.
 **Acceptance Criteria:**
 
 **Given** a fresh session with no stored preference,
-**Then** the default `data-fc-density` is **Compact**, and the choice remains changeable in `FcSettingsDialog`. *(FR15)*
+**Then** the default `data-fc-density` is **Compact**, and the choice remains changeable in `FcSettingsDialog`. *(FR-9)*
 
 **Given** a projection grid,
-**Then** rows tighten toward ~46px via the `--fc-spacing-unit` cascade with a subtle `--colorSubtleBackgroundHover`
-row-hover, and the header is **sticky** — confirmed against the generated `FluentDataGrid` (if not already set,
-via a `ProjectionRoleBodyEmitter` change + regenerated Verify snapshots).
+**Then** Compact density resolves to an exact `32px` row metric through
+`DataGridDensityMetrics.ResolveRowHeightPx(DensityLevel.Compact)`, row hover uses
+`--colorSubtleBackgroundHover`, and the generated `FluentDataGrid` header remains sticky while the
+grid body scrolls; rendered DOM/computed-style evidence and regenerated Verify snapshots pin both.
 
 ### Story 8.5: Icon+label navigation rail + projection flyout
 
@@ -1202,8 +1276,10 @@ badges remain outside the icon content stack.
 single-active-item rule lights the current projection; the flyout is fully keyboard-navigable (Enter/Space,
 arrows, Esc, focus-return) with `role="menu"`. *(UX-DR6)*
 
-**Given** the pinned RC `5.0.0-rc.3-26138.1`,
-**Then** flyout anchoring/keyboard and `data-testid`/`role`/`aria-*` splatting are confirmed before commit (§4.3 caveat).
+**Historical composite delivery record:** Story 8.5 is done. The rail, badges, flyout, keyboard/focus
+behavior, and accessibility pins were delivered as one composite story. Fluent UI version authority is
+the repository’s central package declaration (currently `5.0.0-rc.4-26180.1`), not this historical
+story; upgrades must re-run flyout anchoring/keyboard and `data-testid`/`role`/`aria-*` splatting tests.
 
 ### Story 8.6: Reusable `FcPageToolbar`
 
@@ -1236,7 +1312,7 @@ question; warning/info extensions) emitted by the generator (`[ProjectionBadge]`
 
 **Given** the status icon,
 **Then** the label is revealed on **hover and keyboard focus** via `FluentTooltip`, and an `aria-label` is
-**always** present (never hover-only), preserving NFR6/WCAG; numeric count slots keep the `FluentBadge` pill.
+**always** present (never hover-only), preserving NFR-3/WCAG 2.2 AA; numeric count slots keep the `FluentBadge` pill.
 
 **Given** architecture.md §4.1 + epics.md UX-DR2,
 **Then** both are amended to record the colored-icon status model superseding the pill-only model.
@@ -1248,10 +1324,10 @@ question; warning/info extensions) emitted by the generator (`[ProjectionBadge]`
 > backlog home. It does not reopen completed Epics 2 or 3, and it must not fabricate row identity from the
 > current projection nudge seam.
 > Story 9.1 is done as of 2026-07-05: the approved source is FrontComposer-owned pending-command row
-> metadata populated from generated grid/command runtime context. Story 9.2 remains the implementation and
-> release-evidence gate.
+> metadata populated from generated grid/command runtime context. Story 9.2 is also done; its
+> implementation evidence remains the release regression baseline.
 
-### Story 9.1: Confirm the FC-NIP row-identity producer contract
+### Story 9.1: FC-NIP row-identity producer decision record
 
 Decision status: **done 2026-07-05**. Approved payload source is FrontComposer-owned pending-command row
 metadata populated from generated grid/command runtime context. EventStore status remains lifecycle/status by
@@ -1259,27 +1335,30 @@ metadata populated from generated grid/command runtime context. EventStore statu
 `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md`.
 
 As a FrontComposer maintainer,
-I want a confirmed row-identity payload contract for fresh-row indicators,
-So that FrontComposer can mark newly materialized rows without guessing from projection nudges.
+I want the closed row-identity payload decision retained for fresh-row indicators,
+So that future work does not reopen the source or guess from projection nudges.
 
 **Acceptance Criteria:**
 
-**Given** a command outcome that can create or materially change a projection row,
-**When** the producer contract is reviewed,
-**Then** the contract identifies the exact payload fields required to call
+**Given** the approved 2026-07-05 contract,
+**When** its payload is consumed,
+**Then** FrontComposer-owned pending-command row metadata supplies the exact fields required to call
 `INewItemIndicatorStateService.Add(...)`: `ViewKey` or lane key, row `EntityKey`, command `MessageId`,
 projection type, and any status-slot metadata needed to avoid ambiguity.
 
 **Given** the current EventStore status endpoint and projection nudge contracts,
-**When** they do not provide precise row identity,
-**Then** the story records a blocking follow-up with owner/date instead of fabricating identity through
-diffing or broad row marking.
+**When** row identity is resolved,
+**Then** neither is used as the producer: EventStore remains lifecycle/status by `MessageId`, and
+projection nudges must not be diffed or used for broad row marking.
 
-**Given** the contract is confirmed,
-**Then** `fc-tbl`, `fc-cmd`, and DataGrid documentation name FC-NIP as the owner of automatic row-level
-fresh-item marking.
+**Given** the closed decision record,
+**Then** the contract artifact and completed Story 9.2 evidence remain the authority; this story has no
+open decision branch and must not return to implementation status.
 
 ### Story 9.2: Wire `FcNewItemIndicator` producer and generated-grid consumer
+
+Delivery status: **done**. Retained as the completed producer/consumer acceptance and release
+regression contract; it is not a queue candidate.
 
 As an operator,
 I want rows created or materially changed by a confirmed command outcome to be marked as new,
@@ -1401,7 +1480,7 @@ and punctuation-heavy string secret values.
 **Given** a new public Testing helper emits evidence,
 **Then** `PublicAPI.Shipped.txt`, README guidance, and redaction tests are updated intentionally.
 
-## Epic 11: Architecture Review Remediation *(post-MVP quality hardening)*
+## Epic 11: Release Readiness Remediation Program *(post-MVP quality hardening)*
 
 > **Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), triggered by the
 > full-repo architecture/engineering-quality review (`_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`:
@@ -1409,13 +1488,13 @@ and punctuation-heavy string secret values.
 > empty-state stylesheet, nullable-numeric codegen, `GeneratedLiteral` escaping incl. a latent quote-injection
 > bug, nav-slug unification, theme-watcher disposal race, `@key` on reordering loops, hygiene) was applied
 > directly under the proposal (PR #48); the stories below carry the Moderate/Major remainder. **Does not reopen
-> completed Epics 1–8; independent of Epics 9/10.** Each story references the review finding IDs it closes in
+> completed Epics 1–10.** Epic 11 consumes completed Epic 10 governance evidence where a story cites it. Each story references the review finding IDs it closes in
 > its Change Log (proposal success criterion), and the four blind-spot guard classes (unlinked stylesheets,
 > dead scoped CSS, parameter-splat surfaces, cross-request lifetimes) each gain a durable Governance test.
-> The Epic 11 implementation-order table below is authoritative. Do not infer the next story from file order,
-> numeric sort, or heading order.
-> Story 11.0 is done as of 2026-07-05 and unblocks Story 11.1+ `create-story` work. Story 11.8 is done as of 2026-07-05; Stories 11.11-11.14 remain deliberately ordered last and must implement/evidence the approved package-boundary plan.
-> After Story 11.7, create lower-risk remediation in the stated order before package-boundary stories.
+> The workstream/current-state table below is authoritative. Do not infer an implementation candidate
+> from file order, numeric sort, or a decomposition-parent heading. Stories 11.0 and 11.8 are completed
+> decision records; Stories 11.11–11.14 are completed delivery records. Stories 11.17, 11.18, and
+> 11.19 are nonimplementable decomposition parents. Only their materialized children carry queue state.
 >
 > **Decision gates (contract-confirmation DoD, 2026-06-21 amendment - tracked, owned, dated):** **Story 11.0**
 > (command/projection route contract) - owner **Architect + Product**, assigned **2026-07-05**, resolved
@@ -1425,31 +1504,24 @@ and punctuation-heavy string secret values.
 > decision and compatibility plan, amends the multi-TFM decision) - owner **Architect + PM**, assigned **2026-07-04**,
 > resolved **2026-07-05** by approving the split and recording package-compat requirements in
 > `_bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md`.
-> **IA gate FC-IA-1** (module-tab route encoding + projection-flyout IA) - owner **Product/UX +
-> Architect**, assigned **2026-07-05**, due **before Epic 11 route/navigation dev kickoff**. Recorded in
-> `ux-experience-2026-07-05.md` (IA Decision Gate - FC-IA-1). Story 11.7 and any navigation/module-tab
-> route story stay blocked until FC-IA-1 is Product/UX-signed-off.
+> **IA gate FC-IA-1** (module-tab route encoding + projection-flyout IA) was resolved and signed off
+> on **2026-07-05** by **Product/UX + Architect**. Canonical module/tab routes are `/{module}/{tab}`;
+> the projection flyout is secondary IA. The decision is recorded in
+> `_bmad-output/contracts/fc-ia-1-module-tab-ia-decision-2026-07-05.md`.
 
-### Epic 11 Implementation Order
+### Epic 11 Workstreams And Current State
 
-| Order | Story or group | Status / rule |
+| Workstream | Stories | Current state on 2026-07-15 |
 | --- | --- | --- |
-| 1 | 11.0 route-contract decision | Done 2026-07-05; historical gate, not an implementation candidate. |
-| 2 | 11.1 token lifecycle and circuit-safe auth | Next implementation candidate after gates. |
-| 3 | 11.2 projection realtime resilience | Implement before lower-risk cleanup. |
-| 4 | 11.4 security-validation hardening | Implement as three independently verifiable task groups. |
-| 5 | 11.3 MCP cross-request lifecycle and operability | Implement after security validation setup. |
-| 6 | 11.5 dead CSS and visual-conformance guards | Guard-first. |
-| 7 | 11.6 Testing harness failure modes | Required for adopter failure-path testing. |
-| 8 | 11.7 command/projection route implementation | Requires 11.0 done. |
-| 9 | 11.9 / 11.15 / 11.16 consolidation stories | Lower-risk remediation group. |
-| 10a | 11.17a–d one-type-per-file split (CLI · SourceTools · MCP/runtime · Shell) | Per-package child stories; each names its validation lane. |
-| 10b | 11.18a–c LoggerMessage migration (fail-closed/security · warning+ · hot-path) | Security-adjacent child first; each names its lane. |
-| 10c | 11.19a–d enforcement/policy alignment (CS1591 · NuGet audit · l10n+rename · analyzer-elevation decision) | Three child stories + one decision gate; no global warning/analyzer disable. |
-| 11 | 11.8 Contracts split decision | Done 2026-07-05; historical gate, not an implementation candidate. |
-| 12 | 11.11 / 11.12 / 11.13 / 11.14 | Implement last; package-boundary and public-API evidence required. |
+| Runtime reliability and security | 11.0–11.5, 11.18a | 11.0–11.5 done; 11.18a in review. |
+| Adopter testing and route integrity | 11.6–11.7 | Done; 11.6 consumes completed Story 10.5 privacy evidence. |
+| Contracts and package boundary | 11.8, 11.11–11.14 | Done; retained as decision/delivery history, not queue candidates. |
+| Maintainability and enforcement | 11.9, 11.15–11.16, 11.17a–d, 11.18b–c, 11.19a–d | 11.9 and 11.15–11.16 done; 11.17a done; 11.17b–d and 11.18a in review; 11.18b–c and 11.19a–d materialized for future implementation. |
 
-Story creation follows this table over heading order, numeric sort, or file order.
+Within logging remediation, ownership precedence is deterministic: 11.18a security/fail-closed sites
+first, 11.18c command-lifecycle/projection/polling hot paths second, and 11.18b residual
+Warning/Error/Critical sites last. A site belongs to exactly one child. Parent Stories 11.17, 11.18,
+and 11.19 must never receive backlog or ready-for-dev status.
 
 ### Story 11.0: Command/projection route-contract decision gate
 
@@ -1465,7 +1537,7 @@ So that command activation from the palette and empty-state CTA targets real gen
 
 **Given** the current route families — projection links `/{bc-lower}/{proj-kebab}`, palette/CTA command links (`/domain/{kebab}/{kebab}`), and generated command pages (`/commands/{BC}/{TypeName}`),
 **When** Architect + Product review the route contract,
-**Then** they select one canonical command route family and record the decision in a contract artifact or `architecture.md` section. *(H10 remainder; refines FR14 / UX-DR4.)*
+**Then** they select one canonical command route family and record the decision in a contract artifact or `architecture.md` section. *(H10 remainder; refines FR-10 / UX-DR4.)*
 
 **Given** the route decision is recorded,
 **When** Story 11.7 is created,
@@ -1494,7 +1566,7 @@ So that the app does not silently lose its EventStore connection whenever there 
 **Given** any token path,
 **When** token storage, acquisition, eviction, or sign-out paths execute,
 **Then** no raw token value is logged, and expired/sign-out eviction and circuit-context acquisition are pinned by tests.
-*(Refines FR13; closes H2, M1.)*
+*(Refines FR-7 and FR-12; closes H2, M1.)*
 
 ### Story 11.2: Projection realtime resilience
 
@@ -1515,7 +1587,7 @@ So that live grids keep updating after a hub disconnect longer than the default 
 **Given** the realtime wire contract,
 **When** SignalR projection subscriptions are created and messages are handled,
 **Then** hub method-name literals (`ProjectionChanged`, `JoinGroupScoped`, …) are pinned and `SignalRProjectionHubConnectionFactory` gains direct unit tests.
-*(Refines FR13; closes H6, M2, M3, M4.)*
+*(Refines FR-12; closes H6, M2, M3, M4.)*
 
 ### Story 11.3: MCP cross-request lifecycle and operability
 
@@ -1536,7 +1608,7 @@ So that a `subscribe → poll` sequence returns real transitions and operators c
 **Given** the zero-signal fail-closed sites (`FrontComposerMcpProjectionReader` bare catch, tools-list, lifecycle auth),
 **When** those branches deny, hide, or downgrade a request,
 **Then** each logs exactly one sanitized `[LoggerMessage]` event, `BuildServiceProvider()` is removed from `AddFrontComposerMcp` (ASP0000), and API-key hashes are stored (or dev-only is documented). *(M9, M10, M12)*
-*(Refines FR16/FR18; closes H4, M9, M10, M12.)*
+*(Refines FR-17 and FR-19; closes H4, M9, M10, M12.)*
 
 ### Story 11.4: Security-validation hardening
 
@@ -1582,7 +1654,7 @@ So that connection status (incl. the reconnect pulse), the column prioritizer, s
 **Then** every `wwwroot/css` file must be referenced by a `<link>`, a scoped-CSS-class-on-Fluent-component detector fails the build, and `error-` is added to the legacy-token regex.
 
 > **Guard-first:** build the three guards before/with the CSS fixes — bUnit cannot detect dead CSS or silent splats, so the defect class regenerates otherwise.
-*(Amends NFR6 visual a11y; closes M5, M6 + the unlinked-stylesheet and dead-scoped-CSS guard gaps.)*
+*(Amends NFR-3 and NFR-4 visual conformance; closes M5, M6 + the unlinked-stylesheet and dead-scoped-CSS guard gaps.)*
 
 ### Story 11.6: Testing harness failure modes
 
@@ -1594,7 +1666,16 @@ So that adopters can genuinely test failure paths and paging/filter/sort of gene
 
 **Given** `TestCommandService`,
 **When** adopter tests configure command and query outcomes,
-**Then** it exposes configurable rejection / timeout / stall-at-`Syncing` outcomes; `TestQueryService` / `TestProjectionPageLoader` accept per-request callbacks (`SucceedWith(Func<QueryRequest, QueryResult<T>>)`) so paging/filter/sort are testable; `TestFaultInjectionProvider` actually injects (or is renamed to an evidence recorder). *(M21)*
+**Then** it exposes configurable rejection / timeout / stall-at-`Syncing` outcomes;
+`TestQueryService` / `TestProjectionPageLoader` accept per-request callbacks
+(`SucceedWith(Func<QueryRequest, QueryResult<T>>)`) so paging/filter/sort are testable; and the
+evidence-only `TestFaultEvidenceRecorder` records redacted observations without claiming fault
+injection. *(M21)*
+
+**Completed delivery clarification (2026-07-15):** configurable fake outcomes own rejection,
+timeout, stall, query paging/filter/sort, authorization states, and async initialization.
+`TestFaultEvidenceRecorder` is deliberately evidence-only: it captures redacted fault observations and
+does not claim to inject runtime faults. The former `TestFaultInjectionProvider` name is retired.
 
 **Given** the Counter sample's authorization-policy toggles,
 **When** those scenarios are promoted into the Testing harness,
@@ -1612,7 +1693,7 @@ paths that emit diagnostic or assertion evidence,
 and property names, including dictionary keys, preserves structural redaction of token/secret/password keyed
 values, and proves raw external/local paths are absent or replaced with bounded repository-relative or redacted
 markers wherever the harness emits paths.
-*(Refines FR22; closes M21 — the key Tenants-adoption unblock.)*
+*(Refines FR-22; closes M21 — the key Tenants-adoption unblock.)*
 
 ### Story 11.7: Command/projection route-contract implementation
 
@@ -1634,7 +1715,7 @@ So that the "jump to any action" journey does not dead-end on an unresolvable ro
 **When** Story 11.0 is not done **or** the FC-IA-1 module-tab route encoding / projection-flyout IA gate
 is not Product/UX-signed-off,
 **Then** this story remains blocked and may not move to ready-for-dev.
-*(Refines FR14 / UX-DR4; closes the H10 remainder + the unresolvable-route finding — the single most user-visible open defect in the plan.)*
+*(Refines FR-10 / UX-DR4; closes the H10 remainder + the unresolvable-route finding — the single most user-visible open defect in the plan.)*
 
 ### Story 11.8: Contracts kernel split decision and compatibility plan
 
@@ -1661,9 +1742,12 @@ So that package-impacting implementation stories do not start without a v1.0 mig
 **Given** the decision amends the documented multi-TFM decision,
 **When** the plan is approved,
 **Then** the decision names the affected packages, expected public API baseline changes, deprecation path, and release compatibility posture.
-*(Amends NFR5/NFR12; gates H11, M24, M25 implementation.)*
+*(Amends NFR-2 and FR-25; gates H11, M24, M25 implementation.)*
 
 ### Story 11.11: Create Contracts.UI assembly and migrate Blazor rendering surface
+
+Delivery status: **done**. Retained as the historical acceptance contract for the completed
+Contracts.UI split; it is not a queue candidate.
 
 As an adopter developer (Hexalith.Tenants first),
 I want the net10/Blazor rendering surface split out of the netstandard Contracts kernel,
@@ -1685,6 +1769,9 @@ So that referencing Contracts stops inheriting the pinned Fluent RC.
 
 ### Story 11.12: Relocate runtime and testing-owned types out of Contracts
 
+Delivery status: **done**. Retained as the historical acceptance contract for completed type
+relocation; it is not a queue candidate.
+
 As a framework maintainer,
 I want runtime services and test fakes removed from the Contracts kernel,
 So that Contracts remains a stable wire/attribute package instead of a runtime grab bag.
@@ -1705,6 +1792,9 @@ So that Contracts remains a stable wire/attribute package instead of a runtime g
 
 ### Story 11.13: Decompose `QueryRequest` through the HFC0001 migration path
 
+Delivery status: **done**. Retained as the historical acceptance contract for the completed
+QueryRequest migration; it is not a queue candidate.
+
 As an adopter developer,
 I want UI query concerns separated from transport and caching concerns,
 So that query contracts are stable, composable, and migratable before v1.0.
@@ -1724,6 +1814,9 @@ So that query contracts are stable, composable, and migratable before v1.0.
 **Then** public JSON shape changes are either avoided or explicitly versioned.
 
 ### Story 11.14: Update architecture, project context, UX trace, and package compatibility docs
+
+Delivery status: **done**. The package-boundary, public-API, planning, and compatibility evidence was
+completed with Stories 11.11–11.13. This section is release history, not open documentation work.
 
 As a release owner,
 I want the kernel split and query migration reflected in planning and published references,
@@ -1802,9 +1895,8 @@ So that hardening fixes do not depend on remembering every copy.
 
 ### Story 11.17: Mechanical one-type-per-file split
 
-> Split-before-dev: this section is a decomposition parent. Do not move it to ready-for-dev until it is
-> split by package or defect class into independently reviewable implementation stories with their own
-> validation lanes.
+> **Nonimplementable decomposition parent.** Queue state belongs only to 11.17a–d; this parent must
+> never move to backlog, ready-for-dev, or review.
 
 **Decomposition (correct course 2026-07-05).** Split by package into independently reviewable child
 stories. Each keeps the parent constraint: mechanical only — behavior and public-API shape unchanged
@@ -1812,18 +1904,18 @@ except intentional file organization and any documented API-baseline update. A d
 Governance guard (the "multi-type file" blind-spot guard class) is added or extended so the convention
 is enforced, not merely applied.
 
-- **11.17a — CLI package split.** `MigrationCommand.cs` (23 types), `InspectCommand.cs` (14 types) →
+- **11.17a — CLI package split (`11-17-cli-package-split.md`, done).** `MigrationCommand.cs` (23 types), `InspectCommand.cs` (14 types) →
   one-type-per-file. Validation lane: CLI in-process xUnit lane + `frontcomposer.cli.inspect.v1` /
   `frontcomposer.cli.migrate.v1` contract pins + CLI `PublicAPI.Shipped.txt` unchanged.
-- **11.17b — SourceTools package split.** `DriftDetection.cs` (17 types) → one-type-per-file.
+- **11.17b — SourceTools package split (`11-17-sourcetools-package-split.md`, review).** `DriftDetection.cs` (17 types) → one-type-per-file.
   Validation lane: SourceTools drift lane + HFC parity + generated-output byte stability (P12
   no-`CompilationProvider` isolation preserved).
-- **11.17c — MCP/runtime split + benchmark-harness relocation.** `SkillCorpus.cs` (~45 types) →
+- **11.17c — MCP/runtime split + benchmark-harness relocation (`11-17-mcp-runtime-split-and-benchmark-relocation.md`, review).** `SkillCorpus.cs` (~45 types) →
   one-type-per-file, and move the LLM benchmark harness out of the runtime package into
   `Shell.Tests.Bench` (`[Trait("Category","Performance")]`). Validation lane: MCP in-process lane +
   Testing package-boundary tests + `Shell.Tests.Bench` builds; the runtime package no longer ships the
   benchmark harness.
-- **11.17d — Shell interface+impl+DTO bundle split.** Shell multi-type files (interface + impl + DTO
+- **11.17d — Shell interface+impl+DTO bundle split (`11-17-shell-bundle-split.md`, review).** Shell multi-type files (interface + impl + DTO
   bundles) → one-type-per-file, retaining the documented Fluxor action-group exception. Validation
   lane: focused Shell one-type-per-file Governance guard + broad Shell non-Contract lane +
   `PublicAPI.FcTbl.Shipped.txt` unchanged.
@@ -1844,21 +1936,20 @@ So that the codebase matches the documented one-type-per-file convention before 
 
 ### Story 11.18: LoggerMessage migration for warnings and hot paths
 
-> Split-before-dev: this section is a decomposition parent. Do not move it to ready-for-dev until it is
-> split by package or defect class into independently reviewable implementation stories with their own
-> validation lanes.
+> **Nonimplementable decomposition parent.** Queue state belongs only to 11.18a–c; this parent must
+> never move to backlog, ready-for-dev, or review.
 
 **Decomposition (correct course 2026-07-05).** Split by defect class, security-adjacent work first.
 Each child preserves the parent's sanitization constraint: no raw token, tenant-secret, payload, stack
 trace, or sensitive identifier is emitted.
 
-- **11.18a — Fail-closed / security log sites (first).** MCP + Shell fail-closed branches →
+- **11.18a — Fail-closed / security log sites (`11-18-fail-closed-security-log-sites.md`, review).** MCP + Shell fail-closed branches →
   `[LoggerMessage]`. Validation lane: MCP + Shell Governance sanitized-logging lane (ties to
-  NFR6/NFR10); sanitization tests prove no sensitive value is emitted.
-- **11.18b — Warning-and-above log sites.** All Warning+ severity sites across the 50 Shell files →
+  NFR-6/NFR-11); sanitization tests prove no sensitive value is emitted.
+- **11.18b — Residual warning-and-above log sites (`11-18-warning-and-above-log-sites.md`, ready-for-dev).** After 11.18a security and 11.18c hot-path ownership is frozen, all residual Warning/Error/Critical direct sites in the 49-file census →
   `[LoggerMessage]`. Validation lane: Shell unit lane + a guard that Warning+ sites use
   source-generated logging.
-- **11.18c — Hot-path log sites.** Command-lifecycle, projection-refresh, and polling hot-path sites →
+- **11.18c — Hot-path log sites (`11-18-hot-path-log-sites.md`, ready-for-dev).** Command-lifecycle, projection-refresh, and polling hot-path sites →
   `[LoggerMessage]`. Validation lane: LoggerMessage guard; remaining direct calls are below the
   migration threshold or documented intentional.
 
@@ -1868,9 +1959,11 @@ So that logging follows the project's performance and analyzer conventions.
 
 **Acceptance Criteria:**
 
-**Given** 206 direct log sites across 50 files in Shell,
+**Given** the post-11.18a census has 208 direct log calls across exactly 49 Shell files — 117 at
+Warning/Error/Critical and 91 at Trace/Debug/Information —
 **When** warning-and-above and hot-path log sites are migrated,
-**Then** Warning-and-above and hot paths migrate to `[LoggerMessage]`. *(M15)*
+**Then** the exact inventory is frozen before edits, each site is assigned once by the security → hot
+path → residual Warning+ precedence, and owned sites migrate to `[LoggerMessage]`. *(M15)*
 
 **Given** MCP and Shell fail-closed branches log sanitized details,
 **When** the logging tests run,
@@ -1882,24 +1975,23 @@ So that logging follows the project's performance and analyzer conventions.
 
 ### Story 11.19: Enforcement and policy alignment
 
-> Split-before-dev: this section is a decomposition parent. Do not move it to ready-for-dev until it is
-> split by package or defect class into independently reviewable implementation stories with their own
-> validation lanes.
+> **Nonimplementable decomposition parent.** Queue state belongs only to 11.19a–d; this parent must
+> never move to backlog, ready-for-dev, or review.
 
 **Decomposition (correct course 2026-07-05).** Split by defect class. Each child names its validation
 lane and does not disable warnings or analyzer findings globally.
 
-- **11.19a — Doc-comment (CS1591) enforcement realignment.** Restore documented CS1591 enforcement on
+- **11.19a — Doc-comment (CS1591) enforcement realignment (`11-19-doc-comment-enforcement-realignment.md`, ready-for-dev).** Restore documented CS1591 enforcement on
   the Contracts public API-freeze folders (the `.editorconfig` re-raise is currently dead under the
   src-wide NoWarn). Validation lane: Release build under `TreatWarningsAsErrors=true` + a guard proving
   CS1591 is enforced on the API-freeze surface.
-- **11.19b — AppHost NuGet audit suppression.** Replace the blanket `NU1902-04` NoWarn with
+- **11.19b — AppHost NuGet audit suppression (`11-19-apphost-nuget-audit-suppression.md`, ready-for-dev).** Replace the blanket `NU1902-04` NoWarn with
   per-advisory `NuGetAuditSuppress` (CI-verifiable). Validation lane: CI audit lane / Governance test.
-- **11.19c — Localization + identifier alignment.** Localize the `FcHomeCard` aria-label and the UI
+- **11.19c — Localization + identifier alignment (`11-19-localization-and-identifier-alignment.md`, ready-for-dev).** Localize the `FcHomeCard` aria-label and the UI
   host `lang="en"`/English strings; rename `HFC2106_ThemeHydrationEmpty` (ID string unchanged; obsolete
   alias if the constant is public). Validation lane: Shell localization/Governance lane +
   diagnostic-catalog parity.
-- **11.19d — Analyzer-elevation decision gate.** Architect records the `AnalysisMode Recommended`
+- **11.19d — Analyzer-elevation decision gate (`11-19-analyzer-elevation-decision.md`, ready-for-dev).** Architect records the `AnalysisMode Recommended`
   decision (adds no packages; burn-down cost owned). This is a decision gate, not broad implementation;
   any resulting implementation stories name their validation lane. Recorded under
   `_bmad-output/contracts/`.

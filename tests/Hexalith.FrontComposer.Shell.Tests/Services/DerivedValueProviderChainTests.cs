@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 
@@ -226,7 +227,8 @@ public class DerivedValueProviderChainTests {
     public async Task LastUsed_EmptyUserId_RefusesWrite_PublishesDevDiagnosticOncePerCircuit() {
         IStorageService storage = Substitute.For<IStorageService>();
         var sink = new InMemoryDiagnosticSink(NullLogger<InMemoryDiagnosticSink>());
-        var p = new LastUsedValueProvider(storage, StubUser(user: ""), sink);
+        CapturingLogger<LastUsedValueProvider> logger = new();
+        var p = new LastUsedValueProvider(storage, StubUser(tenant: "tenant-secret", user: ""), sink, logger);
 
         await p.Record(new TestCommand { Note = "n1" }, TestContext.Current.CancellationToken);
         await p.Record(new TestCommand { Note = "n2" }, TestContext.Current.CancellationToken);
@@ -234,6 +236,12 @@ public class DerivedValueProviderChainTests {
         await storage.DidNotReceive().SetAsync(Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>());
         sink.RecentEvents.Count(e => e.Code == "D31").ShouldBe(1);
         p.TenantGuardTripped.ShouldBeTrue();
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5684);
+        entry.EventId.Name.ShouldBe("LastUsedScopeMissing");
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain("tenant-secret");
     }
 
     [Fact]

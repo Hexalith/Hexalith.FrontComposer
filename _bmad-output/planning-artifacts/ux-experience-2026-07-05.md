@@ -1,26 +1,31 @@
 ---
 name: Hexalith Common Application UX
-status: draft
-updated: 2026-07-05
+status: accepted-supplement
+updated: 2026-07-15
 sources:
-  - ../../prd.md
-  - ../../architecture.md
-  - ../../ux-design.md
-  - ../../epics.md
-  - ../../prds/prd-frontcomposer-2026-07-05/prd.md
-  - ../../sprint-change-proposal-2026-06-19-nav-single-active-item.md
-  - ../../sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md
-  - ../../sprint-change-proposal-2026-07-01-tenants-ui-menu-icon-label-stack.md
-  - ../../sprint-change-proposal-2026-07-05.md
+  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/architecture.md
+  - _bmad-output/planning-artifacts/ux-design.md
+  - _bmad-output/planning-artifacts/epics.md
+  - _bmad-output/planning-artifacts/prds/prd-frontcomposer-2026-07-05/prd.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-19-nav-single-active-item.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-06-25-aspire-grade-visual-refresh.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-01-tenants-ui-menu-icon-label-stack.md
+  - _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05.md
 ---
 
 # Hexalith Common Application Experience
 
-These spines win on conflict with mockups, wireframes, imported screens, or older sprint-change notes.
+This accepted behavior/journey supplement adds experience depth. The canonical authority is
+`_bmad-output/planning-artifacts/ux-design.md`, which wins any conflict with this file, mockups,
+wireframes, imported screens, or older sprint-change notes.
 
 ## Foundation
 
-Primary form factor is **web desktop**. The UI system is **FrontComposer + Blazor Fluent UI V5**. `DESIGN.md` is the visual identity reference; this file owns information architecture, behavior, states, interactions, accessibility, and journeys.
+Primary form factor is **web desktop**. The UI system is **FrontComposer + Blazor Fluent UI V5**.
+`_bmad-output/planning-artifacts/ux-design-detailed-2026-07-05.md` is the visual/style supplement;
+this file supplements information architecture, behavior, states, interactions, accessibility, and
+journeys without overriding canonical `ux-design.md`.
 
 Audience is mixed: consumer-facing module users and administrators. The shared experience must therefore stay professional, support-safe, and task-focused. It must not depend on bespoke host CSS or module-specific visual themes.
 
@@ -43,7 +48,8 @@ Application-level navigation must not list every projection, command, or module 
 
 ## Voice and Tone
 
-Microcopy is direct, support-safe, and evidence-based. Brand posture lives in `DESIGN.md`.
+Microcopy is direct, support-safe, and evidence-based. Brand posture lives in the detailed UX
+supplement.
 
 | Do | Don't |
 |---|---|
@@ -55,7 +61,7 @@ Microcopy is direct, support-safe, and evidence-based. Brand posture lives in `D
 
 ## Component Patterns
 
-Behavioral rules live here; visual rules live in `DESIGN.md.Components`.
+Behavioral detail lives here; visual rules live in the detailed UX supplement.
 
 | Component | Use | Behavioral rules |
 |---|---|---|
@@ -67,6 +73,7 @@ Behavioral rules live here; visual rules live in `DESIGN.md.Components`.
 | Add action | Toolbar or empty state | Launch the generated command form or route-backed command page for create flows. |
 | Modify action | Detail surface / row action | Launch the generated command form for allowed mutations. Server-controlled fields are not editable. |
 | Command lifecycle | After submit | Distinguish Submitting, Acknowledged, Syncing, Confirmed, Rejected, IdempotentConfirmed, NeedsReview, and Degraded. |
+| Second local submit | While one command is in flight | Block the later submit, do not queue/batch it, preserve the in-flight command, and announce localized support-safe feedback that the attempted submit did not run. |
 | Status affordance | Grids, rows, command lifecycle | Use icon + tooltip + `aria-label`; never rely on color alone. |
 | Multi-section page body | Page/dialog/detail with sibling titled regions | Use one `FluentAccordion`; primary item expanded by default. Do not hide the only primary content region. |
 
@@ -99,7 +106,8 @@ Behavioral rules live here; visual rules live in `DESIGN.md.Components`.
 
 ## Accessibility Floor
 
-Behavioral accessibility lives here; visual contrast lives in `DESIGN.md`.
+Behavioral accessibility detail lives here; visual contrast lives in the detailed UX supplement; the
+canonical WCAG 2.2 AA contract remains in `ux-design.md`.
 
 - WCAG 2.2 AA target for common shell and generated module pages.
 - Skip links, route-level heading focus, visible focus indicators, and logical tab order are required.
@@ -161,9 +169,12 @@ Failure: the command is rejected as duplicate or invalid. The form preserves use
 ## Brownfield Reconciliation
 
 - The one-entry-per-module rule supersedes older navigation patterns that expose individual projections or module UX pages as primary shell menu items.
-- Epic 8 projection flyout behavior must be reconciled with this spine: any flyout must be secondary and route into module workspace tabs, not become a second primary IA.
-- Story 11.0 route-contract decision must account for module workspace tabs so palette/CTA command activation lands on real routes.
-- FC-NIP fresh-row indicators remain blocked until row identity is confirmed; broad row marking or diff-based inference is not allowed.
+- Epic 8 projection flyout behavior is reconciled: every flyout is secondary and routes into module workspace tabs rather than becoming a second primary IA.
+- Stories 11.0 and 11.7 are done; palette/CTA activation uses `/commands/{BoundedContext}/{CommandTypeName}` and module tabs use `/{module}/{tab}`.
+- FC-NIP row identity and producer/consumer wiring are complete under Stories 9.1–9.2; broad row marking or diff-based inference remains forbidden.
+
+Default lifecycle evidence uses confirming-to-Degraded after `10_000` ms, polling every `1_000` ms
+for at most `120_000` ms, and one transient retry after `250` ms.
 
 ## IA Decision Gate — FC-IA-1 (module-tab route encoding + projection-flyout IA)
 

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 
 using Hexalith.FrontComposer.Contracts.Diagnostics;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Options;
 
 using Microsoft.AspNetCore.Authentication;
@@ -25,9 +26,7 @@ public sealed class FrontComposerAccessTokenProvider(
         if (current.SelectedProviderKind == FrontComposerAuthenticationProviderKind.GitHubOAuth
             && current.TokenRelay.HostAccessTokenProvider is null
             && !current.TokenRelay.AllowGitHubOAuthTokenRelay) {
-            logger.LogWarning(
-                "{DiagnosticId}: GitHub OAuth sign-in cannot be relayed as EventStore bearer token without a broker.",
-                FcDiagnosticIds.HFC2014_GitHubTokenExchangeRequired);
+            FrontComposerSecurityLog.GitHubTokenExchangeRequired(logger);
             throw new FrontComposerAuthenticationException(
                 FcDiagnosticIds.HFC2014_GitHubTokenExchangeRequired,
                 $"{FcDiagnosticIds.HFC2014_GitHubTokenExchangeRequired}: GitHub OAuth requires a brokered EventStore bearer token provider.");
@@ -40,10 +39,9 @@ public sealed class FrontComposerAccessTokenProvider(
 
             if (string.IsNullOrWhiteSpace(token)) {
                 // P6 — log HFC2013 on the empty-token branch so the diagnostic is observable.
-                logger.LogWarning(
-                    "{DiagnosticId}: Access token acquisition returned no token. ProviderKind={ProviderKind}.",
-                    FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed,
-                    current.SelectedProviderKind.ToString());
+                FrontComposerSecurityLog.AccessTokenMissing(
+                    logger,
+                    BoundedProviderKind(current.SelectedProviderKind));
                 throw new FrontComposerAuthenticationException(
                     FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed,
                     $"{FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed}: Access token acquisition returned no token.");
@@ -65,10 +63,9 @@ public sealed class FrontComposerAccessTokenProvider(
                                    or TimeoutException
                                    or InvalidOperationException
                                    or AuthenticationFailureException) {
-            logger.LogWarning(
-                "{DiagnosticId}: Access token acquisition failed. FailureCategory={FailureCategory}.",
-                FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed,
-                ex.GetType().Name);
+            FrontComposerSecurityLog.AccessTokenAcquisitionFailed(
+                logger,
+                ex.GetType().FullName ?? "Exception");
             throw new FrontComposerAuthenticationException(
                 FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed,
                 $"{FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed}: Access token acquisition failed.",
@@ -161,4 +158,14 @@ public sealed class FrontComposerAccessTokenProvider(
 
         return null;
     }
+
+    private static string BoundedProviderKind(FrontComposerAuthenticationProviderKind providerKind)
+        => providerKind switch {
+            FrontComposerAuthenticationProviderKind.None => nameof(FrontComposerAuthenticationProviderKind.None),
+            FrontComposerAuthenticationProviderKind.OpenIdConnect => nameof(FrontComposerAuthenticationProviderKind.OpenIdConnect),
+            FrontComposerAuthenticationProviderKind.Saml2 => nameof(FrontComposerAuthenticationProviderKind.Saml2),
+            FrontComposerAuthenticationProviderKind.GitHubOAuth => nameof(FrontComposerAuthenticationProviderKind.GitHubOAuth),
+            FrontComposerAuthenticationProviderKind.CustomBrokered => nameof(FrontComposerAuthenticationProviderKind.CustomBrokered),
+            _ => "Unknown",
+        };
 }

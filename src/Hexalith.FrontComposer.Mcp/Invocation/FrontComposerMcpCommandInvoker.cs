@@ -152,30 +152,17 @@ public sealed class FrontComposerMcpCommandInvoker(
                 or FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm
                 or FrontComposerMcpFailureCategory.UnsupportedSchema
                 or FrontComposerMcpFailureCategory.SchemaIntegrityMismatch) {
-                // 8-6a re-review: convert enum to string explicitly so structured-log sinks
-                // produce a deterministic value across enricher configurations (D4 bounded fields).
-                logger.LogInformation(
-                    "MCP command invocation failed with schema category {Category}.",
-                    ex.Category.ToString());
+                FrontComposerMcpLog.CommandInvocationSchemaFailed(logger, ex.Category);
                 return SchemaNegotiationRuntimeGate.ToStructuredFailure(ex.Category);
             }
 
-            logger.LogWarning(
-                "MCP command invocation failed with category {Category}.",
-                ex.Category.ToString());
+            FrontComposerMcpLog.CommandInvocationKnownFailure(logger, ex.Category);
             return FrontComposerMcpResult.Failure(ex.Category);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            // 8-6a re-review: capture the exception object via the structured-log overload so
-            // the type/stack survive in diagnostic sinks; previous logging emitted only the
-            // `DownstreamFailed` token, losing the underlying signal entirely. The `when` guard
-            // is defensive — the explicit OperationCanceledException handler above takes
-            // precedence under normal CLR exception dispatch, but exception filters with side
-            // effects could otherwise drop cancellation here.
-            logger.LogWarning(
-                ex,
-                "MCP command invocation failed with category {Category}.",
-                FrontComposerMcpFailureCategory.DownstreamFailed.ToString());
+            FrontComposerMcpLog.CommandInvocationUnexpectedFailure(
+                logger,
+                ex.GetType().FullName ?? "Exception");
             return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.DownstreamFailed);
         }
     }

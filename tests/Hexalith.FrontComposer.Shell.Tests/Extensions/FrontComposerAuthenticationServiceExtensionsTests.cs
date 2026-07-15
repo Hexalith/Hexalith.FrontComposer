@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Auth;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
@@ -12,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 
@@ -79,6 +81,8 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
         // DN2/P32 — adopter-supplied AccessTokenProvider is replaced (not silently skipped) so
         // the GitHub broker check (HFC2014) and the token-relay diagnostics path remain reachable.
         ServiceCollection services = new();
+        CapturingLoggerProvider logging = new();
+        services.AddLogging(builder => builder.AddProvider(logging));
         _ = services.AddHexalithFrontComposer();
         _ = services.AddHexalithEventStore(options => {
             options.BaseAddress = new Uri("https://eventstore.test");
@@ -96,6 +100,13 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
         EventStoreOptions eventStore = provider.GetRequiredService<IOptions<EventStoreOptions>>().Value;
         string? token = await eventStore.AccessTokenProvider!(TestContext.Current.CancellationToken);
         token.ShouldBe("bridge-token");
+        CapturedLogEntry entry = logging.Logger.Entries
+            .Where(static candidate => candidate.EventId.Id == 5661)
+            .ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Information);
+        entry.EventId.Name.ShouldBe("AuthenticationBridgeTokenProviderReplaced");
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain("stale-adopter-token");
     }
 
     [Fact]
@@ -235,6 +246,15 @@ public sealed class FrontComposerAuthenticationServiceExtensionsTests {
         await endpoint.RequestDelegate!(context);
 
         auth.SignOutCount.ShouldBe(1);
+    }
+
+    private sealed class CapturingLoggerProvider : ILoggerProvider {
+        public CapturingLogger<FrontComposerAuthenticationServiceExtensionsTests> Logger { get; } = new();
+
+        public ILogger CreateLogger(string categoryName) => Logger;
+
+        public void Dispose() {
+        }
     }
 
     [Fact]

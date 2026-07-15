@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-07-12
+updated: 2026-07-15
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -46,24 +46,90 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
 - Shell state follows Fluxor single-writer discipline and scoped-lifetime discipline.
 - MCP security fails closed and requires both tenant tool and resource visibility gates.
 - EventStore command acceptance is not treated as projection-confirmed success.
-- UX/layout policy lives in architecture section 4 and is treated as planning input.
+- UX/layout policy is defined by the UX, IA, and route invariants below and projected into the
+  canonical `ux-design.md` planning source.
 
-## Architecture Review Remediation
+## UX, IA, And Route Invariants
 
-Epic 11 traces to `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`. The review found no Critical findings, but it identified High and Medium issues in runtime blind spots and architecture boundaries:
+- A bounded context is presented to operators as one **Module** with one primary shell entry and one
+  required default **Module Tab**. Primary module-tab routes use `/{module}/{tab}`.
+- Projection flyouts are secondary navigation. They may expose projection links but must not replace
+  the module workspace or its default tab.
+- Generated command pages use `/commands/{BoundedContext}/{CommandTypeName}`. Palette entries and
+  projection empty-state CTAs must resolve through the same route family.
+- UI uses the centrally pinned FrontComposer/Fluent UI Blazor v5 package and Fluent 2 tokens. User
+  journeys and visual states conform to WCAG 2.2 AA, including keyboard, focus, names, roles,
+  live-region, reduced-motion, and forced-colors behavior.
+- Command transport acceptance is distinct from projection/status confirmation. Lifecycle UI exposes
+  `IdempotentConfirmed`, `NeedsReview`, `Warning`, and `Degraded` as well as the core states.
+- FC-CNC allows one in-flight local command. A second local submit is not queued or batched; it is
+  blocked with localized, accessible feedback that the attempted submit did not run, while the
+  original command remains visible and unchanged.
+- Default timing contracts are confirming-to-Degraded at `10_000` ms, status polling every `1_000` ms
+  for at most `120_000` ms, and exactly one transient Epic 4 retry after `250` ms.
 
-- token lifecycle and circuit-safe EventStore auth;
-- projection realtime resilience;
-- MCP cross-request lifecycle and operability;
-- open-redirect and storage-key validation hardening;
-- dead scoped CSS and visual-conformance guards;
-- Testing harness failure modes;
-- command/projection route-contract unification;
-- Contracts kernel split and package/query compatibility evidence (Stories 11.11-11.14);
-- Shell layering and duplication consolidation;
-- one-type-per-file, LoggerMessage, and enforcement-policy alignment.
+## FR-24 Release Evidence Architecture
 
-The 2026-07-05 Story 11.8 sign-off approved the kernel split. Stories 11.11-11.13 implemented the Contracts.UI assembly, ownership relocation, and composed-query compatibility surface. Story 11.14 adds the explicit release inventory, `v1.12.0` package-validation baseline, published migration guidance, and `2.0.0` Release Owner decision; it is documentation/inventory evidence, not future assembly implementation.
+Release authorization is an exact-artifact pipeline:
+
+```text
+Pack once
+  → validate inventory, tests, and package consumers
+  → generate SBOM and symbol evidence
+  → sign and timestamp the exact .nupkg files
+  → verify signatures and timestamps
+  → checksum packages, symbols, and evidence
+  → seal and verify the release manifest
+  → classify-release --require-publishable
+  → publish those same authorized bytes
+  → verify published NuGet and GitHub assets
+```
+
+Pre-publication authorization and post-publication verification are separate phases. Only the former
+may authorize publication. Rebuilding, repacking, or signing reconstructed packages after publication
+does not prove what NuGet received.
+
+The sealed manifest identifies every immutable release candidate by normalized path and SHA-256 hash.
+Publication consumes those exact paths without rebuilding or replacing an artifact. A blocked
+classification, invalid manifest, missing evidence, or `publish_authorized=false` terminates the
+release before NuGet, GitHub Release, tag/changelog, or other external publication side effects.
+
+After publication, an independent verifier downloads NuGet and GitHub assets, verifies package
+signatures, and compares their hashes with the sealed manifest. A mismatch, missing asset, or partial
+publication fails the release and creates an incident record; post-publication evidence cannot
+authorize a release retroactively. Durable evidence attached during initial GitHub Release creation is
+the public evidence chain. Short-retention workflow artifacts are supplemental.
+
+Ownership boundaries:
+
+- **Hexalith.Builds** owns the reusable workflow contract, signing-secret declaration/forwarding, and
+  minimum permissions.
+- **FrontComposer** owns artifact creation, inventory/consumer/test validation, signing, evidence
+  generation, readiness classification, publication of authorized bytes, and downloaded-artifact
+  verification.
+- **Release Owner** owns signing identity, timestamp authority, secret provisioning/rotation, the
+  release freeze, exceptions, and partial-publication incident response.
+
+This delivery architecture does not alter FrontComposer runtime, public product behavior, or UX.
+
+## Epic 11 Release Readiness Remediation Program
+
+Epic 11 traces to `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`. The review found no Critical findings, but it identified High and Medium issues in runtime blind spots and architecture boundaries. Planning is organized into four workstreams:
+
+- **Runtime reliability and security:** Stories 11.0–11.5 are done; 11.18a is in review.
+- **Adopter testing and route integrity:** Stories 11.6–11.7 are done and consume Epic 10 evidence
+  where referenced.
+- **Contracts and package boundary:** Story 11.8 and Stories 11.11–11.14 are done; they are retained as
+  decision/delivery history, not queue candidates.
+- **Maintainability and enforcement:** Stories 11.9 and 11.15–11.16 are done, 11.17a is done,
+  11.17b–d and 11.18a are in review, and 11.18b–c plus 11.19a–d are materialized future work.
+
+Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents. Logging ownership follows
+security/fail-closed (11.18a), then command-lifecycle/projection/polling hot paths (11.18c), then
+residual Warning/Error/Critical sites (11.18b). The 2026-07-05 Story 11.8 sign-off approved the kernel
+split. Stories 11.11–11.13 implemented the Contracts.UI assembly, ownership relocation, and
+composed-query compatibility surface. Story 11.14 completed release inventory, package-validation,
+migration, and Release Owner documentation evidence.
 
 ## Related Planning Artifacts
 
@@ -73,4 +139,5 @@ The 2026-07-05 Story 11.8 sign-off approved the kernel split. Stories 11.11-11.1
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-04.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-e11-contracts-kernel-split.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md`
 - `_bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md`

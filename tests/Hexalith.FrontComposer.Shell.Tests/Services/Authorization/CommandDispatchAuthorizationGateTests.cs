@@ -6,6 +6,7 @@ using Hexalith.FrontComposer.Shell.Services.Authorization;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -99,7 +100,8 @@ public sealed class CommandDispatchAuthorizationGateTests {
         ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
         evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
             .Returns(CommandAuthorizationDecision.Denied("corr-denied"));
-        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator);
+        Infrastructure.Telemetry.CapturingLogger<CommandDispatchAuthorizationGate> logger = new();
+        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator, logger);
 
         CommandWarningException ex = await Should.ThrowAsync<CommandWarningException>(
             async () => await sut.EnsureAuthorizedAsync(new ProtectedCommand(), TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
@@ -112,6 +114,11 @@ public sealed class CommandDispatchAuthorizationGateTests {
         ex.Problem.Detail!.ShouldNotContain("OrderApprover");
         ex.Problem.Detail!.ShouldNotContain(nameof(ProtectedCommand));
         ex.Problem.EntityLabel!.ShouldNotContain(nameof(ProtectedCommand));
+        Infrastructure.Telemetry.CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.EventId.Id.ShouldBe(5681);
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain("OrderApprover");
+        entry.Message.ShouldNotContain("corr-denied");
     }
 
     [Fact]
@@ -119,7 +126,8 @@ public sealed class CommandDispatchAuthorizationGateTests {
         ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
         evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
             .Returns(CommandAuthorizationDecision.Pending("corr-pending"));
-        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator);
+        Infrastructure.Telemetry.CapturingLogger<CommandDispatchAuthorizationGate> logger = new();
+        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator, logger);
 
         CommandWarningException ex = await Should.ThrowAsync<CommandWarningException>(
             async () => await sut.EnsureAuthorizedAsync(new ProtectedCommand(), TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
@@ -127,19 +135,25 @@ public sealed class CommandDispatchAuthorizationGateTests {
         // Pass-4 DN-7-3-4-5 — Pending must surface as the dedicated retryable warning kind, not
         // collapse to Forbidden.
         ex.Kind.ShouldBe(CommandWarningKind.Pending);
+        logger.Entries.ShouldHaveSingleItem().EventId.Id.ShouldBe(5679);
     }
 
     [Fact]
     public async Task EnsureAuthorizedAsync_EvaluatorThrows_ThrowsForbiddenWarning() {
         ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
         evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
-            .Returns<Task<CommandAuthorizationDecision>>(_ => throw new InvalidOperationException("broken evaluator"));
-        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator);
+            .Returns<Task<CommandAuthorizationDecision>>(_ => throw new InvalidOperationException("jwt.payload.signature"));
+        Infrastructure.Telemetry.CapturingLogger<CommandDispatchAuthorizationGate> logger = new();
+        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator, logger);
 
         CommandWarningException ex = await Should.ThrowAsync<CommandWarningException>(
             async () => await sut.EnsureAuthorizedAsync(new ProtectedCommand(), TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
 
         ex.Kind.ShouldBe(CommandWarningKind.Forbidden);
+        Infrastructure.Telemetry.CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.EventId.Id.ShouldBe(5677);
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain("jwt.payload.signature");
     }
 
     [Fact]
@@ -147,13 +161,15 @@ public sealed class CommandDispatchAuthorizationGateTests {
         ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
         evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
             .Returns(CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, "corr-cancel"));
-        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator);
+        Infrastructure.Telemetry.CapturingLogger<CommandDispatchAuthorizationGate> logger = new();
+        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator, logger);
 
         // Pass-4 DN-7-3-4-5 — Canceled decisions become OperationCanceledException so callers
         // can distinguish user-cancel from authorization denial.
         await Should.ThrowAsync<OperationCanceledException>(
             async () => await sut.EnsureAuthorizedAsync(new ProtectedCommand(), TestContext.Current.CancellationToken).ConfigureAwait(true))
             .ConfigureAwait(true);
+        logger.Entries.ShouldHaveSingleItem().EventId.Id.ShouldBe(5680);
     }
 
     [Fact]
@@ -165,13 +181,14 @@ public sealed class CommandDispatchAuthorizationGateTests {
 
     private static CommandDispatchAuthorizationGate NewSut(
         IFrontComposerRegistry registry,
-        ICommandAuthorizationEvaluator evaluator) {
+        ICommandAuthorizationEvaluator evaluator,
+        ILogger<CommandDispatchAuthorizationGate>? logger = null) {
         ServiceCollection services = new();
         services.AddSingleton(evaluator);
         return new CommandDispatchAuthorizationGate(
             registry,
             services.BuildServiceProvider(),
-            NullLogger<CommandDispatchAuthorizationGate>.Instance,
+            logger ?? NullLogger<CommandDispatchAuthorizationGate>.Instance,
             new StubLocalizer());
     }
 

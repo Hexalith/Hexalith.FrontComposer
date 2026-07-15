@@ -7,6 +7,8 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Mcp.Invocation;
+using Hexalith.FrontComposer.Mcp.Schema;
+using Hexalith.FrontComposer.Mcp.Tests.Logging;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -27,11 +29,13 @@ public sealed class CommandInvokerSchemaGateTests {
     public async Task SchemaMismatch_OnCommand_ReturnsSanitizedSchemaCategory_WithoutDispatching() {
         RecordingCommandService dispatcher = new();
         CountingUlidFactory ulids = new();
+        CapturingLogger<SchemaNegotiationRuntimeGate> logger = new();
         PayInvoiceCommand.ResetConstructionCount();
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
             dispatcher,
             clientFingerprintHint: SchemaHintFor("stale-client"),
-            ulidFactory: ulids);
+            ulidFactory: ulids,
+            schemaLogger: logger);
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
@@ -46,6 +50,19 @@ public sealed class CommandInvokerSchemaGateTests {
         dispatcher.Dispatched.ShouldBeNull("AC1: schema-mismatch must short-circuit before command dispatch.");
         ulids.CallCount.ShouldBe(0, "AC1: schema-mismatch must short-circuit before server-side ULID allocation.");
         PayInvoiceCommand.ConstructionCount.ShouldBe(0, "AC1: schema-mismatch must short-circuit before command construction.");
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Information);
+        entry.EventId.Id.ShouldBe(8318);
+        entry.EventId.Name.ShouldBe("McpSchemaDecision");
+        entry.Exception.ShouldBeNull();
+        entry.State.Keys.OrderBy(static key => key, StringComparer.Ordinal).ShouldBe([
+            "Category",
+            "DecisionKind",
+            "DocsCode",
+            "MessageKey",
+            "{OriginalFormat}",
+        ]);
+        entry.Message.ShouldNotContain("stale-client");
     }
 
     [Fact]
@@ -107,7 +124,8 @@ public sealed class CommandInvokerSchemaGateTests {
     private static FrontComposerMcpCommandInvoker BuildInvoker(
         ICommandService dispatcher,
         SchemaFingerprint? clientFingerprintHint = null,
-        IUlidFactory? ulidFactory = null) {
+        IUlidFactory? ulidFactory = null,
+        ILogger<SchemaNegotiationRuntimeGate>? schemaLogger = null) {
         ServiceCollection services = [];
         _ = services.AddSingleton(dispatcher);
         _ = services.AddSingleton(ulidFactory ?? new FixedUlidFactory());
@@ -117,6 +135,9 @@ public sealed class CommandInvokerSchemaGateTests {
         _ = services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
         _ = services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         _ = services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+        if (schemaLogger is not null) {
+            _ = services.AddSingleton(schemaLogger);
+        }
         _ = services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new SchemaAwareStaticAccessor(clientFingerprintHint));
         ServiceProvider provider = services.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);

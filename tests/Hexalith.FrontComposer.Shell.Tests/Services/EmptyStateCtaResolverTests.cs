@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -256,11 +257,18 @@ public sealed class EmptyStateCtaResolverTests {
         // (mocked here via the IWriteAwareRegistry composite interface). Default writable=true
         // since this test focuses on the GetManifests-throws path.
         IWriteAwareRegistry registry = Substitute.For<IWriteAwareRegistry>();
-        registry.GetManifests().Returns(_ => throw new InvalidOperationException("boom"));
+        registry.GetManifests().Returns(_ => throw new InvalidOperationException("jwt.payload.signature"));
         registry.IsCommandWritable(Arg.Any<string>()).Returns(true);
-        var resolver = new EmptyStateCtaResolver(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+        CapturingLogger<EmptyStateCtaResolver> logger = new();
+        var resolver = new EmptyStateCtaResolver(registry, logger);
 
         resolver.Resolve(typeof(OrderProjection)).ShouldBeNull();
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5685);
+        entry.EventId.Name.ShouldBe("EmptyStateRegistryFailed");
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain("jwt.payload.signature");
     }
 
     [Fact]

@@ -32,7 +32,7 @@ public sealed class NavigationEffectsScopeTests {
     public async Task PersistsOnValidScope() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLogger<NavigationEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         IState<FrontComposerNavigationState> state = FakeState(new(
             SidebarCollapsed: true,
@@ -55,7 +55,7 @@ public sealed class NavigationEffectsScopeTests {
     [Fact]
     public async Task SkipsOnNullTenant_LogsAndDoesNotCallStorage() {
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLogger<NavigationEffects>();
         IUserContextAccessor accessor = MakeAccessor(tenantId: null, userId: "alice");
         IState<FrontComposerNavigationState> state = FakeState(DefaultState());
 
@@ -70,7 +70,7 @@ public sealed class NavigationEffectsScopeTests {
     [Fact]
     public async Task SkipsOnNullUser_LogsAndDoesNotCallStorage() {
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLogger<NavigationEffects>();
         IUserContextAccessor accessor = MakeAccessor(tenantId: "acme", userId: null);
         IState<FrontComposerNavigationState> state = FakeState(DefaultState());
 
@@ -89,7 +89,7 @@ public sealed class NavigationEffectsScopeTests {
     [InlineData("acme", "")]
     public async Task SkipsOnWhitespaceUserContext_LogsAndDoesNotCallStorage(string tenantId, string userId) {
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLogger<NavigationEffects>();
         IUserContextAccessor accessor = MakeAccessor(tenantId, userId);
         IState<FrontComposerNavigationState> state = FakeState(DefaultState());
 
@@ -146,7 +146,7 @@ public sealed class NavigationEffectsScopeTests {
             CollapsedGroups: new Dictionary<string, bool>(StringComparer.Ordinal) { ["Counter"] = true });
         await storage.SetAsync(key, seeded, ct);
 
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLogger<NavigationEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         IState<FrontComposerNavigationState> state = FakeState(DefaultState());
 
@@ -164,7 +164,7 @@ public sealed class NavigationEffectsScopeTests {
     [Fact]
     public async Task HandleAppInitialized_ValidContextEmptyStorage_DispatchesDefaultReset() {
         var storage = new InMemoryStorageService();
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLogger<NavigationEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         IState<FrontComposerNavigationState> state = FakeState(DefaultState());
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
@@ -186,7 +186,7 @@ public sealed class NavigationEffectsScopeTests {
     public async Task HandleAppInitialized_ValidContextWithBlob_DispatchesNavigationHydrated() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLogger<NavigationEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         IState<FrontComposerNavigationState> state = FakeState(DefaultState());
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
@@ -207,7 +207,7 @@ public sealed class NavigationEffectsScopeTests {
     public async Task HandleAppInitialized_NullCollapsedGroups_DispatchesEmptyDictionary() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
-        ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
+        ILogger<NavigationEffects> logger = EnabledLogger<NavigationEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         IState<FrontComposerNavigationState> state = FakeState(DefaultState());
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
@@ -259,6 +259,12 @@ public sealed class NavigationEffectsScopeTests {
         }
 
         found.ShouldBeTrue($"Expected ILogger.Log call with LogLevel.Information referencing '{diagnosticId}'.");
+    }
+
+    private static ILogger<T> EnabledLogger<T>() {
+        ILogger<T> logger = Substitute.For<ILogger<T>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        return logger;
     }
 
     private sealed class ObservingStorage(IStorageService inner) : IStorageService {

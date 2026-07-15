@@ -4,9 +4,11 @@ using Bunit;
 
 using Hexalith.FrontComposer.Shell.Components.Rendering;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Shouldly;
 
@@ -17,10 +19,12 @@ public sealed class FcAuthorizedCommandRegionTests : BunitContext {
 
     private readonly ControllableAuthenticationStateProvider _authStateProvider = new();
     private readonly ControllableCommandAuthorizationEvaluator _evaluator = new();
+    private readonly CapturingLogger<FcAuthorizedCommandRegion> _logger = new();
 
     public FcAuthorizedCommandRegionTests() {
         Services.AddSingleton<AuthenticationStateProvider>(_authStateProvider);
         Services.AddSingleton<ICommandAuthorizationEvaluator>(_evaluator);
+        Services.AddSingleton<ILogger<FcAuthorizedCommandRegion>>(_logger);
     }
 
     [Fact]
@@ -79,12 +83,20 @@ public sealed class FcAuthorizedCommandRegionTests : BunitContext {
 
     [Fact]
     public void Render_EvaluatorThrows_FailsClosedWithoutEscaping() {
-        _evaluator.Enqueue(Task.FromException<CommandAuthorizationDecision>(new InvalidOperationException("broken evaluator")));
+        _evaluator.Enqueue(Task.FromException<CommandAuthorizationDecision>(new InvalidOperationException("jwt.payload.signature")));
 
         IRenderedComponent<FcAuthorizedCommandRegion> cut = RenderRegion();
 
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("auth-denied"));
         cut.Markup.ShouldNotContain("auth-allowed");
+        CapturedLogEntry entry = _logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.EventId.Id.ShouldBe(5660);
+        entry.EventId.Name.ShouldBe("ComponentAuthorizationEvaluationFailed");
+        entry.Exception.ShouldBeNull();
+        entry.Message.ShouldNotContain("jwt.payload.signature");
+        entry.Message.ShouldNotContain("Orders.Approve");
+        entry.Message.ShouldNotContain(nameof(ProtectedCommand));
     }
 
     [Fact]

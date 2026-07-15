@@ -40,7 +40,7 @@ public sealed class DensityEffectsScopeTests {
     public async Task PersistsOnValidScope_UserPreferenceChanged() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         InMemoryStorageService storage = new();
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLogger<DensityEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
@@ -60,7 +60,7 @@ public sealed class DensityEffectsScopeTests {
     [Fact]
     public async Task SkipsOnNullTenant_UserPreferenceChanged_LogsAndDoesNotCallStorage() {
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLogger<DensityEffects>();
         IUserContextAccessor accessor = MakeAccessor(tenantId: null, userId: "alice");
         DensityEffects sut = MakeSut(storage, accessor, logger);
 
@@ -75,7 +75,7 @@ public sealed class DensityEffectsScopeTests {
     [Fact]
     public async Task SkipsOnNullUser_UserPreferenceChanged_LogsAndDoesNotCallStorage() {
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLogger<DensityEffects>();
         IUserContextAccessor accessor = MakeAccessor(tenantId: "acme", userId: null);
         DensityEffects sut = MakeSut(storage, accessor, logger);
 
@@ -94,7 +94,7 @@ public sealed class DensityEffectsScopeTests {
     [InlineData("acme", "")]
     public async Task SkipsOnWhitespaceUserContext_UserPreferenceChanged(string tenantId, string userId) {
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLogger<DensityEffects>();
         IUserContextAccessor accessor = MakeAccessor(tenantId, userId);
         DensityEffects sut = MakeSut(storage, accessor, logger);
 
@@ -115,7 +115,7 @@ public sealed class DensityEffectsScopeTests {
         string key = StorageKeys.BuildKey("acme", "alice", "density");
         await storage.SetAsync<DensityLevel?>(key, DensityLevel.Compact, ct);
 
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLogger<DensityEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         DensityEffects sut = MakeSut(storage, accessor, logger);
 
@@ -132,7 +132,7 @@ public sealed class DensityEffectsScopeTests {
         // ADR-038 mirror — DensityHydratedAction must NOT trigger a storage write.
         InMemoryStorageService inner = new();
         ObservingStorage spy = new(inner);
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLogger<DensityEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         DensityEffects sut = MakeSut(spy, accessor, logger);
 
@@ -163,7 +163,7 @@ public sealed class DensityEffectsScopeTests {
     public async Task ViewportTierChangedDoesNotPersist() {
         // D7 / D8 — the cross-feature viewport handler is a pure compute path; no storage write.
         IStorageService storage = Substitute.For<IStorageService>();
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        ILogger<DensityEffects> logger = EnabledLogger<DensityEffects>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
         DensityEffects sut = MakeSut(storage, accessor, logger);
 
@@ -251,6 +251,12 @@ public sealed class DensityEffectsScopeTests {
         }
 
         found.ShouldBeTrue($"Expected ILogger.Log call with LogLevel.Information referencing '{diagnosticId}'.");
+    }
+
+    private static ILogger<T> EnabledLogger<T>() {
+        ILogger<T> logger = Substitute.For<ILogger<T>>();
+        logger.IsEnabled(Arg.Any<LogLevel>()).Returns(true);
+        return logger;
     }
 
     private sealed class ObservingStorage(IStorageService inner) : IStorageService {

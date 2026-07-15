@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 
@@ -80,11 +81,8 @@ public static class FrontComposerAuthenticationServiceExtensions {
             _ = services.AddOptions<EventStoreOptions>()
                 .Configure<FrontComposerAccessTokenProvider, ILoggerFactory>((eventStore, tokenProvider, loggerFactory) => {
                     if (eventStore.AccessTokenProvider is not null) {
-                        loggerFactory
-                            .CreateLogger("Hexalith.FrontComposer.Shell.Authentication")
-                            .LogInformation(
-                                "{DiagnosticId}: FrontComposer authentication bridge replaces a previously configured EventStoreOptions.AccessTokenProvider.",
-                                FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed);
+                        FrontComposerSecurityLog.AuthenticationBridgeTokenProviderReplaced(
+                            loggerFactory.CreateLogger("Hexalith.FrontComposer.Shell.Authentication"));
                     }
 
                     eventStore.AccessTokenProvider = tokenProvider.GetAccessTokenAsync;
