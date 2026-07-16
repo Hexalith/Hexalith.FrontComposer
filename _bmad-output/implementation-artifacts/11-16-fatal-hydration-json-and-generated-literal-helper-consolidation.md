@@ -146,7 +146,7 @@ The five replacement slices are `State/CommandPalette`, `State/DataGridNavigatio
 
 ### Library and Framework Requirements
 
-- Stay on the repository-pinned toolchain: .NET SDK `10.0.301`, C# 14 / Roslyn `5.6.0`, System.Text.Json `10.0.9`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and FsCheck.Xunit.v3 `3.3.3`.
+- Stay on the repository-pinned toolchain: .NET SDK `10.0.302`, C# 14 / Roslyn `5.6.0`, System.Text.Json `10.0.9`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and FsCheck.Xunit.v3 `3.3.3`.
 - No new NuGet package or package-version update is required.
 - Use System.Text.Json's cached-options guidance and Roslyn's existing literal formatter; do not introduce a custom serializer abstraction or a new escaping library.
 

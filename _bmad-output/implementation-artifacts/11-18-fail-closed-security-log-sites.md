@@ -178,7 +178,7 @@ If a broad lane is environmentally blocked, record the exact command and blocker
 - Library guidance recommends `ILogger`-based structured logging and stable message templates: <https://learn.microsoft.com/en-gb/dotnet/core/extensions/logging/library-guidance>.
 - CA1873 documents that expensive argument expressions may be evaluated even when a level is disabled; wrapper-level `IsEnabled` checks remain necessary for hashing/formatting: <https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1873>.
 - CA1848 is the source-generated/high-performance logging recommendation, but repository-wide analyzer elevation is outside this child and remains Story 11.19d: <https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/ca1848>.
-- The repo pins SDK 10.0.301 and C# `latest`; compilation under that SDK is authoritative if older diagnostic wording conflicts with the current dedicated guide. Avoid generic/ref-struct logger complexity in this story.
+- The repo pins SDK 10.0.302 and C# `latest`; compilation under that SDK is authoritative if older diagnostic wording conflicts with the current dedicated guide. Avoid generic/ref-struct logger complexity in this story.
 
 ### Project Structure Notes
 

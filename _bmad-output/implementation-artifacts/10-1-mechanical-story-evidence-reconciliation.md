@@ -98,7 +98,7 @@ Read each likely UPDATE file completely before changing it:
 ### Architecture Compliance
 
 - Keep this as repository tooling/process hardening. Do not change product runtime behavior, generated UI output, schema fingerprint algorithms, package references, or public API baselines unless a direct test fixture requires it.
-- Preserve FrontComposer repo rules: .NET SDK `10.0.301`, `.slnx` only, central package versions, `TreatWarningsAsErrors=true`, xUnit v3 + Shouldly for C# tests, and `DiffEngine_Disabled=true` for Verify-backed tests.
+- Preserve FrontComposer repo rules: .NET SDK `10.0.302`, `.slnx` only, central package versions, `TreatWarningsAsErrors=true`, xUnit v3 + Shouldly for C# tests, and `DiffEngine_Disabled=true` for Verify-backed tests.
 - If adding C# tests, follow the repo's convention: plural `{Class}Tests.cs`, three-part method names, Shouldly assertions, no raw `Assert.*`, file-scoped namespaces, Allman braces, and one C# type per file.
 - If adding Python code, keep it standard-library only. Do not add pytest or new dependencies for this story.
 - Do not modify `references/Hexalith.*` submodule contents and do not run recursive or remote submodule commands. Submodule pointer changes should be detected and classified only.
@@ -128,7 +128,7 @@ Read each likely UPDATE file completely before changing it:
 
 ### Latest Technical Information
 
-No external package/API upgrade is part of Story 10.1. Use the repository-pinned stack in `_bmad-output/project-context.md`: .NET SDK `10.0.301`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and Python standard library for `eng/validate-story-artifacts.py`. The risk is process correctness, not stale third-party API knowledge.
+No external package/API upgrade is part of Story 10.1. Use the repository-pinned stack in `_bmad-output/project-context.md`: .NET SDK `10.0.302`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and Python standard library for `eng/validate-story-artifacts.py`. The risk is process correctness, not stale third-party API knowledge.
 
 ### Previous Story Intelligence
 

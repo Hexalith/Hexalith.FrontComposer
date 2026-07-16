@@ -116,7 +116,7 @@ The file defines `.fc-empty-state-body*` and the `.fc-field-placeholder` dashed-
 - CLI: cancellation exits with code 4 ("apply/write failure") even for read-only inspect; migration scanner matches any identifier named `AddFrontComposerDebugOverlay` without symbol resolution; misleading message when `dotnet` is missing.
 - SourceTools: cancellation swallowed into synthetic empty parse results instead of `ThrowIfCancellationRequested`; HFC1007 has two descriptor identities; emitted identifiers not keyword-escaped (`@if` property → CS1001); drift redaction heuristic can fail-closed on identifiers containing `eyJ`.
 - Mcp low items: projection `RequestId` uses `Guid.NewGuid()` beside a shipped ULID factory; `ResolveType` copy-pasted with uncached AppDomain scans; tools/list rebuilds every input schema per request; K&R braces contradict the Allman `.editorconfig` rule.
-- Hygiene: `*.lscache` files neither ignored nor intentionally tracked (several already committed under samples); stray tracked `evtest/run-metadata.json`; `Directory.Packages.props` comment says SDK 10.0.300, `global.json` pins 10.0.301; two unrelated classes both named `RazorEmitter` (Shell DevMode vs SourceTools).
+- Hygiene: `*.lscache` files neither ignored nor intentionally tracked (several already committed under samples); stray tracked `evtest/run-metadata.json`; `Directory.Packages.props` comment says SDK 10.0.302, `global.json` pins 10.0.302; two unrelated classes both named `RazorEmitter` (Shell DevMode vs SourceTools).
 
 ## 3. Performance
 

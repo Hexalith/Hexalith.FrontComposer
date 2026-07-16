@@ -114,7 +114,7 @@ Read each likely UPDATE file completely before changing it:
 
 ### Latest Technical Information
 
-No external API/package research is required for Story 10.2. Use the repository-pinned stack and docs tooling in `_bmad-output/project-context.md`: .NET SDK `10.0.301`, DocFX validation through `eng/validate-docs.ps1`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and the existing FrontComposer docs/diagnostic registry conventions. The risk is copy/metadata accuracy, not stale third-party API knowledge.
+No external API/package research is required for Story 10.2. Use the repository-pinned stack and docs tooling in `_bmad-output/project-context.md`: .NET SDK `10.0.302`, DocFX validation through `eng/validate-docs.ps1`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and the existing FrontComposer docs/diagnostic registry conventions. The risk is copy/metadata accuracy, not stale third-party API knowledge.
 
 ### Previous Story Intelligence
 

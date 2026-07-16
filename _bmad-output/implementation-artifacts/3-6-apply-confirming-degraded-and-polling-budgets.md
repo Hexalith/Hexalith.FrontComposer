@@ -284,7 +284,7 @@ so that slow commands degrade gracefully instead of hanging.
   service own pending-state mutation and lifecycle terminal dispatch. [Source: _bmad-output/project-context.md#Blazor Shell & Fluxor Rules]
 - Keep scoped-lifetime discipline. Pending command state, EventStore query clients, and polling
   drivers must remain per-circuit scoped; do not capture scoped services in singletons. [Source: _bmad-output/project-context.md#Blazor Shell & Fluxor Rules]
-- Use repo-pinned dependencies only. Relevant pins include .NET SDK `10.0.300`, FluentUI Blazor
+- Use repo-pinned dependencies only. Relevant pins include .NET SDK `10.0.302`, FluentUI Blazor
   `5.0.0-rc.3-26138.1`, Fluxor `6.9.0`, NUlid `1.7.3`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, bUnit
   `2.7.2`, and Verify.XunitV3 `31.19.0`. [Source: _bmad-output/project-context.md#Technology Stack & Versions]
 - Tests use xUnit v3, Shouldly, NSubstitute, bUnit where needed, and `DiffEngine_Disabled=true`.

@@ -201,7 +201,7 @@ Read every likely UPDATE file completely before editing it:
 
 ### Library and Framework Requirements
 
-- Use the repository's actual centralized pins at implementation time. At story creation, `global.json` pins .NET SDK `10.0.301`; centralized props pin Roslyn `5.6.0`, Fluent UI Blazor v5 `5.0.0-rc.4-26180.1`, xUnit v3 `3.2.2`, and bUnit `2.8.4-preview`.
+- Use the repository's actual centralized pins at implementation time. At story creation, `global.json` pins .NET SDK `10.0.302`; centralized props pin Roslyn `5.6.0`, Fluent UI Blazor v5 `5.0.0-rc.4-26180.1`, xUnit v3 `3.2.2`, and bUnit `2.8.4-preview`.
 - This story does not authorize dependency upgrades. Version drift discovered while updating project context must be reported or corrected to the current centralized value, not solved by bumping packages.
 - DocFX is warnings-as-errors and already includes the Contracts.UI assembly in `docs/docfx.json`; regenerate metadata/site output through validation rather than editing generated API YAML.
 

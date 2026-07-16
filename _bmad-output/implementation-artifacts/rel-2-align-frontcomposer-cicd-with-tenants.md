@@ -123,7 +123,7 @@ release-model decision is superseded by the approved July 9 Tenants alignment pr
 
 **`.github/workflows/ci.yml`** (bespoke, ~497 lines, `on: push[main] + pull_request[main]`). Three jobs:
 - `commitlint` (ubuntu, no submodules) — duplicates the standalone `commitlint.yml`; validates PR title, PR commit range, and last-main commit via `npx commitlint`.
-- `build-and-test` (ubuntu, `submodules: false` + `Hexalith/Hexalith.Builds/Github/initialize-build@main`, `initialize-dotnet@main` `dotnet-version: 10.0.301`). Gate steps, in order:
+- `build-and-test` (ubuntu, `submodules: false` + `Hexalith/Hexalith.Builds/Github/initialize-build@main`, `initialize-dotnet@main` `dotnet-version: 10.0.302`). Gate steps, in order:
   - **Gate 1** — Contracts `-f netstandard2.0` isolation build.
   - **Gate 2** — full `.slnx` Release build.
   - **Gate 2a** — CLI tool package smoke (packs `Cli` @ `0.0.0-ci`, installs as local tool, runs `frontcomposer --help/inspect/migrate`).
@@ -143,7 +143,7 @@ release-model decision is superseded by the approved July 9 Tenants alignment pr
 
 **`eng/`** — `release_evidence.py` (12 subcommands, see §5), `pack_release_packages.py` (reads `eng/release-package-inventory.json`, filters `packable==true`), `release-package-inventory.json`, `validate-contract-artifacts.ps1`, `validate-docs.ps1`, `validate-story-artifacts.py`. **There is NO `sign` and NO `sbom` and NO `consumer-validation` subcommand.** **`scripts/` does NOT exist.** `release-evidence/` exists with only `run-metadata.json` checked in.
 
-**`Directory.Build.targets`** — `EnableFrontComposerPackageValidation` default **false** (opt-in); `FrontComposerPackageValidationBaselineVersion` default **1.12.0**; `Contracts.UI.csproj` overrides that baseline to **2.0.0**. Package validation is **not** currently enabled in the pipeline. `DiffEngine_Disabled` is **not** in props — it is a per-step workflow env only. `global.json` pins SDK **10.0.301**.
+**`Directory.Build.targets`** — `EnableFrontComposerPackageValidation` default **false** (opt-in); `FrontComposerPackageValidationBaselineVersion` default **1.12.0**; `Contracts.UI.csproj` overrides that baseline to **2.0.0**. Package validation is **not** currently enabled in the pipeline. `DiffEngine_Disabled` is **not** in props — it is a per-step workflow env only. `global.json` pins SDK **10.0.302**.
 
 ### 2. Target state — the Tenants baseline (the thing you are migrating TO)
 
@@ -424,7 +424,7 @@ tests where configured, docs validation, and e2e a11y/visual for the changed sur
   (the gated shape is at `ef2823ba~1`).
 - `e36b96a4 feat: … enhance CI governance tests (#49)` / `9160e0c1 Refactor release governance … for FR-24` —
   the current `CiGovernanceTests` + FR24 governance shape.
-- `9ca87724` pinned SDK 10.0.301 across workflows. `ed34cde3 ci: harden release failure evidence`.
+- `9ca87724` pinned SDK 10.0.302 across workflows. `ed34cde3 ci: harden release failure evidence`.
 
 ### Project Structure Notes
 

@@ -253,7 +253,7 @@ so that confirmed/rejected outcomes reflect backend truth.
 - Keep scoped-lifetime discipline. EventStore status query should be scoped like the EventStore
   command/query clients because it depends on per-circuit auth/tenant context. [Source: _bmad-output/project-context.md#Blazor Shell & Fluxor Rules]
 - Use repo-pinned dependencies only. No package upgrades are needed. Relevant pins include .NET SDK
-  10.0.300, FluentUI Blazor `5.0.0-rc.3-26138.1`, Fluxor 6.9.0, NUlid 1.7.3, xUnit v3 3.2.2,
+  10.0.302, FluentUI Blazor `5.0.0-rc.3-26138.1`, Fluxor 6.9.0, NUlid 1.7.3, xUnit v3 3.2.2,
   Shouldly 4.3.0, bUnit 2.7.2, and Verify.XunitV3 31.19.0. [Source: _bmad-output/project-context.md#Technology Stack & Versions]
 - Tests use xUnit v3, Shouldly, NSubstitute, bUnit where needed, and solution-level test commands
   with `DiffEngine_Disabled=true`. Do not use raw `Assert.*` in new tests. [Source: _bmad-output/project-context.md#Testing Rules]

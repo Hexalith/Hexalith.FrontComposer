@@ -134,7 +134,7 @@ The exception is frozen to these paths and identities; it is not a naming patter
 
 ### Library and Framework Requirements
 
-- Stay on repository pins: .NET SDK `10.0.301`, net10/C# latest, Fluxor `6.9.0`, Fluent UI Blazor `5.0.0-rc.4-26180.1`, Roslyn `5.6.0`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and the current Shell dependency graph. No upgrade is part of this story.
+- Stay on repository pins: .NET SDK `10.0.302`, net10/C# latest, Fluxor `6.9.0`, Fluent UI Blazor `5.0.0-rc.4-26180.1`, Roslyn `5.6.0`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and the current Shell dependency graph. No upgrade is part of this story.
 - The .NET SDK implicitly includes `.cs` compile items by default, so the 88 files require no project entries. [Microsoft.NET.Sdk default item inclusion](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#default-item-inclusion-properties)
 - File-scoped namespaces apply to the whole file and preserve the namespace-qualified type identity when declarations move without changing namespace. Keep using placement semantically equivalent. [C# namespaces and using directives](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/program-structure/namespaces)
 - `InternalsVisibleTo` remains assembly-based, so moving the 14 internal declarations inside the same Shell assembly requires no friend-assembly change. [Friend assemblies](https://learn.microsoft.com/en-us/dotnet/standard/assembly/friend)

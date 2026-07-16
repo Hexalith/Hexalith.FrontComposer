@@ -207,7 +207,7 @@ placeholder behavior, lifecycle dispatch order, pending-command registration, an
   pull Shell, FluentUI, or net10-only dependencies into `SourceTools`. Generated source may reference
   Shell runtime types by fully qualified name because that is the existing emitter pattern.
   [Source: _bmad-output/project-context.md#Code Quality & Style Rules]
-- Do not add or upgrade packages for this story. Relevant repo pins are `.NET SDK 10.0.300`,
+- Do not add or upgrade packages for this story. Relevant repo pins are `.NET SDK 10.0.302`,
   Roslyn `5.3.0`, FluentUI Blazor `5.0.0-rc.3-26138.1`, Fluxor.Blazor.Web `6.9.0`, NUlid `1.7.3`,
   xUnit v3 `3.2.2`, and Verify.XunitV3 `31.19.0`. [Source: Directory.Packages.props] [Source: global.json]
 - Official NuGet checks on 2026-06-04 confirm the story should follow repo pins rather than chase

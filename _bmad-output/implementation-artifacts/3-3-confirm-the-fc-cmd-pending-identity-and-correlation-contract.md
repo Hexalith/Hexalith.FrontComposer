@@ -253,7 +253,7 @@ derivable-field exclusion, and `IUlidFactory` correlation allocation,
   Output under `obj/{Config}/{TFM}/generated/HexalithFrontComposer/` is a public contract.
   [Source: _bmad-output/project-context.md#Source-Generator Rules]
 - All versions are centrally pinned. Do not add `Version=` to `.csproj` files and do not upgrade
-  packages for this story. Relevant pins include `.NET SDK 10.0.300`, `NUlid` 1.7.3, Roslyn 5.3.0,
+  packages for this story. Relevant pins include `.NET SDK 10.0.302`, `NUlid` 1.7.3, Roslyn 5.3.0,
   FluentUI Blazor `5.0.0-rc.3-26138.1`, Fluxor 6.9.0, xUnit v3 3.2.2, and Verify.XunitV3 31.19.0.
   [Source: Directory.Packages.props] [Source: global.json]
 - Official NuGet information checked on 2026-06-04 lists `NUlid` 1.7.3 and describes the canonical

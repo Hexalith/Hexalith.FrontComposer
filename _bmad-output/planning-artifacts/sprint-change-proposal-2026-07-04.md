@@ -78,7 +78,7 @@ This proposal (a) records the immediate Minor-scope fix batch applied under this
 
 8. **Dead `catch { throw; }` removed** in `ProjectionSubscriptionService.UnsubscribeAsync` (intent comment retained; semantics identical).
 
-9. **Hygiene:** 19 tracked `*.lscache` IDE cache artifacts untracked (`git rm --cached`) + `*.lscache` gitignored; stale `Directory.Packages.props` SDK-pin comment corrected (said 10.0.300; global.json is authoritative at 10.0.301).
+9. **Hygiene:** 19 tracked `*.lscache` IDE cache artifacts untracked (`git rm --cached`) + `*.lscache` gitignored; stale `Directory.Packages.props` SDK-pin comment corrected (said 10.0.302; global.json is authoritative at 10.0.302).
 
 **Verification (all Release, direct xUnit v3 in-process runner, `DiffEngine_Disabled=true`):**
 - SourceTools.Tests build 0W/0E; full suite **1045 total / 2 failed — both pre-existing** (`settings.md` docs-governance drift; `PackableProjects_UsePackageValidationBaselinePolicy` SourceTools-packability drift — neither file touched). `CommandFormEmitterTests` 33/33 (+3 new); the previously-failing-under-first-attempt `RunGenerators_BoundedContextXmlCharacters_EscapesRegistrationXmlDoc` now green.

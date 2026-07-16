@@ -172,7 +172,7 @@ documentsUnderReview:
 1. 🔴 **Epic 11's requirements exist only in a change proposal.** No FR/NFR/AR entry and no epics.md section traces them; the FR Coverage Map ends at Epic 10.
 2. 🟠 **The `Hexalith.FrontComposer.UI` combined host has no requirement-level home** — a shipped, spec'd product surface (host project + AppHost resources + Parties integration) invisible to the FR inventory (which still says "7 source projects"; the 07-04 review counts 9).
 3. 🟡 Story 11.8 (kernel split) would **amend NFR5/NFR12's documented boundary** — flagged in the proposal as requiring Architect sign-off; the NFR text does not yet carry a pending-amendment marker (same pattern UX-DR2/DR3 used).
-4. 🟡 `project-overview.md` version table has drifted from `project-context.md` (e.g. MCP 1.3.0 vs 1.4.0, SDK 10.0.300 vs 10.0.301, bUnit/NSubstitute versions) — cosmetic for this audit, but it is the PRD-substitute's tech-stack section.
+4. 🟡 `project-overview.md` version table has drifted from `project-context.md` (e.g. MCP 1.3.0 vs 1.4.0, SDK 10.0.302 vs 10.0.302, bUnit/NSubstitute versions) — cosmetic for this audit, but it is the PRD-substitute's tech-stack section.
 
 ---
 
@@ -322,7 +322,7 @@ The plan that is about to enter implementation (story-automator preflight: 9.1, 
 
 ### Minor Issues (hygiene)
 
-7. 🟡 Architecture/document currency drift: architecture.md §8 lists 7 submodules (`.gitmodules` has 8 — `Hexalith.Parties` missing), layer diagram predates the UI host; epics.md NFR14 submodule list likewise short; project-overview.md version table stale (MCP 1.3.0→1.4.0, SDK 10.0.300→10.0.301, etc.).
+7. 🟡 Architecture/document currency drift: architecture.md §8 lists 7 submodules (`.gitmodules` has 8 — `Hexalith.Parties` missing), layer diagram predates the UI host; epics.md NFR14 submodule list likewise short; project-overview.md version table stale (MCP 1.3.0→1.4.0, SDK 10.0.302→10.0.302, etc.).
 8. 🟡 NFR5/NFR12 carry no pending-amendment marker despite approved Story 11.8 planning to amend the Contracts boundary (use the UX-DR2/DR3 amendment pattern when 11.8's decision lands).
 9. 🟡 Story 2.6's AC wording reads as delivered while Epic 9's header records the accepted deferral — the header note is the accepted mitigation; no action unless epics.md is edited anyway.
 

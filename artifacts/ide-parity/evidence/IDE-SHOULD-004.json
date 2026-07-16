@@ -8,7 +8,7 @@
     "visualStudio": "Visual Studio 2022 17.13+",
     "rider": "JetBrains Rider 2026.1.x",
     "vsCodeDevKit": "VS Code stable + C# Dev Kit pinned minor",
-    "dotnetSdk": "10.0.301"
+    "dotnetSdk": "10.0.302"
   },
   "osOrContainerImage": "Contributor documentation validation",
   "validationCommandOrManualSteps": "Review CONTRIBUTING.md generator-host debugging guidance.",

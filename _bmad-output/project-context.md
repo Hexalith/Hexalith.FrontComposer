@@ -16,7 +16,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ## Technology Stack & Versions
 
-- **.NET 10** — `global.json` pins SDK `10.0.301` with `rollForward: latestPatch`; root props enable
+- **.NET 10** — `global.json` pins SDK `10.0.302` with `rollForward: latestPatch`; root props enable
   `Nullable`, `ImplicitUsings`, `LangVersion=latest`, and **`TreatWarningsAsErrors=true`**
 - **Solution format:** `Hexalith.FrontComposer.slnx` only. Do not create or use `.sln`
 - **Central package management:** `Directory.Packages.props` owns all package versions; never add

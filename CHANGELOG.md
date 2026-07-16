@@ -239,7 +239,7 @@ Contracts.UI, Shell, and Testing packages instead of Contracts.
 ### Bug Fixes
 
 * **docs:** update Node.js and .NET SDK references in documentation to reflect current requirements ([92edc30](https://github.com/Hexalith/Hexalith.FrontComposer/commit/92edc300e5de8778c81d60bbc781613d9e1d1f21))
-* update .NET SDK version from 10.0.300 to 10.0.301 across workflows and evidence files ([9ca8772](https://github.com/Hexalith/Hexalith.FrontComposer/commit/9ca8772424c06ced8875619e930ac13970e06c52))
+* update .NET SDK version from 10.0.302 to 10.0.302 across workflows and evidence files ([9ca8772](https://github.com/Hexalith/Hexalith.FrontComposer/commit/9ca8772424c06ced8875619e930ac13970e06c52))
 
 
 ### Features
@@ -393,7 +393,7 @@ Contracts.UI, Shell, and Testing packages instead of Contracts.
 * Add recurring BMAD story code review job documentation ([a7de977](https://github.com/Hexalith/Hexalith.FrontComposer/commit/a7de977e2d2eb64ab9c70608c726786f59d123b7))
 * Add retrospectives for Epic 8 and Epic 9, and create Epic 11 for deferred hardening ([bb06655](https://github.com/Hexalith/Hexalith.FrontComposer/commit/bb06655f833ba27b321b7a4f4f65906a6ff0cef4))
 * add reusable FcPageToolbar component with search, filter, and tab functionality ([ff8a2af](https://github.com/Hexalith/Hexalith.FrontComposer/commit/ff8a2afa2cb30088d8b910c42478681df08e09a0))
-* Add sprint change proposal to pin .NET SDK to 10.0.300 ([02e267c](https://github.com/Hexalith/Hexalith.FrontComposer/commit/02e267c99750afda5bff0820582108123c79f830))
+* Add sprint change proposal to pin .NET SDK to 10.0.302 ([02e267c](https://github.com/Hexalith/Hexalith.FrontComposer/commit/02e267c99750afda5bff0820582108123c79f830))
 * Add sprint change proposals for E11 Contracts kernel split, route-contract decision, PRD-AI-1 disposition, and REL-AI-1 release evidence gate ([3b96613](https://github.com/Hexalith/Hexalith.FrontComposer/commit/3b96613811791b86e815d1ecf5eb318900a79acc))
 * Add sprint change proposals for Tenants UI and Row-Level New-Item Producer ([401e857](https://github.com/Hexalith/Hexalith.FrontComposer/commit/401e857f3a2d4404630e79731a24d99708fd98b4))
 * **auth:** Implement authentication services and options validation ([7296206](https://github.com/Hexalith/Hexalith.FrontComposer/commit/7296206893f3f46d8b1660bb5ef913e98ed54a40))

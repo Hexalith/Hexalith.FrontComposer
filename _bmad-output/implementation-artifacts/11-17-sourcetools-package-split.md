@@ -89,7 +89,7 @@ so that the package follows the documented source-organization convention withou
 
 ### Library and Framework Requirements
 
-- Use the repository-pinned toolchain as authoritative: .NET SDK `10.0.301`, C# latest/14, Roslyn `5.6.0`, xUnit v3 `3.2.2`, and Shouldly `4.3.0`. No new package or version update is required.
+- Use the repository-pinned toolchain as authoritative: .NET SDK `10.0.302`, C# latest/14, Roslyn `5.6.0`, xUnit v3 `3.2.2`, and Shouldly `4.3.0`. No new package or version update is required.
 - The .NET SDK implicitly includes `.cs` compile items by default, so the split does not require explicit project entries. [MSBuild properties for Microsoft.NET.Sdk](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#default-item-inclusion-properties)
 - Keep one file-scoped namespace per new file; Microsoft documents that the declaration applies to the entire file and is the normal single-namespace form. [Namespaces and using directives](https://learn.microsoft.com/en-us/dotnet/csharp/fundamentals/program-structure/namespaces#file-scoped-namespaces)
 - Roslyn's incremental-generator guidance treats value equality and removal of symbols/syntax from pipeline models as critical to cache reuse; the split must preserve those model/equality semantics. [Incremental generators cookbook](https://github.com/dotnet/roslyn/blob/main/docs/features/incremental-generators.cookbook.md#pipeline-model-design)

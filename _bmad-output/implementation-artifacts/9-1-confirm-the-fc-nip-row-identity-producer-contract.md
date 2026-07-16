@@ -115,7 +115,7 @@ This is not automatically the FC-NIP payload. `AggregateId` may identify the dom
 
 ### Latest Technical Information
 
-No external package or API upgrade is part of Story 9.1. Use the repository-pinned stack: .NET SDK `10.0.301`, Fluent UI Blazor `5.0.0-rc.3-26138.1`, Fluxor `6.9.0`, xUnit v3 `3.2.2`, bUnit `2.8.4-preview`, and Playwright `1.61.0`. The risk is the current local/pinned EventStore payload shape, not an upstream package version.
+No external package or API upgrade is part of Story 9.1. Use the repository-pinned stack: .NET SDK `10.0.302`, Fluent UI Blazor `5.0.0-rc.3-26138.1`, Fluxor `6.9.0`, xUnit v3 `3.2.2`, bUnit `2.8.4-preview`, and Playwright `1.61.0`. The risk is the current local/pinned EventStore payload shape, not an upstream package version.
 
 ### Previous Story Intelligence
 

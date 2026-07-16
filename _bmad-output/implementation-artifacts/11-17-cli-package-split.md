@@ -180,7 +180,7 @@ This story refines FR25, FR28, and FR29 and closes only the CLI slice of archite
 
 ### Library and Framework Requirements
 
-- Stay on the repository-pinned toolchain: .NET SDK `10.0.301`, .NET 10, C# 14/latest, Roslyn Workspaces `5.6.0`, xUnit v3 `3.2.2`, and Shouldly `4.3.0`.
+- Stay on the repository-pinned toolchain: .NET SDK `10.0.302`, .NET 10, C# 14/latest, Roslyn Workspaces `5.6.0`, xUnit v3 `3.2.2`, and Shouldly `4.3.0`.
 - No package, package version, target-framework, solution, project, tool-manifest, CLI framework, analyzer, or code-generation change is required.
 - Microsoft documents `EnableDefaultCompileItems` as `true` by default, so new `.cs` files are compiled implicitly. [MSBuild properties for Microsoft.NET.Sdk](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/msbuild-props#default-item-inclusion-properties)
 - File-scoped namespaces lower to the equivalent traditional namespace scope; keep using placement semantically equivalent when declarations move. [C# `namespace` reference](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/namespace)

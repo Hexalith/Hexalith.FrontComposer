@@ -67,7 +67,7 @@ Populated from the MCP run (`mcp__aspire__list_apphosts`, host introspection, an
 | Sample app                  | `samples/Counter/Counter.Web` (Blazor Server, `dotnet watch`) |
 | Date of run                 | 2026-04-14                                                  |
 
-> **Revalidation note.** The repository baseline moved to .NET SDK `10.0.301` by July 2026. The Story 1.8 measurement table above remains preserved as historical evidence; release certification must capture a fresh `10.0.301` validation row before claiming current hot-reload parity.
+> **Revalidation note.** The repository baseline moved to .NET SDK `10.0.302` by July 2026. The Story 1.8 measurement table above remains preserved as historical evidence; release certification must capture a fresh `10.0.302` validation row before claiming current hot-reload parity.
 
 > **Harness note.** The measurement harness is the Claude Code agent driving Aspire MCP and the Claude browser extension. Each "Measured latency" below is the wall-clock time between the `Edit` tool invocation that mutates the domain file and the subsequent `javascript_tool` call that first reads the updated DataGrid header/cell. That wall-clock includes **tool-roundtrip overhead** (file-save, LLM tool arbitration, browser navigation, page evaluation) — not just the `dotnet watch` rebuild. The `dotnet watch` log reports `Hot reload succeeded` for both the AppHost and the `Counter.Web` child project within ~1 s of each file change, so the true source-generator + incremental-rebuild path is well inside NFR10's 2 s budget. The larger numbers below primarily reflect harness overhead, not generator performance; the agent-authoritative generator budget is enforced by `IncrementalRebuildBenchmarkTests` (NFR8 < 500 ms).
 

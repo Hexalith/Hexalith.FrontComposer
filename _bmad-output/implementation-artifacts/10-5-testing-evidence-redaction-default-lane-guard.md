@@ -116,7 +116,7 @@ Read each likely UPDATE file completely before changing it:
 
 ### Latest Technical Information
 
-No external package/API research is required for Story 10.5. Use the repository-pinned stack in `_bmad-output/project-context.md`: .NET SDK `10.0.301`, `System.Text.Json` `10.0.9`, bUnit `2.8.4-preview`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and FluentUI Blazor `5.0.0-rc.3-26138.1`. The risk is local privacy coverage, not stale third-party API knowledge. [Source: `_bmad-output/project-context.md#Technology Stack & Versions`]
+No external package/API research is required for Story 10.5. Use the repository-pinned stack in `_bmad-output/project-context.md`: .NET SDK `10.0.302`, `System.Text.Json` `10.0.9`, bUnit `2.8.4-preview`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and FluentUI Blazor `5.0.0-rc.3-26138.1`. The risk is local privacy coverage, not stale third-party API knowledge. [Source: `_bmad-output/project-context.md#Technology Stack & Versions`]
 
 ### Previous Story Intelligence
 

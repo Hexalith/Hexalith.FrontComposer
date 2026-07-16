@@ -11,13 +11,13 @@ trigger: local e2e setup documentation lagged behind the current Node/npm and Pl
 
 ## 1. Issue Summary
 
-Local setup exposed a documentation gap: the Playwright e2e workspace declares `engines.node >=24.0.0`, `tests/e2e/.nvmrc` pins Node `24`, and `@faker-js/faker` requires npm `>=10`, but the generated development guide still described Node as generic LTS. The same pass found stale SDK references to `10.0.300` even though `global.json` pins `10.0.301`.
+Local setup exposed a documentation gap: the Playwright e2e workspace declares `engines.node >=24.0.0`, `tests/e2e/.nvmrc` pins Node `24`, and `@faker-js/faker` requires npm `>=10`, but the generated development guide still described Node as generic LTS. The same pass found stale SDK references to `10.0.302` even though `global.json` pins `10.0.302`.
 
 Evidence:
 
 - `tests/e2e/package.json` declares `engines.node >=24.0.0`.
 - `tests/e2e/.nvmrc` contains `24`.
-- `global.json` pins SDK `10.0.301`.
+- `global.json` pins SDK `10.0.302`.
 - CI installs Chromium only for the accessibility/visual lane, while the Playwright config also declares Firefox and WebKit projects for local cross-browser runs.
 
 ## 2. Impact Analysis
@@ -89,14 +89,14 @@ Artifact: `_bmad-output/project-docs/development-guide.md`
 OLD:
 
 ```text
-.NET SDK: 10.0.300
+.NET SDK: 10.0.302
 Node.js: LTS
 ```
 
 NEW:
 
 ```text
-.NET SDK: 10.0.301
+.NET SDK: 10.0.302
 Node.js: >=24.0.0 for the Playwright e2e workspace; tests/e2e/.nvmrc pins Node 24
 npm: >=10 for the e2e workspace dependencies
 ```
@@ -144,16 +144,16 @@ Artifacts:
 OLD:
 
 ```text
-10.0.300
+10.0.302
 ```
 
 NEW:
 
 ```text
-10.0.301
+10.0.302
 ```
 
-Rationale: `global.json` is authoritative and pins `10.0.301`.
+Rationale: `global.json` is authoritative and pins `10.0.302`.
 
 The producer fingerprint baseline for `docs/ide-parity-matrix.md` was updated because the documentation gate treats that file as a story-owned producer artifact.
 
@@ -166,7 +166,7 @@ Route to: Developer agent for direct implementation.
 Implementation tasks:
 
 - Update BMad generated project docs and agent context to reflect Node `>=24`, npm `>=10`, Playwright `1.61.1`, and CI Chromium-only browser install.
-- Update stale SDK pin references from `10.0.300` to `10.0.301` where the document is intended to describe the current repository baseline.
+- Update stale SDK pin references from `10.0.302` to `10.0.302` where the document is intended to describe the current repository baseline.
 - Update the producer fingerprint baseline for any intentionally changed producer artifact.
 - Leave historical review evidence unchanged when it is describing the state observed by that review.
 - Validate with targeted text search, JSON parsing, package installs, and Playwright launch smoke checks.
@@ -174,7 +174,7 @@ Implementation tasks:
 Success criteria:
 
 - No active setup guide still presents Node as generic LTS for the e2e workspace.
-- No current-baseline doc still claims SDK `10.0.300`.
+- No current-baseline doc still claims SDK `10.0.302`.
 - Documentation clearly distinguishes the Chromium-only CI accessibility/visual lane from optional local all-browser installs.
 - `pwsh ./eng/validate-docs.ps1` passes.
 - Repository status contains only intentional documentation changes and ignored npm/Playwright output remains ignored.
