@@ -1,3 +1,9 @@
+## [4.0.1](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v4.0.0...v4.0.1) (2026-07-16)
+
+### Bug Fixes
+
+* update localization and identifier alignment for accessibility and governance compliance ([d9c19a4](https://github.com/Hexalith/Hexalith.FrontComposer/commit/d9c19a4fb837357af10f6f1aa630232f670557c4))
+
 ## [4.0.0](https://github.com/Hexalith/Hexalith.FrontComposer/compare/v3.2.2...v4.0.0) (2026-07-15)
 
 ### ⚠ BREAKING CHANGES
