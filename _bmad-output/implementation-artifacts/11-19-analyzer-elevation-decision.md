@@ -9,11 +9,12 @@ sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-1
 status: ready-for-dev
 storyType: decision-record
 implementationGate: post-correction-readiness-pass
+baseline_commit: d9c19a4fb837357af10f6f1aa630232f670557c4
 ---
 
 # Story 11.19d: Analyzer-Elevation Decision
 
-Status: ready-for-dev.
+Status: review.
 
 ## Story
 
@@ -54,12 +55,12 @@ deferred build change.
 
 ## Tasks / Subtasks
 
-- [ ] Capture the effective current analyzer configuration and a clean Release baseline.
-- [ ] Run a non-mutating `AnalysisMode=Recommended` diagnostic census by project/category/ID.
-- [ ] Estimate and group burn-down work without editing production code.
-- [ ] Record the signed Architecture/Product decision under `_bmad-output/contracts/`.
-- [ ] Materialize any approved implementation phases as new stories; do not implement them here.
-- [ ] Link sprint status and run documentation/artifact validation.
+- [x] Capture the effective current analyzer configuration and a clean Release baseline.
+- [x] Run a non-mutating `AnalysisMode=Recommended` diagnostic census by project/category/ID.
+- [x] Estimate and group burn-down work without editing production code.
+- [x] Record the signed Architecture/Product decision under `_bmad-output/contracts/`.
+- [x] Materialize any approved implementation phases as new stories; do not implement them here.
+- [x] Link sprint status and run documentation/artifact validation.
 
 ## Dev Notes
 
@@ -121,10 +122,41 @@ python3 eng/validate-story-artifacts.py --story \
 
 ### Debug Log References
 
+- 2026-07-16: Captured SDK 10.0.301 / MSBuild 18.6.4 and a clean normal Release solution build (0 warnings, 0 errors) with the story-prescribed non-audit build command.
+- 2026-07-16: Effective root posture is undeclared `AnalysisMode`, `AnalysisLevel=latest`, `EnableNETAnalyzers=true`, `TreatWarningsAsErrors=true`, and explicit CA1062/CA1822/CA2007 warnings plus CA1014 suppression. Source projects also inherit documentation-warning suppressions 0419/1570/1572/1573/1574/1734; project-local suppressions are included in the decision census.
+- 2026-07-16: Default regression lane passed 4,149/4,150 on its first serialized run; the sole failure was a two-minute cancellation inside the MCP package-boundary test's nested `dotnet pack`. Its exact direct xUnit rerun passed 1/1 in 9.0 seconds, confirming no functional regression.
+- 2026-07-16: A forced candidate build with unchanged warnings-as-errors failed at 120 diagnostics before dependency failure stopped full enumeration. A diagnostic-only candidate build with command-line `TreatWarningsAsErrors=false` enumerated 4,070 unique Recommended findings across 19 affected Release projects/TFMs: Naming 2,958; Performance 772; Globalization 228; Usage 49; Maintainability 46; Reliability 12; Design 5. Tests account for 3,500 findings, samples 203, and product source 367. The effective candidate policy reports 503 diagnostics in SourceTools-generated files, so they remain included in the census.
+- 2026-07-16: Restored the normal analyzer posture, rebuilt Release clean (0 warnings, 0 errors), and reran the complete default regression lane successfully (4,150/4,150).
+- 2026-07-16: Burn-down grouping: Naming 2,958 (principally CA1707 conflicts with required underscore test names and existing public diagnostic-constant names); logging CA1848/CA1873 566 (405 generated); remaining Performance 206; Globalization 228; Design/Maintainability/Usage/Reliability 112. Estimated four staged phases: policy/exception audit (3-5 engineer-days), production and generator fixes (8-12), test/sample fixes (8-12), final activation/governance (2-3); total 21-32 engineer-days before contingency.
+- 2026-07-16: Recorded the signed FC-ANALYZERS-RECOMMENDED contract selecting staged activation, naming Architecture/Product/implementation/release owners, setting 2026-07-24 through 2026-09-11 milestones, and defining zero-warning exits plus rollback/escalation rules. Story and repository artifact validation both pass.
+- 2026-07-16: Materialized Stories 11.20-11.23 as separate approval-gated backlog phases with non-overlapping policy, product/generator, test/sample, and final activation scopes. No phase implementation was performed; artifact validation remains green.
+- 2026-07-16: Sprint status links the decision and Stories 11.20-11.23. Story/repository artifact validation, published-docs validation, and the focused Governance lane pass (322 Governance tests; projects without matching traits reported no matching test, not failure).
+- 2026-07-16: Final completion gate passed: all tasks checked, full default regression 4,150/4,150, forced normal Release 0 warnings/0 errors, 322 focused Governance tests, docs validation, artifact validation, gzip evidence integrity, File List reconciliation, and whitespace checks.
+
 ### Completion Notes List
 
+- Effective current analyzer configuration and the clean Release baseline are captured without changing build policy, severities, suppressions, packages, source, tests, or generated output.
+- The non-mutating Recommended census is captured by category, diagnostic ID, and project; compressed current/strict/census MSBuild binary logs preserve raw machine-readable evidence.
+- Burn-down is partitioned by defect class and validation boundary; no source, test, suppression, package, severity, or generated-output edit was made during estimation.
+- Architecture/Product approved `Recommended` as the target through four staged, release-gated phases; immediate activation was rejected on the measured 4,070-diagnostic cost.
+- Follow-up implementation is materialized as four independently approval-gated backlog stories; Story 11.19d introduces no analyzer-policy or product-code change.
+- Sprint traceability, documentation validation, artifact validation, focused Governance coverage, the clean Release build, and the 4,150-test default regression lane are green.
+- Definition of Done is satisfied and the story is ready for independent code review; follow-up phases remain backlog and unimplemented.
+
 ### File List
+
+- `_bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md`
+- `_bmad-output/contracts/analyzer-elevation-current-2026-07-16.binlog.gz`
+- `_bmad-output/contracts/analyzer-elevation-recommended-census-2026-07-16.binlog.gz`
+- `_bmad-output/contracts/analyzer-elevation-recommended-strict-2026-07-16.binlog.gz`
+- `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+- `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+- `_bmad-output/implementation-artifacts/11-22-recommended-analyzer-test-and-sample-burndown.md`
+- `_bmad-output/implementation-artifacts/11-23-recommended-analyzer-repository-activation.md`
+- `_bmad-output/implementation-artifacts/11-19-analyzer-elevation-decision.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Change Log
 
 - 2026-07-15: Materialized approved 11.19d decision child with a non-mutating Recommended-mode census contract.
+- 2026-07-16: Completed the analyzer census and approved staged-activation decision; added raw binary-log evidence and four separately gated implementation stories without changing analyzer policy or product code.

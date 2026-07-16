@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-16T02:07:41+02:00
+last_updated: 2026-07-16T04:21:15+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -471,7 +471,14 @@ development_status:
   # 11.19c moved in-progress -> review on 2026-07-16 (dev-story; Release build, package compatibility, 4,149 default-lane tests, docs, artifacts, and integrity validation green).
   11-19-localization-and-identifier-alignment: review
   # 11.19d moved backlog -> ready-for-dev on 2026-07-15 (create-story; AnalysisMode elevation decision record only).
-  11-19-analyzer-elevation-decision: ready-for-dev
+  # 11.19d moved ready-for-dev -> in-progress on 2026-07-16 (dev-story; census and staged activation decision recorded in _bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md).
+  # 11.19d moved in-progress -> review on 2026-07-16 (dev-story; 4,070-diagnostic census, signed staged decision, four backlog follow-ups, Release/default/Governance/docs/artifact gates green).
+  11-19-analyzer-elevation-decision: review
+  # Stories 11.20-11.23 materialized as separately approval-gated backlog phases on 2026-07-16 by the 11.19d staged-activation decision; target due dates are 2026-07-24, 2026-08-14, 2026-09-04, and 2026-09-11.
+  11-20-recommended-analyzer-policy-and-exception-ledger: backlog
+  11-21-recommended-analyzer-product-and-generator-burndown: backlog
+  11-22-recommended-analyzer-test-and-sample-burndown: backlog
+  11-23-recommended-analyzer-repository-activation: backlog
   epic-11-retrospective: optional
   # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
   # rel-1 moved backlog -> in-progress on 2026-07-05 (dev-story; owner decision: keep Jul 3 auto-publish model, add FR24 evidence only. baseline 2d1a1290. Signing deferred; REL-AI-1 stays open.)
