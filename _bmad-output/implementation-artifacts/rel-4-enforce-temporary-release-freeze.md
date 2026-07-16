@@ -1,6 +1,6 @@
 ---
 created: 2026-07-15
-updated: 2026-07-15
+updated: 2026-07-16
 owner: Release Owner + Developer + QA/Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md
 status: ready-for-dev
@@ -70,10 +70,7 @@ not wait for upstream and remains as defense-in-depth afterwards.
      `dotnet nuget push` (assertions must target executable `uses:`/`run:` content — those strings
      appear elsewhere in comments today).
 
-6. The deployment guide documents the freeze runbook (done at approval; verify accuracy against the
-   landed workflow): variable name, exact enabling value, Release Owner-only custody, the
-   org-vs-repo variable shadowing hazard (a repo-level value must exist whenever an org-level value
-   exists), what a frozen run looks like, and the local-`NUGET_API_KEY` residual.
+6. Before implementation, the deployment guide labels the freeze guard as an approved target that is not yet operational. After REL-4 lands, the Developer updates it to active-state wording and records governance-test results plus the first CI-authoritative frozen Release run URL showing `freeze-guard` success, release-job skip, and no publication side effect. The active runbook must retain: variable name, exact enabling value, Release Owner-only custody, org-vs-repo shadowing hazard, frozen-run shape, and local `NUGET_API_KEY` residual.
 
 7. The gate is removed or replaced only when the REL-3 exact-artifact gate is operational and
    REL-AI-1 records passing real-release evidence; re-enabling publication is a Release Owner

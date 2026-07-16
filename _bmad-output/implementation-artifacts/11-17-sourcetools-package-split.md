@@ -4,7 +4,7 @@ baseline_commit: 9a870d07ddf8c919e33f272cb3e17eb63dc040b8
 
 # Story 11.17b: SourceTools package split
 
-Status: review
+Status: in-progress
 
 <!-- Note: This executable child specializes the non-implementable Story 11.17 parent. The sprint key intentionally remains 11-17-sourcetools-package-split. -->
 
@@ -244,3 +244,4 @@ Codex (GPT-5)
 
 - 2026-07-14: Created executable Story 11.17b and marked ready-for-dev. Scoped the mechanical SourceTools `DriftDetection.cs` split, durable Drift organization guard, drift/HFC/generated-byte/P12 preservation lanes, and M14 closure evidence.
 - 2026-07-14: Implemented and validated the SourceTools Drift split. Closed architecture-quality finding M14 for the approved `DriftDetection.cs` slice only; other Story 11.17 children and known unrelated multi-type files remain outside this closure.
+- 2026-07-16: Completed bmad-code-review chunk 1 (constants, options, and baseline-loading declarations) through all four configured review layers. No actionable findings remained after triage; three candidate families were dismissed because the declarations and behavior are baseline-identical and explicitly preservation-pinned. Status remains in-progress pending the agreed current/comparison/diagnostic and governance/documentation chunks.

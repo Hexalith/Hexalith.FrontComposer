@@ -234,14 +234,7 @@ records v3.2.1/v3.2.2 in the compliance ledger. This stop-the-line gate blocks t
 release; no new product epic is required. See
 `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md`.
 
-**Update (correct-course 2026-07-15, freeze enforcement):** the REL-3 freeze is now technically
-enforced. `REL-4: Technically enforce the temporary release freeze` adds a fail-closed publish gate to
-`release.yml` (publication disabled unless the Release Owner-controlled
-`HEXALITH_RELEASE_PUBLISH_ENABLED` variable is exactly `true`, evaluated by an exact bash match;
-governance tests pin the gate and the absence of alternate publish paths). The identical gate contract
-is a required Hexalith.Builds upstream item so all Hexalith modules share the same default-frozen
-control. REL-4 precedes REL-3 implementation; the gate is removed/re-scoped only on REL-3 real-release
-evidence. See `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md`.
+**Update (correct-course 2026-07-16, freeze truth-state):** `REL-4` is the approved stop-the-line predecessor to `REL-3`, but remains ready-for-dev. Until its fail-closed publish gate is implemented and verified in `release.yml`, the freeze is administrative and the current workflow remains publish-capable. REL-4 must land before REL-3 development or any other change may authorize package publication. The same gate contract remains a required Hexalith.Builds upstream item; after REL-4 lands, update this section with the live frozen-run evidence. Follow-up: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md`.
 
 **Update (correct-course 2026-07-15, upstream governed contract):** the Hexalith.Builds dependency
 is corrected from signing-secret forwarding to the full **BUILD-REL-1 opt-in governed NuGet release

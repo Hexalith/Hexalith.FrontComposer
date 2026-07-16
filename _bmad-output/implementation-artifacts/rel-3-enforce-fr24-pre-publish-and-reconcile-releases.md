@@ -1,7 +1,7 @@
 ---
 created: 2026-07-15
-updated: 2026-07-15
-amended: 2026-07-15 (governed-release upstream contract; ACs 18-19; operational authority split to REL-5)
+updated: 2026-07-16
+amended: 2026-07-16 (freeze truth-state; approval-mechanism contract in AC20; prior governed-release and operational-authority amendments retained)
 owner: Release Owner + Developer + QA/Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md
 amendmentProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md
@@ -153,6 +153,8 @@ Source: sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md.
     partial-publication incident record, and no compliant ledger disposition is possible until
     owner-led reconciliation completes.
 
+20. Given the machine-readable `APPROVAL_MATRIX`, when REL-3 implements release authorization, then it describes the actual approved mechanisms: the Release Owner-controlled REL-4 variable, publishable readiness evidence, and any upstream protected release environment. It must not name `workflow_dispatch`, `release_owner_approved`, or `release_approver` inputs that `release.yml` forbids. Governance tests pin consistency between the helper, release workflow, REL-4, and REL-5.
+
 ## Required Artifact Invariant
 
 ```text
@@ -205,6 +207,9 @@ Pack once
         manifest before sealing; fail classification when attestation evidence is neither
         `attested` nor a sealed owner-approved fallback.
   - [ ] Keep signing material out of artifacts, logs, summaries, and manifest fields.
+  - [ ] Update `eng/release_evidence.py` so `APPROVAL_MATRIX` records the actual REL-4 variable,
+        publishable readiness evidence, and upstream protected release environment without naming
+        prohibited `workflow_dispatch`, `release_owner_approved`, or `release_approver` inputs.
   - [ ] Fail before side effects on every missing/blocked result.
 
 - [ ] T3 — Make semantic-release publish only authorized artifacts.
@@ -231,6 +236,8 @@ Pack once
   - [ ] Prove post-publication evidence cannot authorize a release retroactively.
   - [ ] Prove classification fails when attestation evidence is absent and no sealed
         owner-approved fallback exists.
+  - [ ] Prove `APPROVAL_MATRIX`, `release.yml`, REL-4, and REL-5 agree on the authorization
+        mechanism and contain none of the forbidden dispatch/approver input tokens.
   - [ ] Cover the partial-publication incident path.
 
 - [ ] T6 — Validate without publishing, then obtain real-release evidence.

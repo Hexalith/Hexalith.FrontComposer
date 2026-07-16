@@ -1,7 +1,8 @@
 # Hexalith.FrontComposer — Deployment / Release Guide
 
-> **Generated:** 2026-06-02 · deep scan. **Updated 2026-07-15 (REL-3 course correction)** after live
-> v3.2.1/v3.2.2 evidence proved the G1 post-publication workflow is not an FR24 publication gate.
+> **Generated:** 2026-06-02 · deep scan. **Updated 2026-07-16 (REL-AI-1 truth-state correction)** after live
+> v3.2.1/v3.2.2 evidence proved the G1 post-publication workflow is not an FR24 publication gate and
+> repository inspection confirmed the approved REL-4 freeze guard is not yet operational.
 > FrontComposer ships as **NuGet packages**, not a deployed service.
 > "Deployment" here means the automated **semantic-release → NuGet** pipeline
 > ([.releaserc.json](.releaserc.json)) driven by the shared reusable **Hexalith.Builds** workflows.
@@ -37,11 +38,9 @@ Release Owner has frozen publish-capable releases until REL-3 moves authorizatio
 | **Release (publish)** | `release.yml` → reusable `domain-release.yml` via `workflow_run` | semantic-release pack + publish only |
 | **Release evidence (current G1)** | `release-evidence.yml` (`workflow_run` after `Release`) | post-publication reconstructed evidence and diagnostics; cannot authorize or prove already-published bytes |
 
-### Release freeze control (REL-4, approved 2026-07-15)
+### Release freeze control (REL-4 approved; implementation pending)
 
-The freeze above is technically enforced by a fail-closed publish gate in `release.yml`
-(implemented by REL-4; approved by
-`sprint-change-proposal-2026-07-15-release-freeze-enforcement.md`):
+`REL-4` defines the approved fail-closed release-freeze control, but implementation and live verification remain pending. The current `release.yml` does not yet contain the `freeze-guard` and must be treated as publish-capable. Publication is prohibited administratively until REL-4 lands. The runbook below is the approved target and becomes active only after REL-4 implementation:
 
 - A `freeze-guard` job evaluates the repository/organization Actions variable
   **`HEXALITH_RELEASE_PUBLISH_ENABLED`** with an **exact POSIX string comparison in bash**
