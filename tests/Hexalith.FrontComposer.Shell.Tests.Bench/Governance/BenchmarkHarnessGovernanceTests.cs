@@ -1,5 +1,6 @@
 using System.Reflection;
 
+using Hexalith.FrontComposer.Mcp.Skills;
 using Hexalith.FrontComposer.Shell.Tests.Bench.Skills;
 
 using Shouldly;
@@ -34,6 +35,7 @@ public sealed class BenchmarkHarnessGovernanceTests {
         MethodInfo[] facts = typeof(BenchmarkHarnessTests).GetMethods(BindingFlags.Instance | BindingFlags.Public)
             .Where(method => method.CustomAttributes.Any(attribute => attribute.AttributeType == typeof(FactAttribute)))
             .ToArray();
+        SkillBenchmarkPromptSet promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
 
         facts.Select(method => method.Name).Order(StringComparer.Ordinal).ShouldBe(
             RequiredFactNames.Order(StringComparer.Ordinal));
@@ -42,5 +44,8 @@ public sealed class BenchmarkHarnessGovernanceTests {
             && attribute.ConstructorArguments.Count == 2
             && string.Equals(attribute.ConstructorArguments[0].Value as string, "Category", StringComparison.Ordinal)
             && string.Equals(attribute.ConstructorArguments[1].Value as string, "Performance", StringComparison.Ordinal));
+        promptSet.Prompts.Count.ShouldBe(20);
+        typeof(SkillBenchmarkPromptSet).Assembly.GetManifestResourceNames().ShouldContain(
+            "Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json");
     }
 }

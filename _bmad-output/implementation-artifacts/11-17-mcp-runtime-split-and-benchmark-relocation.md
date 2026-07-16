@@ -4,7 +4,7 @@ baseline_commit: 5718f85b93ede05393219eae49dcc801b34323bd
 
 # Story 11.17c: MCP/runtime split and benchmark-harness relocation
 
-Status: review
+Status: in-progress
 
 <!-- Note: This executable child specializes the non-implementable Story 11.17 parent. The sprint/file key intentionally omits the letter suffix. -->
 
@@ -70,6 +70,22 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
 ### Review Findings
 
 - [x] [Review][Patch] Move the exact 18-fact census into an independent governance test so deleting its current host fact cannot also delete the guard [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:43]
+- [x] [Review][Patch] Remove the unused Contracts.Schema import introduced by the mechanical split [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusManifestEntry.cs:1]
+- [x] [Review][Patch] Exercise the relocated embedded prompt resource from a blocking Governance test so PR verification fails before nightly [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Governance/BenchmarkHarnessGovernanceTests.cs:32]
+- [x] [Review][Defer] Replace filename/text marker heuristics with structural validation for commands, projections, registration, validators, and tests [src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:35] — deferred, pre-existing
+- [x] [Review][Defer] Replace the COMPILE_ERROR sentinel with real generated-code compilation evidence [src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:86] — deferred, pre-existing
+- [x] [Review][Defer] Parse and validate the full MSBuild shape instead of regex-missing SDK, PackageReference, and ProjectReference forms [src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:127] — deferred, pre-existing
+- [x] [Review][Defer] Detect tenant/user spoofing across record parameters, nullable/custom types, and additional declaration forms [src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:110] — deferred, pre-existing
+- [x] [Review][Defer] Accept the public root-relative obj generated-output path while still rejecting objective-substring false positives [src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:44] — deferred, pre-existing
+- [x] [Review][Defer] Make offline scoring observe each prompt's ExpectedShape rather than only generic structural categories [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkOfflineScorer.cs:27] — deferred, pre-existing
+- [x] [Review][Defer] Validate non-attribute framework type references in fenced C# snippets [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusSnippetValidator.cs:102] — deferred, pre-existing
+- [x] [Review][Defer] Treat baseline resources missing from the current corpus as migration-governed breaking changes [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:52] — deferred, pre-existing
+- [x] [Review][Defer] Reject reserved manifest URIs and duplicate corpus IDs during corpus parsing [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusParser.cs:57] — deferred, pre-existing
+- [x] [Review][Defer] Select the aggregate corpus version semantically and ordinally rather than with default string Max [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusAggregateManifestBuilder.cs:25] — deferred, pre-existing
+- [x] [Review][Defer] Resolve real paths before enforcing sample and benchmark-evidence root containment [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReferenceValidator.cs:31] — deferred, pre-existing
+- [x] [Review][Defer] Reject failed-redaction and contradictory result states in the benchmark gate's pass count [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:22] — deferred, pre-existing
+- [x] [Review][Defer] Require unique prompt IDs at load and gate boundaries [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:12] — deferred, pre-existing
+- [x] [Review][Defer] Sanitize all serialized benchmark artifact string fields, not only SanitizedDiagnostics [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkArtifactWriter.cs:32] — deferred, pre-existing
 
 ## Dev Notes
 

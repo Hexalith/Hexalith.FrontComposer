@@ -1,5 +1,3 @@
-using Hexalith.FrontComposer.Contracts.Schema;
-
 namespace Hexalith.FrontComposer.Mcp.Skills;
 
 public sealed record SkillCorpusManifestEntry(

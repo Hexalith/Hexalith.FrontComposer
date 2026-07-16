@@ -1665,3 +1665,48 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-sourcetools-package-split.md`
   summary: Harden the SourceTools Drift organization guard against namespace nesting and multi-dot filenames (future-proofing).
   evidence: `GetDirectTopLevelDeclarations` flattens only one namespace level, so a type declared in a second-level block namespace escapes the one-type-per-file count; and `Path.GetFileNameWithoutExtension` does not normalize multi-dot names (`Foo.razor.cs`→`Foo.razor`), contradicting the maintained doc's normalization claim (`tests/Hexalith.FrontComposer.SourceTools.Tests/Architecture/SourceToolsTypeOrganizationGovernanceTests.cs:129-137,120`). Both are unreachable today — all 17 Drift files are flat file-scoped namespaces with single-dot names — so this is guard hardening only, not a current defect.
+
+## Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation (2026-07-16)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Replace filename/text marker heuristics with structural validation for commands, projections, registration, validators, and tests.
+  evidence: Comments, string literals, and empty files with expected names can satisfy marker checks in `src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:35-41`; the declaration body is unchanged from the story baseline.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Replace the COMPILE_ERROR sentinel with real generated-code compilation evidence.
+  evidence: `GeneratedBoundedContextValidator` reports `Compile` only for the literal sentinel at `src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:86-92`; this pre-existing limitation is already represented by `DW-0107`.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Parse and validate the full MSBuild shape instead of regex-missing SDK, PackageReference, and ProjectReference forms.
+  evidence: The regexes at `src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:127-190` miss project SDK attributes, single-quoted/child-element package references, and absolute/property-based project references; the validator body predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Detect tenant/user spoofing across record parameters, nullable/custom types, and additional declaration forms.
+  evidence: `CommandClassRegex` and `SpoofedTenantUserFieldRegex` at `src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:110-164` recognize a bounded class/member subset and are unchanged from the baseline aggregate.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Accept the public root-relative obj generated-output path while still rejecting objective-substring false positives.
+  evidence: The `/obj/` checks at `src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:44-48,101-107` reject a path beginning `obj/`, while the maintained generated-output contract is root-relative; this behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Make offline scoring observe each prompt's ExpectedShape rather than only generic structural categories.
+  evidence: `SkillBenchmarkOfflineScorer.Score` accepts a prompt but never reads `ExpectedShape` at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkOfflineScorer.cs:27-45`; the moved body is mechanically unchanged.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Validate non-attribute framework type references in fenced C# snippets.
+  evidence: Despite its XML summary, `SkillCorpusSnippetValidator` only iterates `AttributeSyntax` at `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusSnippetValidator.cs:102-119`; the declaration body predates this story.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Treat baseline resources missing from the current corpus as migration-governed breaking changes.
+  evidence: `ValidateAgainstBaseline` iterates only current resources at `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:52-71`, so removals are not compared; the story preserves this release-guard behavior by design.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Reject reserved manifest URIs and duplicate corpus IDs during corpus parsing.
+  evidence: `SkillCorpusParser` deduplicates resource URIs but not IDs and accepts `frontcomposer://skills/manifest` at `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusParser.cs:57-67,165-173`, allowing ambiguous descriptors or collision with the synthetic manifest.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Select the aggregate corpus version semantically and ordinally rather than with default string Max.
+  evidence: `SkillCorpusAggregateManifestBuilder.Build` uses default string `Max` at `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusAggregateManifestBuilder.cs:25-27`, which misorders multi-digit semantic versions and can be culture-sensitive.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Resolve real paths before enforcing sample and benchmark-evidence root containment.
+  evidence: Both `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReferenceValidator.cs:31-45` and `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkEvidencePath.cs:12-21` compare lexical full paths without resolving symlink targets; both bodies predate relocation.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Reject failed-redaction and contradictory result states in the benchmark gate's pass count.
+  evidence: `SkillBenchmarkGate.Evaluate` counts `Valid` results with compile/validator success without checking `RedactionStatus` or `FailureCategory` at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:22-33`; persistence has a separate redaction guard.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Require unique prompt IDs at load and gate boundaries.
+  evidence: The loader and gate sort IDs but do not enforce uniqueness at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkPromptSet.cs:29-36` and `SkillBenchmarkGate.cs:12-20`; the checked-in v1 fixture itself remains unique.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Sanitize all serialized benchmark artifact string fields, not only SanitizedDiagnostics.
+  evidence: `SkillBenchmarkArtifactWriter.TryBuildArtifact` validates diagnostics and metadata presence before serializing the full result at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkArtifactWriter.cs:32-61`; other caller-controlled string fields are not passed through the sanitizer.

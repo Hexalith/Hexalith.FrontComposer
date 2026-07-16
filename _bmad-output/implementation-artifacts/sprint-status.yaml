@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-16T09:43:52+02:00
+# last_updated: 2026-07-16T16:38:19+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-16T11:48:26+02:00
+last_updated: 2026-07-16T16:38:19+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -444,7 +444,8 @@ development_status:
   # 11.17c moved backlog -> ready-for-dev on 2026-07-14 (create-story; split the live 56-declaration SkillCorpus aggregate into 27 MCP runtime and 29 Bench-owned declarations; remove all benchmark code/prompts from the shipped MCP package; preserve fail-closed/runtime and benchmark behavior; govern the 26-type removal as an exact v4.0 ApiCompat break requiring Release Owner approval before review; add scoped non-vacuous organization/ownership guards and MCP/Testing/Bench/package/docs lanes.)
   # 11.17c moved ready-for-dev -> in-progress on 2026-07-14 (dev-story; baseline 5718f85b93ede05393219eae49dcc801b34323bd preserved; starting MCP runtime split, benchmark relocation, governance, compatibility, and release evidence.)
   # 11.17c moved in-progress -> review on 2026-07-15 (dev-story; 56 declaration bodies preserved across 27 MCP runtime and 29 Bench files; 26 exact v4.0 CP0001 removals approved and governed; Release/default/Governance/Performance/package/docs/artifact/CRLF gates green; M14 closed for this slice only.)
-  11-17-mcp-runtime-split-and-benchmark-relocation: review
+  # 11.17c moved review -> in-progress on 2026-07-16 (bmad-code-review chunk 1; runtime/benchmark relocation reviewed by all four configured layers. Applied two patches: removed a split-only unused import and made the relocated prompt resource load in the blocking Governance lane. Fourteen pre-existing behaviors deferred; sixteen non-findings dismissed. Bench Release build 0/0 and focused Governance 1/1 passed. Governance/tests/automation and compatibility/docs/release chunks remain pending.)
+  11-17-mcp-runtime-split-and-benchmark-relocation: in-progress
   # 11.17d backlog child (Shell bundle split with only the documented Fluxor action-group exception; independently validated by Shell/Governance/API lanes).
   # 11.17d moved backlog -> ready-for-dev on 2026-07-15 (create-story; live Shell census 35 files/149 declarations, exact six action groups retained, 29 bundles/111 declarations in split scope, and Shell guard/API/non-Contract/package preservation context recorded.)
   # 11.17d moved ready-for-dev -> in-progress on 2026-07-15 (dev-story; existing baseline_commit preserved; starting mechanical Shell split and organization/identity governance.)
