@@ -547,8 +547,10 @@ def task_is_classified_defer(task: str) -> bool:
 
 def extract_path_mentions(text: str) -> set[str]:
     paths: set[str] = set()
-    for candidate in re.findall(r"`([^`]+)`", text):
-        normalized = candidate.strip().replace("\\", "/")
+    for match in re.finditer(r"`([^`]+)`", text):
+        if path_mention_is_explicitly_non_evidence(text, match.start(), match.end()):
+            continue
+        normalized = match.group(1).strip().replace("\\", "/")
         if " " in normalized or normalized.startswith("--") or normalized.startswith("<"):
             continue
         if any(token in normalized for token in ("*", "?")):
@@ -563,6 +565,32 @@ def extract_path_mentions(text: str) -> set[str]:
         if Path(normalized).suffix.lower() in TASK_PATH_SUFFIXES:
             paths.add(normalized)
     return paths
+
+
+def path_mention_is_explicitly_non_evidence(text: str, start: int, end: int) -> bool:
+    clause_start = 0
+    for boundary in re.finditer(r"[.!?;]\s+", text[:start]):
+        clause_start = boundary.end()
+
+    clause_end = len(text)
+    boundary = re.search(r"[.!?;](?:\s+|$)", text[end:])
+    if boundary:
+        clause_end = end + boundary.start()
+
+    before = text[clause_start:start]
+    after = text[end:clause_end]
+    if re.search(
+        r"\b(?:do not|don't|must not|should not)\s+"
+        r"(?:require|change|edit|create|modify|touch|update)\s*$",
+        before,
+        re.IGNORECASE,
+    ):
+        return True
+
+    return bool(
+        re.search(r"\b(?:leave|keep|preserve)\b", before, re.IGNORECASE)
+        and re.search(r"\b(?:untouched|unchanged|unmodified)\b", after, re.IGNORECASE)
+    )
 
 
 if __name__ == "__main__":

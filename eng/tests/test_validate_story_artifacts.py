@@ -269,6 +269,74 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("Story artifact validation passed.", result.stdout)
 
+    def test_checked_task_ignores_explicitly_non_evidence_path_mentions(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                story_text(
+                    baseline=baseline,
+                    file_list="- `README.md` - test evidence.",
+                    tasks=(
+                        "- [x] Run package validation. Do not require `.nupkg` byte identity.\n"
+                        "- [x] Leave planning artifacts, "
+                        "`_bmad-output/implementation-artifacts/deferred-work.md`, and review provenance untouched."
+                    ),
+                ),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("Story artifact validation passed.", result.stdout)
+
+    def test_checked_task_non_evidence_path_does_not_hide_required_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                story_text(
+                    baseline=baseline,
+                    file_list="- `README.md` - test evidence.",
+                    tasks="- [x] Update `src/missing.txt`; do not require `.nupkg` byte identity.",
+                ),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("src/missing.txt", result.stderr)
+            self.assertIn("missing evidence path: src/missing.txt", result.stderr)
+            self.assertNotIn("missing evidence path: .nupkg", result.stderr)
+
     def test_checked_deferred_review_task_accepts_preexisting_path_classification(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
