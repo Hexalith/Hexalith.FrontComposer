@@ -7,7 +7,7 @@
 ```
 frontcomposer/
 ├── Hexalith.FrontComposer.slnx     # ★ Solution (XML .slnx format — never use .sln)
-├── global.json                     # SDK pin: 10.0.301, rollForward latestPatch
+├── global.json                     # SDK pin: 10.0.302, rollForward latestPatch
 ├── Directory.Build.props           # LangVersion=latest, Nullable, ImplicitUsings, TreatWarningsAsErrors=true; deps switch
 ├── Directory.Build.targets         # opt-in NuGet package validation (ApiCompat)
 ├── Directory.Packages.props        # ★ Centralized package versions (single source of truth)

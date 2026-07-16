@@ -84,7 +84,7 @@ warnings: []
 
 ## Spec Change Log
 
-- 2026-07-06: Implemented Story 11.3 and moved story to in-review. Focused MCP validation passed 110/110; full MCP project passed 368/368. Standard filtered solution lane is blocked by unrelated SourceTools IDE-parity metadata failure `IdeParityMatrixContractTests.MatrixJson_HasFailClosedSchemaForEveryRow` expecting SDK `10.0.300` while the current environment reports `10.0.301`.
+- 2026-07-06: Implemented Story 11.3 and moved story to in-review. Focused MCP validation passed 110/110; full MCP project passed 368/368. Standard filtered solution lane is blocked by unrelated SourceTools IDE-parity metadata failure `IdeParityMatrixContractTests.MatrixJson_HasFailClosedSchemaForEveryRow` expecting SDK `10.0.302` while the current environment reports `10.0.302`.
 - 2026-07-06: Completed review loop 1 patches. Focused MCP validation passed 114/114; full MCP project passed 372/372. Removed solution-level `.slnx` test evidence because repo instructions require individual test projects.
 
 ## Review Triage Log

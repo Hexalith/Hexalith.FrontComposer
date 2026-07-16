@@ -6,7 +6,7 @@
 
 | Tool | Version / note |
 |---|---|
-| .NET SDK | **`10.0.301`** (pinned in [global.json](global.json), `rollForward: latestPatch`) |
+| .NET SDK | **`10.0.302`** (pinned in [global.json](global.json), `rollForward: latestPatch`) |
 | Node.js | **`>=24.0.0`** for the Playwright e2e workspace; `tests/e2e/.nvmrc` pins Node `24` |
 | npm | **`>=10`** for the e2e workspace dependencies |
 | PowerShell (`pwsh`) | for the `eng/*.ps1` validation scripts and the docs gate |

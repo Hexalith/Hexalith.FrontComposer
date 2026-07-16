@@ -95,7 +95,7 @@ Read each likely UPDATE file completely before changing it:
 
 - Keep the CLI a leaf consumer. Do not add references from CLI back into higher layers or introduce `System.CommandLine`/third-party CLI frameworks. [Source: `_bmad-output/project-docs/architecture.md#7. Architecturally significant decisions`; `_bmad-output/project-docs/source-tree-analysis.md#src - product code`]
 - The CLI public surface is `CliApplication.RunAsync`, `ExitCodes`, and `OutputSanitizer`; all other command implementation types are internal. Keep tests focused through `CliApplication.RunAsync` and existing internal test access patterns. [Source: `_bmad-output/project-docs/component-inventory.md#E. CLI surface`]
-- Use repository conventions: .NET SDK `10.0.301`, `.slnx` only, central package versions, xUnit v3, Shouldly, and no `Version=` in `.csproj`. [Source: `_bmad-output/project-context.md#Technology Stack & Versions`; `_bmad-output/project-context.md#Testing Rules`]
+- Use repository conventions: .NET SDK `10.0.302`, `.slnx` only, central package versions, xUnit v3, Shouldly, and no `Version=` in `.csproj`. [Source: `_bmad-output/project-context.md#Technology Stack & Versions`; `_bmad-output/project-context.md#Testing Rules`]
 - Do not modify runtime shell/MCP/source-generator behavior, generated output, package references, public API baselines, pacts, or submodule files for this story.
 - Preserve `OutputSanitizer` on all user-visible strings and keep default output project-relative unless the existing `--absolute-paths` inspect option is explicitly tested. [Source: `_bmad-output/contracts/fc-cli-inspect-contract-2026-06-05.md#Project Selection and Path Safety`; `_bmad-output/contracts/fc-cli-migrate-contract-2026-06-05.md#Path Safety and Redaction`]
 
@@ -119,7 +119,7 @@ Read each likely UPDATE file completely before changing it:
 
 ### Latest Technical Information
 
-No external API/package research is required for Story 10.3. Use the repository-pinned stack and current CLI contracts: .NET SDK `10.0.301`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, `frontcomposer.cli.inspect.v1`, and `frontcomposer.cli.migrate.v1`. The risk is local contract drift between two render formats, not stale third-party API knowledge. [Source: `_bmad-output/project-context.md#Technology Stack & Versions`; `_bmad-output/contracts/fc-cli-inspect-contract-2026-06-05.md`; `_bmad-output/contracts/fc-cli-migrate-contract-2026-06-05.md`]
+No external API/package research is required for Story 10.3. Use the repository-pinned stack and current CLI contracts: .NET SDK `10.0.302`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, `frontcomposer.cli.inspect.v1`, and `frontcomposer.cli.migrate.v1`. The risk is local contract drift between two render formats, not stale third-party API knowledge. [Source: `_bmad-output/project-context.md#Technology Stack & Versions`; `_bmad-output/contracts/fc-cli-inspect-contract-2026-06-05.md`; `_bmad-output/contracts/fc-cli-migrate-contract-2026-06-05.md`]
 
 ### Previous Story Intelligence
 

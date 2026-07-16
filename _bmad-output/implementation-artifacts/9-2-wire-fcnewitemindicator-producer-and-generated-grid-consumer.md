@@ -154,7 +154,7 @@ Likely tests:
 
 ### Latest Technical Information
 
-No package, framework, or external API upgrade is part of Story 9.2. Use the repository-pinned stack from `_bmad-output/project-context.md`: .NET SDK `10.0.301`, Fluent UI Blazor `5.0.0-rc.3-26138.1`, Fluxor `6.9.0`, xUnit v3 `3.2.2`, bUnit `2.8.4-preview`, Verify `31.20.0`, and Playwright `1.61.0`. Official NuGet package checks on 2026-07-05 did not change the story scope: implement against the pinned repository stack and do not introduce dependency upgrades as part of FC-NIP wiring. The remaining risk is source-level runtime metadata wiring, not stale package knowledge.
+No package, framework, or external API upgrade is part of Story 9.2. Use the repository-pinned stack from `_bmad-output/project-context.md`: .NET SDK `10.0.302`, Fluent UI Blazor `5.0.0-rc.3-26138.1`, Fluxor `6.9.0`, xUnit v3 `3.2.2`, bUnit `2.8.4-preview`, Verify `31.20.0`, and Playwright `1.61.0`. Official NuGet package checks on 2026-07-05 did not change the story scope: implement against the pinned repository stack and do not introduce dependency upgrades as part of FC-NIP wiring. The remaining risk is source-level runtime metadata wiring, not stale package knowledge.
 
 ### Previous Story Intelligence
 

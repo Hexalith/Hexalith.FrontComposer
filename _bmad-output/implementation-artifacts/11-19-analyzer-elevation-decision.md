@@ -72,7 +72,7 @@ enforcement fixes remain independent and must not be pulled into the decision ce
 
 ### Census Requirements
 
-- Use the repository SDK `10.0.301`, Roslyn 5.6.0, Release configuration, and the normal centralized
+- Use the repository SDK `10.0.302`, Roslyn 5.6.0, Release configuration, and the normal centralized
   dependency graph.
 - Compare the normal build with a command-line-only `-p:AnalysisMode=Recommended` run and preserve raw
   machine-readable diagnostics as bounded repository-relative evidence.
@@ -122,7 +122,7 @@ python3 eng/validate-story-artifacts.py --story \
 
 ### Debug Log References
 
-- 2026-07-16: Captured SDK 10.0.301 / MSBuild 18.6.4 and a clean normal Release solution build (0 warnings, 0 errors) with the story-prescribed non-audit build command.
+- 2026-07-16: Captured SDK 10.0.302 / MSBuild 18.6.4 and a clean normal Release solution build (0 warnings, 0 errors) with the story-prescribed non-audit build command.
 - 2026-07-16: Effective root posture is undeclared `AnalysisMode`, `AnalysisLevel=latest`, `EnableNETAnalyzers=true`, `TreatWarningsAsErrors=true`, and explicit CA1062/CA1822/CA2007 warnings plus CA1014 suppression. Source projects also inherit documentation-warning suppressions 0419/1570/1572/1573/1574/1734; project-local suppressions are included in the decision census.
 - 2026-07-16: Default regression lane passed 4,149/4,150 on its first serialized run; the sole failure was a two-minute cancellation inside the MCP package-boundary test's nested `dotnet pack`. Its exact direct xUnit rerun passed 1/1 in 9.0 seconds, confirming no functional regression.
 - 2026-07-16: A forced candidate build with unchanged warnings-as-errors failed at 120 diagnostics before dependency failure stopped full enumeration. A diagnostic-only candidate build with command-line `TreatWarningsAsErrors=false` enumerated 4,070 unique Recommended findings across 19 affected Release projects/TFMs: Naming 2,958; Performance 772; Globalization 228; Usage 49; Maintainability 46; Reliability 12; Design 5. Tests account for 3,500 findings, samples 203, and product source 367. The effective candidate policy reports 503 diagnostics in SourceTools-generated files, so they remain included in the census.

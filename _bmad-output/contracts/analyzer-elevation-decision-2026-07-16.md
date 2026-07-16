@@ -36,7 +36,7 @@ new diagnostic, or clean up source in Story 11.19d.
 | Item | Value |
 | --- | --- |
 | Repository baseline | `d9c19a4fb837357af10f6f1aa630232f670557c4` |
-| SDK | .NET SDK `10.0.301` |
+| SDK | .NET SDK `10.0.302` |
 | MSBuild | `18.6.4` |
 | Compiler/analyzer package | Roslyn `5.6.0`; SDK built-in .NET analyzers |
 | Configuration | `Release`, normal centralized NuGet dependency mode |

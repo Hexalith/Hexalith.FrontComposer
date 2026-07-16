@@ -9,7 +9,7 @@
 
 - **Name:** Hexalith.FrontComposer — *"the Hexalith Blazor Front Shell."*
 - **Type:** Monolith (one `.slnx` solution); primary `library`/framework + developer tooling, with **source-generator**, **Blazor-UI**, **MCP-server**, and **CLI** facets.
-- **Primary language / runtime:** C# on **.NET 10** (SDK `10.0.301`).
+- **Primary language / runtime:** C# on **.NET 10** (SDK `10.0.302`).
 - **Architecture:** Source-generation-driven & layered — a contracts kernel → a Roslyn incremental generator → runtime consumers (Blazor shell, MCP server, CLI), bound by schema fingerprints. See [architecture.md](./architecture.md).
 - **In one line:** annotate domain types with `[Projection]`/`[Command]` → the generator emits Blazor views, command forms, Fluxor state, DI registration, and an MCP manifest → the shell composes the UI and the MCP server exposes it to AI agents.
 

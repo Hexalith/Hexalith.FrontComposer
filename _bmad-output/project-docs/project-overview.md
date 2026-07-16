@@ -36,7 +36,7 @@ The `frontcomposer` **CLI** (`Hexalith.FrontComposer.Cli`) lets you `inspect` th
 
 | Category | Technology | Version | Notes |
 |---|---|---|---|
-| Runtime / SDK | .NET | 10 (SDK `10.0.301`, `rollForward: latestPatch`) | pinned in [global.json](global.json) |
+| Runtime / SDK | .NET | 10 (SDK `10.0.302`, `rollForward: latestPatch`) | pinned in [global.json](global.json) |
 | Language | C# `latest` | — | `Nullable`, `ImplicitUsings` enabled; **`TreatWarningsAsErrors=true`** ([Directory.Build.props](Directory.Build.props)) |
 | Target frameworks | `net10.0`; `net10.0` + `netstandard2.0`; `netstandard2.0` | — | Contracts is dual-TFM and UI-clean; Contracts.UI/runtime are net10; SourceTools is netstandard2.0 |
 | UI | Microsoft.FluentUI.AspNetCore.Components (FluentUI v5) | `5.0.0-rc.4-26180.1` | exact pin (ADR-003); v5 RC |

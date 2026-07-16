@@ -8,7 +8,7 @@
     "visualStudio": "Visual Studio 2022 17.13+",
     "rider": "JetBrains Rider 2026.1.x",
     "vsCodeDevKit": "VS Code stable + C# Dev Kit pinned minor",
-    "dotnetSdk": "10.0.301"
+    "dotnetSdk": "10.0.302"
   },
   "osOrContainerImage": "Windows calibration plus release-owner manual evidence for other IDEs",
   "validationCommandOrManualSteps": "Verify XML documentation on public attributes and generated-facing symbols; capture IDE hover evidence.",

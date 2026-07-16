@@ -135,7 +135,7 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
 
 ### Library and Framework Requirements
 
-- Repository pins: .NET SDK `10.0.301`, `net10.0`, C# latest/14, Roslyn `5.6.0`, MCP ASP.NET Core `1.4.0`, BenchmarkDotNet `0.15.8`, xUnit v3 `3.2.2`, runner `3.1.5`, Shouldly `4.3.0`, and NSubstitute `6.0.0-rc.1`. Do not change them in this story.
+- Repository pins: .NET SDK `10.0.302`, `net10.0`, C# latest/14, Roslyn `5.6.0`, MCP ASP.NET Core `1.4.0`, BenchmarkDotNet `0.15.8`, xUnit v3 `3.2.2`, runner `3.1.5`, Shouldly `4.3.0`, and NSubstitute `6.0.0-rc.1`. Do not change them in this story.
 - SDK projects implicitly compile `**/*.cs`; no project-file compile list is needed. [Official .NET SDK default items](https://learn.microsoft.com/en-us/dotnet/core/project-sdk/overview#default-includes-and-excludes)
 - NuGet shows BenchmarkDotNet `0.15.8` as the latest stable while `0.16.0-preview.1` is preview; the existing package is compatible with `net10.0`. [BenchmarkDotNet package](https://www.nuget.org/packages/BenchmarkDotNet)
 - NuGet lists MCP ASP.NET Core `1.4.1` as the latest stable and `2.0.0-preview.1` as preview as of 2026-07-14. Keep repository-pinned `1.4.0`; SDK upgrades are outside this mechanical story. [ModelContextProtocol.AspNetCore package](https://www.nuget.org/packages/ModelContextProtocol.AspNetCore)

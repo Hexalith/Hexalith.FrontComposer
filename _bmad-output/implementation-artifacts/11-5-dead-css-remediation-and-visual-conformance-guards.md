@@ -154,7 +154,7 @@ Read each likely UPDATE file completely before changing it:
 
 - Keep the fix inside the Shell UI/governance/testing surface. Do not change Contracts kernel, route contracts, MCP lifecycles, EventStore auth/realtime behavior, package versions, generated output, or sibling submodules for this story.
 - Preserve .NET 10 / C# 14 repo standards, nullable-enabled code, `TreatWarningsAsErrors`, central package management, `.slnx` solution commands, and one C# type per file for any new top-level type.
-- Use Fluent UI Blazor v5 and the current repo pins: `Microsoft.FluentUI.AspNetCore.Components` and `.Icons` `5.0.0-rc.4-26180.1` from `references/Hexalith.Builds/Props/Directory.Packages.props`; `global.json` currently pins SDK `10.0.301`.
+- Use Fluent UI Blazor v5 and the current repo pins: `Microsoft.FluentUI.AspNetCore.Components` and `.Icons` `5.0.0-rc.4-26180.1` from `references/Hexalith.Builds/Props/Directory.Packages.props`; `global.json` currently pins SDK `10.0.302`.
 - Do not add raw interactive HTML controls where Fluent components exist. Raw elements are appropriate as scoped CSS hosts/wrappers only.
 - Do not redefine the app theme or resurrect legacy FAST token names. Use Fluent 2 token names already present in the codebase, such as `--colorNeutral*`, `--colorBrand*`, and `--colorPaletteRed*`.
 - Do not weaken `FluentConformanceTests` to make the current code pass. Tighten the guard or add narrow allow logic only when the rendered style is genuinely reachable.

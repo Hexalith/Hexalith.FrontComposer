@@ -33,7 +33,7 @@ jobs:
 
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
-          dotnet-version: '10.0.301'
+          dotnet-version: '10.0.302'
 
       - name: Validate embedded v1 prompt contract
         run: python3 eng/llm_benchmark.py validate-prompt-set --root . --output artifacts/benchmark/prompt-set.json

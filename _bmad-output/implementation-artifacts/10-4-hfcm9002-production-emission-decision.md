@@ -116,7 +116,7 @@ Read each likely UPDATE file completely before changing it:
 
 ### Latest Technical Information
 
-No external API/package research is required for Story 10.4. Use the repository-pinned stack and current contracts: .NET SDK `10.0.301`, Roslyn `Microsoft.CodeAnalysis.*` `5.3.0`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and `frontcomposer.cli.migrate.v1`. The risk is local contract honesty and generator feasibility, not stale third-party API knowledge. [Source: `_bmad-output/project-context.md#Technology Stack & Versions`; `_bmad-output/contracts/fc-cli-migrate-contract-2026-06-05.md`]
+No external API/package research is required for Story 10.4. Use the repository-pinned stack and current contracts: .NET SDK `10.0.302`, Roslyn `Microsoft.CodeAnalysis.*` `5.3.0`, xUnit v3 `3.2.2`, Shouldly `4.3.0`, and `frontcomposer.cli.migrate.v1`. The risk is local contract honesty and generator feasibility, not stale third-party API knowledge. [Source: `_bmad-output/project-context.md#Technology Stack & Versions`; `_bmad-output/contracts/fc-cli-migrate-contract-2026-06-05.md`]
 
 ### Previous Story Intelligence
 

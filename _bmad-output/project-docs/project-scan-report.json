@@ -44,7 +44,7 @@
     "src_projects": 7, "test_projects": 7, "sample_projects": 6
   },
   "technology_stack": {
-    "runtime": ".NET 10 (SDK 10.0.301, rollForward latestPatch)",
+    "runtime": ".NET 10 (SDK 10.0.302, rollForward latestPatch)",
     "language": "C# latest, Nullable enable, ImplicitUsings enable, TreatWarningsAsErrors true",
     "target_frameworks": "net10.0 (most); net10.0 + netstandard2.0 multi-target for Contracts and SourceTools",
     "ui": "Blazor + Microsoft.FluentUI.AspNetCore.Components 5.0.0-rc.3-26138.1 (FluentUI v5)",

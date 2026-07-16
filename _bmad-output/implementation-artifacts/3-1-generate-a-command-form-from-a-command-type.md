@@ -232,7 +232,7 @@ explained in the Dev Agent Record.
   `31.19.0`, Roslyn `5.3.0`, and NUlid `1.7.3`. NuGet/Microsoft Learn checks on 2026-06-04 confirm
   these pins are current enough for this story; the implementation must follow repo pins, not chase
   newer prereleases. [Source: Directory.Packages.props] [Source: global.json]
-- `global.json` pins SDK `10.0.300` with `rollForward: latestPatch`; Microsoft Learn documents that
+- `global.json` pins SDK `10.0.302` with `rollForward: latestPatch`; Microsoft Learn documents that
   `global.json` selects the SDK independently from target runtime and `rollForward` controls acceptable
   SDK fallback. [Source: https://learn.microsoft.com/en-us/dotnet/core/tools/global-json]
 

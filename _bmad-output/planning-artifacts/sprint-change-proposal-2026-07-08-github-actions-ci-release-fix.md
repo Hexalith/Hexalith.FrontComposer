@@ -23,7 +23,7 @@ The 2026-07-08 GitHub Actions runs for commit `238aaa37c1ef56a95437d3b5220263940
 
 Evidence:
 
-- `IdeParityMatrixContractTests.MatrixJson_HasFailClosedSchemaForEveryRow` expected `.NET SDK 10.0.300` while `global.json`, matrix metadata, and CI resolved `10.0.301`.
+- `IdeParityMatrixContractTests.MatrixJson_HasFailClosedSchemaForEveryRow` expected `.NET SDK 10.0.302` while `global.json`, matrix metadata, and CI resolved `10.0.302`.
 - The specimen visual hook test could not find `.fc-projection-connection-status-host ... .fc-projection-connection-status-pulse` in the browser CSSOM.
 - The visual baseline failures were downstream of the specimen host not directly loading the Shell scoped CSS bundle.
 
@@ -44,7 +44,7 @@ Artifact conflicts:
 - PRD: no requirement change.
 - Epics: no sequencing or acceptance criteria change.
 - Architecture/UX: no design contract change; the fix preserves the existing Fluent/scoped CSS visual-conformance guard.
-- CI/CD: update workflow SDK references from `10.0.300` to `10.0.301`.
+- CI/CD: update workflow SDK references from `10.0.302` to `10.0.302`.
 
 Technical impact:
 
@@ -82,13 +82,13 @@ Files:
 OLD:
 
 ```text
-10.0.300
+10.0.302
 ```
 
 NEW:
 
 ```text
-10.0.301
+10.0.302
 ```
 
 Rationale: align workflows, parity evidence, and the fail-closed matrix test with `global.json`.
@@ -137,7 +137,7 @@ Approval: Administrator approved the proposal on 2026-07-08.
 
 Implementation tasks:
 
-- Update SDK references to `10.0.301`.
+- Update SDK references to `10.0.302`.
 - Update the Counter specimen host Shell scoped CSS link.
 - Rebuild and rerun the failed lanes.
 
@@ -147,7 +147,7 @@ Success criteria:
 - Full SourceTools test project passes.
 - Filtered solution default lane passes.
 - `npm run test:a11y` passes against the Release specimen host.
-- No `10.0.300` or stale `Hexalith.FrontComposer.Shell.styles.css` references remain in governed repo surfaces.
+- No `10.0.302` or stale `Hexalith.FrontComposer.Shell.styles.css` references remain in governed repo surfaces.
 
 Verification completed locally:
 

@@ -37,7 +37,7 @@ No decomposition needed. The task is atomic because it only validates the root `
 
 | Command | Status | Notes |
 |---|---:|---|
-| `dotnet --version` | Pass | `10.0.301` |
+| `dotnet --version` | Pass | `10.0.302` |
 | `aspire --version` | Pass | `13.4.6+87fe259e4fc244c599019a7b1304c85a1488f248` |
 | `docker --version` | Pass | `Docker version 29.4.3, build 055a478` |
 | `dotnet build .\src\Hexalith.FrontComposer.AppHost\Hexalith.FrontComposer.AppHost.csproj --configuration Release` | Pass | Build succeeded in `10,0s` |
@@ -50,7 +50,7 @@ No decomposition needed. The task is atomic because it only validates the root `
 
 - Pass: Aspire CLI version `13.4.6` on stable channel.
 - Pass: AppHost version `13.4.6` at `src\Hexalith.FrontComposer.AppHost\Hexalith.FrontComposer.AppHost.csproj`.
-- Pass: .NET SDK `10.0.301` installed.
+- Pass: .NET SDK `10.0.302` installed.
 - Pass: Docker `v29.4.3` running and active.
 - Warning: Multiple HTTPS development certificates found.
 - Warning: HTTPS development certificate has an older version.
