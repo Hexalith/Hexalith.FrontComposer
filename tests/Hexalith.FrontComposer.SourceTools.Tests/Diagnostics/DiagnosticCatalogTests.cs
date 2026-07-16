@@ -31,6 +31,12 @@ public sealed class DiagnosticCatalogTests {
                 char.IsDigit(id[i]).ShouldBeTrue($"Diagnostic ID {id} has non-digit character at position {i}.");
             }
         }
+
+        foreach (FieldInfo alias in TypeIdConstantFields(typeof(FcDiagnosticIds))
+                     .Where(field => field.GetCustomAttribute<ObsoleteAttribute>() is not null)) {
+            string value = (string)alias.GetRawConstantValue()!;
+            ids.ShouldContain(value, $"Obsolete diagnostic alias {alias.Name} must reference an active diagnostic ID.");
+        }
     }
 
     [Fact]
@@ -103,11 +109,21 @@ public sealed class DiagnosticCatalogTests {
     }
 
     private static IEnumerable<string> TypeIdConstants(Type type) {
+        foreach (FieldInfo field in TypeIdConstantFields(type)) {
+            if (field.GetCustomAttribute<ObsoleteAttribute>() is null
+                && field.GetRawConstantValue() is string value) {
+                yield return value;
+            }
+        }
+    }
+
+    private static IEnumerable<FieldInfo> TypeIdConstantFields(Type type) {
         foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Static)) {
-            if (field.IsLiteral && field.FieldType == typeof(string)) {
-                if (field.GetRawConstantValue() is string value && value.StartsWith("HFC", StringComparison.Ordinal)) {
-                    yield return value;
-                }
+            if (field.IsLiteral
+                && field.FieldType == typeof(string)
+                && field.GetRawConstantValue() is string value
+                && value.StartsWith("HFC", StringComparison.Ordinal)) {
+                yield return field;
             }
         }
     }

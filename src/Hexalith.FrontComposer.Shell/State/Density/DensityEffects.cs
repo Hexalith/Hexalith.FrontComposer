@@ -131,7 +131,7 @@ public sealed class DensityEffects(
             if (!hydrated.KeyExists) {
                 logger.LogInformation(
                     "{DiagnosticId}: Density hydration found no stored value — bootstrap defaults apply until the viewport watcher emits. Reason={Reason}.",
-                    FcDiagnosticIds.HFC2106_ThemeHydrationEmpty,
+                    FcDiagnosticIds.HFC2106_PreferenceHydrationFallback,
                     "Empty");
             }
         }
@@ -144,7 +144,7 @@ public sealed class DensityEffects(
                 logger.LogInformation(
                     ex,
                     "{DiagnosticId}: Density hydration deferred until browser storage is available. Reason={Reason}.",
-                    FcDiagnosticIds.HFC2106_ThemeHydrationEmpty,
+                    FcDiagnosticIds.HFC2106_PreferenceHydrationFallback,
                     "BrowserStorageUnavailable");
                 return;
             }
@@ -152,7 +152,7 @@ public sealed class DensityEffects(
             logger.LogInformation(
                 ex,
                 "{DiagnosticId}: Density hydration errored — bootstrap defaults apply until the viewport watcher emits. Reason={Reason}.",
-                FcDiagnosticIds.HFC2106_ThemeHydrationEmpty,
+                FcDiagnosticIds.HFC2106_PreferenceHydrationFallback,
                 "Corrupt");
         }
 

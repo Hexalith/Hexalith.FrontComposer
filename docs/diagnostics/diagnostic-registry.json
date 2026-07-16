@@ -2134,7 +2134,7 @@
     {
       "id": "HFC2106",
       "ownerPackage": "Shell",
-      "title": "HFC2106 Theme Hydration Empty",
+      "title": "HFC2106 Preference Hydration Fallback",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
       "deprecatedIn": null,
@@ -2144,7 +2144,7 @@
       "panelSeverity": "Information",
       "cliExitBehavior": "non-blocking",
       "mcpCategory": null,
-      "messageTemplate": "What: HFC2106 Theme Hydration Empty. Expected: Follow the FrontComposer diagnostic contract for HFC2106. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2106",
+      "messageTemplate": "What: HFC2106 Preference Hydration Fallback occurred because a persisted Theme or Density preference could not be applied. Expected: A valid stored preference is available and readable when Shell hydration runs. Got: The preference was empty, corrupt, or temporarily unavailable, so defaults apply or hydration is deferred. Fix: Inspect storage availability and the emitted Reason, then repair or clear the persisted preference. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2106",
       "docsSlug": "diagnostics/HFC2106",
       "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2106",
       "redactionClass": "runtime-sanitized",

@@ -35,6 +35,18 @@ public sealed class FcShellResourcesTests {
     }
 
     [Fact]
+    public void HomeCardPendingAriaLabelTemplate_LocalesKeepWholeStringPlaceholderParity() {
+        ResourceManager manager = new(typeof(FcShellResources));
+        string? enValue = manager.GetString("HomeCardPendingAriaLabelTemplate", new CultureInfo("en"));
+        string? frValue = manager.GetString("HomeCardPendingAriaLabelTemplate", new CultureInfo("fr"));
+
+        enValue.ShouldBe("{0}, {1} items pending");
+        frValue.ShouldBe("{0}, {1} éléments en attente");
+        ExtractFormatPlaceholderIndices(enValue!).SetEquals([0, 1]).ShouldBeTrue();
+        ExtractFormatPlaceholderIndices(frValue!).SetEquals([0, 1]).ShouldBeTrue();
+    }
+
+    [Fact]
     public void ThemeToggleAriaLabelResolvesInFrench() {
         ServiceProvider provider = BuildLocalizedProvider();
         using IServiceScope scope = provider.CreateScope();

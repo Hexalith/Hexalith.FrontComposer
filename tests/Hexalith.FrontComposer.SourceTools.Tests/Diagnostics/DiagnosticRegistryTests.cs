@@ -585,6 +585,25 @@ public sealed partial class DiagnosticRegistryTests {
     }
 
     [Fact]
+    public void Hfc2106_CatalogAndDocs_UsePreferenceHydrationFallbackTerminology() {
+        JsonObject diagnostic = RegistryJson()["diagnostics"]!.AsArray()
+            .Select(node => node!.AsObject())
+            .Single(node => node["id"]!.GetValue<string>() == "HFC2106");
+
+        diagnostic["title"]!.GetValue<string>().ShouldBe("HFC2106 Preference Hydration Fallback");
+        diagnostic["messageTemplate"]!.GetValue<string>().ShouldContain("HFC2106 Preference Hydration Fallback");
+        diagnostic["runtimeLogLevel"]!.GetValue<string>().ShouldBe("Information");
+        diagnostic["releaseRow"]!.GetValue<string>().ShouldBe("runtime-only");
+        diagnostic["helpLinkUri"]!.GetValue<string>().ShouldBe("https://hexalith.github.io/FrontComposer/diagnostics/HFC2106");
+
+        string docs = File.ReadAllText(
+            Path.Combine(ProjectRoot().FullName, "docs", "diagnostics", "HFC2106.md"),
+            Encoding.UTF8);
+        docs.ShouldContain("HFC2106 Preference Hydration Fallback");
+        docs.ShouldNotContain("Theme Hydration Empty");
+    }
+
+    [Fact]
     public void FrontComposerObsoleteAttributes_FollowDiagnosticDeprecationPolicy() {
         DiagnosticRegistry registry = LoadRegistry();
         var ids = registry.Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);

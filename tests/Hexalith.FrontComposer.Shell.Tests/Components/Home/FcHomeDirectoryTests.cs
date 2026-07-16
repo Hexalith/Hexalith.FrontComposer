@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Home;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
+using Hexalith.FrontComposer.Shell.Tests;
 using Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
 using Microsoft.AspNetCore.Components;
@@ -178,6 +179,46 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
             cut.Markup.ShouldContain("data-testid=\"fc-home-skeleton-Orders\"");
             cut.Markup.ShouldContain("data-testid=\"fc-home-card-badge-Counter\"");
         });
+    }
+
+    [Theory]
+    [InlineData("en", "Order processing", "Order processing, 4 items pending")]
+    [InlineData("fr", "Traitement des commandes", "Traitement des commandes, 4 éléments en attente")]
+    public void HomeCard_PositiveCount_LocalizesAccessibleName(
+        string cultureName,
+        string displayName,
+        string expectedAccessibleName) {
+        using CultureScope _ = new(cultureName);
+        _registry.GetManifests().Returns([
+            new DomainManifest(displayName, "Orders", [typeof(string).FullName!], []),
+        ]);
+
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
+        dispatcher.Dispatch(new BadgeCountsSeededAction(
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 4)));
+
+        IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
+
+        cut.Find("button.fc-home-card-button")
+            .GetAttribute("aria-label")
+            .ShouldBe(expectedAccessibleName);
+    }
+
+    [Fact]
+    public void HomeCard_ZeroCount_UsesDisplayNameWithoutPunctuation() {
+        using CultureScope _ = new("fr");
+        _registry.GetManifests().Returns([
+            new DomainManifest("Traitement des commandes", "Orders", [typeof(string).FullName!], []),
+        ]);
+        SeedHydration(CapabilityDiscoveryHydrationState.Seeded);
+
+        IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
+
+        cut.Find("button.fc-home-card-button")
+            .GetAttribute("aria-label")
+            .ShouldBe("Traitement des commandes");
     }
 
     [Fact]

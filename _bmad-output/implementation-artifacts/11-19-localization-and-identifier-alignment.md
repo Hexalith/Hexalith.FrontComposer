@@ -1,18 +1,19 @@
 ---
 created: 2026-07-15
-updated: 2026-07-15
+updated: 2026-07-16
 epic: 11
 childStory: 11.19c
 parentStory: 11.19
 owner: Developer + Product/UX
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
-status: ready-for-dev
+status: review
 implementationGate: post-correction-readiness-pass
+baseline_commit: 84273bac14c00e0051872d91ee9be8761317b2af
 ---
 
 # Story 11.19c: Localization And Identifier Alignment
 
-Status: ready-for-dev.
+Status: review.
 
 ## Story
 
@@ -54,12 +55,12 @@ so that localized users and support tooling receive accurate, stable signals.
 
 ## Tasks / Subtasks
 
-- [ ] Add EN/FR whole-string home-card pending-label resources and use the existing localizer.
-- [ ] Bind the UI host root `lang` to the effective BCP-47 UI culture and add prerender/render tests.
-- [ ] Add focused hard-coded-string, resource-parity, and accessibility-name governance.
-- [ ] Add `HFC2106_PreferenceHydrationFallback`, obsolete-alias the old public name, and migrate call sites.
-- [ ] Reconcile diagnostic docs/catalog and intentional public API baseline changes.
-- [ ] Run Release/localization/a11y/diagnostic/docs/artifact validation and reconcile the File List.
+- [x] Add EN/FR whole-string home-card pending-label resources and use the existing localizer.
+- [x] Bind the UI host root `lang` to the effective BCP-47 UI culture and add prerender/render tests.
+- [x] Add focused hard-coded-string, resource-parity, and accessibility-name governance.
+- [x] Add `HFC2106_PreferenceHydrationFallback`, obsolete-alias the old public name, and migrate call sites.
+- [x] Reconcile diagnostic docs/catalog and intentional public API baseline changes.
+- [x] Run Release/localization/a11y/diagnostic/docs/artifact validation and reconcile the File List.
 
 ## Dev Notes
 
@@ -122,12 +123,55 @@ python3 eng/validate-story-artifacts.py --story \
 
 ### Agent Model Used
 
+GPT-5 Codex
+
 ### Debug Log References
+
+- Task 1 RED: `HomeCard_PositiveCount_LocalizesAccessibleName` failed for `fr` because the rendered label retained the hard-coded English `items pending` suffix.
+- Task 1 GREEN: focused home-card lane passed 3/3; the full filtered solution lane passed 4,140/4,140 with `DOTNET_TieredCompilation=0` to make the pre-existing zero-allocation telemetry assertion deterministic.
+- Task 2 RED: the UI-host language contract test failed while `App.razor` retained `<html lang="en">`.
+- Task 2 GREEN: EN/FR BCP-47 and prerender/interactive source-contract lane passed 3/3; full filtered solution lane passed 4,143/4,143.
+- Task 3 RED: a deliberate incorrect home-card resource-key mutation was rejected by the localization governance test.
+- Task 3 GREEN: hard-coded-string, placeholder-parity, and accessible-name governance passed 6/6; full filtered solution lane passed 4,146/4,146.
+- Task 4 RED: the compatibility contract failed to compile before `HFC2106_PreferenceHydrationFallback` existed; the first full lane then exposed uniqueness and deprecation-policy assumptions that did not recognize obsolete constant aliases.
+- Task 4 GREEN: preferred-name/alias and obsolete-policy governance passed 6/6, Theme/Density behavior passed 28/28, and the full filtered solution lane passed 4,148/4,148.
+- Task 5 RED: HFC2106 catalog governance rejected the old Theme-only registry title; docs validation then rejected the intentionally changed registry until its normalized producer fingerprint was reconciled.
+- Task 5 GREEN: focused HFC2106 parity passed, diagnostic registry/catalog governance passed 106/106, docs validation passed, and the full filtered solution lane passed 4,149/4,149.
+- Task 6 GREEN: final Release solution and Shell-test builds completed with 0 warnings/errors; the focused story slice passed 40/40, Contracts package validation passed against the published 3.0.0 baseline at version 4.0.0, the full filtered solution lane passed 4,149/4,149, docs and story-artifact validation passed, and diff/submodule integrity checks were clean.
 
 ### Completion Notes List
 
+- Added the EN/FR `HomeCardPendingAriaLabelTemplate` whole-string resource and formatted it with the effective UI culture; positive-count labels now include the manifest display name and count, while zero-count labels remain the display name alone.
+- Bound the UI host root `lang` attribute directly to `CultureInfo.CurrentUICulture.Name`; the same C# authority runs during server prerender and interactive rendering, with no JavaScript language writer.
+- Added source governance for the home-card whole-string label and culture-derived root language, plus exact EN/FR placeholder-parity coverage.
+- Added the neutral HFC2106 preferred constant, retained the former public name as a policy-compliant obsolete alias, migrated Theme/Density consumers, and kept active diagnostic allocation uniqueness strict.
+- Re-authored HFC2106 registry/docs copy around Theme/Density preference fallback, preserved runtime-only Information semantics and the canonical help link, and pinned the additive public API through reflection-based compatibility governance (Contracts has no checked-in PublicAPI baseline file).
+- Reconciled every changed source, test, documentation, governance, and tracking artifact in the File List; no generated output, route, schema, package-version policy, analyzer release row, workflow, or submodule pointer changed.
+
 ### File List
+
+- `_bmad-output/implementation-artifacts/11-19-localization-and-identifier-alignment.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/diagnostics/HFC2106.md`
+- `docs/diagnostics/diagnostic-registry.json`
+- `docs/validation/producer-fingerprints.json`
+- `src/Hexalith.FrontComposer.Shell/Components/Home/FcHomeCard.razor`
+- `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx`
+- `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx`
+- `src/Hexalith.FrontComposer.UI/Components/App.razor`
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs`
+- `src/Hexalith.FrontComposer.Shell/State/Density/DensityEffects.cs`
+- `src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Diagnostics/FcDiagnosticIdsCompatibilityTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Home/FcHomeDirectoryTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/LocalizationGovernanceTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Resources/FcShellResourcesTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/Theme/ThemeEffectsScopeTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticCatalogTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`
 
 ## Change Log
 
+- 2026-07-16: Implemented EN/FR accessible-name localization, culture-derived document language, and HFC2106 neutral identifier/API/docs alignment with focused governance and full validation.
 - 2026-07-15: Materialized approved 11.19c child with exact live copy, culture, and HFC2106 compatibility boundaries.

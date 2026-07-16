@@ -238,7 +238,7 @@
     <comment>Story 3-4 D23 — entry description for the synthetic "Keyboard Shortcuts" commands row.</comment>
   </data>
 
-  <!-- Story 3-5 D19 — home directory + new-capability discovery (10 keys, mirrors fr.resx). -->
+  <!-- Story 3-5 D19 + Story 11.19c — home directory + new-capability discovery (11 keys, mirrors fr.resx). -->
   <data name="HomeWelcomeTemplate" xml:space="preserve">
     <value>Welcome back, {0}.</value>
     <comment>Story 3-5 AC3 / D19 — home greeting placeholder {0} = current user display name. Pre-merge native French review per D19.</comment>
@@ -278,6 +278,10 @@
   <data name="NewCapabilityBadgeText" xml:space="preserve">
     <value>New</value>
     <comment>Story 3-5 AC8 / D12 / D19 — subtle FluentBadge label next to nav entries / card headers for unseen capabilities with data.</comment>
+  </data>
+  <data name="HomeCardPendingAriaLabelTemplate" xml:space="preserve">
+    <value>{0}, {1} items pending</value>
+    <comment>Story 11.19c AC1 — whole accessible-name template. {0}=bounded-context display name; {1}=aggregate count.</comment>
   </data>
   <data name="HomeActionQueueSubtitleTemplate" xml:space="preserve">
     <value>{0} {1} awaiting your action</value>

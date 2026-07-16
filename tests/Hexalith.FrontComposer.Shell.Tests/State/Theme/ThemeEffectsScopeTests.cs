@@ -106,7 +106,7 @@ public sealed class ThemeEffectsScopeTests {
         // hydrate path (including empty-storage); only ThemeChangedAction should be suppressed
         // in this case.
         dispatcher.DidNotReceiveWithAnyArgs().Dispatch(Arg.Any<ThemeChangedAction>());
-        AssertLoggedInformation(logger, FcDiagnosticIds.HFC2106_ThemeHydrationEmpty);
+        AssertLoggedInformation(logger, FcDiagnosticIds.HFC2106_PreferenceHydrationFallback);
     }
 
     private static IUserContextAccessor MakeAccessor(string? tenantId, string? userId) {

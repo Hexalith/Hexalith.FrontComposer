@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 using Shouldly;
@@ -7,6 +8,28 @@ namespace Hexalith.FrontComposer.Shell.Tests.Integration;
 public sealed class FrontComposerUiAppHostTests {
     private const string FrontComposerUiClientId = "hexalith-frontcomposer-ui";
     private const string FrontComposerUiClientSecret = "frontcomposer-ui-dev-secret";
+
+    [Fact]
+    public void UiAppDocumentLanguage_PrerenderAndInteractiveRender_UseEffectiveUiCulture() {
+        string root = FindRepoRoot();
+        string app = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.UI", "Components", "App.razor"));
+
+        app.ShouldContain("<html lang=\"@System.Globalization.CultureInfo.CurrentUICulture.Name\">");
+        app.ShouldNotContain("<html lang=\"en\">");
+        app.ShouldNotContain("document.documentElement.lang");
+    }
+
+    [Theory]
+    [InlineData("en")]
+    [InlineData("fr")]
+    public void EffectiveUiCulture_SupportedLanguage_ProducesBcp47Tag(string cultureName) {
+        using CultureScope _ = new(cultureName);
+
+        string tag = CultureInfo.CurrentUICulture.Name;
+
+        tag.ShouldBe(cultureName);
+        CultureInfo.GetCultureInfo(tag).Name.ShouldBe(tag);
+    }
 
     [Fact]
     public void AppHost_WiresFrontComposerUiOidcByDefaultWhenSecurityExists() {

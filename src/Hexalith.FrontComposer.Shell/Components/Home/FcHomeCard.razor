@@ -17,7 +17,11 @@
     string bcCapabilityId = CapabilityIds.ForBoundedContext(Card.Manifest.BoundedContext);
     bool bcShowsNew = !SeenCapabilities.Contains(bcCapabilityId) && Card.AggregateCount > 0;
     string ariaLabel = Card.AggregateCount > 0
-        ? $"{Card.Manifest.Name}, {Card.AggregateCount} items pending"
+        ? string.Format(
+            System.Globalization.CultureInfo.CurrentUICulture,
+            Localizer["HomeCardPendingAriaLabelTemplate"].Value,
+            Card.Manifest.Name,
+            Card.AggregateCount)
         : Card.Manifest.Name;
     bool anyVisibleProjection = Card.ProjectionRows.Any(row => ShouldRenderProjectionRow(row));
 }

@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-16T01:22:00+02:00
+last_updated: 2026-07-16T02:07:41+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -467,7 +467,9 @@ development_status:
   # 11.19b moved ready-for-dev -> in-progress -> review on 2026-07-16 (dev-story; online audit, focused Release build, Governance, and baseline regression green).
   11-19-apphost-nuget-audit-suppression: review
   # 11.19c moved backlog -> ready-for-dev on 2026-07-15 (create-story; localization and public diagnostic-identifier alignment).
-  11-19-localization-and-identifier-alignment: ready-for-dev
+  # 11.19c moved ready-for-dev -> in-progress on 2026-07-16 (dev-story).
+  # 11.19c moved in-progress -> review on 2026-07-16 (dev-story; Release build, package compatibility, 4,149 default-lane tests, docs, artifacts, and integrity validation green).
+  11-19-localization-and-identifier-alignment: review
   # 11.19d moved backlog -> ready-for-dev on 2026-07-15 (create-story; AnalysisMode elevation decision record only).
   11-19-analyzer-elevation-decision: ready-for-dev
   epic-11-retrospective: optional

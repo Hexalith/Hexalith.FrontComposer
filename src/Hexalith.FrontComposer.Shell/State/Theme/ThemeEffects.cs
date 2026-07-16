@@ -111,7 +111,7 @@ public class ThemeEffects(
             else {
                 logger.LogInformation(
                     "{DiagnosticId}: Theme hydration found no stored value — feature defaults apply.",
-                    FcDiagnosticIds.HFC2106_ThemeHydrationEmpty);
+                    FcDiagnosticIds.HFC2106_PreferenceHydrationFallback);
             }
         }
         catch (OperationCanceledException) {

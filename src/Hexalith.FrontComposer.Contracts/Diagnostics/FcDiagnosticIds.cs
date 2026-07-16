@@ -396,10 +396,17 @@ public static class FcDiagnosticIds {
     public const string HFC2105_StoragePersistenceSkipped = "HFC2105";
 
     /// <summary>
-    /// Theme effect hydrated with no stored value on app init (Story 3-1 D8 / AC3). Information
-    /// severity — first-visit baseline, feature defaults apply. Runtime-only (no analyzer emission).
+    /// A persisted user preference could not be applied during hydration because the value was
+    /// empty, unavailable, or corrupt. Information severity — feature defaults apply or hydration
+    /// is deferred until storage becomes available. Runtime-only (no analyzer emission).
     /// </summary>
-    public const string HFC2106_ThemeHydrationEmpty = "HFC2106";
+    public const string HFC2106_PreferenceHydrationFallback = "HFC2106";
+
+    /// <summary>
+    /// Compatibility alias for <see cref="HFC2106_PreferenceHydrationFallback"/>.
+    /// </summary>
+    [Obsolete("HFC2106_ThemeHydrationEmpty replaced by HFC2106_PreferenceHydrationFallback in v4.0. See HFC2106. Removed in v5.0.", error: false)]
+    public const string HFC2106_ThemeHydrationEmpty = HFC2106_PreferenceHydrationFallback;
 
     /// <summary>
     /// Navigation effect hydrated with no stored value on app init, the stored blob was unreadable,

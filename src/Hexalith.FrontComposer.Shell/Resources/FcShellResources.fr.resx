@@ -210,7 +210,7 @@
     <value>Voir tous les raccourcis clavier</value>
   </data>
 
-  <!-- Story 3-5 D19 — home directory + new-capability discovery (10 keys, mirrors EN). -->
+  <!-- Story 3-5 D19 + Story 11.19c — home directory + new-capability discovery (11 keys, mirrors EN). -->
   <data name="HomeWelcomeTemplate" xml:space="preserve">
     <value>Bon retour, {0}.</value>
   </data>
@@ -240,6 +240,10 @@
   </data>
   <data name="NewCapabilityBadgeText" xml:space="preserve">
     <value>Nouveau</value>
+  </data>
+  <data name="HomeCardPendingAriaLabelTemplate" xml:space="preserve">
+    <value>{0}, {1} éléments en attente</value>
+    <comment>Story 11.19c AC1 — nom accessible complet. {0}=nom affiché du bounded context ; {1}=nombre agrégé.</comment>
   </data>
   <data name="HomeActionQueueSubtitleTemplate" xml:space="preserve">
     <value>{0} {1} en attente d'action</value>
