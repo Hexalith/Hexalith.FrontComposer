@@ -70,6 +70,22 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
 ### Review Findings
 
 - [x] [Review][Patch] Move the exact 18-fact census into an independent governance test so deleting its current host fact cannot also delete the guard [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:43]
+- [ ] [Review][Decision] Define how `/pushall` handles dirty default branches that are behind `origin` — The procedure commits first and then requires a fast-forward, which necessarily fails after creating divergence. Choose whether to stash/fast-forward/reapply, commit then rebase, or skip safely without creating a commit. [.agents/skills/pushall/SKILL.md:70]
+- [ ] [Review][Decision] Define the `/pushall` commit-message policy for arbitrary working-tree changes — The fixed `build:` subject misclassifies feature and fix work and can suppress the semantic-release bump. Choose whether callers must supply a validated Conventional Commit message or the workflow must infer and confirm one. [.agents/skills/pushall/SKILL.md:70]
+- [ ] [Review][Patch] Prevent the superproject from publishing gitlinks to submodule commits whose push failed [.agents/skills/pushall/SKILL.md:56]
+- [ ] [Review][Patch] Keep the remote-tracking ref separate from the stripped branch name when merging remote-only branches [.agents/skills/pushall/SKILL.md:78]
+- [ ] [Review][Patch] Resolve the repository default from `origin/HEAD` before falling back to conventional branch names [.agents/skills/pushall/SKILL.md:68]
+- [ ] [Review][Patch] Refuse or preserve detached-HEAD work before auto-committing and switching branches [.agents/skills/pushall/SKILL.md:70]
+- [ ] [Review][Patch] Detect and skip repositories with an in-progress merge, rebase, cherry-pick, or revert [.agents/skills/pushall/SKILL.md:70]
+- [ ] [Review][Patch] Validate every merge before committing and pushing, including conflict-free merges [.agents/skills/pushall/SKILL.md:83]
+- [ ] [Review][Patch] Abort and skip a ref when a non-conflict merge or commit hook fails [.agents/skills/pushall/SKILL.md:83]
+- [ ] [Review][Patch] Preserve local topic branches until the updated default branch has pushed successfully [.agents/skills/pushall/SKILL.md:92]
+- [ ] [Review][Patch] Add governance coverage for the three `/pushall` mirrors and their destructive-operation ordering [.agents/skills/pushall/SKILL.md:22]
+- [ ] [Review][Patch] Require deferred review evidence to cite at least one existing repository-contained path [eng/validate-story-artifacts.py:510]
+- [ ] [Review][Patch] Execute or structurally pin all immutable-release attachment branches in governance tests [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:1166]
+- [ ] [Review][Patch] Verify pending-status protocol logs preserve the warning contract and digest the message identifier [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStorePendingCommandStatusQueryTests.cs:128]
+- [ ] [Review][Patch] Advance MCP package validation to the `4.0.0` baseline and remove the expired 26-entry suppression plan [Directory.Build.targets:5]
+- [ ] [Review][Patch] Use `ConfigureAwait(false)` in the MCP package-boundary async paths [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:28]
 - [x] [Review][Patch] Remove the unused Contracts.Schema import introduced by the mechanical split [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusManifestEntry.cs:1]
 - [x] [Review][Patch] Exercise the relocated embedded prompt resource from a blocking Governance test so PR verification fails before nightly [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Governance/BenchmarkHarnessGovernanceTests.cs:32]
 - [x] [Review][Defer] Replace filename/text marker heuristics with structural validation for commands, projections, registration, validators, and tests [src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:35] — deferred, pre-existing
