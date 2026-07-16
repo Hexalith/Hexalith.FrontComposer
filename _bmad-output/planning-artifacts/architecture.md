@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-07-15
+updated: 2026-07-16
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -121,8 +121,10 @@ Epic 11 traces to `_bmad-output/project-docs/architecture-quality-review-2026-07
   where referenced.
 - **Contracts and package boundary:** Story 11.8 and Stories 11.11–11.14 are done; they are retained as
   decision/delivery history, not queue candidates.
-- **Maintainability and enforcement:** Stories 11.9 and 11.15–11.16 are done, 11.17a is done,
-  11.17b–d and 11.18a are in review, and 11.18b–c plus 11.19a–d are materialized future work.
+- **Maintainability and enforcement:** Stories 11.9, 11.15–11.16, and 11.17a are done;
+  11.17b–d, 11.18b–c, and 11.19a–d are in review. Stories 11.20–11.23 are sequential,
+  separately approval-gated backlog phases materialized by the approved Story 11.19d analyzer
+  decision; Story 11.23 is a v1.0 publication gate.
 
 Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents. Logging ownership follows
 security/fail-closed (11.18a), then command-lifecycle/projection/polling hot paths (11.18c), then

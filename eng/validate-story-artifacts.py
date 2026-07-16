@@ -507,9 +507,24 @@ def check_checked_tasks(root: Path, story: Path, changed_files: list[str], metad
     for line_number, task in metadata.checked_tasks:
         if not task_needs_evidence(task):
             continue
-        if task_is_classified_defer(task):
-            continue
         task_paths = extract_path_mentions(task)
+        if task_is_classified_defer(task):
+            # Deferred pre-existing work is intentionally absent from the changed set and
+            # File List, so it is exempt from output-path evidence reconciliation. But a
+            # deferral must still cite a real pre-existing location — verify each fully
+            # qualified path exists so a task cannot self-exempt by naming a fabricated one.
+            nonexistent_paths = sorted(
+                path
+                for path in task_paths
+                if "/" in path and not (root / path).exists()
+            )
+            if nonexistent_paths:
+                failures.append(
+                    "deferred review task cites nonexistent path in "
+                    f"{story.relative_to(root).as_posix()}:{line_number}: {task}"
+                    f"\n  - deferred path does not exist: {', '.join(nonexistent_paths)}"
+                )
+            continue
         missing_paths = sorted(
             path
             for path in task_paths
@@ -590,6 +605,15 @@ def path_mention_is_explicitly_non_evidence(text: str, start: int, end: int) -> 
     return bool(
         re.search(r"\b(?:leave|keep|preserve)\b", before, re.IGNORECASE)
         and re.search(r"\b(?:untouched|unchanged|unmodified)\b", after, re.IGNORECASE)
+        # ...but not when a positive action verb directly governs the path
+        # (e.g. "Keep behavior and update `x` so output stays unchanged"), which makes
+        # the path that verb's object — genuine evidence, not a preservation target.
+        and not re.search(
+            r"\b(?:add|change|edit|create|modify|update|touch|write|split|"
+            r"move|delete|rename|retarget|generate|implement|wire|extend)s?\s*$",
+            before,
+            re.IGNORECASE,
+        )
     )
 
 

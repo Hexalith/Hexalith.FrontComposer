@@ -64,6 +64,26 @@ public sealed class SourceToolsTypeOrganizationGovernanceTests {
     }
 
     [Fact]
+    public void OrganizationGuard_SyntheticNameMismatchSource_ReportsFileAndDeclaration() {
+        // A single declaration whose name does not match its file must be flagged. This
+        // exercises the file-name parity branch, which the multi-kind sample above never
+        // reaches (that one trips the declaration-count branch and short-circuits first).
+        (string Path, string Content)[] sources = [
+            (
+                "Synthetic/Second.cs",
+                "namespace Hexalith.FrontComposer.SourceTools.Drift;\n"
+                + "internal sealed class First { }\n"),
+        ];
+
+        IReadOnlyList<string> violations = FindOrganizationViolations(sources);
+
+        violations.Count.ShouldBe(1);
+        violations[0].ShouldContain("Synthetic/Second.cs");
+        violations[0].ShouldContain("First");
+        violations[0].ShouldContain("Second");
+    }
+
+    [Fact]
     [Trait("Category", "Contract")]
     public void TargetTypes_AfterMechanicalSplit_PreserveExactInternalTopLevelIdentity() {
         Assembly assembly = typeof(FrontComposerGenerator).Assembly;
@@ -71,7 +91,17 @@ public sealed class SourceToolsTypeOrganizationGovernanceTests {
             .Select(name => assembly.GetType(DriftNamespace + "." + name, throwOnError: true)!)
             .ToArray();
 
-        types.Length.ShouldBe(17);
+        // The pinned inventory is exhaustive: the Drift namespace must expose exactly these
+        // 17 internal top-level types and no others, so a new unpinned type fails the guard.
+        // (A bare types.Length check is tautological — Select preserves the source count.)
+        TargetTypeNames.Length.ShouldBe(17);
+        assembly.GetTypes()
+            .Where(candidate => string.Equals(candidate.Namespace, DriftNamespace, StringComparison.Ordinal)
+                && !candidate.IsNested)
+            .Select(candidate => candidate.Name)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ShouldBe(TargetTypeNames.OrderBy(name => name, StringComparer.Ordinal));
+
         foreach (Type type in types) {
             type.Namespace.ShouldBe(DriftNamespace);
             type.DeclaringType.ShouldBeNull();

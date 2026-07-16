@@ -105,11 +105,11 @@ Status labels are part of each requirement's downstream contract.
 | FR-13 | Complete / release verification | Product + Architecture approved the FC-NIP payload source on 2026-07-05; Stories 9.1 and 9.2 are done and their contract/runtime evidence remains the release baseline. |
 | FR-14 to FR-23 | Baseline / release verification | Framework maintainer verifies command lifecycle, MCP, CLI, Testing, and documentation surfaces remain covered. |
 | FR-24 | Release governance / publication gate | Release owner proves the exact artifacts intended for NuGet/GitHub were inventory-validated, consumer-validated, signed, timestamped, verified, checksummed, manifest-bound, and classified as publishable before publication. |
-| FR-25 | Baseline plus change-control gate | Framework maintainer owns public API, schema, CLI JSON, generated-output, and diagnostic compatibility evidence. |
+| FR-25 | Baseline plus change-control gate | Framework maintainer owns public API, schema, CLI JSON, generated-output, diagnostic compatibility, and the staged built-in-analyzer policy/burn-down/activation evidence in Stories 11.20–11.23. |
 | FR-26 | Complete / release verification | Epic 9 is done; the approved FC-NIP payload and producer/consumer evidence remain the baseline. |
 | FR-27 | Complete / release verification | Epic 10 is done; its tooling-governance and Testing-redaction evidence may be consumed by later remediation. |
 | FR-28 | Complete decision records | Epic 11.0 and 11.8 are done; completed dependent delivery retains the recorded contracts. |
-| FR-29 | Active release-readiness program | Epic 11 is organized into four workstreams. Existing delivery is reconciled; only materialized children 11.18b–c and 11.19a–d remain future implementation, while 11.17b–d and 11.18a are in review. |
+| FR-29 | Active release-readiness program | Epic 11 remains organized into four workstreams. Story 11.17a is done; 11.17b–d, 11.18a–c, and 11.19a–d are in review. The approved Story 11.19d decision materialized 11.20–11.23 as sequential, separately approval-gated backlog phases, with 11.23 required before v1.0 publication authorization. |
 
 ### 5.1 Source Generation And Contract Vocabulary
 
@@ -414,8 +414,9 @@ FrontComposer must complete the remaining Epic 11 release-readiness remediation 
 
 **Consequences:**
 - Epic 11 is governed through four workstreams: runtime reliability/security; adopter testing/route integrity; contracts/package boundary; and maintainability/enforcement.
-- Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents. Only 11.17a–d, 11.18a–c, and 11.19a–d carry delivery state.
-- Logging ownership is exclusive and deterministic: 11.18a security/fail-closed sites, then 11.18c command-lifecycle/projection/polling hot paths, then 11.18b residual Warning/Error/Critical sites.
+- Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents. Their named children carry delivery state; Stories 11.20–11.23 are implementable staged-activation phases materialized by the approved 11.19d decision.
+- Logging ownership remains exclusive and deterministic: 11.18a security/fail-closed sites, then 11.18c command-lifecycle/projection/polling hot paths, then 11.18b residual Warning/Error/Critical sites.
+- The analyzer program executes 11.20 policy/exception ledger → 11.21 product/generator burn-down → 11.22 test/sample burn-down → 11.23 repository activation. Each phase requires separate Architecture/Product approval; 11.23 is a v1.0 publication gate.
 - Acceptance criteria for Epic 11 implementation stories use Given/When/Then form before ready-for-dev.
 
 ## 6. Cross-Cutting Non-Functional Requirements
@@ -460,7 +461,7 @@ FrontComposer must complete the remaining Epic 11 release-readiness remediation 
 - **Epic 11 runtime reliability/security:** baseline stories done; 11.18a is in review.
 - **Epic 11 adopter testing/route integrity:** done.
 - **Epic 11 contracts/package boundary:** decision and delivery Stories 11.8 and 11.11–11.14 are done.
-- **Epic 11 maintainability/enforcement:** 11.9, 11.15–11.16, and 11.17a are done; 11.17b–d are in review; 11.18b–c and 11.19a–d are materialized for implementation.
+- **Epic 11 maintainability/enforcement:** 11.9, 11.15–11.16, and 11.17a are done; 11.17b–d, 11.18b–c, and 11.19a–d are in review. Stories 11.20–11.23 are sequential, separately approval-gated backlog phases due 2026-07-24 through 2026-09-11; 11.23 is required before v1.0 publication authorization.
 
 ### 8.3 Out Of Scope For V1
 
@@ -524,6 +525,7 @@ FrontComposer must complete the remaining Epic 11 release-readiness remediation 
 | D-7 | Success metric targets | Product Owner + Release owner | Resolved in §9 with minimum v1.0 evidence targets. | None unless targets are changed. |
 | D-8 | Standalone UX spec need | Product + UX | Resolved for v1.0: `ux-design.md` is sufficient for traceability; stories with visual/layout choices need story-local design notes. | Blocks only stories whose visual decisions are not captured elsewhere. |
 | D-9 | Final PRD status approval | Product Owner | Resolved 2026-07-05: Product approved D-1 through D-8 and the accepted assumption dispositions; PRD status promoted to `approved-for-v1-readiness`. | None. |
+| D-10 | Built-in analyzer target and activation | Architecture + Product + Release Owner | Resolved 2026-07-16: target `AnalysisMode=Recommended` through staged Stories 11.20–11.23, preserving `TreatWarningsAsErrors=true`, built-in analyzers only, and narrow owner-bound exceptions. | Story 11.23 and v1.0 publication authorization unless a dated replacement decision provides equivalent diagnostic ownership. |
 
 ### 12.1 Open Question Disposition
 
@@ -532,6 +534,7 @@ All PRD open questions identified by the 2026-07-05 readiness follow-up are now 
 - Canonical PRD path, architecture/UX discovery, generated command route family, Contracts split release posture, release-evidence ownership, success metric targets, and standalone UX source need are resolved in D-1, D-2, D-3, D-5, D-6, D-7, and D-8.
 - FC-NIP row identity payload source and producer/consumer wiring are complete under D-4 and Stories 9.1–9.2.
 - Final PRD status approval is resolved through D-9; Product approval promoted the PRD to `approved-for-v1-readiness`.
+- Built-in analyzer target and activation are resolved through D-10; sequential Stories 11.20–11.23 carry the separately approval-gated implementation, and 11.23 is required before v1.0 publication authorization.
 
 ## 13. Assumptions Index
 

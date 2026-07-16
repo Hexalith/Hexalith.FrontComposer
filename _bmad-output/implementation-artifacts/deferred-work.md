@@ -1659,3 +1659,9 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-cli-package-split.md`
   summary: Avoid reporting unchanged when every discovered project document was skipped.
   evidence: The final fallback ignores `skipped` entries when deciding to add `HFCM0001 unchanged`, so a plan that scanned no eligible source can contain both skipped and unchanged claims (`src/Hexalith.FrontComposer.Cli/MigrationPlanner.cs:246-257`). The behavior predates the split.
+
+## Deferred from: code review of 11-17-sourcetools-package-split (2026-07-16)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-17-sourcetools-package-split.md`
+  summary: Harden the SourceTools Drift organization guard against namespace nesting and multi-dot filenames (future-proofing).
+  evidence: `GetDirectTopLevelDeclarations` flattens only one namespace level, so a type declared in a second-level block namespace escapes the one-type-per-file count; and `Path.GetFileNameWithoutExtension` does not normalize multi-dot names (`Foo.razor.cs`→`Foo.razor`), contradicting the maintained doc's normalization claim (`tests/Hexalith.FrontComposer.SourceTools.Tests/Architecture/SourceToolsTypeOrganizationGovernanceTests.cs:129-137,120`). Both are unreachable today — all 17 Drift files are flat file-scoped namespaces with single-dot names — so this is guard hardening only, not a current defect.

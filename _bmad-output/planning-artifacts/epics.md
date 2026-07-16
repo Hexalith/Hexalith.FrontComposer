@@ -197,11 +197,11 @@ This is the sole planning coverage map. Requirement semantics and identifiers co
 | FR-22 | Epic 7: Story 7.5; Epic 10: Story 10.5; Epic 11: Story 11.6 |
 | FR-23 | Stories 1.5, 5.3, 7.2–7.4, 10.2, 10.4, and 11.14 |
 | FR-24 | Release Governance Gate RG-1; REL-AI-1 remains open; REL-3 owns correction, REL-4 the technical freeze, REL-5 Release Owner enablement; REL-2 is completed evidence, not closure |
-| FR-25 | Epics 7 and 10; Epic 11: Stories 11.8, 11.11–11.14, and 11.19 children |
+| FR-25 | Epics 7 and 10; Epic 11: Stories 11.8, 11.11–11.14, the 11.19 children, and staged analyzer-policy/burn-down/activation Stories 11.20–11.23 |
 | FR-26 | Epic 9: Story 9.2; Story 2.6 preserves the ownership boundary |
 | FR-27 | Epic 10: Stories 10.1–10.5 |
 | FR-28 | Epic 11: completed decision records 11.0 and 11.8 |
-| FR-29 | Epic 11: Stories 11.1–11.19 through their materialized children |
+| FR-29 | Epic 11: Stories 11.1–11.23, with 11.17–11.19 represented only through their materialized children |
 
 **Release Governance Gate RG-1 (FR-24):** before any NuGet or GitHub package publication, the Release
 Owner must prove that the exact expected package artifacts passed inventory, tests, package-consumer
@@ -253,7 +253,7 @@ ledger sign-off, REL-AI-1 closure) from REL-3 development work. See
 
 **Additional-requirement coverage:** AR1–AR5 → Epic 1 · AR6 (FC-CMD) → Epic 3 · AR7 (FC-CNC) → Epic 4 · AR8 (budgets) → Epic 3 + Epic 4 · AR9 (EventStore status) → Epic 3 · AR10 (rich components) → out of scope (fast-follow, tracked, not an epic) · AR11 (FC-NIP) → Epic 9 · AR12 (FC-TOOL-GOV) → Epic 10.
 **Cross-cutting canonical NFRs** apply to every epic as ready-gate constraints, anchored by FC-A11Y (AR2) and FC-DOC (AR4) in Epic 1. Telemetry is owned cross-cutting rather than per-AC — emitting through `FrontComposerActivitySource` on Shell command-lifecycle/projection paths and MCP tool/resource paths.
-**Epic 11 (Release Readiness Remediation Program)** traces canonical FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, and FR-29 plus the 2026-07-04 architecture-quality-review findings. Story 11.0 and Story 11.8 are completed decision records. Stories 11.17, 11.18, and 11.19 are decomposition parents, not implementation candidates; their child stories carry delivery status.
+**Epic 11 (Release Readiness Remediation Program)** traces canonical FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, and FR-29 plus the 2026-07-04 architecture-quality-review findings. Story 11.0 and Story 11.8 are completed decision records. Stories 11.17, 11.18, and 11.19 are decomposition parents, not implementation candidates; their child stories carry delivery status. Story 11.19d approved staged adoption of `AnalysisMode=Recommended` and materialized sequential, separately approval-gated Stories 11.20–11.23; Story 11.23 is a v1.0 publication gate.
 
 ## Epic List
 
@@ -361,7 +361,7 @@ unblock), a unified command/projection route contract (so palette command activa
 that exists), a leaner Contracts kernel, and consolidated shell layering + convention alignment.
 Remediation-framed, but each story is justified by operator/adopter/security impact and organized into four coherent release workstreams.
 **Canonical FRs covered:** FR-7, FR-10, FR-12, FR-19, FR-22, FR-25, FR-28, FR-29 · **Introduces:** architecture-review-finding requirements H1–H12 / M-series · **no net-new user-facing FRs**
-**Delivery model:** four workstreams govern implementation and current state. Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents; only their named children enter the queue. Epic 11 consumes completed Epic 10 evidence where referenced and does not reopen completed Epics 1–10.
+**Delivery model:** four workstreams govern implementation and current state. Stories 11.17, 11.18, and 11.19 are nonimplementable decomposition parents; only their named children enter the queue. The approved Story 11.19d analyzer decision materialized sequential, separately approval-gated Stories 11.20–11.23, with Story 11.23 gating v1.0 publication. Epic 11 consumes completed Epic 10 evidence where referenced and does not reopen completed Epics 1–10.
 **Source of record:** `sprint-change-proposal-2026-07-04.md` (Correct Course, 2026-07-04), triggered by `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md`. A Minor-scope quick-win fix batch was applied in-tree under the same proposal (PR #48).
 **Decisions (contract-confirmation DoD — tracked, owned, dated blocking gates):** **11.0** route-contract decision → **Architect + Product**, assigned 2026-07-05, resolved 2026-07-05 with `/commands/{BoundedContext}/{CommandTypeName}`; **11.8** Contracts kernel split decision and compatibility plan → **Architect + PM**, assigned 2026-07-04, resolved 2026-07-05 with the approved `Contracts` kernel + `Contracts.UI` target. Stories 11.11–11.14 are completed delivery records for that package-boundary change.
 
@@ -1488,6 +1488,9 @@ and punctuation-heavy string secret values.
 > from file order, numeric sort, or a decomposition-parent heading. Stories 11.0 and 11.8 are completed
 > decision records; Stories 11.11–11.14 are completed delivery records. Stories 11.17, 11.18, and
 > 11.19 are nonimplementable decomposition parents. Only their materialized children carry queue state.
+> Story 11.19d approved staged adoption of `AnalysisMode=Recommended` and materialized implementable
+> Stories 11.20–11.23 as sequential, separately approval-gated backlog phases; Story 11.23 is a v1.0
+> publication gate.
 >
 > **Decision gates (contract-confirmation DoD, 2026-06-21 amendment - tracked, owned, dated):** **Story 11.0**
 > (command/projection route contract) - owner **Architect + Product**, assigned **2026-07-05**, resolved
@@ -1504,12 +1507,12 @@ and punctuation-heavy string secret values.
 
 ### Epic 11 Workstreams And Current State
 
-| Workstream | Stories | Current state on 2026-07-15 |
+| Workstream | Stories | Current state on 2026-07-16 |
 | --- | --- | --- |
 | Runtime reliability and security | 11.0–11.5, 11.18a | 11.0–11.5 done; 11.18a in review. |
 | Adopter testing and route integrity | 11.6–11.7 | Done; 11.6 consumes completed Story 10.5 privacy evidence. |
 | Contracts and package boundary | 11.8, 11.11–11.14 | Done; retained as decision/delivery history, not queue candidates. |
-| Maintainability and enforcement | 11.9, 11.15–11.16, 11.17a–d, 11.18b–c, 11.19a–d | 11.9 and 11.15–11.16 done; 11.17a done; 11.17b–d and 11.18a in review; 11.18b–c and 11.19a–d materialized for future implementation. |
+| Maintainability and enforcement | 11.9, 11.15–11.16, 11.17a–d, 11.18b–c, 11.19a–d, 11.20–11.23 | 11.9, 11.15–11.16, and 11.17a done; 11.17b–d, 11.18b–c, and 11.19a–d in review; 11.20–11.23 are sequential, separately approval-gated backlog phases. |
 
 Within logging remediation, ownership precedence is deterministic: 11.18a security/fail-closed sites
 first, 11.18c command-lifecycle/projection/polling hot paths second, and 11.18b residual
@@ -1939,10 +1942,10 @@ trace, or sensitive identifier is emitted.
 - **11.18a — Fail-closed / security log sites (`11-18-fail-closed-security-log-sites.md`, review).** MCP + Shell fail-closed branches →
   `[LoggerMessage]`. Validation lane: MCP + Shell Governance sanitized-logging lane (ties to
   NFR-6/NFR-11); sanitization tests prove no sensitive value is emitted.
-- **11.18b — Residual warning-and-above log sites (`11-18-warning-and-above-log-sites.md`, ready-for-dev).** After 11.18a security and 11.18c hot-path ownership is frozen, all residual Warning/Error/Critical direct sites in the 49-file census →
+- **11.18b — Residual warning-and-above log sites (`11-18-warning-and-above-log-sites.md`, review).** After 11.18a security and 11.18c hot-path ownership is frozen, all residual Warning/Error/Critical direct sites in the 49-file census →
   `[LoggerMessage]`. Validation lane: Shell unit lane + a guard that Warning+ sites use
   source-generated logging.
-- **11.18c — Hot-path log sites (`11-18-hot-path-log-sites.md`, ready-for-dev).** Command-lifecycle, projection-refresh, and polling hot-path sites →
+- **11.18c — Hot-path log sites (`11-18-hot-path-log-sites.md`, review).** Command-lifecycle, projection-refresh, and polling hot-path sites →
   `[LoggerMessage]`. Validation lane: LoggerMessage guard; remaining direct calls are below the
   migration threshold or documented intentional.
 
@@ -1974,20 +1977,21 @@ path → residual Warning+ precedence, and owned sites migrate to `[LoggerMessag
 **Decomposition (correct course 2026-07-05).** Split by defect class. Each child names its validation
 lane and does not disable warnings or analyzer findings globally.
 
-- **11.19a — Doc-comment (CS1591) enforcement realignment (`11-19-doc-comment-enforcement-realignment.md`, ready-for-dev).** Restore documented CS1591 enforcement on
+- **11.19a — Doc-comment (CS1591) enforcement realignment (`11-19-doc-comment-enforcement-realignment.md`, review).** Restore documented CS1591 enforcement on
   the Contracts public API-freeze folders (the `.editorconfig` re-raise is currently dead under the
   src-wide NoWarn). Validation lane: Release build under `TreatWarningsAsErrors=true` + a guard proving
   CS1591 is enforced on the API-freeze surface.
-- **11.19b — AppHost NuGet audit suppression (`11-19-apphost-nuget-audit-suppression.md`, ready-for-dev).** Replace the blanket `NU1902-04` NoWarn with
+- **11.19b — AppHost NuGet audit suppression (`11-19-apphost-nuget-audit-suppression.md`, review).** Replace the blanket `NU1902-04` NoWarn with
   per-advisory `NuGetAuditSuppress` (CI-verifiable). Validation lane: CI audit lane / Governance test.
-- **11.19c — Localization + identifier alignment (`11-19-localization-and-identifier-alignment.md`, ready-for-dev).** Localize the `FcHomeCard` aria-label and the UI
+- **11.19c — Localization + identifier alignment (`11-19-localization-and-identifier-alignment.md`, review).** Localize the `FcHomeCard` aria-label and the UI
   host `lang="en"`/English strings; rename `HFC2106_ThemeHydrationEmpty` (ID string unchanged; obsolete
   alias if the constant is public). Validation lane: Shell localization/Governance lane +
   diagnostic-catalog parity.
-- **11.19d — Analyzer-elevation decision gate (`11-19-analyzer-elevation-decision.md`, ready-for-dev).** Architect records the `AnalysisMode Recommended`
-  decision (adds no packages; burn-down cost owned). This is a decision gate, not broad implementation;
-  any resulting implementation stories name their validation lane. Recorded under
-  `_bmad-output/contracts/`.
+- **11.19d — Analyzer-elevation decision gate (`11-19-analyzer-elevation-decision.md`, review).** Architecture and Product approved staged
+  adoption of `AnalysisMode=Recommended` with unchanged TWAE, built-in analyzers only, and narrow
+  owner-bound exceptions. The decision is recorded in
+  `_bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md` and materialized sequential,
+  separately approval-gated Stories 11.20–11.23. This decision story does not activate policy.
 
 As a release owner,
 I want documented enforcement policies to match what the build and governance lanes actually enforce,
@@ -2007,3 +2011,135 @@ So that readiness claims are verifiable instead of aspirational.
 **When** implementation stories are created from this policy story,
 **Then** each story names its validation lane and does not disable warnings or analyzer findings globally.
 *(closes M16, H12 + policy-decision parts of the convention-drift cluster.)*
+
+### Story 11.20: Recommended analyzer policy and exception ledger
+
+**Status:** backlog. **Owner:** Architect + Framework Maintainer. **Due:** 2026-07-24.
+**Approval gate:** separate Architecture/Product approval.
+
+As an Architect and Framework Maintainer,
+I want every current analyzer suppression and Naming diagnostic classified into a narrow exception or an actionable fix,
+So that `AnalysisMode=Recommended` can be adopted without breaking public compatibility or hiding findings globally.
+
+**Given** the Story 11.19d census,
+**When** the policy audit runs,
+**Then** all 2,958 Naming findings and every effective warning control are recorded in a versioned, owner-bound exception/fix ledger.
+
+**Given** CA1707 conflicts with required underscore-separated test names and public diagnostic constants,
+**When** dispositions are recorded,
+**Then** compatibility is preserved with the narrowest supported mechanism and no repository/category-wide CA suppression.
+
+**Given** a Naming finding lacks an approved exception,
+**When** the candidate lane runs,
+**Then** it is fixed or moved to a separately approved owner-bound defect story.
+
+**Given** warning controls have different sources and owners,
+**When** the audit completes,
+**Then** each is classified as remain, narrow, move, or fix without absorbing Story 11.19a documentation or package-audit policy.
+
+**Given** the built-in-analyzers-only policy,
+**When** Governance runs,
+**Then** no analyzer package or broad CA disable exists, TWAE remains unchanged, and the ledger matches effective configuration.
+
+**Given** this phase changes policy boundaries rather than product behavior,
+**When** validation completes,
+**Then** normal Release, focused policy, and default lanes pass and baselines change only when explicitly approved.
+
+### Story 11.21: Recommended analyzer product and generator burn-down
+
+**Status:** backlog. **Depends on:** 11.20. **Owner:** Framework Maintainer + SourceTools Maintainer.
+**Due:** 2026-08-14. **Approval gate:** separate Architecture/Product approval.
+
+As a Framework and SourceTools Maintainer,
+I want product-source and generator-emission findings fixed by defect class,
+So that every shipped package and generated consumer can build cleanly under the approved `Recommended` policy.
+
+**Given** Story 11.20's approved ledger,
+**When** product projects build under Recommended with unchanged TWAE,
+**Then** all 367 product findings are fixed or covered by pre-approved narrow compatibility exceptions.
+
+**Given** 503 findings occur in SourceTools output,
+**When** generator findings are remediated,
+**Then** fixes occur in emitters or annotated source, never `obj/`, and generated consumers prove the correction.
+
+**Given** CA1848/CA1873 dominate logging findings,
+**When** logging work runs,
+**Then** it follows the source-generated `LoggerMessage` convention without reopening Story 11.18 ownership.
+
+**Given** remaining product findings span several CA categories,
+**When** grouped,
+**Then** every change has a named diagnostic/package scope and preserves public API, schema, wire, lifecycle, MCP, and artifact contracts.
+
+**Given** netstandard2.0 compiler-host compatibility is load-bearing,
+**When** kernel/analyzer projects are validated,
+**Then** the Contracts/Schema/SourceTools TFM boundaries and netstandard gate remain intact.
+
+**Given** the burn-down is complete,
+**When** validation runs,
+**Then** owned product/generated consumers have zero actionable findings and all required Release, focused, default, Governance, Contract, and baseline gates pass.
+
+### Story 11.22: Recommended analyzer test and sample burn-down
+
+**Status:** backlog. **Depends on:** 11.21. **Owner:** Test Architect + Framework Maintainer.
+**Due:** 2026-09-04. **Approval gate:** separate Architecture/Product approval.
+
+As a Test Architect and Framework Maintainer,
+I want test and sample analyzer debt burned down without weakening intentional fixture semantics,
+So that the complete repository can approach `Recommended` activation with trustworthy verification.
+
+**Given** the original 3,500 test and 203 sample findings,
+**When** this phase starts after 11.20-11.21,
+**Then** every remaining diagnostic is assigned by project, ID, and approved disposition.
+
+**Given** underscore-separated test names are required,
+**When** CA1707 is handled,
+**Then** the approved narrow 11.20 mechanism is used without mass rename or global suppression.
+
+**Given** tests intentionally contain invalid code and specialized fixtures,
+**When** a suppression remains necessary,
+**Then** it is minimal and ledgered with rationale, owner, review date, and revalidation trigger.
+
+**Given** generated Shell specimens contributed findings,
+**When** Story 11.21 emitter fixes are consumed,
+**Then** test projects validate the output without editing `obj/` or duplicating fixes.
+
+**Given** samples are adopter guidance,
+**When** sample findings are fixed,
+**Then** samples still teach supported APIs and security/package boundaries without hiding genuine warnings.
+
+**Given** the phase is complete,
+**When** validation runs,
+**Then** test/sample projects have zero actionable findings and default, Governance, Contract, snapshot, compatibility, and Release gates pass without unapproved drift.
+
+### Story 11.23: Recommended analyzer repository activation
+
+**Status:** backlog. **Depends on:** 11.22. **Owner:** Architect + Framework Maintainer + Release Owner.
+**Due:** 2026-09-11. **Approval gate:** separate Architecture/Product approval. **Release gate:** v1.0.
+
+As an Architect, Framework Maintainer, and Release Owner,
+I want the approved `AnalysisMode=Recommended` posture activated and governed repository-wide,
+So that analyzer strictness becomes a durable v1.0 build invariant.
+
+**Given** Stories 11.20-11.22 are done with zero actionable findings,
+**When** activation begins,
+**Then** `AnalysisMode=Recommended` is declared centrally without new analyzer packages, weaker TWAE, or broad CA suppression.
+
+**Given** netstandard2.0 compiler-host compatibility is explicit,
+**When** the property is evaluated across Contracts, Schema, and SourceTools,
+**Then** their TFM/analyzer boundaries remain preserved and documented.
+
+**Given** the benchmark project has a warning-policy exception,
+**When** the repository gate is finalized,
+**Then** it is reconciled and the forced Release solution build reports zero warnings and zero errors.
+
+**Given** analyzer policy can regress,
+**When** Governance runs,
+**Then** it proves the central setting, built-in-only rule, unchanged TWAE, no broad suppression, ledger/config parity, and candidate/current build parity.
+
+**Given** activation can affect emitted/public surfaces,
+**When** validation runs,
+**Then** all required default, Governance, Contract, package/PublicAPI, schema, generated-output, Verify, Pact, docs, and artifact lanes pass without unapproved drift.
+
+**Given** this is a v1.0 release gate,
+**When** the story reaches review,
+**Then** Release Owner evidence is linked and rollback requires a separately approved policy change that cannot weaken TWAE or hide diagnostics globally.

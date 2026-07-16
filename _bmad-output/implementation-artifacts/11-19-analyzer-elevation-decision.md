@@ -1,12 +1,12 @@
 ---
 created: 2026-07-15
-updated: 2026-07-15
+updated: 2026-07-16
 epic: 11
 childStory: 11.19d
 parentStory: 11.19
 owner: Architect + Product Owner
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
-status: ready-for-dev
+status: review
 storyType: decision-record
 implementationGate: post-correction-readiness-pass
 baseline_commit: d9c19a4fb837357af10f6f1aa630232f670557c4

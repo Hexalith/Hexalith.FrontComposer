@@ -371,6 +371,75 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("Story artifact validation passed.", result.stdout)
 
+    def test_checked_task_preserve_clause_does_not_hide_action_governed_path(self) -> None:
+        # A preserve/unchanged clause must not exempt a path that a positive action verb
+        # directly governs ("... update `src/ghost.cs` ..."); that path is real evidence.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                story_text(
+                    baseline=baseline,
+                    file_list="- `README.md` - test evidence.",
+                    tasks="- [x] Keep behavior and update `src/ghost.cs` so output stays unchanged.",
+                ),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("missing evidence path: src/ghost.cs", result.stderr)
+
+    def test_checked_deferred_review_task_rejects_nonexistent_cited_path(self) -> None:
+        # A deferred task is exempt from output-path evidence reconciliation, but it may not
+        # self-exempt by citing a fabricated location: a qualified path must actually exist.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                story_text(
+                    baseline=baseline,
+                    file_list="- `README.md` - test evidence.",
+                    tasks=(
+                        "- [x] [Review][Defer] Update `src/ghost.cs` handling - "
+                        "deferred, pre-existing."
+                    ),
+                ),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("deferred path does not exist: src/ghost.cs", result.stderr)
+
     def test_dotfile_file_list_entry_reconciles_without_stripping_leading_dot(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -432,6 +501,10 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertIn("missing from story File List", result.stderr)
 
 
+@unittest.skipUnless(
+    (STORY_AUTOMATOR_SRC / "story_automator/core/success_verifiers.py").is_file(),
+    "bmad-story-automator skill is not installed",
+)
 class ReviewVerifierTests(unittest.TestCase):
     def test_incomplete_review_reports_workflow_not_complete(self) -> None:
         sys.path.insert(0, str(STORY_AUTOMATOR_SRC))

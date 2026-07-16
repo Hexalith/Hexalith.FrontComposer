@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-16T04:57:45+02:00
+# last_updated: 2026-07-16T09:43:52+02:00
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-16T04:57:45+02:00
+last_updated: 2026-07-16T11:48:26+02:00
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -437,7 +437,9 @@ development_status:
   # 11.17b moved ready-for-dev -> in-progress on 2026-07-14 (dev-story; baseline 9a870d07ddf8c919e33f272cb3e17eb63dc040b8 preserved; starting mechanical SourceTools Drift split and non-vacuous organization/identity guard.)
   # 11.17b moved in-progress -> review on 2026-07-14 (dev-story; 17 declaration bodies preserved in 17 same-named files, non-vacuous Drift organization/identity guard added, Release/default/Governance/package/artifact gates green, M14 closed for this slice only.)
   # 11.17b moved review -> in-progress on 2026-07-16 (bmad-code-review chunk 1; constants/options/baseline-loading split reviewed by all four configured layers. Acceptance Auditor found all nine chunk declarations baseline-identical after newline normalization; 0 decision-needed, 0 patches, 0 defers, and 3 candidate families dismissed. Current/comparison/diagnostic and governance/documentation chunks remain pending.)
-  11-17-sourcetools-package-split: in-progress
+  # 11.17b moved in-progress -> review on 2026-07-16 (dev-story completion revalidation; Release builds 0/0, focused organization 4/4, Drift 170/170, catalog/package 5/5, default 4,149/4,149, Governance 322/322, story-artifact/Python/mechanical gates green.)
+  # 11.17b moved review -> done on 2026-07-16 (bmad-code-review, all four layers; split verified line-identical to baseline. 1 decision-needed resolved (validator change accepted as loop-critical BMAD tooling), 4 patches applied+verified (2 validator holes hardened with regression tests, Python suite 17/17; guard name-match negative test + exhaustive-inventory assertion added, guard class 5/5), 1 defer (guard hardening unreachable in current tree), 3 dismissed.)
+  11-17-sourcetools-package-split: done
   # 11.17c backlog child (MCP runtime split plus benchmark relocation; independently validated by MCP/package/benchmark lanes).
   # 11.17c moved backlog -> ready-for-dev on 2026-07-14 (create-story; split the live 56-declaration SkillCorpus aggregate into 27 MCP runtime and 29 Bench-owned declarations; remove all benchmark code/prompts from the shipped MCP package; preserve fail-closed/runtime and benchmark behavior; govern the 26-type removal as an exact v4.0 ApiCompat break requiring Release Owner approval before review; add scoped non-vacuous organization/ownership guards and MCP/Testing/Bench/package/docs lanes.)
   # 11.17c moved ready-for-dev -> in-progress on 2026-07-14 (dev-story; baseline 5718f85b93ede05393219eae49dcc801b34323bd preserved; starting MCP runtime split, benchmark relocation, governance, compatibility, and release evidence.)
