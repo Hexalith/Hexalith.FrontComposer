@@ -33,7 +33,7 @@
          transitively via the web SDK; Shell owning the package keeps the granular API surface honest. -->
     <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.9" />
     <!-- Story 5-1 — default EventStore projection subscriptions consume the EventStore-owned SignalR hub. -->
-    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.9" />
+    <PackageVersion Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.10" />
     <!-- Story 7-1 — OIDC challenge handler for host-owned authentication integration. -->
     <!-- Story 2-3 Decision D3: ULID generation for MessageId idempotency (FR36/NFR45).
          Story spec pinned 1.7.4; nuget.org published 1.7.3 — latest stable at implementation time. -->
