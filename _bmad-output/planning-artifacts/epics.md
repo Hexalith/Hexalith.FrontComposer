@@ -1507,9 +1507,9 @@ and punctuation-heavy string secret values.
 
 ### Epic 11 Workstreams And Current State
 
-| Workstream | Stories | Current state on 2026-07-16 |
+| Workstream | Stories | Current state on 2026-07-17 |
 | --- | --- | --- |
-| Runtime reliability and security | 11.0–11.5, 11.18a | 11.0–11.5 done; 11.18a in review. |
+| Runtime reliability and security | 11.0–11.5, 11.18a, 11.24 | 11.0–11.5 done; 11.18a in review; 11.24 is blocked backlog pending EventStore Story 1.20 migration authority. |
 | Adopter testing and route integrity | 11.6–11.7 | Done; 11.6 consumes completed Story 10.5 privacy evidence. |
 | Contracts and package boundary | 11.8, 11.11–11.14 | Done; retained as decision/delivery history, not queue candidates. |
 | Maintainability and enforcement | 11.9, 11.15–11.16, 11.17a–d, 11.18b–c, 11.19a–d, 11.20–11.23 | 11.9, 11.15–11.16, and 11.17a done; 11.17b–d, 11.18b–c, and 11.19a–d in review; 11.20–11.23 are sequential, separately approval-gated backlog phases. |
@@ -2143,3 +2143,50 @@ So that analyzer strictness becomes a durable v1.0 build invariant.
 **Given** this is a v1.0 release gate,
 **When** the story reaches review,
 **Then** Release Owner evidence is linked and rollback requires a separately approved policy change that cannot weaken TWAE or hide diagnostics globally.
+
+### Story 11.24: Adopt the Owner-Approved EventStore Runtime Identity
+
+**Status:** backlog. **Owner:** FrontComposer Maintainer + EventStore Maintainer.
+**Activation gate:** EventStore Story 1.20 must durably record `final_decision: available`,
+`authorize_consumer_migration: true`, a 40-hex `tested_runtime_sha`, named owner approval, and the
+approved package version and SHA-256 inventory. Until then this story has no implementation file and
+must not move to `ready-for-dev`.
+
+As a FrontComposer maintainer,
+I want source and package modes aligned to the owner-approved EventStore runtime identity,
+So that FrontComposer validates and releases against one auditable backend contract without mixed or
+unapproved dependency identities.
+
+**Given** EventStore Story 1.20 remains blocked, non-authorizing, incomplete, or lacks any required
+source/package/approval identity,
+**When** FrontComposer backlog selection runs,
+**Then** this story remains `backlog`, no EventStore or Builds gitlink is changed, and current command,
+query, projection, realtime, rollback, and topology behavior remains intact.
+
+**Given** Story 1.20 authorizes consumer migration and names the approved EventStore source SHA,
+**When** Debug/source mode is adopted,
+**Then** `references/Hexalith.EventStore` gitlink and checkout both equal that SHA, the EventStore
+submodule is not edited, and only FrontComposer-root-declared submodules are initialized.
+
+**Given** Story 1.20 names the approved 14-package version and hashes,
+**When** Release/package mode restores from an isolated cache,
+**Then** `Hexalith.EventStore.Aspire` and every resolved `Hexalith.EventStore*` asset use that exact
+version, the fetched package bytes match the approved hashes, no EventStore project reference enters
+the Release asset graph, and the selected `Hexalith.Builds` gitlink already exposes that version.
+
+**Given** FrontComposer's committed EventStore consumer pacts,
+**When** provider verification runs against the exact approved EventStore SHA over real loopback TCP,
+**Then** every interaction passes with deterministic provider-state setup/teardown and a bounded,
+redaction-clean report, and `eng/validate-contract-artifacts.ps1 -RequireProviderVerification` passes
+using the real EventStore provider-test project rather than the obsolete solution handoff.
+
+**Given** source and package identities are aligned,
+**When** adoption validation runs,
+**Then** Debug/source AppHost build, Release/package build, Governance, the default solution lane with
+`DiffEngine_Disabled=true`, and an Aspire smoke covering EventStore health, command submit/status,
+query/provenance, and projection SignalR all pass.
+
+**Given** this story only adopts an approved runtime identity,
+**When** compatibility evidence is reviewed,
+**Then** it does not remove or redesign FrontComposer adapters, rollback paths, topology, or deploy an
+EventStore container; any behavioral migration is routed to a separately approved compatibility story.

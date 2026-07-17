@@ -15,6 +15,9 @@ nonimplementable decomposition parents; only their child stories carry delivery 
 
 - Stories 11.0–11.5: done.
 - Story 11.18a, fail-closed/security log sites: review.
+- Story 11.24, owner-approved EventStore runtime adoption: blocked backlog. It has no story file and
+  cannot move to `ready-for-dev` until EventStore Story 1.20 durably authorizes migration and pins the
+  approved source and package identities.
 
 ### Adopter Testing And Route Integrity
 
@@ -52,6 +55,13 @@ The implemented package target keeps both `Contracts` TFMs UI-clean and places B
 
 MCP cross-request state uses a singleton state store behind a scoped facade; it must not capture scoped admission services. EventStore token acquisition must work safely in interactive circuits with expiry and sign-out eviction. Projection realtime must recover beyond the default retry ladder, restart after closed connections, and align disposal/cache synchronization. Logging uses sanitized source-generated events with exclusive ownership: 11.18a security/fail-closed sites first, 11.18c command-lifecycle/projection-refresh/polling hot paths second, and 11.18b residual Warning/Error/Critical sites last.
 
+EventStore dependency adoption is a separate identity gate. Story 11.24 requires the exact
+Story-1.20-approved source SHA in Debug/source mode and the approved package version and hashes in
+Release/package mode through an already-landed Builds pin. Provider Pact verification, isolated
+package restore, source/package AppHost builds, Governance/default lanes, and a live Aspire smoke must
+converge before adoption can complete. The story does not authorize adapter, topology, rollback, or
+container-deployment redesign.
+
 `ProjectionQuery` now owns canonical query criteria and is composed through `QueryRequest.Create`; HFC0001/CS0618 preserves the v1.12 flattened source/deconstruction surface and flat JSON throughout 2.x, with removal targeted for `3.0.0`. Shell boundaries place telemetry cross-cutting, connection/polling workers in infrastructure, and route/label helpers outside render components; duplicated scope, snapshot, fatal-exception, hydration, JSON, and literal-escaping behavior should be consolidated with focused equivalence tests.
 
 ## UX & Interaction Patterns
@@ -69,3 +79,7 @@ explicitly approved story.
 Story 11.0 and FC-IA-1 are resolved prerequisites for completed Story 11.7. Story 11.8 is the resolved
 decision prerequisite for completed Stories 11.11–11.14. Epic 10 is done; its evidence may be consumed
 by Epic 11, but Epic 11 does not claim independence from or reopen it.
+
+Story 11.24 is independent of the analyzer sequence in Stories 11.20–11.23. Its sole activation gate
+is durable EventStore Story 1.20 migration authority; a tag, current EventStore HEAD, package version
+without approved hashes, or a source-only gitlink is insufficient.

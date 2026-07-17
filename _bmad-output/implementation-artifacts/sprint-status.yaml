@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-16T16:38:19+02:00
+# last_updated: 2026-07-17
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-16T16:38:19+02:00
+last_updated: 2026-07-17
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -483,6 +483,10 @@ development_status:
   11-21-recommended-analyzer-product-and-generator-burndown: backlog
   11-22-recommended-analyzer-test-and-sample-burndown: backlog
   11-23-recommended-analyzer-repository-activation: backlog
+  # 11.24 registered as blocked backlog on 2026-07-17 by approved direct course correction.
+  # Do not create its story file or move it to ready-for-dev until EventStore Story 1.20 durably
+  # authorizes consumer migration and pins the approved source SHA plus exact package version/hashes.
+  11-24-adopt-owner-approved-eventstore-runtime: backlog
   epic-11-retrospective: optional
   # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
   # rel-1 moved backlog -> in-progress on 2026-07-05 (dev-story; owner decision: keep Jul 3 auto-publish model, add FR24 evidence only. baseline 2d1a1290. Signing deferred; REL-AI-1 stays open.)
