@@ -224,7 +224,7 @@ public sealed class SkillResourceTests {
         embeddedNames.Where(n => n.StartsWith("Hexalith.FrontComposer.Mcp.Skills.", StringComparison.Ordinal)
                 && n.EndsWith(".md", StringComparison.Ordinal))
             .Count()
-            .ShouldBeGreaterThanOrEqualTo(11);
+            .ShouldBe(12);
         embeddedNames.ShouldNotContain("Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json");
     }
 

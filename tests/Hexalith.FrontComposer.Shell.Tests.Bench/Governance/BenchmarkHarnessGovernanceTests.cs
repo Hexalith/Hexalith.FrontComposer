@@ -39,6 +39,15 @@ public sealed class BenchmarkHarnessGovernanceTests {
 
         facts.Select(method => method.Name).Order(StringComparer.Ordinal).ShouldBe(
             RequiredFactNames.Order(StringComparer.Ordinal));
+        foreach (MethodInfo factMethod in facts) {
+            FactAttribute fact = factMethod.GetCustomAttribute<FactAttribute>()!;
+            fact.Explicit.ShouldBeFalse($"{factMethod.Name} must execute in the benchmark lane.");
+            fact.Skip.ShouldBeNull($"{factMethod.Name} must not be skipped.");
+            fact.SkipType.ShouldBeNull($"{factMethod.Name} must not use conditional skip metadata.");
+            fact.SkipUnless.ShouldBeNull($"{factMethod.Name} must not use conditional skip metadata.");
+            fact.SkipWhen.ShouldBeNull($"{factMethod.Name} must not use conditional skip metadata.");
+        }
+
         typeof(BenchmarkHarnessTests).CustomAttributes.ShouldContain(attribute =>
             attribute.AttributeType == typeof(TraitAttribute)
             && attribute.ConstructorArguments.Count == 2

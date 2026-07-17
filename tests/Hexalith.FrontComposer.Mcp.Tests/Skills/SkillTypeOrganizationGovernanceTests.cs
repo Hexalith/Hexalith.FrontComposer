@@ -100,6 +100,9 @@ public sealed class SkillTypeOrganizationGovernanceTests {
 
         exportedSkillTypes.ShouldBe(RuntimeTypeNames.OrderBy(name => name, StringComparer.Ordinal));
         exportedSkillTypes.ShouldNotContain(name => name.StartsWith("SkillBenchmark", StringComparison.Ordinal));
+        assembly.GetTypes().ShouldNotContain(
+            type => type.Name.StartsWith("SkillBenchmark", StringComparison.Ordinal),
+            "The MCP runtime must contain no public, internal, or nested benchmark-harness type.");
         foreach (string generatedCodeTypeName in new[] {
             "GeneratedCodeFailureCategory",
             "GeneratedCodeFile",

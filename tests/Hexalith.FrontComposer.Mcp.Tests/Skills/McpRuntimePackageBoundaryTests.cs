@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.IO.Compression;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
 
 using Hexalith.FrontComposer.Mcp.Skills;
@@ -80,33 +81,56 @@ public sealed class McpRuntimePackageBoundaryTests {
             File.Exists(inspectedAssemblyPath).ShouldBeTrue();
             File.ReadAllBytes(extractedAssemblyPath).ShouldBe(File.ReadAllBytes(inspectedAssemblyPath));
 
-            var loadContext = new AssemblyLoadContext("McpRuntimePackageBoundary", isCollectible: true);
-            loadContext.Resolving += ResolveFromCurrentProcess;
-            try {
-                Assembly packagedAssembly = loadContext.LoadFromAssemblyPath(extractedAssemblyPath);
-                packagedAssembly.Location.ShouldBe(extractedAssemblyPath);
-                string[] exportedSkillTypes = packagedAssembly.GetExportedTypes()
-                    .Where(type => string.Equals(
-                        type.Namespace,
-                        "Hexalith.FrontComposer.Mcp.Skills",
-                        StringComparison.Ordinal))
-                    .Select(type => type.Name)
-                    .OrderBy(name => name, StringComparer.Ordinal)
-                    .ToArray();
-
-                exportedSkillTypes.ShouldBe(
-                    SkillTypeOrganizationGovernanceTests.RuntimeTypeNames.OrderBy(name => name, StringComparer.Ordinal));
-                exportedSkillTypes.ShouldNotContain(name => name.StartsWith("SkillBenchmark", StringComparison.Ordinal));
-                packagedAssembly.GetManifestResourceNames().ShouldNotContain(PromptResourceName);
-            }
-            finally {
-                loadContext.Resolving -= ResolveFromCurrentProcess;
-                loadContext.Unload();
-            }
+            WeakReference loadContextReference = InspectPackagedAssembly(extractedAssemblyPath);
+            WaitForUnload(loadContextReference);
         }
         finally {
             Directory.Delete(outputDirectory, recursive: true);
         }
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference InspectPackagedAssembly(string extractedAssemblyPath) {
+        var loadContext = new AssemblyLoadContext("McpRuntimePackageBoundary", isCollectible: true);
+        var loadContextReference = new WeakReference(loadContext);
+        loadContext.Resolving += ResolveFromCurrentProcess;
+        try {
+            Assembly packagedAssembly = loadContext.LoadFromAssemblyPath(extractedAssemblyPath);
+            packagedAssembly.Location.ShouldBe(extractedAssemblyPath);
+            string[] exportedSkillTypes = packagedAssembly.GetExportedTypes()
+                .Where(type => string.Equals(
+                    type.Namespace,
+                    "Hexalith.FrontComposer.Mcp.Skills",
+                    StringComparison.Ordinal))
+                .Select(type => type.Name)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray();
+
+            exportedSkillTypes.ShouldBe(
+                SkillTypeOrganizationGovernanceTests.RuntimeTypeNames.OrderBy(name => name, StringComparer.Ordinal));
+            exportedSkillTypes.ShouldNotContain(name => name.StartsWith("SkillBenchmark", StringComparison.Ordinal));
+            packagedAssembly.GetTypes().ShouldNotContain(
+                type => type.Name.StartsWith("SkillBenchmark", StringComparison.Ordinal),
+                "The packaged MCP runtime must contain no public, internal, or nested benchmark-harness type.");
+            packagedAssembly.GetManifestResourceNames().ShouldNotContain(PromptResourceName);
+        }
+        finally {
+            loadContext.Resolving -= ResolveFromCurrentProcess;
+            loadContext.Unload();
+        }
+
+        return loadContextReference;
+    }
+
+    private static void WaitForUnload(WeakReference loadContextReference) {
+        for (int attempt = 0; loadContextReference.IsAlive && attempt < 10; attempt++) {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
+
+        loadContextReference.IsAlive.ShouldBeFalse(
+            "The packaged assembly load context must unload before its scratch directory is deleted.");
     }
 
     private static async Task<ProcessResult> RunPackAsync(
