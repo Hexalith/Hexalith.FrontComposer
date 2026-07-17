@@ -4,7 +4,7 @@ baseline_commit: 5718f85b93ede05393219eae49dcc801b34323bd
 
 # Story 11.17c: MCP/runtime split and benchmark-harness relocation
 
-Status: in-progress
+Status: done
 
 <!-- Note: This executable child specializes the non-implementable Story 11.17 parent. The sprint/file key intentionally omits the letter suffix. -->
 
