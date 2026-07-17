@@ -67,6 +67,14 @@ dotnet_diagnostic.CA1014.severity = none
 # expand CS1591 enforcement to generated output or unrelated packages.
 dotnet_diagnostic.CS1591.severity = none
 
+# CA1707 conflicts with the repository's required three-part test naming convention.
+[tests/**.cs]
+dotnet_diagnostic.CA1707.severity = none
+
+# FcDiagnosticIds constant names are shipped, reflection-tested compatibility surface.
+[src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs]
+dotnet_diagnostic.CA1707.severity = none
+
 # The four API-freeze globs override the default recursively. New source under nested
 # sub-namespaces inherits warning severity and becomes build-breaking under
 # TreatWarningsAsErrors=true.

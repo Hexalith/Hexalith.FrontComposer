@@ -6,9 +6,10 @@ sourceDecision: _bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md
 parentDecisionStory: 11.19d
 decision_baseline_commit: d9c19a4fb837357af10f6f1aa630232f670557c4
 baseline_commit: 6861ca1bb3284f5cb5873daebdf2a7f3febed609
+baseline_revision: 03a0c59192eb357187faa8181d12a2ead314c74e
 owner: Architect + Framework Maintainer
 due: 2026-07-24
-status: ready-for-dev
+status: blocked
 storyType: implementation-phase
 approvalGate: separate-architecture-product-approval
 approvalStatus: approved
@@ -18,7 +19,7 @@ approvedOn: 2026-07-17
 
 # Story 11.20: Recommended Analyzer Policy and Exception Ledger
 
-Status: ready-for-dev.
+Status: blocked.
 
 <!-- Validation completed against .agents/skills/bmad-create-story/checklist.md on 2026-07-17. -->
 <!-- Administrator explicitly satisfied the separate Architecture/Product approval gate on 2026-07-17. -->
@@ -427,7 +428,23 @@ GPT-5 Codex
 ### File List
 
 - `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
-- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `.editorconfig`
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`
+- `_bmad-output/implementation-artifacts/tests/test-summary.md`
+- `samples/Counter/Counter.Domain/Counter.Domain.csproj`
+- `samples/Counter/Counter.Domain/CounterProjection.cs`
+- `samples/Counter/Counter.Specimens.Domain/Counter.Specimens.Domain.csproj`
+- `samples/Counter/Counter.Specimens.Domain/SpecimenFormattingProjection.cs`
+- `samples/IdeParityCounter/IdeParityCounter.csproj`
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTestGroup.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftCultureCollection.cs` (deleted)
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftCultureInvarianceTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftCultureTestGroup.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/AttributeParserTests.cs`
 
 ## Change Log
 
@@ -435,3 +452,16 @@ GPT-5 Codex
   approval-gated backlog story.
 - 2026-07-17: Administrator explicitly supplied Architecture/Product approval; create-story enriched
   the implementation guide, reconciled current Naming drift, and promoted backlog -> ready-for-dev.
+
+## Auto Run Result
+
+Status: blocked
+
+Blocking condition: implementation verification failed. The required solution restore and CLI
+packaging smoke test fail on the baseline repository's duplicate central
+`Microsoft.AspNetCore.SignalR.Client` 10.0.10 declaration (`NU1506`), while the Testing package
+boundary test expects `Microsoft.Extensions.Localization.Abstractions` 10.0.9 although the imported
+Hexalith.Builds baseline supplies 10.0.10. Story 11.20 explicitly forbids the package-policy and
+package-baseline changes required to clear those gates. The story-owned Release build, strict Naming
+candidate, analyzer governance, focused tests, artifact validation, and all other default test
+assemblies passed; the post-policy census contains zero Naming findings.

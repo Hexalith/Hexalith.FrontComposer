@@ -22,6 +22,7 @@ public static class AttributeParser {
     private const string CurrencyAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.CurrencyAttribute";
     private const string DescriptionAttributeName = "System.ComponentModel.DescriptionAttribute";
     private const string DisplayAttributeName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
+    private const string SuppressMessageAttributeName = "System.Diagnostics.CodeAnalysis.SuppressMessageAttribute";
 
     /// <summary>
     /// Story 4-5 D9 / D16 — reserved catch-all label for properties with no
@@ -502,18 +503,20 @@ public static class AttributeParser {
 
             string newline = "\n";
 
-            diagnostics.Add(new DiagnosticInfo(
-                "HFC1002",
-                string.Format(
-                    "What: Property '{0}' on type '{1}' is not supported for auto-generation.{3}Expected: One of: string, int, long, decimal, double, float, bool, DateTime, DateTimeOffset, DateOnly, TimeOnly, enum (backed by int), Guid, or nullable/collection variants.{3}Got: {2}{3}Fix: Use a supported type, or provide a custom renderer through the projection slot or command customization path.{3}DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1002",
-                    propertySymbol.Name,
-                    containingTypeName,
-                    unsupportedType,
-                    newline),
-                "Warning",
-                propFilePath,
-                propLinePos.Line,
-                propLinePos.Character));
+            if (!HasSuppressMessage(propertySymbol, "HFC1002")) {
+                diagnostics.Add(new DiagnosticInfo(
+                    "HFC1002",
+                    string.Format(
+                        "What: Property '{0}' on type '{1}' is not supported for auto-generation.{3}Expected: One of: string, int, long, decimal, double, float, bool, DateTime, DateTimeOffset, DateOnly, TimeOnly, enum (backed by int), Guid, or nullable/collection variants.{3}Got: {2}{3}Fix: Use a supported type, or provide a custom renderer through the projection slot or command customization path.{3}DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1002",
+                        propertySymbol.Name,
+                        containingTypeName,
+                        unsupportedType,
+                        newline),
+                    "Warning",
+                    propFilePath,
+                    propLinePos.Line,
+                    propLinePos.Character));
+            }
 
             irType = propertyType.ToDisplayString();
         }
@@ -1066,6 +1069,23 @@ public static class AttributeParser {
     private static bool IsSupportedEnumType(ITypeSymbol propertyType) => propertyType is INamedTypeSymbol enumType
             && enumType.TypeKind == TypeKind.Enum
             && enumType.EnumUnderlyingType?.SpecialType == SpecialType.System_Int32;
+
+    private static bool HasSuppressMessage(ISymbol symbol, string diagnosticId) {
+        foreach (AttributeData attribute in symbol.GetAttributes()) {
+            if (attribute.AttributeClass?.ToDisplayString() != SuppressMessageAttributeName
+                || attribute.ConstructorArguments.Length < 2
+                || attribute.ConstructorArguments[1].Value is not string checkId) {
+                continue;
+            }
+
+            if (checkId.Equals(diagnosticId, StringComparison.OrdinalIgnoreCase)
+                || checkId.StartsWith(diagnosticId + ":", StringComparison.OrdinalIgnoreCase)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static string DescribeUnsupportedType(ITypeSymbol propertyType, bool isEnumType) {
         if (isEnumType

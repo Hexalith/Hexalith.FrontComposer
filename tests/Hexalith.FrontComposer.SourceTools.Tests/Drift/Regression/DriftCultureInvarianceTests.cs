@@ -12,7 +12,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Regression;
 /// <summary>
 /// AC19 / T7 — culture invariance.
 /// </summary>
-[Collection(DriftCultureCollection.Name)]
+[Collection(DriftCultureTestGroup.Name)]
 public sealed class DriftCultureInvarianceTests {
     private const string ValidBaseline = """
         { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",

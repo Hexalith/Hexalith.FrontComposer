@@ -7,6 +7,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Regression;
 /// mutation.
 /// </summary>
 [CollectionDefinition(Name, DisableParallelization = true)]
-public sealed class DriftCultureCollection {
+public sealed class DriftCultureTestGroup
+{
     public const string Name = "DriftCulture";
 }

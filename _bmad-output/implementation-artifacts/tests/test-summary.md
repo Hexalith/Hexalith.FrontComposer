@@ -15,6 +15,35 @@ NuGet/package/network blockers, name the blocked service or URI. For Playwright/
 state whether browser assertions ran and name the CI browser/a11y/visual lane, owner, and expected artifact
 when CI remains authoritative.
 
+## Story 11.20 - Recommended analyzer policy and exception ledger
+
+### Generated Tests
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs` - validates the ledger schema/lifecycle/counts, bidirectional warning-control inventory, exact scope safety, owner/review/follow-up metadata, effective imported MSBuild state for both Contracts TFMs, no-third-party-analyzer/TWAE policy, identifier-inventory drift, synthetic invalid ledgers, and positive/negative Naming compile specimens.
+- [x] `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/AttributeParserTests.cs` - proves a property-level `SuppressMessage` removes only its targeted HFC1002 while an unsuppressed unsupported fixture property still reports HFC1002.
+
+### Coverage
+- Naming dispositions: approved baseline 2,958; source-HEAD refresh 2,959; implementation pre-policy inventory 2,961 after two new three-part test names; strict post-policy candidate 0.
+- Warning-control parity: all root-owned MSBuild, EditorConfig, pragma, suppression-attribute, and emitter-pragma groups are ledgered bidirectionally with exact counts and source paths.
+- Synthetic fail-closed cases: unledgered control, stale row, root CA `NoWarn`, category disable, wildcard production scope, missing owner, expired review date, and count drift.
+- Full Recommended instrumentation after policy: 1,123 later-story findings only - Performance 780, Globalization 231, Usage 49, Maintainability 46, Reliability 12, Design 5; Naming 0.
+
+### Validation
+- [ ] Required restore was blocked before compilation by pre-existing NU1506: `Microsoft.AspNetCore.SignalR.Client` 10.0.10 is declared in both root `Directory.Packages.props` and imported `references/Hexalith.Builds/Props/Directory.Packages.props`; Story 11.20 forbids package/baseline changes.
+- [x] Normal forced Release `--no-restore --no-incremental -m:1` build passed with 0 warnings and 0 errors.
+- [x] Strict `AnalysisModeNaming=Recommended` forced Release build with canonical TWAE passed with 0 warnings and 0 errors.
+- [x] Full `AnalysisMode=Recommended` census with TWAE disabled only for enumeration completed with 1,123 warnings, 0 errors, and no Naming diagnostic.
+- [x] Focused Shell analyzer-policy Governance passed 1/1; focused SourceTools DiagnosticRegistry/culture lane passed 103/103; focused HFC1002 suppression regression passed 1/1.
+- [x] Per-assembly default lane passed: Contracts 211/211, Contracts.UI 10/10, MCP 365/365, Shell Bench 1/1, SourceTools 1,091/1,091, and Shell 2,344/2,344.
+- [ ] CLI ran 73 tests with 72 passing; its packaging smoke test was blocked inside a fresh restore by the same pre-existing NU1506 duplicate central package entry.
+- [ ] Testing ran 57 tests with 56 passing; its existing package-boundary assertion expects `Microsoft.Extensions.Localization.Abstractions` 10.0.9 while the imported Hexalith.Builds central package state is already 10.0.10. The story forbids opportunistic package-baseline edits.
+- [x] Story-artifact validation passed after the parent workflow reconciled the implementation File List.
+
+### Checklist
+- [x] Policy tests use xUnit v3 and Shouldly, run in the blocking Governance category, and include positive plus adversarial negative cases.
+- [x] No PublicAPI, schema, generated-output, Verify snapshot, pact, package, solution, or submodule baseline was changed.
+- [x] No central `AnalysisMode` was added and no repository/category-wide CA suppression was introduced.
+- [x] Test summary records the exact local package-state blockers separately from focused and broad passing evidence.
+
 ## Story 10.5 - Testing evidence redaction default-lane guard
 
 ### Generated Tests

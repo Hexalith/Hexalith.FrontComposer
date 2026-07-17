@@ -15,15 +15,12 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 
-[CollectionDefinition("DiagnosticRegistry", DisableParallelization = true)]
-public sealed class DiagnosticRegistryCollection { }
-
 /// <summary>
 /// Story 9-4 registry contract tests. The registry is the single source of truth for HFC
 /// ownership, lifecycle, docs links, release rows, and channel severity metadata.
 /// </summary>
 [Trait("Category", "Governance")]
-[Collection("DiagnosticRegistry")]
+[Collection(DiagnosticRegistryTestGroup.Name)]
 public sealed partial class DiagnosticRegistryTests {
     private const string SupportedSchemaVersion = "1.0";
     private const string CompatibilitySuppressionsSchemaVersion = "2.0";

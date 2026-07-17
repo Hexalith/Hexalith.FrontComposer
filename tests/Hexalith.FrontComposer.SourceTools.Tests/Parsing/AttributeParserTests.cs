@@ -68,6 +68,38 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    public void Parse_PropertySuppressMessage_SuppressesOnlyTargetedHFC1002() {
+        const string source = """
+            using System.Collections.Generic;
+            using System.Diagnostics.CodeAnalysis;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [Projection]
+            public partial class SuppressedFixtureProjection
+            {
+                [SuppressMessage(
+                    "HexalithFrontComposer",
+                    "HFC1002:Unsupported field type",
+                    Justification = "Approved exact fixture property.")]
+                public Dictionary<string, string> ApprovedFixture { get; set; } = new();
+
+                public object UnapprovedFixture { get; set; } = new();
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+
+        driver = driver.RunGenerators(compilation, TestContext.Current.CancellationToken);
+        Diagnostic[] diagnostics = driver.GetRunResult().Diagnostics.Where(diagnostic => diagnostic.Id == "HFC1002").ToArray();
+
+        diagnostics.Length.ShouldBe(1);
+        diagnostics[0].GetMessage().ShouldContain("UnapprovedFixture");
+        diagnostics[0].GetMessage().ShouldNotContain("'ApprovedFixture'");
+    }
+
+    [Fact]
     public void Parse_NonPartialProjection_EmitsHFC1003() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NonPartialProjection);

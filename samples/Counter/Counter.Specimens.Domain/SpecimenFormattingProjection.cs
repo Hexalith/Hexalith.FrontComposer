@@ -22,6 +22,10 @@ public partial class SpecimenFormattingProjection {
     [Display(Name = "Optional Comment")]
     public string? OptionalComment { get; set; }
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "HexalithFrontComposer",
+        "HFC1002:Unsupported field type",
+        Justification = "This sample fixture intentionally exercises an unsupported collection field.")]
     public string[] Approvers { get; set; } = [];
 
     [Currency]
@@ -34,6 +38,10 @@ public partial class SpecimenFormattingProjection {
     public SpecimenLongLifecycleState LifecycleState { get; set; }
 
     [Display(Name = "Opaque Payload")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage(
+        "HexalithFrontComposer",
+        "HFC1002:Unsupported field type",
+        Justification = "This sample fixture intentionally exercises an unsupported dictionary field.")]
     public Dictionary<string, string> OpaquePayload { get; set; } = [];
 }
 
