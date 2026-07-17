@@ -11,7 +11,7 @@ namespace Hexalith.FrontComposer.Testing.Tests;
 
 public sealed class PackageBoundaryTests {
     private const string FluentV5Version = "5.0.0-rc.4-26180.1";
-    private const string LocalizationAbstractionsVersion = "10.0.9";
+    private const string LocalizationAbstractionsVersion = "10.0.10";
 
     [Fact]
     public void PublicApi_ExportedTypes_MatchIntentionalBaseline() {
@@ -59,6 +59,20 @@ public sealed class PackageBoundaryTests {
         nuspec.ShouldNotContain("NSubstitute");
         nuspec.ShouldNotContain("Shouldly");
         nuspec.ShouldNotContain("xunit.v3");
+    }
+
+    [Fact]
+    public void CentralPackageVersion_Mismatch_ReportsExpectedAndActualBeforePackaging() {
+        const string mismatchedVersion = "10.0.9";
+
+        ShouldAssertException exception = Should.Throw<ShouldAssertException>(() =>
+            AssertCentralPackageVersion(
+                FindRepoRoot(),
+                "Microsoft.Extensions.Localization.Abstractions",
+                mismatchedVersion));
+
+        exception.Message.ShouldContain(mismatchedVersion);
+        exception.Message.ShouldContain(LocalizationAbstractionsVersion);
     }
 
     [Fact]
