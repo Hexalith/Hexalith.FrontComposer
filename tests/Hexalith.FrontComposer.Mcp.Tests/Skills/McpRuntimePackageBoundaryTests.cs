@@ -15,21 +15,25 @@ public sealed class McpRuntimePackageBoundaryTests {
     private const string McpAssemblyFileName = "Hexalith.FrontComposer.Mcp.dll";
     private const string MissingBaselineVersion = "9999.0.0-frontcomposer-missing-baseline-6f8d3be41a0e4d46";
     private static readonly TimeSpan PackTimeout = TimeSpan.FromMinutes(2);
-    private const string PromptResourceName = "Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json";
 
     [Fact]
     public async Task PackageValidation_MissingBaseline_FailsWithActionableRestoreDiagnostics() {
         string repositoryRoot = LocateRepositoryRoot();
+        ProcessResult buildResult = await RunVersionedReleaseBuildAsync(repositoryRoot).ConfigureAwait(true);
+        buildResult.ExitCode.ShouldBe(
+            0,
+            $"The offline package-validation test requires a deterministic release build.\n{buildResult.Output}");
         string outputDirectory = Path.Combine(Path.GetTempPath(), $"frontcomposer-mcp-package-{Guid.NewGuid():N}");
         _ = Directory.CreateDirectory(outputDirectory);
         try {
             ProcessResult result = await RunPackAsync(
                 repositoryRoot,
                 outputDirectory,
+                "artifacts-missing-baseline",
                 MissingBaselineVersion).ConfigureAwait(true);
 
             result.ExitCode.ShouldNotBe(0, "Package validation must fail closed when its baseline cannot be restored.");
-            result.Output.ShouldContain("NU1102");
+            result.Output.ShouldContain("baseline", Case.Insensitive);
             result.Output.ShouldContain("Hexalith.FrontComposer.Mcp");
             result.Output.ShouldContain(MissingBaselineVersion);
         }
@@ -41,23 +45,31 @@ public sealed class McpRuntimePackageBoundaryTests {
     [Fact]
     public async Task PackagedRuntimeAssembly_MatchesInspectedReleaseBoundary() {
         string repositoryRoot = LocateRepositoryRoot();
+        ProcessResult buildResult = await RunVersionedReleaseBuildAsync(repositoryRoot).ConfigureAwait(true);
+        buildResult.ExitCode.ShouldBe(
+            0,
+            $"The offline package-validation test requires a deterministic release build.\n{buildResult.Output}");
+        string restoredPackagesDirectory = LocateRestoredPackagesDirectory();
+        string restoredBaselinePackagePath = GetPackagePath(
+            restoredPackagesDirectory,
+            "Hexalith.FrontComposer.Mcp",
+            "3.0.0");
+        File.Exists(restoredBaselinePackagePath).ShouldBeTrue(
+            "the repository restore must cache the MCP 3.0.0 package-validation baseline before the offline test lane runs.");
         string outputDirectory = Path.Combine(Path.GetTempPath(), $"frontcomposer-mcp-package-{Guid.NewGuid():N}");
         _ = Directory.CreateDirectory(outputDirectory);
         try {
-            ProcessResult result = await RunPackAsync(repositoryRoot, outputDirectory).ConfigureAwait(true);
+            ProcessResult result = await RunPackAsync(
+                repositoryRoot,
+                outputDirectory,
+                "artifacts-cold").ConfigureAwait(true);
             result.ExitCode.ShouldBe(
                 0,
                 $"MCP package validation against the configured 3.0.0 baseline must pass.\n{result.Output}");
-            string baselinePackagePath = Path.Combine(
+            ProcessResult warmCacheResult = await RunPackAsync(
+                repositoryRoot,
                 outputDirectory,
-                "nuget-packages",
-                "hexalith.frontcomposer.mcp",
-                "3.0.0",
-                "hexalith.frontcomposer.mcp.3.0.0.nupkg");
-            File.Exists(baselinePackagePath).ShouldBeTrue(
-                "the cold-cache pack must restore its configured 3.0.0 validation baseline.");
-
-            ProcessResult warmCacheResult = await RunPackAsync(repositoryRoot, outputDirectory).ConfigureAwait(true);
+                "artifacts-warm").ConfigureAwait(true);
             warmCacheResult.ExitCode.ShouldBe(
                 0,
                 $"MCP package validation must also pass when the isolated baseline cache is warm.\n{warmCacheResult.Output}");
@@ -66,6 +78,9 @@ public sealed class McpRuntimePackageBoundaryTests {
                 .Single(path => !path.EndsWith(".snupkg", StringComparison.OrdinalIgnoreCase));
             string extractedAssemblyPath = Path.Combine(outputDirectory, McpAssemblyFileName);
             using (ZipArchive archive = ZipFile.OpenRead(packagePath)) {
+                archive.Entries.ShouldNotContain(
+                    item => IsBenchmarkPayloadName(item.FullName),
+                    "The MCP package must not ship benchmark prompts under any package-entry name.");
                 ZipArchiveEntry entry = archive.Entries.Single(item => string.Equals(
                     item.FullName,
                     $"lib/net10.0/{McpAssemblyFileName}",
@@ -74,7 +89,13 @@ public sealed class McpRuntimePackageBoundaryTests {
             }
 
             string inspectedAssemblyPath = Directory.EnumerateFiles(
-                    Path.Combine(outputDirectory, "artifacts", "bin", "Hexalith.FrontComposer.Mcp"),
+                    Path.Combine(
+                        repositoryRoot,
+                        "src",
+                        "Hexalith.FrontComposer.Mcp",
+                        "bin",
+                        "Release",
+                        "net10.0"),
                     McpAssemblyFileName,
                     SearchOption.AllDirectories)
                 .Single();
@@ -112,7 +133,14 @@ public sealed class McpRuntimePackageBoundaryTests {
             packagedAssembly.GetTypes().ShouldNotContain(
                 type => type.Name.StartsWith("SkillBenchmark", StringComparison.Ordinal),
                 "The packaged MCP runtime must contain no public, internal, or nested benchmark-harness type.");
-            packagedAssembly.GetManifestResourceNames().ShouldNotContain(PromptResourceName);
+            string[] resourceNames = packagedAssembly.GetManifestResourceNames();
+            resourceNames.ShouldNotContain(
+                name => IsBenchmarkPayloadName(name),
+                "The packaged MCP runtime must contain no benchmark-prompt resource under any logical name.");
+            resourceNames.ShouldAllBe(
+                name => name.StartsWith("Hexalith.FrontComposer.Mcp.Skills.", StringComparison.Ordinal)
+                    && name.EndsWith(".md", StringComparison.Ordinal),
+                "Only the approved MCP skill-corpus markdown resources may be embedded in the runtime assembly.");
         }
         finally {
             loadContext.Resolving -= ResolveFromCurrentProcess;
@@ -136,7 +164,10 @@ public sealed class McpRuntimePackageBoundaryTests {
     private static async Task<ProcessResult> RunPackAsync(
         string repositoryRoot,
         string outputDirectory,
+        string artifactsDirectoryName,
         string? packageValidationBaselineVersion = null) {
+        string validationIntermediatePath = Path.Combine(outputDirectory, artifactsDirectoryName);
+        CopyPackageValidationProjectReferences(repositoryRoot, validationIntermediatePath);
         var startInfo = new ProcessStartInfo("dotnet") {
             WorkingDirectory = repositoryRoot,
             RedirectStandardError = true,
@@ -147,48 +178,120 @@ public sealed class McpRuntimePackageBoundaryTests {
         startInfo.ArgumentList.Add("src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj");
         startInfo.ArgumentList.Add("-c");
         startInfo.ArgumentList.Add("Release");
+        startInfo.ArgumentList.Add("--no-restore");
+        startInfo.ArgumentList.Add("--no-build");
         startInfo.ArgumentList.Add("-o");
         startInfo.ArgumentList.Add(outputDirectory);
         startInfo.ArgumentList.Add("-p:Version=4.0.0-review.1117c");
         startInfo.ArgumentList.Add("-p:EnableFrontComposerPackageValidation=true");
         startInfo.ArgumentList.Add("-p:NuGetAudit=false");
-        startInfo.ArgumentList.Add($"-p:ArtifactsPath={Path.Combine(outputDirectory, "artifacts")}");
+        startInfo.ArgumentList.Add(
+            $"-p:IntermediateOutputPath={validationIntermediatePath}{Path.DirectorySeparatorChar}");
         if (packageValidationBaselineVersion is not null) {
             startInfo.ArgumentList.Add(
                 $"-p:FrontComposerPackageValidationBaselineVersion={packageValidationBaselineVersion}");
         }
-        string packagesDirectory = Path.Combine(outputDirectory, "nuget-packages");
-        _ = Directory.CreateDirectory(packagesDirectory);
-        startInfo.Environment["NUGET_PACKAGES"] = packagesDirectory;
 
+        return await RunProcessAsync(startInfo).ConfigureAwait(false);
+    }
+
+    private static Task<ProcessResult> RunVersionedReleaseBuildAsync(string repositoryRoot) {
+        var startInfo = new ProcessStartInfo("dotnet") {
+            WorkingDirectory = repositoryRoot,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+        startInfo.ArgumentList.Add("build");
+        startInfo.ArgumentList.Add("src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj");
+        startInfo.ArgumentList.Add("-c");
+        startInfo.ArgumentList.Add("Release");
+        startInfo.ArgumentList.Add("--no-restore");
+        startInfo.ArgumentList.Add("-m:1");
+        startInfo.ArgumentList.Add("-p:Version=4.0.0-review.1117c");
+        startInfo.ArgumentList.Add("-p:MinVerVersionOverride=4.0.0");
+        startInfo.ArgumentList.Add("-p:NuGetAudit=false");
+        return RunProcessAsync(startInfo);
+    }
+
+    private static async Task<ProcessResult> RunProcessAsync(ProcessStartInfo startInfo) {
+        startInfo.Environment["MSBUILDDISABLENODEREUSE"] = "1";
         using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Could not start dotnet pack.");
+            ?? throw new InvalidOperationException($"Could not start '{startInfo.FileName}'.");
         using var timeoutSource = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
         timeoutSource.CancelAfter(PackTimeout);
         CancellationToken cancellationToken = timeoutSource.Token;
         Task<string> standardOutput = process.StandardOutput.ReadToEndAsync(cancellationToken);
         Task<string> standardError = process.StandardError.ReadToEndAsync(cancellationToken);
         try {
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(true);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             if (!process.HasExited) {
                 process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(true);
+                await process.WaitForExitAsync(CancellationToken.None).ConfigureAwait(false);
             }
 
             throw;
         }
 
-        await Task.WhenAll(standardOutput, standardError).ConfigureAwait(true);
+        await Task.WhenAll(standardOutput, standardError).ConfigureAwait(false);
         return new ProcessResult(
             process.ExitCode,
-            (await standardOutput.ConfigureAwait(true)) + (await standardError.ConfigureAwait(true)));
+            (await standardOutput.ConfigureAwait(false)) + (await standardError.ConfigureAwait(false)));
     }
 
     private static Assembly? ResolveFromCurrentProcess(AssemblyLoadContext context, AssemblyName assemblyName)
         => AppDomain.CurrentDomain.GetAssemblies().FirstOrDefault(assembly =>
             string.Equals(assembly.GetName().Name, assemblyName.Name, StringComparison.Ordinal));
+
+    private static bool IsBenchmarkPayloadName(string name)
+        => name.Contains("benchmark", StringComparison.OrdinalIgnoreCase)
+            || name.Contains("prompt-set", StringComparison.OrdinalIgnoreCase);
+
+    private static string LocateRestoredPackagesDirectory() {
+        string? configuredPackagesDirectory = Environment.GetEnvironmentVariable("NUGET_PACKAGES");
+        string packagesDirectory = string.IsNullOrWhiteSpace(configuredPackagesDirectory)
+            ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".nuget", "packages")
+            : configuredPackagesDirectory;
+        Directory.Exists(packagesDirectory).ShouldBeTrue(
+            $"The restored NuGet package directory '{packagesDirectory}' must exist before package-boundary tests run.");
+        return Path.GetFullPath(packagesDirectory);
+    }
+
+    private static string GetPackagePath(string packagesDirectory, string packageId, string version)
+        => Path.Combine(
+            packagesDirectory,
+            packageId.ToLowerInvariant(),
+            version,
+            $"{packageId.ToLowerInvariant()}.{version}.nupkg");
+
+    private static void CopyPackageValidationProjectReferences(
+        string repositoryRoot,
+        string validationIntermediatePath) {
+        string referenceDirectory = Path.Combine(validationIntermediatePath, "ref");
+        _ = Directory.CreateDirectory(referenceDirectory);
+        foreach (string projectName in new[] {
+            "Hexalith.FrontComposer.Contracts",
+            "Hexalith.FrontComposer.Schema",
+        }) {
+            string referenceAssembly = Path.Combine(
+                repositoryRoot,
+                "src",
+                projectName,
+                "obj",
+                "Release",
+                "net10.0",
+                "ref",
+                $"{projectName}.dll");
+            File.Exists(referenceAssembly).ShouldBeTrue(
+                $"Build {projectName} in Release before running package-boundary validation.");
+            File.Copy(
+                referenceAssembly,
+                Path.Combine(referenceDirectory, Path.GetFileName(referenceAssembly)),
+                overwrite: true);
+        }
+    }
 
     private static string LocateRepositoryRoot() {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
@@ -202,6 +305,4 @@ public sealed class McpRuntimePackageBoundaryTests {
 
         throw new DirectoryNotFoundException("Could not locate the FrontComposer repository root.");
     }
-
-    private sealed record ProcessResult(int ExitCode, string Output);
 }

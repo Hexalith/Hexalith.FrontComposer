@@ -582,6 +582,7 @@ public sealed class CiGovernanceTests {
         string inventory = File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json"));
         string packScript = File.ReadAllText(Path.Combine(root, "eng/pack_release_packages.py"));
         string directoryTargets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
+        string qualityWorkflow = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         string testingProject = File.ReadAllText(Path.Combine(root, "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj"));
 
         inventory.ShouldContain("Hexalith.FrontComposer.Cli");
@@ -595,6 +596,8 @@ public sealed class CiGovernanceTests {
         inventory.ShouldContain("\"packable\": false");
         inventory.ShouldContain("exception");
         packScript.ShouldContain("\"-p:EnableFrontComposerPackageValidation=true\"");
+        qualityWorkflow.ShouldContain("python3 -m unittest tests/eng/test_pack_release_packages.py");
+        qualityWorkflow.ShouldContain("dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:EnableFrontComposerPackageValidation=true");
         directoryTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryTargets.ShouldContain("<IncludeSymbols>true</IncludeSymbols>");
         directoryTargets.ShouldContain("<SymbolPackageFormat>snupkg</SymbolPackageFormat>");

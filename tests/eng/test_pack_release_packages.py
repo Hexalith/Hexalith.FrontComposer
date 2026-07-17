@@ -37,21 +37,33 @@ class PackReleasePackagesTests(unittest.TestCase):
         self,
         version: str,
         suppressions: pathlib.Path = SUPPRESSIONS,
+        directory_build_targets: pathlib.Path | None = None,
+        mcp_project: pathlib.Path | None = None,
+        mcp_compatibility_suppressions: pathlib.Path | None = None,
     ) -> subprocess.CompletedProcess[str]:
+        command = [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(ROOT),
+            "--version",
+            version,
+            "--output",
+            str(ROOT / "unused-plan-output"),
+            "--suppressions",
+            str(suppressions),
+            "--plan",
+        ]
+        if directory_build_targets is not None:
+            command.extend(["--directory-build-targets", str(directory_build_targets)])
+        if mcp_project is not None:
+            command.extend(["--mcp-project", str(mcp_project)])
+        if mcp_compatibility_suppressions is not None:
+            command.extend(
+                ["--mcp-compatibility-suppressions", str(mcp_compatibility_suppressions)]
+            )
         return subprocess.run(
-            [
-                sys.executable,
-                str(SCRIPT),
-                "--root",
-                str(ROOT),
-                "--version",
-                version,
-                "--output",
-                str(ROOT / "unused-plan-output"),
-                "--suppressions",
-                str(suppressions),
-                "--plan",
-            ],
+            command,
             cwd=ROOT,
             check=False,
             capture_output=True,
@@ -162,17 +174,56 @@ class PackReleasePackagesTests(unittest.TestCase):
         payload = self.approved_v4_payload()
 
         with tempfile.TemporaryDirectory() as directory:
-            ledger = pathlib.Path(directory) / "compatibility-suppressions.json"
+            fixture_root = pathlib.Path(directory)
+            ledger = fixture_root / "compatibility-suppressions.json"
+            directory_targets = fixture_root / "Directory.Build.targets"
+            mcp_project = fixture_root / "Hexalith.FrontComposer.Mcp.csproj"
+            mcp_suppressions = fixture_root / "CompatibilitySuppressions.xml"
             ledger.write_text(json.dumps(payload), encoding="utf-8")
             stale_result = self.run_plan("4.1.0", ledger)
 
             payload["currentRelease"] = "v4.1"
             payload["suppressions"] = []
             ledger.write_text(json.dumps(payload), encoding="utf-8")
-            advanced_result = self.run_plan("4.1.0", ledger)
+            incomplete_cleanup_result = self.run_plan("4.1.0", ledger)
+
+            directory_targets.write_text(
+                "<Project><PropertyGroup>"
+                "<FrontComposerPackageValidationBaselineVersion>4.0.0"
+                "</FrontComposerPackageValidationBaselineVersion>"
+                "</PropertyGroup></Project>",
+                encoding="utf-8",
+            )
+            mcp_project.write_text("<Project />", encoding="utf-8")
+            mcp_suppressions.write_text(
+                "<Suppressions><Suppression>"
+                "<Target>T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmarkPrompt</Target>"
+                "</Suppression></Suppressions>",
+                encoding="utf-8",
+            )
+            stale_xml_result = self.run_plan(
+                "4.1.0",
+                ledger,
+                directory_targets,
+                mcp_project,
+                mcp_suppressions,
+            )
+
+            mcp_suppressions.write_text("<Suppressions />", encoding="utf-8")
+            advanced_result = self.run_plan(
+                "4.1.0",
+                ledger,
+                directory_targets,
+                mcp_project,
+                mcp_suppressions,
+            )
 
         self.assertNotEqual(0, stale_result.returncode)
         self.assertIn("expiresAfter v4.1 has been reached by --version 4.1.0", stale_result.stderr)
+        self.assertNotEqual(0, incomplete_cleanup_result.returncode)
+        self.assertIn("package-validation baseline must be 4.0.0", incomplete_cleanup_result.stderr)
+        self.assertNotEqual(0, stale_xml_result.returncode)
+        self.assertIn("remove the 1 expired MCP benchmark-removal suppressions", stale_xml_result.stderr)
         self.assertEqual(0, advanced_result.returncode, advanced_result.stderr)
 
 

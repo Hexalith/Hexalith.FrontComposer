@@ -446,6 +446,7 @@ development_status:
   # 11.17c moved in-progress -> review on 2026-07-15 (dev-story; 56 declaration bodies preserved across 27 MCP runtime and 29 Bench files; 26 exact v4.0 CP0001 removals approved and governed; Release/default/Governance/Performance/package/docs/artifact/CRLF gates green; M14 closed for this slice only.)
   # 11.17c moved review -> in-progress on 2026-07-16 (bmad-code-review chunk 1; runtime/benchmark relocation reviewed by all four configured layers. Applied two patches: removed a split-only unused import and made the relocated prompt resource load in the blocking Governance lane. Fourteen pre-existing behaviors deferred; sixteen non-findings dismissed. Bench Release build 0/0 and focused Governance 1/1 passed. Governance/tests/automation and compatibility/docs/release chunks remain pending.)
   # 11.17c governance/tests/automation review chunk completed on 2026-07-17 (bmad-code-review; all four configured layers completed. Five governance patches applied and verified, four pre-existing verification gaps deferred, and twenty-seven candidates dismissed. Focused test classes passed; the package-boundary class passed 2/2 with NU1506 suppressed because duplicate central SignalR package declarations block the normal restore path. Story remains in-progress pending compatibility/docs/release review.)
+  # 11.17c package/runtime/compatibility review chunk completed on 2026-07-17 (bmad-code-review; all four configured layers completed. Ten patches applied and verified, one xUnit ConfigureAwait suggestion plus six other candidates dismissed, and no new defers or decisions remain. Package boundary 2/2, friend-seam governance 4/4, CI inventory 1/1, Python lifecycle 9/9, PowerShell parse, and diff checks passed. Story remains in-progress pending the benchmark/nightly/docs review chunk.)
   11-17-mcp-runtime-split-and-benchmark-relocation: in-progress
   # 11.17d backlog child (Shell bundle split with only the documented Fluxor action-group exception; independently validated by Shell/Governance/API lanes).
   # 11.17d moved backlog -> ready-for-dev on 2026-07-15 (create-story; live Shell census 35 files/149 declarations, exact six action groups retained, 29 bundles/111 declarations in split scope, and Shell guard/API/non-Contract/package preservation context recorded.)
@@ -480,8 +481,10 @@ development_status:
   # 11.19d moved in-progress -> review on 2026-07-16 (dev-story; 4,070-diagnostic census, signed staged decision, four backlog follow-ups, Release/default/Governance/docs/artifact gates green).
   11-19-analyzer-elevation-decision: review
   # Stories 11.20-11.23 materialized as separately approval-gated backlog phases on 2026-07-16 by the 11.19d staged-activation decision; target due dates are 2026-07-24, 2026-08-14, 2026-09-04, and 2026-09-11.
-  11-20-recommended-analyzer-policy-and-exception-ledger: backlog
-  11-21-recommended-analyzer-product-and-generator-burndown: backlog
+  # 11.20 moved backlog -> ready-for-dev on 2026-07-17 (create-story; Administrator explicitly satisfied the separate Architecture/Product approval gate; comprehensive policy/ledger context, refreshed 2,959-Naming census, narrow CA1707 scopes, CA1711 fixes, warning-control dispositions, Governance coverage, and scoped validation lanes recorded.)
+  11-20-recommended-analyzer-policy-and-exception-ledger: ready-for-dev
+  # 11.21 moved backlog -> ready-for-dev on 2026-07-17 (create-story; Administrator supplied separate phase approval; comprehensive product/generator census, hidden ASP0006 emitter debt, exact 11.18 logging handoff, hard 11.20 ledger entry gate, and scoped validation recorded.)
+  11-21-recommended-analyzer-product-and-generator-burndown: ready-for-dev
   11-22-recommended-analyzer-test-and-sample-burndown: backlog
   11-23-recommended-analyzer-repository-activation: backlog
   # 11.24 registered as blocked backlog on 2026-07-17 by approved direct course correction.

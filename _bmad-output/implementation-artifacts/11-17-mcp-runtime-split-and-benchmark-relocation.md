@@ -38,8 +38,8 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
   - [x] Delete `SkillCorpus.cs` only after the 27 runtime and 29 benchmark declarations are accounted for. SDK default compile globs include the new runtime files; add no explicit `Compile` items.
 
 - [x] Task 3: Relocate the benchmark harness and evidence owner (AC: 3, 4, 6)
-  - [x] Move the 29 AC3 declarations into same-named files under `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/`. Preserve the historical public benchmark namespace/accessibility as the deliberate ownership-move exception; do not promote the three internal serialization types.
-  - [x] Move `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/BenchmarkHarnessTests.cs` to the Bench `Skills` folder, use the Bench test namespace, retain all 18 facts and helpers, and add the class-level Performance trait so the default lane excludes provider/benchmark evidence. Pin the exact 18 method names from the implementation baseline so neither of the two prompt-set facts nor any policy/path/gate fact can be dropped silently.
+  - [x] Move the 29 AC3 declarations into same-named Bench files, including `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkPrompt.cs`. Preserve the historical public benchmark namespace/accessibility as the deliberate ownership-move exception; do not promote the three internal serialization types.
+  - [x] Relocate the harness to `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs`, use the Bench test namespace, retain all 18 facts and helpers, and add the class-level Performance trait so the default lane excludes provider/benchmark evidence. Pin the exact 18 method names from the implementation baseline so neither of the two prompt-set facts nor any policy/path/gate fact can be dropped silently.
   - [x] Add Bench -> MCP `ProjectReference`; add exact MCP `InternalsVisibleTo` for the Bench assembly beside the existing MCP.Tests friend. Reuse `SkillCorpusParser.Sha256Hex` and retained `GeneratedBoundedContextValidator`; create no duplicate hash or validator, and add a source/architecture pin that the Bench harness accesses no other MCP internal.
   - [x] Remove only the prompt JSON `EmbeddedResource` from the MCP project and add it to Bench with the exact existing logical name. Keep MCP skill-markdown embedding, physical prompt content/path, loader behavior, and the existing PaletteScorer BenchmarkDotNet files unchanged.
 
@@ -48,13 +48,13 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
   - [x] Reflection-pin the exact 27 retained runtime types and assert the MCP assembly exposes no type whose name begins `SkillBenchmark`; assert MCP still exposes all five generated-code validator types.
   - [x] In the relocated benchmark tests, pin the exact 29 benchmark declaration identities/accessibilities and prompt resource; retain deterministic prompt IDs, hashes, cache invalidation, sanitization, budget, gate, path, scorer, and artifact tests.
   - [x] Rename/update `SkillResourceTests.PackagingFootprint_*` so it retains the embedded markdown count and explicitly rejects the benchmark prompt resource from MCP.
-  - [x] Add `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs`. It packs MCP to an isolated temporary directory with package validation enabled, opens the `.nupkg`, verifies the packaged `lib/net10.0/Hexalith.FrontComposer.Mcp.dll` bytes match the inspected Release assembly, and then uses that assembly's reflection/resource surface to pin the exact 27 Skills exports, zero `SkillBenchmark*`, and no benchmark prompt. A green source build or zip-entry-only check is insufficient.
+  - [x] Add `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs`. It packs MCP to an isolated temporary directory with package validation enabled, opens the produced NuGet package, verifies the packaged MCP library assembly bytes match the inspected Release assembly, and then uses that assembly's reflection/resource surface to pin the exact 27 Skills exports, zero `SkillBenchmark*`, and no benchmark prompt. A green source build or zip-entry-only check is insufficient.
 
 - [x] Task 5: Govern the intentional MCP public-surface removal (AC: 5, 7)
   - [x] Run ApiCompat/package validation against the configured `3.0.0` baseline with suppression generation enabled only to discover exact signatures; review the output, then check in `src/Hexalith.FrontComposer.Mcp/CompatibilitySuppressions.xml` containing only the 26 required baseline `CP0001` type removals. No wildcard, member-wide, unrelated, or generated-file acceptance is allowed.
   - [x] Advance `docs/diagnostics/compatibility-suppressions.json` only after approval to `currentRelease: v4.0`; add one exact `Hexalith.FrontComposer.Mcp|net10.0|CP0001|T:<full-type>` row per XML suppression with `targetRelease: v4.0`, `expiresAfter: v4.1`, owner `11-17-mcp-runtime-split-and-benchmark-relocation`, `intentional-major-break`, bounded rationale, and exact relocation/removal state.
   - [x] Update `DiagnosticRegistryTests` to accept and one-to-one reconcile exact MCP suppressions while retaining the fail-closed schema, allowed-reason, target/current/expiry, uniqueness, and no-wildcard rules. Update `tests/eng/test_pack_release_packages.py` so pre-`4.0`, expired, or mismatched plans fail, the approved `4.0` plan passes, and a stale-suppression `v4.1` plan fails until a fixture advances the baseline and removes the 26 rows.
-  - [x] Update `docs/diagnostics/README.md`; remove exactly the 26 old `SkillBenchmark*` UIDs from `docs/validation/api-summary-baseline.txt`; add `docs/migrations/3.1-to-4.0.md` and its index link; record approval at the exact AC5 contract path. The migration page uses `fromVersion: "3.1.1"`, `toVersion: "4.0.0"`, `diagnosticId: "none"` (do not appropriate an unrelated HFC ID), `skillCorpusImpact: "unchanged"`, `codeFixAvailable: false`, and this story as `ownerStory`. Preserve semantic-release ownership of `CHANGELOG.md`; validate the prospective breaking commit message with commitlint, and run semantic-release dry-run only after that approved commit exists.
+  - [x] Update `docs/diagnostics/README.md`; remove exactly the 26 old `SkillBenchmark*` UIDs from `docs/validation/api-summary-baseline.txt`; add `docs/migrations/3.1-to-4.0.md` and its index link; record approval at the exact AC5 contract path. The migration page uses `fromVersion: "3.1.1"`, `toVersion: "4.0.0"`, `diagnosticId: "none"` (do not appropriate an unrelated HFC ID), `skillCorpusImpact: "unchanged"`, `codeFixAvailable: false`, and this story as `ownerStory`. Keep `CHANGELOG.md` unchanged; validate the prospective breaking commit message with commitlint, and run semantic-release dry-run only after that approved commit exists.
 
 - [x] Task 6: Update maintained topology and automation (AC: 3, 4, 7)
   - [x] Update `.github/workflows/nightly.yml` to run `BenchmarkHarnessTests` from `Hexalith.FrontComposer.Shell.Tests.Bench`, while retaining budget-before-spend, candidate-only baseline, prompt loader/corpus summary, and read-only evidence behavior.
@@ -85,7 +85,7 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
 - [ ] [Review][Patch] Execute or structurally pin all immutable-release attachment branches in governance tests [tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs:1166]
 - [ ] [Review][Patch] Verify pending-status protocol logs preserve the warning contract and digest the message identifier [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStorePendingCommandStatusQueryTests.cs:128]
 - [ ] [Review][Patch] Advance MCP package validation to the `4.0.0` baseline and remove the expired 26-entry suppression plan [Directory.Build.targets:5]
-- [ ] [Review][Patch] Use `ConfigureAwait(false)` in the MCP package-boundary async paths [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:28]
+- [x] [Review][Dismiss] Use `ConfigureAwait(false)` in the MCP package-boundary async paths [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:28] — dismissed: xUnit1030 requires `ConfigureAwait(true)` in test methods; the reusable process helper already uses `ConfigureAwait(false)`
 - [x] [Review][Patch] Remove the unused Contracts.Schema import introduced by the mechanical split [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusManifestEntry.cs:1]
 - [x] [Review][Patch] Exercise the relocated embedded prompt resource from a blocking Governance test so PR verification fails before nightly [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Governance/BenchmarkHarnessGovernanceTests.cs:32]
 - [x] [Review][Defer] Replace filename/text marker heuristics with structural validation for commands, projections, registration, validators, and tests [src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:35] — deferred, pre-existing
@@ -111,6 +111,26 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
 - [x] [Review][Defer] Pin the exact 20 v1 prompt IDs instead of count, prefix, and uniqueness only [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:379] — deferred, pre-existing
 - [x] [Review][Defer] Bind approved benchmark baselines to the result corpus, scorer, validator, redaction, and provider hashes before passing the gate [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:33] — deferred, pre-existing
 - [x] [Review][Defer] Add positive cache-reuse evidence so an always-miss cache policy cannot pass the harness [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:64] — deferred, pre-existing
+- [x] [Review][Patch] Expand the MCP friend-assembly seam guard across the full Bench project and all simple-name syntax [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillTypeOrganizationGovernanceTests.cs:118]
+- [x] [Review][Patch] Use `ConfigureAwait(false)` inside the package-boundary process helper [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:172]
+- [x] [Review][Defer] Convert generated-validator regex timeouts into fail-closed diagnostics [src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:110] — deferred, pre-existing
+- [x] [Review][Defer] Snapshot mutable corpus resources when constructing the resource provider [src/Hexalith.FrontComposer.Mcp/Skills/FrontComposerSkillResourceProvider.cs:25] — deferred, pre-existing
+- [x] [Review][Defer] Preserve dots in embedded skill-corpus filenames during logical-name reconstruction [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusLoader.cs:33] — deferred, pre-existing
+- [x] [Review][Defer] Recognize tilde-fenced Markdown while parsing skill-corpus section markers [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusParser.cs:296] — deferred, pre-existing
+- [x] [Review][Defer] Reject unterminated fenced C# snippets instead of silently skipping validation [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusSnippetValidator.cs:60] — deferred, pre-existing
+- [x] [Review][Defer] Reconcile the documented no-op baseline mode with `SkillCorpusValidationResult.IsValid` [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:42] — deferred, pre-existing
+- [x] [Review][Defer] Carry current corpus diagnostics through baseline release validation [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:52] — deferred, pre-existing
+- [x] [Review][Defer] Reject negative skill-resource character limits at construction [src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadOptions.cs:10] — deferred, pre-existing
+- [x] [Review][Patch] Run the release-suppression lifecycle tests in a blocking CI lane [tests/eng/test_pack_release_packages.py:139]
+- [x] [Review][Patch] Reject benchmark-prompt payloads under alternate manifest-resource or package-entry names [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:68]
+- [x] [Review][Patch] Bind the v4.1 release preflight to the package baseline and both XML and JSON suppression cleanup [eng/pack_release_packages.py:40]
+- [x] [Review][Patch] Preserve tracked API metadata when DocFX metadata generation fails [eng/validate-docs.ps1:594]
+- [x] [Review][Patch] Replace the migration guide's per-project filtered test command with the focused direct executable and `DiffEngine_Disabled=true` [docs/migrations/3.1-to-4.0.md:85]
+- [x] [Review][Patch] Keep the default-lane MCP package-boundary test offline after the repository restore [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:136]
+- [x] [Review][Patch] Force the warm-cache pack to rerun package validation with a fresh artifacts path [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:60]
+- [x] [Review][Patch] Move the nested `ProcessResult` record into its own same-named file [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:206]
+- [x] [Review][Patch] Fail the Bench friend-seam governance test when its synthetic Roslyn compilation has errors [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillTypeOrganizationGovernanceTests.cs:137]
+- [x] [Review][Patch] Evaluate effective accessibility through containing types in the Bench friend-seam guard [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillTypeOrganizationGovernanceTests.cs:153]
 
 ## Dev Notes
 
@@ -283,11 +303,14 @@ GPT-5 Codex
 - The MCP package now exports the exact 27 runtime Skills types, zero `SkillBenchmark*` types, and no benchmark prompt. Bench owns the exact 29 declarations and one prompt resource; its only non-public MCP usage is the two approved `SkillCorpusParser.Sha256Hex` call sites.
 - Release Owner approved the intentional v4 break. ApiCompat and the JSON ledger reconcile exactly 26 `CP0001` type removals, expire before `v4.1`, and provide no runtime NuGet replacement. Commitlint passed the breaking message; semantic-release analysis selected major / `4.0.0`.
 - Release validation passed with zero build warnings/errors: MCP Skills 57/57, relocated harness 18/18, Testing package boundary 3/3, default lane 4,098/4,098, Governance 292/292, Performance 26/26, prompt validation, DocFX/docs validation, nine release-plan tests, and eight `.nupkg` plus eight `.snupkg` artifacts.
+- The 2026-07-17 package/runtime review chunk applied ten patches: blocking release-lifecycle CI, v4.1 XML/JSON/baseline cleanup enforcement, fail-safe DocFX metadata backup, direct benchmark execution guidance, offline/fresh-artifact package validation, broader payload rejection, a standalone process result type, and fail-closed/effective-accessibility friend-seam analysis. Focused validation passed package boundary 2/2, friend-seam governance 4/4, CI inventory 1/1, Python lifecycle 9/9, PowerShell parsing, and `git diff --check`.
 - Story-controlled files are UTF-8 without BOM, CRLF-terminated with final newlines, and free of unexpected `*.received.*` or untracked artifacts. `git diff --check` is clean. Architecture finding M14 is closed only for the MCP `SkillCorpus.cs`/benchmark slice.
 
 ### File List
 
 - `.github/workflows/nightly.yml` (modified)
+- `.github/workflows/ci.yml` (modified during code review; MCP package-boundary tests remain in the blocking quality solution lane after its baseline-enabled restore)
+- `.github/workflows/quality.yml` (modified during code review; package-validation baselines and release-lifecycle tests are blocking)
 - `_bmad-output/contracts/fc-4-0-mcp-benchmark-removal-release-version-decision-2026-07-14.md` (added)
 - `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md` (added)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified)
@@ -298,6 +321,7 @@ GPT-5 Codex
 - `docs/migrations/index.md` (modified)
 - `docs/validation/api-summary-baseline.txt` (modified)
 - `eng/validate-docs.ps1` (modified)
+- `eng/pack_release_packages.py` (modified during code review; v4.1 cleanup preflight)
 - `src/Hexalith.FrontComposer.Mcp/CompatibilitySuppressions.xml` (added)
 - `src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj` (modified)
 - `src/Hexalith.FrontComposer.Mcp/Skills/EmptySkillCorpusBaselineProvider.cs` (added)
@@ -329,6 +353,7 @@ GPT-5 Codex
 - `src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadOptions.cs` (added)
 - `src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadResult.cs` (added)
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs` (added)
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/ProcessResult.cs` (added during code review)
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillResourceTests.cs` (modified)
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillTypeOrganizationGovernanceTests.cs` (added)
 - `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj` (modified)
@@ -370,4 +395,5 @@ GPT-5 Codex
 
 ## Change Log
 
+- 2026-07-17 — Completed the package/runtime/compatibility review chunk: applied ten validated patches, dismissed the xUnit `ConfigureAwait(false)` suggestion because xUnit1030 requires `true` in test methods, and kept the story in progress for the remaining benchmark/nightly/docs review chunk.
 - 2026-07-15 — Split the MCP skill corpus into 27 runtime files, relocated 29 benchmark declarations and the 18-fact harness to Bench, moved the prompt resource, added exact organization/package/compatibility governance, documented the approved v4 removal, retargeted nightly/docs topology, and completed release-aligned validation.

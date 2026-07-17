@@ -9,9 +9,14 @@ import pathlib
 import re
 import subprocess
 import sys
+import xml.etree.ElementTree as ET
 
 
 COMPATIBILITY_SUPPRESSIONS_SCHEMA_VERSION = "2.0"
+MCP_BENCHMARK_REMOVAL_PREFIX = "T:Hexalith.FrontComposer.Mcp.Skills.SkillBenchmark"
+MCP_PACKAGE_ID = "Hexalith.FrontComposer.Mcp"
+MCP_POST_REMOVAL_BASELINE = "4.0.0"
+MCP_SUPPRESSION_CLEANUP_LINE = (4, 1)
 VERSION_TOKEN = re.compile(
     r"^v?(?P<major>0|[1-9][0-9]*)\.(?P<minor>0|[1-9][0-9]*)(?:\.(?:0|[1-9][0-9]*))?(?:[-+][0-9A-Za-z.-]+)?$"
 )
@@ -88,6 +93,67 @@ def validate_suppression_release(suppressions_path: pathlib.Path, version: str) 
     return f"v{actual_line[0]}.{actual_line[1]}"
 
 
+def xml_values(path: pathlib.Path, local_name: str) -> list[str]:
+    if not path.is_file():
+        return []
+    try:
+        root = ET.parse(path).getroot()
+    except ET.ParseError as error:
+        raise SystemExit(f"{path}: invalid XML: {error}") from error
+    return [
+        (element.text or "").strip()
+        for element in root.iter()
+        if element.tag.rsplit("}", 1)[-1] == local_name and (element.text or "").strip()
+    ]
+
+
+def validate_mcp_benchmark_removal_cleanup(
+    suppressions_path: pathlib.Path,
+    version: str,
+    directory_targets_path: pathlib.Path,
+    mcp_project_path: pathlib.Path,
+    mcp_suppressions_path: pathlib.Path,
+) -> None:
+    actual_line = release_line(version, "--version")
+    if actual_line < MCP_SUPPRESSION_CLEANUP_LINE:
+        return
+
+    with suppressions_path.open("r", encoding="utf-8") as handle:
+        payload = json.load(handle)
+    rows = payload.get("suppressions", [])
+    stale_json_targets = [
+        row.get("oldSignature")
+        for row in rows
+        if isinstance(row, dict)
+        and row.get("package") == MCP_PACKAGE_ID
+        and isinstance(row.get("oldSignature"), str)
+        and str(row["oldSignature"]).startswith(MCP_BENCHMARK_REMOVAL_PREFIX)
+    ]
+    if stale_json_targets:
+        raise SystemExit(
+            f"{suppressions_path}: remove the {len(stale_json_targets)} expired MCP benchmark-removal rows before v4.1"
+        )
+
+    project_baselines = xml_values(mcp_project_path, "FrontComposerPackageValidationBaselineVersion")
+    shared_baselines = xml_values(directory_targets_path, "FrontComposerPackageValidationBaselineVersion")
+    effective_baseline = (project_baselines or shared_baselines or [""])[-1]
+    if effective_baseline != MCP_POST_REMOVAL_BASELINE:
+        raise SystemExit(
+            f"{MCP_PACKAGE_ID}: package-validation baseline must be {MCP_POST_REMOVAL_BASELINE} "
+            f"before v4.1; found '{effective_baseline or '<missing>'}'"
+        )
+
+    stale_xml_targets = [
+        target
+        for target in xml_values(mcp_suppressions_path, "Target")
+        if target.startswith(MCP_BENCHMARK_REMOVAL_PREFIX)
+    ]
+    if stale_xml_targets:
+        raise SystemExit(
+            f"{mcp_suppressions_path}: remove the {len(stale_xml_targets)} expired MCP benchmark-removal suppressions before v4.1"
+        )
+
+
 def release_plan(
     rows: list[dict[str, object]],
     root: pathlib.Path,
@@ -159,12 +225,24 @@ def main() -> int:
         "--suppressions",
         default="docs/diagnostics/compatibility-suppressions.json",
     )
+    parser.add_argument("--directory-build-targets", default="Directory.Build.targets")
+    parser.add_argument(
+        "--mcp-project",
+        default="src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj",
+    )
+    parser.add_argument(
+        "--mcp-compatibility-suppressions",
+        default="src/Hexalith.FrontComposer.Mcp/CompatibilitySuppressions.xml",
+    )
     parser.add_argument("--plan", action="store_true")
     args = parser.parse_args()
 
     root = pathlib.Path(args.root).resolve()
     inventory_path = (root / args.inventory).resolve()
     suppressions_path = (root / args.suppressions).resolve()
+    directory_targets_path = (root / args.directory_build_targets).resolve()
+    mcp_project_path = (root / args.mcp_project).resolve()
+    mcp_suppressions_path = (root / args.mcp_compatibility_suppressions).resolve()
     output = (root / args.output).resolve()
 
     rows = package_rows(inventory_path)
@@ -172,6 +250,13 @@ def main() -> int:
         raise SystemExit("release package inventory contains no packable projects")
 
     actual_release_line = validate_suppression_release(suppressions_path, args.version)
+    validate_mcp_benchmark_removal_cleanup(
+        suppressions_path,
+        args.version,
+        directory_targets_path,
+        mcp_project_path,
+        mcp_suppressions_path,
+    )
     plan = release_plan(rows, root, output, args.configuration, args.version)
     if args.plan:
         json.dump(

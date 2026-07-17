@@ -67,7 +67,7 @@ jobs:
       # Gate 1: Contracts builds in isolation targeting netstandard2.0
       - name: 'Gate 1: Contracts Build (netstandard2.0)'
         run: |
-          dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
+          dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:EnableFrontComposerPackageValidation=true
           dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -f netstandard2.0 --configuration Release --no-restore
 
       # Gate 2: Full solution builds
@@ -117,6 +117,9 @@ jobs:
         env:
           DiffEngine_Disabled: true
         run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
+
+      - name: 'Gate 2b: Release suppression lifecycle tests'
+        run: python3 -m unittest tests/eng/test_pack_release_packages.py
 
       # Gate 2c: File-based consumer pacts for the FrontComposer/EventStore REST boundary.
       # This lane intentionally uses explicit root-declared submodule initialization above and

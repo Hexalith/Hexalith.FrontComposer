@@ -1722,3 +1722,30 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
   summary: Add positive cache-reuse verification to the benchmark harness.
   evidence: The cache tests at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:64-130` cover only key changes and cache misses; an implementation of `SkillBenchmarkCachePolicy.CanReuse` that always returns false would remain green. This verification gap predates the relocation.
+
+## Deferred from: code review of 11-17-mcp-runtime-split-and-benchmark-relocation — chunk 1 (2026-07-17)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Convert generated-validator regex timeouts into fail-closed diagnostics.
+  evidence: `GeneratedBoundedContextValidator.Validate` invokes bounded regular expressions without catching `RegexMatchTimeoutException` (`src/Hexalith.FrontComposer.Mcp/Skills/GeneratedBoundedContextValidator.cs:110-167`), so adversarial generated input can throw instead of returning a structured validation result. The declaration body is unchanged from baseline commit `5718f85b`.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Snapshot mutable corpus resources when constructing the resource provider.
+  evidence: `FrontComposerSkillResourceProvider` retains `snapshot.Resources` while separately freezing its URI lookup and rendering its manifest (`src/Hexalith.FrontComposer.Mcp/Skills/FrontComposerSkillResourceProvider.cs:25-30`); mutation through a caller-supplied mutable `IReadOnlyList` can make discovery disagree with reads. The behavior predates the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Preserve dots in embedded skill-corpus filenames during logical-name reconstruction.
+  evidence: `SkillCorpusLoader.ToPath` changes every dot before the final extension into `/` (`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusLoader.cs:33-36`), so a valid name such as `foo.v1.md` is reported as `foo/v1.md`. The loader body is unchanged from the aggregate baseline.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Recognize tilde-fenced Markdown while parsing skill-corpus section markers.
+  evidence: `ExtractAgentReference` tracks only triple-backtick fences (`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusParser.cs:292-303`); section-marker examples inside valid `~~~` fences can be interpreted as live boundaries. The parser body predates Story 11.17c.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Reject unterminated fenced C# snippets instead of silently skipping validation.
+  evidence: `ExtractCSharpFences` yields a snippet only after a closing fence (`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusSnippetValidator.cs:60-84`), so an unterminated C# fence receives no `BrokenSnippet` diagnostic. The validator body is mechanically preserved from the baseline.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Reconcile the documented no-op baseline mode with `SkillCorpusValidationResult.IsValid`.
+  evidence: `ValidateAgainstBaseline` describes a missing baseline as a benign no-op but returns a `BaselineMismatch` diagnostic (`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:41-49`), while `SkillCorpusValidationResult.IsValid` treats every diagnostic as invalid. There is no production caller today, and both declarations predate the split.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Carry current corpus diagnostics through baseline release validation.
+  evidence: `ValidateAgainstBaseline` starts with an empty diagnostic list and iterates `current.Resources` (`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpusReleaseGuard.cs:52-73`); a parser-invalid snapshot has no resources and can therefore produce an apparently valid release result. The release-guard body is unchanged from baseline.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Reject negative skill-resource character limits at construction.
+  evidence: `SkillResourceReadOptions` accepts any integer (`src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadOptions.cs:10-13`); a negative cap causes every resource read to return `SkillResourceTooLarge`. This public-boundary validation gap predates the relocation.

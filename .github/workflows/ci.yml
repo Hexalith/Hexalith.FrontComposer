@@ -36,5 +36,4 @@ jobs:
         tests/Hexalith.FrontComposer.Cli.Tests
         tests/Hexalith.FrontComposer.Contracts.Tests
         tests/Hexalith.FrontComposer.Contracts.UI.Tests
-        tests/Hexalith.FrontComposer.Mcp.Tests
         tests/Hexalith.FrontComposer.Testing.Tests

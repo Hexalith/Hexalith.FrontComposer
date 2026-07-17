@@ -592,10 +592,33 @@ $docfxOutput = $null
 if (-not $SkipDocFx) {
     Invoke-Process 'dotnet' @('build', 'Hexalith.FrontComposer.slnx', '--configuration', 'Release') $RepoRoot | Out-Null
     $apiMetadataRoot = Join-Path $DocsRoot 'reference/api'
-    Get-ChildItem -Path $apiMetadataRoot -Filter '*.yml' -File -ErrorAction SilentlyContinue |
-        Remove-Item -Force
-    Remove-Item -LiteralPath (Join-Path $apiMetadataRoot '.manifest') -Force -ErrorAction SilentlyContinue
-    Invoke-Process 'dotnet' @('docfx', 'metadata', 'docs/docfx.json') $RepoRoot | Out-Null
+    $apiMetadataBackup = Join-Path ([System.IO.Path]::GetTempPath()) "frontcomposer-docfx-api-$([Guid]::NewGuid().ToString('N'))"
+    New-Item -ItemType Directory -Path $apiMetadataBackup | Out-Null
+    try {
+        Get-ChildItem -Path $apiMetadataRoot -Filter '*.yml' -File -ErrorAction SilentlyContinue |
+            Copy-Item -Destination $apiMetadataBackup -Force
+        $apiManifestPath = Join-Path $apiMetadataRoot '.manifest'
+        if (Test-Path -LiteralPath $apiManifestPath) {
+            Copy-Item -LiteralPath $apiManifestPath -Destination $apiMetadataBackup -Force
+        }
+
+        Get-ChildItem -Path $apiMetadataRoot -Filter '*.yml' -File -ErrorAction SilentlyContinue |
+            Remove-Item -Force
+        Remove-Item -LiteralPath $apiManifestPath -Force -ErrorAction SilentlyContinue
+        Invoke-Process 'dotnet' @('docfx', 'metadata', 'docs/docfx.json') $RepoRoot | Out-Null
+    }
+    catch {
+        Get-ChildItem -Path $apiMetadataRoot -Filter '*.yml' -File -ErrorAction SilentlyContinue |
+            Remove-Item -Force
+        Remove-Item -LiteralPath (Join-Path $apiMetadataRoot '.manifest') -Force -ErrorAction SilentlyContinue
+        Get-ChildItem -Path $apiMetadataBackup -File -ErrorAction SilentlyContinue |
+            Copy-Item -Destination $apiMetadataRoot -Force
+        throw
+    }
+    finally {
+        Remove-Item -LiteralPath $apiMetadataBackup -Recurse -Force -ErrorAction SilentlyContinue
+    }
+
     Assert-ApiSummaryBaseline $failures
     Invoke-Process 'dotnet' @('docfx', 'build', 'docs/docfx.json') $RepoRoot | Out-Null
     $docfxOutput = 'docs/_site'

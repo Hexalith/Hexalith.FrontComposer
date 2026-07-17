@@ -117,46 +117,89 @@ public sealed class SkillTypeOrganizationGovernanceTests {
     [Fact]
     public void BenchHarness_ConsumesOnlyTheApprovedMcpInternalHashSeam() {
         string repositoryRoot = LocateRepositoryRoot();
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         (string Path, string Content)[] sources = LoadProductionSources(Path.Combine(
             repositoryRoot,
             "tests",
-            "Hexalith.FrontComposer.Shell.Tests.Bench",
-            "Skills"));
-        SyntaxTree[] syntaxTrees = [.. sources
-            .Where(source => !source.Path.EndsWith("/BenchmarkHarnessTests.cs", StringComparison.Ordinal))
+            "Hexalith.FrontComposer.Shell.Tests.Bench"));
+        SyntaxTree generatedGlobalUsings = CSharpSyntaxTree.ParseText(
+            """
+            global using System;
+            global using System.Collections.Generic;
+            global using System.IO;
+            global using System.Linq;
+            global using System.Net.Http;
+            global using System.Threading;
+            global using System.Threading.Tasks;
+            global using Xunit;
+            """,
+            new CSharpParseOptions(LanguageVersion.Latest),
+            "Hexalith.FrontComposer.Shell.Tests.Bench.GlobalUsings.g.cs",
+            encoding: null,
+            cancellationToken: cancellationToken);
+        SyntaxTree[] syntaxTrees = [generatedGlobalUsings, .. sources
             .Select(source => CSharpSyntaxTree.ParseText(
                 source.Content,
                 new CSharpParseOptions(LanguageVersion.Latest),
-                source.Path))];
+                source.Path,
+                encoding: null,
+                cancellationToken: cancellationToken))];
         string[] trustedPlatformAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES")
             ?? throw new InvalidOperationException("Trusted platform assemblies are unavailable."))
             .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries);
         string[] localAssemblies = Directory.EnumerateFiles(AppContext.BaseDirectory, "*.dll").ToArray();
+        string configuration = new DirectoryInfo(AppContext.BaseDirectory).Parent?.Name
+            ?? throw new DirectoryNotFoundException("Could not resolve the current test configuration.");
+        string benchOutputDirectory = Path.Combine(
+            repositoryRoot,
+            "tests",
+            "Hexalith.FrontComposer.Shell.Tests.Bench",
+            "bin",
+            configuration,
+            "net10.0");
+        Directory.Exists(benchOutputDirectory).ShouldBeTrue(
+            "Build the Bench project before running the MCP friend-seam governance test.");
+        string[] benchDependencyAssemblies = [.. Directory.EnumerateFiles(benchOutputDirectory, "*.dll")
+            .Where(path => !path.EndsWith(
+                "Hexalith.FrontComposer.Shell.Tests.Bench.dll",
+                StringComparison.OrdinalIgnoreCase))];
         MetadataReference[] references = [.. trustedPlatformAssemblies
             .Concat(localAssemblies)
-            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Concat(benchDependencyAssemblies)
+            .GroupBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
             .Select(path => MetadataReference.CreateFromFile(path))];
         CSharpCompilation compilation = CSharpCompilation.Create(
             "Hexalith.FrontComposer.Shell.Tests.Bench",
             syntaxTrees,
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        string[] unexpectedCompilationErrors = [.. compilation.GetDiagnostics(cancellationToken)
+            .Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error
+                && !IsExpectedSourceGenerationDiagnostic(diagnostic))
+            .Select(diagnostic => diagnostic.ToString())];
+        unexpectedCompilationErrors.ShouldBeEmpty(
+            "The friend-seam scan must not run over unresolved Bench source because unresolved MCP symbols fail open.");
+
         List<string> internalMcpReferences = [];
-        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
         foreach (SyntaxTree syntaxTree in syntaxTrees) {
             SemanticModel semanticModel = compilation.GetSemanticModel(syntaxTree);
-            foreach (IdentifierNameSyntax identifier in syntaxTree.GetRoot(cancellationToken).DescendantNodes().OfType<IdentifierNameSyntax>()) {
-                ISymbol? symbol = semanticModel.GetSymbolInfo(identifier, cancellationToken).Symbol;
-                if (symbol is null
-                    || !string.Equals(
-                        symbol.ContainingAssembly?.Name,
-                        typeof(SkillCorpusParser).Assembly.GetName().Name,
-                        StringComparison.Ordinal)
-                    || symbol.DeclaredAccessibility == Accessibility.Public) {
-                    continue;
-                }
+            foreach (SimpleNameSyntax name in syntaxTree.GetRoot(cancellationToken).DescendantNodes().OfType<SimpleNameSyntax>()) {
+                SymbolInfo symbolInfo = semanticModel.GetSymbolInfo(name, cancellationToken);
+                IEnumerable<ISymbol> referencedSymbols = symbolInfo.Symbol is null
+                    ? symbolInfo.CandidateSymbols
+                    : [symbolInfo.Symbol];
+                foreach (ISymbol symbol in referencedSymbols.Distinct(SymbolEqualityComparer.Default)) {
+                    if (!string.Equals(
+                            symbol.ContainingAssembly?.Name,
+                            typeof(SkillCorpusParser).Assembly.GetName().Name,
+                            StringComparison.Ordinal)
+                        || IsEffectivelyPublic(symbol)) {
+                        continue;
+                    }
 
-                internalMcpReferences.Add($"{symbol.ContainingType?.Name}.{symbol.Name}");
+                    internalMcpReferences.Add($"{symbol.ContainingType?.Name}.{symbol.Name}");
+                }
             }
         }
 
@@ -164,6 +207,30 @@ public sealed class SkillTypeOrganizationGovernanceTests {
             "SkillCorpusParser.Sha256Hex",
             "SkillCorpusParser.Sha256Hex",
         });
+    }
+
+    private static bool IsExpectedSourceGenerationDiagnostic(Diagnostic diagnostic) {
+        string message = diagnostic.GetMessage();
+        return diagnostic.Id is "CS0117" or "CS0534"
+                && message.Contains("SkillBenchmarkJsonContext", StringComparison.Ordinal)
+            || diagnostic.Id == "CS7036"
+                && message.Contains("JsonSerializerContext.JsonSerializerContext", StringComparison.Ordinal)
+            || diagnostic.Id == "CS8795"
+                && message.Contains("SkillBenchmarkSummarySanitizer", StringComparison.Ordinal);
+    }
+
+    private static bool IsEffectivelyPublic(ISymbol symbol) {
+        for (ISymbol? current = symbol; current is not null; current = current.ContainingSymbol) {
+            if (current is INamespaceSymbol or IModuleSymbol or IAssemblySymbol) {
+                continue;
+            }
+
+            if (current.DeclaredAccessibility != Accessibility.Public) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static IReadOnlyList<string> FindOrganizationViolations(
