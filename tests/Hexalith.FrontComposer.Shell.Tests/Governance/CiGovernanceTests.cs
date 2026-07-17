@@ -289,6 +289,30 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void SharedPackageCatalog_WhenChanged_InvalidatesCacheAndReleaseEvidenceOnly() {
+        string root = RepositoryRoot();
+        string qualityWorkflow = File.ReadAllText(Path.Combine(root, ".github", "workflows", "quality.yml"));
+        qualityWorkflow.ShouldContain(
+            "hashFiles('Directory.Packages.props', 'references/Hexalith.Builds/Props/Directory.Packages.props')");
+
+        string releaseEvidence = File.ReadAllText(Path.Combine(root, "eng", "release_evidence.py"));
+        int releaseDefinitionsStart = releaseEvidence.IndexOf("RELEASE_DEFINITION_FILES = [", StringComparison.Ordinal);
+        int fallbackInvalidationStart = releaseEvidence.IndexOf("FALLBACK_INVALIDATION_FILES = [", StringComparison.Ordinal);
+        int approvalMatrixStart = releaseEvidence.IndexOf("APPROVAL_MATRIX = [", StringComparison.Ordinal);
+        releaseDefinitionsStart.ShouldBeGreaterThanOrEqualTo(0);
+        fallbackInvalidationStart.ShouldBeGreaterThan(releaseDefinitionsStart);
+        approvalMatrixStart.ShouldBeGreaterThan(fallbackInvalidationStart);
+
+        const string sharedCatalog = "references/Hexalith.Builds/Props/Directory.Packages.props";
+        string releaseDefinitions = releaseEvidence[releaseDefinitionsStart..fallbackInvalidationStart];
+        string fallbackInvalidation = releaseEvidence[fallbackInvalidationStart..approvalMatrixStart];
+        releaseDefinitions.ShouldContain(sharedCatalog);
+        fallbackInvalidation.ShouldNotContain(
+            sharedCatalog,
+            customMessage: "routine shared package-version changes must not invalidate active fallback approvals");
+    }
+
+    [Fact]
     public void ReleaseSolutionBuild_ExcludesExternalHexalithReferenceProjects() {
         string root = RepositoryRoot();
         XDocument solution = XDocument.Load(Path.Combine(root, "Hexalith.FrontComposer.slnx"));
@@ -812,11 +836,11 @@ public sealed class CiGovernanceTests {
             string[] releaseDefinitionFiles = [
                 ".github/workflows/release.yml",
                 ".releaserc.json",
-                "eng/release_evidence.py",
                 "eng/release-package-inventory.json",
                 "Directory.Build.props",
                 "Directory.Build.targets",
                 "Directory.Packages.props",
+                "references/Hexalith.Builds/Props/Directory.Packages.props",
                 "deps.nuget.props",
             ];
             foreach (string file in releaseDefinitionFiles) {
@@ -911,11 +935,11 @@ public sealed class CiGovernanceTests {
             string[] releaseDefinitionFiles = [
                 ".github/workflows/release.yml",
                 ".releaserc.json",
-                "eng/release_evidence.py",
                 "eng/release-package-inventory.json",
                 "Directory.Build.props",
                 "Directory.Build.targets",
                 "Directory.Packages.props",
+                "references/Hexalith.Builds/Props/Directory.Packages.props",
                 "deps.nuget.props",
             ];
             foreach (string file in releaseDefinitionFiles) {
@@ -929,7 +953,9 @@ public sealed class CiGovernanceTests {
             Dictionary<string, string> fingerprints = releaseDefinitionFiles.ToDictionary(
                 file => file,
                 file => Sha256File(Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar))));
-            File.WriteAllText(Path.Combine(tempRoot, ".releaserc.json"), "drifted release config");
+            File.WriteAllText(
+                Path.Combine(tempRoot, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"),
+                "drifted shared package catalog");
 
             string preManifest = Path.Combine(tempRoot, "pre-manifest.json");
             string sealedManifest = Path.Combine(tempRoot, "sealed-manifest.json");
@@ -1429,7 +1455,7 @@ public sealed class CiGovernanceTests {
             // longer in RELEASE_DEFINITION_FILES — the sealed manifest tracks helper
             // identity via the structured `helper_version` field instead. The
             // round-trip baseline now matches the live `RELEASE_DEFINITION_FILES` set
-            // (7 entries) and embeds the live `helper_version_record()` so
+            // (8 entries) and embeds the live `helper_version_record()` so
             // `manifest_diagnostics` sees no drift.
             string[] releaseDefinitionFiles = [
                 ".github/workflows/release.yml",
@@ -1438,6 +1464,7 @@ public sealed class CiGovernanceTests {
                 "Directory.Build.props",
                 "Directory.Build.targets",
                 "Directory.Packages.props",
+                "references/Hexalith.Builds/Props/Directory.Packages.props",
                 "deps.nuget.props",
             ];
             foreach (string file in releaseDefinitionFiles) {
@@ -1464,7 +1491,7 @@ public sealed class CiGovernanceTests {
                 ["benchmark_summary_hash"] = new string('c', 64),
                 ["commit_sha"] = "abc123",
                 ["helper_version"] = new Dictionary<string, object?> {
-                    ["version"] = "1.0.0",
+                    ["version"] = "1.1.0",
                     ["content_sha256"] = helperContentSha256,
                 },
                 ["package_set_fingerprint"] = Sha256File(Path.Combine(tempRoot, "eng", "release-package-inventory.json")),

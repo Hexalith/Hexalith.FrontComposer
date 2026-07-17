@@ -24,7 +24,7 @@ from typing import Any
 # sha256 is computed at prepare-manifest time and embedded in the sealed manifest;
 # `manifest_diagnostics` compares both at verify time so a helper-bytes change without
 # a `__version__` bump produces a `release-definition drift` signal.
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -62,10 +62,11 @@ REQUIRED_ROW_FIELDS = [
     "publish_status",
 ]
 # CR-12-4-P124 (round-6): split release-definition surface from fallback-invalidation
-# surface to close A8/D15. `Directory.Packages.props` re-enters the drift-detection
-# fingerprint (so post-seal package-version edits are caught), but is excluded from
-# `fallback_invalidation_fingerprint_keys` so routine Dependabot bumps do NOT
-# invalidate an active unsupported-attestation fallback (the D8 operational concern).
+# surface to close A8/D15. The root `Directory.Packages.props` import shim and the
+# authoritative `references/Hexalith.Builds/Props/Directory.Packages.props` catalog
+# participate in drift detection, but both are excluded from fallback invalidation so
+# routine package-version bumps do NOT invalidate an active unsupported-attestation
+# fallback (the D8 operational concern).
 # Package-set drift specifically (rows in `release-package-inventory.json`) remains
 # in BOTH surfaces and continues to invalidate fallbacks per AC34.
 # CR-12-4-P103 (round-5): added `Directory.Build.targets` and `Directory.Build.props`
@@ -88,12 +89,13 @@ RELEASE_DEFINITION_FILES = [
     "Directory.Build.props",
     "Directory.Build.targets",
     "Directory.Packages.props",
+    "references/Hexalith.Builds/Props/Directory.Packages.props",
     "deps.nuget.props",
 ]
 # CR-12-4-P124 (round-6): keys whose drift invalidates a `fallback-approved` release.
-# Excludes `Directory.Packages.props` so transitive package-version bumps do not force
-# re-approval. Drift in these files is still detected by `manifest_diagnostics` (drift
-# detection) but does not trigger `fallback_complete` rejection.
+# Excludes the root package import shim and shared package catalog so package-version
+# bumps do not force re-approval. Drift in these files is still detected by
+# `manifest_diagnostics` but does not trigger `fallback_complete` rejection.
 # CR-12-4-P215 (round-8): `eng/release_evidence.py` excluded for the same reason as in
 # `RELEASE_DEFINITION_FILES`; drift is caught via the helper_version field instead.
 FALLBACK_INVALIDATION_FILES = [

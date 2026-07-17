@@ -30,13 +30,44 @@ public sealed class InfrastructureGovernanceTests {
     }
 
     [Fact]
-    public void CentralPackageVersions_DoNotIntroduceForbiddenProviderPackages() {
+    public void CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog() {
         string root = RepositoryRoot();
-        string centralProps = Path.Combine(root, "Directory.Packages.props");
+        XDocument importShim = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
+        XElement[] rootPackageVersions = importShim
+            .Descendants()
+            .Where(static element => element.Name.LocalName == "PackageVersion")
+            .ToArray();
+        rootPackageVersions.ShouldBeEmpty(
+            "the FrontComposer root file is an import shim; package versions belong in Hexalith.Builds");
 
-        List<GovernanceViolation> violations = InfrastructureGovernance.ScanCentralPackageVersions(centralProps, root);
+        XDocument sharedCatalog = XDocument.Load(
+            Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"));
+        Dictionary<string, string> expectedVersions = new(StringComparer.Ordinal) {
+            ["BenchmarkDotNet"] = "0.15.8",
+            ["FsCheck.Xunit.v3"] = "3.3.3",
+            ["Microsoft.CodeAnalysis.Workspaces.Common"] = "5.6.0",
+            ["Microsoft.Extensions.Localization"] = "10.0.9",
+            ["Microsoft.Extensions.TimeProvider.Testing"] = "10.8.0",
+            ["ModelContextProtocol.AspNetCore"] = "1.4.1",
+            ["NUlid"] = "1.7.3",
+            ["PactNet"] = "5.0.1",
+            ["System.Collections.Immutable"] = "10.0.10",
+            ["System.ComponentModel.Annotations"] = "5.0.0",
+            ["System.Reactive"] = "7.0.0-rc.1",
+            ["System.Threading.Tasks.Extensions"] = "4.6.3",
+            ["Verify"] = "31.24.2",
+            ["Verify.XunitV3"] = "31.24.2",
+        };
 
-        violations.ShouldBeEmpty(FormatViolations(violations));
+        foreach ((string packageId, string expectedVersion) in expectedVersions) {
+            XElement[] declarations = sharedCatalog
+                .Descendants()
+                .Where(static element => element.Name.LocalName == "PackageVersion")
+                .Where(element => string.Equals((string?)element.Attribute("Include"), packageId, StringComparison.Ordinal))
+                .ToArray();
+            declarations.Length.ShouldBe(1, $"{packageId} must occur exactly once in the shared catalog");
+            ((string?)declarations[0].Attribute("Version")).ShouldBe(expectedVersion);
+        }
     }
 
     [Fact]

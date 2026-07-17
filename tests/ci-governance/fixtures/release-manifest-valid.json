@@ -3,7 +3,7 @@
   "commit_sha": "abc123",
   "helper_version": {
     "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "package_set_fingerprint": "401023c2e71d46f22d911e3ac8a125c3d7ee1a0a5ebff35dbb0df4f364e0f329",
   "packages": [
@@ -26,14 +26,15 @@
     ".releaserc.json": "4e0a6288e9391bfcf27c4881f74eb51fbe25a42729a261ed9b8e656423450a23",
     "Directory.Build.props": "11111111111111111111111111111111111111111111111111111111111111aa",
     "Directory.Build.targets": "11111111111111111111111111111111111111111111111111111111111111bb",
-    "Directory.Packages.props": "0bd7e8e3e6cb6fcad019fbc070a86be84c5d48078ad75ba8b534b2440a5daa7d",
-    "eng/release-package-inventory.json": "401023c2e71d46f22d911e3ac8a125c3d7ee1a0a5ebff35dbb0df4f364e0f329"
+    "Directory.Packages.props": "fd652550e0fabbad76a7d6ba9cbd6eb6e56968cfee10f9b88e8e43d5e1d017f3",
+    "eng/release-package-inventory.json": "401023c2e71d46f22d911e3ac8a125c3d7ee1a0a5ebff35dbb0df4f364e0f329",
+    "references/Hexalith.Builds/Props/Directory.Packages.props": "cfdaf0c5755eaf00d7e4bed07a591e794802f26b8ad17f596904d7d49a08581e"
   },
   "run_id": "42",
   "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "seal": {
     "algorithm": "sha256",
-    "hash": "a2deed2041f39be3d116b243ccd6ef52386c6c4b7b7c0ed077da0ce89b6ae698",
+    "hash": "5aa6f0efa5bfa2bffc9badec36c11082bb2f294dfed5d91abf19a5d2a9fe4763",
     "sealed_at": "2026-05-19T00:00:00+00:00"
   },
   "tag": "v1.2.3",

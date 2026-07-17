@@ -45,7 +45,7 @@
       "commit_sha": "abc123",
       "helper_version": {
         "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
-        "version": "1.0.0"
+        "version": "1.1.0"
       },
       "packages": [
         {
@@ -65,14 +65,15 @@
       "release_definition_fingerprints": {
         ".github/workflows/release.yml": "04adc9b92bac844bbc444ab31cbcf957e770d32a3de009fb2c13145990585a07",
         ".releaserc.json": "4e0a6288e9391bfcf27c4881f74eb51fbe25a42729a261ed9b8e656423450a23",
-        "Directory.Packages.props": "0bd7e8e3e6cb6fcad019fbc070a86be84c5d48078ad75ba8b534b2440a5daa7d",
-        "eng/release-package-inventory.json": "401023c2e71d46f22d911e3ac8a125c3d7ee1a0a5ebff35dbb0df4f364e0f329"
+        "Directory.Packages.props": "fd652550e0fabbad76a7d6ba9cbd6eb6e56968cfee10f9b88e8e43d5e1d017f3",
+        "eng/release-package-inventory.json": "401023c2e71d46f22d911e3ac8a125c3d7ee1a0a5ebff35dbb0df4f364e0f329",
+        "references/Hexalith.Builds/Props/Directory.Packages.props": "cfdaf0c5755eaf00d7e4bed07a591e794802f26b8ad17f596904d7d49a08581e"
       },
       "run_id": "42",
       "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "seal": {
         "algorithm": "sha256",
-        "hash": "843ebab75b2ffeaf8a24d352c027373f682a1eb54627e8a35b6ec9110375ef5a",
+        "hash": "c8a12d3710a9f088570f5a37e3f8dc57521e7c855bb1a32b9da57325b187e508",
         "sealed_at": "2026-05-19T00:00:00+00:00"
       },
       "tag": "v1.2.3",
@@ -95,7 +96,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
+            "approved_against_fingerprints_sha256": "7ae5f3b115008821a987d3cf5de39cdfe72ee993323835ade2175924afa56b7e",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -116,7 +117,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "e4aadaed80f0d840c4fdb7af48127a0b22749b1a923ef8011c556a95686c4a4f",
+            "hash": "459aeb55203a72e89c21386b07cd6a502ac3e110601edfda3dacf3e93286095d",
             "sealed_at": "2026-05-17T00:00:00+00:00"
           }
         }
@@ -152,7 +153,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
+            "approved_against_fingerprints_sha256": "7ae5f3b115008821a987d3cf5de39cdfe72ee993323835ade2175924afa56b7e",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -176,7 +177,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "e4aadaed80f0d840c4fdb7af48127a0b22749b1a923ef8011c556a95686c4a4f",
+            "hash": "459aeb55203a72e89c21386b07cd6a502ac3e110601edfda3dacf3e93286095d",
             "sealed_at": "2026-05-17T00:00:00+00:00"
           }
         }
@@ -433,7 +434,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
+            "approved_against_fingerprints_sha256": "7ae5f3b115008821a987d3cf5de39cdfe72ee993323835ade2175924afa56b7e",
             "approved_at": "2025-12-01T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -593,7 +594,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
+            "approved_against_fingerprints_sha256": "7ae5f3b115008821a987d3cf5de39cdfe72ee993323835ade2175924afa56b7e",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -631,7 +632,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
+            "approved_against_fingerprints_sha256": "7ae5f3b115008821a987d3cf5de39cdfe72ee993323835ade2175924afa56b7e",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -703,7 +704,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
+            "approved_against_fingerprints_sha256": "7ae5f3b115008821a987d3cf5de39cdfe72ee993323835ade2175924afa56b7e",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -779,7 +780,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
+            "approved_against_fingerprints_sha256": "7ae5f3b115008821a987d3cf5de39cdfe72ee993323835ade2175924afa56b7e",
             "approved_at": "2026-01-01T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -802,7 +803,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
+            "approved_against_fingerprints_sha256": "7ae5f3b115008821a987d3cf5de39cdfe72ee993323835ade2175924afa56b7e",
             "approved_at": "2024-01-01T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -887,7 +888,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Cli.9.9.9.nupkg",
-            "approved_against_fingerprints_sha256": "ed35dcc3b9dce9f8ee691760fba0ae081ab6fc104d6ef49ba5b310cdd1c8b71f",
+            "approved_against_fingerprints_sha256": "7ae5f3b115008821a987d3cf5de39cdfe72ee993323835ade2175924afa56b7e",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
