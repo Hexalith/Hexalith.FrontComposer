@@ -102,6 +102,15 @@ so that the shipped runtime contains only MCP/runtime responsibilities while beh
 - [x] [Review][Defer] Reject failed-redaction and contradictory result states in the benchmark gate's pass count [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:22] — deferred, pre-existing
 - [x] [Review][Defer] Require unique prompt IDs at load and gate boundaries [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:12] — deferred, pre-existing
 - [x] [Review][Defer] Sanitize all serialized benchmark artifact string fields, not only SanitizedDiagnostics [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkArtifactWriter.cs:32] — deferred, pre-existing
+- [ ] [Review][Patch] Reject skipped or explicit-only facts in the independent benchmark census [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Governance/BenchmarkHarnessGovernanceTests.cs:35]
+- [ ] [Review][Patch] Reject every MCP `SkillBenchmark*` type, including internal and nested types outside the exported Skills surface [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillTypeOrganizationGovernanceTests.cs:95]
+- [ ] [Review][Patch] Pin the retained MCP skill-markdown resource count to exactly 12 [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillResourceTests.cs:224]
+- [ ] [Review][Patch] Complete collectible assembly-context unloading before deleting the packaged-runtime scratch directory [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:83]
+- [ ] [Review][Patch] Restore uniform CRLF line endings after the package-boundary follow-up [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/McpRuntimePackageBoundaryTests.cs:43]
+- [x] [Review][Defer] Replace maintained per-project benchmark commands with the repository's focused direct-executable pattern and always set `DiffEngine_Disabled=true` [tests/README.md:105] — deferred, pre-existing
+- [x] [Review][Defer] Pin the exact 20 v1 prompt IDs instead of count, prefix, and uniqueness only [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:379] — deferred, pre-existing
+- [x] [Review][Defer] Bind approved benchmark baselines to the result corpus, scorer, validator, redaction, and provider hashes before passing the gate [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:33] — deferred, pre-existing
+- [x] [Review][Defer] Add positive cache-reuse evidence so an always-miss cache policy cannot pass the harness [tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:64] — deferred, pre-existing
 
 ## Dev Notes
 

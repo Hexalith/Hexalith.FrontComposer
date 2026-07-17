@@ -1710,3 +1710,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
   summary: Sanitize all serialized benchmark artifact string fields, not only SanitizedDiagnostics.
   evidence: `SkillBenchmarkArtifactWriter.TryBuildArtifact` validates diagnostics and metadata presence before serializing the full result at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkArtifactWriter.cs:32-61`; other caller-controlled string fields are not passed through the sanitizer.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Replace maintained per-project benchmark commands with the repository's focused direct-executable pattern and always disable DiffEngine.
+  evidence: `.github/workflows/nightly.yml:49-53` and `tests/README.md:105-106` retain the pre-existing project-level `dotnet test --filter` pattern; the README command also omits the repository-required `DiffEngine_Disabled=true` environment setting. The Story 11.17c change only retargeted those commands from MCP.Tests to the Bench project.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Pin the exact 20 v1 benchmark prompt IDs.
+  evidence: `PromptSet_LoadsExpectedTwentyIdsByOrdinalOrderingFromFixture` checks only count, a `p` prefix, and uniqueness at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:379-385`; replacing the fixture with different ordered unique IDs still passes. The weak assertion predates the relocation.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Bind approved benchmark baselines to the evidence contract before passing the gate.
+  evidence: `SkillBenchmarkGate.Evaluate` uses only `InitialPassRate` from the approved baseline at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/SkillBenchmarkGate.cs:33`, so mismatched corpus, scorer, validator, redaction, and provider hashes can still produce `Passed`. The mechanically moved behavior predates Story 11.17c.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
+  summary: Add positive cache-reuse verification to the benchmark harness.
+  evidence: The cache tests at `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs:64-130` cover only key changes and cache misses; an implementation of `SkillBenchmarkCachePolicy.CanReuse` that always returns false would remain green. This verification gap predates the relocation.
