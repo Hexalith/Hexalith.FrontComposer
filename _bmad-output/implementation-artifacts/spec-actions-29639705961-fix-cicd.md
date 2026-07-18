@@ -43,7 +43,7 @@ context: []
 - `references/Hexalith.Builds/Props/Directory.Packages.props` -- shared catalog; add the `AngleSharp` pin near the existing alphabetical `A`-block (after `AdaptiveCards.Templating`, before `AspNet.Security.OAuth.Amazon`).
 - `references/Hexalith.Builds/Tools/validate-central-package-versions.ps1` -- format-only validator (blank/`v`-prefixed/malformed version, unresolved MSBuild expr); no ordering requirement, confirmed safe for the new entry.
 - `Directory.Packages.props` (FrontComposer root) -- import shim; must remain untouched/empty of `PackageVersion` items.
-- `references/Hexalith.Builds` (gitlink) -- bump from `e64ae34e50086ae55d47971d70897d579ff18c25` to the new commit containing the pin.
+- `references/Hexalith.Builds` (gitlink) -- bump from `e64ae34e50086ae55d47971d70897d579ff18c25` to `337f023` (`fix/anglesharp-nu1902-decoupled`), a cherry-pick of the AngleSharp pin onto the pre-bump base, not `Hexalith.Builds` `main` tip -- see Spec Change Log.
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs:36` -- existing test whose `expectedVersions` dict enumerates only the 14 migrated pairs (not a closed-catalog assertion); adding `AngleSharp` elsewhere in the shared file does not touch this test.
 
 ## Tasks & Acceptance
@@ -52,13 +52,17 @@ context: []
 - [x] `references/Hexalith.Builds/Props/Directory.Packages.props` -- add `<PackageVersion Include="AngleSharp" Version="1.5.2" />` with a one-line comment citing the advisory -- remediates CVE-2026-54570 at its source instead of masking it.
 - [x] Commit (`fix: pin AngleSharp to 1.5.2 to remediate GHSA-pgww-w46g-26qg`) and push directly to `Hexalith.Builds` `main` -- makes the patched pin resolvable at a commit SHA (human-approved direct path for this repo).
 - [x] `references/Hexalith.Builds` gitlink in FrontComposer -- bump to the new commit, on a new `fix/` branch -- pulls the patched catalog into FrontComposer's restore graph.
-- [x] Open a PR from that branch targeting `main` -- respects FrontComposer's no-direct-commit-to-`main` rule.
+- [x] Open a PR from that branch targeting `main` -- respects FrontComposer's no-direct-commit-to-`main` rule. (PR #69, then corrected via follow-up PR #70 -- see Spec Change Log.)
 
 **Acceptance Criteria:**
 - Given `dotnet restore Hexalith.FrontComposer.slnx` on the fix branch, when Restore evaluates the three previously-failing projects, then it completes with no `NU1902` and resolves `AngleSharp` >= 1.5.0.
 - Given the FrontComposer root `Directory.Packages.props`, when inspected after the change, then it still contains zero `PackageVersion` elements.
 - Given the `Category=Governance` trait filter, when run after the change, then `CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog` still passes unmodified.
 - Given the opened PR, when its CI run executes the `build-and-test` job, then `Restore` succeeds (previously red at that exact step in run 29639705961).
+
+## Spec Change Log
+
+- 2026-07-18: PR #69 merged (by human) pointing the gitlink at `Hexalith.Builds` `main` tip (`2542a64`), before a discovered decoupling correction could be pushed. That tip had, in the meantime, fast-forwarded past an unrelated in-flight EventStore 3.71.0 catalog bump not yet consistent with FrontComposer's own `EventStore`/`Tenants`/`Parties` submodule pins, breaking `main` CI with `NU1109`/`NU1102`. Opened follow-up PR #70 re-pointing the gitlink at `Hexalith.Builds@337f023` (the `AngleSharp` pin cherry-picked onto the pre-bump base, branch `fix/anglesharp-nu1902-decoupled`), verified clean (restore exit 0, Governance 167/167) before pushing. KEEP: the AngleSharp pin itself and the zero-local-PackageVersion root shim were correct from the start; only the gitlink target needed correction.
 
 ## Design Notes
 
