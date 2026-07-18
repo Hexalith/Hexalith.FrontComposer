@@ -58,6 +58,7 @@
           "sbom_component": "Hexalith.FrontComposer.Contracts",
           "signing_status": "verified",
           "symbol_artifact": "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.snupkg",
+          "symbol_checksum": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
           "timestamp_status": "verified",
           "version": "1.2.3"
         }

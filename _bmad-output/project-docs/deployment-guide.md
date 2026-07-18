@@ -1,8 +1,9 @@
 # Hexalith.FrontComposer — Deployment / Release Guide
 
-> **Generated:** 2026-06-02 · deep scan. **Updated 2026-07-16 (REL-AI-1 truth-state correction)** after live
-> v3.2.1/v3.2.2 evidence proved the G1 post-publication workflow is not an FR24 publication gate and
-> repository inspection confirmed the approved REL-4 freeze guard is not yet operational.
+> **Generated:** 2026-06-02 · deep scan. **Updated 2026-07-18 (REL-4/REL-3 implementation)** after live
+> v3.2.1/v3.2.2 evidence proved the G1 post-publication workflow is not an FR24 publication gate.
+> The REL-4 freeze guard is now implemented in `release.yml` (first live frozen-run verification
+> pending CI).
 > FrontComposer ships as **NuGet packages**, not a deployed service.
 > "Deployment" here means the automated **semantic-release → NuGet** pipeline
 > ([.releaserc.json](.releaserc.json)) driven by the shared reusable **Hexalith.Builds** workflows.
@@ -26,21 +27,27 @@ There are **no Dockerfiles / container images** for FrontComposer's own projects
 ## CI/CD model and current release freeze (REL-3, 2026-07-15)
 
 FrontComposer's primary CI/CD now delegates to the same reusable **Hexalith.Builds** workflows as
-**Hexalith.Tenants**, so every Hexalith module shares one CI/CD operating model. REL-2's current G1
-implementation uses 3-layer split-homing because the shared reusable `domain-release.yml` exposes no
-evidence hook. This table describes the **current implementation**, not an FR24-compliant target. The
-Release Owner has frozen publish-capable releases until REL-3 moves authorization ahead of publication:
+**Hexalith.Tenants**, so every Hexalith module shares one CI/CD operating model. REL-3 (2026-07-18)
+moved FR24 authorization ahead of publication: the exact-artifact chain runs inside semantic-release's
+`prepareCmd`/`publishCmd`, and the supplemental workflow only verifies published bytes. Publication
+remains frozen (REL-4 gate) until a real release proves the chain end-to-end and the Release Owner
+enables it (REL-5):
 
 | Layer | Home | Covers |
 |---|---|---|
 | **CI** | `ci.yml` → reusable `domain-ci.yml` with `run-consumer-validation: true` + `scripts/` | build + Tier 1 unit tests + coverage evidence; FR24 AC1 inventory + AC6 consumer-boundary validation |
 | **Quality (supplemental)** | `quality.yml` | FrontComposer-only gates the reusable does not run — Gate 1 (Contracts netstandard2.0), Gate 2a (CLI smoke), Gate 2b (Governance), Gate 2c (Contract pacts + validators + stale-pact-diff), Gate 2d (docs), trait-filtered test lanes, quarantine/CI-duration telemetry, Playwright a11y/visual |
-| **Release (publish)** | `release.yml` → reusable `domain-release.yml` via `workflow_run` | semantic-release pack + publish only |
-| **Release evidence (current G1)** | `release-evidence.yml` (`workflow_run` after `Release`) | post-publication reconstructed evidence and diagnostics; cannot authorize or prove already-published bytes |
+| **Release (publish)** | `release.yml` → `freeze-guard` job → reusable `domain-release.yml` via `workflow_run` | REL-4 fail-closed freeze gate (default frozen), then semantic-release pack + publish |
+| **Release evidence (REL-3)** | `release-evidence.yml` (`workflow_run` after `Release`, any conclusion) | independent post-publication verification: downloads NuGet/GitHub bytes, compares against the sealed manifest, fails on divergence; authorization happens pre-publication in `release_prepublish.py` |
 
-### Release freeze control (REL-4 approved; implementation pending)
+### Release freeze control (REL-4 implemented 2026-07-18; live CI verification pending)
 
-`REL-4` defines the approved fail-closed release-freeze control, but implementation and live verification remain pending. The current `release.yml` does not yet contain the `freeze-guard` and must be treated as publish-capable. Publication is prohibited administratively until REL-4 lands. The runbook below is the approved target and becomes active only after REL-4 implementation:
+`REL-4`'s fail-closed release-freeze control is implemented: `release.yml` now contains the
+`freeze-guard` job gating the `release` job, so publication is technically disabled by default.
+Governance tests `ReleaseWorkflow_PublishFreezeGate_IsFailClosedByDefault` and
+`Workflows_HaveNoPublishPathOutsideGatedReleaseWorkflow` pin the gate. The first CI-authoritative
+frozen Release run URL (freeze-guard success, release-job skip, no publication side effect) is
+recorded in the REL-4 story after the next push-CI success on `main`. The active runbook:
 
 - A `freeze-guard` job evaluates the repository/organization Actions variable
   **`HEXALITH_RELEASE_PUBLISH_ENABLED`** with an **exact POSIX string comparison in bash**
@@ -74,8 +81,8 @@ Release Owner has frozen publish-capable releases until REL-3 moves authorizatio
 | `commitlint.yml` | PR **and** push to `main` | reusable `commitlint.yml@main` (Tenants parity; push guards direct-to-main commits) |
 | `ci.yml` | push / PR to `main` | reusable `domain-ci.yml@main`: build (Release, `-warnaserror`) · `scripts/` consumer validation · Tier 1 unit tests + coverage |
 | `quality.yml` | push / PR to `main` | supplemental FrontComposer gates (Gate 1/2a/2b/2c/2d, trait-filtered test lanes, telemetry, a11y/visual) — **CI-authoritative for these gates** |
-| `release.yml` | `workflow_run` after CI success (push) | reusable `domain-release.yml@main`: semantic-release publish (no container images) |
-| `release-evidence.yml` | `workflow_run` after `Release` completes | current G1 post-publication reconstructed evidence; REL-3 target is downloaded NuGet/GitHub verification only |
+| `release.yml` | `workflow_run` after CI success (push) | REL-4 `freeze-guard` (default frozen) → reusable `domain-release.yml@main`: semantic-release publish (no container images) |
+| `release-evidence.yml` | `workflow_run` after `Release` completes (any conclusion) | REL-3 independent verification: downloaded NuGet/GitHub byte comparison against the sealed manifest |
 | `nightly.yml` | schedule | nightly checks (incl. skill-corpus prompt benchmark) |
 | `ide-parity-revalidation.yml` | schedule / drift | revalidates `docs/ide-parity-matrix.json` against IDE behavior |
 | `mutation-property-nightly.yml` | schedule | Stryker mutation + FsCheck property suites |
@@ -105,72 +112,88 @@ Plugins: `commit-analyzer` → `release-notes-generator` → `changelog` → `ex
 
 ## The release pipeline — behavior
 
-### Current publish path (`release.yml` → reusable `domain-release.yml`) — not FR24 compliant
+### Publish path (`release.yml` → freeze-guard → reusable `domain-release.yml`) — REL-3 pre-publication gate
 
 `release.yml` runs from **`workflow_run` after a successful CI push** (guarded
 `conclusion == 'success' && event == 'push'`, so PR/scheduled CI runs never release, and a failed CI
-can never publish). It delegates to `domain-release.yml@main` with `test-projects: ''` (CI already
-gated the same head — the release path does not duplicate test compute). The reusable runs
-`npm ci` → `npm audit signatures` → build → `npx semantic-release`, which drives this repo's
-`.releaserc.json`:
+can never publish). The REL-4 `freeze-guard` job then gates the `release` job (default frozen; see
+above). When enabled, it delegates to `domain-release.yml@main` with `test-projects: ''` (CI already
+gated the same head). The reusable runs `npm ci` → `npm audit signatures` → build →
+`npx semantic-release`, which drives this repo's `.releaserc.json`:
 
-- **`prepareCmd`:** `python3 eng/pack_release_packages.py --version ${nextRelease.version} --output ./nupkgs` — packs the inventory package set (`.nupkg` + `.snupkg`).
-- **`publishCmd`:** `dotnet nuget push ./nupkgs/*.nupkg` then `./nupkgs/*.snupkg` to nuget.org with `$NUGET_API_KEY --skip-duplicate`.
+- **`prepareCmd`:** `python3 eng/release_prepublish.py prepare --version ${nextRelease.version}` —
+  the repository-owned FR24 exact-artifact chain, fail-closed at every phase **before any
+  publication side effect**: pack once (`scripts/pack-release-packages.py`) → inventory validation →
+  7-project release test lane → package-consumer validation (Contracts-only + Shell/UI boundaries)
+  → SBOM + required-symbol check → sign + RFC 3161 timestamp the **exact** candidate `.nupkg` into
+  `nupkgs-signed/` and verify (`dotnet nuget verify --all`; **missing credentials, unsigned
+  packages, invalid chains, or missing timestamps abort — no record-and-proceed**) → benchmark
+  candidate evidence → checksums → `prepare-manifest` (attestation binding per AC18) →
+  `seal-manifest` → `verify-manifest` → `classify-release --require-publishable` (only
+  `classification=ready` + `publish_authorized=true` lets semantic-release continue).
+- **`publishCmd`:** `python3 eng/release_prepublish.py publish --version ${nextRelease.version}` —
+  re-verifies the sealed manifest and readiness immediately before pushing, audits every
+  manifest row (path shape + exact sha256), then pushes **only the manifest-authorized signed
+  bytes** (`nupkgs-signed/*.nupkg` + matching `nupkgs/*.snupkg`) with no `--skip-duplicate`; any
+  divergence writes a typed `partial-publish-incident.json` and fails the release (AC14).
+- **`@semantic-release/github`:** attaches the signed packages, symbols, and the full
+  `release-evidence/` chain as **durable assets at initial release creation** (AC12).
 
-This path pushes unsigned `nupkgs/*.nupkg` before any FR24 manifest/readiness decision. It is retained
-here as an accurate description of the current code, not as release authorization.
+Attestation (AC18): provenance attestation over the exact signed candidates requires the upstream
+BUILD-REL-1 governed contract (candidate phase + `attest-build-provenance` in the shared workflow);
+until it lands, classification fails closed unless the Release Owner seals the bounded
+`approved-unsupported` fallback record — so the pipeline cannot silently publish unattested bytes.
 
-### Current G1 release evidence (`release-evidence.yml`) — diagnostic only
+### Independent post-publication verification (`release-evidence.yml`)
 
-Re-homed from the bespoke `release.yml` (REL-1) into a supplemental workflow because the reusable
-`domain-release.yml` has no evidence hook. It runs from `workflow_run` **after Release completes**,
-resolves the release tag, and over a deterministic **re-pack** of the inventory produces:
+Refactored by REL-3 from the withdrawn G1 reconstructed-evidence model into **download-and-compare
+verification only** — it never rebuilds, repacks, re-signs, or attests. It runs from `workflow_run`
+when **Release completes with any conclusion** (success, failure, or cancellation — AC19):
 
-1. `release_evidence.py test-results` (`release-evidence/test-results.json`) — release tests re-run excluding `Category=Quarantined`.
-2. `release_evidence.py inventory` (`package-inventory.json`) → `actions/attest-build-provenance@v4` over the re-packed `.nupkg` (AC9).
-3. CycloneDX **SBOM** (`sbom.json`), then — when the signing cert secret is provisioned — the re-packed `.nupkg` are signed into **`nupkgs-signed/`** (`dotnet nuget sign`, RFC 3161 timestamp) and verified (`dotnet nuget verify --all -v normal`); the path-sanitized transcript `signing-verification.txt` feeds `prepare-manifest`, so each package's `signing_status`/`timestamp_status` (**both blocking checks**) become `verified`. When absent, a **blocking readiness reason** is recorded (AC2). See [Provisioning the signing certificate](#provisioning-the-signing-certificate).
-4. **LLM benchmark candidate evidence** (`llm_benchmark.py` validate-prompt-set → budget-status → run-benchmark, offline / **no provider spend**) → `benchmark-summary.json`, whose hash is bound into the manifest (a required field; the pass/fail benchmark *gate* remains a nightly concern).
-5. `checksums` (over `nupkgs-signed/`) → `prepare-manifest` (`--signing-verification`, `--benchmark-summary-hash`) → `seal-manifest` → `verify-manifest` — the sealed manifest binds commit SHA / tag / run-id / workflow-ref / package-set fingerprint / version / sbom hash / benchmark summary hash.
-6. `classify-release` **without** `--require-publishable` (G1 = advisory for the release that just published).
-7. `gh release upload <tag> release-evidence/*.json` + `upload-artifact` archives `release-evidence/**` (30-day retention).
+1. Resolves the release tag (parent-aware; a run with no tag and no side effects is a clean green
+   no-op — the expected shape for frozen REL-4 runs and non-releasing pushes).
+2. Downloads the GitHub Release assets; **missing durable evidence assets on the release itself
+   fail the run** (a 30-day Actions artifact alone is non-compliant).
+3. Verifies the sealed manifest over the downloaded bytes, enforces the retroactive-authorization
+   ban (the downloaded `release-readiness.json` must already show `publish_authorized=true` — the
+   verifier never runs `classify-release`), downloads the same versions from nuget.org, and
+   three-way compares sha256 (NuGet bytes ⇄ GitHub assets ⇄ sealed manifest).
+4. `dotnet nuget verify --all` over the downloaded NuGet bytes with the public trust bundle only.
+5. Any divergence (packages missing on one side, altered assets, unsigned bytes) writes a typed
+   partial-publication incident and fails; no compliant ledger disposition is possible until
+   owner-led reconciliation (AC14/AC19).
+6. Emits `ledger-record.json` — the machine-readable disposition proposal the Release Owner uses to
+   update the [REL-AI-1 ledger](../implementation-artifacts/rel-ai-1-release-evidence-ledger.md)
+   (the workflow never commits to the repository).
 
-**Corrected interpretation (approved 2026-07-15):** G1 is not a publication gate. It runs after NuGet
-and GitHub side effects, signs a reconstruction rather than the published packages, invokes
-`classify-release` without `--require-publishable`, and its unsigned `require_or_record` path can finish
-green with an invalid manifest and blocked readiness. The phrase “fails closed on the next release” is
-withdrawn: the current release workflow contains no check that consumes the prior result. The evidence
-is useful for diagnosis and historical reconciliation only. The required Hexalith.Builds dependency is
-tracked in
-[g2-hexalith-builds-inline-pre-publish-gate-request.md](../planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md). It is **not** implemented in this repo.
-
-### REL-3 target release path
-
-The publish freeze clears only when the implemented path is:
+### Required artifact invariant (implemented)
 
 ```text
 Pack once → validate inventory/tests/consumers → generate symbols/SBOM
-→ sign + RFC 3161 timestamp exact .nupkg → verify → checksum all artifacts/evidence
-→ seal + verify manifest → classify-release --require-publishable
-→ publish those same authorized bytes → verify downloaded NuGet/GitHub bytes
+→ sign + RFC 3161 timestamp exact .nupkg → verify → attest (or sealed owner fallback)
+→ checksum all artifacts/evidence → seal + verify manifest
+→ classify-release --require-publishable → publish those same authorized bytes
+→ verify downloaded NuGet/GitHub bytes
 ```
 
-The shared Hexalith.Builds workflow must forward signing credentials and timestamp configuration to
-semantic-release. FrontComposer's repository-owned `prepareCmd` performs authorization; `publishCmd`
-re-verifies and pushes only manifest-authorized paths. The GitHub plugin attaches the durable evidence
-bundle during initial release creation. The supplemental workflow no longer repacks or signs; it
-downloads and verifies what NuGet and GitHub actually expose.
+The publish freeze clears only when this path proves itself on a real release: the upstream
+BUILD-REL-1 governed contract (or the owner-approved bounded contingency) supplies signing
+secrets/timestamp input/attestation to semantic-release, the Release Owner enables
+`HEXALITH_RELEASE_PUBLISH_ENABLED`, and downloaded-byte verification passes (REL-5 owns that
+enablement and REL-AI-1 closure).
 
 ### FR24 status — why `REL-AI-1` stays open
 
 | Target | AC | Status |
 |---|---|---|
-| Package-consumer validation (Contracts-only vs Shell/UI boundaries) | AC1/AC6 | **Implemented** — `scripts/` trio, run by `domain-ci.yml` `run-consumer-validation: true` |
-| SBOM + checksums + manifest diagnostics | AC3/AC4–5/AC8 | **G1 diagnostic only** — produced over a re-pack after publication; v3.2.1/v3.2.2 manifests are invalid |
-| Certificate signing + RFC 3161 timestamp | AC2 | **Not satisfied** — current secrets affect only the post-publication re-pack; published v3.2.1/v3.2.2 packages are unsigned |
-| Attestation | AC9 | **Not sufficient for FR24** — current subject is the reconstructed package set, not exact published bytes |
-| Exact-artifact pre-publish gate (`--require-publishable`) | REL-3 | **Required/blocking** — implement before the next release; Hexalith.Builds signing forwarding is mandatory unless the bounded contingency is approved |
-| Durable initial GitHub Release evidence | AC8/AC12 | **Not satisfied** — immutable v3.2.1/v3.2.2 releases have package assets only; evidence remains a 30-day Actions artifact |
-| Release Owner closure evidence | REL-AI-1 | **Pending** — only a real release authorized before publication and verified after publication can close the action |
+| Package-consumer validation (Contracts-only vs Shell/UI boundaries) | AC1/AC6 | **Implemented** — `scripts/` trio, run by `domain-ci.yml` `run-consumer-validation: true` and re-run against the exact candidates in `release_prepublish.py prepare` |
+| SBOM + checksums + sealed/verified manifest | AC3/AC4–5/AC8 | **Implemented pre-publication** (`release_prepublish.py prepare`); v3.2.1/v3.2.2 manifests remain invalid historical records |
+| Certificate signing + RFC 3161 timestamp of the exact publishable bytes | AC2 | **Implemented fail-closed in `prepare`**; blocked until REL-5 provisions the production signing identity (published v3.2.1/v3.2.2 packages remain unsigned) |
+| Attestation over exact signed candidates | AC9/AC18 | **Enforced at classification** — requires the upstream BUILD-REL-1 governed contract or the sealed owner-approved fallback; fails closed otherwise |
+| Exact-artifact pre-publish gate (`--require-publishable`) | REL-3 | **Implemented** — `prepareCmd` ends in `classify-release --require-publishable`; `publishCmd` re-verifies before pushing |
+| Durable initial GitHub Release evidence | AC8/AC12 | **Implemented** — `@semantic-release/github` attaches packages, symbols, and the evidence chain at initial release creation; the verifier fails when they are absent |
+| Published-byte verification | AC13/AC19 | **Implemented** — `release-evidence.yml` downloads NuGet + GitHub bytes and compares against the sealed manifest on every Release completion |
+| Release Owner closure evidence | REL-AI-1 | **Pending (REL-5)** — only a real release authorized before publication and verified after publication can close the action; no such release exists yet |
 
 Affected releases and their authoritative run/evidence links are recorded in the
 [REL-AI-1 release-evidence ledger](../implementation-artifacts/rel-ai-1-release-evidence-ledger.md).
@@ -181,14 +204,14 @@ Affected releases and their authoritative run/evidence links are recorded in the
 |---|---|---|
 | `NUGET_API_KEY` | secret (forwarded to `domain-release.yml`) | nuget.org push |
 | `GITHUB_TOKEN` | provided | GitHub Release + evidence asset upload |
-| `NUGET_SIGNING_CERTIFICATE_BASE64` / `NUGET_SIGNING_CERTIFICATE_PASSWORD` | secret (required for FrontComposer release) | REL-3 target: forwarded by the reusable workflow to semantic-release and used to sign the exact publishable packages; current G1 uses them only on a re-pack |
+| `NUGET_SIGNING_CERTIFICATE_BASE64` / `NUGET_SIGNING_CERTIFICATE_PASSWORD` | secret (required for FrontComposer release) | consumed by `release_prepublish.py prepare` to sign the exact publishable packages; must be forwarded to semantic-release by the upstream BUILD-REL-1 governed contract (absent credentials abort preparation) |
 | `NUGET_SIGNING_TIMESTAMPER` | reusable-workflow input / repository configuration (required) | approved RFC 3161 timestamp authority for the exact publishable packages |
 
 ### Non-publishing signing validation
 
-The current G1 workflow signs a **re-pack** and therefore cannot clear FR24, even when its signing step
-passes. The following self-signed chain recipe is retained only for local/non-publishing validation of
-the mechanics. It is not approval for a production author identity. The Release Owner must select and
+The pre-publication chain signs the exact candidates fail-closed; the recipe below exists so the
+mechanics can be validated locally (`release_prepublish.py prepare --non-publishing`) without a
+production identity. It is not approval for a production author identity. The Release Owner must select and
 approve the production signing identity, trust model, storage/rotation plan, and timestamp authority.
 A bare self-signed leaf does not work with `dotnet nuget sign` (`NU3018 InvalidBasicConstraints`).
 

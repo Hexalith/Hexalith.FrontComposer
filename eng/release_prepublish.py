@@ -37,6 +37,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import datetime as _dt
 import hashlib
 import json
 import os
@@ -69,6 +70,7 @@ TEST_PROJECTS = [
 ]
 
 _PATH_SANITIZER = re.compile(r"/(?:home|Users|tmp|var)/[^\s'\"]*")
+_SHA256_RE = re.compile(r"^[a-fA-F0-9]{64}$")
 
 
 class PhaseFailure(Exception):
@@ -263,11 +265,15 @@ def _codesign_bundle_path() -> pathlib.Path:
     raise PhaseFailure("sign", f"SDK base path not found for version {sdk_version}")
 
 
-def phase_sign_and_verify() -> None:
+def phase_sign_and_verify(non_publishing: bool) -> None:
     """Sign + RFC 3161 timestamp the exact candidates, then verify. Fail-closed (AC5).
 
     Unlike G1 there is NO record-and-proceed: absent credentials, unsigned packages,
     invalid chains, or missing timestamps abort preparation before any side effect.
+    In ``--non-publishing`` mode the codesignctl.pem trust append is reverted after
+    verification so a local validation CA is never left permanently trusted for
+    code signing on the developer machine (review BH-9); CI runners are ephemeral
+    and keep the plain append.
     """
     cert_base64 = os.environ.get("NUGET_SIGNING_CERTIFICATE_BASE64", "")
     cert_password = os.environ.get("NUGET_SIGNING_CERTIFICATE_PASSWORD", "")
@@ -285,24 +291,32 @@ def phase_sign_and_verify() -> None:
         })
         raise PhaseFailure("sign", "signing certificate secret is not provisioned; preparation fails closed")
 
-    cert_path = pathlib.Path(tempfile.mkstemp(suffix=".pfx")[1])
-    root_pem = pathlib.Path(tempfile.mkstemp(suffix=".pem")[1])
+    cert_fd, cert_name = tempfile.mkstemp(suffix=".pfx")
+    os.close(cert_fd)
+    pem_fd, pem_name = tempfile.mkstemp(suffix=".pem")
+    os.close(pem_fd)
+    cert_path = pathlib.Path(cert_name)
+    root_pem = pathlib.Path(pem_name)
+    bundle_backup: bytes | None = None
+    bundle: pathlib.Path | None = None
     try:
         cert_path.write_bytes(base64.b64decode(cert_base64))
         # Recover the issuing CA from the PFX chain so Linux `dotnet nuget sign/verify`
         # (which trusts code-signing roots only via the SDK codesignctl.pem fallback
         # bundle) can build and trust the chain. Legacy retry covers PKCS#12 legacy
         # ciphers; a PFX without its chain fails closed on the certificate guard below.
+        # The password rides env indirection, never argv (/proc-visible — review BH-10).
+        openssl_env = {**os.environ, "FC_SIGNING_CERT_PASSWORD": cert_password}
         recovered = subprocess.run(
             ["openssl", "pkcs12", "-in", str(cert_path), "-cacerts", "-nokeys",
-             "-passin", f"pass:{cert_password}", "-out", str(root_pem)],
-            capture_output=True, check=False,
+             "-passin", "env:FC_SIGNING_CERT_PASSWORD", "-out", str(root_pem)],
+            capture_output=True, check=False, env=openssl_env,
         )
         if recovered.returncode != 0:
             subprocess.run(
                 ["openssl", "pkcs12", "-in", str(cert_path), "-cacerts", "-nokeys", "-legacy",
-                 "-passin", f"pass:{cert_password}", "-out", str(root_pem)],
-                capture_output=True, check=False,
+                 "-passin", "env:FC_SIGNING_CERT_PASSWORD", "-out", str(root_pem)],
+                capture_output=True, check=False, env=openssl_env,
             )
         if "BEGIN CERTIFICATE" not in root_pem.read_text(encoding="utf-8", errors="replace"):
             raise PhaseFailure(
@@ -314,12 +328,24 @@ def phase_sign_and_verify() -> None:
         if not bundle.is_file():
             raise PhaseFailure("sign", "NuGet code-signing trust bundle codesignctl.pem not found")
         chain_text = "\n" + root_pem.read_text(encoding="utf-8", errors="replace")
+        if non_publishing and os.access(bundle, os.R_OK):
+            bundle_backup = bundle.read_bytes()
         if os.access(bundle, os.W_OK):
             with bundle.open("a", encoding="utf-8") as handle:
                 handle.write(chain_text)
         else:
-            subprocess.run(["sudo", "tee", "-a", str(bundle)], input=chain_text.encode("utf-8"),
-                           stdout=subprocess.DEVNULL, check=True)
+            # `sudo -n`: fail immediately with a typed message instead of hanging the
+            # run on an interactive password prompt (review BH-9).
+            escalated = subprocess.run(
+                ["sudo", "-n", "tee", "-a", str(bundle)], input=chain_text.encode("utf-8"),
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
+            )
+            if escalated.returncode != 0:
+                raise PhaseFailure(
+                    "sign",
+                    "codesignctl.pem is not writable and passwordless sudo is unavailable; "
+                    "grant write access to the SDK trust bundle or run with sudo -n capability",
+                )
 
         signed_root = REPO_ROOT / SIGNED_DIR
         signed_root.mkdir(parents=True, exist_ok=True)
@@ -367,6 +393,22 @@ def phase_sign_and_verify() -> None:
     finally:
         cert_path.unlink(missing_ok=True)
         root_pem.unlink(missing_ok=True)
+        if bundle_backup is not None and bundle is not None:
+            # Non-publishing runs restore the pristine trust bundle after
+            # verification (review BH-9); best-effort with an explicit warning so a
+            # failed restore is never silent.
+            try:
+                if os.access(bundle, os.W_OK):
+                    bundle.write_bytes(bundle_backup)
+                else:
+                    restore = subprocess.run(
+                        ["sudo", "-n", "tee", str(bundle)], input=bundle_backup,
+                        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False,
+                    )
+                    if restore.returncode != 0:
+                        log("sign", "warning: could not restore codesignctl.pem; the local validation CA remains appended")
+            except OSError:
+                log("sign", "warning: could not restore codesignctl.pem; the local validation CA remains appended")
 
 
 def phase_benchmark() -> None:
@@ -456,6 +498,51 @@ def phase_manifest(version: str, tag: str) -> None:
         ])
 
 
+def _validation_fallback_args() -> list[str]:
+    """Local-validation AC18 fallback inputs (non-publishing mode only).
+
+    Without an attestation bundle, classification blocks unless a COMPLETE sealed
+    ``approved-unsupported`` fallback record exists. A local validation run exercises
+    that sealing machinery end-to-end with a clearly-labeled, short-lived record that
+    is NOT a Release Owner approval: the run stays in the ``local-candidate`` context,
+    so ``publish_authorized`` remains false and nothing it produces can authorize a
+    real release. The publish-capable path never uses these values — there the
+    fallback fields come from the Release Owner-sealed repository variables.
+    """
+    # Read the digest from the typed JSON output, not stdout scraping — a stray
+    # warning line would silently swap the digest (review BH-21).
+    digest_fd, digest_name = tempfile.mkstemp(suffix=".json")
+    os.close(digest_fd)
+    try:
+        run("classify", [
+            "python3", "eng/release_evidence.py", "fallback-digest",
+            "--root", ".", "--output", digest_name,
+        ], capture=True)
+        with open(digest_name, "r", encoding="utf-8") as handle:
+            digest = str(json.load(handle).get("digest_sha256", ""))
+    finally:
+        os.unlink(digest_name)
+    if not _SHA256_RE.fullmatch(digest):
+        raise PhaseFailure("classify", "fallback-digest did not produce a well-formed sha256 digest")
+    evidence_doc = REPO_ROOT / EVIDENCE_DIR / "attestation-unavailable.md"
+    evidence_doc.write_text(
+        "# Attestation unavailable — local non-publishing validation\n\n"
+        "This record is produced by `release_prepublish.py prepare --non-publishing` to\n"
+        "exercise the AC18 sealed-fallback machinery locally. It is NOT a Release Owner\n"
+        "approval and cannot authorize publication (local-candidate context;\n"
+        "`publish_authorized=false`). Real releases require the upstream governed\n"
+        "attestation bundle or the Release Owner-sealed fallback variables.\n",
+        encoding="utf-8", newline="\n")
+    now = _dt.datetime.now(_dt.timezone.utc)
+    return [
+        "--fallback-approver", "local-validation (non-publishing; not a Release Owner approval)",
+        "--fallback-approved-at", (now - _dt.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "--fallback-expires-at", (now + _dt.timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "--fallback-approved-against-fingerprints-sha256", digest,
+        "--fallback-scope", "local non-publishing validation run only",
+    ]
+
+
 def phase_classify(non_publishing: bool) -> None:
     context = context_env()
     cmd = [
@@ -469,12 +556,30 @@ def phase_classify(non_publishing: bool) -> None:
         "--ref", context["ref"],
         "--ref-protected", context["ref_protected"],
         "--semantic-release-state", "matches",
+        # Same-version concurrency is controlled upstream of this command: release.yml
+        # serializes Release runs (concurrency group, cancel-in-progress false), the
+        # workflow_run trigger is single-flight per CI success, and semantic-release
+        # itself fails before publishCmd when the computed tag already exists. There is
+        # no in-process probe to consume here; every other blocking check (manifest,
+        # signing, attestation, context, inventory) remains evidence-derived.
+        "--concurrent-same-version", "false",
         "--require-publishable",
     ]
     if non_publishing:
         # Honest local validation: the local-candidate context blocker is the ONLY
-        # tolerated blocker; publish_authorized stays false in the readiness JSON.
+        # tolerated blocker (--dry-run-clean-exit exits 0 solely when the underlying
+        # evidence would classify ready/fallback-approved in a trusted context);
+        # publish_authorized stays false in the readiness JSON. The validation-scoped
+        # approval and fallback inputs below make a HEALTHY candidate reach that state
+        # while remaining unauthorized; a broken candidate still fails closed.
         cmd.extend(["--dry-run", "true", "--dry-run-clean-exit"])
+        cmd.extend([
+            "--owner-approved", "true",
+            "--approver", "local-validation (non-publishing; not a Release Owner approval)",
+            "--approval-mechanism", "non-publishing validation run; publication remains frozen and unauthorized",
+        ])
+        if os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported") != "attested":
+            cmd.extend(_validation_fallback_args())
     else:
         # REL-3 AC20 approval mechanism: the Release Owner's authorization is the REL-4
         # freeze gate — the gated release.yml freeze-guard (vars.HEXALITH_RELEASE_PUBLISH_ENABLED
@@ -482,16 +587,29 @@ def phase_classify(non_publishing: bool) -> None:
         # reaching this publish-capable prepareCmd proves the owner-controlled variable enabled
         # the run. Outside that context the classifier still fails closed on the
         # non-trusted context blocker regardless of these values.
+        mechanism = "vars.HEXALITH_RELEASE_PUBLISH_ENABLED exactly 'true' via the REL-4 freeze-guard gate in release.yml"
+        run_id = os.environ.get("GITHUB_RUN_ID", "")
+        if run_id:
+            # Bind the asserting run's identity into the recorded mechanism so the
+            # readiness evidence is traceable to a concrete gated execution (review BH-13).
+            mechanism += f" (asserted by run {run_id})"
         cmd.extend([
             "--owner-approved", "true",
             "--approver", "release-owner (HEXALITH_RELEASE_PUBLISH_ENABLED custody)",
-            "--approval-mechanism",
-            "vars.HEXALITH_RELEASE_PUBLISH_ENABLED exactly 'true' via the REL-4 freeze-guard gate in release.yml",
+            "--approval-mechanism", mechanism,
         ])
     run("classify", cmd)
 
 
 def cmd_prepare(args: argparse.Namespace) -> int:
+    # Stale-evidence guard (review EC-9): a leftover release-evidence/ (or benchmark
+    # artifact) from a prior run must never satisfy a later existence guard and get
+    # sealed into a fresh manifest. Every prepare starts from empty evidence, exactly
+    # like nupkgs/ and TestResults/.
+    for stale in (EVIDENCE_DIR, pathlib.Path("artifacts") / "benchmark"):
+        target = REPO_ROOT / stale
+        if target.exists():
+            shutil.rmtree(target)
     (REPO_ROOT / EVIDENCE_DIR).mkdir(parents=True, exist_ok=True)
     tag = f"v{args.version}"
     phase_build()
@@ -500,7 +618,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
     phase_tests()
     phase_consumer_validation()
     phase_sbom_and_symbols(args.version)
-    phase_sign_and_verify()
+    phase_sign_and_verify(args.non_publishing)
     phase_benchmark()
     phase_checksums()
     phase_manifest(args.version, tag)
@@ -530,6 +648,23 @@ def _record_incident(phase: str) -> None:
          "--classification", "partial-publish-incident"],
         cwd=REPO_ROOT, check=False,
     )
+    # Publisher-side durability (review BH-4): when the publish aborts here,
+    # semantic-release stops before @semantic-release/github can attach any asset and
+    # the runner is discarded — so surface the sanitized incident record in the job
+    # log, the one durable trace the domain-release run keeps. The independent
+    # verifier re-derives the divergence from published state regardless.
+    if incident.is_file():
+        log("publish", f"incident record: {sanitize_paths(incident.read_text(encoding='utf-8')).strip()}")
+
+
+def _confine_to_repo(package_id: str, raw_path: str) -> pathlib.Path:
+    """Reject absolute or root-escaping manifest paths before any byte audit (review BH-12)."""
+    candidate = pathlib.Path(raw_path)
+    resolved_root = REPO_ROOT.resolve()
+    if candidate.is_absolute() or not (resolved_root / candidate).resolve().is_relative_to(resolved_root):
+        _record_incident("post-seal-verification")
+        raise PhaseFailure("publish-verify", f"{package_id}: manifest path escapes the repository root")
+    return candidate
 
 
 def cmd_publish(args: argparse.Namespace) -> int:
@@ -558,38 +693,47 @@ def cmd_publish(args: argparse.Namespace) -> int:
     if not rows:
         raise PhaseFailure("publish-verify", "sealed manifest contains no package rows")
     expected_version = args.version
-    checksums_payload = read_json(EVIDENCE_DIR / "checksums.json")
-    checksum_by_path = {
-        item["path"]: item["sha256"]
-        for item in checksums_payload.get("files", [])
-        if isinstance(item, dict)
-    }
 
     # Exact-byte pre-push audit: every manifest-authorized artifact must exist and
-    # hash-match its sealed checksum. Any divergence is a post-seal mutation.
+    # hash-match its SEALED checksum (packages and symbols both live in the sealed
+    # manifest rows — review BH-1/VG-3 removed the unsealed checksums.json indirection).
+    # Any divergence is a post-seal mutation and fails before any push.
     push_plan: list[tuple[str, pathlib.Path]] = []
     for row in rows:
+        package_id = str(row.get("package_id", "<unknown>"))
         if str(row.get("version", "")) != expected_version:
             _record_incident("post-seal-verification")
-            raise PhaseFailure("publish-verify", f"{row.get('package_id')}: manifest version differs from semantic-release version")
-        artifact = pathlib.Path(str(row.get("artifact_path", "")))
-        if not str(artifact).startswith("nupkgs-signed/"):
+            raise PhaseFailure("publish-verify", f"{package_id}: manifest version differs from semantic-release version")
+        raw_artifact = str(row.get("artifact_path", ""))
+        if not raw_artifact.startswith("nupkgs-signed/"):
             _record_incident("post-seal-verification")
-            raise PhaseFailure("publish-verify", f"{row.get('package_id')}: artifact path is not a signed candidate path")
+            raise PhaseFailure("publish-verify", f"{package_id}: artifact path is not a signed candidate path")
+        artifact = _confine_to_repo(package_id, raw_artifact)
         if not (REPO_ROOT / artifact).is_file() or sha256_file(artifact) != row.get("checksum"):
             _record_incident("post-seal-verification")
-            raise PhaseFailure("publish-verify", f"{row.get('package_id')}: signed artifact missing or checksum mismatch")
+            raise PhaseFailure("publish-verify", f"{package_id}: signed artifact missing or checksum mismatch")
         push_plan.append(("package-push", artifact))
         symbol = str(row.get("symbol_artifact", ""))
+        sealed_symbol_hash = str(row.get("symbol_checksum", ""))
         if symbol.startswith("nupkgs/") and symbol.endswith(".snupkg"):
-            symbol_path = pathlib.Path(symbol)
-            sealed_symbol_hash = checksum_by_path.get(symbol, "")
-            if not (REPO_ROOT / symbol_path).is_file() or (
-                sealed_symbol_hash and sha256_file(symbol_path) != sealed_symbol_hash
-            ):
+            symbol_path = _confine_to_repo(package_id, symbol)
+            if not _SHA256_RE.fullmatch(sealed_symbol_hash):
+                # Fail-open seam closed (review VG-3/EC-12): a symbol without a sealed
+                # hash must never be pushed on existence alone.
                 _record_incident("post-seal-verification")
-                raise PhaseFailure("publish-verify", f"{row.get('package_id')}: symbol package missing or checksum mismatch")
+                raise PhaseFailure("publish-verify", f"{package_id}: symbol has no sealed checksum")
+            if not (REPO_ROOT / symbol_path).is_file() or sha256_file(symbol_path) != sealed_symbol_hash:
+                _record_incident("post-seal-verification")
+                raise PhaseFailure("publish-verify", f"{package_id}: symbol package missing or checksum mismatch")
             push_plan.append(("symbol-push", symbol_path))
+        elif sealed_symbol_hash == "not-required" and not symbol.endswith(".snupkg"):
+            # Documented non-symbol exception row (inventory symbol_required=false):
+            # nothing to push. Any other shape is a malformed or substituted symbol
+            # reference and fails closed (review BH-2/EC-11).
+            pass
+        else:
+            _record_incident("post-seal-verification")
+            raise PhaseFailure("publish-verify", f"{package_id}: malformed symbol path for symbol package")
 
     pushed = 0
     for phase, artifact in push_plan:
@@ -601,7 +745,14 @@ def cmd_publish(args: argparse.Namespace) -> int:
         )
         if result.returncode != 0:
             _record_incident(phase)
+            # Surface a sanitized failure tail so the operator can distinguish
+            # 403-key / 409-conflict / quota / outage during reconciliation (review
+            # BH-11). The api key rides argv, never the captured streams; paths are
+            # sanitized before logging.
+            detail_source = (result.stderr or "") + "\n" + (result.stdout or "")
+            detail = " | ".join(line.strip() for line in detail_source.splitlines() if line.strip())[-400:]
             log("publish", f"push failed for {artifact.name} after {pushed} successful pushes; partial-publication incident recorded")
+            log("publish", f"push failure detail: {sanitize_paths(detail)}")
             raise PhaseFailure("publish", f"push failed during {phase}; release is failed pending owner-led reconciliation")
         pushed += 1
         log("publish", f"pushed {artifact.name}")
@@ -631,6 +782,13 @@ def main() -> int:
     except PhaseFailure as failure:
         log(failure.phase, f"FAIL-CLOSED: {sanitize_paths(str(failure))}")
         return failure.exit_code
+    except Exception as exc:  # noqa: BLE001 — final fail-closed guard (review EC-10):
+        # an unexpected crash (missing evidence file, malformed inventory row, sudo
+        # failure) must exit 1 with a sanitized FAIL-CLOSED line, never a raw
+        # traceback. Secrets never ride exception text: sign/push subprocesses run
+        # check=False and the openssl password moved to env indirection.
+        log("fatal", f"FAIL-CLOSED: {type(exc).__name__}: {sanitize_paths(str(exc))}")
+        return 1
 
 
 if __name__ == "__main__":

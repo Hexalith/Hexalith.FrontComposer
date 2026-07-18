@@ -17,6 +17,7 @@
       "sbom_component": "Hexalith.FrontComposer.Contracts",
       "signing_status": "verified",
       "symbol_artifact": "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.snupkg",
+      "symbol_checksum": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "timestamp_status": "verified",
       "version": "1.2.3"
     }
@@ -34,7 +35,7 @@
   "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "seal": {
     "algorithm": "sha256",
-    "hash": "5aa6f0efa5bfa2bffc9badec36c11082bb2f294dfed5d91abf19a5d2a9fe4763",
+    "hash": "b643fa4dc634971c515f43673deb083b4ec53ce72d9b866e0628096235b6e4a5",
     "sealed_at": "2026-05-19T00:00:00+00:00"
   },
   "tag": "v1.2.3",

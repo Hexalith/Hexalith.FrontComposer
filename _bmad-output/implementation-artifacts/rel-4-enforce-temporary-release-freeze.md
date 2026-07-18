@@ -3,7 +3,8 @@ created: 2026-07-15
 updated: 2026-07-16
 owner: Release Owner + Developer + QA/Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md
-status: ready-for-dev
+status: in-review
+implemented: 2026-07-18 (dev via REL-3 quick-dev run; stop-the-line precondition)
 scope: minor
 implementationRisk: low-medium
 ordering: stop-the-line — executes before REL-3 development starts
@@ -12,7 +13,25 @@ releaseControl: this story IS the technical freeze; REL-3 owns its later removal
 
 # REL-4: Technically Enforce the Temporary Release Freeze
 
-Status: ready-for-dev.
+Status: in-review.
+
+## Implementation Record (2026-07-18)
+
+- `release.yml` gained the approved `freeze-guard` job and the `release` job's
+  `needs: freeze-guard` + `needs.freeze-guard.outputs.publish-enabled == 'true'` condition,
+  exactly per the Approved Target Shape (header comment extended; `with:`/`secrets:` unchanged;
+  no `workflow_dispatch`/dry-run/approval environment introduced).
+- Governance tests added in `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`:
+  `ReleaseWorkflow_PublishFreezeGate_IsFailClosedByDefault` and
+  `Workflows_HaveNoPublishPathOutsideGatedReleaseWorkflow` (comment-stripped executable-content
+  scan); the stale "No manual dispatch / approval / dry-run gating" comment in
+  `ReleaseWorkflow_RunsViaWorkflowRunAfterCiSuccess` now records the freeze gate as a deliberate,
+  separately-pinned exception (all existing pins kept).
+- Governance lane: 30/30 `CiGovernanceTests` release-related tests green via the direct xUnit v3
+  runner (Release build, 0 warnings/errors).
+- Deployment guide freeze subsection flipped to active-state wording.
+- **Pending (CI-authoritative, post-merge):** first frozen Release run URL showing `freeze-guard`
+  success, `release` skip, and no publication side effect — record here on completion (AC6).
 
 Approval: approved by Administrator on 2026-07-15 (Batch-mode correct-course).
 

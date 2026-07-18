@@ -71,11 +71,13 @@ public sealed class CiGovernanceTests {
     public void BlockingTestLanes_ExcludeQuarantinedTestsWithoutSkippingGovernance() {
         // REL-2 (2026-07-13): the trait-filtered test lanes moved from the inline ci.yml into the
         // supplemental quality.yml; the release path no longer re-runs tests (the reusable
-        // domain-release.yml publishes and CI already gated the head). The re-homed FR24
-        // release-evidence.yml re-runs the release tests excluding Quarantined for evidence.
+        // domain-release.yml publishes and CI already gated the head). REL-3 (2026-07-18): the
+        // release-lane test run moved from the supplemental evidence workflow into the
+        // pre-publication orchestrator, which runs the release tests (excluding Quarantined)
+        // against the exact candidates before any publication side effect.
         string root = RepositoryRoot();
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
-        string releaseEvidence = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
+        string orchestrator = File.ReadAllText(Path.Combine(root, "eng/release_prepublish.py"));
 
         string defaultLane = ExtractNamedStep(quality, "Gate 3a: Unit + bUnit (default lane)");
         defaultLane.ShouldContain("Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined");
@@ -86,7 +88,7 @@ public sealed class CiGovernanceTests {
         governanceLane.ShouldNotContain("Category!=Quarantined");
         governanceLane.ShouldNotContain("continue-on-error: true");
 
-        releaseEvidence.ShouldContain("--filter \"Category!=Quarantined\"");
+        orchestrator.ShouldContain("Category!=Quarantined");
     }
 
     [Fact]
@@ -342,7 +344,7 @@ public sealed class CiGovernanceTests {
             + "published NuGet packages instead. Missing Release|* Project=false on: " + string.Join("; ", offenders));
     }
 
-    private static string StripYamlComments(string yaml) {
+    internal static string StripYamlComments(string yaml) {
         // Remove YAML comments (anything from `#` to end-of-line) so a comment that mentions
         // a forbidden command cannot trigger the assertion. Preserves line numbering.
         StringBuilder sb = new(yaml.Length);
@@ -457,21 +459,27 @@ public sealed class CiGovernanceTests {
         workflow.ShouldNotContain("publish-containers");
         workflow.ShouldNotContain("workflow_dispatch:");
 
+        // REL-3 (2026-07-18): semantic-release delegates prepare/publish to the repository-owned
+        // exact-artifact orchestrator (eng/release_prepublish.py) — pack-once, fail-closed FR24
+        // gate before any side effect, and a publisher that pushes only the manifest-authorized
+        // signed bytes. Raw pack/push commands and inlined evidence commands stay out of the JSON.
         releaseConfig.ShouldContain("@semantic-release/commit-analyzer");
         releaseConfig.ShouldContain("@semantic-release/release-notes-generator");
         releaseConfig.ShouldContain("@semantic-release/changelog");
-        releaseConfig.ShouldContain("python3 eng/pack_release_packages.py");
-        releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.nupkg");
-        releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.snupkg");
-        releaseConfig.ShouldContain("nupkgs/*.nupkg");
+        releaseConfig.ShouldContain("python3 eng/release_prepublish.py prepare --version ${nextRelease.version}");
+        releaseConfig.ShouldContain("python3 eng/release_prepublish.py publish --version ${nextRelease.version}");
+        releaseConfig.ShouldContain("nupkgs-signed/*.nupkg");
         releaseConfig.ShouldContain("nupkgs/*.snupkg");
+        releaseConfig.ShouldContain("release-evidence/*.json");
+        releaseConfig.ShouldContain("release-evidence/*.txt");
         releaseConfig.ShouldContain("@semantic-release/github");
         releaseConfig.ShouldContain("@semantic-release/git");
+        releaseConfig.ShouldNotContain("pack_release_packages.py");
+        releaseConfig.ShouldNotContain("dotnet nuget push");
+        releaseConfig.ShouldNotContain("--skip-duplicate");
         releaseConfig.ShouldNotContain("CycloneDX");
         releaseConfig.ShouldNotContain("dotnet nuget sign");
         releaseConfig.ShouldNotContain("gh attestation");
-        releaseConfig.ShouldNotContain("classify-release");
-        releaseConfig.ShouldNotContain("nupkgs-signed");
     }
 
     [Fact]
@@ -1131,8 +1139,12 @@ public sealed class CiGovernanceTests {
         // REL-2 (2026-07-13): Tenants-aligned model — release runs from workflow_run after a
         // successful CI push (not directly on push). The conclusion=='success' + event=='push'
         // guard stops failed or non-push (PR/scheduled) CI runs from releasing. No manual
-        // dispatch / approval / dry-run gating is reintroduced. semantic-release decides from the
-        // commit history whether to publish, via this repo's .releaserc.json.
+        // dispatch / approval / dry-run gating is reintroduced; the REL-4 freeze gate
+        // (freeze-guard job + HEXALITH_RELEASE_PUBLISH_ENABLED variable) is a deliberate,
+        // separately-pinned exception (see ReleaseWorkflow_PublishFreezeGate_IsFailClosedByDefault)
+        // and none of its token names collide with the forbidden approval tokens below.
+        // semantic-release decides from the commit history whether to publish, via this repo's
+        // .releaserc.json.
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
@@ -1151,91 +1163,185 @@ public sealed class CiGovernanceTests {
         workflow.ShouldNotContain("RELEASE_DRY_RUN");
         workflow.ShouldNotContain("RELEASE_CONCURRENT_SAME_VERSION");
 
+        // REL-3 (2026-07-18): prepareCmd runs the fail-closed exact-artifact gate
+        // (pack once → … → classify-release --require-publishable, inside the
+        // orchestrator) and publishCmd re-verifies the sealed manifest before pushing
+        // only manifest-authorized signed bytes. The JSON stays free of raw pack/push
+        // commands and dry-run gating.
         releaseConfig.ShouldContain("\"branches\": [\"main\"]");
         releaseConfig.ShouldContain("\"tagFormat\": \"v${version}\"");
-        releaseConfig.ShouldContain("python3 eng/pack_release_packages.py --version ${nextRelease.version}");
-        releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.nupkg");
-        releaseConfig.ShouldContain("dotnet nuget push ./nupkgs/*.snupkg");
+        releaseConfig.ShouldContain("python3 eng/release_prepublish.py prepare --version ${nextRelease.version}");
+        releaseConfig.ShouldContain("python3 eng/release_prepublish.py publish --version ${nextRelease.version}");
         releaseConfig.ShouldContain("@semantic-release/github");
         releaseConfig.ShouldContain("@semantic-release/git");
-        releaseConfig.ShouldNotContain("classify-release");
-        releaseConfig.ShouldNotContain("--require-publishable");
+        releaseConfig.ShouldNotContain("pack_release_packages.py");
+        releaseConfig.ShouldNotContain("dotnet nuget push");
+        releaseConfig.ShouldNotContain("--skip-duplicate");
         releaseConfig.ShouldNotContain("RELEASE_DRY_RUN");
         releaseConfig.ShouldNotContain("gh attestation");
-        releaseConfig.ShouldNotContain("partial-publish-incident");
-        releaseConfig.IndexOf("pack_release_packages.py", StringComparison.Ordinal).ShouldBeLessThan(
-            releaseConfig.IndexOf("dotnet nuget push", StringComparison.Ordinal));
+        releaseConfig.IndexOf("release_prepublish.py prepare", StringComparison.Ordinal).ShouldBeLessThan(
+            releaseConfig.IndexOf("release_prepublish.py publish", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void ReleaseEvidenceWorkflow_ProducesFr24EvidenceBundleUnderG1() {
-        // REL-2 (2026-07-13): FR24 evidence is re-homed from release.yml into the supplemental
-        // release-evidence.yml, because the shared reusable domain-release.yml (which release.yml
-        // now delegates to) exposes no evidence hook and must not be edited. G1 posture: publish
-        // proceeds under the reusable workflow; this workflow produces the full evidence bundle
-        // over a deterministic re-pack, signs+verifies packages, and classifies readiness WITHOUT
-        // --require-publishable (advisory for the release that just published) while failing closed
-        // on missing/invalid evidence.
+    public void ReleaseWorkflow_PublishFreezeGate_IsFailClosedByDefault() {
+        // REL-4 (2026-07-15): temporary technical release freeze. Publication is disabled by
+        // default; it is enabled only when the Release Owner-controlled repository variable
+        // HEXALITH_RELEASE_PUBLISH_ENABLED is exactly the string 'true'. The exact match MUST
+        // live in bash ([ "${PUBLISH_ENABLED}" = "true" ]) because GitHub expression '==' is
+        // case-insensitive ('True' == 'true'), which would let a malformed value publish. The
+        // release job is fail-closed via needs: freeze-guard — a failed or skipped guard skips
+        // the release. Removal/re-scope only on REL-3 real-release evidence (comment marker).
+        string root = RepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string normalized = workflow.Replace("\r\n", "\n", StringComparison.Ordinal);
+
+        // The guard job and its Release Owner-controlled variable binding.
+        normalized.ShouldContain("freeze-guard:");
+        normalized.ShouldContain("PUBLISH_ENABLED: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}");
+        // Exact POSIX bash comparison — not a case-insensitive GitHub expression.
+        normalized.ShouldContain("if [ \"${PUBLISH_ENABLED}\" = \"true\" ]; then");
+        normalized.ShouldContain("publish-enabled: ${{ steps.evaluate.outputs.publish-enabled }}");
+
+        // The release job is gated fail-closed on the guard output alongside the retained
+        // CI-success + push-event conjuncts.
+        normalized.ShouldContain("needs: freeze-guard");
+        normalized.ShouldContain("needs.freeze-guard.outputs.publish-enabled == 'true'");
+        string releaseJobCondition = ExtractReleaseJobCondition(normalized);
+        releaseJobCondition.ShouldContain("github.event.workflow_run.conclusion == 'success'");
+        releaseJobCondition.ShouldContain("github.event.workflow_run.event == 'push'");
+        releaseJobCondition.ShouldContain("needs.freeze-guard.outputs.publish-enabled == 'true'");
+
+        // Frozen runs conclude green with an explicit notice + step summary.
+        normalized.ShouldContain("Release publication FROZEN (REL-3 / REL-AI-1)");
+        normalized.ShouldContain("Release publication is frozen until the REL-3 exact-artifact gate is operational.\" >> \"$GITHUB_STEP_SUMMARY\"");
+
+        // REL-3 removal-condition marker: the gate may be removed/replaced only when the
+        // permanent exact-artifact gate is operational and REL-AI-1 records passing evidence.
+        normalized.ShouldContain("REMOVAL/REPLACEMENT is permitted only when the permanent REL-3");
+        normalized.ShouldContain("real-release evidence");
+    }
+
+    [Fact]
+    public void Workflows_HaveNoPublishPathOutsideGatedReleaseWorkflow() {
+        // REL-4 (2026-07-15): the freeze gate is only meaningful if release.yml is the ONLY
+        // publish path. Scan every repository-owned workflow: only release.yml may reference the
+        // reusable domain-release.yml, and no workflow may execute `npx semantic-release` or
+        // `dotnet nuget push` itself. Assertions target executable content (comments stripped):
+        // those strings legitimately appear in workflow comments today.
+        string root = RepositoryRoot();
+        foreach (string workflowPath in Directory.EnumerateFiles(Path.Combine(root, ".github/workflows"), "*.yml")) {
+            string name = Path.GetFileName(workflowPath);
+            string executable = StripYamlComments(File.ReadAllText(workflowPath));
+
+            if (name == "release.yml") {
+                executable.ShouldContain(
+                    "domain-release.yml",
+                    customMessage: "release.yml must delegate publication to the reusable domain-release.yml.");
+            }
+            else {
+                executable.ShouldNotContain(
+                    "domain-release.yml",
+                    customMessage: $"{name} must not reference the reusable publish workflow; release.yml is the only gated publish path.");
+            }
+
+            executable.ShouldNotContain(
+                "npx semantic-release",
+                customMessage: $"{name} must not run semantic-release directly; publication happens only through the gated release.yml delegation.");
+            executable.ShouldNotContain(
+                "dotnet nuget push",
+                customMessage: $"{name} must not push packages directly; publication happens only through the gated release.yml delegation.");
+        }
+    }
+
+    private static string ExtractReleaseJobCondition(string normalizedWorkflow) {
+        int releaseJob = normalizedWorkflow.IndexOf("\n  release:\n", StringComparison.Ordinal);
+        releaseJob.ShouldBeGreaterThanOrEqualTo(0, "release.yml must define a release job.");
+        int conditionStart = normalizedWorkflow.IndexOf("if: >-", releaseJob, StringComparison.Ordinal);
+        conditionStart.ShouldBeGreaterThanOrEqualTo(0, "the release job must carry a multi-line if: condition.");
+        int conditionEnd = normalizedWorkflow.IndexOf("permissions:", conditionStart, StringComparison.Ordinal);
+        conditionEnd.ShouldBeGreaterThanOrEqualTo(0, "the release job condition must precede its permissions block.");
+        return normalizedWorkflow[conditionStart..conditionEnd];
+    }
+
+    [Fact]
+    public void ReleaseEvidenceWorkflow_IndependentlyVerifiesPublishedArtifacts() {
+        // REL-3 (2026-07-18): the FR24 evidence chain moved into the pre-publication
+        // orchestrator (eng/release_prepublish.py, via .releaserc.json), which packs once,
+        // signs, seals, and classifies with --require-publishable BEFORE any publication
+        // side effect and attaches the durable evidence at initial GitHub Release creation
+        // (AC12). The supplemental workflow is now the INDEPENDENT verifier: it downloads
+        // the published GitHub Release assets and the published NuGet bytes, verifies
+        // package signatures over the downloaded bytes, and compares every hash against
+        // the sealed manifest (AC13). It runs on Release completion regardless of
+        // conclusion (AC19) and records partial-publication incidents (AC14). It must not
+        // rebuild, repack, re-sign, classify, or attest — reconstructed evidence can never
+        // establish the identity of published bytes (the v3.2.1/v3.2.2 lesson).
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
+        string executable = StripYamlComments(workflow);
 
-        // Required FR24 evidence commands, all orchestrated in the workflow (never in
-        // .releaserc.json, which the model-guard tests keep evidence-free).
-        workflow.ShouldContain("release_evidence.py test-results");
-        workflow.ShouldContain("release_evidence.py checksums");
-        workflow.ShouldContain("release_evidence.py prepare-manifest");
-        workflow.ShouldContain("release_evidence.py seal-manifest");
-        workflow.ShouldContain("release_evidence.py verify-manifest");
-        workflow.ShouldContain("release_evidence.py classify-release");
-        workflow.ShouldContain("CycloneDX");
-        workflow.ShouldContain("release-evidence/test-results.json");
-        workflow.ShouldContain("Upload release evidence artifact");
-        workflow.ShouldContain("release-evidence/**");
-        string attachmentStep = ExtractNamedStep(workflow, "Attach release evidence to GitHub Release");
-        attachmentStep.ShouldContain("gh api");
-        attachmentStep.ShouldContain("--jq '.immutable'");
-        attachmentStep.ShouldContain("GitHub Release ${RELEASE_TAG} is immutable");
-        attachmentStep.ShouldContain("checksummed evidence bundle remains available as the Actions artifact");
-        attachmentStep.ShouldContain("gh release upload");
-        attachmentStep.ShouldNotContain("continue-on-error");
-        attachmentStep.ShouldNotContain("|| true");
-        // AC10: packages are signed and verified (RFC 3161 timestamp).
-        workflow.ShouldContain("dotnet nuget verify");
-        // FR24: an LLM benchmark summary hash (candidate evidence, no provider spend) is
-        // produced and bound into the sealed manifest — a required manifest field.
-        workflow.ShouldContain("llm_benchmark.py run-benchmark");
-        workflow.ShouldContain("--benchmark-summary-hash");
-        // REL-2 code-review P1 (2026-07-13): the FR24 evidence steps that previously ran
-        // `if: always()` reddened the job on every non-releasing push (tests are tag-gated, so
-        // ./TestResults was legitimately absent and `test-results` exited 1). They are now gated on a
-        // resolved release tag, so a no-release run is a clean green no-op while a real release still
-        // fails closed on missing/invalid test evidence.
-        string normalizedWorkflow = workflow.Replace("\r\n", "\n", StringComparison.Ordinal);
-        normalizedWorkflow.ShouldContain("- name: Record release test evidence\n        if: ${{ steps.tag.outputs.tag != '' }}");
-        normalizedWorkflow.ShouldContain("- name: Install CycloneDX .NET tool\n        if: ${{ steps.tag.outputs.tag != '' }}");
-        normalizedWorkflow.ShouldContain("- name: Install npm dependencies\n        if: ${{ steps.tag.outputs.tag != '' }}");
-        workflow.IndexOf("- name: Install npm dependencies", StringComparison.Ordinal).ShouldBeLessThan(
-            workflow.IndexOf("- name: Run release tests", StringComparison.Ordinal));
-
-        // REL-2 code-review P1: keyed off the RELEASE workflow's completion (not CI) so the git tag +
-        // GitHub Release exist by the time evidence binds (keying off CI raced the concurrent release
-        // job and never found the tag). Root-only submodule init (also enforced by
-        // Workflows_UseRootLevelSubmodulesOnly).
+        // AC19: verification triggers on Release COMPLETION with no success-only gate, so
+        // failed and cancelled publish runs are still reconciled. The tag resolver decides
+        // no-op vs verify by detecting publication side effects.
         workflow.ShouldContain("workflow_run:");
         workflow.ShouldContain("workflows: [Release]");
-        workflow.ShouldContain("github.event.workflow_run.conclusion == 'success'");
-        workflow.ShouldContain("submodules: false");
-        workflow.ShouldContain("Initialize build submodules");
+        workflow.ShouldContain("types: [completed]");
+        executable.ShouldNotContain("github.event.workflow_run.conclusion == 'success'");
+        workflow.ShouldContain("no publication side effect");
 
-        // G1 advisory-at-publish: classification must not carry --require-publishable, and the
-        // workflow must not reintroduce dispatch/dry-run/best-effort-suppression gating.
-        workflow.ShouldNotContain("--require-publishable");
+        // AC13: independent download + verification of the published bytes.
+        executable.ShouldContain("gh release download");
+        executable.ShouldContain("api.nuget.org/v3-flatcontainer");
+        executable.ShouldContain("dotnet nuget verify");
+        executable.ShouldContain("release_evidence.py verify-manifest");
+        executable.ShouldContain("release_evidence.py partial-publish-incident");
+        workflow.ShouldContain("published-byte-comparison.json");
+        workflow.ShouldContain("ledger-record.json");
+
+        // AC12 negative: the durable evidence chain must be present on the release itself;
+        // a short-retention Actions artifact alone fails the criterion.
+        workflow.ShouldContain("sealed-manifest.json");
+        workflow.ShouldContain("release-readiness.json");
+        workflow.ShouldContain("signing-verification.txt");
+
+        // No reconstruction: the verifier must not re-run any part of the evidence
+        // production chain the pre-publication orchestrator owns.
+        executable.ShouldNotContain("pack-release-packages.py");
+        executable.ShouldNotContain("pack_release_packages.py");
+        executable.ShouldNotContain("dotnet build");
+        executable.ShouldNotContain("dotnet nuget sign");
+        executable.ShouldNotContain("attest-build-provenance");
+        executable.ShouldNotContain("CycloneDX");
+        executable.ShouldNotContain("llm_benchmark.py");
+        executable.ShouldNotContain("release_evidence.py prepare-manifest");
+        executable.ShouldNotContain("release_evidence.py seal-manifest");
+        executable.ShouldNotContain("release_evidence.py classify-release");
+        executable.ShouldNotContain("--require-publishable");
+
+        // Read-only lane: no release-mutation permissions or paths, no dispatch/dry-run,
+        // no best-effort suppression.
+        workflow.ShouldContain("permissions:");
+        workflow.ShouldContain("contents: read");
+        workflow.ShouldNotContain("contents: write");
+        workflow.ShouldNotContain("attestations: write");
+        workflow.ShouldNotContain("id-token: write");
+        executable.ShouldNotContain("gh release upload");
         workflow.ShouldNotContain("workflow_dispatch:");
         workflow.ShouldNotContain("RELEASE_DRY_RUN");
         workflow.ShouldNotContain("|| true");
+        workflow.ShouldNotContain("continue-on-error: true");
 
-        // Evidence stays out of .releaserc.json — the model-guard tests keep it evidence-free.
+        // Fail-closed forensic artifact upload + root-only submodule init (also enforced
+        // by Workflows_UseRootLevelSubmodulesOnly).
+        workflow.ShouldContain("Upload verification evidence artifact");
+        workflow.ShouldContain("verification-evidence/**");
+        workflow.ShouldContain("if-no-files-found: error");
+        workflow.ShouldContain("submodules: false");
+        workflow.ShouldContain("Initialize build submodules");
+
+        // Evidence commands stay out of .releaserc.json — the orchestrator wraps them.
         releaseConfig.ShouldNotContain("classify-release");
         releaseConfig.ShouldNotContain("CycloneDX");
     }
@@ -1481,6 +1587,13 @@ public sealed class CiGovernanceTests {
             string artifactPath = Path.Combine(tempRoot, "nupkgs-signed", "Hexalith.FrontComposer.Contracts.1.2.3.nupkg");
             File.WriteAllText(artifactPath, "package bytes");
             string artifactChecksum = Sha256File(artifactPath);
+            // REL-3 review BH-1/VG-3: symbol integrity is sealed into the manifest row
+            // (symbol_checksum) and verified on disk, so the round-trip needs the symbol
+            // package bytes too.
+            Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs"));
+            string symbolPath = Path.Combine(tempRoot, "nupkgs", "Hexalith.FrontComposer.Contracts.1.2.3.snupkg");
+            File.WriteAllText(symbolPath, "symbol bytes");
+            string symbolChecksum = Sha256File(symbolPath);
             Dictionary<string, string> fingerprints = releaseDefinitionFiles.ToDictionary(
                 file => file,
                 file => Sha256File(Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar))));
@@ -1491,7 +1604,9 @@ public sealed class CiGovernanceTests {
                 ["benchmark_summary_hash"] = new string('c', 64),
                 ["commit_sha"] = "abc123",
                 ["helper_version"] = new Dictionary<string, object?> {
-                    ["version"] = "1.1.0",
+                    // Matches eng/release_evidence.py __version__ (bumped deliberately for the
+                    // REL-3 APPROVAL_MATRIX rewrite).
+                    ["version"] = "1.2.0",
                     ["content_sha256"] = helperContentSha256,
                 },
                 ["package_set_fingerprint"] = Sha256File(Path.Combine(tempRoot, "eng", "release-package-inventory.json")),
@@ -1506,6 +1621,7 @@ public sealed class CiGovernanceTests {
                         ["sbom_component"] = "Hexalith.FrontComposer.Contracts",
                         ["signing_status"] = "verified",
                         ["symbol_artifact"] = "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.snupkg",
+                        ["symbol_checksum"] = symbolChecksum,
                         ["timestamp_status"] = "verified",
                         ["version"] = "1.2.3",
                     },

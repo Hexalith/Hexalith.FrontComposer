@@ -12,10 +12,13 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 // tests are GREEN and the per-method Quarantined trait + frontcomposer-quarantine
 // metadata comments have been removed — they now run as ordinary regression pins:
 //
-//   Def14  -> release.yml wires `actions/attest-build-provenance@v4` before the
-//             live publish + restores `attestations: write` / `id-token: write`
-//             (minimal structural wiring; the build-step reordering needed for the
-//             attestation to FUNCTION at runtime remains tracked in deferred-work.md).
+//   Def14  -> REVERSED by REL-3 (2026-07-18): attestation over RECONSTRUCTED artifacts
+//             in the supplemental evidence workflow could never establish identity with
+//             the published bytes. AC18 moves provenance attestation in front of
+//             classification over the EXACT signed candidates inside the upstream
+//             governed release workflow (BUILD-REL-1); the pre-publication orchestrator
+//             binds the bundle into the sealed manifest, and the independent verifier
+//             must not attest (see the two Def14 pins below).
 //   Def22  -> compound dry-run-with-side-effect-attempt fixture.
 //   Def23  -> verify-manifest --no-root fails closed on empty fingerprints.
 //   Def25  -> packages-empty-array fixture + "package rows are required" diagnostic.
@@ -33,58 +36,51 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 // ----------------------------------------------------------------------------
 public sealed class Story12_4_RedPhaseDefTests {
     [Fact]
-    public void Story12_4_Def14_AttestBuildProvenanceStep_IsWiredInReleaseEvidenceWorkflow() {
-        // Regression pin (Def14). REL-2 (2026-07-13): FR24 attestation re-homed from the bespoke
-        // release.yml into the supplemental release-evidence.yml — release.yml now delegates to the
-        // shared reusable domain-release.yml, which has no attestation hook. AC9 ("Attestations are
-        // generated and verified before release readiness is claimed") still requires an actual
-        // generation step: pin actions/attest-build-provenance@v4 as a live, non-advisory step over
-        // the re-packed release artifacts, running before the evidence bundle upload.
+    public void Story12_4_Def14_AttestationMovedToGovernedPrePublicationContract() {
+        // Def14 REVERSED by REL-3 (2026-07-18, AC18): under G1 the supplemental
+        // release-evidence.yml attested RECONSTRUCTED artifacts — provenance that could
+        // never establish identity with the published bytes. Attestation now happens over
+        // the EXACT signed candidates before manifest sealing/classification inside the
+        // upstream governed release workflow (BUILD-REL-1); the pre-publication
+        // orchestrator binds RELEASE_ATTESTATION_STATUS/RELEASE_ATTESTATION_BUNDLE into
+        // the sealed manifest, and the sealed owner-approved `approved-unsupported`
+        // fallback record is the only accepted alternative. The independent verification
+        // workflow must not attest anything.
         string root = CiGovernanceTests.RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
+        string orchestrator = File.ReadAllText(Path.Combine(root, "eng/release_prepublish.py"));
 
-        // REL-2 code-review P8 (2026-07-13): the action is now SHA-pinned (`@<sha> # v4`) for
-        // supply-chain hardening, so match the version-agnostic `actions/attest-build-provenance@`
-        // prefix rather than the mutable `@v4` tag. A comment reference ("attest-build-provenance
-        // mints…") lacks the `actions/…@` form, so only the real `uses:` step matches.
-        string attestStep = CiGovernanceTests.FindStepBlockContaining(workflow, "actions/attest-build-provenance@");
-        attestStep.ShouldNotBeNullOrEmpty(
-            "AC9/Def14: release-evidence.yml must include a workflow STEP whose `uses:` invokes actions/attest-build-provenance@<pinned-sha>. A reference inside a comment does not count.");
-
-        attestStep.Contains("if: false", StringComparison.Ordinal).ShouldBeFalse(
-            "AC9/Def14: the attest-build-provenance step must not be conditionally disabled (`if: false`).");
-        attestStep.Contains("continue-on-error: true", StringComparison.Ordinal).ShouldBeFalse(
-            "AC9/Def14: the attest-build-provenance step must not be marked advisory (`continue-on-error: true`).");
-
-        // Ordering: attestation must run before the final evidence upload so the provenance is
-        // produced as part of the sealed evidence bundle.
-        string uploadStep = CiGovernanceTests.ExtractNamedStep(workflow, "Upload release evidence artifact");
-        int attestStepIdx = workflow.IndexOf(attestStep, StringComparison.Ordinal);
-        int uploadIdx = workflow.IndexOf(uploadStep, StringComparison.Ordinal);
-        attestStepIdx.ShouldBeLessThan(
-            uploadIdx,
-            "AC9/Def14: attest-build-provenance must run before the evidence bundle upload.");
+        workflow.ShouldNotContain(
+            "actions/attest-build-provenance@",
+            customMessage: "AC18/Def14: the independent verifier must not attest reconstructed artifacts; attestation belongs to the governed pre-publication contract.");
+        orchestrator.ShouldContain(
+            "RELEASE_ATTESTATION_STATUS",
+            customMessage: "AC18/Def14: the pre-publication orchestrator must consume the governed workflow's attestation status.");
+        orchestrator.ShouldContain(
+            "RELEASE_ATTESTATION_BUNDLE",
+            customMessage: "AC18/Def14: the pre-publication orchestrator must bind the attestation bundle path into the manifest.");
+        orchestrator.ShouldContain("--attestation-status");
+        orchestrator.ShouldContain("--attestation-bundle");
     }
 
     [Fact]
-    public void Story12_4_Def14_AttestationsWritePermission_IsRestored() {
-        // Regression pin (Def14). REL-2 (2026-07-13): the FR24 attestation permissions moved with
-        // the attest step into release-evidence.yml. Scope the assertions to the release-evidence
-        // job's own `permissions:` block via ExtractJobPermissionsBlock so a workflow-level grant
-        // cannot mask a missing job-level scope.
+    public void Story12_4_Def14_VerificationLane_HasNoAttestationOrWritePermissions() {
+        // Def14 companion (REL-3, 2026-07-18): the verification lane is read-only. It no
+        // longer needs (and must not carry) the attestation write scopes the G1 attest
+        // step required, and no job may be able to mutate repository contents or releases.
         string root = CiGovernanceTests.RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
 
-        string jobPermissions = CiGovernanceTests.ExtractJobPermissionsBlock(workflow, "release-evidence");
-        jobPermissions.ShouldNotBeNullOrEmpty(
-            "AC9/Def14: the release-evidence job must declare a `permissions:` block — none found.");
-
-        jobPermissions.Contains("attestations: write", StringComparison.Ordinal).ShouldBeTrue(
-            "AC9/Def14: the release-evidence job permissions must include `attestations: write` so attest-build-provenance can sign and upload.");
-        jobPermissions.Contains("id-token: write", StringComparison.Ordinal).ShouldBeTrue(
-            "AC9/Def14: the release-evidence job permissions must include `id-token: write` so the attestation step can mint an OIDC token for the signing provider.");
-        jobPermissions.Contains("attestations: read", StringComparison.Ordinal).ShouldBeFalse(
-            "AC9/Def14: the release-evidence job must grant attestations: write, not the narrowed read scope.");
+        workflow.ShouldNotContain(
+            "attestations: write",
+            customMessage: "AC18/Def14: the read-only verification lane must not hold attestation write scope.");
+        workflow.ShouldNotContain(
+            "id-token: write",
+            customMessage: "AC18/Def14: the read-only verification lane must not mint OIDC tokens.");
+        workflow.ShouldNotContain(
+            "contents: write",
+            customMessage: "AC18/Def14: the verification lane must not be able to mutate contents or releases.");
+        workflow.ShouldContain("contents: read");
     }
 
     [Fact]
