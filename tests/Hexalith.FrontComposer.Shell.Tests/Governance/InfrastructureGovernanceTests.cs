@@ -62,7 +62,7 @@ public sealed class InfrastructureGovernanceTests {
             ["PactNet"] = "5.0.1",
             ["System.Collections.Immutable"] = "10.0.10",
             ["System.ComponentModel.Annotations"] = "5.0.0",
-            ["System.Reactive"] = "7.0.0-rc.1",
+            ["System.Reactive"] = "7.0.0",
             ["System.Threading.Tasks.Extensions"] = "4.6.3",
             ["Verify"] = "31.24.2",
             ["Verify.XunitV3"] = "31.24.2",
@@ -106,14 +106,17 @@ public sealed class InfrastructureGovernanceTests {
         FindPackageVersionOperations(memoriesCatalog, "Microsoft.Extensions.TimeProvider.Testing").ShouldBeEmpty(
             "Memories must inherit Microsoft.Extensions.TimeProvider.Testing 10.8.0 from the shared catalog");
 
-        const string eventStoreAndMemoriesBuildsCommit = "e64ae34e50086ae55d47971d70897d579ff18c25";
-        const string partiesBuildsCommit = "cfafcbf1e904138b435b63ba4fd79f86b8dda069";
+        // 2026-07-18 (AngleSharp/NU1902 remediation): EventStore moved its nested Builds pin to
+        // the same commit the superproject records (08b57086); Memories and Parties sit on the
+        // shared-catalog reconciliation commit 041897f0. Update in lockstep with gitlink bumps.
+        const string eventStoreBuildsCommit = "08b57086f24514638bc0901154759ac023fd2876";
+        const string memoriesAndPartiesBuildsCommit = "041897f0cba840ff833b9602b3b3e023450856fc";
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.EventStore"), "references/Hexalith.Builds")
-            .ShouldBe(eventStoreAndMemoriesBuildsCommit, "EventStore standalone restores need the migrated shared pins");
+            .ShouldBe(eventStoreBuildsCommit, "EventStore standalone restores need the migrated shared pins");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Memories"), "references/Hexalith.Builds")
-            .ShouldBe(eventStoreAndMemoriesBuildsCommit, "Memories standalone restores need the migrated shared pins");
+            .ShouldBe(memoriesAndPartiesBuildsCommit, "Memories standalone restores need the migrated shared pins");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Parties"), "references/Hexalith.Builds")
-            .ShouldBe(partiesBuildsCommit, "Parties standalone restores need the migrated shared pins");
+            .ShouldBe(memoriesAndPartiesBuildsCommit, "Parties standalone restores need the migrated shared pins");
     }
 
     [Fact]

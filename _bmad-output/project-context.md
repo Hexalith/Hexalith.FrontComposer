@@ -42,7 +42,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
   **`13.4.6-preview.1.26319.6`**. Bump in lockstep with sibling AppHosts only in an owned story
 - **Identity:** `NUlid` **1.7.3**; `messageId`/`correlationId` are ULIDs, never GUIDs
 - **Runtime support:** `System.Collections.Immutable`/`System.Text.Json` **10.0.9**,
-  `Microsoft.Extensions.*` **10.0.9**, SignalR/OIDC **10.0.9**, `System.Reactive` **7.0.0-rc.1**
+  `Microsoft.Extensions.*` **10.0.9**, SignalR/OIDC **10.0.9**, `System.Reactive` **7.0.0**
 - **Testing:** xUnit v3 **3.2.2**, bUnit **2.8.4-preview**, Verify/Verify.XunitV3 **31.22.0**,
   NSubstitute **6.0.0-rc.1**, Shouldly **4.3.0**, FsCheck.Xunit.v3 **3.3.3**, PactNet **5.0.1**,
   BenchmarkDotNet **0.15.8**
