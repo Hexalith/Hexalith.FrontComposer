@@ -414,7 +414,9 @@ fail-closed lane catching the parallel regression is the gate behaving as specif
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — REL-4 pins, releaserc/verifier pin reversal, helper-version literal
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/ReleaseModelGovernanceTests.cs` — new T5 negative/consistency suite
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/Story12_4_RedPhaseDefTests.cs` — Def14 attestation pin reversal
-- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` — CA1707 inventory refresh
+- `tests/ci-governance/stage_release_state.py` — hermetic sealed-state staging helper for runtime negatives (review round)
+- `tests/ci-governance/fixtures/release-manifest-valid.json`, `tests/ci-governance/fixtures/release-readiness-cases.json` — resealed for the `symbol_checksum` manifest contract (review round)
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` — CA1707 inventory refresh (twice: new suite, then review-round tests)
 - `_bmad-output/project-docs/deployment-guide.md` — implemented-behavior alignment
 - `_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md` — dated status note
 - `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md` — implementation record, status in-review
