@@ -1,10 +1,10 @@
 ---
 title: 'Centralize FrontComposer package versions in Hexalith.Builds'
 type: 'refactor'
-created: '2026-07-17'
-status: 'in-review'
-review_loop_iteration: 0
-baseline_commit: 'd739f9b5249017b8959e14a445bc3eaaebf683c0'
+created: '2026-07-18'
+status: 'in-progress'
+review_loop_iteration: 1
+baseline_commit: '06b39738d95429b33ed85f3fcf1c9a1dfc2fbe14'
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/references/Hexalith.Builds/AGENTS.md'
@@ -14,53 +14,44 @@ context:
 
 ## Intent
 
-**Problem:** FrontComposer defines 14 NuGet dependency versions after importing the shared `Hexalith.Builds` catalog, so package-version authority is split and release/cache controls do not uniformly track the real catalog.
+**Problem:** FrontComposer defines 14 NuGet dependency versions after importing the shared `Hexalith.Builds` catalog, so package-version authority is split and release/cache controls do not uniformly track the real catalog. Memories and Parties also need standalone-safe access to the migrated pins rather than relying on FrontComposer's sibling fallback.
 
-**Approach:** Move those 14 declarations unchanged into `references/Hexalith.Builds/Props/Directory.Packages.props`, leave the root file as the central-package-management import shim, and reconcile only the sibling declarations that would otherwise duplicate the new shared entries.
+**Approach:** Move those 14 declarations unchanged into `references/Hexalith.Builds/Props/Directory.Packages.props`, leave the root file as the central-package-management import shim, reconcile sibling collisions, and advance the Memories and Parties nested Builds gitlinks to the catalog commit containing the pins.
 
 ## Boundaries & Constraints
 
-**Always:** Preserve every FrontComposer package ID and exact effective version; retain root `ManagePackageVersionsCentrally`, `CentralPackageTransitivePinningEnabled`, path fallbacks, and guarded imports; preserve sibling-specific effective versions with `Update` where they differ; keep the shared catalog UTF-8-with-BOM and CRLF; preserve all unrelated dirty-tree and submodule work.
+**Always:** Preserve every FrontComposer package ID and exact effective version; retain root `ManagePackageVersionsCentrally`, `CentralPackageTransitivePinningEnabled`, path fallbacks, and guarded imports; preserve sibling-specific effective versions with `Update` where they differ; set the Memories and Parties nested `Hexalith.Builds` gitlinks to `cfafcbf1e904138b435b63ba4fd79f86b8dda069`; keep the shared catalog UTF-8-with-BOM and CRLF; preserve all unrelated dirty-tree and submodule work. The selected gitlink update explicitly accepts Memories `Hexalith.Tenants` `3.2.13` to `3.2.15` and Parties `Hexalith.Commons` `2.28.1` to `2.28.2`, `Hexalith.PolymorphicSerializations` `1.16.3` to `1.16.5`, `Hexalith.EventStore` `3.68.1` to `3.70.0`, and `Hexalith.Tenants` `3.2.11` to `3.2.15`.
 
-**Ask First:** Any package upgrade/downgrade, removal of a pin because it appears unused, new conditional version policy, or change beyond the listed FrontComposer migration and collision reconciliation.
+**Ask First:** Any package upgrade/downgrade beyond the explicitly accepted gitlink effects, removal of a pin because it appears unused, new conditional version policy, or change beyond the listed migration, collision reconciliation, gitlink updates, and regression coverage.
 
-**Never:** Move MSBuild SDK, .NET SDK, npm, dotnet-tool, product `PackageVersion`, or API compatibility baseline versions into NuGet CPM; alter package references; centralize the remaining submodule-owned catalogs; weaken validation or fallback-approval semantics.
+**Never:** Move MSBuild SDK, .NET SDK, npm, dotnet-tool, product `PackageVersion`, or API compatibility baseline versions into NuGet CPM; alter package references; add conditional local compatibility pins; centralize the remaining submodule-owned catalogs; weaken validation or fallback-approval semantics.
 
 </frozen-after-approval>
 
 ## Code Map
 
-- `Directory.Packages.props` -- FrontComposer CPM/import shim; currently owns the 14 declarations to remove.
-- `references/Hexalith.Builds/Props/Directory.Packages.props` -- authoritative shared NuGet catalog receiving the unchanged declarations.
-- `references/Hexalith.EventStore/Directory.Packages.props` -- preserves TimeProvider `10.7.0` as an imported-item override.
-- `references/Hexalith.Memories/Directory.Packages.props` -- drops two same-version declarations now supplied centrally.
-- `references/Hexalith.Parties/Directory.Packages.props` -- preserves MCP ASP.NET Core `1.4.0` as an imported-item override.
-- `.github/workflows/quality.yml` -- NuGet cache key must hash both import shim and authoritative catalog.
-- `eng/release_evidence.py` -- release-definition drift surface must include the shared catalog without adding it to fallback invalidation.
-- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/{InfrastructureGovernanceTests,CiGovernanceTests}.cs` -- enforce no root-local package versions and the expanded release-definition surface.
-- `tests/ci-governance/fixtures/{release-manifest-valid,release-readiness-cases}.json` -- fixture fingerprints follow the authoritative files.
-- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` -- refresh the governed identifier inventory after adding the ownership regression test.
+- `Directory.Packages.props` and `references/Hexalith.Builds/Props/Directory.Packages.props` -- FrontComposer import shim and authoritative shared NuGet catalog.
+- `references/Hexalith.{EventStore,Memories,Parties}/Directory.Packages.props` -- preserve differing overrides and remove same-version collisions.
+- `references/Hexalith.{Memories,Parties}/references/Hexalith.Builds` -- nested gitlinks advance to the catalog commit containing the migrated pins for standalone restores.
+- `.github/workflows/quality.yml`, `eng/release_evidence.py`, and `tests/ci-governance/fixtures/*.json` -- cache and release-definition fingerprints.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/{InfrastructureGovernanceTests,CiGovernanceTests}.cs` and `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` -- ownership, policy, release, and identifier governance.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `references/Hexalith.Builds/Props/Directory.Packages.props` -- add the 14 exact literal pins beside their package families without reordering unrelated entries.
-- [x] `Directory.Packages.props` -- remove all local `PackageVersion` item groups while retaining CPM, transitive pinning, and imports.
-- [x] `references/Hexalith.{EventStore,Memories,Parties}/Directory.Packages.props` -- convert differing collisions to `Update` and remove same-version collisions, preserving effective versions.
-- [x] `.github/workflows/quality.yml` and `eng/release_evidence.py` -- hash/fingerprint the shared catalog; keep it outside `FALLBACK_INVALIDATION_FILES`.
-- [x] Governance tests, release fixtures, and governed identifier inventory in the Code Map -- enforce the new ownership boundary and update complete baselines.
+- [x] Catalog migration and collision reconciliation -- move the 14 exact pins centrally, retain the root shim, and preserve sibling effective versions.
+- [x] Cache, release-evidence, fixture, ownership, and identifier baselines -- track the authoritative shared catalog without changing fallback invalidation.
+- [ ] `references/Hexalith.{Memories,Parties}/references/Hexalith.Builds` -- advance both nested gitlinks to `cfafcbf1e904138b435b63ba4fd79f86b8dda069` so standalone checkouts import the centralized pins.
+- [ ] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs` -- harden ownership matching for case-insensitive `Include`/`Update`, retain forbidden-provider checks for the migrated set, and assert sibling overrides plus nested catalog compatibility.
 
 **Acceptance Criteria:**
 - Given the pre-change FrontComposer catalog, when MSBuild evaluates packages after migration, then the same 14 ID/version pairs occur exactly once from the shared catalog and the root shim contains zero `PackageVersion` items.
 - Given sibling source restores, when the shared catalog is imported, then EventStore still resolves TimeProvider `10.7.0`, Parties still resolves MCP ASP.NET Core `1.4.0`, Memories inherits `1.4.1` and `10.8.0`, and no `NU1506`/`NU1109` occurs.
+- Given standalone Memories and Parties checkouts with their declared nested submodules, when restore evaluates CPM, then the nested Builds catalog contains the migrated pins and restore succeeds without `NU1010`.
 - Given a shared-catalog edit, when cache keys and release evidence are evaluated, then NuGet cache invalidation and release-definition drift detect it while fallback approvals remain unaffected by routine package-version changes.
 - Given CPM-ineligible version mechanisms, when the migration completes, then AppHost SDK, .NET SDK, npm/tool, product-version, and package-validation baseline pins are unchanged.
 
 ## Spec Change Log
-
-## Design Notes
-
-The moved pins are `BenchmarkDotNet 0.15.8`, `FsCheck.Xunit.v3 3.3.3`, `Microsoft.CodeAnalysis.Workspaces.Common 5.6.0`, `Microsoft.Extensions.Localization 10.0.9`, `Microsoft.Extensions.TimeProvider.Testing 10.8.0`, `ModelContextProtocol.AspNetCore 1.4.1`, `NUlid 1.7.3`, `PactNet 5.0.1`, `System.Collections.Immutable 10.0.10`, `System.ComponentModel.Annotations 5.0.0`, `System.Reactive 7.0.0-rc.1`, `System.Threading.Tasks.Extensions 4.6.3`, `Verify 31.24.2`, and `Verify.XunitV3 31.24.2`.
 
 ## Verification
 
@@ -70,12 +61,4 @@ The moved pins are `BenchmarkDotNet 0.15.8`, `FsCheck.Xunit.v3 3.3.3`, `Microsof
 - `dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Debug -m:1 && dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -m:1` -- both dependency modes restore without central-version collisions.
 - `dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore -warnaserror -m:1` -- serialized Release build passes.
 - `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Governance"` -- affected governance lane passes.
-
-**Results:**
-- Shared catalog validator passed with 266 entries; its 11-scenario regression suite passed.
-- Debug and Release restores passed without `NU1506` or `NU1109`; the serialized Release build passed with zero warnings and zero errors.
-- The full Governance category passed: 166 Shell, 140 SourceTools, 6 CLI, 6 MCP, 6 Contracts, and 1 benchmark test.
-- MSBuild evaluation found all 14 migrated ID/version pairs exactly once. EventStore evaluates TimeProvider `10.7.0`, Parties evaluates MCP ASP.NET Core `1.4.0`, and Memories evaluates the shared `10.8.0`/`1.4.1` versions.
-- No owned `.props`, `.targets`, or `.csproj` file retains a local `PackageVersion`; no owned `.csproj` has an inline package version. Protected SDK, npm/tool, product-version, and API-baseline files are unchanged from `baseline_commit`.
-- Release fixture classification and manifest verification passed. The shared catalog participates in cache and release-definition fingerprints but remains outside fallback invalidation.
-- The shared catalog remains UTF-8 with BOM and CRLF line endings.
+- Isolated Memories and Parties restores with nested Builds materialized at each declared gitlink -- both restores pass without `NU1010`, `NU1506`, or `NU1109`.

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -40,9 +41,14 @@ public sealed class InfrastructureGovernanceTests {
         rootPackageVersions.ShouldBeEmpty(
             "the FrontComposer root file is an import shim; package versions belong in Hexalith.Builds");
 
-        XDocument sharedCatalog = XDocument.Load(
-            Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"));
-        Dictionary<string, string> expectedVersions = new(StringComparer.Ordinal) {
+        string sharedCatalogPath = Path.Combine(
+            root,
+            "references",
+            "Hexalith.Builds",
+            "Props",
+            "Directory.Packages.props");
+        XDocument sharedCatalog = XDocument.Load(sharedCatalogPath);
+        Dictionary<string, string> expectedVersions = new(StringComparer.OrdinalIgnoreCase) {
             ["BenchmarkDotNet"] = "0.15.8",
             ["FsCheck.Xunit.v3"] = "3.3.3",
             ["Microsoft.CodeAnalysis.Workspaces.Common"] = "5.6.0",
@@ -60,14 +66,45 @@ public sealed class InfrastructureGovernanceTests {
         };
 
         foreach ((string packageId, string expectedVersion) in expectedVersions) {
-            XElement[] declarations = sharedCatalog
-                .Descendants()
-                .Where(static element => element.Name.LocalName == "PackageVersion")
-                .Where(element => string.Equals((string?)element.Attribute("Include"), packageId, StringComparison.Ordinal))
-                .ToArray();
+            XElement[] declarations = FindPackageVersions(sharedCatalog, packageId);
             declarations.Length.ShouldBe(1, $"{packageId} must occur exactly once in the shared catalog");
             ((string?)declarations[0].Attribute("Version")).ShouldBe(expectedVersion);
         }
+
+        List<GovernanceViolation> migratedProviderViolations = InfrastructureGovernance.ScanCentralPackageVersions(
+            sharedCatalogPath,
+            root,
+            expectedVersions.Keys);
+        migratedProviderViolations.ShouldBeEmpty(FormatViolations(migratedProviderViolations));
+
+        XDocument eventStoreCatalog = XDocument.Load(
+            Path.Combine(root, "references", "Hexalith.EventStore", "Directory.Packages.props"));
+        AssertPackageOverride(
+            eventStoreCatalog,
+            "Microsoft.Extensions.TimeProvider.Testing",
+            "10.7.0",
+            "EventStore must preserve its lower TimeProvider testing version");
+
+        XDocument partiesCatalog = XDocument.Load(
+            Path.Combine(root, "references", "Hexalith.Parties", "Directory.Packages.props"));
+        AssertPackageOverride(
+            partiesCatalog,
+            "ModelContextProtocol.AspNetCore",
+            "1.4.0",
+            "Parties must preserve its lower MCP ASP.NET Core version");
+
+        XDocument memoriesCatalog = XDocument.Load(
+            Path.Combine(root, "references", "Hexalith.Memories", "Directory.Packages.props"));
+        FindPackageVersions(memoriesCatalog, "ModelContextProtocol.AspNetCore").ShouldBeEmpty(
+            "Memories must inherit ModelContextProtocol.AspNetCore 1.4.1 from the shared catalog");
+        FindPackageVersions(memoriesCatalog, "Microsoft.Extensions.TimeProvider.Testing").ShouldBeEmpty(
+            "Memories must inherit Microsoft.Extensions.TimeProvider.Testing 10.8.0 from the shared catalog");
+
+        const string compatibleBuildsCommit = "cfafcbf1e904138b435b63ba4fd79f86b8dda069";
+        ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Memories"), "references/Hexalith.Builds")
+            .ShouldBe(compatibleBuildsCommit, "Memories standalone restores need the migrated shared pins");
+        ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Parties"), "references/Hexalith.Builds")
+            .ShouldBe(compatibleBuildsCommit, "Parties standalone restores need the migrated shared pins");
     }
 
     [Fact]
@@ -200,12 +237,15 @@ public sealed class InfrastructureGovernanceTests {
             """
             <Project>
               <ItemGroup>
-                <PackageVersion Include="StackExchange.Redis" Version="1.0.0" />
+                <PackageVersion Update="stackexchange.redis" Version="1.0.0" />
               </ItemGroup>
             </Project>
             """);
 
-        List<GovernanceViolation> violations = InfrastructureGovernance.ScanCentralPackageVersions(props, temp.Root);
+        List<GovernanceViolation> violations = InfrastructureGovernance.ScanCentralPackageVersions(
+            props,
+            temp.Root,
+            ["StackExchange.Redis"]);
 
         violations.Single().ProviderFamily.ShouldBe("Redis");
     }
@@ -359,6 +399,59 @@ public sealed class InfrastructureGovernanceTests {
         throw new InvalidOperationException("Could not locate repository root.");
     }
 
+    private static XElement[] FindPackageVersions(XDocument document, string packageId)
+        => document
+            .Descendants()
+            .Where(static element => element.Name.LocalName == "PackageVersion")
+            .Where(element => string.Equals(
+                (string?)element.Attribute("Include") ?? (string?)element.Attribute("Update"),
+                packageId,
+                StringComparison.OrdinalIgnoreCase))
+            .ToArray();
+
+    private static void AssertPackageOverride(
+        XDocument document,
+        string packageId,
+        string expectedVersion,
+        string message) {
+        XElement[] declarations = FindPackageVersions(document, packageId);
+        declarations.Length.ShouldBe(1, message);
+        ((string?)declarations[0].Attribute("Update")).ShouldBe(packageId, message);
+        ((string?)declarations[0].Attribute("Version")).ShouldBe(expectedVersion, message);
+    }
+
+    private static string ReadGitlinkCommit(string repositoryPath, string gitlinkPath) {
+        ProcessStartInfo startInfo = new("git") {
+            WorkingDirectory = repositoryPath,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        startInfo.ArgumentList.Add("ls-files");
+        startInfo.ArgumentList.Add("--stage");
+        startInfo.ArgumentList.Add("--");
+        startInfo.ArgumentList.Add(gitlinkPath);
+
+        using Process process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"Could not start git in {repositoryPath}.");
+        string standardOutput = process.StandardOutput.ReadToEnd();
+        string standardError = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0) {
+            throw new InvalidOperationException(
+                $"git ls-files failed in {repositoryPath} with exit code {process.ExitCode}: {standardError}");
+        }
+
+        string[] fields = standardOutput.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
+        if (fields.Length < 4 || !string.Equals(fields[0], "160000", StringComparison.Ordinal)) {
+            throw new InvalidOperationException(
+                $"{gitlinkPath} is not a tracked gitlink in {repositoryPath}: {standardOutput}");
+        }
+
+        return fields[1];
+    }
+
     private static string FormatViolations(IEnumerable<GovernanceViolation> violations)
         => string.Join(Environment.NewLine, violations.Select(v => v.Message));
 }
@@ -419,13 +512,20 @@ internal static class InfrastructureGovernance {
         return ScanReferences(projectPath, references, root, allowSignalRClient);
     }
 
-    public static List<GovernanceViolation> ScanCentralPackageVersions(string propsPath, string root) {
+    public static List<GovernanceViolation> ScanCentralPackageVersions(
+        string propsPath,
+        string root,
+        IEnumerable<string>? packageIdsToScan = null) {
         var document = XDocument.Load(propsPath);
+        HashSet<string>? packageFilter = packageIdsToScan is null
+            ? null
+            : new HashSet<string>(packageIdsToScan, StringComparer.OrdinalIgnoreCase);
         IEnumerable<string> references = document
             .Descendants()
             .Where(static e => e.Name.LocalName is "PackageVersion")
-            .Select(static e => (string?)e.Attribute("Include") ?? string.Empty)
-            .Where(static value => value.Length > 0);
+            .Select(static e => (string?)e.Attribute("Include") ?? (string?)e.Attribute("Update") ?? string.Empty)
+            .Where(static value => value.Length > 0)
+            .Where(value => packageFilter is null || packageFilter.Contains(value));
 
         // Central package versions don't dictate which projects USE the package; per-project
         // ScanProjectReferences enforces Shell-only consumption. SignalR.Client (and its
