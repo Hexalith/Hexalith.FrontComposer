@@ -2,7 +2,7 @@
 title: 'Centralize FrontComposer package versions in Hexalith.Builds'
 type: 'refactor'
 created: '2026-07-17'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 0
 baseline_commit: 'd739f9b5249017b8959e14a445bc3eaaebf683c0'
 context:
@@ -39,15 +39,16 @@ context:
 - `eng/release_evidence.py` -- release-definition drift surface must include the shared catalog without adding it to fallback invalidation.
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/{InfrastructureGovernanceTests,CiGovernanceTests}.cs` -- enforce no root-local package versions and the expanded release-definition surface.
 - `tests/ci-governance/fixtures/{release-manifest-valid,release-readiness-cases}.json` -- fixture fingerprints follow the authoritative files.
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` -- refresh the governed identifier inventory after adding the ownership regression test.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `references/Hexalith.Builds/Props/Directory.Packages.props` -- add the 14 exact literal pins beside their package families without reordering unrelated entries.
-- [ ] `Directory.Packages.props` -- remove all local `PackageVersion` item groups while retaining CPM, transitive pinning, and imports.
-- [ ] `references/Hexalith.{EventStore,Memories,Parties}/Directory.Packages.props` -- convert differing collisions to `Update` and remove same-version collisions, preserving effective versions.
-- [ ] `.github/workflows/quality.yml` and `eng/release_evidence.py` -- hash/fingerprint the shared catalog; keep it outside `FALLBACK_INVALIDATION_FILES`.
-- [ ] Governance tests and release fixtures in the Code Map -- enforce the new ownership boundary and update complete release-definition baselines.
+- [x] `references/Hexalith.Builds/Props/Directory.Packages.props` -- add the 14 exact literal pins beside their package families without reordering unrelated entries.
+- [x] `Directory.Packages.props` -- remove all local `PackageVersion` item groups while retaining CPM, transitive pinning, and imports.
+- [x] `references/Hexalith.{EventStore,Memories,Parties}/Directory.Packages.props` -- convert differing collisions to `Update` and remove same-version collisions, preserving effective versions.
+- [x] `.github/workflows/quality.yml` and `eng/release_evidence.py` -- hash/fingerprint the shared catalog; keep it outside `FALLBACK_INVALIDATION_FILES`.
+- [x] Governance tests, release fixtures, and governed identifier inventory in the Code Map -- enforce the new ownership boundary and update complete baselines.
 
 **Acceptance Criteria:**
 - Given the pre-change FrontComposer catalog, when MSBuild evaluates packages after migration, then the same 14 ID/version pairs occur exactly once from the shared catalog and the root shim contains zero `PackageVersion` items.
@@ -69,3 +70,12 @@ The moved pins are `BenchmarkDotNet 0.15.8`, `FsCheck.Xunit.v3 3.3.3`, `Microsof
 - `dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Debug -m:1 && dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -m:1` -- both dependency modes restore without central-version collisions.
 - `dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore -warnaserror -m:1` -- serialized Release build passes.
 - `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Governance"` -- affected governance lane passes.
+
+**Results:**
+- Shared catalog validator passed with 266 entries; its 11-scenario regression suite passed.
+- Debug and Release restores passed without `NU1506` or `NU1109`; the serialized Release build passed with zero warnings and zero errors.
+- The full Governance category passed: 166 Shell, 140 SourceTools, 6 CLI, 6 MCP, 6 Contracts, and 1 benchmark test.
+- MSBuild evaluation found all 14 migrated ID/version pairs exactly once. EventStore evaluates TimeProvider `10.7.0`, Parties evaluates MCP ASP.NET Core `1.4.0`, and Memories evaluates the shared `10.8.0`/`1.4.1` versions.
+- No owned `.props`, `.targets`, or `.csproj` file retains a local `PackageVersion`; no owned `.csproj` has an inline package version. Protected SDK, npm/tool, product-version, and API-baseline files are unchanged from `baseline_commit`.
+- Release fixture classification and manifest verification passed. The shared catalog participates in cache and release-definition fingerprints but remains outside fallback invalidation.
+- The shared catalog remains UTF-8 with BOM and CRLF line endings.
