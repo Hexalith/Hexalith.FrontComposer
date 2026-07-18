@@ -1,5 +1,7 @@
 using System.Diagnostics;
+using System.IO.Enumeration;
 using System.Reflection;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -47,6 +49,7 @@ public sealed class InfrastructureGovernanceTests {
             "Hexalith.Builds",
             "Props",
             "Directory.Packages.props");
+        AssertUtf8BomAndCrLf(sharedCatalogPath);
         XDocument sharedCatalog = XDocument.Load(sharedCatalogPath);
         Dictionary<string, string> expectedVersions = new(StringComparer.OrdinalIgnoreCase) {
             ["BenchmarkDotNet"] = "0.15.8",
@@ -66,9 +69,7 @@ public sealed class InfrastructureGovernanceTests {
         };
 
         foreach ((string packageId, string expectedVersion) in expectedVersions) {
-            XElement[] declarations = FindPackageVersions(sharedCatalog, packageId);
-            declarations.Length.ShouldBe(1, $"{packageId} must occur exactly once in the shared catalog");
-            ((string?)declarations[0].Attribute("Version")).ShouldBe(expectedVersion);
+            AssertAuthoritativePackageVersion(sharedCatalog, packageId, expectedVersion);
         }
 
         List<GovernanceViolation> migratedProviderViolations = InfrastructureGovernance.ScanCentralPackageVersions(
@@ -79,11 +80,16 @@ public sealed class InfrastructureGovernanceTests {
 
         XDocument eventStoreCatalog = XDocument.Load(
             Path.Combine(root, "references", "Hexalith.EventStore", "Directory.Packages.props"));
-        AssertPackageOverride(
-            eventStoreCatalog,
-            "Microsoft.Extensions.TimeProvider.Testing",
-            "10.7.0",
-            "EventStore must preserve its lower TimeProvider testing version");
+        Dictionary<string, string> eventStoreInheritedVersions = new(StringComparer.OrdinalIgnoreCase) {
+            ["Microsoft.Extensions.TimeProvider.Testing"] = "10.8.0",
+            ["System.CommandLine"] = "2.0.10",
+            ["ModelContextProtocol"] = "1.4.1",
+        };
+        foreach ((string packageId, string expectedVersion) in eventStoreInheritedVersions) {
+            AssertAuthoritativePackageVersion(sharedCatalog, packageId, expectedVersion);
+            FindPackageVersionOperations(eventStoreCatalog, packageId).ShouldBeEmpty(
+                $"EventStore must inherit {packageId} {expectedVersion} from the shared catalog");
+        }
 
         XDocument partiesCatalog = XDocument.Load(
             Path.Combine(root, "references", "Hexalith.Parties", "Directory.Packages.props"));
@@ -95,16 +101,19 @@ public sealed class InfrastructureGovernanceTests {
 
         XDocument memoriesCatalog = XDocument.Load(
             Path.Combine(root, "references", "Hexalith.Memories", "Directory.Packages.props"));
-        FindPackageVersions(memoriesCatalog, "ModelContextProtocol.AspNetCore").ShouldBeEmpty(
+        FindPackageVersionOperations(memoriesCatalog, "ModelContextProtocol.AspNetCore").ShouldBeEmpty(
             "Memories must inherit ModelContextProtocol.AspNetCore 1.4.1 from the shared catalog");
-        FindPackageVersions(memoriesCatalog, "Microsoft.Extensions.TimeProvider.Testing").ShouldBeEmpty(
+        FindPackageVersionOperations(memoriesCatalog, "Microsoft.Extensions.TimeProvider.Testing").ShouldBeEmpty(
             "Memories must inherit Microsoft.Extensions.TimeProvider.Testing 10.8.0 from the shared catalog");
 
-        const string compatibleBuildsCommit = "cfafcbf1e904138b435b63ba4fd79f86b8dda069";
+        const string eventStoreAndMemoriesBuildsCommit = "e64ae34e50086ae55d47971d70897d579ff18c25";
+        const string partiesBuildsCommit = "cfafcbf1e904138b435b63ba4fd79f86b8dda069";
+        ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.EventStore"), "references/Hexalith.Builds")
+            .ShouldBe(eventStoreAndMemoriesBuildsCommit, "EventStore standalone restores need the migrated shared pins");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Memories"), "references/Hexalith.Builds")
-            .ShouldBe(compatibleBuildsCommit, "Memories standalone restores need the migrated shared pins");
+            .ShouldBe(eventStoreAndMemoriesBuildsCommit, "Memories standalone restores need the migrated shared pins");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Parties"), "references/Hexalith.Builds")
-            .ShouldBe(compatibleBuildsCommit, "Parties standalone restores need the migrated shared pins");
+            .ShouldBe(partiesBuildsCommit, "Parties standalone restores need the migrated shared pins");
     }
 
     [Fact]
@@ -237,6 +246,7 @@ public sealed class InfrastructureGovernanceTests {
             """
             <Project>
               <ItemGroup>
+                <PackageVersion Include="dapr.client" Version="1.0.0" />
                 <PackageVersion Update="stackexchange.redis" Version="1.0.0" />
               </ItemGroup>
             </Project>
@@ -245,9 +255,60 @@ public sealed class InfrastructureGovernanceTests {
         List<GovernanceViolation> violations = InfrastructureGovernance.ScanCentralPackageVersions(
             props,
             temp.Root,
-            ["StackExchange.Redis"]);
+            ["DAPR.CLIENT", "STACKEXCHANGE.REDIS"]);
 
-        violations.Single().ProviderFamily.ShouldBe("Redis");
+        violations.Count.ShouldBe(2);
+        violations.ShouldContain(static violation => violation.ProviderFamily == "Dapr SDK");
+        violations.ShouldContain(static violation => violation.ProviderFamily == "Redis");
+    }
+
+    [Fact]
+    public void CentralPackageVersionOwnership_InvalidOperations_AreRejected() {
+        string[] invalidAuthoritativeCatalogs = [
+            """
+            <Project><ItemGroup><PackageVersion Update="BenchmarkDotNet" Version="0.15.8" /></ItemGroup></Project>
+            """,
+            """
+            <Project><ItemGroup Condition="'$(Configuration)' == 'Never'"><PackageVersion Include="BenchmarkDotNet" Version="0.15.8" /></ItemGroup></Project>
+            """,
+            """
+            <Project><Choose><Otherwise><ItemGroup><PackageVersion Include="BenchmarkDotNet" Version="0.15.8" /></ItemGroup></Otherwise></Choose></Project>
+            """,
+            """
+            <Project><ItemGroup><PackageVersion Include="BenchmarkDotNet" Exclude="BenchmarkDotNet" Version="0.15.8" /></ItemGroup></Project>
+            """,
+            """
+            <Project><ItemGroup><PackageVersion Include="BenchmarkDotNet" Version="0.15.8" /><PackageVersion Remove="Verify;BenchmarkDotNet" /></ItemGroup></Project>
+            """,
+            """
+            <Project><ItemGroup><PackageVersion Include="BenchmarkDotNet" Version="0.15.8" /><PackageVersion Remove="Benchmark*" /></ItemGroup></Project>
+            """,
+        ];
+        foreach (string catalog in invalidAuthoritativeCatalogs) {
+            XDocument document = XDocument.Parse(catalog);
+            Should.Throw<ShouldAssertException>(
+                () => AssertAuthoritativePackageVersion(document, "BenchmarkDotNet", "0.15.8"));
+        }
+
+        string[] invalidOverrides = [
+            """
+            <Project><ItemGroup Condition="'$(Configuration)' == 'Debug'"><PackageVersion Update="ModelContextProtocol.AspNetCore" Version="1.4.0" /></ItemGroup></Project>
+            """,
+            """
+            <Project><ItemGroup><PackageVersion Update="ModelContextProtocol.AspNetCore" Exclude="ModelContextProtocol.AspNetCore" Version="1.4.0" /></ItemGroup></Project>
+            """,
+            """
+            <Project><ItemGroup><PackageVersion Update="ModelContextProtocol.AspNetCore" Version="1.4.0" /><PackageVersion Remove="ModelContextProtocol*" /></ItemGroup></Project>
+            """,
+        ];
+        foreach (string catalog in invalidOverrides) {
+            XDocument document = XDocument.Parse(catalog);
+            Should.Throw<ShouldAssertException>(() => AssertPackageOverride(
+                document,
+                "ModelContextProtocol.AspNetCore",
+                "1.4.0",
+                "the override must be effective unconditionally"));
+        }
     }
 
     [Fact]
@@ -399,25 +460,85 @@ public sealed class InfrastructureGovernanceTests {
         throw new InvalidOperationException("Could not locate repository root.");
     }
 
-    private static XElement[] FindPackageVersions(XDocument document, string packageId)
+    private static XElement[] FindPackageVersionOperations(XDocument document, string packageId)
         => document
             .Descendants()
             .Where(static element => element.Name.LocalName == "PackageVersion")
-            .Where(element => string.Equals(
-                (string?)element.Attribute("Include") ?? (string?)element.Attribute("Update"),
-                packageId,
-                StringComparison.OrdinalIgnoreCase))
+            .Where(element => new[] { "Include", "Update", "Remove" }
+                .Any(operation => ItemSpecSelectsPackage(
+                    (string?)element.Attribute(operation),
+                    packageId)))
             .ToArray();
+
+    private static bool ItemSpecSelectsPackage(string? itemSpec, string packageId)
+        => !string.IsNullOrWhiteSpace(itemSpec)
+            && itemSpec
+                .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Any(spec => FileSystemName.MatchesSimpleExpression(spec, packageId, ignoreCase: true));
+
+    private static void AssertAuthoritativePackageVersion(
+        XDocument document,
+        string packageId,
+        string expectedVersion) {
+        XElement[] operations = FindPackageVersionOperations(document, packageId);
+        operations.Length.ShouldBe(1, $"{packageId} must have exactly one unmasked shared operation");
+        XElement declaration = operations[0];
+        string.Equals(
+            (string?)declaration.Attribute("Include"),
+            packageId,
+            StringComparison.OrdinalIgnoreCase).ShouldBeTrue(
+                $"{packageId} must be an authoritative Include item, not an Update");
+        declaration.Attribute("Update").ShouldBeNull($"{packageId} must not use Update in the shared catalog");
+        declaration.Attribute("Exclude").ShouldBeNull($"{packageId} must not use Exclude in the shared catalog");
+        declaration.AncestorsAndSelf()
+            .Any(static element => element.Attribute("Condition") is not null)
+            .ShouldBeFalse($"{packageId} must be unconditional in the shared catalog");
+        declaration.Ancestors()
+            .Any(static element => element.Name.LocalName is "Choose" or "When" or "Otherwise")
+            .ShouldBeFalse($"{packageId} must not be selected through an MSBuild Choose branch");
+        ((string?)declaration.Attribute("Version")).ShouldBe(expectedVersion);
+    }
 
     private static void AssertPackageOverride(
         XDocument document,
         string packageId,
         string expectedVersion,
         string message) {
-        XElement[] declarations = FindPackageVersions(document, packageId);
+        XElement[] declarations = FindPackageVersionOperations(document, packageId);
         declarations.Length.ShouldBe(1, message);
-        ((string?)declarations[0].Attribute("Update")).ShouldBe(packageId, message);
+        string.Equals(
+            (string?)declarations[0].Attribute("Update"),
+            packageId,
+            StringComparison.OrdinalIgnoreCase).ShouldBeTrue(message);
+        declarations[0].Attribute("Exclude").ShouldBeNull(message);
+        declarations[0].AncestorsAndSelf()
+            .Any(static element => element.Attribute("Condition") is not null)
+            .ShouldBeFalse(message);
+        declarations[0].Ancestors()
+            .Any(static element => element.Name.LocalName is "Choose" or "When" or "Otherwise")
+            .ShouldBeFalse(message);
         ((string?)declarations[0].Attribute("Version")).ShouldBe(expectedVersion, message);
+    }
+
+    private static void AssertUtf8BomAndCrLf(string path) {
+        byte[] bytes = File.ReadAllBytes(path);
+        byte[] preamble = Encoding.UTF8.GetPreamble();
+        bytes.Length.ShouldBeGreaterThanOrEqualTo(preamble.Length);
+        bytes.Take(preamble.Length).ShouldBe(preamble, "the shared catalog must start with a UTF-8 BOM");
+        _ = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
+            .GetString(bytes, preamble.Length, bytes.Length - preamble.Length);
+
+        for (int index = preamble.Length; index < bytes.Length; index++) {
+            if (bytes[index] == (byte)'\n') {
+                (index > preamble.Length && bytes[index - 1] == (byte)'\r').ShouldBeTrue(
+                    $"the shared catalog contains a bare LF at byte offset {index}");
+            }
+
+            if (bytes[index] == (byte)'\r') {
+                (index + 1 < bytes.Length && bytes[index + 1] == (byte)'\n').ShouldBeTrue(
+                    $"the shared catalog contains a bare CR at byte offset {index}");
+            }
+        }
     }
 
     private static string ReadGitlinkCommit(string repositoryPath, string gitlinkPath) {
