@@ -1749,3 +1749,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-mcp-runtime-split-and-benchmark-relocation.md`
   summary: Reject negative skill-resource character limits at construction.
   evidence: `SkillResourceReadOptions` accepts any integer (`src/Hexalith.FrontComposer.Mcp/Skills/SkillResourceReadOptions.cs:10-13`); a negative cap causes every resource read to return `SkillResourceTooLarge`. This public-boundary validation gap predates the relocation.
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29585546315-fix-cicd-2.md`
+  summary: Verify JSON-formatted parse failures for Hexalith.Builds command applications.
+  evidence: The updated Hexalith.Builds submodule's parse-valid command tests do not send malformed arguments with `--output json`, so a regression of the HXC001 JSON parse-failure contract would be undetected.
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29585546315-fix-cicd-2.md`
+  summary: Add symlink-containment coverage for module manifest paths.
+  evidence: The updated Hexalith.Builds submodule tests lexical traversal but does not exercise an in-repository symlink resolving outside the repository root.
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29585546315-fix-cicd-2.md`
+  summary: Test complete run-evidence artifacts with inconsistent test counts.
+  evidence: The updated Hexalith.Builds submodule rejects schema-only artifacts, but no test isolates malformed complete test-count semantics required for HXE148.
