@@ -123,9 +123,9 @@ def read_json(path: pathlib.Path) -> dict:
         return json.load(handle)
 
 
-def sha256_file(path: pathlib.Path) -> str:
+def sha256_file(path: pathlib.Path, base: pathlib.Path | None = None) -> str:
     digest = hashlib.sha256()
-    with (REPO_ROOT / path).open("rb") as handle:
+    with ((base or REPO_ROOT) / path).open("rb") as handle:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
@@ -631,8 +631,9 @@ def cmd_prepare(args: argparse.Namespace) -> int:
 # publish
 # ---------------------------------------------------------------------------
 
-def _record_incident(phase: str) -> None:
-    incident = REPO_ROOT / EVIDENCE_DIR / "partial-publish-incident.json"
+def _record_incident(phase: str, base: pathlib.Path | None = None) -> None:
+    base = base or REPO_ROOT
+    incident = base / EVIDENCE_DIR / "partial-publish-incident.json"
     if incident.is_file():
         try:
             existing = json.loads(incident.read_text(encoding="utf-8"))
@@ -642,8 +643,8 @@ def _record_incident(phase: str) -> None:
             incident.unlink()
     subprocess.run(
         ["python3", "eng/release_evidence.py", "partial-publish-incident",
-         "--manifest", str(EVIDENCE_DIR / "sealed-manifest.json"),
-         "--output", str(EVIDENCE_DIR / "partial-publish-incident.json"),
+         "--manifest", str(base / EVIDENCE_DIR / "sealed-manifest.json"),
+         "--output", str(base / EVIDENCE_DIR / "partial-publish-incident.json"),
          "--phase", phase,
          "--classification", "partial-publish-incident"],
         cwd=REPO_ROOT, check=False,
@@ -657,29 +658,39 @@ def _record_incident(phase: str) -> None:
         log("publish", f"incident record: {sanitize_paths(incident.read_text(encoding='utf-8')).strip()}")
 
 
-def _confine_to_repo(package_id: str, raw_path: str) -> pathlib.Path:
+def _confine_to_repo(package_id: str, raw_path: str, base: pathlib.Path | None = None) -> pathlib.Path:
     """Reject absolute or root-escaping manifest paths before any byte audit (review BH-12)."""
+    base = base or REPO_ROOT
     candidate = pathlib.Path(raw_path)
-    resolved_root = REPO_ROOT.resolve()
+    resolved_root = base.resolve()
     if candidate.is_absolute() or not (resolved_root / candidate).resolve().is_relative_to(resolved_root):
-        _record_incident("post-seal-verification")
+        _record_incident("post-seal-verification", base)
         raise PhaseFailure("publish-verify", f"{package_id}: manifest path escapes the repository root")
     return candidate
 
 
 def cmd_publish(args: argparse.Namespace) -> int:
+    # --work-root exists so the pre-push audit is runtime-testable against a staged
+    # evidence set (review VG-2); production publishCmd never passes it and audits the
+    # repository root exactly as before.
+    base = pathlib.Path(args.work_root).resolve() if getattr(args, "work_root", None) else REPO_ROOT
     api_key = os.environ.get("NUGET_API_KEY", "")
     if not api_key:
         raise PhaseFailure("publish", "NUGET_API_KEY is not available; publication fails closed")
 
     # Re-verify the sealed manifest and readiness immediately before any push (AC10/AC11).
-    run("publish-verify", [
+    # A failed re-verification IS observed post-seal divergence: record the typed
+    # incident (AC14) before failing closed.
+    verify = run("publish-verify", [
         "python3", "eng/release_evidence.py", "verify-manifest",
-        "--manifest", str(EVIDENCE_DIR / "sealed-manifest.json"),
-        "--root", ".",
-        "--output", str(EVIDENCE_DIR / "release-verification.json"),
-    ])
-    readiness = read_json(EVIDENCE_DIR / "release-readiness.json")
+        "--manifest", str(base / EVIDENCE_DIR / "sealed-manifest.json"),
+        "--root", str(base),
+        "--output", str(base / EVIDENCE_DIR / "release-verification.json"),
+    ], tolerate_failure=True)
+    if verify.returncode != 0:
+        _record_incident("post-seal-verification", base)
+        raise PhaseFailure("publish-verify", "sealed manifest failed re-verification immediately before push")
+    readiness = json.loads((base / EVIDENCE_DIR / "release-readiness.json").read_text(encoding="utf-8"))
     classification = str(readiness.get("classification", ""))
     authorized = readiness.get("publish_authorized") is True
     if classification not in {"ready", "fallback-approved"} or not authorized:
@@ -688,7 +699,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
             f"release is not publish-authorized (classification={classification or 'missing'}); refusing to push",
         )
 
-    manifest = read_json(EVIDENCE_DIR / "sealed-manifest.json")
+    manifest = json.loads((base / EVIDENCE_DIR / "sealed-manifest.json").read_text(encoding="utf-8"))
     rows = [row for row in manifest.get("packages", []) if isinstance(row, dict)]
     if not rows:
         raise PhaseFailure("publish-verify", "sealed manifest contains no package rows")
@@ -702,28 +713,28 @@ def cmd_publish(args: argparse.Namespace) -> int:
     for row in rows:
         package_id = str(row.get("package_id", "<unknown>"))
         if str(row.get("version", "")) != expected_version:
-            _record_incident("post-seal-verification")
+            _record_incident("post-seal-verification", base)
             raise PhaseFailure("publish-verify", f"{package_id}: manifest version differs from semantic-release version")
         raw_artifact = str(row.get("artifact_path", ""))
         if not raw_artifact.startswith("nupkgs-signed/"):
-            _record_incident("post-seal-verification")
+            _record_incident("post-seal-verification", base)
             raise PhaseFailure("publish-verify", f"{package_id}: artifact path is not a signed candidate path")
-        artifact = _confine_to_repo(package_id, raw_artifact)
-        if not (REPO_ROOT / artifact).is_file() or sha256_file(artifact) != row.get("checksum"):
-            _record_incident("post-seal-verification")
+        artifact = _confine_to_repo(package_id, raw_artifact, base)
+        if not (base / artifact).is_file() or sha256_file(artifact, base) != row.get("checksum"):
+            _record_incident("post-seal-verification", base)
             raise PhaseFailure("publish-verify", f"{package_id}: signed artifact missing or checksum mismatch")
         push_plan.append(("package-push", artifact))
         symbol = str(row.get("symbol_artifact", ""))
         sealed_symbol_hash = str(row.get("symbol_checksum", ""))
         if symbol.startswith("nupkgs/") and symbol.endswith(".snupkg"):
-            symbol_path = _confine_to_repo(package_id, symbol)
+            symbol_path = _confine_to_repo(package_id, symbol, base)
             if not _SHA256_RE.fullmatch(sealed_symbol_hash):
                 # Fail-open seam closed (review VG-3/EC-12): a symbol without a sealed
                 # hash must never be pushed on existence alone.
-                _record_incident("post-seal-verification")
+                _record_incident("post-seal-verification", base)
                 raise PhaseFailure("publish-verify", f"{package_id}: symbol has no sealed checksum")
-            if not (REPO_ROOT / symbol_path).is_file() or sha256_file(symbol_path) != sealed_symbol_hash:
-                _record_incident("post-seal-verification")
+            if not (base / symbol_path).is_file() or sha256_file(symbol_path, base) != sealed_symbol_hash:
+                _record_incident("post-seal-verification", base)
                 raise PhaseFailure("publish-verify", f"{package_id}: symbol package missing or checksum mismatch")
             push_plan.append(("symbol-push", symbol_path))
         elif sealed_symbol_hash == "not-required" and not symbol.endswith(".snupkg"):
@@ -732,19 +743,19 @@ def cmd_publish(args: argparse.Namespace) -> int:
             # reference and fails closed (review BH-2/EC-11).
             pass
         else:
-            _record_incident("post-seal-verification")
+            _record_incident("post-seal-verification", base)
             raise PhaseFailure("publish-verify", f"{package_id}: malformed symbol path for symbol package")
 
     pushed = 0
     for phase, artifact in push_plan:
         result = subprocess.run(
-            ["dotnet", "nuget", "push", str(REPO_ROOT / artifact),
+            ["dotnet", "nuget", "push", str(base / artifact),
              "--source", "https://api.nuget.org/v3/index.json",
              "--api-key", api_key],
             cwd=REPO_ROOT, capture_output=True, text=True, check=False,
         )
         if result.returncode != 0:
-            _record_incident(phase)
+            _record_incident(phase, base)
             # Surface a sanitized failure tail so the operator can distinguish
             # 403-key / 409-conflict / quota / outage during reconciliation (review
             # BH-11). The api key rides argv, never the captured streams; paths are
@@ -774,6 +785,11 @@ def main() -> int:
 
     publish = sub.add_parser("publish", help="Push the manifest-authorized signed artifacts only.")
     publish.add_argument("--version", required=True)
+    publish.add_argument(
+        "--work-root", default=None,
+        help="Test-only override: audit evidence + artifacts under this directory instead of the "
+             "repository root (governance runtime negatives). Production publishCmd omits it.",
+    )
     publish.set_defaults(func=cmd_publish)
 
     args = parser.parse_args()

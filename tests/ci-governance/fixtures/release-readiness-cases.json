@@ -74,7 +74,7 @@
       "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "seal": {
         "algorithm": "sha256",
-        "hash": "c8a12d3710a9f088570f5a37e3f8dc57521e7c855bb1a32b9da57325b187e508",
+        "hash": "906a722ba766fcf41f35fb1b3ed1e58ea37794b57a8935508818d443ae78276d",
         "sealed_at": "2026-05-19T00:00:00+00:00"
       },
       "tag": "v1.2.3",
@@ -118,7 +118,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "459aeb55203a72e89c21386b07cd6a502ac3e110601edfda3dacf3e93286095d",
+            "hash": "2b4b3701e9027947c26681cb74741ab182e7b02fa5c4e4ddfb8bdfa5fa766c32",
             "sealed_at": "2026-05-17T00:00:00+00:00"
           }
         }
@@ -178,7 +178,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "459aeb55203a72e89c21386b07cd6a502ac3e110601edfda3dacf3e93286095d",
+            "hash": "2b4b3701e9027947c26681cb74741ab182e7b02fa5c4e4ddfb8bdfa5fa766c32",
             "sealed_at": "2026-05-17T00:00:00+00:00"
           }
         }

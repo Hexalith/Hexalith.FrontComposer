@@ -117,8 +117,13 @@ Plugins: `commit-analyzer` → `release-notes-generator` → `changelog` → `ex
 `release.yml` runs from **`workflow_run` after a successful CI push** (guarded
 `conclusion == 'success' && event == 'push'`, so PR/scheduled CI runs never release, and a failed CI
 can never publish). The REL-4 `freeze-guard` job then gates the `release` job (default frozen; see
-above). When enabled, it delegates to `domain-release.yml@main` with `test-projects: ''` (CI already
-gated the same head). The reusable runs `npm ci` → `npm audit signatures` → build →
+above). When enabled, it delegates to `domain-release.yml@main` with `test-projects: ''` — the
+reusable's own test hook stays empty because `prepareCmd` below re-runs the full 7-project release
+test lane against the exact candidates (REL-3 AC4 requires test evidence over the bytes being
+published, not just the CI head). This makes `prepareCmd` a multi-tens-of-minutes step (restore/
+build, pack, ~4,200 tests, consumer validation, SBOM, signing, sealing): the `domain-release.yml`
+job timeout must be sized for it upstream — a CI-authoritative concern recorded for the first
+governed release. The reusable runs `npm ci` → `npm audit signatures` → build →
 `npx semantic-release`, which drives this repo's `.releaserc.json`:
 
 - **`prepareCmd`:** `python3 eng/release_prepublish.py prepare --version ${nextRelease.version}` —
@@ -214,6 +219,14 @@ mechanics can be validated locally (`release_prepublish.py prepare --non-publish
 production identity. It is not approval for a production author identity. The Release Owner must select and
 approve the production signing identity, trust model, storage/rotation plan, and timestamp authority.
 A bare self-signed leaf does not work with `dotnet nuget sign` (`NU3018 InvalidBasicConstraints`).
+
+> **Hard requirement (REL-5, review BH-8):** the production signing identity MUST chain to the
+> **publicly trusted** NuGet code-signing roots. The two verification lanes trust different roots by
+> design: `prepare` appends the PFX's issuing CA to the SDK bundle before verifying (so any chain
+> passes pre-publication), but the independent post-publication verifier uses the **stock public
+> bundle only**. An internal or self-signed CA therefore passes `prepare` and then **fails
+> post-publication verification on every release**, permanently blocking a compliant ledger
+> disposition. Choose a certificate from a publicly trusted code-signing CA.
 
 > **Why a chain + why the PFX must embed the root:** on Linux, `dotnet nuget sign`/`verify` trust
 > code-signing roots **only** via the SDK's own bundle `…/sdk/<ver>/trustedroots/codesignctl.pem`,

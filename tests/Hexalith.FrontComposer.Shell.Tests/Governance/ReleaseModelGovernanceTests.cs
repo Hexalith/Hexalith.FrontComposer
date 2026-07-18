@@ -297,6 +297,130 @@ public sealed class ReleaseModelGovernanceTests {
     }
 
     [Fact]
+    public void ClassifyRelease_HealthyDryRunEvidence_CleanExitGate_ReturnsExit0() {
+        // Review VG-1 (2026-07-18): the `--dry-run-clean-exit` CLI exit gate is what
+        // `prepare --non-publishing` (the only pre-CI proof of the full chain) depends on,
+        // and the healthy carve-out empties the blocking list — the exact case the gate's
+        // pre-review `and blocking` guard made unreachable. This traverses the REAL CLI
+        // exit gate over a hermetically staged healthy evidence set (self-consistent
+        // sealed manifest + on-disk artifacts under a temp work root, built by
+        // tests/ci-governance/stage_release_state.py) and pins exit 0. Reverting the gate
+        // to `... and blocking:` makes this test fail.
+        string root = CiGovernanceTests.RepositoryRoot();
+        string workRoot = Path.Combine(Path.GetTempPath(), $"fc-clean-exit-{Guid.NewGuid():N}");
+        try {
+            CiGovernanceTests.ProcessResult staging = CiGovernanceTests.RunPython(root, [
+                "tests/ci-governance/stage_release_state.py", "evidence", root, workRoot,
+            ]);
+            staging.ExitCode.ShouldBe(0, $"staging must succeed: {staging.Error}");
+
+            string output = Path.Combine(workRoot, "readiness.json");
+            CiGovernanceTests.ProcessResult result = CiGovernanceTests.RunPython(root, [
+                "eng/release_evidence.py",
+                "classify-release",
+                "--root", workRoot,
+                "--evidence", Path.Combine(workRoot, "evidence.json"),
+                "--require-publishable",
+                "--dry-run-clean-exit",
+                "--output", output,
+            ]);
+
+            result.ExitCode.ShouldBe(0, $"a HEALTHY dry-run must take the clean exit: {result.Error}");
+            result.Error.ShouldContain(
+                "would-be-publishable",
+                customMessage: "the clean exit must announce the would-be-publishable dry-run classification.");
+            using JsonDocument decision = JsonDocument.Parse(File.ReadAllText(output));
+            decision.RootElement.GetProperty("classification").GetString().ShouldBeOneOf("ready", "fallback-approved");
+            decision.RootElement.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse(
+                "a dry-run can never be publish-authorized, only would-be-publishable.");
+        }
+        finally {
+            if (Directory.Exists(workRoot)) {
+                Directory.Delete(workRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void PrepublishPublisher_PostSealArtifactMutation_FailsClosedBeforePush() {
+        // Review VG-2 (2026-07-18): the publisher's exact-byte pre-push audit was only
+        // source-string pinned; this is the runtime negative. A staged, fully authorized
+        // release state (ready + publish_authorized=true) whose artifact bytes were
+        // mutated AFTER sealing must fail closed at publish time — typed
+        // post-seal-verification incident, no push attempted — even though every static
+        // string pin would still pass.
+        string root = CiGovernanceTests.RepositoryRoot();
+        string workRoot = Path.Combine(Path.GetTempPath(), $"fc-publish-mutation-{Guid.NewGuid():N}");
+        try {
+            CiGovernanceTests.ProcessResult staging = CiGovernanceTests.RunPython(root, [
+                "tests/ci-governance/stage_release_state.py", "publish", root, workRoot, "--corrupt-artifact",
+            ]);
+            staging.ExitCode.ShouldBe(0, $"staging must succeed: {staging.Error}");
+            string stagedVersion = staging.Output.Trim().Split('\n')[^1].Trim();
+
+            CiGovernanceTests.ProcessResult result = CiGovernanceTests.RunPython(
+                root,
+                ["eng/release_prepublish.py", "publish", "--version", stagedVersion, "--work-root", workRoot],
+                new Dictionary<string, string> { ["NUGET_API_KEY"] = "governance-probe-not-a-key" });
+
+            result.ExitCode.ShouldBe(1, "post-seal artifact mutation must fail the publish.");
+            result.Output.ShouldContain("FAIL-CLOSED", customMessage: "the refusal must be an explicit fail-closed phase failure.");
+            result.Output.ShouldNotContain("pushed ", customMessage: "no artifact may be pushed after a failed pre-push audit.");
+            result.Output.ShouldNotContain("push failed", customMessage: "the failure must occur BEFORE the push loop, not inside it.");
+            using JsonDocument incident = JsonDocument.Parse(
+                File.ReadAllText(Path.Combine(workRoot, "release-evidence", "partial-publish-incident.json")));
+            incident.RootElement.GetProperty("decision_contract").GetString().ShouldBe("frontcomposer.partial-publish-incident.v1");
+            incident.RootElement.GetProperty("failed_phase").GetString().ShouldBe(
+                "post-seal-verification",
+                "the divergence is pre-push post-seal mutation, not a push-phase failure.");
+        }
+        finally {
+            if (Directory.Exists(workRoot)) {
+                Directory.Delete(workRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void PrepublishPublisher_VersionAuditMismatch_FailsClosedBeforePush() {
+        // Review VG-2 (2026-07-18): second runtime layer — an internally consistent,
+        // authorized release state whose sealed rows carry a DIFFERENT version than the
+        // one semantic-release supplies must trip the per-row audit (not the manifest
+        // re-verification), record the typed incident, and never reach the push loop.
+        // Inverting the audit's version comparison routes the failure into the push loop
+        // (package-push incident), which the phase assertion below catches.
+        string root = CiGovernanceTests.RepositoryRoot();
+        string workRoot = Path.Combine(Path.GetTempPath(), $"fc-publish-version-audit-{Guid.NewGuid():N}");
+        try {
+            CiGovernanceTests.ProcessResult staging = CiGovernanceTests.RunPython(root, [
+                "tests/ci-governance/stage_release_state.py", "publish", root, workRoot,
+            ]);
+            staging.ExitCode.ShouldBe(0, $"staging must succeed: {staging.Error}");
+
+            CiGovernanceTests.ProcessResult result = CiGovernanceTests.RunPython(
+                root,
+                ["eng/release_prepublish.py", "publish", "--version", "9.9.9-governance-audit-mismatch", "--work-root", workRoot],
+                new Dictionary<string, string> { ["NUGET_API_KEY"] = "governance-probe-not-a-key" });
+
+            result.ExitCode.ShouldBe(1, "a manifest/semantic-release version divergence must fail the publish.");
+            result.Output.ShouldContain(
+                "manifest version differs from semantic-release version",
+                customMessage: "the per-row version audit must be the tripped guard.");
+            result.Output.ShouldNotContain("pushed ", customMessage: "no artifact may be pushed after a failed pre-push audit.");
+            using JsonDocument incident = JsonDocument.Parse(
+                File.ReadAllText(Path.Combine(workRoot, "release-evidence", "partial-publish-incident.json")));
+            incident.RootElement.GetProperty("failed_phase").GetString().ShouldBe(
+                "post-seal-verification",
+                "the audit failure is pre-push; a package-push phase here means the audit was bypassed.");
+        }
+        finally {
+            if (Directory.Exists(workRoot)) {
+                Directory.Delete(workRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void PrepublishPublisher_UnpreparedRepository_RefusesToPush() {
         // AC10/AC11 runtime negative: invoking the publisher outside a prepared, authorized
         // release context must fail closed before any push. Whichever guard trips first

@@ -2,7 +2,7 @@
 title: 'Fix CI: remediate AngleSharp NU1902 audit failure blocking Restore'
 type: 'bugfix'
 created: '2026-07-18'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: 'afb39847f313b41266635149baafb602362f1e8e'
 context: []
@@ -74,4 +74,10 @@ context: []
 - Root XML check -- `Directory.Packages.props` contains `0` `PackageVersion` elements.
 - `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category=Governance"` -- `164/167` passed. Two failures require absent nested submodule files, including `CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog`; the third is the unrelated `SemanticReleaseAnalyzer_ConventionalCommitsMatrix_SelectsExpectedReleaseTypes` commitlint assertion. The exact Governance lane is therefore not locally green.
 - PR proof: local commit `9417e69b` records the merged fix as PR `#69` targeting `main`. Live-CI verification was not run because this task prohibits remote operations; the live `build-and-test` acceptance remains unverified.
+
+**Live-CI verification (2026-07-18):**
+- PR `#69` merged into `main` at `2026-07-18T10:26:04Z`. Its gating CI run ([29640829809](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29640829809)) still showed `Restore` red, but the failures were `NU1102`/`NU1109` on `Hexalith.Parties.UI`/`Hexalith.FrontComposer.UI`/`Hexalith.Parties.AdminPortal` (unrelated to `AngleSharp`) -- zero `NU1902`/`AngleSharp` diagnostics anywhere in that log.
+- Latest `main` CI run ([29642386372](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29642386372), commit `4ee92501`): `Restore` step log confirmed **zero** `NU1902`/`AngleSharp` errors, and the three projects named in this spec's I/O matrix -- `Hexalith.FrontComposer.Testing`, `Hexalith.FrontComposer.Testing.Tests`, `Hexalith.FrontComposer.Shell.Tests` -- all restored successfully.
+- This task's scoped remediation (`AngleSharp` -> `1.5.2`, zero `NU1902`) is therefore confirmed live in CI, and this spec's Acceptance Criteria are met at their stated scope.
+- **Residual, out-of-scope finding:** the whole-solution `Restore` step is still red on `main` because of an unrelated `NU1102`: the centrally-pinned `Hexalith.Tenants.Client >= 3.15.1` is not published on nuget.org (only up to `3.2.16` exists), affecting `Hexalith.Parties.UI`, `Hexalith.FrontComposer.UI`, `Hexalith.Parties.AdminPortal`, and `Hexalith.Parties`. This appears introduced by the later, unrelated commit `4ee92501` ("update submodule references... to their latest commits"), which bumped the `Hexalith.Tenants` gitlink. Fixing it would require touching another sibling's `Hexalith.Builds`-managed version/gitlink, which this spec's frozen boundaries require asking first about -- flagged separately rather than actioned here.
 

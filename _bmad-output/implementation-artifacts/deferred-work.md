@@ -1758,3 +1758,21 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-29585546315-fix-cicd-2.md`
   summary: Test complete run-evidence artifacts with inconsistent test counts.
   evidence: The updated Hexalith.Builds submodule rejects schema-only artifacts, but no test isolates malformed complete test-count semantics required for HXE148.
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: Move release signing/push secrets off process argv when the dotnet CLI grows an env/stdin alternative.
+  evidence: `dotnet nuget sign --certificate-password` and `dotnet nuget push --api-key` place secrets on argv (visible via /proc for the process lifetime); the openssl leg moved to `-passin env:` indirection during REL-3 review, but the dotnet CLI has no env/stdin equivalent today — revisit via a CLI update or a credential-provider route.
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: Deleted-tag blind spot residual in independent verification when both the tag and the GitHub release are removed after a partial publish.
+  evidence: The verifier's `gh release list` orphan probe (added by REL-3 review) only covers surviving releases; with the tag and release both deleted there is no recoverable version to probe nuget.org for, so a partially published version could evade post-publication verification entirely.
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: Pre-existing `*.yml`-only glob in `Workflows_UseRootLevelSubmodulesOnly` misses `.yaml` workflow files.
+  evidence: GitHub Actions loads both extensions; `Workflows_HaveNoPublishPathOutsideGatedReleaseWorkflow` was fixed to enumerate both during REL-3 review, but the older submodule-scan test still enumerates `*.yml` only, so a future `.yaml` workflow would evade its recursive-submodule pins.
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: Remove the release-path-dead `eng/pack_release_packages.py` and port its unit coverage to the live `scripts/pack-release-packages.py` packer.
+  evidence: REL-3 replaced the `.releaserc.json` prepareCmd with `eng/release_prepublish.py` (which packs via `scripts/pack-release-packages.py`), leaving `eng/pack_release_packages.py` outside every release path while `quality.yml` still runs its green unit lane (`tests/eng/test_pack_release_packages.py`) and the live scripts packer has no unit tests of its own.
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: Publisher-side partial-publish incidents are durable only in the domain-release job log.
+  evidence: When `release_prepublish.py publish` fails, semantic-release aborts before `@semantic-release/github` uploads any asset and the runner is discarded, so the typed incident survives only as the sanitized job-log echo added by REL-3 review; the independent verifier re-derives the divergence from published state, but a durable publisher-side channel should be adopted if one becomes available.
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: Main-branch baseline inconsistency between the committed shared-catalog version pins and the Hexalith.Builds gitlink blocks the full non-publishing chain re-run.
+  evidence: As of the parallel AngleSharp/gitlink remediation (`08b5708` recorded gitlink), `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog` expects `System.Reactive 7.0.0-rc.1` while the pinned catalog declares `7.0.0` (reproduced twice by the REL-3 `prepare --non-publishing` fail-closed test lane; same in-flight reconciliation as the NU1102 `Hexalith.Tenants.Client` CI restore red). Owned by the Release Owner's parallel session — resolve the gitlink/catalog, then re-run `prepare --non-publishing` for a fully green chain.

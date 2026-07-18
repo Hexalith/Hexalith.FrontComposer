@@ -6,14 +6,17 @@ name: Release
 # never publish from a commit whose CI failed. The `event == 'push'` guard keeps any
 # scheduled/PR CI runs from starting a release. semantic-release still decides from the
 # commit history whether a release is warranted, driven by this repo's `.releaserc.json`
-# (pack_release_packages.py + dotnet nuget push).
+# (REL-3: `eng/release_prepublish.py prepare` runs the fail-closed FR24 exact-artifact
+# gate as prepareCmd; `publish` pushes only the manifest-authorized signed bytes).
 #
-# FR24 release evidence (signing, SBOM, checksums, sealed manifest, classify-release,
-# evidence assets) is NOT hosted here: the reusable domain-release.yml is a shared @main
-# submodule with no evidence hook and must not be edited from this repo. FR24 evidence
-# runs in the FrontComposer-owned supplemental `release-evidence.yml` under the G1
-# posture (post-publish + next-release fail-closed). The only path to inline pre-publish
-# gating (G2) is a separate owner-approved Hexalith.Builds change.
+# REL-3 (2026-07-18): FR24 authorization happens INSIDE semantic-release, before any
+# publication side effect — pack once, validate, sign/timestamp, seal + verify the
+# manifest, then `classify-release --require-publishable`. The supplemental
+# `release-evidence.yml` is the independent post-publication verifier (downloads the
+# published NuGet/GitHub bytes and compares them against the sealed manifest); it can
+# never authorize a release. The upstream BUILD-REL-1 governed contract (secrets,
+# timestamp input, attestation candidate phase) remains an owner-filed Hexalith.Builds
+# dependency.
 #
 # REL-4 (2026-07-15): publication is additionally frozen by default behind the
 # fail-closed `freeze-guard` job below. Ordinary fix:/feat: merges to main can no

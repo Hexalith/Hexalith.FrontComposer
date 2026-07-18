@@ -14,7 +14,7 @@ releaseControl: frozen-until-real-release-evidence
 
 # REL-3: Enforce FR24 Before Publication and Reconcile Affected Releases
 
-Status: in-progress.
+Status: in-review.
 
 Approval: approved by Administrator on 2026-07-15.
 
@@ -234,13 +234,22 @@ Pack once
         without repacking, no-op only when no publication side effect occurred, and run full
         reconciliation for failed or partial runs.
   - [x] Download the durable manifest/evidence plus NuGet and GitHub assets.
-  - [x] Verify signatures and exact hashes, then update the historical ledger. *(The workflow emits
-        a machine-readable `ledger-record.json` disposition proposal; the controlled markdown
-        ledger stays owner-updated — it never commits to the repository.)*
+  - [x] Verify signatures and exact hashes, then update the historical ledger. *(Deliberately
+        re-scoped from the task's literal wording: the workflow does NOT write the ledger. The
+        controlled ledger is owner-updated by design — a workflow committing to the repository
+        would violate the controlled-ledger discipline and the no-commit rule — so the workflow
+        emits a machine-readable `ledger-record.json` disposition proposal the Release Owner
+        applies. Recorded here per review BH-17 so the re-scope is explicit, not silent.)*
   - [x] Fail on absent, altered, unsigned, incomplete, or partially published assets.
 
 - [x] T5 — Reverse G1 governance and add negative coverage.
-  - [x] Prove missing signing credentials and invalid timestamps stop preparation.
+  - [x] Prove missing signing credentials and invalid timestamps stop preparation. *(Evidence
+        precision per review BH-15: the missing-credential abort is proven by a runtime negative
+        plus static fail-closed pins. Timestamp enforcement rides `dotnet nuget verify --all`
+        gating every signed candidate — proven end-to-end by the T6 non-publishing run — but a
+        dedicated invalid-timestamper runtime negative does not exist; a regression that keeps
+        the abort literal while breaking the raise would need the T6 lane, not this suite, to
+        surface.)*
   - [x] Require `classify-release --require-publishable` and authorized publish paths.
   - [x] Prove the publisher cannot repack, substitute, or consume unsigned paths.
   - [x] Prove durable initial-release evidence assets are configured.
@@ -358,6 +367,41 @@ Intent: "REL-AI-1: Own the FR24 exact-artifact pre-publication gate" (bmad-quick
   first frozen Release run URL (REL-4 AC6), upstream BUILD-REL-1 filing/landing, signing-secret
   provisioning, first governed real release with durable evidence and downloaded-byte verification
   (REL-5).
+
+## Review Findings (2026-07-18, adversarial 3-layer round)
+
+Blind Hunter, Edge Case Hunter, and Verification Gap ran over the full baseline diff. No
+intent-gap or bad-spec findings (no loopback); 30 patch findings were applied in two passes and
+5 residuals were routed to the deferred-work ledger.
+
+- **High (fixed):** symbol integrity was anchored to the unsealed `checksums.json` with fail-open
+  skips when rows were missing — `prepare-manifest` now seals a per-row `symbol_checksum`, and both
+  the publisher and the verifier fail closed on unsealed/malformed/mismatched symbols.
+- **Verifier hardening (fixed):** immutability probe restored (non-immutable release fails),
+  404-vs-transient distinction, zero-asset/download/JSON-decode typed incidents, per-package
+  download deadline, surplus-asset detection, deleted-tag orphan-release probe, incident on
+  missing evidence assets and on failed signature verification.
+- **Orchestrator hardening (fixed):** stale-evidence purge at prepare start, sanitized FAIL-CLOSED
+  on all crash paths, typed fallback-digest read, fd hygiene, `sudo -n` (no interactive hang),
+  local trust-store snapshot/restore in `--non-publishing`, sanitized push-failure detail,
+  path-confinement on manifest rows, openssl password via env indirection, run-id-traceable
+  approval mechanism, publisher incident echoed into the job log.
+- **Verification gaps (fixed):** runtime CLI test now traverses the real `--dry-run-clean-exit`
+  exit gate (mutation-checked), runtime publisher negatives prove the pre-push audit fails closed
+  on post-seal mutation and version mismatch (new `tests/ci-governance/stage_release_state.py`
+  staging helper), `.yaml` glob and weakened pins tightened.
+- **Artifact honesty (fixed):** spec status line, T4 ledger re-scope wording, T5 timestamp-evidence
+  precision, deployment-guide contradiction + upstream job-timeout sizing note, the hard REL-5
+  requirement that the production signing identity chain to publicly trusted NuGet code-signing
+  roots, stale `release.yml` header comments.
+
+Final validation: governance suites 78/78 green (Release build 0 warnings/0 errors); the
+`--dry-run-clean-exit` fix and both publisher audits are proven by runtime negatives. The
+post-review full-chain re-run fails closed in its test phase on an **unrelated main-branch
+baseline inconsistency** (committed catalog pins expect `System.Reactive 7.0.0-rc.1` while the
+parallel AngleSharp-remediation gitlink `08b5708` pins `7.0.0`; see the deferred-work entry) —
+the authoritative full-green chain evidence is the 2026-07-18 run recorded under T6, and the
+fail-closed lane catching the parallel regression is the gate behaving as specified.
 
 ## File List
 

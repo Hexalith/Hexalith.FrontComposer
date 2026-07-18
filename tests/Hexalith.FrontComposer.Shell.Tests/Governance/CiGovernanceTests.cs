@@ -88,7 +88,10 @@ public sealed class CiGovernanceTests {
         governanceLane.ShouldNotContain("Category!=Quarantined");
         governanceLane.ShouldNotContain("continue-on-error: true");
 
-        orchestrator.ShouldContain("Category!=Quarantined");
+        // Review VG (2026-07-18): pin the executable `--filter` argument pair in the
+        // orchestrator's dotnet-test invocation, not the bare trait string — a comment
+        // containing `Category!=Quarantined` must not satisfy this contract.
+        orchestrator.ShouldContain("\"--filter\", \"Category!=Quarantined\",");
     }
 
     [Fact]
@@ -1228,9 +1231,13 @@ public sealed class CiGovernanceTests {
         // publish path. Scan every repository-owned workflow: only release.yml may reference the
         // reusable domain-release.yml, and no workflow may execute `npx semantic-release` or
         // `dotnet nuget push` itself. Assertions target executable content (comments stripped):
-        // those strings legitimately appear in workflow comments today.
+        // those strings legitimately appear in workflow comments today. Review VG (2026-07-18):
+        // GitHub Actions also loads `.yaml` workflow files — enumerate both extensions so a
+        // future `.yaml` workflow cannot evade the only-publish-path pin.
         string root = RepositoryRoot();
-        foreach (string workflowPath in Directory.EnumerateFiles(Path.Combine(root, ".github/workflows"), "*.yml")) {
+        string workflowsDir = Path.Combine(root, ".github/workflows");
+        foreach (string workflowPath in Directory.EnumerateFiles(workflowsDir, "*.yml")
+                     .Concat(Directory.EnumerateFiles(workflowsDir, "*.yaml"))) {
             string name = Path.GetFileName(workflowPath);
             string executable = StripYamlComments(File.ReadAllText(workflowPath));
 
@@ -1782,18 +1789,14 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void ReleaseEvidenceScript_ClassifyRelease_DryRunCleanExit_LocalCandidate_HealthyCarveOut_ReturnsExit0() {
-        // CR-12-4-P252 (round-11): the `--dry-run-clean-exit` exit-code contract is
-        // what the workflow's dry-run path depends on. Fixture-level coverage only
-        // checks JSON output via `classify-fixtures`. This test exercises the gate
-        // directly and asserts exit 0 for the healthy local-candidate carve-out plus
-        // that `classification=ready` and `publish_authorized=false` are emitted.
-        //
-        // The test uses `classify-fixtures` mode (verify_drift=False) to avoid
-        // live-disk drift detection — without this, the base fixture's manifest
-        // fingerprints diverge from the live repo and the test exits with extra
-        // drift blockers, defeating the carve-out's `len(blocking) == 1` guard.
-        // The carve-out semantic is the same either way; this just isolates the test
-        // to the classification logic rather than to the on-disk state.
+        // CR-12-4-P252 (round-11): fixture-level coverage of the healthy carve-out
+        // CLASSIFICATION (ready / publish_authorized=false) via `classify-fixtures`,
+        // which calls `classify_release_payload` directly with verify_drift=False —
+        // it does NOT traverse the CLI `--dry-run-clean-exit` exit gate itself
+        // (review VG-1, 2026-07-18). The exit-code contract of that gate is pinned
+        // by `ReleaseModelGovernanceTests.ClassifyRelease_HealthyDryRunEvidence_
+        // CleanExitGate_ReturnsExit0`, which runs the real CLI over a hermetically
+        // staged healthy evidence set.
         string root = RepositoryRoot();
         string fixturesPath = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
 
@@ -2460,12 +2463,12 @@ public sealed class CiGovernanceTests {
         return RunPython(root, fullArguments);
     }
 
-    internal static ProcessResult RunPython(string root, IReadOnlyList<string> arguments) {
+    internal static ProcessResult RunPython(string root, IReadOnlyList<string> arguments, IReadOnlyDictionary<string, string>? environment = null) {
         string executable = OperatingSystem.IsWindows() ? "python" : "python3";
-        return RunProcess(root, executable, arguments);
+        return RunProcess(root, executable, arguments, environment);
     }
 
-    private static ProcessResult RunProcess(string root, string executable, IReadOnlyList<string> arguments) {
+    private static ProcessResult RunProcess(string root, string executable, IReadOnlyList<string> arguments, IReadOnlyDictionary<string, string>? environment = null) {
         ProcessStartInfo startInfo = new(executable) {
             WorkingDirectory = root,
             RedirectStandardError = true,
@@ -2475,6 +2478,10 @@ public sealed class CiGovernanceTests {
 
         foreach (string argument in arguments) {
             startInfo.ArgumentList.Add(argument);
+        }
+
+        foreach ((string name, string value) in environment ?? new Dictionary<string, string>()) {
+            startInfo.Environment[name] = value;
         }
 
         using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start governance script.");
