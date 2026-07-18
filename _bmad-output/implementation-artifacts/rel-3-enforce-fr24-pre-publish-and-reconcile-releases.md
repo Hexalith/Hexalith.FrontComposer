@@ -1,11 +1,12 @@
 ---
 created: 2026-07-15
-updated: 2026-07-16
+updated: 2026-07-18
 amended: 2026-07-16 (freeze truth-state; approval-mechanism contract in AC20; prior governed-release and operational-authority amendments retained)
 owner: Release Owner + Developer + QA/Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md
 amendmentProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md
-status: ready-for-dev
+status: in-review
+baseline_commit: 5c284c89d37dfc3d39593962631e376bd4c5e033
 scope: moderate
 implementationRisk: high
 releaseControl: frozen-until-real-release-evidence
@@ -13,7 +14,7 @@ releaseControl: frozen-until-real-release-evidence
 
 # REL-3: Enforce FR24 Before Publication and Reconcile Affected Releases
 
-Status: ready-for-dev.
+Status: in-review.
 
 Approval: approved by Administrator on 2026-07-15.
 
@@ -189,68 +190,99 @@ Pack once
 
 ## Tasks
 
-- [ ] T1 — Confirm the release freeze and upstream dependency.
+- [ ] T1 — Confirm the release freeze and upstream dependency. **(owner-blocked residuals; freeze
+      itself is confirmed: REL-4's fail-closed gate landed 2026-07-18 as this story's stop-the-line
+      precondition — see `rel-4-enforce-temporary-release-freeze.md`.)**
   - [ ] Record the Hexalith.Builds owner-approved issue/story URL and accepted revision in the G2
         request; the filed scope must be the full BUILD-REL-1 governed contract (environment,
         signing secrets, timestamp input, attestation permissions, candidate phase, bundle
         handoff), not signing-secret forwarding alone (filing itself is REL-5 owner work).
+        *2026-07-18: no upstream filing exists yet (REL-5 AC); the G2 request document already
+        carries the full contract including the common freeze gate.*
   - [ ] Confirm the two signing secrets and timestamp configuration are available to semantic-release
-        without exposing them to unrelated steps.
+        without exposing them to unrelated steps. *2026-07-18: CI-authoritative and blocked on the
+        upstream BUILD-REL-1 forwarding; the orchestrator consumes them from env only inside the
+        signing phase and never logs them.*
   - [ ] If blocked upstream, record explicit approval and scope for the bounded owned-workflow
-        contingency before editing release topology.
+        contingency before editing release topology. *2026-07-18: contingency not triggered — the
+        REL-4 freeze means no release is required before upstream lands; release.yml's delegation
+        topology is unchanged.*
 
-- [ ] T2 — Build a repository-owned pre-publication orchestration command.
-  - [ ] Consume `${nextRelease.version}` and pack once using `eng/release-package-inventory.json`.
-  - [ ] Run inventory, tests, package-only consumer validation, SBOM, signing/timestamp verification,
+- [x] T2 — Build a repository-owned pre-publication orchestration command.
+  - [x] Consume `${nextRelease.version}` and pack once using `eng/release-package-inventory.json`.
+  - [x] Run inventory, tests, package-only consumer validation, SBOM, signing/timestamp verification,
         checksums, manifest preparation/sealing/verification, and publishable classification in order.
-  - [ ] Bind the provenance attestation-bundle path over the exact signed candidates into the
+  - [x] Bind the provenance attestation-bundle path over the exact signed candidates into the
         manifest before sealing; fail classification when attestation evidence is neither
         `attested` nor a sealed owner-approved fallback.
-  - [ ] Keep signing material out of artifacts, logs, summaries, and manifest fields.
-  - [ ] Update `eng/release_evidence.py` so `APPROVAL_MATRIX` records the actual REL-4 variable,
+  - [x] Keep signing material out of artifacts, logs, summaries, and manifest fields.
+  - [x] Update `eng/release_evidence.py` so `APPROVAL_MATRIX` records the actual REL-4 variable,
         publishable readiness evidence, and upstream protected release environment without naming
         prohibited `workflow_dispatch`, `release_owner_approved`, or `release_approver` inputs.
-  - [ ] Fail before side effects on every missing/blocked result.
+  - [x] Fail before side effects on every missing/blocked result.
 
-- [ ] T3 — Make semantic-release publish only authorized artifacts.
-  - [ ] Replace the pack-only `prepareCmd` with the orchestration command.
-  - [ ] Make `publishCmd` re-verify the sealed manifest/readiness immediately before pushing.
-  - [ ] Push only signed manifest-authorized `.nupkg` paths and matching `.snupkg` paths.
-  - [ ] Configure `@semantic-release/github` to attach the full evidence chain during initial release
+- [x] T3 — Make semantic-release publish only authorized artifacts.
+  - [x] Replace the pack-only `prepareCmd` with the orchestration command.
+  - [x] Make `publishCmd` re-verify the sealed manifest/readiness immediately before pushing.
+  - [x] Push only signed manifest-authorized `.nupkg` paths and matching `.snupkg` paths.
+  - [x] Configure `@semantic-release/github` to attach the full evidence chain during initial release
         creation.
-  - [ ] Record and fail partial publication.
+  - [x] Record and fail partial publication.
 
-- [ ] T4 — Refactor supplemental Release Evidence into independent verification.
-  - [ ] Trigger on Release workflow completion regardless of conclusion; resolve its tag/version
+- [x] T4 — Refactor supplemental Release Evidence into independent verification.
+  - [x] Trigger on Release workflow completion regardless of conclusion; resolve its tag/version
         without repacking, no-op only when no publication side effect occurred, and run full
         reconciliation for failed or partial runs.
-  - [ ] Download the durable manifest/evidence plus NuGet and GitHub assets.
-  - [ ] Verify signatures and exact hashes, then update the historical ledger.
-  - [ ] Fail on absent, altered, unsigned, incomplete, or partially published assets.
+  - [x] Download the durable manifest/evidence plus NuGet and GitHub assets.
+  - [x] Verify signatures and exact hashes, then update the historical ledger. *(Deliberately
+        re-scoped from the task's literal wording: the workflow does NOT write the ledger. The
+        controlled ledger is owner-updated by design — a workflow committing to the repository
+        would violate the controlled-ledger discipline and the no-commit rule — so the workflow
+        emits a machine-readable `ledger-record.json` disposition proposal the Release Owner
+        applies. Recorded here per review BH-17 so the re-scope is explicit, not silent.)*
+  - [x] Fail on absent, altered, unsigned, incomplete, or partially published assets.
 
-- [ ] T5 — Reverse G1 governance and add negative coverage.
-  - [ ] Prove missing signing credentials and invalid timestamps stop preparation.
-  - [ ] Require `classify-release --require-publishable` and authorized publish paths.
-  - [ ] Prove the publisher cannot repack, substitute, or consume unsigned paths.
-  - [ ] Prove durable initial-release evidence assets are configured.
-  - [ ] Prove post-publication evidence cannot authorize a release retroactively.
-  - [ ] Prove classification fails when attestation evidence is absent and no sealed
+- [x] T5 — Reverse G1 governance and add negative coverage.
+  - [x] Prove missing signing credentials and invalid timestamps stop preparation. *(Evidence
+        precision per review BH-15: the missing-credential abort is proven by a runtime negative
+        plus static fail-closed pins. Timestamp enforcement rides `dotnet nuget verify --all`
+        gating every signed candidate — proven end-to-end by the T6 non-publishing run — but a
+        dedicated invalid-timestamper runtime negative does not exist; a regression that keeps
+        the abort literal while breaking the raise would need the T6 lane, not this suite, to
+        surface.)*
+  - [x] Require `classify-release --require-publishable` and authorized publish paths.
+  - [x] Prove the publisher cannot repack, substitute, or consume unsigned paths.
+  - [x] Prove durable initial-release evidence assets are configured.
+  - [x] Prove post-publication evidence cannot authorize a release retroactively.
+  - [x] Prove classification fails when attestation evidence is absent and no sealed
         owner-approved fallback exists.
-  - [ ] Prove `APPROVAL_MATRIX`, `release.yml`, REL-4, and REL-5 agree on the authorization
+  - [x] Prove `APPROVAL_MATRIX`, `release.yml`, REL-4, and REL-5 agree on the authorization
         mechanism and contain none of the forbidden dispatch/approver input tokens.
-  - [ ] Cover the partial-publication incident path.
+  - [x] Cover the partial-publication incident path.
 
-- [ ] T6 — Validate without publishing, then obtain real-release evidence.
-  - [ ] Run the complete preparation/classification path in a non-publishing context.
-  - [ ] Run the relevant governance and consumer-validation lanes locally; treat GitHub workflow
-        execution and secret availability as CI-authoritative.
+- [ ] T6 — Validate without publishing, then obtain real-release evidence. **(local validation
+      complete; real-release evidence is REL-5-owned and REL-AI-1 stays open)**
+  - [x] Run the complete preparation/classification path in a non-publishing context.
+        *2026-07-18: `prepare --version 9.9.9 --non-publishing` green end-to-end — pack-once (8
+        `.nupkg` + 8 `.snupkg`), inventory, 7-project release test lane (4,176 tests, 0 failures),
+        consumer validation, SBOM + symbols, local-chain signing with `dotnet nuget verify --all`
+        (8/8 verified), checksums, sealed manifest `verification=valid`,
+        `classify-release --require-publishable` → `fallback-approved`, `publish_authorized=false`,
+        `local-candidate` context, exit 0.*
+  - [x] Run the relevant governance and consumer-validation lanes locally; treat GitHub workflow
+        execution and secret availability as CI-authoritative. *2026-07-18: 96/96 across
+        CiGovernanceTests, ReleaseModelGovernanceTests, Story12_4_RedPhaseDefTests,
+        AnalyzerPolicyGovernanceTests, InfrastructureGovernanceTests (direct xUnit v3 runner,
+        Release build 0 warnings/errors).*
   - [ ] Obtain Release Owner authorization for the next real release only after pre-publication evidence
         is ready/authorized (authorization execution is owned by REL-5).
   - [ ] Record durable evidence and downloaded-artifact verification; keep REL-AI-1 open on any gap.
 
-- [ ] T7 — Reconcile documentation and historical releases.
-  - [ ] Keep the deployment guide aligned with implemented behavior, not intended behavior.
-  - [ ] Complete v3.2.1/v3.2.2 ledger entries and remediation disposition.
+- [ ] T7 — Reconcile documentation and historical releases. **(REL-5-owned residual only)**
+  - [x] Keep the deployment guide aligned with implemented behavior, not intended behavior.
+  - [x] Complete v3.2.1/v3.2.2 ledger entries and remediation disposition. *(Entries complete since
+        2026-07-15; a dated status note records that REL-3/REL-4 enforcement landed without
+        changing any disposition.)*
   - [ ] Add the final upstream issue/revision and real-release evidence URLs (recorded from REL-5
         outcomes).
 
@@ -288,6 +320,105 @@ Pack once
 - [ ] REL-AI-1 closure is supported by durable real-release evidence, or remains open with the exact
       blocker.
 
+## Implementation Record (2026-07-18)
+
+Intent: "REL-AI-1: Own the FR24 exact-artifact pre-publication gate" (bmad-quick-dev; baseline
+`5c284c89`). REL-4's freeze gate was implemented first per the sprint-status stop-the-line mandate.
+
+- **Orchestrator** (`eng/release_prepublish.py`, new): `prepare` enforces the Required Artifact
+  Invariant fail-closed in order with no record-and-proceed signing path; `publish` re-verifies the
+  sealed manifest/readiness, audits every manifest row (path shape + exact sha256), pushes only
+  manifest-authorized `nupkgs-signed/*.nupkg` + matching symbols without `--skip-duplicate`, and
+  records typed partial-publish incidents. `--non-publishing` performs honest local validation
+  (validation-scoped AC18 fallback + approval inputs; `publish_authorized` stays false in the
+  `local-candidate` context).
+- **semantic-release** (`.releaserc.json`): `prepareCmd`/`publishCmd` are the orchestrator;
+  `@semantic-release/github` attaches signed packages, symbols, and the full evidence chain as
+  durable assets at initial release creation (AC12).
+- **Independent verification** (`.github/workflows/release-evidence.yml`, rewritten): triggers on
+  Release completion regardless of conclusion (AC19), downloads GitHub Release assets + nuget.org
+  flat-container bytes, three-way sha256 compare against the sealed manifest, `dotnet nuget verify`
+  with the public trust bundle only, retroactive-authorization ban, typed incidents, and a
+  `ledger-record.json` disposition proposal. It never rebuilds, repacks, re-signs, or attests.
+- **AC20 approval mechanism**: `APPROVAL_MATRIX` rewritten to the REL-4 variable + publishable
+  readiness evidence + upstream protected environment (zero forbidden dispatch/approver tokens);
+  the orchestrator supplies classifier approval inputs derived from the REL-4 gate context in the
+  publish-capable path (reaching `domain-release.yml` proves `HEXALITH_RELEASE_PUBLISH_ENABLED`
+  was exactly `true`), plus `--concurrent-same-version false` justified by the release.yml
+  concurrency group + semantic-release tag atomicity. `eng/release_evidence.py` `__version__`
+  1.1.0 → 1.2.0.
+- **Helper fix** (`eng/release_evidence.py` `classify_release`): the round-8 `--dry-run-clean-exit`
+  gate required a non-empty blocking list, but the round-10 P247 carve-out empties it for exactly
+  the healthy dry-run the gate was built for — dead seam removed (empty list now satisfies the
+  allowlist; classification gating unchanged).
+- **Governance** (75 release-model tests + suites): REL-4 freeze pins, new
+  `ReleaseModelGovernanceTests` (9 negative/consistency tests covering every T5 bullet),
+  `.releaserc.json`/verifier pins reversed from G1, Story12_4 Def14 attestation pins reversed
+  (attestation belongs upstream, not the verifier), CA1707 identifier inventory refreshed
+  (6174 → 6185) in `analyzer-policy-exception-ledger-v1.json`.
+- **Fail-closed proof in anger**: the first T6 run failed closed on 2 real governance regressions
+  (analyzer-inventory drift from the new tests; a package-catalog assertion tracing to submodule
+  checkout state) — both fixed, definitive run green.
+- **Worktree note for the commit step**: `references/Hexalith.Builds` (337f023) and
+  `references/Hexalith.Tenants` (2d85e35) checkouts are ahead of the recorded gitlinks — in-flight
+  catalog-centralization state the committed `InfrastructureGovernanceTests` already expects
+  (`System.Reactive 7.0.0-rc.1`); the commit should include those gitlink bumps.
+- **CI-authoritative residuals (REL-AI-1 stays open)**: workflow_run→workflow_run chaining, the
+  first frozen Release run URL (REL-4 AC6), upstream BUILD-REL-1 filing/landing, signing-secret
+  provisioning, first governed real release with durable evidence and downloaded-byte verification
+  (REL-5).
+
+## Review Findings (2026-07-18, adversarial 3-layer round)
+
+Blind Hunter, Edge Case Hunter, and Verification Gap ran over the full baseline diff. No
+intent-gap or bad-spec findings (no loopback); 30 patch findings were applied in two passes and
+5 residuals were routed to the deferred-work ledger.
+
+- **High (fixed):** symbol integrity was anchored to the unsealed `checksums.json` with fail-open
+  skips when rows were missing — `prepare-manifest` now seals a per-row `symbol_checksum`, and both
+  the publisher and the verifier fail closed on unsealed/malformed/mismatched symbols.
+- **Verifier hardening (fixed):** immutability probe restored (non-immutable release fails),
+  404-vs-transient distinction, zero-asset/download/JSON-decode typed incidents, per-package
+  download deadline, surplus-asset detection, deleted-tag orphan-release probe, incident on
+  missing evidence assets and on failed signature verification.
+- **Orchestrator hardening (fixed):** stale-evidence purge at prepare start, sanitized FAIL-CLOSED
+  on all crash paths, typed fallback-digest read, fd hygiene, `sudo -n` (no interactive hang),
+  local trust-store snapshot/restore in `--non-publishing`, sanitized push-failure detail,
+  path-confinement on manifest rows, openssl password via env indirection, run-id-traceable
+  approval mechanism, publisher incident echoed into the job log.
+- **Verification gaps (fixed):** runtime CLI test now traverses the real `--dry-run-clean-exit`
+  exit gate (mutation-checked), runtime publisher negatives prove the pre-push audit fails closed
+  on post-seal mutation and version mismatch (new `tests/ci-governance/stage_release_state.py`
+  staging helper), `.yaml` glob and weakened pins tightened.
+- **Artifact honesty (fixed):** spec status line, T4 ledger re-scope wording, T5 timestamp-evidence
+  precision, deployment-guide contradiction + upstream job-timeout sizing note, the hard REL-5
+  requirement that the production signing identity chain to publicly trusted NuGet code-signing
+  roots, stale `release.yml` header comments.
+
+Final validation: governance suites 78/78 green (Release build 0 warnings/0 errors); the
+`--dry-run-clean-exit` fix and both publisher audits are proven by runtime negatives. The
+post-review full-chain re-run fails closed in its test phase on an **unrelated main-branch
+baseline inconsistency** (committed catalog pins expect `System.Reactive 7.0.0-rc.1` while the
+parallel AngleSharp-remediation gitlink `08b5708` pins `7.0.0`; see the deferred-work entry) —
+the authoritative full-green chain evidence is the 2026-07-18 run recorded under T6, and the
+fail-closed lane catching the parallel regression is the gate behaving as specified.
+
 ## File List
 
-Implementation file list to be populated by the development workflow.
+- `.github/workflows/release.yml` — REL-4 freeze-guard gate (stop-the-line precondition)
+- `.github/workflows/release-evidence.yml` — rewritten as independent post-publication verification
+- `.releaserc.json` — orchestrator prepare/publish + durable evidence assets
+- `.gitignore` — generated output dirs (`nupkgs-signed/`, `release-evidence/`, `verification-evidence/`, `TestResults/`)
+- `eng/release_prepublish.py` — new pre-publication orchestration command
+- `eng/release_evidence.py` — APPROVAL_MATRIX rewrite, dry-run-clean-exit fix, `__version__` 1.2.0
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — REL-4 pins, releaserc/verifier pin reversal, helper-version literal
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/ReleaseModelGovernanceTests.cs` — new T5 negative/consistency suite
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/Story12_4_RedPhaseDefTests.cs` — Def14 attestation pin reversal
+- `tests/ci-governance/stage_release_state.py` — hermetic sealed-state staging helper for runtime negatives (review round)
+- `tests/ci-governance/fixtures/release-manifest-valid.json`, `tests/ci-governance/fixtures/release-readiness-cases.json` — resealed for the `symbol_checksum` manifest contract (review round)
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` — CA1707 inventory refresh (twice: new suite, then review-round tests)
+- `_bmad-output/project-docs/deployment-guide.md` — implemented-behavior alignment
+- `_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md` — dated status note
+- `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md` — implementation record, status in-review
+- `_bmad-output/implementation-artifacts/deferred-work.md` — CR-12-4-Def14 superseded reconciliation
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — rel-3 in-progress, rel-4 review

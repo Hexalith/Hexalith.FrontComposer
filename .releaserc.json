@@ -18,16 +18,18 @@
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "rm -rf ./nupkgs && python3 eng/pack_release_packages.py --version ${nextRelease.version} --output ./nupkgs",
-        "publishCmd": "dotnet nuget push ./nupkgs/*.nupkg --source https://api.nuget.org/v3/index.json --api-key \"$NUGET_API_KEY\" --skip-duplicate && dotnet nuget push ./nupkgs/*.snupkg --source https://api.nuget.org/v3/index.json --api-key \"$NUGET_API_KEY\" --skip-duplicate"
+        "prepareCmd": "python3 eng/release_prepublish.py prepare --version ${nextRelease.version}",
+        "publishCmd": "python3 eng/release_prepublish.py publish --version ${nextRelease.version}"
       }
     ],
     [
       "@semantic-release/github",
       {
         "assets": [
-          "nupkgs/*.nupkg",
-          "nupkgs/*.snupkg"
+          "nupkgs-signed/*.nupkg",
+          "nupkgs/*.snupkg",
+          "release-evidence/*.json",
+          "release-evidence/*.txt"
         ]
       }
     ],

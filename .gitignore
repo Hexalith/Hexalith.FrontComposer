@@ -438,6 +438,12 @@ FodyWeavers.xsd
 # NuGet output for semantic-release
 nupkgs/
 
+# REL-3 pre-publication gate and independent-verification generated output
+nupkgs-signed/
+release-evidence/
+verification-evidence/
+TestResults/
+
 # Ignore Cursor AI rules
 .cursor/rules/codacy.mdc
 

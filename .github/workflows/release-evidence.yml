@@ -1,31 +1,28 @@
 name: Release Evidence
 
-# REL-2 / FR24 (2026-07-13): supplemental FrontComposer-owned release evidence gate.
+# REL-3 (2026-07-18): independent post-publication verification lane (AC13/AC19).
 #
-# The shared reusable Hexalith.Builds `domain-release.yml` (called from release.yml)
-# publishes via semantic-release and exposes NO evidence hook, and it is a @main submodule
-# we must not edit. So the FR24 obligations (signed packages, SBOM, checksums, a sealed +
-# verified release manifest, classify-release, and evidence assets) live here in a separate
-# supplemental workflow — the AC8 escape hatch sanctioned by the 2026-07-09 proposal.
+# The FR24 evidence chain is no longer produced here. The pre-publication orchestrator
+# (eng/release_prepublish.py, driven by .releaserc.json prepareCmd/publishCmd inside the
+# reusable domain-release.yml) packs once, validates inventory/tests/consumers, generates
+# the SBOM, signs and timestamps the exact candidates, checksums, seals + verifies the
+# release manifest, and classifies with --require-publishable BEFORE any publication side
+# effect; @semantic-release/github attaches the packages, symbols, and the full evidence
+# chain to the GitHub Release at creation (durable initial-release assets, AC12).
 #
-# Gating posture G1 (approved 2026-07-13): publish proceeds under the reusable workflow;
-# this workflow produces the full evidence bundle over a deterministic re-pack of the
-# release inventory, runs classify-release in advisory mode with no publishable pre-gate
-# (for the release that just published), and FAILS CLOSED — its core evidence steps (test-results,
-# inventory, verify-manifest, classify-release) are real gating steps, so a missing/invalid
-# manifest fails this workflow and blocks confidence in the next release. G2 (an inline
-# pre-publish gate upstreamed into Hexalith.Builds domain-release.yml) is a separate
-# owner-approved dependency, not implemented in this repo. No workflow_dispatch / dry-run /
-# approval gating is reintroduced.
+# This workflow is the INDEPENDENT verifier: it downloads the published GitHub Release
+# assets and the published NuGet bytes, verifies package signatures over the downloaded
+# bytes, and compares every hash against the sealed manifest (AC13). It runs on Release
+# workflow COMPLETION REGARDLESS OF CONCLUSION (AC19) so failed or cancelled publish runs
+# are still reconciled; it no-ops green only when no publication side effect occurred
+# (e.g. a REL-4 frozen run, a non-releasing push, or a run that died before the tag was
+# created). It never repacks, rebuilds, re-signs, or attests — provenance attestation
+# over the exact candidates belongs to the upstream governed release contract (AC18),
+# with the sealed owner-approved fallback record as the only alternative. Divergent or
+# partial publication state writes a partial-publish incident record and fails until
+# owner-led reconciliation (AC14). The markdown compliance ledger stays owner-updated;
+# this run emits a machine-readable ledger record artifact for the Release Owner.
 on:
-  # REL-2 code-review P1 (2026-07-13): keyed off the RELEASE workflow's completion, NOT CI.
-  # release.yml (delegating to the reusable domain-release.yml) runs semantic-release on a
-  # push-derived CI success, so by the time Release completes the git tag AND GitHub Release
-  # exist — the evidence bundle can bind + upload to the release it documents. Keying off CI
-  # raced the concurrent release job and never found the tag. Immutable releases cannot accept
-  # post-publication assets, so their bundle remains in the checksummed Actions artifact; mutable
-  # releases also receive the JSON assets. NOTE: workflow_run -> workflow_run
-  # chaining is GitHub-Actions-authoritative; confirm the first real release fires this (REL-AI-1).
   workflow_run:
     workflows: [Release]
     types: [completed]
@@ -35,91 +32,84 @@ concurrency:
   group: release-evidence-${{ github.ref }}
   cancel-in-progress: false
 
+# Read-only: this lane must not be able to mutate releases, attestations, or contents.
 permissions:
   contents: read
 
 jobs:
-  release-evidence:
-    # release.yml already guards `event == 'push'`, so any successful Release completion is
-    # push-derived — gate only on the upstream Release run having succeeded.
-    if: github.event.workflow_run.conclusion == 'success'
+  verify-published-release:
+    # AC19: no conclusion gate — verification runs for success, failure, AND cancellation
+    # of the upstream Release run. Side-effect detection below decides no-op vs verify.
     runs-on: ubuntu-latest
     timeout-minutes: 40
-    permissions:
-      contents: write
-      # FR24 AC9: attest-build-provenance mints an OIDC token (id-token) and uploads a signed
-      # provenance attestation (attestations) over the re-packed release artifacts.
-      attestations: write
-      id-token: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          # Build/pack/sign the exact commit CI validated and semantic-release published from,
-          # not whatever main has advanced to since (e.g. the chore(release) commit).
+          # Verify against the exact commit the Release run published from, not whatever
+          # main has advanced to since (e.g. the chore(release) commit).
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           # Root-declared references submodules only; no recursive nested submodule checkout.
           submodules: false
 
+      # verify-manifest recomputes release-definition fingerprints, which include
+      # references/Hexalith.Builds/Props/Directory.Packages.props — the root submodule
+      # must be present for the sealed baseline comparison.
       - name: Initialize build submodules
         uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
 
+      # dotnet CLI is required for `dotnet nuget verify` over the downloaded bytes.
       - name: Initialize .NET
         uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
           global-json-file: global.json
 
-      - name: Setup Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
-        with:
-          node-version: lts/*
-          cache: npm
-
-      - name: Cache NuGet packages
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: ~/.nuget/packages
-          key: nuget-${{ runner.os }}-${{ hashFiles('global.json', 'Directory.Packages.props', 'references/Hexalith.Builds/Props/Directory.Packages.props', '**/*.csproj') }}
-          restore-keys: |
-            nuget-${{ runner.os }}-
-
-      # Seed release evidence so the final upload never produces an empty forensic artifact
-      # even if a later step fails.
-      - name: Seed release evidence directory
+      # Seed verification evidence so the final upload never produces an empty forensic
+      # artifact even if a later step fails.
+      - name: Seed verification evidence directory
         if: always()
         env:
           RUN_META_EVENT_NAME: ${{ github.event.workflow_run.event }}
+          RUN_META_UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_META_UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           RUN_META_REF: ${{ github.ref }}
           RUN_META_RUN_ID: ${{ github.run_id }}
           RUN_META_RUN_ATTEMPT: ${{ github.run_attempt }}
           RUN_META_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          mkdir -p release-evidence
+          mkdir -p verification-evidence
           python3 - <<'PYEOF'
           import json, os
           metadata = {
-              "decision_contract": "frontcomposer.release-run-metadata.v1",
+              "decision_contract": "frontcomposer.release-verification-metadata.v1",
               "event_name": os.environ.get("RUN_META_EVENT_NAME", ""),
+              "upstream_run_id": os.environ.get("RUN_META_UPSTREAM_RUN_ID", ""),
+              "upstream_conclusion": os.environ.get("RUN_META_UPSTREAM_CONCLUSION", ""),
               "ref": os.environ.get("RUN_META_REF", ""),
               "run_id": os.environ.get("RUN_META_RUN_ID", ""),
               "run_attempt": os.environ.get("RUN_META_RUN_ATTEMPT", ""),
               "sha": os.environ.get("RUN_META_SHA", ""),
           }
-          with open("release-evidence/run-metadata.json", "w", encoding="utf-8", newline="\n") as fh:
+          with open("verification-evidence/run-metadata.json", "w", encoding="utf-8", newline="\n") as fh:
               json.dump(metadata, fh, sort_keys=True, separators=(",", ":"))
               fh.write("\n")
           PYEOF
 
-      # Resolve the tag/version the Release workflow just published for this commit. semantic-release
-      # (@semantic-release/git, per .releaserc.json) tags the `chore(release)` commit whose first
-      # PARENT is the released head_sha — so a plain `--points-at head_sha` finds nothing. Match the
-      # tag whose commit IS head_sha (no git-plugin) OR whose first parent IS head_sha. If none,
-      # semantic-release published no version this run, and every evidence step below no-ops (each is
-      # guarded on `tag != ''`), so the workflow is a clean green no-op — not a false failure.
+      # Resolve the tag/version the Release run published for this commit WITHOUT
+      # repacking. semantic-release (@semantic-release/git) tags the `chore(release)`
+      # commit whose first PARENT is the released head_sha, so match the tag whose commit
+      # IS head_sha (no git-plugin commit) OR whose first parent IS head_sha. semantic-
+      # release pushes the tag before any publish plugin runs, so if NO tag references
+      # this commit then no publication side effect occurred — a frozen (REL-4) run, a
+      # non-releasing push, or a run that failed before tagging all resolve to a clean
+      # green no-op (AC19). A failed run that DID tag still verifies below.
       - name: Resolve release tag
         id: tag
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
           set -uo pipefail
           if ! git fetch --tags --force origin >/dev/null 2>&1; then
@@ -134,341 +124,454 @@ jobs:
             case " $parents " in *" $head_sha "*) tag="$candidate"; break ;; esac
           done
           if [ -z "$tag" ]; then
-            echo "No release tag corresponds to this commit; semantic-release published no version this run." >> "$GITHUB_STEP_SUMMARY"
+            # Deleted-tag mitigation (review BH-5): tags are not unimpeachable ground
+            # truth. When the upstream run did NOT succeed, probe for a GitHub release
+            # that targets this commit despite no tag resolving — a deleted tag after a
+            # partial publish would otherwise make live packages invisible to
+            # verification forever. (A no-version nuget.org probe remains a documented
+            # residual: without a tag there is no version to query.)
+            if [ "${UPSTREAM_CONCLUSION}" != "success" ]; then
+              orphaned="$(gh release list --limit 50 --json tagName,targetCommitish --jq "[.[] | select(.targetCommitish == \"$head_sha\")] | length" 2>/dev/null)"
+              if [ "${orphaned:-0}" -gt 0 ] 2>/dev/null; then
+                echo "::error::a GitHub release targets ${head_sha} but no tag resolves to it — deleted-tag partial publication state."
+                mkdir -p verification-evidence
+                python3 eng/release_evidence.py partial-publish-incident \
+                  --manifest "" \
+                  --output verification-evidence/partial-publish-incident.json \
+                  --phase tag-push \
+                  --tag "unresolved-${head_sha}"
+                exit 1
+              fi
+            fi
+            {
+              echo "No release tag references this commit: no publication side effect occurred."
+              echo "Upstream Release run conclusion: ${UPSTREAM_CONCLUSION} (frozen, non-releasing, or failed before tagging)."
+            } >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
           echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
 
-      - name: Install npm dependencies
-        if: ${{ steps.tag.outputs.tag != '' }}
-        env:
-          HUSKY: 0
-        run: npm ci
-
-      - name: Build Contracts test prerequisite (netstandard2.0)
-        if: ${{ steps.tag.outputs.tag != '' }}
-        run: |
-          dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
-          dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -f netstandard2.0 --configuration Release --no-restore -m:1 /nr:false
-
-      - name: Build solution
-        if: ${{ steps.tag.outputs.tag != '' }}
-        run: dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore
-
-      - name: Run release tests
+      # AC12 negative: the durable evidence chain must live on the immutable initial
+      # GitHub Release itself. Missing release or missing evidence assets fails closed —
+      # a short-retention Actions artifact alone is not compliant.
+      - name: Download published GitHub Release assets and evidence
         if: ${{ steps.tag.outputs.tag != '' }}
         shell: bash
-        env:
-          DiffEngine_Disabled: true
-          TEST_PROJECTS: |
-            tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj
-            tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj
-            tests/Hexalith.FrontComposer.Contracts.UI.Tests/Hexalith.FrontComposer.Contracts.UI.Tests.csproj
-            tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj
-            tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj
-            tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj
-            tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj
-        run: |
-          set -euo pipefail
-          while IFS= read -r project; do
-            [ -z "$project" ] && continue
-            name="$(basename "$project" .csproj)"
-            dotnet test "$project" --configuration Release --no-build \
-              --filter "Category!=Quarantined" \
-              --results-directory "./TestResults/$name" \
-              --logger "trx;LogFileName=${name}.trx"
-          done <<< "$TEST_PROJECTS"
-
-      # Record test-evidence for the released commit: a failed/skipped lane is captured in the FR24
-      # bundle. G1 fail-closed (no best-effort suppression) — missing/invalid test evidence fails
-      # the job. Gated on a resolved tag so a non-releasing run (where `Run release tests` correctly
-      # did not run) does NOT fail on a legitimately-absent ./TestResults.
-      - name: Record release test evidence
-        if: ${{ steps.tag.outputs.tag != '' }}
-        run: python3 eng/release_evidence.py test-results --results-dir ./TestResults --output release-evidence/test-results.json
-
-      - name: Install CycloneDX .NET tool
-        if: ${{ steps.tag.outputs.tag != '' }}
-        run: dotnet tool install --global CycloneDX --version 5.*
-
-      - name: Re-pack release inventory for evidence
-        if: ${{ steps.tag.outputs.tag != '' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf ./nupkgs
-          # Positional CI-time packer over the single-source-of-truth inventory (packable==true).
-          python3 scripts/pack-release-packages.py ./nupkgs "${{ steps.tag.outputs.version }}"
-
-      - name: Validate package inventory
-        if: ${{ steps.tag.outputs.tag != '' }}
-        run: python3 eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output release-evidence/package-inventory.json
-
-      # FR24 AC9: generate + verify a signed build-provenance attestation over the re-packed
-      # release artifacts before release readiness is claimed (bound into the evidence bundle).
-      - name: Attest release evidence provenance
-        if: ${{ steps.tag.outputs.tag != '' }}
-        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4
-        with:
-          subject-path: nupkgs/*.nupkg
-
-      - name: Generate SBOM
-        if: ${{ steps.tag.outputs.tag != '' }}
-        run: |
-          set -euo pipefail
-          mkdir -p release-evidence
-          dotnet CycloneDX Hexalith.FrontComposer.slnx -o release-evidence -fn sbom.json -j
-
-      - name: Sign and verify packages
-        if: ${{ steps.tag.outputs.tag != '' }}
-        shell: bash
-        env:
-          SIGNING_CERT_BASE64: ${{ secrets.NUGET_SIGNING_CERTIFICATE_BASE64 }}
-          SIGNING_CERT_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
-          SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER || 'http://timestamp.digicert.com' }}
-        run: |
-          set -euo pipefail
-          mkdir -p release-evidence
-          if [ -z "${SIGNING_CERT_BASE64:-}" ]; then
-            # AC2/AC10 fail-closed readiness reason: unsigned packages are a blocking gap that the
-            # Release Owner must clear before v1.0 RC. Recorded (not silently skipped).
-            python3 - <<'PYEOF'
-          import json
-          reason = {
-              "decision_contract": "frontcomposer.signing-readiness.v1",
-              "signed": False,
-              "verified": False,
-              "blocking": True,
-              "readiness_reason": "signing certificate secret NUGET_SIGNING_CERTIFICATE_BASE64 is not provisioned; packages are unsigned (FR24 AC2 blocking).",
-          }
-          with open("release-evidence/signing-readiness.json", "w", encoding="utf-8", newline="\n") as fh:
-              json.dump(reason, fh, sort_keys=True, separators=(",", ":"))
-              fh.write("\n")
-          PYEOF
-            echo "::warning::FR24 signing certificate not provisioned; packages unsigned. Recorded as a blocking readiness reason."
-          else
-            cert_path="$(mktemp --suffix=.pfx)"
-            printf '%s' "$SIGNING_CERT_BASE64" | base64 -d > "$cert_path"
-            # FR24: on Linux, `dotnet nuget sign`/`verify` trust code-signing roots ONLY via the
-            # SDK's own fallback bundle (…/trustedroots/codesignctl.pem), not the OS trust store.
-            # Recover the issuing CA from the PFX chain and append it BEFORE signing so the chain
-            # builds and verification trusts a self-signed / internal-CA evidence root.
-            root_pem="$(mktemp --suffix=.pem)"
-            # Recover the issuing CA from the PFX chain so it can be trusted before signing. The
-            # legacy retry covers PFXs exported with legacy PKCS#12 ciphers; both attempts run as
-            # `if` conditions (exempt from set -e), and a PFX exported without its root chain then
-            # fails closed on the explicit BEGIN CERTIFICATE guard below — no failure is suppressed.
-            if openssl pkcs12 -in "$cert_path" -cacerts -nokeys -passin "pass:${SIGNING_CERT_PASSWORD}" -out "$root_pem" 2>/dev/null; then
-              echo "Recovered issuing CA from the signing PFX chain."
-            elif openssl pkcs12 -in "$cert_path" -cacerts -nokeys -legacy -passin "pass:${SIGNING_CERT_PASSWORD}" -out "$root_pem" 2>/dev/null; then
-              echo "Recovered issuing CA from the signing PFX chain (legacy PKCS#12)."
-            fi
-            if ! grep -q "BEGIN CERTIFICATE" "$root_pem"; then
-              echo "::error::signing PFX does not embed its issuing CA; export it with the root chain (openssl pkcs12 -certfile root.crt) so verification can trust the code-signing root."
-              exit 1
-            fi
-            sdk_version="$(dotnet --version)"
-            sdk_base="$(dotnet --list-sdks | awk -v v="$sdk_version" '$1==v{start=index($0,"["); print substr($0,start+1,length($0)-start-1)}')"
-            codesign_bundle="${sdk_base}/${sdk_version}/trustedroots/codesignctl.pem"
-            if [ ! -f "$codesign_bundle" ]; then
-              echo "::error::NuGet code-signing trust bundle not found at ${codesign_bundle}"
-              exit 1
-            fi
-            if [ -w "$codesign_bundle" ]; then
-              { printf '\n'; cat "$root_pem"; } >> "$codesign_bundle"
-            else
-              { printf '\n'; cat "$root_pem"; } | sudo tee -a "$codesign_bundle" >/dev/null
-            fi
-            # Sign the re-packed .nupkg into nupkgs-signed/ (symbols stay unsigned in nupkgs/),
-            # matching the manifest artifact contract in eng/release_evidence.py prepare-manifest.
-            mkdir -p nupkgs-signed
-            for pkg in nupkgs/*.nupkg; do
-              [ -e "$pkg" ] || continue
-              cp "$pkg" "nupkgs-signed/$(basename "$pkg")"
-            done
-            for pkg in nupkgs-signed/*.nupkg; do
-              [ -e "$pkg" ] || continue
-              dotnet nuget sign "$pkg" \
-                --certificate-path "$cert_path" \
-                --certificate-password "$SIGNING_CERT_PASSWORD" \
-                --timestamper "$SIGNING_TIMESTAMPER" \
-                --overwrite
-            done
-            rm -f "$cert_path" "$root_pem"
-            # Author signature + RFC 3161 timestamp verification for every signed package.
-            # `-v normal` is required so the per-package `Successfully verified package '…'`
-            # confirmation is emitted for parse_signing_verification; the transcript is
-            # path-sanitized (verify echoes absolute artifact/SDK paths that would otherwise
-            # trip the evidence redaction gate) before it lands under release-evidence/.
-            raw_verify="$(mktemp)"
-            dotnet nuget verify nupkgs-signed/*.nupkg --all -v normal | tee "$raw_verify"
-            sed -E "s#/(home|Users|tmp|var)/[^[:space:]'\"]*#<path>#g" "$raw_verify" > release-evidence/signing-verification.txt
-            rm -f "$raw_verify"
-            python3 - <<'PYEOF'
-          import json
-          reason = {
-              "decision_contract": "frontcomposer.signing-readiness.v1",
-              "signed": True,
-              "verified": True,
-              "blocking": False,
-              "readiness_reason": "packages signed and verified (dotnet nuget verify --all, RFC 3161 timestamp).",
-          }
-          with open("release-evidence/signing-readiness.json", "w", encoding="utf-8", newline="\n") as fh:
-              json.dump(reason, fh, sort_keys=True, separators=(",", ":"))
-              fh.write("\n")
-          PYEOF
-          fi
-
-      # FR24: bind an LLM benchmark summary hash into the sealed manifest (a required manifest
-      # field — see eng/release_evidence.py manifest_diagnostics). The release-evidence run has
-      # no provider budget, so it produces CANDIDATE evidence offline (no API spend), mirroring
-      # nightly.yml's benchmark orchestration. The non-zero budget/run exits are the EXPECTED
-      # candidate-evidence path and are handled via `if` (not suppressed), so a genuine tooling
-      # error — e.g. an invalid prompt corpus from validate-prompt-set — still fails closed.
-      - name: Produce LLM benchmark candidate evidence
-        if: ${{ steps.tag.outputs.tag != '' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p release-evidence artifacts/benchmark
-          python3 eng/llm_benchmark.py validate-prompt-set --root . --output artifacts/benchmark/prompt-set.json
-          if python3 eng/llm_benchmark.py budget-status --output artifacts/benchmark/budget.json; then
-            echo "LLM benchmark budget available."
-          else
-            echo "LLM benchmark budget not available; recording candidate evidence without provider spend."
-          fi
-          if python3 eng/llm_benchmark.py run-benchmark --root . --budget-artifact artifacts/benchmark/budget.json --output release-evidence/benchmark-summary.json; then
-            echo "LLM benchmark passed."
-          else
-            echo "LLM benchmark recorded as candidate evidence (budget-blocked / no provider spend)."
-          fi
-
-      - name: Record FR24 release evidence bundle
-        if: ${{ steps.tag.outputs.tag != '' }}
-        env:
-          GITHUB_WORKFLOW_REF: ${{ github.workflow_ref }}
-        run: |
-          set -euo pipefail
-          # P2 (2026-07-13, code-review "record-and-proceed"): when signing IS provisioned every
-          # evidence step is fail-closed. When it is NOT (the documented default until the Release
-          # Owner provisions the cert) the Sign step recorded a blocking signing-readiness reason and
-          # did not emit signing-verification.txt; the manifest still SEALS carrying that unsigned
-          # status and the run proceeds to classify-release, which records it (G1 advisory-at-publish)
-          # instead of the job dying here at prepare-manifest. No blanket error-suppression: a
-          # *signed*-release failure is still hard; only the acknowledged-unsigned state is
-          # recorded-not-fatal (see require_or_record below).
-          if [ -f release-evidence/signing-verification.txt ]; then signed=1; else signed=0; fi
-          require_or_record() {
-            if "$@"; then return 0; fi
-            if [ "$signed" = 1 ]; then
-              echo "::error::signed-release evidence step failed: $*"
-              exit 1
-            fi
-            echo "::warning::unsigned release — evidence step reported a blocking readiness reason (recorded, not fatal under G1): $*"
-          }
-          if [ -f release-evidence/sbom.json ]; then
-            sbom_hash="$(sha256sum release-evidence/sbom.json | cut -d' ' -f1)"
-          else
-            sbom_hash=""
-          fi
-          if [ -f release-evidence/benchmark-summary.json ]; then
-            benchmark_hash="$(sha256sum release-evidence/benchmark-summary.json | cut -d' ' -f1)"
-          else
-            benchmark_hash=""
-          fi
-          python3 eng/release_evidence.py checksums \
-            --root . \
-            --pattern 'nupkgs-signed/*.nupkg' \
-            --pattern 'nupkgs/*.nupkg' \
-            --pattern 'nupkgs/*.snupkg' \
-            --pattern 'release-evidence/sbom.json' \
-            --pattern 'release-evidence/test-results.json' \
-            --pattern 'release-evidence/package-inventory.json' \
-            --pattern 'release-evidence/benchmark-summary.json' \
-            --output release-evidence/checksums.json
-          require_or_record python3 eng/release_evidence.py prepare-manifest \
-            --inventory release-evidence/package-inventory.json \
-            --checksums release-evidence/checksums.json \
-            --version "${{ steps.tag.outputs.version }}" \
-            --tag "${{ steps.tag.outputs.tag }}" \
-            --sbom-hash "$sbom_hash" \
-            --benchmark-summary-hash "$benchmark_hash" \
-            --signing-verification release-evidence/signing-verification.txt \
-            --output release-evidence/pre-manifest.json
-          python3 eng/release_evidence.py seal-manifest \
-            --manifest release-evidence/pre-manifest.json \
-            --output release-evidence/sealed-manifest.json
-          require_or_record python3 eng/release_evidence.py verify-manifest \
-            --manifest release-evidence/sealed-manifest.json \
-            --root . \
-            --output release-evidence/manifest-verification.json
-
-      # G1: classify-release runs in advisory mode with no publishable pre-gate (for the release
-      # that already published), but its exit code gates this workflow so missing/invalid evidence
-      # fails closed on this and the next release.
-      - name: Classify release readiness
-        if: ${{ steps.tag.outputs.tag != '' }}
-        env:
-          GITHUB_EVENT_NAME: ${{ github.event.workflow_run.event }}
-          GITHUB_REF: ${{ github.ref }}
-          GITHUB_REF_PROTECTED: ${{ github.ref_protected }}
-        run: |
-          set -euo pipefail
-          python3 eng/release_evidence.py classify-release \
-            --root . \
-            --evidence-root ./release-evidence \
-            --manifest ./release-evidence/sealed-manifest.json \
-            --test-results ./release-evidence/test-results.json \
-            --output ./release-evidence/release-readiness.json \
-            --event-name "$GITHUB_EVENT_NAME" \
-            --ref "$GITHUB_REF" \
-            --ref-protected "${GITHUB_REF_PROTECTED:-false}"
-
-      - name: Summarize release evidence artifacts
-        if: always()
-        run: |
-          {
-            echo '## FR24 release evidence artifacts (G1)'
-            echo
-            if [ -d release-evidence ]; then
-              find release-evidence -maxdepth 4 -type f | sort | sed 's#^#- #'
-            else
-              echo '- release-evidence directory was not created.'
-            fi
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Attach release evidence to GitHub Release
-        if: ${{ steps.tag.outputs.tag != '' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ steps.tag.outputs.tag }}
         run: |
           set -euo pipefail
-          immutable="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq '.immutable')"
-          case "$immutable" in
-            true)
-              echo "::notice::GitHub Release ${RELEASE_TAG} is immutable; the checksummed evidence bundle remains available as the Actions artifact uploaded by this run."
-              {
-                echo '### GitHub Release evidence attachment'
-                echo
-                echo "- Release \`${RELEASE_TAG}\` is immutable, so GitHub rejects post-publication assets."
-                echo "- The checksummed evidence bundle is retained in this run's Actions artifact."
-              } >> "$GITHUB_STEP_SUMMARY"
-              ;;
-            false)
-              gh release upload "$RELEASE_TAG" release-evidence/*.json --clobber
-              ;;
-            *)
-              echo "::error::GitHub returned an unsupported immutable value '${immutable}' for ${RELEASE_TAG}."
-              exit 1
-              ;;
-          esac
+          mkdir -p verification-evidence
+          # Distinguish a genuinely missing release (HTTP 404 → typed incident) from a
+          # transient API failure (fail WITHOUT minting a false incident — review EC-1).
+          gh_error="$(mktemp)"
+          if ! release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 2>"$gh_error")"; then
+            if grep -q "HTTP 404" "$gh_error"; then
+              echo "::error::tag ${RELEASE_TAG} exists but no GitHub Release does — partial publication state."
+              python3 eng/release_evidence.py partial-publish-incident \
+                --manifest "" \
+                --output verification-evidence/partial-publish-incident.json \
+                --phase github-release \
+                --tag "$RELEASE_TAG"
+            else
+              echo "::error::transient GitHub API failure while resolving release ${RELEASE_TAG}; re-run this workflow (no incident minted)."
+            fi
+            rm -f "$gh_error"
+            exit 1
+          fi
+          rm -f "$gh_error"
+          # Durable-evidence guarantee (review BH-3): the AC12/AC16 argument leans on the
+          # release being immutable — on a mutable release the readiness/checksum assets
+          # could be swapped post-hoc and verification would bless the result. Record the
+          # observed immutability and fail closed when it is not true (the Release Owner
+          # enables immutable releases as part of REL-5 enablement).
+          immutable="$(jq -r '.immutable' <<<"$release_json")"
+          asset_count="$(jq -r '.assets | length' <<<"$release_json")"
+          jq -n --arg immutable "$immutable" --arg tag "$RELEASE_TAG" \
+            '{decision_contract: "frontcomposer.release-immutability.v1", tag: $tag, immutable: ($immutable == "true")}' \
+            > verification-evidence/immutability.json
+          if [ "$immutable" != "true" ]; then
+            echo "::error::GitHub Release ${RELEASE_TAG} is not immutable (immutable=${immutable}); durable evidence cannot be trusted on a mutable release."
+            python3 eng/release_evidence.py partial-publish-incident \
+              --manifest "" \
+              --output verification-evidence/partial-publish-incident.json \
+              --phase post-seal-verification \
+              --tag "$RELEASE_TAG"
+            exit 1
+          fi
+          if [ "${asset_count:-0}" -eq 0 ]; then
+            echo "::error::GitHub Release ${RELEASE_TAG} has no assets — packages and evidence were never attached (review EC-2)."
+            python3 eng/release_evidence.py partial-publish-incident \
+              --manifest "" \
+              --output verification-evidence/partial-publish-incident.json \
+              --phase github-release \
+              --tag "$RELEASE_TAG"
+            exit 1
+          fi
+          mkdir -p downloaded/github
+          if ! gh release download "$RELEASE_TAG" --dir downloaded/github; then
+            echo "::error::downloading assets of GitHub Release ${RELEASE_TAG} failed."
+            python3 eng/release_evidence.py partial-publish-incident \
+              --manifest "" \
+              --output verification-evidence/partial-publish-incident.json \
+              --phase github-release \
+              --tag "$RELEASE_TAG"
+            exit 1
+          fi
+          # Arrange the downloaded bytes into the sealed-manifest layout so verify-manifest
+          # checks the PUBLISHED artifacts (this is a copy of published bytes, not a rebuild).
+          mkdir -p nupkgs-signed nupkgs release-evidence
+          shopt -s nullglob
+          for f in downloaded/github/*.nupkg; do cp "$f" "nupkgs-signed/$(basename "$f")"; done
+          for f in downloaded/github/*.snupkg; do cp "$f" "nupkgs/$(basename "$f")"; done
+          for f in downloaded/github/*.json downloaded/github/*.txt; do cp "$f" "release-evidence/$(basename "$f")"; done
+          missing=""
+          for required in sealed-manifest.json release-readiness.json checksums.json package-inventory.json release-verification.json signing-verification.txt; do
+            [ -f "release-evidence/$required" ] || missing="$missing $required"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::GitHub Release ${RELEASE_TAG} lacks durable evidence assets:${missing}. A short-retention Actions artifact alone fails FR24 (AC12)."
+            python3 eng/release_evidence.py partial-publish-incident \
+              --manifest "" \
+              --output verification-evidence/partial-publish-incident.json \
+              --phase github-release \
+              --tag "$RELEASE_TAG"
+            exit 1
+          fi
 
-      - name: Upload release evidence artifact
+      # The sealed manifest is verified over the DOWNLOADED bytes plus the checked-out
+      # release-definition files, proving the published artifacts are the sealed ones.
+      - name: Verify sealed manifest over downloaded bytes
+        if: ${{ steps.tag.outputs.tag != '' }}
+        run: |
+          python3 eng/release_evidence.py verify-manifest \
+            --manifest release-evidence/sealed-manifest.json \
+            --root . \
+            --output verification-evidence/manifest-verification.json
+
+      # Independent signature verification of the bytes NuGet actually serves. Runs with
+      # the SDK's public code-signing trust bundle only — no private trust bootstrap, so
+      # unsigned packages (NU3004) or untrusted/invalid chains fail closed here even if a
+      # compromised pre-publication step claimed otherwise.
+      - name: Download published NuGet bytes and compare hashes
+        if: ${{ steps.tag.outputs.tag != '' }}
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.tag.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYEOF'
+          import hashlib
+          import http.client
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import sys
+          import time
+          import urllib.error
+          import urllib.request
+
+          tag = os.environ["RELEASE_TAG"]
+          version = os.environ["RELEASE_VERSION"]
+          out_dir = pathlib.Path("verification-evidence")
+          out_dir.mkdir(exist_ok=True)
+          nuget_dir = pathlib.Path("downloaded/nuget")
+          nuget_dir.mkdir(parents=True, exist_ok=True)
+
+          def sha256_file(path: pathlib.Path) -> str:
+              digest = hashlib.sha256()
+              with path.open("rb") as fh:
+                  for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                      digest.update(chunk)
+              return digest.hexdigest()
+
+          failures: list[str] = []
+          incident_phase = ""
+
+          def record(problem: str, phase: str) -> None:
+              global incident_phase
+              failures.append(problem)
+              if not incident_phase:
+                  incident_phase = phase
+              print(f"::error::{problem}")
+
+          def load_json(path: str):
+              # Corrupt downloaded evidence is a typed divergence, never a traceback
+              # (review EC-4).
+              try:
+                  return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+              except (OSError, json.JSONDecodeError):
+                  record(f"downloaded evidence file {path} is unreadable or not valid JSON", "post-seal-verification")
+                  return None
+
+          def finish() -> None:
+              payload = {
+                  "decision_contract": "frontcomposer.published-byte-comparison.v1",
+                  "tag": tag,
+                  "version": version,
+                  "packages": comparison,
+                  "failures": failures,
+                  "status": "verified" if not failures else "divergent",
+              }
+              with (out_dir / "published-byte-comparison.json").open("w", encoding="utf-8", newline="\n") as fh:
+                  json.dump(payload, fh, indent=2, sort_keys=True)
+                  fh.write("\n")
+              if failures:
+                  subprocess.run(
+                      [
+                          "python3", "eng/release_evidence.py", "partial-publish-incident",
+                          "--manifest", "release-evidence/sealed-manifest.json",
+                          "--output", "verification-evidence/partial-publish-incident.json",
+                          "--phase", incident_phase or "post-seal-verification",
+                          "--tag", tag,
+                      ],
+                      check=False,
+                  )
+                  print(f"::error::published-byte verification failed with {len(failures)} finding(s); owner-led reconciliation is required before any compliant disposition.")
+                  sys.exit(1)
+
+          comparison: dict[str, dict[str, str]] = {}
+          manifest = load_json("release-evidence/sealed-manifest.json")
+          checksum_rows = load_json("release-evidence/checksums.json")
+          readiness = load_json("release-evidence/release-readiness.json")
+          if manifest is None or not isinstance(manifest, dict):
+              if manifest is not None:
+                  record("sealed manifest is not an object", "post-seal-verification")
+              finish()
+              sys.exit(1)
+          if manifest.get("tag") != tag:
+              record(f"sealed manifest tag {manifest.get('tag')!r} does not match released tag {tag!r}", "post-seal-verification")
+          sealed_hashes = {
+              row["path"].replace("\\", "/"): row["sha256"]
+              for row in (checksum_rows or {}).get("files", [])
+              if isinstance(row, dict) and row.get("path") and row.get("sha256")
+          } if isinstance(checksum_rows, dict) else {}
+
+          # Retroactive-authorization ban: the release is compliant only if it was
+          # authorized BEFORE publication by the sealed readiness classification.
+          if not isinstance(readiness, dict):
+              if readiness is not None:
+                  record("downloaded release-readiness.json is not an object", "post-seal-verification")
+              readiness = {}
+          classification = readiness.get("classification")
+          if classification not in {"ready", "fallback-approved"} or readiness.get("publish_authorized") is not True:
+              record(
+                  f"published release {tag} was not pre-authorized: classification={classification!r}, "
+                  f"publish_authorized={readiness.get('publish_authorized')!r}",
+                  "post-seal-verification",
+              )
+
+          packages = manifest.get("packages", [])
+          package_rows = [row for row in packages if isinstance(row, dict)] if isinstance(packages, list) else []
+
+          # Surplus-asset detection (review BH-6): every package-shaped asset on the
+          # release must be accounted for by the sealed manifest — an extra .nupkg or
+          # .snupkg attached to the release is the obvious substitution channel.
+          expected_names = set()
+          for row in package_rows:
+              expected_names.add(str(row.get("artifact_path", "")).replace("\\", "/").rsplit("/", 1)[-1])
+              symbol_value = str(row.get("symbol_artifact", "")).replace("\\", "/")
+              if symbol_value.endswith(".snupkg"):
+                  expected_names.add(symbol_value.rsplit("/", 1)[-1])
+          for asset in sorted(pathlib.Path("downloaded/github").iterdir()):
+              if asset.suffix in {".nupkg", ".snupkg"} and asset.name not in expected_names:
+                  record(f"release asset {asset.name} is not part of the sealed manifest (surplus artifact)", "post-seal-verification")
+
+          for row in package_rows:
+              package_id = str(row.get("package_id", ""))
+              row_version = str(row.get("version", ""))
+              artifact_path = str(row.get("artifact_path", "")).replace("\\", "/")
+              name = artifact_path.rsplit("/", 1)[-1]
+              entry: dict[str, str] = {"package_id": package_id, "version": row_version}
+              comparison[package_id] = entry
+              github_copy = pathlib.Path("nupkgs-signed") / name
+              if not github_copy.is_file():
+                  record(f"{package_id}: package asset {name} missing from the GitHub Release", "package-push")
+                  entry["github_asset"] = "missing"
+                  continue
+              github_hash = sha256_file(github_copy)
+              entry["github_sha256"] = github_hash
+              if github_hash != row.get("checksum"):
+                  record(f"{package_id}: GitHub asset bytes do not match the sealed manifest checksum", "post-seal-verification")
+              lower_id = package_id.lower()
+              url = f"https://api.nuget.org/v3-flatcontainer/{lower_id}/{row_version}/{lower_id}.{row_version}.nupkg"
+              target = nuget_dir / name
+              downloaded = False
+              last_error = ""
+              # Per-package budget (review EC-8/BH-7): one slow package must not consume
+              # the retry window of the remaining seven. 404 means not-yet-indexed and is
+              # retryable; 403/other HTTP statuses fail fast with the observed detail.
+              deadline = time.monotonic() + 12 * 60
+              while True:
+                  try:
+                      with urllib.request.urlopen(url, timeout=60) as response:
+                          target.write_bytes(response.read())
+                      downloaded = True
+                      break
+                  except urllib.error.HTTPError as error:
+                      last_error = f"HTTP {error.code}"
+                      if error.code != 404:
+                          break
+                      if time.monotonic() >= deadline:
+                          break
+                      time.sleep(30)
+                  except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException) as error:
+                      last_error = type(error).__name__
+                      if time.monotonic() >= deadline:
+                          break
+                      time.sleep(30)
+              if not downloaded:
+                  record(f"{package_id}: version {row_version} is not downloadable from nuget.org ({last_error or 'no attempt succeeded'})", "package-push")
+                  entry["nuget"] = "missing"
+                  continue
+              nuget_hash = sha256_file(target)
+              entry["nuget_sha256"] = nuget_hash
+              if nuget_hash != row.get("checksum"):
+                  record(f"{package_id}: published NuGet bytes do not match the sealed manifest checksum", "post-seal-verification")
+              # Symbol audit against the SEALED row hash (review BH-1/VG-3/EC-5/EC-6):
+              # `not-required` is the explicit exception sentinel; a path-shaped symbol
+              # with no sealed symbol_checksum is a hard failure, never "verified" with
+              # no comparison performed. nuget.org does not serve raw .snupkg bytes, so
+              # the GitHub symbol asset is what the sealed hash is compared against.
+              symbol_path = str(row.get("symbol_artifact", "")).replace("\\", "/")
+              sealed_symbol = str(row.get("symbol_checksum", ""))
+              if symbol_path.endswith(".snupkg"):
+                  symbol_name = symbol_path.rsplit("/", 1)[-1]
+                  symbol_copy = pathlib.Path("nupkgs") / symbol_name
+                  if len(sealed_symbol) != 64:
+                      record(f"{package_id}: symbol has no sealed checksum in the manifest row", "post-seal-verification")
+                      entry["symbol"] = "unsealed"
+                  elif not symbol_copy.is_file():
+                      record(f"{package_id}: symbol asset {symbol_name} missing from the GitHub Release", "symbol-push")
+                      entry["symbol"] = "missing"
+                  elif sha256_file(symbol_copy) != sealed_symbol:
+                      record(f"{package_id}: symbol asset bytes do not match the sealed manifest symbol checksum", "post-seal-verification")
+                      entry["symbol"] = "divergent"
+                  else:
+                      entry["symbol"] = "verified-against-sealed-manifest"
+              elif sealed_symbol == "not-required":
+                  entry["symbol"] = "not-required"
+              else:
+                  record(f"{package_id}: symbol reference {symbol_path!r} is neither a sealed .snupkg path nor the not-required sentinel", "post-seal-verification")
+
+          # Every sealed PUBLISHED file must round-trip: recompute the sealed checksums over
+          # the downloaded copies (signed packages, symbols, and the evidence chain). The
+          # unsigned nupkgs/*.nupkg intermediates are sealed for pack-once provenance but
+          # are deliberately never published, so they cannot be re-verified here.
+          for path, sealed_hash in sealed_hashes.items():
+              if path.startswith("nupkgs/") and path.endswith(".nupkg"):
+                  continue
+              local = pathlib.Path(path)
+              if not local.is_file():
+                  record(f"sealed evidence file {path} is absent from the downloaded release assets", "post-seal-verification")
+              elif sha256_file(local) != sealed_hash:
+                  record(f"downloaded copy of {path} does not match its sealed checksum", "post-seal-verification")
+
+          finish()
+          PYEOF
+
+      - name: Verify signatures of published NuGet bytes
+        if: ${{ steps.tag.outputs.tag != '' }}
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          raw_verify="$(mktemp)"
+          verify_status=0
+          dotnet nuget verify downloaded/nuget/*.nupkg --all -v normal > "$raw_verify" 2>&1 || verify_status=$?
+          cat "$raw_verify"
+          sed -E "s#/(home|Users|tmp|var)/[^[:space:]'\"]*#<path>#g" "$raw_verify" > verification-evidence/published-signing-verification.txt
+          rm -f "$raw_verify"
+          if [ "$verify_status" -ne 0 ]; then
+            # Unsigned published bytes (NU3004) or an untrusted chain is a divergence,
+            # recorded through the same typed incident path as hash mismatches (review EC-7).
+            python3 eng/release_evidence.py partial-publish-incident \
+              --manifest release-evidence/sealed-manifest.json \
+              --output verification-evidence/partial-publish-incident.json \
+              --phase post-seal-verification \
+              --tag "$RELEASE_TAG"
+            echo "::error::published NuGet bytes failed signature verification (unsigned or untrusted chain)."
+            exit 1
+          fi
+
+      # Machine-readable record for the Release Owner's compliance ledger
+      # (_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md).
+      # The markdown ledger is owner-updated; this workflow never commits.
+      - name: Compose verification ledger record
+        if: ${{ always() && steps.tag.outputs.tag != '' }}
+        env:
+          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          python3 - <<'PYEOF'
+          import json
+          import os
+          import pathlib
+
+          out_dir = pathlib.Path("verification-evidence")
+          out_dir.mkdir(exist_ok=True)
+
+          def load(path: str):
+              candidate = pathlib.Path(path)
+              if not candidate.is_file():
+                  return None
+              try:
+                  return json.loads(candidate.read_text(encoding="utf-8"))
+              except json.JSONDecodeError:
+                  return {"unreadable": True}
+
+          repository = os.environ.get("GITHUB_REPOSITORY", "")
+          server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+          comparison = load("verification-evidence/published-byte-comparison.json")
+          manifest_verification = load("verification-evidence/manifest-verification.json")
+          readiness = load("release-evidence/release-readiness.json")
+          incident = load("verification-evidence/partial-publish-incident.json")
+          immutability = load("verification-evidence/immutability.json")
+          release_immutable = bool(immutability) and immutability.get("immutable") is True
+          signing_transcript = pathlib.Path("verification-evidence/published-signing-verification.txt").is_file()
+          verified = (
+              comparison is not None and comparison.get("status") == "verified"
+              and manifest_verification is not None and manifest_verification.get("status") == "valid"
+              and signing_transcript
+              and incident is None
+              and release_immutable
+          )
+          record = {
+              "decision_contract": "frontcomposer.release-ledger-record.v1",
+              "release_immutable": release_immutable,
+              "tag": os.environ.get("RELEASE_TAG", ""),
+              "release_url": f"{server}/{repository}/releases/tag/{os.environ.get('RELEASE_TAG', '')}",
+              "release_run_url": f"{server}/{repository}/actions/runs/{os.environ.get('UPSTREAM_RUN_ID', '')}",
+              "release_run_conclusion": os.environ.get("UPSTREAM_CONCLUSION", ""),
+              "verification_run_url": f"{server}/{repository}/actions/runs/{os.environ.get('GITHUB_RUN_ID', '')}",
+              "manifest_verification": (manifest_verification or {}).get("status", "missing"),
+              "readiness_classification": (readiness or {}).get("classification", "missing"),
+              "publish_authorized": (readiness or {}).get("publish_authorized", "missing"),
+              "published_byte_comparison": (comparison or {}).get("status", "missing"),
+              "published_signing_transcript": signing_transcript,
+              "partial_publish_incident": incident is not None,
+              "disposition_proposal": "compliant-candidate" if verified else "non-compliant",
+          }
+          with (out_dir / "ledger-record.json").open("w", encoding="utf-8", newline="\n") as fh:
+              json.dump(record, fh, indent=2, sort_keys=True)
+              fh.write("\n")
+          summary = pathlib.Path(os.environ["GITHUB_STEP_SUMMARY"])
+          with summary.open("a", encoding="utf-8") as fh:
+              fh.write("## Independent release verification (REL-3)\n\n")
+              for key, value in sorted(record.items()):
+                  fh.write(f"- {key}: {value}\n")
+          PYEOF
+
+      - name: Upload verification evidence artifact
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
-          path: release-evidence/**
+          name: release-verification-${{ github.run_id }}-${{ github.run_attempt }}
+          path: verification-evidence/**
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90

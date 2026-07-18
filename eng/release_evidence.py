@@ -24,7 +24,9 @@ from typing import Any
 # sha256 is computed at prepare-manifest time and embedded in the sealed manifest;
 # `manifest_diagnostics` compares both at verify time so a helper-bytes change without
 # a `__version__` bump produces a `release-definition drift` signal.
-__version__ = "1.1.0"
+# 1.2.0 (REL-3, 2026-07-18): APPROVAL_MATRIX rewritten to the REL-3/REL-4 authorization
+# model (freeze variable + publishable readiness evidence; no dispatch/approver inputs).
+__version__ = "1.2.0"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -110,9 +112,9 @@ FALLBACK_INVALIDATION_FILES = [
 # CR-12-4-D7 (round-5): the AC26 approval matrix is now a machine-readable constant
 # emitted in `classify_release_payload` so consumers can enumerate the seven approval-
 # dependent action types without parsing prose. Each entry binds: the action, the
-# required approver, the mechanism (workflow_dispatch input vs sealed fallback record),
-# the evidence that must be present, and whether the action is `blocking` (no fallback)
-# or has an `approved-unsupported` style fallback.
+# required approver, the mechanism (REL-4 freeze variable / readiness evidence vs
+# sealed fallback record), the evidence that must be present, and whether the action
+# is `blocking` (no fallback) or has an `approved-unsupported` style fallback.
 # CR-12-4-P131/P136/P140 (round-6): normalized vocabulary, removed env-var-style
 # internal naming from `mechanism`, and added `gate_id` to surface the three shared
 # semantic-release gates so consumers can group-by gate without conflating actions.
@@ -121,13 +123,20 @@ FALLBACK_INVALIDATION_FILES = [
 # CR-12-4-P179 (round-7): `mechanism_inputs` is a structured list of the actual input
 # names a consumer must match to evaluate the gate, separate from the prose `mechanism`
 # description. Machine consumers can dispatch on the input names without parsing English.
+# REL-3 AC20 (2026-07-18): the matrix records the ACTUAL approved authorization
+# mechanisms — the Release Owner-controlled REL-4 freeze variable
+# HEXALITH_RELEASE_PUBLISH_ENABLED (exact-string 'true' bash gate in release.yml),
+# publishable readiness evidence produced by `classify-release --require-publishable`,
+# and the upstream BUILD-REL-1 protected release environment once it lands. The
+# forbidden dispatch/approver input names that release.yml pins against must not
+# appear anywhere in this matrix.
 APPROVAL_MATRIX = [
     {
         "action": "nuget-publish",
         "gate_id": "semantic-release-publish",
         "owner": "release-owner",
-        "mechanism": "workflow-dispatch owner approval (release_owner_approved + release_approver inputs)",
-        "mechanism_inputs": ["release_owner_approved", "release_approver"],
+        "mechanism": "REL-4 freeze variable exactly 'true' (Release Owner-controlled) + publishable readiness evidence from classify-release --require-publishable; upstream BUILD-REL-1 protected release environment when available",
+        "mechanism_inputs": ["vars.HEXALITH_RELEASE_PUBLISH_ENABLED", "release-readiness.classification", "release-readiness.publish_authorized"],
         "evidence": "release-readiness.json: classification=ready or fallback-approved, publish_authorized=true",
         "effect": "blocking",
         "fallback_action": None,
@@ -136,8 +145,8 @@ APPROVAL_MATRIX = [
         "action": "tag-and-changelog-push",
         "gate_id": "semantic-release-publish",
         "owner": "release-owner",
-        "mechanism": "workflow-dispatch owner approval (release_owner_approved + release_approver inputs)",
-        "mechanism_inputs": ["release_owner_approved", "release_approver"],
+        "mechanism": "REL-4 freeze variable exactly 'true' (Release Owner-controlled) + publishable readiness evidence from classify-release --require-publishable",
+        "mechanism_inputs": ["vars.HEXALITH_RELEASE_PUBLISH_ENABLED", "release-readiness.publish_authorized"],
         "evidence": "release-readiness.json: publish_authorized=true; semantic-release @semantic-release/git",
         "effect": "blocking",
         "fallback_action": None,
@@ -146,8 +155,8 @@ APPROVAL_MATRIX = [
         "action": "github-release-create",
         "gate_id": "semantic-release-publish",
         "owner": "release-owner",
-        "mechanism": "workflow-dispatch owner approval (release_owner_approved + release_approver inputs)",
-        "mechanism_inputs": ["release_owner_approved", "release_approver"],
+        "mechanism": "REL-4 freeze variable exactly 'true' (Release Owner-controlled) + publishable readiness evidence from classify-release --require-publishable",
+        "mechanism_inputs": ["vars.HEXALITH_RELEASE_PUBLISH_ENABLED", "release-readiness.publish_authorized"],
         "evidence": "release-readiness.json: publish_authorized=true; semantic-release @semantic-release/github",
         "effect": "blocking",
         "fallback_action": None,
@@ -187,8 +196,8 @@ APPROVAL_MATRIX = [
         "action": "partial-publish-recovery",
         "gate_id": "partial-publish-recovery",
         "owner": "release-owner",
-        "mechanism": "manual review of partial-publish-incident.json plus fresh workflow-dispatch with new tag",
-        "mechanism_inputs": ["partial_publish_incident_review", "release_owner_approved", "release_approver"],
+        "mechanism": "manual owner review of partial-publish-incident.json plus an owner-authorized fresh release (new tag) under the freeze variable",
+        "mechanism_inputs": ["partial_publish_incident_review", "vars.HEXALITH_RELEASE_PUBLISH_ENABLED"],
         "evidence": "partial-publish-incident.json (failed_phase != none) plus reconciled NuGet/symbol state",
         "effect": "blocking",
         "fallback_action": None,
@@ -197,8 +206,8 @@ APPROVAL_MATRIX = [
         "action": "rerun-after-failed-or-partial-release",
         "gate_id": "rerun",
         "owner": "release-owner",
-        "mechanism": "fresh workflow-dispatch (run_attempt resets) or new tag",
-        "mechanism_inputs": ["release_owner_approved", "release_approver"],
+        "mechanism": "owner-authorized fresh release run (run_attempt resets) or new tag under the freeze variable",
+        "mechanism_inputs": ["vars.HEXALITH_RELEASE_PUBLISH_ENABLED", "release-readiness.publish_authorized"],
         "evidence": "release-readiness.json: classification != rerun-review with explicit owner approval",
         "effect": "blocking",
         "fallback_action": None,
@@ -825,6 +834,29 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
                     diagnostics.append(f"{row.get('package_id')}: sealed artifact must not be empty")
                 elif looks_like_sha256(row.get("checksum")) and sha256_file(artifact) != row.get("checksum"):
                     diagnostics.append(f"{row.get('package_id')}: sealed artifact checksum does not match on-disk artifact")
+        # REL-3 review BH-1/VG-3/EC-6 (2026-07-18): symbol integrity is part of the
+        # seal. A path-shaped symbol_artifact row MUST carry a concrete sealed
+        # symbol_checksum; when a root is supplied the on-disk (or downloaded)
+        # .snupkg bytes must hash-match it. A missing sealed hash is a hard
+        # diagnostic, never a silent skip — the fail-open seam the review closed.
+        symbol_artifact_value = str(row.get("symbol_artifact", "")).replace("\\", "/")
+        if symbol_artifact_value.endswith(".snupkg"):
+            symbol_checksum_value = row.get("symbol_checksum")
+            if not looks_like_sha256(symbol_checksum_value):
+                diagnostics.append(f"{row.get('package_id')}: symbol_checksum must be a concrete sha256 for symbol packages")
+            elif root is not None and root_exists:
+                if os.path.isabs(symbol_artifact_value):
+                    diagnostics.append(f"{row.get('package_id')}: symbol path invalid: evidence path must be relative")
+                else:
+                    try:
+                        symbol_file = normalize_under_root(root, symbol_artifact_value)
+                    except SystemExit as exc:
+                        diagnostics.append(f"{row.get('package_id')}: symbol path invalid: {exc}")
+                    else:
+                        if not symbol_file.is_file():
+                            diagnostics.append(f"{row.get('package_id')}: sealed symbol package missing on disk")
+                        elif sha256_file(symbol_file) != symbol_checksum_value:
+                            diagnostics.append(f"{row.get('package_id')}: sealed symbol checksum does not match on-disk symbol package")
     for field in ["commit_sha", "tag", "run_id", "workflow_ref", "sbom_hash", "benchmark_summary_hash"]:
         if not manifest.get(field):
             diagnostics.append(f"manifest missing {field}")
@@ -2283,7 +2315,13 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         checksum = checksums_by_path.get(nupkg, "")
         if not looks_like_sha256(checksum):
             diagnostics.append(f"{package_id}: signed package checksum is missing")
-        if row.get("symbol_required") and snupkg not in checksums_by_path:
+        # REL-3 review BH-1/VG-3 (2026-07-18): the symbol hash is SEALED into the
+        # manifest row. Publishers and verifiers previously compared .snupkg bytes
+        # against checksums.json, a side file the seal never covered — a post-seal
+        # edit could swap symbol bytes undetected, and a missing row silently
+        # skipped the audit entirely (fail-open).
+        symbol_checksum = checksums_by_path.get(snupkg, "") if row.get("symbol_required") else "not-required"
+        if row.get("symbol_required") and not looks_like_sha256(symbol_checksum):
             diagnostics.append(f"{package_id}: symbol package checksum is missing")
         verification = verification_statuses.get(package_id.lower(), {})
         signing_status = verification.get("signing_status", "missing")
@@ -2299,6 +2337,7 @@ def prepare_manifest(args: argparse.Namespace) -> int:
             "artifact_path": nupkg,
             "checksum": checksum,
             "symbol_artifact": snupkg if row.get("symbol_required") else row.get("exception", "not-required"),
+            "symbol_checksum": symbol_checksum,
             "sbom_component": package_id,
             "signing_status": signing_status,
             "timestamp_status": timestamp_status,
@@ -2420,13 +2459,12 @@ def path_check(args: argparse.Namespace) -> int:
 _PARTIAL_PUBLISH_CLASSIFICATIONS = {"none", "partial-publish-incident", "recovered"}
 # CR-12-4-P115 (round-5): validate --phase against an enum so operator typos like
 # `packagepush` vs `package-push` are caught instead of silently landing in forensic JSON.
-# CR-12-4-P141 (round-6): only `none`, `package-push`, and `symbol-push` have producers
-# in the current publishCmd. `tag-push`, `github-release`, `attestation-upload`, and
-# `post-seal-verification` are reserved for future failure handlers wired into the
-# `@semantic-release/github`, `@semantic-release/git`, and attestation-upload phases.
-# Keeping them in the enum so an operator running a manual recovery can record the
-# phase without code changes; remove them only if the workflow restructure for
-# CR-12-4-Def14 elects a different phase taxonomy.
+# REL-3 (2026-07-18): live producers are now `none`/`package-push`/`symbol-push`/
+# `post-seal-verification` (eng/release_prepublish.py cmd_publish pre-push audit and
+# push loop) and `github-release`/`tag-push`/`post-seal-verification` (the independent
+# verifier in release-evidence.yml: missing release, deleted-tag orphan probe, and
+# downloaded-byte divergence). `attestation-upload` remains reserved for the upstream
+# governed attestation phase (AC18) and manual owner recovery records.
 _PARTIAL_PUBLISH_PHASES = {
     "none",
     "package-push",
@@ -2758,9 +2796,14 @@ def classify_release(args: argparse.Namespace) -> int:
         # `"dry-run dispatch cannot authorize publishing"` — only the f-string
         # `f"candidate evidence from {context_class} ..."` is emitted by the
         # classifier, and only the `local-candidate` instance is allowed here.
-        if getattr(args, "dry_run_clean_exit", False) and blocking:
+        if getattr(args, "dry_run_clean_exit", False):
             # CR-12-4-P256 (round-11, edge): allowlist materialized from the
             # module-level template so it cannot drift from the carve-out emitter.
+            # REL-3 (2026-07-18): the P247 carve-out reclassifies a HEALTHY dry-run and
+            # leaves `blocking` empty, so the prior `and blocking` guard made the clean
+            # exit unreachable for exactly the case it was built for. An empty blocking
+            # list satisfies the allowlist check (`all([])`); classification gating below
+            # still restricts the exit-0 path to ready/fallback-approved dry-runs.
             allowed_blockers = {
                 _CANDIDATE_BLOCKER_TEMPLATE.format(context_class="local-candidate"),
             }

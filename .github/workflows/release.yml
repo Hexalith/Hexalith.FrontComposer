@@ -6,14 +6,21 @@ name: Release
 # never publish from a commit whose CI failed. The `event == 'push'` guard keeps any
 # scheduled/PR CI runs from starting a release. semantic-release still decides from the
 # commit history whether a release is warranted, driven by this repo's `.releaserc.json`
-# (pack_release_packages.py + dotnet nuget push).
+# (REL-3: `eng/release_prepublish.py prepare` runs the fail-closed FR24 exact-artifact
+# gate as prepareCmd; `publish` pushes only the manifest-authorized signed bytes).
 #
-# FR24 release evidence (signing, SBOM, checksums, sealed manifest, classify-release,
-# evidence assets) is NOT hosted here: the reusable domain-release.yml is a shared @main
-# submodule with no evidence hook and must not be edited from this repo. FR24 evidence
-# runs in the FrontComposer-owned supplemental `release-evidence.yml` under the G1
-# posture (post-publish + next-release fail-closed). The only path to inline pre-publish
-# gating (G2) is a separate owner-approved Hexalith.Builds change.
+# REL-3 (2026-07-18): FR24 authorization happens INSIDE semantic-release, before any
+# publication side effect — pack once, validate, sign/timestamp, seal + verify the
+# manifest, then `classify-release --require-publishable`. The supplemental
+# `release-evidence.yml` is the independent post-publication verifier (downloads the
+# published NuGet/GitHub bytes and compares them against the sealed manifest); it can
+# never authorize a release. The upstream BUILD-REL-1 governed contract (secrets,
+# timestamp input, attestation candidate phase) remains an owner-filed Hexalith.Builds
+# dependency.
+#
+# REL-4 (2026-07-15): publication is additionally frozen by default behind the
+# fail-closed `freeze-guard` job below. Ordinary fix:/feat: merges to main can no
+# longer publish while the REL-3 exact-artifact gate is being built.
 on:
   workflow_run:
     workflows: [CI]
@@ -28,10 +35,46 @@ permissions:
   contents: read
 
 jobs:
-  release:
+  # REL-4 (2026-07-15): temporary technical release freeze (REL-3 / REL-AI-1).
+  # Publication is DISABLED BY DEFAULT. It is enabled only when the Release
+  # Owner-controlled repository variable HEXALITH_RELEASE_PUBLISH_ENABLED is
+  # exactly the string 'true'. The comparison is an exact POSIX match in bash
+  # because GitHub expression '==' is case-insensitive; missing or malformed
+  # values keep the freeze. Frozen runs conclude green with a freeze notice.
+  # REMOVAL/REPLACEMENT is permitted only when the permanent REL-3
+  # exact-artifact gate is operational and REL-AI-1 records passing
+  # real-release evidence; the variable then becomes the standing Release
+  # Owner freeze switch (see architecture.md, FR24 Release Evidence
+  # Architecture). Pinned by CiGovernanceTests.
+  freeze-guard:
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
       github.event.workflow_run.event == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      publish-enabled: ${{ steps.evaluate.outputs.publish-enabled }}
+    steps:
+      - name: Evaluate release publication freeze
+        id: evaluate
+        env:
+          PUBLISH_ENABLED: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}
+        run: |
+          set -euo pipefail
+          if [ "${PUBLISH_ENABLED}" = "true" ]; then
+            echo "publish-enabled=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release publication ENABLED: HEXALITH_RELEASE_PUBLISH_ENABLED is exactly 'true' (Release Owner-controlled)."
+          else
+            echo "publish-enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Release publication FROZEN (REL-3 / REL-AI-1): HEXALITH_RELEASE_PUBLISH_ENABLED is not exactly 'true'. No package will be published."
+            echo "Release publication is frozen until the REL-3 exact-artifact gate is operational." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  release:
+    needs: freeze-guard
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      needs.freeze-guard.outputs.publish-enabled == 'true'
     permissions:
       contents: write
       issues: write

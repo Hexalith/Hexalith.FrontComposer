@@ -18,6 +18,13 @@ publication and independently verified afterward against the same sealed manifes
 Historical records are not REL-AI-1 closure evidence. They document affected releases and the reason
 the next publish-capable release is frozen until REL-3 is operational.
 
+Status note (2026-07-18): REL-4's fail-closed freeze gate and REL-3's exact-artifact pre-publication
+enforcement (pack-once orchestration in `eng/release_prepublish.py`, authorized-bytes publish,
+independent downloaded-byte verification in `release-evidence.yml`) are implemented in the
+repository. This changes no disposition in this ledger: REL-AI-1 closes only when a real release
+passes the full chain with durable evidence and downloaded NuGet/GitHub bytes matching the
+authorized manifest (REL-5 owner enablement).
+
 ## Required Fields
 
 Each release record carries:
