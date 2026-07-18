@@ -2,9 +2,14 @@
 title: 'Fix CI: remediate AngleSharp NU1902 audit failure blocking Restore'
 type: 'bugfix'
 created: '2026-07-18'
-status: 'in-progress'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: 'afb39847f313b41266635149baafb602362f1e8e'
+implementation_base: '5c284c89d37dfc3d39593962631e376bd4c5e033'
+implementation_head: 'afb39847f313b41266635149baafb602362f1e8e'
+review_ranges:
+  frontcomposer: '5c284c89d37dfc3d39593962631e376bd4c5e033..afb39847f313b41266635149baafb602362f1e8e'
+  builds: 'e64ae34e50086ae55d47971d70897d579ff18c25..337f02322b6eb9d78769b6003fad82d3ccb49488'
 context: []
 ---
 
@@ -64,14 +69,47 @@ context: []
 **Commands:**
 - `dotnet restore Hexalith.FrontComposer.slnx` -- expected: completes with no `NU1902` diagnostics.
 - `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category=Governance"` -- expected: all Governance tests pass, including the central-package-version ownership test.
-- `gh run view --repo Hexalith/Hexalith.FrontComposer <new-run-id>` on the opened PR -- expected: `build-and-test` Restore step green.
+- `gh run view --repo Hexalith/Hexalith.FrontComposer 29641083386 --job 88071623493` on PR #70 -- expected: `build-and-test` Restore step and downstream gates green.
+
+**Review bounds:**
+- FrontComposer implementation range: `5c284c89d37dfc3d39593962631e376bd4c5e033..afb39847f313b41266635149baafb602362f1e8e`.
+- Builds implementation range: `e64ae34e50086ae55d47971d70897d579ff18c25..337f02322b6eb9d78769b6003fad82d3ccb49488`.
+- Local evidence environment: .NET SDK `10.0.302` on Ubuntu `26.04` under WSL2 (`linux-x64`), bound to FrontComposer HEAD `afb39847f313b41266635149baafb602362f1e8e` and the Builds range above.
 
 **Local results (2026-07-18):**
 - Merge proof: `git merge-base c00f487d^1 c00f487d^2` returned `5c284c89`; merge `c00f487d` retains parents `9417e69b` and `4bf40adc`, and `git merge-base --is-ancestor 4bf40adc main` exited `0`. The Builds gitlinks are base `e64ae34e`, ours `2542a648`, theirs/resolution `337f0232`; follow-up merge `afb39847` has `337f0232` on both parents and in its result.
 - Builds-content proof: `2542a648` and `337f0232` have the same stable patch ID, `36ae36fe3aba53ef56591f043c51ad3ffde40fab`. `337f0232` is based directly on `e64ae34e`; its only diff is the advisory comment plus `<PackageVersion Include="AngleSharp" Version="1.5.2" />`. The locally recorded Builds `origin/main` contains both Builds histories. No fetch was run.
 - `dotnet restore Hexalith.FrontComposer.slnx` -- failed before NuGet audit with `MSB3202` because the intentionally uninitialized nested Commons/EventStore/Memories/Tenants project-reference files are absent; the task forbids initializing them.
 - `dotnet restore Hexalith.FrontComposer.slnx --property:Configuration=Release` -- passed for all solution projects with no `NU1902`. The restored assets for `Hexalith.FrontComposer.Testing`, `Hexalith.FrontComposer.Testing.Tests`, and `Hexalith.FrontComposer.Shell.Tests` each contain `AngleSharp/1.5.2`.
+- Literal local Quality restore command from `.github/workflows/quality.yml:70`, `dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:EnableFrontComposerPackageValidation=true`, passed with no `NU1902`.
+- Augmented local CI-parity restore, `dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:EnableFrontComposerPackageValidation=true --force-evaluate`, also passed and forced reevaluation of all solution projects. The shared-catalog validator passed all 267 evaluated `PackageVersion` entries.
 - Root XML check -- `Directory.Packages.props` contains `0` `PackageVersion` elements.
-- `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category=Governance"` -- `164/167` passed. Two failures require absent nested submodule files, including `CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog`; the third is the unrelated `SemanticReleaseAnalyzer_ConventionalCommitsMatrix_SelectsExpectedReleaseTypes` commitlint assertion. The exact Governance lane is therefore not locally green.
-- PR proof: local commit `9417e69b` records the merged fix as PR `#69` targeting `main`. Live-CI verification was not run because this task prohibits remote operations; the live `build-and-test` acceptance remains unverified.
+- `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category=Governance"` -- `164/167` passed. The absent nested submodule files fail `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog` and `CiGovernanceTests.HexalithDependencyMode_DefaultsToProjectReferencesForDebugAndPackagesForRelease`; the third failure, `CiGovernanceTests.SemanticReleaseAnalyzer_ConventionalCommitsMatrix_SelectsExpectedReleaseTypes`, is an unrelated commitlint assertion. The broad local Governance lane is therefore not green.
+- Focused functional fallback, `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined&Category!=Governance&Category!=Contract"`, reached the functional suites: `Hexalith.FrontComposer.Shell.Tests` passed `2175` tests with one unrelated allocation failure, `FrontComposerHotPathLogTests.DisabledIdentifierEvent_AfterWarmup_AllocatesNothing`; `Hexalith.FrontComposer.Testing.Tests` passed `56` tests with two absent-nested-Builds failures, `CentralPackageVersion_Mismatch_ReportsExpectedAndActualBeforePackaging` and `CleanTemporaryConsumer_RestoresFromPackedNupkgs_WithoutRepoRelativeProjectReferences`.
+- Matrix coverage fallback for the central-package ownership row -- reconstructed an isolated temporary repository fixture from FrontComposer HEAD's exact gitlinks: Builds `337f02322b6eb9d78769b6003fad82d3ccb49488`, EventStore `f180c5fdda59bf1914429bb369234fabf7ce33de`, Memories `93af830c533e0816507e498aedc1402f2e90a562`, and Parties `1e2ec0aaa7c2f1f7cb14ed53c5bb256d38e9c21`. Without initializing or modifying nested submodules, the unmodified test was invoked from the fixture with `dotnet test-bin/Hexalith.FrontComposer.Shell.Tests.dll -method "Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog"`: `1/1` passed, `0` failed, `0` skipped. This isolated result is fallback evidence only; the live full Gate 2b result below is authoritative.
+
+**Live read-only evidence (2026-07-18):**
+- FrontComposer [PR #70](https://github.com/Hexalith/Hexalith.FrontComposer/pull/70) targeted `main` from `fix/actions-29639705961-anglesharp-nu1902-followup` at `5fdb60fc509b635a223cc9fd45825952949526dd` and merged as `afb39847f313b41266635149baafb602362f1e8e`.
+- PR CI [run 29641083386](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29641083386), job `88071623493`, succeeded through Restore, Build, consumer validation, and Tier-1 tests.
+- Final `main` CI [run 29641217198](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29641217198), job `88071970786`, succeeded through the same Restore, Build, consumer-validation, and Tier-1 gates.
+- Final `main` Quality [run 29641217096](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29641217096) passed `Gate 2b: Infrastructure governance and telemetry contracts`; the workflow failed later at unrelated Gate 2d documentation validation.
+- Builds commit [`337f02322b6eb9d78769b6003fad82d3ccb49488`](https://github.com/Hexalith/Hexalith.Builds/commit/337f02322b6eb9d78769b6003fad82d3ccb49488) is an ancestor of live `main`; the live comparison reported `main` ten commits ahead and zero behind.
+
+## Suggested Review Order
+
+**Remediation path**
+
+- Pin the patched transitive dependency once in the shared catalog.
+  [`Directory.Packages.props:89`](../../../Hexalith.Builds/Props/Directory.Packages.props#L89)
+
+- Preserve FrontComposer's import-only package catalog boundary.
+  [`Directory.Packages.props:6`](../../Directory.Packages.props#L6)
+
+**Verification trail**
+
+- Confirm shared-catalog ownership remains enforced without local pins.
+  [`InfrastructureGovernanceTests.cs:36`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs#L36)
+
+- Review exact commits, fallback diagnostics, and authoritative live CI evidence.
+  [`spec-actions-29639705961-fix-cicd.md:91`](spec-actions-29639705961-fix-cicd.md#L91)
 
