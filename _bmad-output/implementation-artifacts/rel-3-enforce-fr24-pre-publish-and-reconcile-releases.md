@@ -5,7 +5,7 @@ amended: 2026-07-16 (freeze truth-state; approval-mechanism contract in AC20; pr
 owner: Release Owner + Developer + QA/Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md
 amendmentProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md
-status: in-review
+status: done
 baseline_commit: 5c284c89d37dfc3d39593962631e376bd4c5e033
 scope: moderate
 implementationRisk: high
@@ -420,5 +420,78 @@ fail-closed lane catching the parallel regression is the gate behaving as specif
 - `_bmad-output/project-docs/deployment-guide.md` — implemented-behavior alignment
 - `_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md` — dated status note
 - `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md` — implementation record, status in-review
-- `_bmad-output/implementation-artifacts/deferred-work.md` — CR-12-4-Def14 superseded reconciliation
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` — rel-3 in-progress, rel-4 review
+- `_bmad-output/implementation-artifacts/deferred-work.md` — CR-12-4-Def14 superseded reconciliation + 6 REL-3 defer entries
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — rel-3/rel-4 status trail
+
+## Suggested Review Order
+
+**Design intent — the exact-artifact invariant**
+
+- Module docstring states the whole model: authorize inside prepareCmd, publish only authorized bytes.
+  [`release_prepublish.py:2`](../../eng/release_prepublish.py#L2)
+
+- Phase order is the Required Artifact Invariant, verbatim and fail-closed.
+  [`release_prepublish.py:604`](../../eng/release_prepublish.py#L604)
+
+**Authorization chain**
+
+- Fail-closed signing replaces G1 record-and-proceed; trust bootstrap mirrors CI, restores local trust store.
+  [`release_prepublish.py:268`](../../eng/release_prepublish.py#L268)
+
+- Classification: AC20 approval inputs derive from the REL-4 gate context; local mode stays unauthorized.
+  [`release_prepublish.py:546`](../../eng/release_prepublish.py#L546)
+
+- Sealed per-row `symbol_checksum` (review-round fix) closes the unsealed-side-file seam.
+  [`release_evidence.py:839`](../../eng/release_evidence.py#L839)
+
+- The healthy-dry-run clean-exit gate the review proved dead and this change repaired.
+  [`release_evidence.py:2799`](../../eng/release_evidence.py#L2799)
+
+**Publish path — only authorized bytes**
+
+- publishCmd re-verifies manifest + readiness, audits every row, pushes without `--skip-duplicate`.
+  [`release_prepublish.py:672`](../../eng/release_prepublish.py#L672)
+
+- semantic-release wiring: orchestrator entrypoints + durable evidence assets at release creation.
+  [`.releaserc.json:21`](../../.releaserc.json#L21)
+
+**Freeze gate (REL-4)**
+
+- Fail-closed default-frozen guard; exact POSIX match in bash; removal-condition marker.
+  [`release.yml:49`](../../.github/workflows/release.yml#L49)
+
+**Independent post-publication verification**
+
+- Trigger on any Release conclusion; no-op only when no side effect occurred.
+  [`release-evidence.yml:26`](../../.github/workflows/release-evidence.yml#L26)
+
+- Parent-aware tag resolution without repacking; deleted-tag orphan probe.
+  [`release-evidence.yml:107`](../../.github/workflows/release-evidence.yml#L107)
+
+- Immutability probe (review-round restoration) — durable evidence depends on it.
+  [`release-evidence.yml:189`](../../.github/workflows/release-evidence.yml#L189)
+
+**Governance proof**
+
+- REL-4 gate pins: variable binding, bash comparison, fail-closed needs-chain.
+  [`CiGovernanceTests.cs:1190`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs#L1190)
+
+- Single-publish-path scan across every workflow (comment-stripped, `.yml` + `.yaml`).
+  [`CiGovernanceTests.cs:1229`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs#L1229)
+
+- Runtime proof the repaired clean-exit gate exits 0 (mutation-checked).
+  [`ReleaseModelGovernanceTests.cs:300`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/ReleaseModelGovernanceTests.cs#L300)
+
+- Runtime proof the publisher fails closed on post-seal byte mutation, before any push.
+  [`ReleaseModelGovernanceTests.cs:345`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/ReleaseModelGovernanceTests.cs#L345)
+
+**Peripherals**
+
+- Hermetic sealed-state staging for runtime negatives.
+  [`stage_release_state.py:1`](../../tests/ci-governance/stage_release_state.py#L1)
+
+- Deployment guide: implemented behavior, freeze runbook, public-trust signing requirement.
+  [`deployment-guide.md:27`](../project-docs/deployment-guide.md#L27)
+
+- Historical ledger status note (dispositions unchanged; REL-AI-1 stays open).
+  [`rel-ai-1-release-evidence-ledger.md:18`](rel-ai-1-release-evidence-ledger.md#L18)
