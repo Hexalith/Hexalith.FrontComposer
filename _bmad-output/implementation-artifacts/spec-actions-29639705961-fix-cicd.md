@@ -4,7 +4,7 @@ type: 'bugfix'
 created: '2026-07-18'
 status: 'in-progress'
 review_loop_iteration: 0
-baseline_commit: '5c284c89d37dfc3d39593962631e376bd4c5e033'
+baseline_commit: 'afb39847f313b41266635149baafb602362f1e8e'
 context: []
 ---
 
@@ -44,10 +44,10 @@ context: []
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `references/Hexalith.Builds/Props/Directory.Packages.props` -- add `<PackageVersion Include="AngleSharp" Version="1.5.2" />` with a one-line comment citing the advisory -- remediates CVE-2026-54570 at its source instead of masking it.
-- [ ] Commit (`fix: pin AngleSharp to 1.5.2 to remediate GHSA-pgww-w46g-26qg`) and push directly to `Hexalith.Builds` `main` -- makes the patched pin resolvable at a commit SHA (human-approved direct path for this repo).
-- [ ] `references/Hexalith.Builds` gitlink in FrontComposer -- bump to the new commit, on a new `fix/` branch -- pulls the patched catalog into FrontComposer's restore graph.
-- [ ] Open a PR from that branch targeting `main` -- respects FrontComposer's no-direct-commit-to-`main` rule.
+- [x] `references/Hexalith.Builds/Props/Directory.Packages.props` -- add `<PackageVersion Include="AngleSharp" Version="1.5.2" />` with a one-line comment citing the advisory -- remediates CVE-2026-54570 at its source instead of masking it.
+- [x] Commit (`fix: pin AngleSharp to 1.5.2 to remediate GHSA-pgww-w46g-26qg`) and push directly to `Hexalith.Builds` `main` -- makes the patched pin resolvable at a commit SHA (human-approved direct path for this repo).
+- [x] `references/Hexalith.Builds` gitlink in FrontComposer -- bump to the new commit, on a new `fix/` branch -- pulls the patched catalog into FrontComposer's restore graph.
+- [x] Open a PR from that branch targeting `main` -- respects FrontComposer's no-direct-commit-to-`main` rule.
 
 **Acceptance Criteria:**
 - Given `dotnet restore Hexalith.FrontComposer.slnx` on the fix branch, when Restore evaluates the three previously-failing projects, then it completes with no `NU1902` and resolves `AngleSharp` >= 1.5.0.
@@ -65,4 +65,13 @@ context: []
 - `dotnet restore Hexalith.FrontComposer.slnx` -- expected: completes with no `NU1902` diagnostics.
 - `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category=Governance"` -- expected: all Governance tests pass, including the central-package-version ownership test.
 - `gh run view --repo Hexalith/Hexalith.FrontComposer <new-run-id>` on the opened PR -- expected: `build-and-test` Restore step green.
+
+**Local results (2026-07-18):**
+- Merge proof: `git merge-base c00f487d^1 c00f487d^2` returned `5c284c89`; merge `c00f487d` retains parents `9417e69b` and `4bf40adc`, and `git merge-base --is-ancestor 4bf40adc main` exited `0`. The Builds gitlinks are base `e64ae34e`, ours `2542a648`, theirs/resolution `337f0232`; follow-up merge `afb39847` has `337f0232` on both parents and in its result.
+- Builds-content proof: `2542a648` and `337f0232` have the same stable patch ID, `36ae36fe3aba53ef56591f043c51ad3ffde40fab`. `337f0232` is based directly on `e64ae34e`; its only diff is the advisory comment plus `<PackageVersion Include="AngleSharp" Version="1.5.2" />`. The locally recorded Builds `origin/main` contains both Builds histories. No fetch was run.
+- `dotnet restore Hexalith.FrontComposer.slnx` -- failed before NuGet audit with `MSB3202` because the intentionally uninitialized nested Commons/EventStore/Memories/Tenants project-reference files are absent; the task forbids initializing them.
+- `dotnet restore Hexalith.FrontComposer.slnx --property:Configuration=Release` -- passed for all solution projects with no `NU1902`. The restored assets for `Hexalith.FrontComposer.Testing`, `Hexalith.FrontComposer.Testing.Tests`, and `Hexalith.FrontComposer.Shell.Tests` each contain `AngleSharp/1.5.2`.
+- Root XML check -- `Directory.Packages.props` contains `0` `PackageVersion` elements.
+- `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category=Governance"` -- `164/167` passed. Two failures require absent nested submodule files, including `CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog`; the third is the unrelated `SemanticReleaseAnalyzer_ConventionalCommitsMatrix_SelectsExpectedReleaseTypes` commitlint assertion. The exact Governance lane is therefore not locally green.
+- PR proof: local commit `9417e69b` records the merged fix as PR `#69` targeting `main`. Live-CI verification was not run because this task prohibits remote operations; the live `build-and-test` acceptance remains unverified.
 
