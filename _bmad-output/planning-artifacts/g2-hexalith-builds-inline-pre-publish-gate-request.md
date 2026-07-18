@@ -9,9 +9,10 @@
   to Hexalith.Builds"
 - **Upstream verification (2026-07-15):** a live search of Hexalith.Builds issues and pull requests
   found no matching issue or PR (only closed 2025 issues #1/#2 and dependabot/docs PRs); filing
-  remains pending.
-- **Upstream owner:** pending Release Owner assignment
-- **Issue/story URL:** pending
+  remained pending until 2026-07-18.
+- **Upstream owner:** Release Owner (jpiquot) — filed under Release Owner directive on 2026-07-18
+- **Issue/story URL:** <https://github.com/Hexalith/Hexalith.Builds/issues/17> (filed 2026-07-18;
+  full two-item scope: opt-in governed release contract + common release-freeze gate)
 - **Accepted revision:** pending
 - **Release impact:** blocks the next FrontComposer NuGet or GitHub package release unless the Release
   Owner explicitly approves the bounded FrontComposer-owned gated-workflow contingency

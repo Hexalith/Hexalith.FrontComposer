@@ -3,7 +3,7 @@ created: 2026-07-15
 updated: 2026-07-15
 owner: Release Owner (executes) + Developer (verification tooling/evidence assistance)
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md
-status: ready-for-dev
+status: in-progress
 scope: moderate
 implementationRisk: medium (operational/custodial, not code)
 ordering: T1 (upstream filing + identity selection) executes immediately; ACs 5-9 trail REL-3 completion
@@ -86,9 +86,18 @@ trust model (REL-3 Engineering Guardrails).
 
 - [ ] T1 — Immediate enablement (does not wait for REL-3).
   - [ ] Select and record the production package-signing identity and trust model (AC1).
-  - [ ] File BUILD-REL-1 upstream with the full governed contract; record the URL in the G2
-        request (AC4).
-  - [ ] Approve and record the RFC 3161 timestamp authority (AC3).
+        *2026-07-18 (REL-3 review constraint): the identity MUST chain to the publicly trusted
+        NuGet code-signing roots — the independent verifier checks downloaded bytes against the
+        stock public bundle, so an internal/self-signed CA passes preparation but always fails
+        post-publication verification. Certificate acquisition remains a physical owner action.*
+  - [x] File BUILD-REL-1 upstream with the full governed contract; record the URL in the G2
+        request (AC4). *Filed 2026-07-18 under Release Owner directive:
+        <https://github.com/Hexalith/Hexalith.Builds/issues/17> (both items: governed contract +
+        common freeze gate). Accepted revision still pending.*
+  - [ ] Approve and record the RFC 3161 timestamp authority (AC3). *Candidate: DigiCert
+        (`http://timestamp.digicert.com`) — already the pipeline default in
+        `eng/release_prepublish.py` and the `NUGET_SIGNING_TIMESTAMPER` fallback; needs one
+        explicit owner confirmation line here to close AC3.*
 - [ ] T2 — Provision custody.
   - [ ] Provision the two signing secrets with Release Owner-only custody and a rotation
         procedure (AC2).

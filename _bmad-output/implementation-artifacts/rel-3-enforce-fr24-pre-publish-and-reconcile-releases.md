@@ -197,8 +197,9 @@ Pack once
         request; the filed scope must be the full BUILD-REL-1 governed contract (environment,
         signing secrets, timestamp input, attestation permissions, candidate phase, bundle
         handoff), not signing-secret forwarding alone (filing itself is REL-5 owner work).
-        *2026-07-18: no upstream filing exists yet (REL-5 AC); the G2 request document already
-        carries the full contract including the common freeze gate.*
+        *2026-07-18 (later same day, Release Owner directive): BUILD-REL-1 filed as
+        <https://github.com/Hexalith/Hexalith.Builds/issues/17> with the full two-item scope and
+        the URL recorded in the G2 request; the accepted revision remains pending upstream.*
   - [ ] Confirm the two signing secrets and timestamp configuration are available to semantic-release
         without exposing them to unrelated steps. *2026-07-18: CI-authoritative and blocked on the
         upstream BUILD-REL-1 forwarding; the orchestrator consumes them from env only inside the
