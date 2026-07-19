@@ -98,20 +98,16 @@ public sealed class InfrastructureGovernanceTests {
 
         XDocument partiesCatalog = XDocument.Load(
             Path.Combine(root, "references", "Hexalith.Parties", "Directory.Packages.props"));
-        AssertAuthoritativePackageVersion(
-            partiesCatalog,
-            "Microsoft.AspNetCore.Components.CustomElements",
-            "10.0.9");
-        AssertPackageOverride(
-            partiesCatalog,
-            "ModelContextProtocol",
-            "1.4.0",
-            "Parties must preserve its lower MCP core version");
-        AssertPackageOverride(
-            partiesCatalog,
-            "ModelContextProtocol.AspNetCore",
-            "1.4.0",
-            "Parties must preserve its lower MCP ASP.NET Core version");
+        Dictionary<string, string> partiesInheritedVersions = new(StringComparer.OrdinalIgnoreCase) {
+            ["Microsoft.AspNetCore.Components.CustomElements"] = "10.0.10",
+            ["ModelContextProtocol"] = "1.4.1",
+            ["ModelContextProtocol.AspNetCore"] = "1.4.1",
+        };
+        foreach ((string packageId, string expectedVersion) in partiesInheritedVersions) {
+            AssertAuthoritativePackageVersion(sharedCatalog, packageId, expectedVersion);
+            FindPackageVersionOperations(partiesCatalog, packageId).ShouldBeEmpty(
+                $"Parties must inherit {packageId} {expectedVersion} from the shared catalog");
+        }
         XDocument partiesBuild = XDocument.Load(
             Path.Combine(root, "references", "Hexalith.Parties", "Directory.Build.props"));
         partiesBuild
