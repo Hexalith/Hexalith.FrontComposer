@@ -1788,3 +1788,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
   summary: Keep expand-in-row JS module disposal best-effort when `IJSObjectReference.DisposeAsync` is canceled.
   evidence: The import-await portion of `DisposeAsync` catches `OperationCanceledException`, but the subsequent module disposal catches only `JSDisconnectedException` and `JSException` (`src/Hexalith.FrontComposer.Shell/Services/ExpandInRowJSModule.cs:72-95`). A cancellation from JS disposal can fault circuit teardown despite the method's best-effort policy. The behavior is unchanged from the baseline bundle.
+
+## Deferred from: code review of 11-17-shell-bundle-split.md — State chunk (2026-07-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+  summary: Supply snapshot time through the action/effect boundary instead of reading the wall clock in virtualization reducers.
+  evidence: `VirtualizationViewStateReducers` is documented as pure, but both on-demand snapshot branches set `CapturedAt` with `DateTimeOffset.UtcNow` (`src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/VirtualizationViewStateReducers.cs:26-35,96-105`). Identical state/action inputs can therefore produce unequal snapshots and different persisted/eviction timestamps. The declaration body is unchanged from baseline `LoadedPageReducers.cs` at commit `0a84e818`; Story 11.17d requires body preservation.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+  summary: Preserve required pending-command metadata invariants across record cloning.
+  evidence: `PendingCommandRegistration` validates `CorrelationId`, `MessageId`, and `CommandTypeName` only in its constructor while exposing public `init` properties (`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRegistration.cs:13-41`). A caller can clone a valid instance with whitespace metadata; `PendingCommandStateService.Register` revalidates the two ULIDs but not `CommandTypeName`, allowing a blank command identity into the pending-command entry. The behavior predates the mechanical split.

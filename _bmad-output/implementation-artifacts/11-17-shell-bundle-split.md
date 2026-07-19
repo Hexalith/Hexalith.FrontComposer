@@ -71,6 +71,8 @@ This story refines PRD FR-25, FR-28, and FR-29 and closes only the Shell child o
 - [x] [Review][Defer] Expand-in-row initialization can race disposal and use or leak a module after teardown begins [src/Hexalith.FrontComposer.Shell/Services/ExpandInRowJSModule.cs:17] — deferred, pre-existing
 - [x] [Review][Defer] A benign prerender import failure can escape through `DisposeAsync` [src/Hexalith.FrontComposer.Shell/Services/ExpandInRowJSModule.cs:73] — deferred, pre-existing
 - [x] [Review][Defer] Cancellation from JS module disposal can fault best-effort circuit teardown [src/Hexalith.FrontComposer.Shell/Services/ExpandInRowJSModule.cs:86] — deferred, pre-existing
+- [x] [Review][Defer] Virtualization reducers stamp newly created snapshots from the wall clock despite their pure-reducer contract [src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/VirtualizationViewStateReducers.cs:35] — deferred, pre-existing
+- [x] [Review][Defer] Record cloning can bypass required pending-command registration metadata validation [src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRegistration.cs:37] — deferred, pre-existing
 
 ## Dev Notes
 
@@ -406,7 +408,7 @@ GPT-5 Codex
 - `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs` (new — exact organization, action-exception, source, reflection, and synthetic governance)
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/HydrationStateConsolidationTests.cs` (modified — same-named capability enum source path)
 - `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md` (new — Story 11.17d implementation and evidence record)
-- `_bmad-output/implementation-artifacts/deferred-work.md` (updated during code review — three pre-existing expand-in-row lifecycle findings recorded; earlier concurrent content preserved)
+- `_bmad-output/implementation-artifacts/deferred-work.md` (updated during code review — five pre-existing findings recorded across the non-State and State chunks; earlier concurrent content preserved)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (updated — Story 11.17d returned from review to in-progress while review chunks remain; concurrent entries preserved)
 
 ## Change Log
@@ -414,3 +416,4 @@ GPT-5 Codex
 - 2026-07-15: Created executable Story 11.17d and marked it ready-for-dev. Scoped the live Shell census, exact six-file Fluxor exception, 29-bundle/111-declaration mechanical split, durable organization/identity guard, behavior/API/package preservation lanes, and Shell-only M14 closure evidence.
 - 2026-07-15: Implemented Story 11.17d. Split 29 Shell bundles into one same-named declaration per file while retaining the exact six/38 action exception, added non-vacuous source/reflection governance, preserved 111/111 declaration bodies and all behavior/API/package seams, passed Release/default/Governance/package/artifact gates, and moved the story to review.
 - 2026-07-19: Completed code-review chunk 1A over non-State Shell production with all four configured review layers. Found no Story 11.17d defects or decisions; deferred three pre-existing `ExpandInRowJSModule` lifecycle issues, dismissed eighteen candidates, and returned the story to in-progress pending the remaining chunks.
+- 2026-07-19: Completed the State code-review chunk with all four configured review layers. Found no Story 11.17d defects or decisions; deferred two pre-existing hardening issues, dismissed thirteen candidates, and kept the story in-progress pending the governance/tests/docs and evidence/status chunks.
