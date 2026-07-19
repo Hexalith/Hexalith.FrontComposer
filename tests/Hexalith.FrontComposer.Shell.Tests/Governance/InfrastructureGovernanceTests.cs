@@ -96,18 +96,6 @@ public sealed class InfrastructureGovernanceTests {
                 $"EventStore must inherit {packageId} {expectedVersion} from the shared catalog");
         }
 
-        XDocument partiesCatalog = XDocument.Load(
-            Path.Combine(root, "references", "Hexalith.Parties", "Directory.Packages.props"));
-        Dictionary<string, string> partiesInheritedVersions = new(StringComparer.OrdinalIgnoreCase) {
-            ["Microsoft.AspNetCore.Components.CustomElements"] = "10.0.10",
-            ["ModelContextProtocol"] = "1.4.1",
-            ["ModelContextProtocol.AspNetCore"] = "1.4.1",
-        };
-        foreach ((string packageId, string expectedVersion) in partiesInheritedVersions) {
-            AssertAuthoritativePackageVersion(sharedCatalog, packageId, expectedVersion);
-            FindPackageVersionOperations(partiesCatalog, packageId).ShouldBeEmpty(
-                $"Parties must inherit {packageId} {expectedVersion} from the shared catalog");
-        }
         XDocument partiesBuild = XDocument.Load(
             Path.Combine(root, "references", "Hexalith.Parties", "Directory.Build.props"));
         partiesBuild
@@ -127,19 +115,48 @@ public sealed class InfrastructureGovernanceTests {
         FindPackageVersionOperations(memoriesCatalog, "Microsoft.Extensions.TimeProvider.Testing").ShouldBeEmpty(
             "Memories must inherit Microsoft.Extensions.TimeProvider.Testing 10.8.0 from the shared catalog");
 
-        // 2026-07-18 (AngleSharp/NU1902 remediation): EventStore moved its nested Builds pin to
-        // the same commit the superproject records (08b57086); Parties remains on the shared-catalog
-        // reconciliation commit 041897f0. Memories advanced independently to 437c4c02. Update in
-        // lockstep with the corresponding gitlink bumps.
+        // 2026-07-18 (AngleSharp/NU1902 remediation): EventStore and Memories use independently
+        // compatible Builds commits. Update in lockstep with the corresponding gitlink bumps.
         const string eventStoreBuildsCommit = "08b57086f24514638bc0901154759ac023fd2876";
         const string memoriesBuildsCommit = "437c4c02619cfb3fff7792796e5d76d25c7521ad";
-        const string partiesBuildsCommit = "041897f0cba840ff833b9602b3b3e023450856fc";
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.EventStore"), "references/Hexalith.Builds")
             .ShouldBe(eventStoreBuildsCommit, "EventStore standalone restores need the migrated shared pins");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Memories"), "references/Hexalith.Builds")
             .ShouldBe(memoriesBuildsCommit, "Memories standalone restores need the migrated shared pins");
+    }
+
+    [Fact]
+    public void PartiesPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds() {
+        string root = RepositoryRoot();
+        XDocument sharedCatalog = XDocument.Load(
+            Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"));
+        XDocument partiesCatalog = XDocument.Load(
+            Path.Combine(root, "references", "Hexalith.Parties", "Directory.Packages.props"));
+
+        partiesCatalog
+            .Descendants()
+            .Count(static element => element.Name.LocalName == "Import")
+            .ShouldBe(3, "Parties must preserve its three guarded shared-catalog import paths");
+
+        Dictionary<string, string> expectedVersions = new(StringComparer.OrdinalIgnoreCase) {
+            ["Microsoft.AspNetCore.Components.CustomElements"] = "10.0.10",
+            ["ModelContextProtocol"] = "1.4.1",
+            ["ModelContextProtocol.AspNetCore"] = "1.4.1",
+        };
+        foreach ((string packageId, string expectedVersion) in expectedVersions) {
+            AssertAuthoritativePackageVersion(sharedCatalog, packageId, expectedVersion);
+        }
+
+        partiesCatalog
+            .Descendants()
+            .Where(static element => element.Name.LocalName == "PackageVersion")
+            .ShouldBeEmpty("Parties must inherit every package version from the pinned Builds catalog");
+
+        const string partiesBuildsCommit = "c177c66af5d3f509328c2f568dc0737fe9f89e4e";
+        ReadGitlinkCommit(root, "references/Hexalith.Builds")
+            .ShouldBe(partiesBuildsCommit, "the inspected catalog must match Parties' pinned Builds commit");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Parties"), "references/Hexalith.Builds")
-            .ShouldBe(partiesBuildsCommit, "Parties standalone restores need the migrated shared pins");
+            .ShouldBe(partiesBuildsCommit, "Parties standalone restores need the centralized shared pins");
     }
 
     [Fact]

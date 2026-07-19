@@ -2,7 +2,7 @@
 title: 'Make Parties package authority standalone-safe'
 type: 'bugfix'
 created: '2026-07-19'
-status: 'draft'
+status: 'in-review'
 review_loop_iteration: 1
 baseline_commit: '68cb94eb42a5c5b0814d0eb8ff78ff0ee4d05df9'
 context:
@@ -43,11 +43,11 @@ context:
 
 **Execution:**
 - [x] `references/Hexalith.Parties/Directory.Packages.props` -- remove the local Application/MCP package-version groups while retaining CPM properties and imports.
-- [ ] `references/Hexalith.Parties/references/Hexalith.Builds` -- advance only the Builds gitlink to full commit `c177c66af5d3f509328c2f568dc0737fe9f89e4e`.
-- [ ] `references/Hexalith.Parties/_bmad-output/project-context.md` -- align MCP and CustomElements guidance to `1.4.1` and `10.0.10`.
-- [ ] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs` -- add an independently executable Parties ownership test that requires the compatible gitlink, all three imports/shared rows, and zero local `PackageVersion` declarations.
-- [ ] `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` -- refresh the final governed identifier count/hash.
-- [ ] `references/Hexalith.Parties` -- advance the FrontComposer gitlink to the local standalone-safe Parties commit.
+- [x] `references/Hexalith.Parties/references/Hexalith.Builds` -- advance only the Builds gitlink to full commit `c177c66af5d3f509328c2f568dc0737fe9f89e4e`.
+- [x] `references/Hexalith.Parties/_bmad-output/project-context.md` -- align MCP and CustomElements guidance to `1.4.1` and `10.0.10`.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs` -- add an independently executable Parties ownership test that requires the compatible gitlink, all three imports/shared rows, and zero local `PackageVersion` declarations.
+- [x] `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` -- refresh the final governed identifier count/hash.
+- [x] `references/Hexalith.Parties` -- advance the FrontComposer gitlink to the local standalone-safe Parties commit.
 
 **Acceptance Criteria:**
 - Given umbrella and standalone-equivalent layouts, when Parties evaluates central package versions, then the three identities occur exactly once at `10.0.10`/`1.4.1`/`1.4.1` with no sibling fallback dependency.
@@ -71,3 +71,5 @@ context:
 - `dotnet build src/Hexalith.Parties.Picker/Hexalith.Parties.Picker.csproj --configuration Release -p:UseNuGetDeps=true` and `dotnet build src/Hexalith.Parties.Mcp/Hexalith.Parties.Mcp.csproj --configuration Release -p:UseNuGetDeps=true` in the standalone-equivalent tree -- expected: zero package-version diagnostics.
 - Run the Picker and MCP test projects in Release, then invoke `InfrastructureGovernanceTests.PartiesPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` and `AnalyzerPolicyGovernanceTests` through the built xUnit v3 executable -- expected: all focused tests pass.
 - `git diff --check` in Parties and FrontComposer -- expected: no whitespace errors; the broader Governance lane's pre-existing Builds bare-LF failure is reported separately.
+
+**Observed 2026-07-19:** Builds validation passed for 283 central entries and 48 approved values. The isolated Parties tree validated 29 consumer projects and evaluated the three effective versions exactly once at `10.0.10`/`1.4.1`/`1.4.1`. Picker and MCP Release builds passed with zero warnings/errors; their test projects passed 171/171 and 57/57. The focused Parties ownership fact and analyzer-policy governance test passed; the final test identifier inventory is 6189 tokens with SHA-256 `7e8bd7e70f36f514e5a6f4a98c4be5114611fb9896f1e94d94305b0ee63d717a`.

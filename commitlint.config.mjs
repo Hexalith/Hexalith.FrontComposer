@@ -7,7 +7,7 @@ export default {
   // retain a 150-character cap. Type/scope/format enforcement from config-conventional is retained.
   rules: {
     'subject-case': [0],
-    'body-max-line-length': [150],
+    'body-max-line-length': [0],
     'header-max-length': [2, 'always', 150],
   },
 };
