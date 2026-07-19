@@ -1816,3 +1816,9 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-29681767891-fix-cicd.md`
   summary: Bind shared-catalog governance bytes to the same Builds commit recorded by the FrontComposer gitlink.
   evidence: `InfrastructureGovernanceTests` reads the catalog bytes from the Builds working tree but reads the expected root Builds SHA from the FrontComposer index. A dirty Builds checkout can therefore validate one commit's bytes while asserting another commit's gitlink; fresh CI checkouts are unaffected, but local fail-closed governance is not identity-bound.
+
+## Deferred from: code review of 11-17-shell-bundle-split.md — evidence/status chunk (2026-07-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+  summary: Restore and rerun the complete Shell Governance lane before completing Story 11.17d.
+  evidence: On clean commit `6a4350ec`, the Release Shell.Tests build completed with zero warnings/errors, but the direct Governance lane passed 186/188. `InfrastructureGovernanceTests.PartiesPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` expects root `references/Hexalith.Builds` commit `deb76e98` while the root gitlink is `4bbe7c04`; `CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog` expects EventStore's nested Builds gitlink `c177c66a` while it is `4bbe7c04`. Administrator selected keeping Story 11.17d in progress until the external gate is repaired and rerun green.

@@ -86,7 +86,7 @@ This story refines PRD FR-25, FR-28, and FR-29 and closes only the Shell child o
 
 #### Evidence/status chunk
 
-- [ ] [Review][Decision] Current Governance gate remains red — AC5 and the project completion rules require the configured Governance lane to pass, but the latest clean-HEAD evidence records 187/188 after review remediation because of the external Hexalith.Builds catalog failure. Decide whether to keep Story 11.17d in progress until that external gate is repaired and rerun green, or explicitly amend/waive the passing-gate requirement.
+- [x] [Review][Defer] Current Governance gate remains red [tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs:125] — deferred, pre-existing; keep Story 11.17d in progress until the complete lane passes. A clean `6a4350ec` Release build completed with zero warnings/errors, but Governance passed 186/188 because the root and nested Hexalith.Builds gitlinks disagree with the newly pinned expectations.
 - [ ] [Review][Patch] Final story-owned changed-path count was not reconciled after review-owned artifact edits [_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md:273]
 - [ ] [Review][Patch] Unrelated Builds package-catalog deferred work is grouped inside the Story 11.17d State review section [_bmad-output/implementation-artifacts/deferred-work.md:1801]
 
