@@ -128,15 +128,46 @@ public sealed class InfrastructureGovernanceTests {
     [Fact]
     public void PartiesPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds() {
         string root = RepositoryRoot();
+        string partiesRoot = Path.Combine(root, "references", "Hexalith.Parties");
         XDocument sharedCatalog = XDocument.Load(
             Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"));
         XDocument partiesCatalog = XDocument.Load(
-            Path.Combine(root, "references", "Hexalith.Parties", "Directory.Packages.props"));
+            Path.Combine(partiesRoot, "Directory.Packages.props"));
 
-        partiesCatalog
+        XElement[] imports = partiesCatalog
             .Descendants()
-            .Count(static element => element.Name.LocalName == "Import")
-            .ShouldBe(3, "Parties must preserve its three guarded shared-catalog import paths");
+            .Where(static element => element.Name.LocalName == "Import")
+            .ToArray();
+        string[] expectedImportProjects = [
+            "$(Hexalith1BuildPackageProps)",
+            "$(Hexalith2BuildPackageProps)",
+            "$(Hexalith3BuildPackageProps)",
+        ];
+        string[] expectedImportConditions = [
+            "Exists('$(Hexalith1BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'",
+            "Exists('$(Hexalith2BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'",
+            "'$(HexalithVersionsLoaded)' != 'true'",
+        ];
+        imports.Length.ShouldBe(3, "Parties must preserve its three guarded shared-catalog import paths");
+        for (int index = 0; index < imports.Length; index++) {
+            ((string?)imports[index].Attribute("Project")).ShouldBe(expectedImportProjects[index]);
+            ((string?)imports[index].Attribute("Condition")).ShouldBe(expectedImportConditions[index]);
+        }
+
+        Dictionary<string, string> expectedBuildProperties = new(StringComparer.Ordinal) {
+            ["ManagePackageVersionsCentrally"] = "true",
+            ["CentralPackageTransitivePinningEnabled"] = "true",
+            ["Hexalith1BuildPackageProps"] = "$(MSBuildThisFileDirectory)references/Hexalith.Builds/Props/Directory.Packages.props",
+            ["Hexalith2BuildPackageProps"] = "$(MSBuildThisFileDirectory)../Hexalith.Builds/Props/Directory.Packages.props",
+            ["Hexalith3BuildPackageProps"] = "$(MSBuildThisFileDirectory)../../Hexalith.Builds/Props/Directory.Packages.props",
+        };
+        foreach ((string propertyName, string expectedValue) in expectedBuildProperties) {
+            partiesCatalog
+                .Descendants()
+                .Single(element => element.Name.LocalName == propertyName)
+                .Value
+                .ShouldBe(expectedValue);
+        }
 
         Dictionary<string, string> expectedVersions = new(StringComparer.OrdinalIgnoreCase) {
             ["Microsoft.AspNetCore.Components.CustomElements"] = "10.0.10",
@@ -147,10 +178,23 @@ public sealed class InfrastructureGovernanceTests {
             AssertAuthoritativePackageVersion(sharedCatalog, packageId, expectedVersion);
         }
 
-        partiesCatalog
-            .Descendants()
-            .Where(static element => element.Name.LocalName == "PackageVersion")
-            .ShouldBeEmpty("Parties must inherit every package version from the pinned Builds catalog");
+        foreach (string relativePath in ReadTrackedFiles(partiesRoot, "*.csproj", "*.props", "*.targets")) {
+            XDocument consumerDocument = XDocument.Load(Path.Combine(partiesRoot, relativePath));
+            consumerDocument
+                .Descendants()
+                .Where(static element => element.Name.LocalName == "PackageVersion" && element.Parent?.Name.LocalName == "ItemGroup")
+                .ShouldBeEmpty($"{relativePath} must inherit every package version from the pinned Builds catalog");
+            foreach (XElement packageReference in consumerDocument
+                .Descendants()
+                .Where(static element => element.Name.LocalName is "PackageReference" or "GlobalPackageReference")) {
+                packageReference.Attribute("Version").ShouldBeNull($"{relativePath} must not declare an inline Version");
+                packageReference.Attribute("VersionOverride").ShouldBeNull($"{relativePath} must not declare VersionOverride");
+                packageReference
+                    .Elements()
+                    .Where(static element => element.Name.LocalName is "Version" or "VersionOverride")
+                    .ShouldBeEmpty($"{relativePath} must not declare inline package-version metadata");
+            }
+        }
 
         const string partiesBuildsCommit = "c177c66af5d3f509328c2f568dc0737fe9f89e4e";
         ReadGitlinkCommit(root, "references/Hexalith.Builds")
@@ -614,6 +658,34 @@ public sealed class InfrastructureGovernanceTests {
         }
 
         return fields[1];
+    }
+
+    private static string[] ReadTrackedFiles(string repositoryPath, params string[] pathspecs) {
+        ProcessStartInfo startInfo = new("git") {
+            WorkingDirectory = repositoryPath,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        startInfo.ArgumentList.Add("ls-files");
+        startInfo.ArgumentList.Add("-z");
+        startInfo.ArgumentList.Add("--");
+        foreach (string pathspec in pathspecs) {
+            startInfo.ArgumentList.Add(pathspec);
+        }
+
+        using Process process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"Could not start git in {repositoryPath}.");
+        string standardOutput = process.StandardOutput.ReadToEnd();
+        string standardError = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0) {
+            throw new InvalidOperationException(
+                $"git ls-files failed in {repositoryPath} with exit code {process.ExitCode}: {standardError}");
+        }
+
+        return standardOutput.Split('\0', StringSplitOptions.RemoveEmptyEntries);
     }
 
     private static string FormatViolations(IEnumerable<GovernanceViolation> violations)

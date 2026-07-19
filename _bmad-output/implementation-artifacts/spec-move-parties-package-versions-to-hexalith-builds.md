@@ -2,7 +2,7 @@
 title: 'Make Parties package authority standalone-safe'
 type: 'bugfix'
 created: '2026-07-19'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 1
 baseline_commit: '68cb94eb42a5c5b0814d0eb8ff78ff0ee4d05df9'
 context:
@@ -72,4 +72,33 @@ context:
 - Run the Picker and MCP test projects in Release, then invoke `InfrastructureGovernanceTests.PartiesPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` and `AnalyzerPolicyGovernanceTests` through the built xUnit v3 executable -- expected: all focused tests pass.
 - `git diff --check` in Parties and FrontComposer -- expected: no whitespace errors; the broader Governance lane's pre-existing Builds bare-LF failure is reported separately.
 
-**Observed 2026-07-19:** Builds validation passed for 283 central entries and 48 approved values. The isolated Parties tree validated 29 consumer projects and evaluated the three effective versions exactly once at `10.0.10`/`1.4.1`/`1.4.1`. Picker and MCP Release builds passed with zero warnings/errors; their test projects passed 171/171 and 57/57. The focused Parties ownership fact and analyzer-policy governance test passed; the final test identifier inventory is 6189 tokens with SHA-256 `7e8bd7e70f36f514e5a6f4a98c4be5114611fb9896f1e94d94305b0ee63d717a`.
+**Observed 2026-07-19:** Builds validation passed for 283 central entries and 48 approved values. The isolated Parties tree validated 29 consumer projects and evaluated the three effective versions exactly once at `10.0.10`/`1.4.1`/`1.4.1`. Picker and MCP Release builds passed with zero warnings/errors; their test projects passed 171/171 and 57/57. Review hardening made the focused ownership fact require the exact import paths/guards and scan all tracked Parties consumer XML; that fact and analyzer-policy governance passed. The final test identifier inventory is 6189 tokens with SHA-256 `0a07008158f2226e76c531b338e177373c1a304eaa300b749119d4a891960f6f`. Twenty-six of 29 tracked Parties projects also built successfully in the isolated tree; AppHost, IntegrationTests, and Parties.Tests require other root-declared source submodules that were intentionally not initialized under this task's boundary.
+
+## Suggested Review Order
+
+**Central package authority**
+
+- Parties becomes a versionless wrapper with nested, sibling, and umbrella fallbacks.
+  [`Directory.Packages.props:5`](../../references/Hexalith.Parties/Directory.Packages.props#L5)
+
+- The shared catalog owns CustomElements at the approved version.
+  [`Directory.Packages.props:177`](../../references/Hexalith.Builds/Props/Directory.Packages.props#L177)
+
+- The same catalog owns both approved MCP versions.
+  [`Directory.Packages.props:245`](../../references/Hexalith.Builds/Props/Directory.Packages.props#L245)
+
+**Standalone enforcement**
+
+- One fact locks imports, catalog values, consumer XML, and gitlinks.
+  [`InfrastructureGovernanceTests.cs:129`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs#L129)
+
+- Guidance directs future version changes to Builds, preventing wrapper regressions.
+  [`project-context.md:25`](../../references/Hexalith.Parties/_bmad-output/project-context.md#L25)
+
+**Evidence and follow-up**
+
+- The ledger captures the final governed test-identifier inventory.
+  [`analyzer-policy-exception-ledger-v1.json:72`](../contracts/analyzer-policy-exception-ledger-v1.json#L72)
+
+- Known catalog line-ending debt remains explicitly deferred.
+  [`deferred-work.md:1800`](deferred-work.md#L1800)

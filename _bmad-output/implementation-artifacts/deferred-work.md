@@ -1797,3 +1797,6 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
   summary: Preserve required pending-command metadata invariants across record cloning.
   evidence: `PendingCommandRegistration` validates `CorrelationId`, `MessageId`, and `CommandTypeName` only in its constructor while exposing public `init` properties (`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRegistration.cs:13-41`). A caller can clone a valid instance with whitespace metadata; `PendingCommandStateService.Register` revalidates the two ULIDs but not `CommandTypeName`, allowing a blank command identity into the pending-command entry. The behavior predates the mechanical split.
+- source_spec: `_bmad-output/implementation-artifacts/spec-move-parties-package-versions-to-hexalith-builds.md`
+  summary: Normalize the authoritative Builds package catalog to the repository's required UTF-8 BOM and CRLF format.
+  evidence: `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog` encounters 18 bare-LF line endings in the pre-existing `c177c66` catalog before reaching its package-ownership assertions; this story does not modify that catalog.
