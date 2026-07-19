@@ -499,12 +499,14 @@ development_status:
   11-24-adopt-owner-approved-eventstore-runtime: backlog
   # GOV-1 registered as cross-cutting backlog on 2026-07-19 by approved Correct Course proposal
   # sprint-change-proposal-2026-07-19.md. It replaces expected-SHA compatibility assertions with
-  # semantic validation at actual reachable Builds gitlinks, adds reviewable graph-diff and affected-
-  # module restore/build gates, and seals the exact reachable gitlink graph as release provenance.
+  # semantic validation at every Builds selector in the complete defined depth-1/2 v1 graph, adds
+  # exact-revision graph diff and bounded affected-module gates, and seals graph, policy, authenticated
+  # CI handoff, and immutable workflow/action provenance in release-evidence v2.
   # BUILD-CAT-1 is an upstream Hexalith.Builds follow-up; no submodule content edit is authorized here.
   # GOV-1 moved backlog -> ready-for-dev on 2026-07-19 (create-story; comprehensive semantic-catalog,
   # committed-object graph, CI diff/affected-module, sealed-manifest, and BUILD-CAT-1 context recorded;
-  # implementation remains gated on Architect + Release Owner ratification of the FC-DEP-1 v1 graph boundary.)
+  # Architect + Release Owner ratified the FC-DEP-1 boundary and focused architecture on 2026-07-19;
+  # implementation starts by freezing the exact object ledger and recording BUILD-CAT-1.)
   gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance: ready-for-dev
   epic-11-retrospective: optional
   # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
@@ -593,13 +595,14 @@ action_items:
     evidence: "_bmad-output/planning-artifacts/implementation-readiness-report-2026-07-15-post-correction.md"
     result: "READY — 29/29 FR coverage, zero critical/major findings, three controlled minor concerns; all six missing Epic 11 children materialized and parent records remain nonimplementable."
   - epic: governance
-    action: "GOV-1: Replace historical SHA compatibility assertions with semantic catalog validation at actual reachable gitlinks; add dependency-graph diff, affected-module restore/build gates, and sealed release provenance."
+    action: "GOV-1: Replace historical SHA compatibility assertions with semantic catalog profiles for every Builds selector in the defined depth-1/2 v1 graph; add exact-revision graph diff, bounded affected-module proof, authenticated CI handoff, and sealed graph/policy/workflow provenance."
     owner: "Product Owner + Architect + Developer + Release Owner"
     assigned: "2026-07-19"
     due: "before Story 11.17d promotion and the next accepted governed release manifest"
     status: open
     source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md"
     decision: "_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md"
+    architecture: "_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md"
   - epic: release
     action: "REL-AI-1: Own the FR24 exact-artifact pre-publication gate for signed/timestamped packages, symbols, SBOM, checksums, package inventory, consumer validation, sealed manifest/readiness, durable GitHub Release evidence, published-byte verification, and historical reconciliation."
     owner: "Release Owner"

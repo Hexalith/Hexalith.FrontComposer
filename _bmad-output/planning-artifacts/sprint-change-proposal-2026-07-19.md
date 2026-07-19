@@ -11,6 +11,8 @@ planningChangesApplied: 2026-07-19
 scope: Moderate
 recommendedApproach: Direct Adjustment
 handoffStatus: completed
+architectureRatified: 2026-07-19
+architectureSpine: _bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md
 handoff:
   - Product Owner
   - Architect
@@ -61,7 +63,7 @@ A Git SHA is necessary provenance, but it is not itself a compatibility contract
 
 This is a failed governance approach discovered during implementation and review. The current checks
 conflate compatibility enforcement with provenance recording, create false-red CI, and still fail to
-record the complete release dependency graph.
+record the complete defined depth-1/2 v1 release dependency graph.
 
 ## 2. Impact Analysis
 
@@ -106,9 +108,13 @@ revision. Its scope and acceptance criteria do not absorb `GOV-1` implementation
 MVP and v1.0 product scope are unchanged. `GOV-1` is a release-quality correction that should execute
 before Story 11.17d is promoted and before the next governed release manifest is accepted.
 
-Estimated FrontComposer effort is 3-5 engineer-days, including Governance, release-evidence, CI, and
-focused verification. `BUILD-CAT-1` is an additional upstream 1-2 engineer-day change and is not a
-blocker for the immediate removal of exact-SHA compatibility assertions.
+Estimated FrontComposer effort is 9-14 engineer-days, including the closed policy/bootstrap path,
+committed-object graph and bounded Builds-tree materialization, Governance and fixtures, authenticated
+CI and Release verification handoffs, static transitive evaluator closure, release-evidence v2, and
+focused/broad verification.
+Implementation risk is high because these controls jointly guard publication. `BUILD-CAT-1` is an
+additional upstream 1-2 engineer-day change and is not a blocker for removing historical exact-SHA
+compatibility assertions.
 
 ## 3. Recommended Approach
 
@@ -116,27 +122,35 @@ Use **Option 1 - Direct Adjustment** with four coordinated controls.
 
 ### Control A: Validate Compatibility at the Actual Gitlinks
 
-Enumerate the current root `Hexalith.Builds` gitlink and every reachable nested Builds gitlink by
-walking committed Git trees from the root-declared modules. Key traversal by repository identity plus
-commit and stop on visited nodes so cyclic module references cannot recurse forever. For each distinct
-Builds commit:
+Enumerate every gitlink at the explicit FrontComposer commit as depth 1 and every direct gitlink in each
+exact root-selected commit as depth 2. Record self/back-reference edges before deduplicating owner object
+reads; edges below depth 2 require a separately approved schema. For each Builds selector, caching bytes
+by distinct selected commit:
 
 - read `Props/Directory.Packages.props` from that exact commit, not from an unrelated working-tree
   checkout;
 - validate XML structure, central-package ownership, required import/marker semantics, and the
   module-specific required package/version contract;
 - fail with the owner path, actual commit, and semantic mismatch;
-- contain no expected 40-hex commit literals in product Governance tests.
+- contain no historical Builds-commit or catalog-fingerprint compatibility allowlist in product
+  Governance tests. Approved workflow/action provenance intentionally remains 40-hex pinned.
 
 The catalog fingerprint is computed and reported for provenance. It is not compared to a hard-coded
 allowlist as a substitute SHA.
 
 ### Control B: Make Pointer Changes Intentional and Reviewable
 
-When a root or nested gitlink changes, CI emits a deterministic base-to-head dependency-graph diff.
-For each affected module it runs the narrowest supported standalone restore/build using the exact
-selected catalog. Targeted explicit checkouts may be used; recursive submodule initialization remains
-forbidden.
+When an in-boundary gitlink changes, CI emits a deterministic dependency-graph diff using the ratified
+PR/push revision model. Each affected target resolves through the immutable base/before policy to an
+exact static Release/NuGet build or evidence-only disposition. Exact selected Builds contract trees are
+bounded-materialized without nested initialization; root changes subsume descendant churn and every
+affected module runs at most once.
+
+That same active policy is the independent trust root for CI, Release, and post-release evaluators. It
+pre-authorizes local caller blob hashes plus literal-40-hex reusable/action coordinates and raw metadata
+hashes; recording or sealing an unapproved closure cannot authorize it. A standard-library static
+closure follows every conditional `uses:` and composite descendant under fixed cycle/depth/source/blob
+limits, independent of which runtime branch executed.
 
 Unchanged graph edges do not trigger redundant standalone builds. A pointer-only change is acceptable
 when catalog-contract validation and the affected module gate both pass.
@@ -147,13 +161,20 @@ Extend `sealed-manifest.json` with a deterministic `dependency_graph` containing
 
 - FrontComposer root commit;
 - every root gitlink edge;
-- every reachable nested gitlink edge discoverable from committed Git trees;
+- every direct gitlink edge from each exact root-selected commit (depth 2);
 - normalized owner/path, commit SHA, and relationship depth;
 - for Builds edges, catalog contract version when present and a SHA-256 catalog-content fingerprint.
 
-Manifest verification fails on a missing edge, malformed SHA, duplicate normalized edge, graph drift,
-or catalog fingerprint mismatch. The post-publication verifier preserves and validates the same sealed
-graph. Graph collection must detect cycles and must not recurse through submodule initialization.
+Manifest v2 additionally seals the active dependency-policy coordinates, authenticated successful-CI
+handoff, and immutable CI/release workflow definitions. Verification fails on missing/unknown/duplicate/
+out-of-order/over-limit evidence, malformed hashes, graph/catalog drift, policy mismatch, mutable
+workflow provenance, or handoff mismatch. Legacy manifests are audit-only and non-publishable. The
+post-publication verifier preserves and validates the same sealed evidence.
+
+Every Release attempt also emits an authenticated `if: always()` verification handoff carrying the
+original CI candidate, Release run identity/conclusion, version/tag/release/manifest/assets, and
+authorized Release evaluator. The post-release verifier uses that handoff—not its second-hop
+`workflow_run.head_sha` or default-branch SHA—and cannot green-no-op failed or partial attempts.
 
 ### Control D: Introduce an Upstream Semantic Catalog Contract
 
@@ -196,9 +217,10 @@ are sealed as provenance,
 So that legitimate pointer advances remain reviewable and reproducible without false-red SHA pins.
 
 **Given** the FrontComposer root and its root-declared modules,
-**When** Governance enumerates root and reachable nested Builds gitlinks,
-**Then** it loads the catalog from every distinct actual commit and validates the applicable semantic
-package/build contract without any expected 40-hex SHA literal.
+**When** Governance collects the complete defined depth-1/2 v1 graph from exact committed objects,
+**Then** it evaluates every Builds selector under its explicit semantic profile, caches exact bytes by
+distinct commit, and contains no historical Builds-commit or catalog-fingerprint compatibility
+allowlist. Approved workflow/action provenance intentionally remains 40-hex pinned.
 
 **Given** a compatible catalog at a different commit,
 **When** the focused Governance tests run,
@@ -209,14 +231,15 @@ package/build contract without any expected 40-hex SHA literal.
 **Then** it fails with the owning gitlink path, actual commit, and semantic mismatch.
 
 **Given** a root or nested gitlink change,
-**When** CI compares the merge base to the candidate head,
-**Then** it emits the normalized graph diff and runs the affected module's supported standalone
-restore/build gate without recursive submodule initialization.
+**When** CI applies the ratified PR/push revision model and immutable base/before policy,
+**Then** it emits the normalized graph diff and runs each affected module once through its exact static
+Release/NuGet build or evidence-only disposition without recursive submodule initialization.
 
 **Given** release candidates are prepared,
 **When** the manifest is sealed and verified,
-**Then** the complete reachable dependency graph and Builds catalog provenance are inside the
-seal and any missing, duplicate, malformed, or drifted edge fails closed.
+**Then** manifest v2 seals the complete defined depth-1/2 graph, Builds catalog provenance, active
+policy, authenticated CI handoff, and immutable workflow definitions; invalid or drifted evidence fails
+closed and legacy manifests remain non-publishable.
 
 **Given** Hexalith.Builds has no catalog contract version,
 **When** GOV-1 is handed off,
@@ -260,8 +283,9 @@ package-ownership assertions remain semantic requirements; only historical commi
 - Repository policy: root-declared submodules under `references/` only; never recursive submodule
   initialization; never modify submodule files without explicit approval.
 - Dependency governance: compatibility is established by the semantic catalog contract and affected
-  module restore/build evidence, not by hard-coded historical gitlink identities. Every root and direct
-  nested gitlink identity used for a release is sealed as exact dependency provenance.
+  module restore/build evidence, not by hard-coded historical gitlink identities. Every depth-1 root
+  gitlink and every depth-2 gitlink in each exact root-selected commit is sealed as exact dependency
+  provenance; deeper edges require a separately approved schema.
 ```
 
 Add a corresponding NFR requirement: dependency pointer changes must be graph-diffed, contract-tested,
@@ -284,11 +308,12 @@ The sealed manifest identifies every immutable release candidate by normalized p
 - External dependency compatibility is evaluated from the catalog content selected by each actual
   gitlink. Commit identities are provenance, not compatibility allowlists.
 - Pointer changes produce a normalized dependency-graph diff and affected-module restore/build proof.
-- The sealed release manifest binds the FrontComposer commit, every reachable root and nested gitlink
-  edge, and each selected Builds catalog contract version/content fingerprint in addition to artifact
-  paths and SHA-256 hashes.
-- Graph discovery reads committed Git trees, detects cycles, and never recursively initializes nested
-  submodules.
+- The sealed release manifest binds the FrontComposer commit, every edge in the complete defined
+  depth-1/2 v1 graph, each selected Builds catalog contract version/content fingerprint, the active
+  policy, authenticated CI handoff, and immutable workflow definitions in addition to artifact paths
+  and SHA-256 hashes.
+- Graph discovery reads exact committed Git objects, records in-boundary self/back-reference edges, and
+  never recursively initializes nested submodules.
 ```
 
 ### 4.5 Release Manifest Change
@@ -306,27 +331,84 @@ The sealed manifest identifies every immutable release candidate by normalized p
 
 ```json
 {
+  "manifest_schema": "hexalith.release-evidence.v2",
   "commit_sha": "<frontcomposer-sha>",
   "dependency_graph": {
     "schema": "hexalith.dependency-graph.v1",
+    "root": {
+      "repository": "github.com/hexalith/hexalith.frontcomposer",
+      "commit": "<40-hex-sha>"
+    },
+    "edge_count": 1,
     "edges": [
       {
-        "owner": ".",
+        "owner_repository": "github.com/hexalith/hexalith.frontcomposer",
+        "owner_commit": "<40-hex-sha>",
         "path": "references/Hexalith.Builds",
+        "repository": "github.com/hexalith/hexalith.builds",
         "commit": "<40-hex-sha>",
         "depth": 1,
-        "catalog_contract_version": "<semantic-version-or-migration-marker>",
+        "catalog_contract_version": null,
         "catalog_sha256": "<64-hex-sha256>"
       }
-    ]
+    ],
+    "graph_digest": "<64-hex-sha256>"
+  },
+  "dependency_policy": {
+    "schema": "hexalith.dependency-graph-policy.v1",
+    "repository": "github.com/hexalith/hexalith.frontcomposer",
+    "commit": "<40-hex-sha>",
+    "sha256": "<64-hex-sha256>"
+  },
+  "workflow_provenance": {
+    "ci": {
+      "run": {
+        "repository": "github.com/hexalith/hexalith.frontcomposer",
+        "workflow_path": ".github/workflows/ci.yml",
+        "run_id": 123,
+        "head_sha": "<40-hex-sha>"
+      },
+      "evidence_sha256": "<64-hex-sha256>",
+      "caller": {
+        "repository": "github.com/hexalith/hexalith.frontcomposer",
+        "workflow_path": ".github/workflows/ci.yml",
+        "commit": "<40-hex-sha>",
+        "blob_sha256": "<64-hex-sha256>"
+      },
+      "reusable": {
+        "repository": "github.com/hexalith/hexalith.builds",
+        "workflow_path": ".github/workflows/domain-ci.yml",
+        "commit": "<40-hex-sha>",
+        "blob_sha256": "<64-hex-sha256>"
+      },
+      "actions": []
+    },
+    "release": {
+      "caller": {
+        "repository": "github.com/hexalith/hexalith.frontcomposer",
+        "workflow_path": ".github/workflows/release.yml",
+        "commit": "<40-hex-sha>",
+        "blob_sha256": "<64-hex-sha256>"
+      },
+      "reusable": {
+        "repository": "github.com/hexalith/hexalith.builds",
+        "workflow_path": ".github/workflows/domain-release.yml",
+        "commit": "<40-hex-sha>",
+        "blob_sha256": "<64-hex-sha256>"
+      },
+      "actions": []
+    },
+    "definition_digest": "<64-hex-sha256>"
   },
   "packages": []
 }
 ```
 
 Update manifest preparation, diagnostics, sealing, verification, fallback invalidation, fixtures,
-governance pins, and post-publication verification as one atomic schema change. Do not store absolute
-paths or working-tree-only identities.
+governance pins, and post-publication verification as one atomic schema change. The fallback digest
+binds the graph digest, active policy SHA-256, and canonical combined CI/release workflow-definition
+digest. The example shows the closed member structure; production arrays enumerate every executed
+action source. Do not store absolute paths or working-tree-only identities.
 
 ### 4.6 UX Change
 
@@ -343,25 +425,29 @@ architecture, release-evidence, and upstream-contract work are required.
 
 - **Product Owner:** approve `GOV-1`, register it in sprint status, and keep Story 11.17d's scope
   separate while prioritizing removal of its false-red blocker.
-- **Architect:** approve the compatibility/provenance split, complete reachable graph boundary, cycle
-  handling, and semantic-version migration posture.
+- **Architect:** maintain the ratified bounded committed-object graph, canonical schemas, policy
+  activation model, and semantic-version migration posture.
 - **Developer:** implement exact-gitlink catalog loading, semantic validators, graph collection/diff,
   pointer-change gates, and focused tests.
-- **Release Owner:** approve the manifest schema change, require graph verification in pre- and
-  post-publication paths, and route `BUILD-CAT-1` upstream.
+- **Release Owner:** enforce manifest v2, both exact-candidate handoffs, active-policy evaluator trust,
+  the release freeze while current seams are non-conforming, and route BUILD-CAT-1 plus the issue-17
+  BUILD-REL-1 amendment upstream.
 - **Hexalith.Builds owner:** define and publish the semantic catalog-contract version/canonicalization
-  in a separate upstream change. FrontComposer must not edit the submodule in `GOV-1`.
+  in BUILD-CAT-1 and deliver the issue-17 / BUILD-REL-1 exact-candidate, evaluator-closure, and handoff
+  amendment at an owner-accepted immutable revision. FrontComposer must not edit the submodule in GOV-1.
 
 ### Sequencing
 
-1. Approve and register `GOV-1`; record the architecture decision.
+1. **Complete:** approve/register `GOV-1` and ratify the focused architecture/FC-DEP-1 decision.
 2. Replace SHA assertions with exact-gitlink semantic catalog validation and make the focused
    Governance tests green.
-3. Add dependency-graph collection/diff and pointer-change affected-module CI gates.
-4. Extend and verify the sealed manifest and post-publication evidence.
-5. Route `BUILD-CAT-1`; later make its version marker mandatory through a separate approval after
+3. Add dependency-graph collection/diff, policy-authorized static evaluator closure, and pointer-change gates.
+4. Obtain and record the owner-accepted immutable BUILD-REL-1 issue-17 revision; Tasks 4/5, completion,
+   release eligibility, and unfreeze remain blocked while it is pending.
+5. Extend and verify manifest v2 plus the CI-to-Release and Release-to-verifier handoffs.
+6. Route `BUILD-CAT-1`; later make its version marker mandatory through a separate approval after
    supported gitlinks migrate.
-6. Rerun Story 11.17d's complete promotion lane on the exact candidate revision.
+7. Rerun Story 11.17d's complete promotion lane on the exact candidate revision.
 
 ### Success Criteria
 
@@ -369,7 +455,9 @@ architecture, release-evidence, and upstream-contract work are required.
 - Every current root-module Builds gitlink is semantically validated from the exact referenced commit.
 - A different compatible commit passes; an incompatible catalog fails with actionable diagnostics.
 - Pointer changes produce a reviewable graph diff and affected-module restore/build evidence.
-- The sealed manifest and post-publication verifier bind the complete defined gitlink graph.
+- The sealed manifest and post-publication verifier bind the complete defined depth-1/2 v1 graph,
+  active policy, authenticated CI handoff, independently authorized static workflow definitions, and
+  the original-candidate Release verification handoff.
 - No nested recursive submodule command is introduced.
 - Story 11.17d's full Governance promotion lane passes on its exact revision.
 
@@ -400,7 +488,7 @@ architecture, release-evidence, and upstream-contract work are required.
 
 ### 4. Path Forward Evaluation
 
-- [x] 4.1 Direct adjustment is viable; medium effort, low-to-medium implementation risk.
+- [x] 4.1 Direct adjustment is viable; 9-14 engineer-days of FrontComposer work with high implementation risk at the publication authorization seam.
 - [x] 4.2 Rollback is not viable; it restores identities without proving compatibility.
 - [N/A] 4.3 MVP review is unnecessary.
 - [x] 4.4 Recommended path selected: Direct Adjustment.
@@ -426,7 +514,8 @@ architecture, release-evidence, and upstream-contract work are required.
 - Approval received: 2026-07-19, Administrator (`yes`).
 - Change scope: Moderate.
 - Canonical artifacts updated: PRD, architecture, epics, sprint status, and decision contract.
-- Backlog registration: `GOV-1` added as `backlog`; production implementation has not started.
+- Story registration: `GOV-1` is `ready-for-dev`; its architecture entry gate was ratified and
+  production implementation has not started.
 - Handoff: Product Owner / Architect / Developer / Release Owner.
 - Upstream boundary: BUILD-CAT-1 belongs to Hexalith.Builds; no submodule content change is authorized
   by this workflow.

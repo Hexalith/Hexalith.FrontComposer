@@ -196,7 +196,7 @@ This is the sole planning coverage map. Requirement semantics and identifiers co
 | FR-21 | Epic 7: Story 7.2; Epic 10: Stories 10.3 and 10.4 |
 | FR-22 | Epic 7: Story 7.5; Epic 10: Story 10.5; Epic 11: Story 11.6 |
 | FR-23 | Stories 1.5, 5.3, 7.2–7.4, 10.2, 10.4, and 11.14 |
-| FR-24 | Release Governance Gate RG-1; REL-AI-1 remains open; REL-3 owns correction, REL-4 the technical freeze, REL-5 Release Owner enablement, and GOV-1 the exact reachable dependency-graph provenance correction; REL-2 is completed evidence, not closure |
+| FR-24 | Release Governance Gate RG-1; REL-AI-1 remains open; REL-3 owns correction, REL-4 the technical freeze, REL-5 Release Owner enablement, and GOV-1 the complete defined depth-1/2 dependency/workflow provenance correction; REL-2 is completed evidence, not closure |
 | FR-25 | Epics 7 and 10; Epic 11: Stories 11.8, 11.11–11.14, the 11.19 children, and staged analyzer-policy/burn-down/activation Stories 11.20–11.23 |
 | FR-26 | Epic 9: Story 9.2; Story 2.6 preserves the ownership boundary |
 | FR-27 | Epic 10: Stories 10.1–10.5 |
@@ -213,22 +213,25 @@ may continue while the gate is open, but automated package publication may not.
 
 **Update (correct-course 2026-07-19):** **`GOV-1: Validate shared-catalog compatibility and seal
 dependency provenance`** separates compatibility from provenance. Product Governance validates the
-semantic catalog selected by every actual reachable Builds gitlink and contains no expected SHA
-allowlist. Pointer changes emit a dependency-graph diff and run affected-module restore/build gates.
-The sealed release manifest records the complete reachable root/nested gitlink graph, including Builds
-catalog contract version when available and catalog SHA-256 fingerprint. BUILD-CAT-1 separately routes
-the semantic catalog-version marker to Hexalith.Builds. Source of record:
-`_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md`.
+semantic catalog selected by every Builds edge in the complete defined depth-1/2 v1 graph and contains
+no expected SHA allowlist. Pointer changes emit a deterministic graph diff and run exact affected-module
+Release/NuGet gates. Manifest v2 seals the graph, active closed-policy coordinates, authenticated CI
+handoff, and active-policy-authorized static CI/release workflow/action closures. Every Release attempt
+emits an authenticated post-release handoff preserving the original CI candidate. BUILD-CAT-1 routes
+the semantic catalog marker; BUILD-REL-1 issue 17 is a separate blocking upstream workflow revision.
+Source of record:
+`_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`; focused spine:
+`_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md`.
 
-**Update (correct-course 2026-07-13):** FR-24 implementation is now owned by **`REL-2`** (Tenants
-reusable-workflow alignment), and `REL-1` is closed as superseded. Because the release trigger moves to
-`workflow_run`-after-CI on the shared reusable `domain-release.yml` (which has no evidence hook and is a
-non-editable submodule), FR-24 evidence is re-homed via 3-layer split-homing: package inventory +
-consumer validation in shared CI (`domain-ci.yml` + FrontComposer `scripts/`), publish on the pristine
-reusable release, and a supplemental FrontComposer `release-evidence.yml` for signing, SBOM, checksums,
-manifest, `classify-release`, and evidence assets. Inventory + consumer validation run against the final
-post-2.0-split package set (`Contracts.UI` packable @ 2.0.0). Gating posture: G1 (post-publish +
-next-release fail-closed) now, G2 (optional Hexalith.Builds inline gate) as a durable follow-up. See
+**Historical update (correct-course 2026-07-13; superseded as an authorization model by the 2026-07-15
+pre-publication correction and 2026-07-19 GOV-1 architecture):** FR-24 implementation was assigned to
+**`REL-2`** (Tenants reusable-workflow alignment), and `REL-1` is closed as superseded. The accepted
+historical split placed package inventory/consumer validation in shared CI, publication in the reusable
+release, and supplemental post-publication evidence in `release-evidence.yml`. It no longer defines
+FR-24 authorization. Under the ratified model, literal-40-hex-pinned primary CI emits the authenticated
+handoff; the pinned reusable release prepares, signs, seals, live-verifies, and classifies the exact
+`workflow_run.head_sha` before publication; `release-evidence.yml` remains an independent read-only
+post-publication verifier and cannot authorize, prepare, or reseal. See
 `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-13-rel-ai-1-fr24-rehome-into-rel-2.md`.
 
 **Update (correct-course 2026-07-15):** keep `REL-2` done against its accepted G1 criteria, but do not
@@ -243,7 +246,7 @@ records v3.2.1/v3.2.2 in the compliance ledger. This stop-the-line gate blocks t
 release; no new product epic is required. See
 `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md`.
 
-**Update (correct-course 2026-07-16, freeze truth-state):** `REL-4` is the approved stop-the-line predecessor to `REL-3`, but remains ready-for-dev. Until its fail-closed publish gate is implemented and verified in `release.yml`, the freeze is administrative and the current workflow remains publish-capable. REL-4 must land before REL-3 development or any other change may authorize package publication. The same gate contract remains a required Hexalith.Builds upstream item; after REL-4 lands, update this section with the live frozen-run evidence. Follow-up: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md`.
+**Update (truth-state reconciled 2026-07-19):** `REL-4` is the stop-the-line predecessor to `REL-3`. Its caller-side `release.yml` freeze guard and Governance pins are implemented and the story is in review, but live frozen-run evidence remains outstanding. The source control therefore exists while operational acceptance and publication authorization remain closed. The common Hexalith.Builds gate is still upstream work; GOV-1 additionally blocks completion/unfreeze on the owner-accepted immutable BUILD-REL-1 revision and exact-candidate/evaluator-handoff contract. Follow-up: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md`.
 
 **Update (correct-course 2026-07-15, upstream governed contract):** the Hexalith.Builds dependency
 is corrected from signing-secret forwarding to the full **BUILD-REL-1 opt-in governed NuGet release
@@ -2204,9 +2207,10 @@ EventStore container; any behavioral migration is routed to a separately approve
 
 ### GOV-1: Validate Shared-Catalog Compatibility and Seal Dependency Provenance
 
-**Status:** backlog. **Owners:** Product Owner + Architect + Developer + Release Owner.
+**Status:** ready-for-dev; the architecture entry gate was ratified 2026-07-19. **Owners:** Product Owner + Architect + Developer + Release Owner.
 **Priority:** before Story 11.17d promotion and the next accepted governed release manifest.
 **Decision:** `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`.
+**Architecture:** `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md`.
 
 As a framework maintainer and Release Owner,
 I want compatibility validated from the catalogs selected by actual gitlinks while exact identities
@@ -2214,9 +2218,12 @@ are sealed as provenance,
 So that legitimate pointer advances remain reviewable and reproducible without false-red SHA pins.
 
 **Given** the FrontComposer root and its root-declared modules,
-**When** Governance walks the complete reachable gitlink graph with cycle detection,
-**Then** it loads `Props/Directory.Packages.props` from every distinct actual Builds commit and validates
-the applicable semantic package/import/marker contract without any expected 40-hex SHA literal.
+**When** Governance collects every root gitlink at the explicit root commit and every direct gitlink at
+each exact root-selected commit,
+**Then** it records the complete defined depth-1/2 v1 graph, evaluates every Builds selector under its
+explicit semantic profile while caching exact catalog bytes by distinct commit, and contains no expected
+historical Builds-commit or catalog-fingerprint allowlist. Deeper historical edges require a separately
+approved schema; immutable workflow/action provenance intentionally uses approved full 40-hex pins.
 
 **Given** a compatible catalog at a different commit,
 **When** focused Governance runs,
@@ -2227,15 +2234,47 @@ the applicable semantic package/import/marker contract without any expected 40-h
 **Then** it fails with the owning gitlink path, actual commit, and semantic mismatch.
 
 **Given** a root or nested gitlink change,
-**When** CI compares the merge base with the candidate head,
-**Then** it emits the normalized graph diff and runs the affected module's supported standalone
-restore/build gate without recursive submodule initialization.
+**When** PR CI requires the event base to equal the computed merge-base and compares it with the exact
+`github.sha` merge revision, or push CI compares a non-zero `github.event.before` with `github.sha`,
+**Then** it emits the normalized graph diff and runs each affected module once through its closed static
+Release/NuGet build or evidence-only disposition, with bounded exact Builds contract-tree materialization
+and no recursive submodule initialization. Depth-1 changes are classified first and subsume descendant
+depth-2 churn; remaining depth-2 changes map to a surviving candidate owner or FrontComposer root.
+Zero/unavailable push bases take the full-affected path, fail the gate, and are non-release-eligible.
+
+**Given** a candidate changes the dependency policy,
+**When** the candidate graph is evaluated,
+**Then** both base and candidate use the immutable base/before policy; the change can activate only from
+a later base revision, except for the one-time unchanged-graph bootstrap authorized by the Release
+Owner-controlled `HEXALITH_DEPENDENCY_POLICY_BOOTSTRAP_SHA256`, frozen publication, and recorded
+Architect + Release Owner approval. CI, Release, and post-release evaluator sources must additionally
+project one policy-authorized closure; sealed but unapproved literal revisions fail closed.
 
 **Given** release candidates are prepared,
 **When** the manifest is sealed and verified,
-**Then** the complete reachable dependency graph and Builds catalog provenance are inside the seal, and
-any missing, duplicate, malformed, cycled-without-termination, or drifted edge fails closed in pre- and
-post-publication verification.
+**Then** manifest v2 seals the complete defined depth-1/2 graph, Builds catalog provenance, active policy,
+authenticated successful-CI handoff, and immutable caller/reusable/action definitions. Missing,
+duplicate, malformed, over-limit, unavailable, out-of-order, or drifted evidence fails closed in pre-
+and post-publication verification; legacy manifests remain audit-only and non-publishable.
+
+**Given** the release is triggered by a successful CI workflow run,
+**When** release authorization begins,
+**Then** the caller passes and checks out the exact `workflow_run.head_sha`, authenticates the named
+versioned handoff by run ID/attempt, repository, workflow, push/main event, success conclusion, head SHA,
+artifact candidate, CI-only evaluator digest, and raw hash; reloads the exact recorded policy blob; and
+rejects mutable or unapproved workflow/action provenance before publication. The static transitive
+source closure follows conditional sources and composite descendants under fixed cycle/resource limits.
+
+**Given** a Release attempt completes, fails, or partially publishes,
+**When** the post-release verifier runs through the second `workflow_run` hop,
+**Then** it authenticates the Release run and mandatory verification handoff, derives the original CI
+candidate and sealed assets from that handoff, never substitutes the second-hop/default-branch SHA, and
+cannot green-no-op. Its own closure must be active-policy-authorized.
+
+**Given** Hexalith.Builds issue 17 has no owner-accepted immutable revision,
+**When** GOV-1 delivery is assessed,
+**Then** local graph/policy work may proceed but Tasks 4/5, story completion, release eligibility, and
+REL-4 unfreeze remain blocked; FrontComposer does not edit the Builds submodule or invent a contingency.
 
 **Given** Hexalith.Builds has no semantic catalog contract version,
 **When** GOV-1 is handed off,

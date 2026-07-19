@@ -1,10 +1,11 @@
 # Required upstream dependency (G2 / BUILD-REL-1): opt-in governed NuGet release contract for the FR24 pre-publication gate
 
 - **Raised by:** REL-2 on 2026-07-13; made mandatory by REL-3 on 2026-07-15; extended with the
-  common release-freeze gate (second required item) by REL-4 on 2026-07-15
+  common release-freeze gate by REL-4 on 2026-07-15 and the exact-candidate/evaluator-handoff contract
+  by ratified GOV-1 on 2026-07-19
 - **Target repository:** [Hexalith/Hexalith.Builds](https://github.com/Hexalith/Hexalith.Builds)
 - **Target file:** `.github/workflows/domain-release.yml` (shared reusable workflow)
-- **Status:** required/blocking — owner-approved issue or story must be filed before implementation
+- **Status:** issue filed; required/blocking; GOV-1 amendment acceptance and immutable revision pending
 - **Suggested upstream story title:** "BUILD-REL-1: Add an opt-in governed NuGet release contract
   to Hexalith.Builds"
 - **Upstream verification (2026-07-15):** a live search of Hexalith.Builds issues and pull requests
@@ -78,7 +79,7 @@ FrontComposer's evidence logic.
 ```yaml
 jobs:
   release:
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@<accepted-40-hex-revision>
     with:
       solution: Hexalith.FrontComposer.slnx
       test-projects: ''
@@ -139,6 +140,41 @@ This item does not gate FrontComposer's own freeze — the REL-4 caller-side `fr
 FrontComposer's `release.yml` enforces it immediately and remains as defense-in-depth. It is
 independent of, though filed alongside, the signing-contract item above; the signing item remains
 blocking for REL-3, while this item is required for ecosystem coverage.
+
+## GOV-1 amendment — exact candidate and evaluator handoffs
+
+Added 2026-07-19 by ratified FC-DEP-1 / architecture AD-13, AD-15, and AD-16. Issue 17 is not accepted
+for GOV-1 until the Hexalith.Builds owner supplies one immutable 40-hex revision implementing all of
+the following backward-compatible governed-mode contracts:
+
+- `domain-ci.yml` accepts required governed inputs for the exact candidate SHA, active policy
+  repository/commit/SHA-256, and expected evaluator-authorization digest; validates its actual
+  `job.workflow_ref/job.workflow_sha`; evaluates the bounded static workflow/composite-action closure;
+  and outputs the exact reusable/action provenance needed by the caller to create the single
+  `dependency-release-handoff` artifact (`hexalith.dependency-release-handoff.v1`).
+- `domain-release.yml` accepts required governed inputs `release-commit` (the authenticated
+  `workflow_run.head_sha`), triggering CI run ID, active policy coordinates, handoff artifact name, and
+  expected Release evaluator-authorization digest. Every checkout, prepare, seal, live verify,
+  fallback, classify, and publish operation consumes `release-commit`; it validates actual reusable/
+  action coordinates and never selects default-branch HEAD.
+- The caller-side Release run uploads under `if: always()` exactly one
+  `release-verification-handoff` artifact containing
+  `hexalith.release-verification-handoff.v1`: original CI candidate, Release run ID/attempt/conclusion,
+  version/tag/GitHub Release identity, sealed-manifest path/hash/seal, sorted asset name/hash/size rows,
+  and authorized Release evaluator coordinates/digest. Failed or partial runs emit the closed null/empty
+  representation rather than omitting the artifact.
+- Every reusable workflow/action reference is literal-40-hex-pinned. Local composite actions are loaded
+  from the exact reusable-workflow commit. Their complete static transitive `uses:` closure, including
+  conditional entries and composite descendants, matches the active FrontComposer policy
+  authorization and the handoff/manifest projection.
+- The accepted revision is recorded here with the exact `domain-ci.yml`, `domain-release.yml`, and
+  composite-action blob SHA-256 values before FrontComposer integration.
+
+**GOV-1 completion gate:** while **Accepted revision** remains `pending`, FrontComposer may implement
+local graph, semantic, policy, and fixture work, but GOV-1 Tasks 4/5, story completion, release
+eligibility, and any REL-4 unfreeze remain blocked. FrontComposer must not edit the Builds submodule.
+The bounded contingency below is not approved by GOV-1; using it requires a new dated Architect +
+Release Owner decision with scope, expiry, migration trigger, and equivalent proofs.
 
 ## Bounded contingency
 
