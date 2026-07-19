@@ -3,7 +3,7 @@ baseline_commit: 0a84e818b0ce220f291510ad094340f7296bb488
 ---
 # Story 11.17d: Shell bundle split
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Type: mechanical refactor; fourth executable child of the non-implementable Story 11.17 decomposition parent. -->
@@ -65,6 +65,12 @@ This story refines PRD FR-25, FR-28, and FR-29 and closes only the Shell child o
   - [x] Build the File List from the union of `git diff --name-status <baseline>` and `git ls-files --others --exclude-standard`; audit root gitlinks separately. `git diff` alone cannot see the 88 new unstaged files.
   - [x] Verify all changed/new C# files are UTF-8, CRLF-only, final-newline clean, and free of trailing whitespace. Audit `*.received.*`, generated output, package/API/suppression changes, and run `git diff --check`.
   - [x] Record before/after counts, exact commands/results, baseline-to-final body comparison, unchanged exceptions/baselines, current test totals, and the exact story-owned File List before moving to review.
+
+### Review Findings
+
+- [x] [Review][Defer] Expand-in-row initialization can race disposal and use or leak a module after teardown begins [src/Hexalith.FrontComposer.Shell/Services/ExpandInRowJSModule.cs:17] — deferred, pre-existing
+- [x] [Review][Defer] A benign prerender import failure can escape through `DisposeAsync` [src/Hexalith.FrontComposer.Shell/Services/ExpandInRowJSModule.cs:73] — deferred, pre-existing
+- [x] [Review][Defer] Cancellation from JS module disposal can fault best-effort circuit teardown [src/Hexalith.FrontComposer.Shell/Services/ExpandInRowJSModule.cs:86] — deferred, pre-existing
 
 ## Dev Notes
 
@@ -270,7 +276,7 @@ GPT-5 Codex
 ### Documented Unrelated Workspace State
 
 - `_bmad-output/implementation-artifacts/11-17-cli-package-split.md` — concurrent Story 11.17a implementation record that pre-dated this story.
-- `_bmad-output/implementation-artifacts/deferred-work.md` — concurrent deferred-work ledger changes that pre-dated this story.
+- `_bmad-output/implementation-artifacts/deferred-work.md` — concurrent deferred-work ledger changes pre-dated this story; the 2026-07-19 code-review section is review-owned and preserves the earlier content.
 - `references/Hexalith.Tenants` — accepted pre-existing root gitlink drift; this story did not edit the submodule.
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` is a shared dirty path: only the 11.17d transition comments/value are story-owned; all concurrent pre-existing edits are preserved.
 
@@ -400,9 +406,11 @@ GPT-5 Codex
 - `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs` (new — exact organization, action-exception, source, reflection, and synthetic governance)
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/HydrationStateConsolidationTests.cs` (modified — same-named capability enum source path)
 - `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md` (new — Story 11.17d implementation and evidence record)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (updated — Story 11.17d moved from in-progress to review; concurrent entries preserved)
+- `_bmad-output/implementation-artifacts/deferred-work.md` (updated during code review — three pre-existing expand-in-row lifecycle findings recorded; earlier concurrent content preserved)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (updated — Story 11.17d returned from review to in-progress while review chunks remain; concurrent entries preserved)
 
 ## Change Log
 
 - 2026-07-15: Created executable Story 11.17d and marked it ready-for-dev. Scoped the live Shell census, exact six-file Fluxor exception, 29-bundle/111-declaration mechanical split, durable organization/identity guard, behavior/API/package preservation lanes, and Shell-only M14 closure evidence.
 - 2026-07-15: Implemented Story 11.17d. Split 29 Shell bundles into one same-named declaration per file while retaining the exact six/38 action exception, added non-vacuous source/reflection governance, preserved 111/111 declaration bodies and all behavior/API/package seams, passed Release/default/Governance/package/artifact gates, and moved the story to review.
+- 2026-07-19: Completed code-review chunk 1A over non-State Shell production with all four configured review layers. Found no Story 11.17d defects or decisions; deferred three pre-existing `ExpandInRowJSModule` lifecycle issues, dismissed eighteen candidates, and returned the story to in-progress pending the remaining chunks.

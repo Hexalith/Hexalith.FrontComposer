@@ -2,8 +2,8 @@
 title: 'Move Parties package-version authority to Hexalith.Builds'
 type: 'refactor'
 created: '2026-07-19'
-status: 'in-progress'
-review_loop_iteration: 0
+status: 'in-review'
+review_loop_iteration: 1
 baseline_commit: '68cb94eb42a5c5b0814d0eb8ff78ff0ee4d05df9'
 context:
   - '{project-root}/_bmad-output/project-context.md'
@@ -40,8 +40,9 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `references/Hexalith.Parties/Directory.Packages.props` -- remove the `Application` and `MCP` package-version item groups while preserving CPM properties and imports.
-- [ ] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs` -- assert the three approved shared rows and require zero matching Parties-local operations.
+- [x] `references/Hexalith.Parties/Directory.Packages.props` -- remove the `Application` and `MCP` package-version item groups while preserving CPM properties and imports.
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs` -- assert the three approved shared rows and require zero matching Parties-local operations.
+- [x] `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` -- refresh the governed test-identifier inventory hash after the assertion rewrite.
 
 **Acceptance Criteria:**
 - Given the Builds catalog, when it is evaluated, then each named identity occurs once as an unconditional authoritative `Include` at `10.0.10`/`1.4.1`/`1.4.1`.
