@@ -1354,6 +1354,122 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void ReleaseEvidenceWorkflow_NoTagProbe_UsesSupportedGithubApiAndFailsClosed() {
+        // Regression for Release Evidence run 29703578735: `gh release list --json`
+        // does not expose `targetCommitish`, so the frozen no-op path failed before it
+        // could prove that no publication side effect existed. Use the REST field
+        // `target_commitish` and keep an API outage fail-closed.
+        string root = RepositoryRoot();
+        string workflow = StripYamlComments(
+            File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml")));
+
+        workflow.ShouldContain(
+            "gh api \"repos/${GITHUB_REPOSITORY}/releases?per_page=50\"",
+            customMessage: "The no-tag probe must use the supported GitHub Releases API.");
+        workflow.ShouldContain(
+            ".target_commitish == \\\"$head_sha\\\"",
+            customMessage: "The REST release object field must be used for the orphaned-release probe.");
+        workflow.ShouldContain(
+            "if ! orphaned=\"$(",
+            customMessage: "The API probe must explicitly handle command failure instead of relying on set -e.");
+        workflow.ShouldContain(
+            "cannot rule out partial publication",
+            customMessage: "An API outage must fail closed rather than claim a clean no-op.");
+        workflow.ShouldNotContain(
+            "gh release list --limit 50 --json tagName,targetCommitish",
+            customMessage: "The unsupported gh release list field must not return.");
+    }
+
+    [Theory]
+    [InlineData("clean", 0, false, true)]
+    [InlineData("failure", 1, false, false)]
+    [InlineData("orphaned", 1, true, false)]
+    [InlineData("published", 0, false, false)]
+    public void ReleaseEvidenceWorkflow_TagResolver_CoversNoOpAndPublicationMatrix(
+        string scenario,
+        int expectedExitCode,
+        bool expectsIncident,
+        bool expectsNoPublicationSummary) {
+        if (OperatingSystem.IsWindows()) {
+            return;
+        }
+
+        string root = RepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
+        string resolver = ExtractRunScript(workflow, "Resolve release tag")
+            .Replace(
+                "head_sha=\"${{ github.event.workflow_run.head_sha }}\"",
+                "head_sha=\"${TEST_HEAD_SHA}\"",
+                StringComparison.Ordinal);
+
+        string workRoot = Path.Combine(Path.GetTempPath(), $"fc-release-tag-resolver-{Guid.NewGuid():N}");
+        string binRoot = Path.Combine(workRoot, "bin");
+        string summary = Path.Combine(workRoot, "summary.txt");
+        string output = Path.Combine(workRoot, "output.txt");
+        string probeLog = Path.Combine(workRoot, "python.log");
+        Directory.CreateDirectory(binRoot);
+        try {
+            string fakeGh = Path.Combine(binRoot, "gh");
+            File.WriteAllText(fakeGh, "#!/usr/bin/env bash\nset -euo pipefail\ncase \"${PROBE_MODE}\" in\n  clean|published) printf '0\\n' ;;\n  orphaned) printf '1\\n' ;;\n  failure) exit 42 ;;\n  *) exit 43 ;;\nesac\n");
+            File.SetUnixFileMode(fakeGh, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+            string fakePython = Path.Combine(binRoot, "python3");
+            File.WriteAllText(fakePython, "#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"${PROBE_LOG}\"\n");
+            File.SetUnixFileMode(fakePython, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+            string headSha = "b0254994e279a21d0496d6b3286d6524eebb14b4";
+            if (scenario == "published") {
+                ProcessResult init = RunProcess(workRoot, "git", ["init", "-q"]);
+                init.ExitCode.ShouldBe(0, init.Error);
+                ProcessResult configName = RunProcess(workRoot, "git", ["config", "user.name", "Governance Test"]);
+                configName.ExitCode.ShouldBe(0, configName.Error);
+                ProcessResult configEmail = RunProcess(workRoot, "git", ["config", "user.email", "governance@example.invalid"]);
+                configEmail.ExitCode.ShouldBe(0, configEmail.Error);
+                File.WriteAllText(Path.Combine(workRoot, "commit.txt"), "published");
+                RunProcess(workRoot, "git", ["add", "commit.txt"]).ExitCode.ShouldBe(0);
+                RunProcess(workRoot, "git", ["commit", "-qm", "fixture"]).ExitCode.ShouldBe(0);
+                headSha = RunProcess(workRoot, "git", ["rev-parse", "HEAD"]).Output.Trim();
+                RunProcess(workRoot, "git", ["tag", "v9.9.9"]).ExitCode.ShouldBe(0);
+            }
+
+            ProcessResult result = RunProcess(
+                workRoot,
+                "bash",
+                ["-e", "-o", "pipefail", "-c", resolver],
+                new Dictionary<string, string> {
+                    ["PATH"] = $"{binRoot}{Path.PathSeparator}{Environment.GetEnvironmentVariable("PATH")}",
+                    ["PROBE_MODE"] = scenario,
+                    ["PROBE_LOG"] = probeLog,
+                    ["TEST_HEAD_SHA"] = headSha,
+                    ["UPSTREAM_CONCLUSION"] = "skipped",
+                    ["GITHUB_REPOSITORY"] = "Hexalith/Hexalith.FrontComposer",
+                    ["GITHUB_STEP_SUMMARY"] = summary,
+                    ["GITHUB_OUTPUT"] = output,
+                });
+
+            result.ExitCode.ShouldBe(expectedExitCode, result.Error);
+            if (expectsIncident) {
+                File.ReadAllText(probeLog).ShouldContain("partial-publish-incident");
+            }
+
+            if (expectsNoPublicationSummary) {
+                File.ReadAllText(summary).ShouldContain("no publication side effect");
+                File.ReadAllText(output).ShouldContain("tag=");
+            }
+
+            if (scenario == "published") {
+                File.ReadAllText(output).ShouldContain("tag=v9.9.9");
+                File.Exists(probeLog).ShouldBeFalse();
+            }
+        }
+        finally {
+            if (Directory.Exists(workRoot)) {
+                Directory.Delete(workRoot, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void ReleaseEvidenceScript_EmitsApprovalMatrixAndPackageSetFingerprint() {
         // CR-12-4-D7 (round-5): the AC26 approval matrix must be a machine-readable
         // top-level field of the classify-release output. CR-12-4-D8 (round-5): the
@@ -2505,6 +2621,22 @@ public sealed class CiGovernanceTests {
 
     private static string Sha256Text(string text) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
+
+    private static string ExtractRunScript(string workflow, string stepName) {
+        int stepStart = workflow.IndexOf($"      - name: {stepName}", StringComparison.Ordinal);
+        stepStart.ShouldBeGreaterThanOrEqualTo(0, $"workflow is missing the named step '{stepName}'.");
+        int runStart = workflow.IndexOf("        run: |", stepStart, StringComparison.Ordinal);
+        runStart.ShouldBeGreaterThanOrEqualTo(0, $"step '{stepName}' must contain a run block.");
+        int bodyStart = workflow.IndexOf('\n', runStart) + 1;
+        int nextStep = workflow.IndexOf("\n      - name:", bodyStart, StringComparison.Ordinal);
+        string body = workflow[bodyStart..(nextStep < 0 ? workflow.Length : nextStep)];
+        return string.Join(
+            '\n',
+            body.Split('\n').Select(line => {
+                string trimmed = line.TrimEnd('\r');
+                return trimmed.StartsWith("          ", StringComparison.Ordinal) ? trimmed[10..] : trimmed;
+            }));
+    }
 
     internal sealed record ProcessResult(int ExitCode, string Output, string Error);
 }

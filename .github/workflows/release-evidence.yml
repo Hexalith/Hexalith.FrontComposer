@@ -131,7 +131,14 @@ jobs:
             # verification forever. (A no-version nuget.org probe remains a documented
             # residual: without a tag there is no version to query.)
             if [ "${UPSTREAM_CONCLUSION}" != "success" ]; then
-              orphaned="$(gh release list --limit 50 --json tagName,targetCommitish --jq "[.[] | select(.targetCommitish == \"$head_sha\")] | length" 2>/dev/null)"
+              if ! orphaned="$(
+                gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=50" \
+                  --jq "[.[] | select(.target_commitish == \"$head_sha\")] | length" \
+                  2>/dev/null
+              )"; then
+                echo "::error::unable to inspect GitHub release targets while no release tag resolved; cannot rule out partial publication."
+                exit 1
+              fi
               if [ "${orphaned:-0}" -gt 0 ] 2>/dev/null; then
                 echo "::error::a GitHub release targets ${head_sha} but no tag resolves to it — deleted-tag partial publication state."
                 mkdir -p verification-evidence
