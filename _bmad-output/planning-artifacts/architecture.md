@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-07-16
+updated: 2026-07-19
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -46,6 +46,8 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
 - Shell state follows Fluxor single-writer discipline and scoped-lifetime discipline.
 - MCP security fails closed and requires both tenant tool and resource visibility gates.
 - EventStore command acceptance is not treated as projection-confirmed success.
+- Shared-catalog compatibility is determined from semantic catalog contents and affected-module restore/build behavior at the actual selected gitlinks; hard-coded historical SHAs are not compatibility allowlists.
+- Exact root and reachable nested gitlink identities are release provenance and are sealed in the release dependency graph.
 - UX/layout policy is defined by the UX, IA, and route invariants below and projected into the
   canonical `ux-design.md` planning source.
 
@@ -68,6 +70,28 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
 - Default timing contracts are confirming-to-Degraded at `10_000` ms, status polling every `1_000` ms
   for at most `120_000` ms, and exactly one transient Epic 4 retry after `250` ms.
 
+## Shared Catalog Compatibility And Dependency Provenance
+
+Dependency governance separates two concerns that must not be conflated:
+
+- **Compatibility:** enumerate every distinct Builds commit selected by the root and reachable nested
+  gitlink graph, load `Props/Directory.Packages.props` from that exact commit, and validate the
+  applicable semantic package/import/marker contract. A compatible catalog at a new commit passes.
+- **Provenance:** record the exact repository identity, owner/path edge, 40-hex commit, depth, and Builds
+  catalog SHA-256 fingerprint in deterministic review and release evidence.
+
+Pointer-change CI compares the base and candidate dependency graphs and runs the affected module's
+supported standalone restore/build gate. Graph traversal is keyed by repository identity plus commit,
+detects cycles, and reads committed Git trees or targeted explicit checkouts without recursively
+initializing nested submodules or moving their working-tree HEADs.
+
+Hexalith.Builds will eventually expose a semantic catalog-contract version through BUILD-CAT-1.
+During migration, consumers validate semantic contents directly and record the computed fingerprint;
+an exact fingerprint allowlist is not a substitute compatibility contract. Making the upstream marker
+mandatory requires a later separately approved change after supported gitlinks migrate.
+
+Decision record: `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`.
+
 ## FR-24 Release Evidence Architecture
 
 Release authorization is an exact-artifact pipeline:
@@ -89,7 +113,10 @@ Pre-publication authorization and post-publication verification are separate pha
 may authorize publication. Rebuilding, repacking, or signing reconstructed packages after publication
 does not prove what NuGet received.
 
-The sealed manifest identifies every immutable release candidate by normalized path and SHA-256 hash.
+The sealed manifest identifies every immutable release candidate by normalized path and SHA-256 hash
+and binds the complete reachable root/nested gitlink graph used to create it. Each dependency edge is
+normalized and commit-addressed; Builds edges additionally carry the semantic catalog contract version
+when available and the catalog-content SHA-256 fingerprint.
 Publication consumes those exact paths without rebuilding or replacing an artifact. A blocked
 classification, invalid manifest, missing evidence, or `publish_authorized=false` terminates the
 release before NuGet, GitHub Release, tag/changelog, or other external publication side effects.
@@ -102,11 +129,11 @@ the public evidence chain. Short-retention workflow artifacts are supplemental.
 
 Ownership boundaries:
 
-- **Hexalith.Builds** owns the reusable workflow contract, signing-secret declaration/forwarding, and
-  minimum permissions.
+- **Hexalith.Builds** owns the reusable workflow contract, signing-secret declaration/forwarding,
+  minimum permissions, and the upstream semantic catalog-contract version/canonicalization contract.
 - **FrontComposer** owns artifact creation, inventory/consumer/test validation, signing, evidence
-  generation, readiness classification, publication of authorized bytes, and downloaded-artifact
-  verification.
+  generation, dependency-graph collection/verification, readiness classification, publication of
+  authorized bytes, and downloaded-artifact verification.
 - **Release Owner** owns signing identity, timestamp authority, secret provisioning/rotation, the
   release freeze, exceptions, and partial-publication incident response.
 
@@ -142,4 +169,6 @@ migration, and Release Owner documentation evidence.
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-05-e11-contracts-kernel-split.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md`
+- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md`
 - `_bmad-output/contracts/fc-contracts-kernel-split-compatibility-plan-2026-07-05.md`
+- `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`

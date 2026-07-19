@@ -497,6 +497,12 @@ development_status:
   # Do not create its story file or move it to ready-for-dev until EventStore Story 1.20 durably
   # authorizes consumer migration and pins the approved source SHA plus exact package version/hashes.
   11-24-adopt-owner-approved-eventstore-runtime: backlog
+  # GOV-1 registered as cross-cutting backlog on 2026-07-19 by approved Correct Course proposal
+  # sprint-change-proposal-2026-07-19.md. It replaces expected-SHA compatibility assertions with
+  # semantic validation at actual reachable Builds gitlinks, adds reviewable graph-diff and affected-
+  # module restore/build gates, and seals the exact reachable gitlink graph as release provenance.
+  # BUILD-CAT-1 is an upstream Hexalith.Builds follow-up; no submodule content edit is authorized here.
+  gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance: backlog
   epic-11-retrospective: optional
   # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
   # rel-1 moved backlog -> in-progress on 2026-07-05 (dev-story; owner decision: keep Jul 3 auto-publish model, add FR24 evidence only. baseline 2d1a1290. Signing deferred; REL-AI-1 stays open.)
@@ -583,6 +589,14 @@ action_items:
     closed: "2026-07-15"
     evidence: "_bmad-output/planning-artifacts/implementation-readiness-report-2026-07-15-post-correction.md"
     result: "READY — 29/29 FR coverage, zero critical/major findings, three controlled minor concerns; all six missing Epic 11 children materialized and parent records remain nonimplementable."
+  - epic: governance
+    action: "GOV-1: Replace historical SHA compatibility assertions with semantic catalog validation at actual reachable gitlinks; add dependency-graph diff, affected-module restore/build gates, and sealed release provenance."
+    owner: "Product Owner + Architect + Developer + Release Owner"
+    assigned: "2026-07-19"
+    due: "before Story 11.17d promotion and the next accepted governed release manifest"
+    status: open
+    source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md"
+    decision: "_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md"
   - epic: release
     action: "REL-AI-1: Own the FR24 exact-artifact pre-publication gate for signed/timestamped packages, symbols, SBOM, checksums, package inventory, consumer validation, sealed manifest/readiness, durable GitHub Release evidence, published-byte verification, and historical reconciliation."
     owner: "Release Owner"

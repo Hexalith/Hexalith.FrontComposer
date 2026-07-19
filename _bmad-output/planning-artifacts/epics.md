@@ -196,7 +196,7 @@ This is the sole planning coverage map. Requirement semantics and identifiers co
 | FR-21 | Epic 7: Story 7.2; Epic 10: Stories 10.3 and 10.4 |
 | FR-22 | Epic 7: Story 7.5; Epic 10: Story 10.5; Epic 11: Story 11.6 |
 | FR-23 | Stories 1.5, 5.3, 7.2–7.4, 10.2, 10.4, and 11.14 |
-| FR-24 | Release Governance Gate RG-1; REL-AI-1 remains open; REL-3 owns correction, REL-4 the technical freeze, REL-5 Release Owner enablement; REL-2 is completed evidence, not closure |
+| FR-24 | Release Governance Gate RG-1; REL-AI-1 remains open; REL-3 owns correction, REL-4 the technical freeze, REL-5 Release Owner enablement, and GOV-1 the exact reachable dependency-graph provenance correction; REL-2 is completed evidence, not closure |
 | FR-25 | Epics 7 and 10; Epic 11: Stories 11.8, 11.11–11.14, the 11.19 children, and staged analyzer-policy/burn-down/activation Stories 11.20–11.23 |
 | FR-26 | Epic 9: Story 9.2; Story 2.6 preserves the ownership boundary |
 | FR-27 | Epic 10: Stories 10.1–10.5 |
@@ -210,6 +210,15 @@ sealed-manifest verification, and `classify-release --require-publishable`. Pass
 `classification=ready` and `publish_authorized=true`; the same authorized bytes must be published and
 then independently verified from NuGet and GitHub. Durable release evidence is required. Product work
 may continue while the gate is open, but automated package publication may not.
+
+**Update (correct-course 2026-07-19):** **`GOV-1: Validate shared-catalog compatibility and seal
+dependency provenance`** separates compatibility from provenance. Product Governance validates the
+semantic catalog selected by every actual reachable Builds gitlink and contains no expected SHA
+allowlist. Pointer changes emit a dependency-graph diff and run affected-module restore/build gates.
+The sealed release manifest records the complete reachable root/nested gitlink graph, including Builds
+catalog contract version when available and catalog SHA-256 fingerprint. BUILD-CAT-1 separately routes
+the semantic catalog-version marker to Hexalith.Builds. Source of record:
+`_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md`.
 
 **Update (correct-course 2026-07-13):** FR-24 implementation is now owned by **`REL-2`** (Tenants
 reusable-workflow alignment), and `REL-1` is closed as superseded. Because the release trigger moves to
@@ -2190,3 +2199,45 @@ query/provenance, and projection SignalR all pass.
 **When** compatibility evidence is reviewed,
 **Then** it does not remove or redesign FrontComposer adapters, rollback paths, topology, or deploy an
 EventStore container; any behavioral migration is routed to a separately approved compatibility story.
+
+## Cross-Cutting Governance Work
+
+### GOV-1: Validate Shared-Catalog Compatibility and Seal Dependency Provenance
+
+**Status:** backlog. **Owners:** Product Owner + Architect + Developer + Release Owner.
+**Priority:** before Story 11.17d promotion and the next accepted governed release manifest.
+**Decision:** `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`.
+
+As a framework maintainer and Release Owner,
+I want compatibility validated from the catalogs selected by actual gitlinks while exact identities
+are sealed as provenance,
+So that legitimate pointer advances remain reviewable and reproducible without false-red SHA pins.
+
+**Given** the FrontComposer root and its root-declared modules,
+**When** Governance walks the complete reachable gitlink graph with cycle detection,
+**Then** it loads `Props/Directory.Packages.props` from every distinct actual Builds commit and validates
+the applicable semantic package/import/marker contract without any expected 40-hex SHA literal.
+
+**Given** a compatible catalog at a different commit,
+**When** focused Governance runs,
+**Then** compatibility passes and the changed identity appears only in dependency-graph diff/evidence.
+
+**Given** a selected catalog that is missing or changes a required package/import/marker contract,
+**When** Governance runs,
+**Then** it fails with the owning gitlink path, actual commit, and semantic mismatch.
+
+**Given** a root or nested gitlink change,
+**When** CI compares the merge base with the candidate head,
+**Then** it emits the normalized graph diff and runs the affected module's supported standalone
+restore/build gate without recursive submodule initialization.
+
+**Given** release candidates are prepared,
+**When** the manifest is sealed and verified,
+**Then** the complete reachable dependency graph and Builds catalog provenance are inside the seal, and
+any missing, duplicate, malformed, cycled-without-termination, or drifted edge fails closed in pre- and
+post-publication verification.
+
+**Given** Hexalith.Builds has no semantic catalog contract version,
+**When** GOV-1 is handed off,
+**Then** BUILD-CAT-1 is routed upstream; FrontComposer validates semantic contents during migration and
+does not use an exact catalog fingerprint allowlist as a replacement compatibility test.

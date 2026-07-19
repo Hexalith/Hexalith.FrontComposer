@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Product Requirements Document
 status: approved-for-v1-readiness
 created: 2026-07-05
-updated: 2026-07-16
+updated: 2026-07-19
 ---
 
 # PRD: Hexalith.FrontComposer
@@ -364,6 +364,7 @@ FrontComposer must publish only the expected NuGet package set, using package ar
 - Conventional commits determine version bump.
 - The validated package bytes must be identical to the published bytes; rebuilding, repacking, or signing reconstructed packages after publication is not equivalent evidence.
 - Package inventory, tests, package-consumer validation, symbols, SBOM, signature/timestamp verification, checksums, sealed-manifest verification, and `classify-release --require-publishable` all run before publication.
+- The sealed manifest records the complete reachable root and nested gitlink graph used by the release, including each selected Builds catalog contract version when available and a SHA-256 catalog-content fingerprint.
 - A blocked/invalid result or `publish_authorized=false` fails the release before any NuGet or GitHub side effect.
 - Durable evidence is attached during initial GitHub Release creation or retained in an approved equivalent; a 30-day Actions artifact is supplemental and insufficient by itself.
 - Historical releases whose evidence is blocked or invalid remain non-compliant in the release-evidence ledger.
@@ -433,12 +434,14 @@ FrontComposer must complete the remaining Epic 11 release-readiness remediation 
 - **NFR-10 Observability:** FrontComposer uses `FrontComposerActivitySource` and sanitized structured logs for operator-relevant failure paths, with tests or snapshots proving tokens, JWT payloads, raw EventStore metadata, raw event payloads, stack traces, and unrestricted PII are absent.
 - **NFR-11 Testing:** the v1.0 release gate includes the default solution-level lane with `DiffEngine_Disabled=true`, Governance, Contract, snapshots, PublicAPI baselines, Pact checks, property tests where configured, docs validation, and e2e accessibility/visual lanes required by the changed surface.
 - **NFR-12 Release evidence:** signed and timestamped NuGet packages, symbols, SBOM, exact package inventory, consumer validation, checksums, a valid sealed manifest, and `publish_authorized=true` readiness evidence are blocking pre-publication requirements. Evidence must bind the exact published bytes.
+- **NFR-13 Dependency governance:** compatibility is established from the semantic shared-catalog contract and affected-module restore/build evidence, not hard-coded historical gitlink identities. Pointer changes must produce a reviewable dependency-graph diff, and every reachable root and nested gitlink identity used for a release must be sealed as provenance without recursive submodule initialization.
 
 ## 7. Constraints And Dependencies
 
 - **Runtime and framework:** .NET 10, C# latest, Blazor, Fluent UI Blazor v5 pinned centrally at `5.0.0-rc.4-26180.1`, Fluxor, Roslyn 5.6.0, ModelContextProtocol SDK, SignalR, OIDC, NUlid.
 - **External systems:** Hexalith.EventStore for command/query/projection backend; Hexalith.Tenants and other Hexalith domain modules as key adopters.
 - **Repository policy:** root-declared submodules under `references/` only; never recursive submodule initialization; never modify submodule files without explicit approval.
+- **Dependency policy:** validate shared-catalog contents at the actual selected gitlinks, treat commit identities as provenance rather than compatibility allowlists, and run targeted affected-module restore/build gates for pointer changes.
 - **Published docs:** `docs/` is a CI-gated DocFX site and not scratch space.
 - **Generated output:** generated files are not hand-edited; changes flow through SourceTools or Annotated Domain Types.
 
@@ -478,6 +481,7 @@ FrontComposer must complete the remaining Epic 11 release-readiness remediation 
 
 - **SM-1: Adopter bootstrap success** — before v1.0, at least one representative Hexalith adopter module, preferably Tenants, boots through the documented three-call path and renders at least one generated projection and one generated command without bespoke framework plumbing. Validates FR-1, FR-2, FR-7, FR-8.
 - **SM-2: Release readiness** — before every publish-capable release, the exact artifacts intended for NuGet/GitHub pass inventory, consumer, signing/timestamp, symbol, SBOM, checksum, manifest, test, and readiness gates. Success requires `classification=ready`, `publish_authorized=true`, matching published artifact hashes, and durable evidence paths. Validates FR-24, FR-25.
+- **SM-2a: Dependency provenance** — every publish-capable release seals and verifies the complete reachable root/nested gitlink graph; compatible pointer advances pass semantic catalog and affected-module gates without requiring product-test SHA allowlist edits. Validates FR-24 and NFR-13.
 - **SM-3: Contract drift visibility** — intentional generator or schema changes update baselines, diagnostics, migration/deprecation artifacts, or release notes; accidental generated-output or schema drift is caught by HFC1065/HFC1066, snapshots, or package/public API validation before release. Validates FR-6, FR-20, FR-21, FR-25.
 - **SM-4: MCP fail-closed coverage** — tests cover missing gate startup failure, hidden-equivalent auth/tenant/unknown failures, schema mismatch blocking side effects, server-controlled field injection, lifecycle subscribe/poll behavior, and tenant-scoped projection resource access. Validates FR-17, FR-18, FR-19.
 
@@ -499,6 +503,7 @@ FrontComposer must complete the remaining Epic 11 release-readiness remediation 
 - **Risk: Contracts kernel leaks UI/runtime dependencies into consumers.** Mitigation: the approved Contracts/Contracts.UI split and Stories 11.11–11.14 are completed; package-consumer, public API, compatibility, and release-inventory evidence remain regression gates.
 - **Risk: MCP lifecycle and projection realtime issues create silent degradation.** Mitigation: classify cross-request MCP lifecycle and SignalR reconnect remediation as release-readiness work, not optional cleanup.
 - **Risk: Workflow success is confused with release readiness.** A green evidence workflow can contain `classification=blocked` and `publish_authorized=false`, as observed for v3.2.2. Mitigation: fail the release on blocked evidence before publication, bind evidence to the exact published bytes, and publish durable machine-readable evidence with the initial GitHub Release.
+- **Risk: Gitlink identity is confused with shared-catalog compatibility.** Exact-SHA unit-test pins create false-red Governance failures on legitimate pointer advances while covering only selected graph edges. Mitigation: validate semantic catalog requirements from every actual selected Builds commit, graph-diff pointer changes, run affected-module restore/build gates, and seal exact identities separately as release provenance.
 - **Risk: UX requirements remain too compact for visual stories.** Mitigation: accept `_bmad-output/planning-artifacts/ux-design.md` as the v1.0 UX traceability artifact and require story-local design notes where layout choices are not already captured.
 
 ## 11. API Contracts / Public Surface
@@ -526,6 +531,7 @@ FrontComposer must complete the remaining Epic 11 release-readiness remediation 
 | D-8 | Standalone UX spec need | Product + UX | Resolved for v1.0: `ux-design.md` is sufficient for traceability; stories with visual/layout choices need story-local design notes. | Blocks only stories whose visual decisions are not captured elsewhere. |
 | D-9 | Final PRD status approval | Product Owner | Resolved 2026-07-05: Product approved D-1 through D-8 and the accepted assumption dispositions; PRD status promoted to `approved-for-v1-readiness`. | None. |
 | D-10 | Built-in analyzer target and activation | Architecture + Product + Release Owner | Resolved 2026-07-16: target `AnalysisMode=Recommended` through staged Stories 11.20–11.23, preserving `TreatWarningsAsErrors=true`, built-in analyzers only, and narrow owner-bound exceptions. | Story 11.23 and v1.0 publication authorization unless a dated replacement decision provides equivalent diagnostic ownership. |
+| D-11 | Shared-catalog compatibility and dependency provenance | Architecture + Product + Release Owner | Resolved 2026-07-19: validate semantic catalog contents and affected-module restore/build behavior at actual gitlinks; record exact reachable gitlink identities in the sealed release manifest. Exact SHAs and catalog fingerprints are provenance, not compatibility allowlists. Contract: `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`. | GOV-1, Story 11.17d promotion, and the next accepted governed release manifest. |
 
 ### 12.1 Open Question Disposition
 
@@ -535,6 +541,7 @@ All PRD open questions identified by the 2026-07-05 readiness follow-up are now 
 - FC-NIP row identity payload source and producer/consumer wiring are complete under D-4 and Stories 9.1–9.2.
 - Final PRD status approval is resolved through D-9; Product approval promoted the PRD to `approved-for-v1-readiness`.
 - Built-in analyzer target and activation are resolved through D-10; sequential Stories 11.20–11.23 carry the separately approval-gated implementation, and 11.23 is required before v1.0 publication authorization.
+- Shared-catalog compatibility and dependency provenance are resolved through D-11; GOV-1 carries implementation, while BUILD-CAT-1 separately routes the semantic catalog-version marker to Hexalith.Builds.
 
 ## 13. Assumptions Index
 
