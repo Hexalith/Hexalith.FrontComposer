@@ -13,6 +13,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
 {
     private const string ShellAssemblyName = "Hexalith.FrontComposer.Shell";
     private const string ShellNamespace = "Hexalith.FrontComposer.Shell";
+    private const string ShellRepositoryPathPrefix = "src/Hexalith.FrontComposer.Shell/";
 
     private static readonly IReadOnlyDictionary<string, string[]> ActionGroupExceptions
         = new Dictionary<string, string[]>(StringComparer.Ordinal)
@@ -82,7 +83,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
 
         sources.ShouldNotBeEmpty("the organization scan must cover handwritten Shell sources");
         sources.ShouldContain(source => source.Path.EndsWith(".razor.cs", StringComparison.Ordinal));
-        FindOrganizationViolations(sources, ActionGroupExceptions).ShouldBeEmpty();
+        FindOrganizationViolations(sources, ActionGroupExceptions, ShellRepositoryPathPrefix).ShouldBeEmpty();
     }
 
     [Fact]
@@ -95,6 +96,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
         expected.Length.ShouldBe(111);
         expected.Count(pin => pin.Accessibility == "public").ShouldBe(97);
         expected.Count(pin => pin.Accessibility == "internal").ShouldBe(14);
+        FindManifestUniquenessViolations(expected).ShouldBeEmpty();
         actual.ShouldNotBeEmpty("the source-shape pin must scan real Shell declarations");
 
         foreach (DeclarationPin pin in expected)
@@ -219,6 +221,77 @@ public sealed class ShellTypeOrganizationGovernanceTests
         AssertSyntheticViolation(sources, "State/Example/ExampleActions.cs", "2 direct declarations");
     }
 
+    [Fact]
+    public void OrganizationGuard_ConditionalDeclarationsWithSameIdentity_AreReported()
+    {
+        SourceFile[] sources =
+        [
+            new(
+                "Services/ConditionalOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "#if FIRST\npublic sealed record ConditionalOwner(string First);\n"
+                + "#else\npublic sealed record ConditionalOwner(string Second);\n#endif"),
+        ];
+
+        AssertSyntheticViolation(sources, "Services/ConditionalOwner.cs", "2 direct declarations");
+    }
+
+    [Fact]
+    public void OrganizationGuard_GenericAllowlistedAction_IsReported()
+    {
+        const string path = "State/Example/ExampleActions.cs";
+        SourceFile[] sources =
+        [
+            new(
+                path,
+                "namespace Hexalith.FrontComposer.Shell.State.Example; "
+                + "public sealed record ExampleAction<T>(T Value);"),
+        ];
+        Dictionary<string, string[]> exceptions = new(StringComparer.Ordinal)
+        {
+            [path] = ["ExampleAction"],
+        };
+
+        FindOrganizationViolations(sources, exceptions).ShouldContain(
+            violation => violation.Contains(path, StringComparison.Ordinal)
+                && violation.Contains("non-generic", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void OrganizationGuard_ProductionViolation_ReportsRepositoryRelativePath()
+    {
+        SourceFile[] sources =
+        [
+            new(
+                "Services/ExpectedOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services; public sealed class OtherOwner { }"),
+        ];
+
+        FindOrganizationViolations(
+            sources,
+            new Dictionary<string, string[]>(StringComparer.Ordinal),
+            ShellRepositoryPathPrefix).ShouldContain(
+                violation => violation.StartsWith(
+                    $"{ShellRepositoryPathPrefix}Services/ExpectedOwner.cs:",
+                    StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void DeclarationManifest_DuplicatePathAndIdentity_AreReported()
+    {
+        DeclarationPin duplicate = new(
+            "Services/Example.cs",
+            "Hexalith.FrontComposer.Shell.Services.Example",
+            "class",
+            "public",
+            "public sealed");
+
+        List<string> violations = FindManifestUniquenessViolations([duplicate, duplicate]);
+
+        violations.ShouldContain("duplicate manifest path Services/Example.cs");
+        violations.ShouldContain("duplicate manifest identity Hexalith.FrontComposer.Shell.Services.Example");
+    }
+
     private static void AssertSyntheticViolation(
         IReadOnlyList<SourceFile> sources,
         string expectedPath,
@@ -236,16 +309,18 @@ public sealed class ShellTypeOrganizationGovernanceTests
 
     private static List<string> FindOrganizationViolations(
         IReadOnlyList<SourceFile> sources,
-        IReadOnlyDictionary<string, string[]> actionGroupExceptions)
+        IReadOnlyDictionary<string, string[]> actionGroupExceptions,
+        string reportPathPrefix = "")
     {
         List<string> violations = [];
         Dictionary<string, SourceFile> sourceByPath = sources.ToDictionary(source => source.Path, StringComparer.Ordinal);
 
         foreach ((string path, string[] expectedNames) in actionGroupExceptions)
         {
+            string reportPath = $"{reportPathPrefix}{path}";
             if (!sourceByPath.TryGetValue(path, out SourceFile? source))
             {
-                violations.Add($"{path}: exact action-group exception file is missing");
+                violations.Add($"{reportPath}: exact action-group exception file is missing");
                 continue;
             }
 
@@ -257,7 +332,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
                 $"{path} must retain its exact ordered action identity set");
             if (declarations.Length != expectedNames.Length)
             {
-                violations.Add($"{path}: expected {expectedNames.Length} exact action declarations, found {declarations.Length}");
+                violations.Add($"{reportPath}: expected {expectedNames.Length} exact action declarations, found {declarations.Length}");
             }
 
             foreach (DirectDeclaration declaration in declarations)
@@ -267,16 +342,18 @@ public sealed class ShellTypeOrganizationGovernanceTests
                     || declaration.Kind != "record"
                     || declaration.Accessibility != "public"
                     || declaration.Modifiers != expectedModifiers
+                    || declaration.Arity != 0
                     || declaration.Namespace != expectedNamespace)
                 {
                     violations.Add(
-                        $"{path}: {declaration.Identity} must be an exact public{(expectedModifiers.Contains("sealed", StringComparison.Ordinal) ? " sealed" : string.Empty)} top-level record action");
+                        $"{reportPath}: {declaration.Identity} must be an exact public{(expectedModifiers.Contains("sealed", StringComparison.Ordinal) ? " sealed" : string.Empty)} non-generic top-level record action");
                 }
             }
         }
 
         foreach (SourceFile source in sources)
         {
+            string reportPath = $"{reportPathPrefix}{source.Path}";
             if (actionGroupExceptions.ContainsKey(source.Path))
             {
                 continue;
@@ -286,7 +363,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
             if (declarations.Length > 1)
             {
                 violations.Add(
-                    $"{source.Path}: found {declarations.Length} direct declarations "
+                    $"{reportPath}: found {declarations.Length} direct declarations "
                     + $"({string.Join(", ", declarations.Select(declaration => declaration.Name))}); exactly one is allowed");
                 continue;
             }
@@ -297,7 +374,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
                 if (!string.Equals(ownerName, declarations[0].Name, StringComparison.Ordinal))
                 {
                     violations.Add(
-                        $"{source.Path}: normalized file owner {ownerName} must match direct declaration {declarations[0].Name}");
+                        $"{reportPath}: normalized file owner {ownerName} must match direct declaration {declarations[0].Name}");
                 }
             }
         }
@@ -356,7 +433,8 @@ public sealed class ShellTypeOrganizationGovernanceTests
             8,
             $"{source.Path} has too many conditional symbols for exhaustive organization analysis");
 
-        Dictionary<string, DirectDeclaration> declarations = new(StringComparer.Ordinal);
+        Dictionary<(string Identity, string Kind, string Accessibility, string Modifiers, int SpanStart), DirectDeclaration>
+            declarations = [];
         int combinations = 1 << conditionalSymbols.Length;
         for (int mask = 0; mask < combinations; mask++)
         {
@@ -374,12 +452,12 @@ public sealed class ShellTypeOrganizationGovernanceTests
                 .Where(IsDirectDeclaration))
             {
                 DirectDeclaration declaration = CreateDeclaration(source.Path, member);
-                string key = string.Join(
-                    '|',
+                var key = (
                     declaration.Identity,
                     declaration.Kind,
                     declaration.Accessibility,
-                    declaration.Modifiers);
+                    declaration.Modifiers,
+                    declaration.SpanStart);
                 declarations.TryAdd(key, declaration);
             }
         }
@@ -393,12 +471,12 @@ public sealed class ShellTypeOrganizationGovernanceTests
             .Where(IsDirectDeclaration))
         {
             DirectDeclaration declaration = CreateDeclaration(source.Path, member);
-            string key = string.Join(
-                '|',
+            var key = (
                 declaration.Identity,
                 declaration.Kind,
                 declaration.Accessibility,
-                declaration.Modifiers);
+                declaration.Modifiers,
+                declaration.SpanStart);
             declarations.TryAdd(key, declaration);
         }
 
@@ -482,15 +560,37 @@ public sealed class ShellTypeOrganizationGovernanceTests
                 .Select(declaration => declaration.Name.ToString()));
         string modifierText = string.Join(' ', modifiers.Select(modifier => modifier.ValueText));
         string accessibility = modifiers.Any(SyntaxKind.PublicKeyword) ? "public" : "internal";
+        int arity = member switch
+        {
+            TypeDeclarationSyntax type => type.TypeParameterList?.Parameters.Count ?? 0,
+            DelegateDeclarationSyntax @delegate => @delegate.TypeParameterList?.Parameters.Count ?? 0,
+            _ => 0,
+        };
+        string metadataName = arity == 0 ? name : $"{name}`{arity}";
         return new(
             path,
             @namespace,
             name,
-            string.IsNullOrEmpty(@namespace) ? name : $"{@namespace}.{name}",
+            string.IsNullOrEmpty(@namespace) ? metadataName : $"{@namespace}.{metadataName}",
             kind,
             accessibility,
             modifierText,
+            arity,
             spanStart);
+    }
+
+    private static List<string> FindManifestUniquenessViolations(IReadOnlyList<DeclarationPin> pins)
+    {
+        List<string> violations = [];
+        violations.AddRange(
+            pins.GroupBy(pin => pin.Path, StringComparer.Ordinal)
+                .Where(group => group.Count() > 1)
+                .Select(group => $"duplicate manifest path {group.Key}"));
+        violations.AddRange(
+            pins.GroupBy(pin => pin.Identity, StringComparer.Ordinal)
+                .Where(group => group.Count() > 1)
+                .Select(group => $"duplicate manifest identity {group.Key}"));
+        return violations;
     }
 
     private static DeclarationPin[] ParseDeclarationPins()
@@ -553,6 +653,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
         string Kind,
         string Accessibility,
         string Modifiers,
+        int Arity,
         int SpanStart);
 
     private sealed record DeclarationPin(

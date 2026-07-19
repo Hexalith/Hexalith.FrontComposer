@@ -76,12 +76,12 @@ This story refines PRD FR-25, FR-28, and FR-29 and closes only the Shell child o
 
 #### Governance/tests/docs chunk
 
-- [ ] [Review][Patch] Distinct direct declarations collapse before organization enforcement [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:377]
-- [ ] [Review][Patch] Pinned declaration manifest accepts duplicate rows [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:95]
-- [ ] [Review][Patch] Auth boundary skips the entire organization-governance source [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs:40]
-- [ ] [Review][Patch] Auth boundary treats exact file exemptions as prefixes [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs:53]
-- [ ] [Review][Patch] Organization violations omit the repository-relative Shell path [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:315]
-- [ ] [Review][Patch] Action exception pins omit generic arity from type identity [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:263]
+- [x] [Review][Patch] Distinct direct declarations collapse before organization enforcement [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:377]
+- [x] [Review][Patch] Pinned declaration manifest accepts duplicate rows [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:95]
+- [x] [Review][Patch] Auth boundary skips the entire organization-governance source [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs:40]
+- [x] [Review][Patch] Auth boundary treats exact file exemptions as prefixes [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs:53]
+- [x] [Review][Patch] Organization violations omit the repository-relative Shell path [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:315]
+- [x] [Review][Patch] Action exception pins omit generic arity from type identity [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:263]
 - [x] [Review][Defer] Per-file token-literal exemptions use suffix matching [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs:122] — deferred, pre-existing
 
 ## Dev Notes
@@ -272,6 +272,7 @@ GPT-5 Codex
 - 2026-07-15 Task 6 release gates: Release restore succeeded; serialized solution build with `MinVerVersionOverride=4.0.0` completed with zero warnings/errors. The focused organization class passed 9/9. The first broad Shell run found the new manifest in the exact auth source scanner; adding only `ShellTypeOrganizationGovernanceTests.cs` to that test's explicit allowlist repaired the governance interaction (affected test 1/1). Final broad Shell non-Contract passed 2,314/2,314, solution default passed 4,108/4,108, and Governance passed 302/302 under `DiffEngine_Disabled=true`.
 - 2026-07-15 Task 6 mechanical evidence: final census is 382 handwritten Shell C# sources with only the exact six action groups / 38 declarations multi-type, versus baseline 300 sources / 35 files / 149 declarations; split targets moved from 29 files / 111 declarations to zero. Newline-normalized Roslyn comparison reports 111 targets / zero declaration differences. The story owns 33 tracked modified/deleted paths and 90 untracked paths (123 changed paths total); the File List also classifies the two unchanged baseline-evidence files. All 114 changed/new C# files are valid UTF-8, CRLF-only, final-newline clean, and trailing-whitespace-free. No `*.received.*` or generated artifact was introduced; the six action files, FC-TBL API baseline, compatibility suppressions, Shell/Shell.Tests projects, packages props, and solution are unchanged; `git diff --check` passed.
 - 2026-07-15 Task 6 artifact reconciliation: `validate-story-artifacts.py` passed with the concurrent 11.17a record, deferred-work ledger, and Tenants gitlink explicitly classified as unrelated. Root gitlink audit contains only the pre-existing `references/Hexalith.Tenants` advance `7b271a452b51c0d8e50a12ccbc7ee2d2393c71de` -> `28630b94a7b4931dcd6796eb50ad1c21b092055d`; no submodule was edited by this story.
+- 2026-07-19 governance/tests/docs review remediation: hardened declaration counting with source-position keys, rejected duplicate manifest pins, included generic arity in action identities, emitted repository-relative violation paths, and replaced broad auth source/path exemptions with exact matching. Shell.Tests Release build completed with zero warnings/errors; the affected classes passed 17/17 and the analyzer-policy inventory guard passed 1/1. The Shell Governance lane passed 187/188; its sole failure is the already-deferred bare-LF defect in the external Hexalith.Builds package catalog.
 
 ### Completion Notes List
 
@@ -284,6 +285,7 @@ GPT-5 Codex
 - Task 4 added the non-vacuous Shell organization/source/reflection governance guard; its production and synthetic lanes pass 9/9.
 - Task 5 preserved the existing Shell behavior/API seams and passed the version-aligned package compatibility gate without a new baseline or suppression.
 - Task 6 completed all Release, focused, broad, solution, Governance, package, body-preservation, encoding, artifact, and story-ledger gates. M14 is closed for the Shell child only; remaining Contracts/Testing organization debt and Stories 11.18/11.19 remain out of scope.
+- Governance/tests/docs review remediated all six story-owned guard defects and retained one pre-existing token-literal suffix-matching issue in the deferred-work ledger.
 
 ### Documented Unrelated Workspace State
 
@@ -418,7 +420,8 @@ GPT-5 Codex
 - `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs` (new — exact organization, action-exception, source, reflection, and synthetic governance)
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/HydrationStateConsolidationTests.cs` (modified — same-named capability enum source path)
 - `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md` (new — Story 11.17d implementation and evidence record)
-- `_bmad-output/implementation-artifacts/deferred-work.md` (updated during code review — five pre-existing findings recorded across the non-State and State chunks; earlier concurrent content preserved)
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` (updated during code-review remediation — exact test identifier inventory count and hash)
+- `_bmad-output/implementation-artifacts/deferred-work.md` (updated during code review — six pre-existing findings recorded across the non-State, State, and governance/tests/docs chunks; earlier concurrent content preserved)
 - `_bmad-output/implementation-artifacts/sprint-status.yaml` (updated — Story 11.17d returned from review to in-progress while review chunks remain; concurrent entries preserved)
 
 ## Change Log
@@ -427,3 +430,4 @@ GPT-5 Codex
 - 2026-07-15: Implemented Story 11.17d. Split 29 Shell bundles into one same-named declaration per file while retaining the exact six/38 action exception, added non-vacuous source/reflection governance, preserved 111/111 declaration bodies and all behavior/API/package seams, passed Release/default/Governance/package/artifact gates, and moved the story to review.
 - 2026-07-19: Completed code-review chunk 1A over non-State Shell production with all four configured review layers. Found no Story 11.17d defects or decisions; deferred three pre-existing `ExpandInRowJSModule` lifecycle issues, dismissed eighteen candidates, and returned the story to in-progress pending the remaining chunks.
 - 2026-07-19: Completed the State code-review chunk with all four configured review layers. Found no Story 11.17d defects or decisions; deferred two pre-existing hardening issues, dismissed thirteen candidates, and kept the story in-progress pending the governance/tests/docs and evidence/status chunks.
+- 2026-07-19: Completed the governance/tests/docs review chunk with all four configured layers. Fixed six governance blind spots, deferred one pre-existing suffix-matching weakness, dismissed nine candidates, and kept the story in-progress pending the evidence/status chunk.

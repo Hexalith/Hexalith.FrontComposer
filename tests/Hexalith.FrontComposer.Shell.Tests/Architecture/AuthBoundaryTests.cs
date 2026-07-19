@@ -6,6 +6,15 @@ namespace Hexalith.FrontComposer.Shell.Tests.Architecture;
 
 [Trait("Category", "Governance")]
 public sealed class AuthBoundaryTests {
+    private static readonly IReadOnlyDictionary<string, string[]> AllowedOrganizationManifestLines
+        = new Dictionary<string, string[]>(StringComparer.OrdinalIgnoreCase) {
+            [Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs")] = [
+                "Options/FrontComposerGitHubOAuthOptions.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerGitHubOAuthOptions|class|public|public sealed",
+                "Options/FrontComposerOpenIdConnectOptions.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerOpenIdConnectOptions|class|public|public sealed",
+                "Options/FrontComposerSaml2Options.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerSaml2Options|class|public|public sealed",
+            ],
+        };
+
     [Fact]
     public void ProviderSpecificAuthenticationTypes_DoNotLeakOutsideShellAuthArea() {
         string root = FindRepositoryRoot();
@@ -34,10 +43,6 @@ public sealed class AuthBoundaryTests {
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Extensions/FrontComposerAuthenticationServiceExtensionsTests.cs"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs"),
-            // The Shell organization guard pins the exact source identities of the split auth
-            // option declarations. Those manifest strings are governance evidence, not a runtime
-            // dependency on provider-specific authentication types.
-            Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs"),
             Normalize("tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs"),
             Normalize("_bmad-output/implementation-artifacts/7-1-oidc-saml-authentication-integration.md"),
@@ -50,13 +55,14 @@ public sealed class AuthBoundaryTests {
             if (relative.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
                 || relative.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
                 || relative.StartsWith($"references{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-                || allowedPathFragments.Any(p => relative.StartsWith(p, StringComparison.OrdinalIgnoreCase))) {
+                || IsAllowedPath(relative, allowedPathFragments)) {
                 continue;
             }
 
             // P18 — strip line and block comments before scanning so a doc-comment that legitimately
             // mentions "OpenIdConnect" does not trigger a boundary violation.
             string text = StripComments(File.ReadAllText(file));
+            text = RemoveAllowedSourceLiterals(relative, text);
             // Configuration KEY segments (e.g. "Authentication:OpenIdConnect:ClientId" or the
             // double-underscore env-var form "Authentication__OpenIdConnect__Authority") name a
             // configuration section, not a provider-specific auth TYPE. Hosts MUST reference these
@@ -73,6 +79,32 @@ public sealed class AuthBoundaryTests {
         }
 
         violations.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void AllowedAuthenticationPath_ExactFileEntry_DoesNotMatchLongerFilename()
+    {
+        string exactFile = Normalize(
+            "src/Hexalith.FrontComposer.Shell/Options/FrontComposerOpenIdConnectOptions.cs");
+        string directory = Normalize("src/Hexalith.FrontComposer.Shell/Services/Auth/");
+
+        IsAllowedPath(exactFile, [exactFile]).ShouldBeTrue();
+        IsAllowedPath($"{exactFile}.Backup.cs", [exactFile]).ShouldBeFalse();
+        IsAllowedPath($"{directory}NestedHandler.cs", [directory]).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void OrganizationManifest_ExactAllowedLine_DoesNotHideRuntimeTypeUsage()
+    {
+        string path = Normalize(
+            "tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs");
+        string allowedLine = AllowedOrganizationManifestLines[path][1];
+        string source = $"{allowedLine}\nOpenIdConnectOptions leaked = new();";
+
+        string filtered = RemoveAllowedSourceLiterals(path, source);
+
+        filtered.ShouldNotContain(allowedLine);
+        filtered.ShouldContain("OpenIdConnectOptions leaked = new();");
     }
 
     [Fact]
@@ -134,6 +166,26 @@ public sealed class AuthBoundaryTests {
         // Block comments first (greedy reluctant), then line comments.
         string noBlocks = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
         return Regex.Replace(noBlocks, @"//.*?$", string.Empty, RegexOptions.Multiline);
+    }
+
+    private static bool IsAllowedPath(string relativePath, IReadOnlyList<string> allowedPaths)
+        => allowedPaths.Any(allowedPath => allowedPath.EndsWith(Path.DirectorySeparatorChar)
+            ? relativePath.StartsWith(allowedPath, StringComparison.OrdinalIgnoreCase)
+            : string.Equals(relativePath, allowedPath, StringComparison.OrdinalIgnoreCase));
+
+    private static string RemoveAllowedSourceLiterals(string relativePath, string source)
+    {
+        if (!AllowedOrganizationManifestLines.TryGetValue(relativePath, out string[]? allowedLines))
+        {
+            return source;
+        }
+
+        foreach (string allowedLine in allowedLines)
+        {
+            source = source.Replace(allowedLine, string.Empty, StringComparison.Ordinal);
+        }
+
+        return source;
     }
 
     private static string FindRepositoryRoot() {
