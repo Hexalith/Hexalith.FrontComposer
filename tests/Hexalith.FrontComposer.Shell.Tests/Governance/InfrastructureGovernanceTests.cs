@@ -118,10 +118,9 @@ public sealed class InfrastructureGovernanceTests {
         FindPackageVersionOperations(memoriesCatalog, "Microsoft.Extensions.TimeProvider.Testing").ShouldBeEmpty(
             "Memories must inherit Microsoft.Extensions.TimeProvider.Testing 10.8.0 from the shared catalog");
 
-        // EventStore retains its 2026-07-18 AngleSharp/NU1902-compatible Builds pin. Memories'
-        // later Access Telemetry work advanced its nested pin independently. Keep each expected
-        // commit aligned with the corresponding tracked submodule gitlink.
-        const string eventStoreBuildsCommit = "08b57086f24514638bc0901154759ac023fd2876";
+        // EventStore and Memories now share the 2026-07-18 AngleSharp/NU1902-compatible Builds
+        // pin. Keep each expected commit aligned with the corresponding tracked submodule gitlink.
+        const string eventStoreBuildsCommit = "c177c66af5d3f509328c2f568dc0737fe9f89e4e";
         const string memoriesBuildsCommit = "c177c66af5d3f509328c2f568dc0737fe9f89e4e";
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.EventStore"), "references/Hexalith.Builds")
             .ShouldBe(eventStoreBuildsCommit, "EventStore standalone restores need the migrated shared pins");
