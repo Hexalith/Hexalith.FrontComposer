@@ -19,7 +19,7 @@
     {
       "story": "9-3-ide-parity-and-developer-experience",
       "path": "docs/ide-parity-matrix.md",
-      "sha256": "e286b31a818b53cb8a6a9ecafbea65b6efc8f58e79c37d9c35b72142ce44f130"
+      "sha256": "188d9ce236de39688f85a7d281826cc70cbd2200fa08e38714e331e067b3e1bd"
     },
     {
       "story": "9-4-diagnostic-id-system-and-deprecation-policy",
