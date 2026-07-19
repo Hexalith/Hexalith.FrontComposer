@@ -43,12 +43,15 @@ public sealed class InfrastructureGovernanceTests {
         rootPackageVersions.ShouldBeEmpty(
             "the FrontComposer root file is an import shim; package versions belong in Hexalith.Builds");
 
-        string sharedCatalogPath = Path.Combine(
-            root,
-            "references",
-            "Hexalith.Builds",
-            "Props",
-            "Directory.Packages.props");
+        string buildsRoot = Path.Combine(root, "references", "Hexalith.Builds");
+        const string sharedCatalogRelativePath = "Props/Directory.Packages.props";
+        ReadGitAttribute(buildsRoot, sharedCatalogRelativePath, "text").ShouldBe("set");
+        ReadGitAttribute(buildsRoot, sharedCatalogRelativePath, "eol").ShouldBe("crlf");
+        ReadGitAttribute(buildsRoot, "Directory.Build.props", "eol").ShouldBe(
+            "unspecified",
+            "the catalog-only checkout policy must not broaden to unrelated Builds files");
+
+        string sharedCatalogPath = Path.Combine(buildsRoot, "Props", "Directory.Packages.props");
         AssertUtf8BomAndCrLf(sharedCatalogPath);
         XDocument sharedCatalog = XDocument.Load(sharedCatalogPath);
         sharedCatalog
@@ -115,10 +118,11 @@ public sealed class InfrastructureGovernanceTests {
         FindPackageVersionOperations(memoriesCatalog, "Microsoft.Extensions.TimeProvider.Testing").ShouldBeEmpty(
             "Memories must inherit Microsoft.Extensions.TimeProvider.Testing 10.8.0 from the shared catalog");
 
-        // 2026-07-18 (AngleSharp/NU1902 remediation): EventStore and Memories use independently
-        // compatible Builds commits. Update in lockstep with the corresponding gitlink bumps.
+        // EventStore retains its 2026-07-18 AngleSharp/NU1902-compatible Builds pin. Memories'
+        // later Access Telemetry work advanced its nested pin independently. Keep each expected
+        // commit aligned with the corresponding tracked submodule gitlink.
         const string eventStoreBuildsCommit = "08b57086f24514638bc0901154759ac023fd2876";
-        const string memoriesBuildsCommit = "437c4c02619cfb3fff7792796e5d76d25c7521ad";
+        const string memoriesBuildsCommit = "c177c66af5d3f509328c2f568dc0737fe9f89e4e";
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.EventStore"), "references/Hexalith.Builds")
             .ShouldBe(eventStoreBuildsCommit, "EventStore standalone restores need the migrated shared pins");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Memories"), "references/Hexalith.Builds")
@@ -196,9 +200,10 @@ public sealed class InfrastructureGovernanceTests {
             }
         }
 
+        const string rootBuildsCommit = "deb76e983434335c990b0a1f676b8887d643a274";
         const string partiesBuildsCommit = "c177c66af5d3f509328c2f568dc0737fe9f89e4e";
         ReadGitlinkCommit(root, "references/Hexalith.Builds")
-            .ShouldBe(partiesBuildsCommit, "the inspected catalog must match Parties' pinned Builds commit");
+            .ShouldBe(rootBuildsCommit, "the inspected catalog must match the repaired root Builds commit");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Parties"), "references/Hexalith.Builds")
             .ShouldBe(partiesBuildsCommit, "Parties standalone restores need the centralized shared pins");
     }
@@ -658,6 +663,34 @@ public sealed class InfrastructureGovernanceTests {
         }
 
         return fields[1];
+    }
+
+    private static string ReadGitAttribute(string repositoryPath, string relativePath, string attribute) {
+        ProcessStartInfo startInfo = new("git") {
+            WorkingDirectory = repositoryPath,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        startInfo.ArgumentList.Add("check-attr");
+        startInfo.ArgumentList.Add(attribute);
+        startInfo.ArgumentList.Add("--");
+        startInfo.ArgumentList.Add(relativePath);
+
+        using Process process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"Could not start git in {repositoryPath}.");
+        string standardOutput = process.StandardOutput.ReadToEnd();
+        string standardError = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0) {
+            throw new InvalidOperationException(
+                $"git check-attr failed in {repositoryPath} with exit code {process.ExitCode}: {standardError}");
+        }
+
+        string prefix = $"{relativePath}: {attribute}: ";
+        standardOutput.ShouldStartWith(prefix);
+        return standardOutput[prefix.Length..].Trim();
     }
 
     private static string[] ReadTrackedFiles(string repositoryPath, params string[] pathspecs) {
