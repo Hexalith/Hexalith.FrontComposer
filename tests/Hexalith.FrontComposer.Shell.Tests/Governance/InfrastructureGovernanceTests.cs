@@ -118,10 +118,10 @@ public sealed class InfrastructureGovernanceTests {
         FindPackageVersionOperations(memoriesCatalog, "Microsoft.Extensions.TimeProvider.Testing").ShouldBeEmpty(
             "Memories must inherit Microsoft.Extensions.TimeProvider.Testing 10.8.0 from the shared catalog");
 
-        // EventStore and Memories now share the 2026-07-18 AngleSharp/NU1902-compatible Builds
-        // pin. Keep each expected commit aligned with the corresponding tracked submodule gitlink.
-        const string eventStoreBuildsCommit = "c177c66af5d3f509328c2f568dc0737fe9f89e4e";
-        const string memoriesBuildsCommit = "c177c66af5d3f509328c2f568dc0737fe9f89e4e";
+        // EventStore and Memories carry Builds commits that contain the centralized catalog.
+        // Keep each expected commit aligned with the corresponding tracked submodule gitlink.
+        const string eventStoreBuildsCommit = "f8981e8ec4a5dec9d574da139c2e00dd714f2a60";
+        const string memoriesBuildsCommit = "cb8b2d412a937e09380387601c2682e080b66220";
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.EventStore"), "references/Hexalith.Builds")
             .ShouldBe(eventStoreBuildsCommit, "EventStore standalone restores need the migrated shared pins");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Memories"), "references/Hexalith.Builds")
@@ -199,7 +199,7 @@ public sealed class InfrastructureGovernanceTests {
             }
         }
 
-        const string rootBuildsCommit = "deb76e983434335c990b0a1f676b8887d643a274";
+        const string rootBuildsCommit = "cb8b2d412a937e09380387601c2682e080b66220";
         const string partiesBuildsCommit = "c177c66af5d3f509328c2f568dc0737fe9f89e4e";
         ReadGitlinkCommit(root, "references/Hexalith.Builds")
             .ShouldBe(rootBuildsCommit, "the inspected catalog must match the repaired root Builds commit");
