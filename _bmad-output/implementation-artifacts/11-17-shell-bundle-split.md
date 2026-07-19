@@ -84,6 +84,12 @@ This story refines PRD FR-25, FR-28, and FR-29 and closes only the Shell child o
 - [x] [Review][Patch] Action exception pins omit generic arity from type identity [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:263]
 - [x] [Review][Defer] Per-file token-literal exemptions use suffix matching [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs:122] — deferred, pre-existing
 
+#### Evidence/status chunk
+
+- [ ] [Review][Decision] Current Governance gate remains red — AC5 and the project completion rules require the configured Governance lane to pass, but the latest clean-HEAD evidence records 187/188 after review remediation because of the external Hexalith.Builds catalog failure. Decide whether to keep Story 11.17d in progress until that external gate is repaired and rerun green, or explicitly amend/waive the passing-gate requirement.
+- [ ] [Review][Patch] Final story-owned changed-path count was not reconciled after review-owned artifact edits [_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md:273]
+- [ ] [Review][Patch] Unrelated Builds package-catalog deferred work is grouped inside the Story 11.17d State review section [_bmad-output/implementation-artifacts/deferred-work.md:1801]
+
 ## Dev Notes
 
 ### Scope and Current-State Decisions
