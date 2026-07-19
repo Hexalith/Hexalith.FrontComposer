@@ -74,6 +74,16 @@ This story refines PRD FR-25, FR-28, and FR-29 and closes only the Shell child o
 - [x] [Review][Defer] Virtualization reducers stamp newly created snapshots from the wall clock despite their pure-reducer contract [src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/VirtualizationViewStateReducers.cs:35] — deferred, pre-existing
 - [x] [Review][Defer] Record cloning can bypass required pending-command registration metadata validation [src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRegistration.cs:37] — deferred, pre-existing
 
+#### Governance/tests/docs chunk
+
+- [ ] [Review][Patch] Distinct direct declarations collapse before organization enforcement [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:377]
+- [ ] [Review][Patch] Pinned declaration manifest accepts duplicate rows [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:95]
+- [ ] [Review][Patch] Auth boundary skips the entire organization-governance source [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs:40]
+- [ ] [Review][Patch] Auth boundary treats exact file exemptions as prefixes [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs:53]
+- [ ] [Review][Patch] Organization violations omit the repository-relative Shell path [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:315]
+- [ ] [Review][Patch] Action exception pins omit generic arity from type identity [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:263]
+- [x] [Review][Defer] Per-file token-literal exemptions use suffix matching [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs:122] — deferred, pre-existing
+
 ## Dev Notes
 
 ### Scope and Current-State Decisions
