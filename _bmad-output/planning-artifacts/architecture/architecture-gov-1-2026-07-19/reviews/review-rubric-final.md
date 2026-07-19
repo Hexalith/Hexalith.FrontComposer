@@ -2,30 +2,26 @@
 
 **Target:** `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md`  
 **Review date:** 2026-07-19  
-**Ratification authority:** Administrator, acting as Architect + Release Owner  
-**Inputs reconciled:** PRD, epics, canonical architecture, FC-DEP-1, sprint-change proposal, and GOV-1 story
+**Inputs reconciled:** PRD, epics, canonical architecture, FC-DEP-1, sprint-change proposal, GOV-1 story, and G2 / BUILD-REL-1 upstream request
 
 ## Verdict
 
 **PASS.** No Critical or High finding remains.
 
-The final spine fixes the real epic-level divergence points with enforceable ADs: the complete defined
-depth-1/2 graph, exact committed-object authority, closed identity/policy/profile/build registries,
-canonical graph and manifest schemas, fail-closed resource ceilings, deterministic affected-module
-mapping, one-time policy bootstrap, authenticated exact-CI handoff, immutable CI/release evaluator
-closure, manifest-v2 migration, and offline/live verification.
+The amended spine closes the evaluator-authorization, static-closure, exact-source-acquisition,
+upstream-completion, REL-4 truth-state, and post-release candidate-binding seams. In particular:
 
-Reconciliation is complete:
+- AD-13 limits external workflow/action acquisition to exact repositories and commits already named by
+  the matching active-policy authorization, uses bounded isolated bare stores, and prohibits workflow or
+  action text from supplying remotes.
+- AD-15 preserves the authenticated CI run/attempt/raw handoff hash and exact policy projection in every
+  Release verification handoff, including pre-manifest failures, and makes the post-release verifier
+  independently re-authenticate both handoffs before accepting candidate or policy identity.
+- AD-16 and the G2 / BUILD-REL-1 request now agree on the complete `domain-ci.yml`,
+  `domain-release.yml`, composite-action, static-closure, two-handoff, and exact-candidate contract. They
+  also agree that Tasks 4/5, story completion, release eligibility, and REL-4 unfreeze remain blocked
+  while the accepted immutable revision is pending, and that no contingency exists without a new dated
+  Architect + Release Owner decision carrying equivalent proofs and bounded migration terms.
 
-- PRD FR-24, NFR-12/NFR-13, SM-2a, risks, and D-11 use the ratified boundary and provenance model.
-- Epic GOV-1 acceptance criteria match the final graph, policy, CI, and release contracts.
-- Canonical architecture now includes graph, policy, and canonical combined CI/release workflow-
-  definition digest in fallback invalidation.
-- FC-DEP-1 is approved and its adopted decisions align with AD-1–AD-14.
-- The sprint-change proposal records ratification and the same controls/handoff.
-- The GOV-1 story has a resolved entry gate and implementation tasks matching the final spine.
-
-Deferred historical traversal, the mandatory BUILD-CAT-1 marker, and runtime deployment/provider
-topology are safe: each is outside v1, has an explicit owner or future approval condition, and cannot
-let GOV-1 implementers choose incompatible current behavior.
-
+The PRD, epics, canonical architecture, FC-DEP-1, sprint-change proposal, and GOV-1 story preserve those
+same invariants at their respective altitudes. The deterministic spine lint reports zero findings.

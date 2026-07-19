@@ -1,0 +1,177 @@
+{
+  "schema": "hexalith.dependency-graph-policy.v1",
+  "builds_identity": "github.com/hexalith/hexalith.builds",
+  "trusted_identities": [
+    { "identity": "github.com/hexalith/hexalith.frontcomposer", "local_path": "." },
+    { "identity": "github.com/hexalith/hexalith.eventstore", "local_path": "references/Hexalith.EventStore" },
+    { "identity": "github.com/hexalith/hexalith.tenants", "local_path": "references/Hexalith.Tenants" },
+    { "identity": "github.com/hexalith/hexalith.commons", "local_path": "references/Hexalith.Commons" },
+    { "identity": "github.com/hexalith/hexalith.builds", "local_path": "references/Hexalith.Builds" },
+    { "identity": "github.com/hexalith/hexalith.polymorphicserializations", "local_path": "references/Hexalith.PolymorphicSerializations" },
+    { "identity": "github.com/hexalith/hexalith.ai.tools", "local_path": "references/Hexalith.AI.Tools" },
+    { "identity": "github.com/hexalith/hexalith.memories", "local_path": "references/Hexalith.Memories" },
+    { "identity": "github.com/hexalith/hexalith.parties", "local_path": "references/Hexalith.Parties" }
+  ],
+  "semantic_profiles": {
+    "github.com/hexalith/hexalith.frontcomposer": "frontcomposer-catalog-v1",
+    "github.com/hexalith/hexalith.eventstore": "eventstore-catalog-v1",
+    "github.com/hexalith/hexalith.memories": "memories-catalog-v1",
+    "github.com/hexalith/hexalith.parties": "parties-catalog-v1",
+    "github.com/hexalith/hexalith.builds": "shared-catalog-baseline-v1",
+    "github.com/hexalith/hexalith.commons": "shared-catalog-baseline-v1",
+    "github.com/hexalith/hexalith.polymorphicserializations": "shared-catalog-baseline-v1",
+    "github.com/hexalith/hexalith.tenants": "shared-catalog-baseline-v1",
+    "github.com/hexalith/hexalith.ai.tools": "shared-catalog-baseline-v1"
+  },
+  "profiles": {
+    "frontcomposer-catalog-v1": {
+      "owner_checks": {
+        "no_package_version_rows": true,
+        "bom_crlf_on_selected_catalog": true
+      },
+      "selected_catalog_required_properties": {
+        "HexalithTenantsVersion": "3.2.18"
+      },
+      "selected_catalog_required_packages": {
+        "BenchmarkDotNet": "0.15.8",
+        "FsCheck.Xunit.v3": "3.3.3",
+        "Microsoft.CodeAnalysis.Workspaces.Common": "5.6.0",
+        "Microsoft.Extensions.Localization": "10.0.9",
+        "Microsoft.Extensions.TimeProvider.Testing": "10.8.0",
+        "ModelContextProtocol.AspNetCore": "1.4.1",
+        "NUlid": "1.7.3",
+        "PactNet": "5.0.1",
+        "System.Collections.Immutable": "10.0.10",
+        "System.ComponentModel.Annotations": "5.0.0",
+        "System.Reactive": "7.0.0",
+        "System.Threading.Tasks.Extensions": "4.6.3",
+        "Verify": "31.24.2",
+        "Verify.XunitV3": "31.24.2"
+      }
+    },
+    "eventstore-catalog-v1": {
+      "owner_checks": {
+        "no_local_override_for_selected_catalog_packages": true
+      },
+      "selected_catalog_required_properties": {},
+      "selected_catalog_required_packages": {
+        "Microsoft.Extensions.TimeProvider.Testing": "10.8.0",
+        "System.CommandLine": "2.0.10",
+        "ModelContextProtocol": "1.4.1"
+      }
+    },
+    "memories-catalog-v1": {
+      "owner_checks": {
+        "no_local_override_for_selected_catalog_packages": true
+      },
+      "selected_catalog_required_properties": {},
+      "selected_catalog_required_packages": {
+        "ModelContextProtocol.AspNetCore": "1.4.1",
+        "Microsoft.Extensions.TimeProvider.Testing": "10.8.0"
+      }
+    },
+    "parties-catalog-v1": {
+      "owner_checks": {
+        "no_local_override_for_selected_catalog_packages": true,
+        "no_minver": true,
+        "no_inline_versions_in_tracked_files": {
+          "extensions": [".csproj", ".props", ".targets"]
+        },
+        "guarded_imports": {
+          "import_projects": [
+            "$(Hexalith1BuildPackageProps)",
+            "$(Hexalith2BuildPackageProps)",
+            "$(Hexalith3BuildPackageProps)"
+          ],
+          "import_conditions": [
+            "Exists('$(Hexalith1BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'",
+            "Exists('$(Hexalith2BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'",
+            "'$(HexalithVersionsLoaded)' != 'true'"
+          ],
+          "required_properties": {
+            "ManagePackageVersionsCentrally": "true",
+            "CentralPackageTransitivePinningEnabled": "true",
+            "Hexalith1BuildPackageProps": "$(MSBuildThisFileDirectory)references/Hexalith.Builds/Props/Directory.Packages.props",
+            "Hexalith2BuildPackageProps": "$(MSBuildThisFileDirectory)../Hexalith.Builds/Props/Directory.Packages.props",
+            "Hexalith3BuildPackageProps": "$(MSBuildThisFileDirectory)../../Hexalith.Builds/Props/Directory.Packages.props"
+          }
+        }
+      },
+      "selected_catalog_required_properties": {},
+      "selected_catalog_required_packages": {
+        "Microsoft.AspNetCore.Components.CustomElements": "10.0.10",
+        "ModelContextProtocol": "1.4.1",
+        "ModelContextProtocol.AspNetCore": "1.4.1"
+      }
+    },
+    "shared-catalog-baseline-v1": {
+      "owner_checks": {
+        "well_formed_project_root": true,
+        "override_not_enabled": true
+      },
+      "selected_catalog_required_properties": {},
+      "selected_catalog_required_packages": {}
+    }
+  },
+  "module_build_registry": {
+    "github.com/hexalith/hexalith.frontcomposer": {
+      "disposition": "build",
+      "solution": "Hexalith.FrontComposer.slnx",
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+    },
+    "github.com/hexalith/hexalith.eventstore": {
+      "disposition": "build",
+      "solution": "Hexalith.EventStore.slnx",
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+    },
+    "github.com/hexalith/hexalith.tenants": {
+      "disposition": "build",
+      "solution": "Hexalith.Tenants.slnx",
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+    },
+    "github.com/hexalith/hexalith.commons": {
+      "disposition": "build",
+      "solution": "Hexalith.Commons.slnx",
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+    },
+    "github.com/hexalith/hexalith.builds": {
+      "disposition": "build",
+      "solution": "Hexalith.Builds.slnx",
+      "builds_contract_source": "self"
+    },
+    "github.com/hexalith/hexalith.polymorphicserializations": {
+      "disposition": "build",
+      "solution": "Hexalith.PolymorphicSerializations.slnx",
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+    },
+    "github.com/hexalith/hexalith.memories": {
+      "disposition": "build",
+      "solution": "Hexalith.Memories.slnx",
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+    },
+    "github.com/hexalith/hexalith.parties": {
+      "disposition": "build",
+      "solution": "Hexalith.Parties.slnx",
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+    },
+    "github.com/hexalith/hexalith.ai.tools": {
+      "disposition": "evidence-only",
+      "solution": null,
+      "builds_contract_source": "none"
+    }
+  },
+  "resource_limits": {
+    "max_edges": 4096,
+    "max_ls_tree_bytes_per_owner_commit": 67108864,
+    "max_gitmodules_blob_bytes": 1048576,
+    "max_catalog_blob_bytes": 4194304,
+    "max_contract_tree_files": 16384,
+    "max_contract_tree_blob_bytes": 16777216,
+    "max_contract_tree_total_bytes": 268435456
+  },
+  "evaluator_authorizations": {
+    "ci": [],
+    "release": [],
+    "post_release": []
+  }
+}

@@ -13,6 +13,7 @@ sources:
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md
   - _bmad-output/implementation-artifacts/gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance.md
+  - _bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md
   - https://git-scm.com/docs/git-ls-tree
   - https://git-scm.com/docs/git-config#Documentation/git-config.txt---blobltblobgt
   - https://docs.python.org/3/library/json.html
@@ -20,6 +21,7 @@ sources:
 companions:
   - _bmad-output/planning-artifacts/architecture.md
   - _bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md
+  - _bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md
 ---
 
 # Architecture Spine — GOV-1 Dependency Provenance
@@ -281,7 +283,9 @@ flowchart LR
   standard-library `eng/workflow_source_closure.py` reads exact Git blobs and recursively follows every
   literal job/step `uses:` in the caller, reusable workflows, and `action.yml`/`action.yaml` composite
   metadata. Local references resolve inside the same exact repository commit; external action and
-  reusable references require literal 40-hex commits. JavaScript actions terminate at their exact
+  reusable references require literal 40-hex commits and repositories already named by the matching
+  active-policy authorization. Acquisition fetches only those exact commits into bounded isolated bare
+  stores; workflow/action text never supplies a remote URL. JavaScript actions terminate at their exact
   metadata/repository commit. Docker actions, mutable refs, expressions in `uses:`, ambiguous/missing
   metadata, anchors/aliases/merge keys affecting `uses:`, and unsupported multiline/inline `uses:`
   forms fail closed. Composite cycles fail closed. The closure is capped at depth 16, 256 unique source
@@ -325,9 +329,13 @@ flowchart LR
 - **Rule:** the caller-side Release workflow uploads exactly one `release-verification-handoff`
   artifact under `if: always()` for every governed attempt. It contains one duplicate-member-free
   `release-verification-handoff.json` with schema `hexalith.release-verification-handoff.v1` and exactly
-  `{schema,release_run,candidate,release,manifest,assets,evaluator}`. `release_run` is exactly
+  `{schema,release_run,ci_handoff,candidate,dependency_policy,release,manifest,assets,evaluator}`.
+  `release_run` is exactly
   `{repository,workflow_path,run_id,run_attempt,conclusion}`; `candidate` is the original authenticated
-  CI 40-hex head from AD-13; `release` is exactly `{version,tag,github_release_id,published}`;
+  CI 40-hex head from AD-13; `ci_handoff` is exactly
+  `{repository,workflow_path,run_id,run_attempt,evidence_sha256}` and identifies the authenticated
+  AD-13 artifact; `dependency_policy` is the exact AD-14 policy projection copied from that artifact;
+  `release` is exactly `{version,tag,github_release_id,published}`;
   `manifest` is exactly `{path,sha256,seal}`; `assets` is an ordinally sorted unique array of
   `{name,sha256,size}`; and `evaluator` is the actual active-policy-authorized Release caller/reusable/
   static-action closure plus its digest. Failed or pre-publication attempts use JSON `null` for
@@ -336,14 +344,17 @@ flowchart LR
   ceilings follow the manifest conventions; the verifier records the raw handoff SHA-256.
 
   The post-release workflow authenticates the triggering Release run ID/attempt, repository, workflow
-  path, and conclusion via read-only Actions APIs, downloads that run's named artifact, reloads the
-  policy recorded by the sealed manifest/CI handoff, and requires its own caller/static closure to match
-  a `post_release` authorization. It derives the live root only from the handoff candidate and sealed
+  path, and conclusion via read-only Actions APIs, downloads that run's named artifact, then independently
+  authenticates and downloads the named CI artifact at `ci_handoff.run_id/run_attempt`. It requires the
+  raw CI handoff hash, candidate, and policy projection to equal the Release handoff even when manifest
+  creation failed; reloads that exact base/before policy blob and hash; and requires its own caller/static
+  closure to match a `post_release` authorization. It derives the live root only from the handoff candidate and sealed
   manifest, never from the second-hop `workflow_run.head_sha`, `GITHUB_SHA`, a branch, or a tag lookup.
   If `published=true`, exact version/tag/release ID, manifest, asset names/sizes/hashes, and downloaded
   NuGet/GitHub bytes must agree before ledger acceptance. If false or partial, it records the failed or
   incident state and cannot green-no-op. A race fixture advances default branch between CI, Release,
-  and verification and still verifies the original candidate.
+  and verification and still verifies the original candidate. A pre-manifest Release failure fixture
+  proves the CI/policy projection still authorizes verification and records the failed attempt.
 
 ### AD-16 — `[ADOPTED]` Hexalith.Builds workflow revision is an external completion gate
 

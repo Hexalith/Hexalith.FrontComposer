@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.IO.Enumeration;
 using System.Reflection;
-using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Xml.Linq;
@@ -35,176 +34,30 @@ public sealed class InfrastructureGovernanceTests {
     [Fact]
     public void CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog() {
         string root = RepositoryRoot();
-        XDocument importShim = XDocument.Load(Path.Combine(root, "Directory.Packages.props"));
-        XElement[] rootPackageVersions = importShim
-            .Descendants()
-            .Where(static element => element.Name.LocalName == "PackageVersion")
-            .ToArray();
-        rootPackageVersions.ShouldBeEmpty(
-            "the FrontComposer root file is an import shim; package versions belong in Hexalith.Builds");
-
-        string buildsRoot = Path.Combine(root, "references", "Hexalith.Builds");
-        const string sharedCatalogRelativePath = "Props/Directory.Packages.props";
-        ReadGitAttribute(buildsRoot, sharedCatalogRelativePath, "text").ShouldBe("set");
-        ReadGitAttribute(buildsRoot, sharedCatalogRelativePath, "eol").ShouldBe("crlf");
-        ReadGitAttribute(buildsRoot, "Directory.Build.props", "eol").ShouldBe(
-            "unspecified",
-            "the catalog-only checkout policy must not broaden to unrelated Builds files");
-
-        string sharedCatalogPath = Path.Combine(buildsRoot, "Props", "Directory.Packages.props");
-        AssertUtf8BomAndCrLf(sharedCatalogPath);
-        XDocument sharedCatalog = XDocument.Load(sharedCatalogPath);
-        sharedCatalog
-            .Descendants()
-            .Single(static element => element.Name.LocalName == "HexalithTenantsVersion")
-            .Value
-            .ShouldBe("3.2.18", "the accepted Builds catalog must select the published Tenants release");
-        Dictionary<string, string> expectedVersions = new(StringComparer.OrdinalIgnoreCase) {
-            ["BenchmarkDotNet"] = "0.15.8",
-            ["FsCheck.Xunit.v3"] = "3.3.3",
-            ["Microsoft.CodeAnalysis.Workspaces.Common"] = "5.6.0",
-            ["Microsoft.Extensions.Localization"] = "10.0.9",
-            ["Microsoft.Extensions.TimeProvider.Testing"] = "10.8.0",
-            ["ModelContextProtocol.AspNetCore"] = "1.4.1",
-            ["NUlid"] = "1.7.3",
-            ["PactNet"] = "5.0.1",
-            ["System.Collections.Immutable"] = "10.0.10",
-            ["System.ComponentModel.Annotations"] = "5.0.0",
-            ["System.Reactive"] = "7.0.0",
-            ["System.Threading.Tasks.Extensions"] = "4.6.3",
-            ["Verify"] = "31.24.2",
-            ["Verify.XunitV3"] = "31.24.2",
-        };
-
-        foreach ((string packageId, string expectedVersion) in expectedVersions) {
-            AssertAuthoritativePackageVersion(sharedCatalog, packageId, expectedVersion);
-        }
-
-        List<GovernanceViolation> migratedProviderViolations = InfrastructureGovernance.ScanCentralPackageVersions(
-            sharedCatalogPath,
-            root,
-            expectedVersions.Keys);
-        migratedProviderViolations.ShouldBeEmpty(FormatViolations(migratedProviderViolations));
-
-        XDocument eventStoreCatalog = XDocument.Load(
-            Path.Combine(root, "references", "Hexalith.EventStore", "Directory.Packages.props"));
-        Dictionary<string, string> eventStoreInheritedVersions = new(StringComparer.OrdinalIgnoreCase) {
-            ["Microsoft.Extensions.TimeProvider.Testing"] = "10.8.0",
-            ["System.CommandLine"] = "2.0.10",
-            ["ModelContextProtocol"] = "1.4.1",
-        };
-        foreach ((string packageId, string expectedVersion) in eventStoreInheritedVersions) {
-            AssertAuthoritativePackageVersion(sharedCatalog, packageId, expectedVersion);
-            FindPackageVersionOperations(eventStoreCatalog, packageId).ShouldBeEmpty(
-                $"EventStore must inherit {packageId} {expectedVersion} from the shared catalog");
-        }
-
-        XDocument partiesBuild = XDocument.Load(
-            Path.Combine(root, "references", "Hexalith.Parties", "Directory.Build.props"));
-        partiesBuild
-            .Descendants()
-            .Where(static element => element.Name.LocalName == "PackageReference")
-            .Where(element => ItemSpecSelectsPackage((string?)element.Attribute("Include"), "MinVer"))
-            .ShouldBeEmpty("Parties release versioning is owned by semantic-release, not MinVer");
-        partiesBuild
-            .Descendants()
-            .Where(static element => element.Name.LocalName.StartsWith("MinVer", StringComparison.Ordinal))
-            .ShouldBeEmpty("Parties must not retain MinVer configuration after semantic-release ownership");
-
-        XDocument memoriesCatalog = XDocument.Load(
-            Path.Combine(root, "references", "Hexalith.Memories", "Directory.Packages.props"));
-        FindPackageVersionOperations(memoriesCatalog, "ModelContextProtocol.AspNetCore").ShouldBeEmpty(
-            "Memories must inherit ModelContextProtocol.AspNetCore 1.4.1 from the shared catalog");
-        FindPackageVersionOperations(memoriesCatalog, "Microsoft.Extensions.TimeProvider.Testing").ShouldBeEmpty(
-            "Memories must inherit Microsoft.Extensions.TimeProvider.Testing 10.8.0 from the shared catalog");
-
-        // EventStore and Memories carry Builds commits that contain the centralized catalog.
-        // Keep each expected commit aligned with the corresponding tracked submodule gitlink.
-        const string eventStoreBuildsCommit = "f8981e8ec4a5dec9d574da139c2e00dd714f2a60";
-        const string memoriesBuildsCommit = "cb8b2d412a937e09380387601c2682e080b66220";
-        ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.EventStore"), "references/Hexalith.Builds")
-            .ShouldBe(eventStoreBuildsCommit, "EventStore standalone restores need the migrated shared pins");
-        ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Memories"), "references/Hexalith.Builds")
-            .ShouldBe(memoriesBuildsCommit, "Memories standalone restores need the migrated shared pins");
+        DependencyGraphValidationResult result = RunDependencyGraphValidate(root);
+        result.Ok.ShouldBeTrue(result.Error ?? "dependency graph validation failed");
+        result.SelectorsValidated.ShouldBeGreaterThanOrEqualTo(
+            7,
+            "every root, EventStore, Memories, Parties, Commons, PolymorphicSerializations, and Tenants Builds selector must be evaluated");
+        result.Diagnostics.ShouldContain(
+            diagnostic => diagnostic.Contains("github.com/hexalith/hexalith.frontcomposer", StringComparison.Ordinal)
+                && diagnostic.Contains("frontcomposer-catalog-v1", StringComparison.Ordinal));
+        result.Diagnostics.ShouldContain(
+            diagnostic => diagnostic.Contains("github.com/hexalith/hexalith.eventstore", StringComparison.Ordinal)
+                && diagnostic.Contains("eventstore-catalog-v1", StringComparison.Ordinal));
+        result.Diagnostics.ShouldContain(
+            diagnostic => diagnostic.Contains("github.com/hexalith/hexalith.memories", StringComparison.Ordinal)
+                && diagnostic.Contains("memories-catalog-v1", StringComparison.Ordinal));
     }
 
     [Fact]
     public void PartiesPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds() {
         string root = RepositoryRoot();
-        string partiesRoot = Path.Combine(root, "references", "Hexalith.Parties");
-        XDocument sharedCatalog = XDocument.Load(
-            Path.Combine(root, "references", "Hexalith.Builds", "Props", "Directory.Packages.props"));
-        XDocument partiesCatalog = XDocument.Load(
-            Path.Combine(partiesRoot, "Directory.Packages.props"));
-
-        XElement[] imports = partiesCatalog
-            .Descendants()
-            .Where(static element => element.Name.LocalName == "Import")
-            .ToArray();
-        string[] expectedImportProjects = [
-            "$(Hexalith1BuildPackageProps)",
-            "$(Hexalith2BuildPackageProps)",
-            "$(Hexalith3BuildPackageProps)",
-        ];
-        string[] expectedImportConditions = [
-            "Exists('$(Hexalith1BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'",
-            "Exists('$(Hexalith2BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'",
-            "'$(HexalithVersionsLoaded)' != 'true'",
-        ];
-        imports.Length.ShouldBe(3, "Parties must preserve its three guarded shared-catalog import paths");
-        for (int index = 0; index < imports.Length; index++) {
-            ((string?)imports[index].Attribute("Project")).ShouldBe(expectedImportProjects[index]);
-            ((string?)imports[index].Attribute("Condition")).ShouldBe(expectedImportConditions[index]);
-        }
-
-        Dictionary<string, string> expectedBuildProperties = new(StringComparer.Ordinal) {
-            ["ManagePackageVersionsCentrally"] = "true",
-            ["CentralPackageTransitivePinningEnabled"] = "true",
-            ["Hexalith1BuildPackageProps"] = "$(MSBuildThisFileDirectory)references/Hexalith.Builds/Props/Directory.Packages.props",
-            ["Hexalith2BuildPackageProps"] = "$(MSBuildThisFileDirectory)../Hexalith.Builds/Props/Directory.Packages.props",
-            ["Hexalith3BuildPackageProps"] = "$(MSBuildThisFileDirectory)../../Hexalith.Builds/Props/Directory.Packages.props",
-        };
-        foreach ((string propertyName, string expectedValue) in expectedBuildProperties) {
-            partiesCatalog
-                .Descendants()
-                .Single(element => element.Name.LocalName == propertyName)
-                .Value
-                .ShouldBe(expectedValue);
-        }
-
-        Dictionary<string, string> expectedVersions = new(StringComparer.OrdinalIgnoreCase) {
-            ["Microsoft.AspNetCore.Components.CustomElements"] = "10.0.10",
-            ["ModelContextProtocol"] = "1.4.1",
-            ["ModelContextProtocol.AspNetCore"] = "1.4.1",
-        };
-        foreach ((string packageId, string expectedVersion) in expectedVersions) {
-            AssertAuthoritativePackageVersion(sharedCatalog, packageId, expectedVersion);
-        }
-
-        foreach (string relativePath in ReadTrackedFiles(partiesRoot, "*.csproj", "*.props", "*.targets")) {
-            XDocument consumerDocument = XDocument.Load(Path.Combine(partiesRoot, relativePath));
-            consumerDocument
-                .Descendants()
-                .Where(static element => element.Name.LocalName == "PackageVersion" && element.Parent?.Name.LocalName == "ItemGroup")
-                .ShouldBeEmpty($"{relativePath} must inherit every package version from the pinned Builds catalog");
-            foreach (XElement packageReference in consumerDocument
-                .Descendants()
-                .Where(static element => element.Name.LocalName is "PackageReference" or "GlobalPackageReference")) {
-                packageReference.Attribute("Version").ShouldBeNull($"{relativePath} must not declare an inline Version");
-                packageReference.Attribute("VersionOverride").ShouldBeNull($"{relativePath} must not declare VersionOverride");
-                packageReference
-                    .Elements()
-                    .Where(static element => element.Name.LocalName is "Version" or "VersionOverride")
-                    .ShouldBeEmpty($"{relativePath} must not declare inline package-version metadata");
-            }
-        }
-
-        const string rootBuildsCommit = "cb8b2d412a937e09380387601c2682e080b66220";
-        const string partiesBuildsCommit = "c177c66af5d3f509328c2f568dc0737fe9f89e4e";
-        ReadGitlinkCommit(root, "references/Hexalith.Builds")
-            .ShouldBe(rootBuildsCommit, "the inspected catalog must match the repaired root Builds commit");
-        ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Parties"), "references/Hexalith.Builds")
-            .ShouldBe(partiesBuildsCommit, "Parties standalone restores need the centralized shared pins");
+        DependencyGraphValidationResult result = RunDependencyGraphValidate(root);
+        result.Ok.ShouldBeTrue(result.Error ?? "dependency graph validation failed");
+        result.Diagnostics.ShouldContain(
+            diagnostic => diagnostic.Contains("github.com/hexalith/hexalith.parties", StringComparison.Ordinal)
+                && diagnostic.Contains("parties-catalog-v1", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -551,6 +404,78 @@ public sealed class InfrastructureGovernanceTests {
         throw new InvalidOperationException("Could not locate repository root.");
     }
 
+    /// <summary>
+    /// Invokes the GOV-1 committed-object dependency-graph engine (the single canonical
+    /// semantic-policy implementation per FC-DEP-1/AD-6) against the currently checked-out
+    /// FrontComposer commit and returns its machine-readable validation result. C# Governance
+    /// consumes this result rather than reimplementing catalog policy.
+    /// </summary>
+    private static DependencyGraphValidationResult RunDependencyGraphValidate(string root) {
+        string commit = RunGitCapture(root, "rev-parse", "HEAD").Trim();
+        ProcessStartInfo startInfo = new("python3") {
+            WorkingDirectory = root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        startInfo.ArgumentList.Add(Path.Combine(root, "eng", "dependency_graph.py"));
+        startInfo.ArgumentList.Add("--root");
+        startInfo.ArgumentList.Add(root);
+        startInfo.ArgumentList.Add("validate");
+        startInfo.ArgumentList.Add("--commit");
+        startInfo.ArgumentList.Add(commit);
+
+        using Process process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Could not start python3 eng/dependency_graph.py validate.");
+        string standardOutput = process.StandardOutput.ReadToEnd();
+        string standardError = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+
+        if (string.IsNullOrWhiteSpace(standardOutput)) {
+            throw new InvalidOperationException(
+                $"eng/dependency_graph.py validate produced no output (exit {process.ExitCode}): {standardError}");
+        }
+
+        using JsonDocument document = JsonDocument.Parse(standardOutput);
+        JsonElement payload = document.RootElement;
+        bool ok = payload.TryGetProperty("ok", out JsonElement okElement) && okElement.GetBoolean();
+        string? error = payload.TryGetProperty("error", out JsonElement errorElement) ? errorElement.GetString() : null;
+        int selectorsValidated = 0;
+        List<string> diagnostics = [];
+        if (ok && payload.TryGetProperty("semantics", out JsonElement semantics)) {
+            selectorsValidated = semantics.GetProperty("selectors_validated").GetInt32();
+            diagnostics = [.. semantics.GetProperty("diagnostics").EnumerateArray().Select(static e => e.GetString() ?? string.Empty)];
+        }
+
+        return new DependencyGraphValidationResult(ok, error, selectorsValidated, diagnostics);
+    }
+
+    private static string RunGitCapture(string repositoryPath, params string[] args) {
+        ProcessStartInfo startInfo = new("git") {
+            WorkingDirectory = repositoryPath,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true,
+        };
+        foreach (string arg in args) {
+            startInfo.ArgumentList.Add(arg);
+        }
+
+        using Process process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException($"Could not start git in {repositoryPath}.");
+        string standardOutput = process.StandardOutput.ReadToEnd();
+        string standardError = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0) {
+            throw new InvalidOperationException(
+                $"git {string.Join(' ', args)} failed in {repositoryPath} with exit code {process.ExitCode}: {standardError}");
+        }
+
+        return standardOutput;
+    }
+
     private static XElement[] FindPackageVersionOperations(XDocument document, string packageId)
         => document
             .Descendants()
@@ -609,115 +534,6 @@ public sealed class InfrastructureGovernanceTests {
             .Any(static element => element.Name.LocalName is "Choose" or "When" or "Otherwise")
             .ShouldBeFalse(message);
         ((string?)declarations[0].Attribute("Version")).ShouldBe(expectedVersion, message);
-    }
-
-    private static void AssertUtf8BomAndCrLf(string path) {
-        byte[] bytes = File.ReadAllBytes(path);
-        byte[] preamble = Encoding.UTF8.GetPreamble();
-        bytes.Length.ShouldBeGreaterThanOrEqualTo(preamble.Length);
-        bytes.Take(preamble.Length).ShouldBe(preamble, "the shared catalog must start with a UTF-8 BOM");
-        _ = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true)
-            .GetString(bytes, preamble.Length, bytes.Length - preamble.Length);
-
-        for (int index = preamble.Length; index < bytes.Length; index++) {
-            if (bytes[index] == (byte)'\n') {
-                (index > preamble.Length && bytes[index - 1] == (byte)'\r').ShouldBeTrue(
-                    $"the shared catalog contains a bare LF at byte offset {index}");
-            }
-
-            if (bytes[index] == (byte)'\r') {
-                (index + 1 < bytes.Length && bytes[index + 1] == (byte)'\n').ShouldBeTrue(
-                    $"the shared catalog contains a bare CR at byte offset {index}");
-            }
-        }
-    }
-
-    private static string ReadGitlinkCommit(string repositoryPath, string gitlinkPath) {
-        ProcessStartInfo startInfo = new("git") {
-            WorkingDirectory = repositoryPath,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        startInfo.ArgumentList.Add("ls-files");
-        startInfo.ArgumentList.Add("--stage");
-        startInfo.ArgumentList.Add("--");
-        startInfo.ArgumentList.Add(gitlinkPath);
-
-        using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException($"Could not start git in {repositoryPath}.");
-        string standardOutput = process.StandardOutput.ReadToEnd();
-        string standardError = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        if (process.ExitCode != 0) {
-            throw new InvalidOperationException(
-                $"git ls-files failed in {repositoryPath} with exit code {process.ExitCode}: {standardError}");
-        }
-
-        string[] fields = standardOutput.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries);
-        if (fields.Length < 4 || !string.Equals(fields[0], "160000", StringComparison.Ordinal)) {
-            throw new InvalidOperationException(
-                $"{gitlinkPath} is not a tracked gitlink in {repositoryPath}: {standardOutput}");
-        }
-
-        return fields[1];
-    }
-
-    private static string ReadGitAttribute(string repositoryPath, string relativePath, string attribute) {
-        ProcessStartInfo startInfo = new("git") {
-            WorkingDirectory = repositoryPath,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        startInfo.ArgumentList.Add("check-attr");
-        startInfo.ArgumentList.Add(attribute);
-        startInfo.ArgumentList.Add("--");
-        startInfo.ArgumentList.Add(relativePath);
-
-        using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException($"Could not start git in {repositoryPath}.");
-        string standardOutput = process.StandardOutput.ReadToEnd();
-        string standardError = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        if (process.ExitCode != 0) {
-            throw new InvalidOperationException(
-                $"git check-attr failed in {repositoryPath} with exit code {process.ExitCode}: {standardError}");
-        }
-
-        string prefix = $"{relativePath}: {attribute}: ";
-        standardOutput.ShouldStartWith(prefix);
-        return standardOutput[prefix.Length..].Trim();
-    }
-
-    private static string[] ReadTrackedFiles(string repositoryPath, params string[] pathspecs) {
-        ProcessStartInfo startInfo = new("git") {
-            WorkingDirectory = repositoryPath,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true,
-        };
-        startInfo.ArgumentList.Add("ls-files");
-        startInfo.ArgumentList.Add("-z");
-        startInfo.ArgumentList.Add("--");
-        foreach (string pathspec in pathspecs) {
-            startInfo.ArgumentList.Add(pathspec);
-        }
-
-        using Process process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException($"Could not start git in {repositoryPath}.");
-        string standardOutput = process.StandardOutput.ReadToEnd();
-        string standardError = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-        if (process.ExitCode != 0) {
-            throw new InvalidOperationException(
-                $"git ls-files failed in {repositoryPath} with exit code {process.ExitCode}: {standardError}");
-        }
-
-        return standardOutput.Split('\0', StringSplitOptions.RemoveEmptyEntries);
     }
 
     private static string FormatViolations(IEnumerable<GovernanceViolation> violations)
@@ -1026,3 +842,5 @@ internal sealed class TempRepo : IDisposable {
         }
     }
 }
+
+internal sealed record DependencyGraphValidationResult(bool Ok, string? Error, int SelectorsValidated, List<string> Diagnostics);

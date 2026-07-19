@@ -4,7 +4,8 @@
   common release-freeze gate by REL-4 on 2026-07-15 and the exact-candidate/evaluator-handoff contract
   by ratified GOV-1 on 2026-07-19
 - **Target repository:** [Hexalith/Hexalith.Builds](https://github.com/Hexalith/Hexalith.Builds)
-- **Target file:** `.github/workflows/domain-release.yml` (shared reusable workflow)
+- **Target files:** `.github/workflows/domain-ci.yml`, `.github/workflows/domain-release.yml`, and
+  exact local composite-action metadata used by those shared reusable workflows
 - **Status:** issue filed; required/blocking; GOV-1 amendment acceptance and immutable revision pending
 - **Suggested upstream story title:** "BUILD-REL-1: Add an opt-in governed NuGet release contract
   to Hexalith.Builds"
@@ -12,11 +13,13 @@
   found no matching issue or PR (only closed 2025 issues #1/#2 and dependabot/docs PRs); filing
   remained pending until 2026-07-18.
 - **Upstream owner:** Release Owner (jpiquot) — filed under Release Owner directive on 2026-07-18
-- **Issue/story URL:** <https://github.com/Hexalith/Hexalith.Builds/issues/17> (filed 2026-07-18;
-  full two-item scope: opt-in governed release contract + common release-freeze gate)
+- **Issue/story URL:** <https://github.com/Hexalith/Hexalith.Builds/issues/17> (filed 2026-07-18 with
+  the original release/freeze scope; the 2026-07-19 GOV-1 CI/exact-candidate/closure/handoff amendment
+  below must be owner-accepted before the issue satisfies this dependency)
 - **Accepted revision:** pending
-- **Release impact:** blocks the next FrontComposer NuGet or GitHub package release unless the Release
-  Owner explicitly approves the bounded FrontComposer-owned gated-workflow contingency
+- **Release impact:** blocks GOV-1 Tasks 4/5, story completion, release eligibility, unfreeze, and the
+  next FrontComposer NuGet/GitHub release while the accepted immutable revision is pending. No local
+  contingency is authorized without a new dated Architect + Release Owner decision.
 - **This repo does NOT directly implement the shared change.** `references/Hexalith.Builds` is a shared
   `@main` submodule consumed by every Hexalith module and must not be edited or committed from
   FrontComposer. Filing, approval, implementation, and revision tracking are Release Owner plus
@@ -159,10 +162,13 @@ the following backward-compatible governed-mode contracts:
   action coordinates and never selects default-branch HEAD.
 - The caller-side Release run uploads under `if: always()` exactly one
   `release-verification-handoff` artifact containing
-  `hexalith.release-verification-handoff.v1`: original CI candidate, Release run ID/attempt/conclusion,
+  `hexalith.release-verification-handoff.v1`: authenticated CI repository/workflow/run ID/attempt/raw
+  handoff hash, exact active-policy projection, original candidate, Release run ID/attempt/conclusion,
   version/tag/GitHub Release identity, sealed-manifest path/hash/seal, sorted asset name/hash/size rows,
-  and authorized Release evaluator coordinates/digest. Failed or partial runs emit the closed null/empty
-  representation rather than omitting the artifact.
+  and authorized Release evaluator coordinates/digest. The post-release verifier re-downloads both
+  handoffs and requires matching policy/candidate projections. Pre-manifest, failed, or partial runs
+  preserve the CI/policy projection and use the closed null/empty representation for unavailable release
+  fields rather than omitting the artifact.
 - Every reusable workflow/action reference is literal-40-hex-pinned. Local composite actions are loaded
   from the exact reusable-workflow commit. Their complete static transitive `uses:` closure, including
   conditional entries and composite descendants, matches the active FrontComposer policy
@@ -178,7 +184,8 @@ Release Owner decision with scope, expiry, migration trigger, and equivalent pro
 
 ## Bounded contingency
 
-If the shared contract cannot land before a required release, stop and obtain explicit Release Owner
-approval for a thin FrontComposer-owned gated release workflow implementing the same exact-artifact
-invariant. Record scope, approver, expiry/reopen trigger, and the migration back to Hexalith.Builds.
-This is a bounded contingency, not permission to resume G1 or create a permanent release fork.
+If the shared contract cannot land before a required release, stop. A thin FrontComposer-owned gated
+workflow is permitted only by a new dated **Architect + Release Owner** decision that records equivalent
+graph/policy/evaluator/two-handoff/exact-artifact proofs, scope, approvers, expiry/reopen trigger, and
+migration back to Hexalith.Builds. No such contingency is authorized by GOV-1; this section is an
+escalation path, not permission to resume G1 or create a permanent release fork.

@@ -506,8 +506,14 @@ development_status:
   # GOV-1 moved backlog -> ready-for-dev on 2026-07-19 (create-story; comprehensive semantic-catalog,
   # committed-object graph, CI diff/affected-module, sealed-manifest, and BUILD-CAT-1 context recorded;
   # Architect + Release Owner ratified the FC-DEP-1 boundary and focused architecture on 2026-07-19;
-  # implementation starts by freezing the exact object ledger and recording BUILD-CAT-1.)
-  gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance: ready-for-dev
+  # local implementation starts by freezing the object ledger and recording BUILD-CAT-1/BUILD-REL-1.
+  # Tasks 4/5, story completion, release eligibility, and unfreeze remain blocked while Hexalith.Builds
+  # issue 17 has no owner-accepted immutable revision.)
+  # GOV-1 moved ready-for-dev -> in-progress on 2026-07-19 (dev-story; baseline_commit
+  # e3e3dcf592fd7fa962c559e6e9fee034427cbe32 preserved. Implementing Tasks 1-3 and the local-only
+  # portion of Task 6 now that the Implementation Entry Gate is ratified; Tasks 4/5 stay blocked
+  # per AD-16/decision 16 pending Hexalith.Builds issue 17 / BUILD-REL-1.)
+  gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance: in-progress
   epic-11-retrospective: optional
   # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
   # rel-1 moved backlog -> in-progress on 2026-07-05 (dev-story; owner decision: keep Jul 3 auto-publish model, add FR24 evidence only. baseline 2d1a1290. Signing deferred; REL-AI-1 stays open.)
@@ -595,7 +601,7 @@ action_items:
     evidence: "_bmad-output/planning-artifacts/implementation-readiness-report-2026-07-15-post-correction.md"
     result: "READY — 29/29 FR coverage, zero critical/major findings, three controlled minor concerns; all six missing Epic 11 children materialized and parent records remain nonimplementable."
   - epic: governance
-    action: "GOV-1: Replace historical SHA compatibility assertions with semantic catalog profiles for every Builds selector in the defined depth-1/2 v1 graph; add exact-revision graph diff, bounded affected-module proof, authenticated CI handoff, and sealed graph/policy/workflow provenance."
+    action: "GOV-1: Replace historical SHA compatibility assertions with semantic catalog profiles for every Builds selector in the defined depth-1/2 v1 graph; add exact-revision graph diff, bounded affected-module proof, policy-authorized evaluator closure, both exact-candidate handoffs, and sealed graph/policy/workflow provenance."
     owner: "Product Owner + Architect + Developer + Release Owner"
     assigned: "2026-07-19"
     due: "before Story 11.17d promotion and the next accepted governed release manifest"
@@ -603,6 +609,7 @@ action_items:
     source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md"
     decision: "_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md"
     architecture: "_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md"
+    external_gate: "Hexalith.Builds issue 17 / BUILD-REL-1 accepted immutable revision pending; blocks Tasks 4/5, completion, release eligibility, and unfreeze."
   - epic: release
     action: "REL-AI-1: Own the FR24 exact-artifact pre-publication gate for signed/timestamped packages, symbols, SBOM, checksums, package inventory, consumer validation, sealed manifest/readiness, durable GitHub Release evidence, published-byte verification, and historical reconciliation."
     owner: "Release Owner"

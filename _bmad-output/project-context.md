@@ -1,10 +1,10 @@
 ---
 project_name: 'Hexalith.FrontComposer'
 user_name: 'Administrator'
-date: '2026-07-05'
+date: '2026-07-19'
 sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow_rules', 'critical_rules']
 status: 'complete'
-rule_count: 77
+rule_count: 78
 optimized_for_llm: true
 ---
 
@@ -229,6 +229,17 @@ _This file contains critical rules and patterns that AI agents must follow when 
   surfaces change
 - **Pacts:** CI **fails on a stale pact diff** (`tests/.../Shell.Tests/Pact`) — regenerate and commit
   intentional contract changes
+- **Shared-catalog Governance (GOV-1, 2026-07-19):** `Gate 2b`'s catalog-compatibility checks
+  (`InfrastructureGovernanceTests.CentralPackageVersions_*`/`PartiesPackageVersions_*`) no longer pin
+  historical `Hexalith.Builds` commit SHAs. They shell out to `eng/dependency_graph.py validate`, the
+  single canonical semantic-policy implementation, which collects the depth-1/2
+  `hexalith.dependency-graph.v1` graph from the current commit and validates every Builds-selector
+  edge's **actually selected** catalog against `eng/dependency-graph-policy.json`. A compatible
+  gitlink advance must pass regardless of its commit SHA; a Gate 2b failure here means a real
+  semantic/policy problem, not a stale SHA constant to patch. Run
+  `python3 -m unittest tests/eng/test_dependency_graph.py` for the engine's own fixtures. CI
+  graph-diff/affected-module gates and the release-manifest v2 binding (GOV-1 Tasks 4/5) remain
+  blocked pending Hexalith.Builds issue 17 / BUILD-REL-1
 - **Benchmarks** live ONLY in the separate `Shell.Tests.Bench` exe under
   `[Trait("Category","Performance")]`; use `FakeTimeProvider` for deterministic timer-driven tests
 - **e2e (a11y/visual):** Playwright workspace in `tests/e2e` (`nvm use` or Node `>=24` →
@@ -351,4 +362,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
   canonicalization, test lanes, or release pipeline change.
 - Remove rules that become obvious over time.
 
-Last Updated: 2026-07-05
+Last Updated: 2026-07-19

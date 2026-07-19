@@ -13,6 +13,7 @@ recommendedApproach: Direct Adjustment
 handoffStatus: completed
 architectureRatified: 2026-07-19
 architectureSpine: _bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md
+externalCompletionGate: Hexalith.Builds issue 17 / BUILD-REL-1 accepted immutable revision pending
 handoff:
   - Product Owner
   - Architect
@@ -172,8 +173,10 @@ workflow provenance, or handoff mismatch. Legacy manifests are audit-only and no
 post-publication verifier preserves and validates the same sealed evidence.
 
 Every Release attempt also emits an authenticated `if: always()` verification handoff carrying the
-original CI candidate, Release run identity/conclusion, version/tag/release/manifest/assets, and
-authorized Release evaluator. The post-release verifier uses that handoff—not its second-hop
+original authenticated CI run/attempt/raw handoff hash, exact policy projection/candidate, Release run
+identity/conclusion, version/tag/release/manifest/assets, and authorized Release evaluator. The
+post-release verifier re-authenticates both handoffs and their policy/candidate agreement—even when
+manifest creation failed—and uses that evidence, not its second-hop
 `workflow_run.head_sha` or default-branch SHA—and cannot green-no-op failed or partial attempts.
 
 ### Control D: Introduce an Upstream Semantic Catalog Contract
@@ -407,8 +410,8 @@ The sealed manifest identifies every immutable release candidate by normalized p
 Update manifest preparation, diagnostics, sealing, verification, fallback invalidation, fixtures,
 governance pins, and post-publication verification as one atomic schema change. The fallback digest
 binds the graph digest, active policy SHA-256, and canonical combined CI/release workflow-definition
-digest. The example shows the closed member structure; production arrays enumerate every executed
-action source. Do not store absolute paths or working-tree-only identities.
+digest. The example shows the closed member structure; production arrays enumerate the complete static
+conditional/composite source closure. Do not store absolute paths or working-tree-only identities.
 
 ### 4.6 UX Change
 
@@ -517,5 +520,6 @@ architecture, release-evidence, and upstream-contract work are required.
 - Story registration: `GOV-1` is `ready-for-dev`; its architecture entry gate was ratified and
   production implementation has not started.
 - Handoff: Product Owner / Architect / Developer / Release Owner.
-- Upstream boundary: BUILD-CAT-1 belongs to Hexalith.Builds; no submodule content change is authorized
-  by this workflow.
+- Upstream boundary: BUILD-CAT-1 and the issue-17 BUILD-REL-1 amendment belong to Hexalith.Builds; no
+  submodule content change is authorized. BUILD-REL-1's accepted immutable revision remains pending and
+  blocks GOV-1 Tasks 4/5, completion, release eligibility, and unfreeze.

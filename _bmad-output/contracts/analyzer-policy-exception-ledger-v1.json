@@ -71,8 +71,8 @@
   },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, one-based line, and C# identifier token containing an underscore",
-    "testUnderscoreIdentifierTokens": 6195,
-    "testInventorySha256": "76999ab0b2c47872862e895b861c31ddb281ec365dac39ee28814791ac2dc967",
+    "testUnderscoreIdentifierTokens": 6194,
+    "testInventorySha256": "5c619cb11af90013c7d3e31a941b6a065e69aeb3dc1976ad674aa067c8f3611c",
     "contractsUnderscoreIdentifierTokens": 90,
     "contractsInventorySha256": "a06a2c10b7bcc9e2abd18b585af55e93d70bd3ad85a20519791590313ffcb3b7"
   },

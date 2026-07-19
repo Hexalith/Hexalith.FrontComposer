@@ -211,7 +211,7 @@ changes cannot authorize themselves and activate through the same delayed two-ch
 
 The release caller must pass `github.event.workflow_run.head_sha` as an explicit required 40-hex input,
 and the reusable workflow must check out and propagate exactly that revision. The reusable workflow is
-referenced by an approved immutable Hexalith.Builds commit, whose identity is sealed with the caller
+referenced by an active-policy-authorized immutable Hexalith.Builds commit, whose identity is sealed with the caller
 workflow hash and the CI-selected policy coordinates. The triggering CI run ID is also passed; its
 single versioned `dependency-release-handoff.json` artifact is fetched through the read-only GitHub
 Actions run/artifact APIs only after repository, workflow, event, branch, conclusion, run ID, and head
@@ -240,8 +240,10 @@ the raw handoff JSON SHA-256. Offline verification recomputes the CI-only digest
 CI/release workflow-definition digest and rejects any unequal projection.
 
 Release emits an `if: always()` versioned verification handoff for every attempt, authenticated by the
-Release run ID/attempt. It carries the original CI candidate, version/tag/release identity, sealed
-manifest identity, exact assets, and authorized Release evaluator. The post-release verifier derives
+Release run ID/attempt. It carries the original authenticated CI run ID/attempt/raw handoff hash,
+exact active-policy projection, candidate, version/tag/release identity, sealed manifest identity,
+exact assets, and authorized Release evaluator. The post-release verifier re-downloads both handoffs,
+requires their candidate/policy projection to agree even on pre-manifest failure, and derives
 its live root from that handoff and manifest, never the second `workflow_run` hop's head/default-branch
 SHA, and its own static closure must match the active policy. It cannot green-no-op a failed or partial
 attempt; a default-branch-advance race is a required fixture.

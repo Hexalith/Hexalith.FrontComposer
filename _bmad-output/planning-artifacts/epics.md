@@ -2267,8 +2267,9 @@ source closure follows conditional sources and composite descendants under fixed
 
 **Given** a Release attempt completes, fails, or partially publishes,
 **When** the post-release verifier runs through the second `workflow_run` hop,
-**Then** it authenticates the Release run and mandatory verification handoff, derives the original CI
-candidate and sealed assets from that handoff, never substitutes the second-hop/default-branch SHA, and
+**Then** it authenticates the Release run/handoff plus the referenced CI run/attempt/raw handoff hash,
+requires matching policy/candidate projections even on pre-manifest failure, derives the original CI
+candidate and sealed assets from that evidence, never substitutes the second-hop/default-branch SHA, and
 cannot green-no-op. Its own closure must be active-policy-authorized.
 
 **Given** Hexalith.Builds issue 17 has no owner-accepted immutable revision,

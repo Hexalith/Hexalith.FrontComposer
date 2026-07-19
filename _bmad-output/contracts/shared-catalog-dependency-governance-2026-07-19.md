@@ -16,6 +16,7 @@ owners:
   - Release Owner
 implementationStory: GOV-1
 upstreamFollowUp: BUILD-CAT-1
+upstreamReleaseFollowUp: BUILD-REL-1 issue 17 (accepted immutable revision pending)
 architectureSpine: _bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md
 ---
 
@@ -118,7 +119,7 @@ does not, by itself, state whether a catalog satisfies a consumer contract.
     an absent owner collapsing to FrontComposer. Every module is scheduled at most once.
 13. The release caller passes `github.event.workflow_run.head_sha` as a required exact commit; the
     reusable workflow checks out and propagates that commit through preparation, sealing, verification,
-    fallback, and publication. Its Hexalith.Builds workflow reference is an approved immutable 40-hex
+    fallback, and publication. Its Hexalith.Builds workflow reference is an active-policy-authorized immutable 40-hex
     commit and is sealed with the caller workflow hash and CI-selected policy coordinates. The caller
     passes the triggering CI run ID and fetches the single versioned dependency-release handoff through
     the read-only Actions API only after repository/workflow/event/branch/conclusion/run/head metadata
@@ -145,8 +146,11 @@ does not, by itself, state whether a catalog satisfies a consumer contract.
     or resealed in place. Historical ledger bytes remain unchanged; current fixtures migrate atomically.
 15. **`[ADOPTED]` Release-to-verifier handoff.** Every governed Release attempt uploads under
     `if: always()` one versioned verification handoff authenticated by Release run ID/attempt. It binds
-    the original CI candidate, conclusion, version/tag/GitHub Release identity, manifest path/hash/seal,
-    exact asset name/hash/size rows, and authorized Release evaluator. The post-release verifier uses
+    the original authenticated CI run ID/attempt/raw handoff hash, exact active-policy projection,
+    candidate, conclusion, version/tag/GitHub Release identity, manifest path/hash/seal, exact asset
+    name/hash/size rows, and authorized Release evaluator. The post-release verifier re-downloads and
+    authenticates both handoffs and requires their candidate/policy projection to agree even when
+    manifest creation failed. It uses
     this handoff and sealed manifest as its only candidate authority, never the second-hop
     `workflow_run.head_sha`/default-branch SHA. It authenticates its own policy-authorized static closure,
     verifies published bytes or records failure/partial incident state, and cannot green-no-op.

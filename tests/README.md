@@ -122,6 +122,48 @@ Troubleshooting:
 - **Missing labels**: automation should still record the missing `flaky-test`, `ci-governance`, or `codex-automation` labels in the issue or PR body instead of opening duplicate issues.
 - **Manual quarantine failure**: add the metadata comment with issue, owner or `owner-needed`, root-cause hypothesis, and `reintroduction=5-nightly-passes`.
 
+### Dependency Graph Governance (GOV-1)
+
+`eng/dependency_graph.py` is the single canonical semantic-policy implementation for shared-catalog
+compatibility (FC-DEP-1/AD-6): it collects the bounded depth-1/depth-2 `hexalith.dependency-graph.v1`
+gitlink graph from an explicit FrontComposer commit and validates every Builds-selector edge against
+the exact catalog its gitlink actually selects — not a hard-coded commit allowlist. C# Governance
+(`InfrastructureGovernanceTests.cs`) invokes its machine-readable result rather than reimplementing
+catalog policy.
+
+```bash
+# Synthetic committed-object graph + semantic-policy fixtures (no network, temp git repos).
+python3 -m unittest tests/eng/test_dependency_graph.py -v
+
+# Compile-check the engine and its release-evidence siblings.
+python3 -m py_compile eng/dependency_graph.py eng/release_evidence.py eng/release_prepublish.py
+
+# Collect and print the canonical v1 graph envelope for the current checkout.
+python3 eng/dependency_graph.py --root . graph --commit "$(git rev-parse HEAD)"
+
+# Collect the graph AND evaluate every selector's semantic profile (what the C# Governance
+# test actually invokes).
+python3 eng/dependency_graph.py --root . validate --commit "$(git rev-parse HEAD)"
+
+# The C# Governance lane that consumes the above.
+DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category=Governance"
+```
+
+`eng/dependency-graph-policy.json` (schema `hexalith.dependency-graph-policy.v1`) is the single
+FrontComposer-owned source for trusted repository identities/paths, semantic profiles, the
+module-build/evidence-only registry, and AD-7 resource ceilings. A gitlink whose normalized identity
+is not already declared there fails closed (AD-3) — this is deliberate, not a bug.
+
+**Compatibility vs. provenance (AD-6):** a Builds gitlink advancing to a different, still-compatible
+commit must pass — the exact commit/hash only ever appears in diagnostics and provenance, never in an
+acceptance list. If `validate` fails on a real pointer advance, that is either a genuine semantic
+regression in the selected catalog or a policy gap (missing/incorrect profile), not a stale SHA to
+patch back in.
+
+**Scope boundary:** CI graph diffing, affected-module build gates, immutable workflow/action pinning,
+and the release-manifest v2 binding (GOV-1 Tasks 4/5) remain blocked pending an owner-accepted
+Hexalith.Builds issue 17 / BUILD-REL-1 revision (AD-16) and are not implemented yet.
+
 ### Playwright E2E
 
 ```bash
