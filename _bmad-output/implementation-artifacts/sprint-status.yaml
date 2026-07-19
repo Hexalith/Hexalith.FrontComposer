@@ -502,7 +502,10 @@ development_status:
   # semantic validation at actual reachable Builds gitlinks, adds reviewable graph-diff and affected-
   # module restore/build gates, and seals the exact reachable gitlink graph as release provenance.
   # BUILD-CAT-1 is an upstream Hexalith.Builds follow-up; no submodule content edit is authorized here.
-  gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance: backlog
+  # GOV-1 moved backlog -> ready-for-dev on 2026-07-19 (create-story; comprehensive semantic-catalog,
+  # committed-object graph, CI diff/affected-module, sealed-manifest, and BUILD-CAT-1 context recorded;
+  # implementation remains gated on Architect + Release Owner ratification of the FC-DEP-1 v1 graph boundary.)
+  gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance: ready-for-dev
   epic-11-retrospective: optional
   # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
   # rel-1 moved backlog -> in-progress on 2026-07-05 (dev-story; owner decision: keep Jul 3 auto-publish model, add FR24 evidence only. baseline 2d1a1290. Signing deferred; REL-AI-1 stays open.)
