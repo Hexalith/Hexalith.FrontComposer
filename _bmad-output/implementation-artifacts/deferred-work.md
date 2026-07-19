@@ -1807,3 +1807,12 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
   summary: Match per-file token-literal exemptions by exact relative path rather than filename suffix.
   evidence: `AuthBridge_DoesNotWriteTokensToFrameworkStorage` authorizes literals when a source path merely ends with an exempt filename (`tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs:121-123`), so a differently named file such as `EvilFrontComposerGatewayAuthorizationHandler.cs` can inherit the exemption. The suffix matcher predates Story 11.17d; this story only retargeted the existing entry after the mechanical split.
+
+## Deferred from: code review of spec-actions-29681767891-fix-cicd.md (2026-07-19)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29681767891-fix-cicd.md`
+  summary: Reconcile the published Hexalith.Builds catalog-format commit with mandatory Conventional Commit history.
+  evidence: An external process published Builds commit `deb76e983434335c990b0a1f676b8887d643a274` with subject `Refactor code structure for improved readability and maintainability`; commitlint reports `type-empty` and `subject-empty`. The no-push workflow cannot rewrite published history, and a force push requires separate human authorization.
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29681767891-fix-cicd.md`
+  summary: Bind shared-catalog governance bytes to the same Builds commit recorded by the FrontComposer gitlink.
+  evidence: `InfrastructureGovernanceTests` reads the catalog bytes from the Builds working tree but reads the expected root Builds SHA from the FrontComposer index. A dirty Builds checkout can therefore validate one commit's bytes while asserting another commit's gitlink; fresh CI checkouts are unaffected, but local fail-closed governance is not identity-bound.
