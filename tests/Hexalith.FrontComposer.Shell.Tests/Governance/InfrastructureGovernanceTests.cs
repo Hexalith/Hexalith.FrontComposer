@@ -51,6 +51,11 @@ public sealed class InfrastructureGovernanceTests {
             "Directory.Packages.props");
         AssertUtf8BomAndCrLf(sharedCatalogPath);
         XDocument sharedCatalog = XDocument.Load(sharedCatalogPath);
+        sharedCatalog
+            .Descendants()
+            .Single(static element => element.Name.LocalName == "HexalithTenantsVersion")
+            .Value
+            .ShouldBe("3.2.18", "the accepted Builds catalog must select the published Tenants release");
         Dictionary<string, string> expectedVersions = new(StringComparer.OrdinalIgnoreCase) {
             ["BenchmarkDotNet"] = "0.15.8",
             ["FsCheck.Xunit.v3"] = "3.3.3",
@@ -93,11 +98,31 @@ public sealed class InfrastructureGovernanceTests {
 
         XDocument partiesCatalog = XDocument.Load(
             Path.Combine(root, "references", "Hexalith.Parties", "Directory.Packages.props"));
+        AssertAuthoritativePackageVersion(
+            partiesCatalog,
+            "Microsoft.AspNetCore.Components.CustomElements",
+            "10.0.9");
+        AssertPackageOverride(
+            partiesCatalog,
+            "ModelContextProtocol",
+            "1.4.0",
+            "Parties must preserve its lower MCP core version");
         AssertPackageOverride(
             partiesCatalog,
             "ModelContextProtocol.AspNetCore",
             "1.4.0",
             "Parties must preserve its lower MCP ASP.NET Core version");
+        XDocument partiesBuild = XDocument.Load(
+            Path.Combine(root, "references", "Hexalith.Parties", "Directory.Build.props"));
+        partiesBuild
+            .Descendants()
+            .Where(static element => element.Name.LocalName == "PackageReference")
+            .Where(element => ItemSpecSelectsPackage((string?)element.Attribute("Include"), "MinVer"))
+            .ShouldBeEmpty("Parties release versioning is owned by semantic-release, not MinVer");
+        partiesBuild
+            .Descendants()
+            .Where(static element => element.Name.LocalName.StartsWith("MinVer", StringComparison.Ordinal))
+            .ShouldBeEmpty("Parties must not retain MinVer configuration after semantic-release ownership");
 
         XDocument memoriesCatalog = XDocument.Load(
             Path.Combine(root, "references", "Hexalith.Memories", "Directory.Packages.props"));
@@ -107,16 +132,18 @@ public sealed class InfrastructureGovernanceTests {
             "Memories must inherit Microsoft.Extensions.TimeProvider.Testing 10.8.0 from the shared catalog");
 
         // 2026-07-18 (AngleSharp/NU1902 remediation): EventStore moved its nested Builds pin to
-        // the same commit the superproject records (08b57086); Memories and Parties sit on the
-        // shared-catalog reconciliation commit 041897f0. Update in lockstep with gitlink bumps.
+        // the same commit the superproject records (08b57086); Parties remains on the shared-catalog
+        // reconciliation commit 041897f0. Memories advanced independently to 437c4c02. Update in
+        // lockstep with the corresponding gitlink bumps.
         const string eventStoreBuildsCommit = "08b57086f24514638bc0901154759ac023fd2876";
-        const string memoriesAndPartiesBuildsCommit = "041897f0cba840ff833b9602b3b3e023450856fc";
+        const string memoriesBuildsCommit = "437c4c02619cfb3fff7792796e5d76d25c7521ad";
+        const string partiesBuildsCommit = "041897f0cba840ff833b9602b3b3e023450856fc";
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.EventStore"), "references/Hexalith.Builds")
             .ShouldBe(eventStoreBuildsCommit, "EventStore standalone restores need the migrated shared pins");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Memories"), "references/Hexalith.Builds")
-            .ShouldBe(memoriesAndPartiesBuildsCommit, "Memories standalone restores need the migrated shared pins");
+            .ShouldBe(memoriesBuildsCommit, "Memories standalone restores need the migrated shared pins");
         ReadGitlinkCommit(Path.Combine(root, "references", "Hexalith.Parties"), "references/Hexalith.Builds")
-            .ShouldBe(memoriesAndPartiesBuildsCommit, "Parties standalone restores need the migrated shared pins");
+            .ShouldBe(partiesBuildsCommit, "Parties standalone restores need the migrated shared pins");
     }
 
     [Fact]
