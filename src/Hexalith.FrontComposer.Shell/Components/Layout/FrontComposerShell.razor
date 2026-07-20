@@ -49,7 +49,7 @@
        re-renders via the Changed subscription. *@
     <CascadingValue Value="_contentLabelCoordinator" IsFixed="true">
         <FluentLayout>
-            <FluentLayoutItem Area="@LayoutArea.Header" Height="48px">
+            <FluentLayoutItem Area="@LayoutArea.Header" Height="48px" role="banner">
                 <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
                              HorizontalAlignment="HorizontalAlignment.SpaceBetween"
                              Style="height: 48px; padding: 0 12px; background: var(--colorNeutralBackground2); color: var(--colorNeutralForeground1); border-block-end: 1px solid var(--colorNeutralStroke2);">
@@ -103,10 +103,12 @@
                             <FcPaletteTriggerButton />
                             <FcSettingsButton />
                         }
-                        @* Account avatar (sign in / sign out) — rendered ALWAYS as the right-most header
-                           action so it survives adopter HeaderEnd customization, matching the Fluent
-                           "account at far right" convention. *@
-                        <FcAccountMenu />
+                        @if (ShowAccountMenu)
+                        {
+                            @* Account avatar (sign in / sign out) — rendered as the right-most header
+                               action when the adopter has a working authentication endpoint. *@
+                            <FcAccountMenu />
+                        }
                     </FluentStack>
                 </FluentStack>
             </FluentLayoutItem>

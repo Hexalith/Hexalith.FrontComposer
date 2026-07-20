@@ -107,6 +107,27 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
     }
 
     [Fact]
+    public void Header_Default_RendersBannerLandmarkAndAccountMenu() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Find("[area=\"header\"]").GetAttribute("role").ShouldBe("banner");
+            _ = cut.FindComponent<FcAccountMenu>();
+        });
+    }
+
+    [Fact]
+    public void AccountMenu_Disabled_DoesNotRender() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .Add(c => c.ShowAccountMenu, false)
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() =>
+            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(() => cut.FindComponent<FcAccountMenu>()));
+    }
+
+    [Fact]
     public void HeaderChrome_UsesNeutralSurfaceAndDivider() {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));

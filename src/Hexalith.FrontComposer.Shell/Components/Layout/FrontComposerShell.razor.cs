@@ -35,7 +35,7 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// <b>Parameter ordering (Story 3-2 D10 / Story 8.3):</b> the original shell parameters keep their
 /// metadata order and later additions are append-only: <see cref="HeaderStart"/>, <see cref="HeaderCenter"/>,
 /// <see cref="HeaderEnd"/>, <see cref="Navigation"/>, <see cref="Footer"/>, <see cref="ChildContent"/>,
-/// <see cref="AppTitle"/>, landmark parameters, then brand/logo parameters. The snapshot test
+/// <see cref="AppTitle"/>, landmark parameters, brand/logo parameters, then account-menu visibility. The snapshot test
 /// <c>FrontComposerShellParameterSurfaceTests</c> locks this list — any addition must be append-only,
 /// no parameter may be removed/renamed/retyped without a major bump.
 /// </para>
@@ -195,6 +195,14 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// <see langword="null"/>. The default is <see langword="false"/> so zero-config shells emit no logo.
     /// </summary>
     [Parameter] public bool ShowDefaultHeaderLogo { get; set; }
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the shell renders its authentication account menu.
+    /// The default is <see langword="true"/> for backward compatibility. Adopters without working
+    /// login and logout endpoints should set this to <see langword="false"/> so the frame does not
+    /// expose a nonfunctional authentication control.
+    /// </summary>
+    [Parameter] public bool ShowAccountMenu { get; set; } = true;
 
     /// <summary>Injected Fluent UI theme service. Called once on first render per D6.</summary>
     [Inject] private IThemeService ThemeService { get; set; } = default!;

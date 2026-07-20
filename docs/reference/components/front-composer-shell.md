@@ -53,7 +53,7 @@ First-time adopters can use the one-line `AddHexalithFrontComposerQuickstart()` 
 
 ## Parameters / slots
 
-The shell exposes a **locked 11-parameter surface**. The original header/navigation/content/footer
+The shell exposes a **locked 12-parameter surface**. The original header/navigation/content/footer
 slots keep their established order, and newer accessibility/brand parameters are appended to preserve
 metadata-order compatibility. All slots are optional render fragments except `AppTitle` (a string);
 leaving a slot `null` triggers the documented default.
@@ -71,12 +71,14 @@ leaving a slot `null` triggers the documented default.
 | `ContentLabelledBy` | `string?` | Optional id reference that names the `#fc-main-content` landmark; takes precedence over `ContentLabel`. |
 | `HeaderLogo` | `RenderFragment?` | Optional adopter-supplied logo rendered between `HeaderStart` or the default hamburger and `AppTitle`. |
 | `ShowDefaultHeaderLogo` | `bool` | Opts into the framework default decorative logo when `HeaderLogo` is not supplied; default is `false`. |
+| `ShowAccountMenu` | `bool` | Renders the framework account menu; default is `true`. Set to `false` when the host has no working login/logout endpoints. |
 
-The header also always renders the theme toggle, and (DEBUG + `IsDevelopment()` only) the dev-mode
-toggle. An adopter-supplied fragment always wins over the framework default; to render **no**
+The header also always renders the theme toggle, renders the account menu when `ShowAccountMenu` is
+`true`, and renders the dev-mode toggle in DEBUG + `IsDevelopment()` only. An adopter-supplied
+fragment always wins over the framework default; to render **no**
 sidebar even with registered domains, pass an empty fragment to `Navigation`.
 
-> **Surface stability:** this 11-parameter list is locked by `FrontComposerShellParameterSurfaceTests`.
+> **Surface stability:** this 12-parameter list is locked by `FrontComposerShellParameterSurfaceTests`.
 > Additions must be append-only; no parameter may be removed, renamed, or retyped without a major
 > version bump.
 
