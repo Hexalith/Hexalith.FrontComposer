@@ -81,7 +81,7 @@ recorded in the REL-4 story after the next push-CI success on `main`. The active
 | `commitlint.yml` | PR **and** push to `main` | reusable `commitlint.yml@main` (Tenants parity; push guards direct-to-main commits) |
 | `ci.yml` | push / PR to `main` | reusable `domain-ci.yml@main`: build (Release, `-warnaserror`) · `scripts/` consumer validation · Tier 1 unit tests + coverage |
 | `quality.yml` | push / PR to `main` | supplemental FrontComposer gates (Gate 1/2a/2b/2c/2d, trait-filtered test lanes, telemetry, a11y/visual) — **CI-authoritative for these gates** |
-| `release.yml` | `workflow_run` after CI success (push) | REL-4 `freeze-guard` (default frozen) → reusable `domain-release.yml@main`: semantic-release publish (no container images) |
+| `release.yml` | `workflow_run` after CI success (push) | REL-4 `freeze-guard` (default frozen) → reusable `domain-release.yml` pinned to an exact Builds commit SHA (REL-6: `uses:@<sha>` and the required `builds-execution-sha` input both equal the `references/Hexalith.Builds` gitlink): semantic-release publish (no container images) |
 | `release-evidence.yml` | `workflow_run` after `Release` completes (any conclusion) | REL-3 independent verification: downloaded NuGet/GitHub byte comparison against the sealed manifest |
 | `nightly.yml` | schedule | nightly checks (incl. skill-corpus prompt benchmark) |
 | `ide-parity-revalidation.yml` | schedule / drift | revalidates `docs/ide-parity-matrix.json` against IDE behavior |
@@ -117,7 +117,10 @@ Plugins: `commit-analyzer` → `release-notes-generator` → `changelog` → `ex
 `release.yml` runs from **`workflow_run` after a successful CI push** (guarded
 `conclusion == 'success' && event == 'push'`, so PR/scheduled CI runs never release, and a failed CI
 can never publish). The REL-4 `freeze-guard` job then gates the `release` job (default frozen; see
-above). When enabled, it delegates to `domain-release.yml@main` with `test-projects: ''` — the
+above). When enabled, it delegates to `domain-release.yml` pinned to an exact Builds commit SHA
+(REL-6: the `uses:@<sha>` pin and the required `builds-execution-sha` input both equal the
+`references/Hexalith.Builds` gitlink SHA; the reusable rejects a mismatch, and `@main` cannot be
+used because its resolved `job.workflow_sha` drifts) with `test-projects: ''` — the
 reusable's own test hook stays empty because `prepareCmd` below re-runs the full 7-project release
 test lane against the exact candidates (REL-3 AC4 requires test evidence over the bytes being
 published, not just the CI head). This makes `prepareCmd` a multi-tens-of-minutes step (restore/

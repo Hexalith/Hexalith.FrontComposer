@@ -3,7 +3,7 @@ baseline_commit: 0a84e818b0ce220f291510ad094340f7296bb488
 ---
 # Story 11.17d: Shell bundle split
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Type: mechanical refactor; fourth executable child of the non-implementable Story 11.17 decomposition parent. -->
@@ -97,6 +97,20 @@ This story refines PRD FR-25, FR-28, and FR-29 and closes only the Shell child o
 - [x] [Review][Patch] Completion notes still claim every Governance gate is complete despite the current red gate and in-progress story status [_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md:301]
 - [x] [Review][Patch] Review findings and File List annotations retain a broken path-count citation, the old six-finding total, and a stale claim that review chunks remain [_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md:90]
 - [x] [Review][Patch] The final 125-path story-owned union is not anchored to the reviewed final revision or its reproducible census evidence [_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md:287]
+
+#### Adversarial re-review (2026-07-21)
+
+Four-layer adversarial pass (Blind Hunter, Edge Case Hunter, Verification Gap, Acceptance Auditor). The mechanical split is confirmed correct and AC1–AC6-conformant: verbatim type moves, correct `using` redistribution, all 111 target identities/kinds/modifiers preserved, exact 6-file Fluxor exception, `PublicAPI.FcTbl.Shipped.txt`/`CompatibilitySuppressions.xml` byte-identical, deleted bundles fully re-homed, AuthBoundary guard net-tighter. All new findings concern the *durability* of the new organization guard against future code, not the split itself.
+
+- [x] [Review][Patch] `RuntimeKind` classifies any value type as `record struct` and any reference type without a `<Clone>$` as `class`, so a future plain-`struct` pin or `delegate` pin would false-fail the runtime-shape test [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:616] — fixed 2026-07-21: adds a `Delegate` check and detects records via the synthesized `PrintMembers` method (record structs have no `<Clone>$`), so plain `struct`/`delegate` now classify correctly. Verified: Governance + AuthBoundary classes 17/17 green.
+- [x] [Review][Patch] Two `partial` declarations of one type in a single handwritten file are counted as two direct declarations because the dedup key includes `SpanStart`, false-failing the one-declaration-per-file guard [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:363] — fixed 2026-07-21: same-identity declarations are collapsed only when all are `partial`; non-partial conditional-branch duplicates are still reported (preserving `OrganizationGuard_ConditionalDeclarationsWithSameIdentity_AreReported`). Verified: Governance + AuthBoundary classes 17/17 green.
+- [x] [Review][Defer] Organization guard verifies filename==typename but not namespace==folder for unpinned single-type files, so a future file with a mismatched namespace slips the guard [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:371] — deferred, hardening beyond AC4's declaration/file-parity scope; the 111 targets are namespace-pinned via the manifest
+- [x] [Review][Defer] `IsGeneratedPath` excludes files by `.g.cs`/`.generated.cs`/`.designer.cs` suffix, so a handwritten multi-type file given a generated suffix would bypass the one-per-file guard [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:401] — deferred, requires a pathological naming convention; low real risk
+- [x] [Review][Defer] Guard pins type-identity only (Path|Identity|Kind|Accessibility|Modifiers), not member-level identity (record parameter order/defaults, enum values, base types/interfaces, attributes, generic constraints, nullability) [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs:659] — deferred, meets AC4 as written (AC4 scopes pins to type identities/kinds/modifiers/accessibility/top-level); member-level preservation was manually verified for the current 111 targets
+
+_Dismissed (misattributed, handled elsewhere): the Blind Hunter/Acceptance Auditor "LoggerMessage migration bundled into the split" cluster and the Verification Gap "reconciliation EventIds 5774–5779 / classifier & storage warnings untested" cluster are **Story 11.18** logging work, not 11.17d. They surfaced only because the story `baseline_commit` (`0a84e818`) is ~40 commits stale, so the `baseline..HEAD` diff absorbed concurrent 11.18 commits (`32db5c34`, `615605e3`). The isolated true-story range `0a84e818..5092b041` contains zero logging-helper references. All three Story 11.18 logging stories are separately in `review`; the untested EventIds 5774–5779 is a genuine gap that 11.18's own review should address. Recommend re-baselining this story's `baseline_commit` to avoid recurring validator/review contamination._
+
+**Lane state at re-review (HEAD `e13368a2`, 2026-07-21).** The previously-documented Governance blocker — the root/EventStore `Hexalith.Builds` gitlink mismatches in `InfrastructureGovernanceTests` — is now **resolved**: `InfrastructureGovernanceTests` passes 21/21 and the full Governance category passes **192/193**. The sole remaining red is `AnalyzerPolicyGovernanceTests.AnalyzerPolicy_GovernanceContract_FailsClosed`, the CA1707 analyzer-policy-exception-ledger test-identifier drift owned by **GOV-1 / Story 11.19** and explicitly on this story's Never-List — 11.17d must not re-seal it. The 11.17d work itself is complete and AC1–AC6-conformant; Administrator elected to keep the story **in-progress** until the complete Governance lane is green (i.e., until GOV-1/11.19 reconciles the analyzer-policy ledger), consistent with the story's completion policy.
 
 ## Dev Notes
 

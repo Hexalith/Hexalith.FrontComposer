@@ -79,9 +79,17 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main
+    # REL-6 (2026-07-21): domain-release.yml enforces a supply-chain identity check —
+    # the reusable workflow must be pinned to an exact 40-hex Builds commit SHA and the
+    # caller must pass builds-execution-sha equal to that same SHA (the reusable job
+    # validates job.workflow_sha == builds-execution-sha). A missing/mismatched input is a
+    # workflow startup_failure. Keep this SHA in lockstep with the references/Hexalith.Builds
+    # submodule gitlink and bump all three together. @main cannot be used: main advances, so
+    # job.workflow_sha would drift out of match.
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@7708256eba4974ba005fd7fe86ec5bfd6152a25e
     with:
       solution: Hexalith.FrontComposer.slnx
+      builds-execution-sha: 7708256eba4974ba005fd7fe86ec5bfd6152a25e
       # CI (the upstream workflow_run gate) already tested this exact head; leave
       # test-projects empty so the release path does not duplicate the test compute.
       test-projects: ''
