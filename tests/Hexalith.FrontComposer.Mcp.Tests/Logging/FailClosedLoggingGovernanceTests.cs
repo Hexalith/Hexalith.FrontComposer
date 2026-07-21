@@ -11,6 +11,7 @@ public sealed class FailClosedLoggingGovernanceTests
 {
     private static readonly HashSet<string> DirectLogMethodNames =
     [
+        "Log",
         "LogTrace",
         "LogDebug",
         "LogInformation",
@@ -24,6 +25,12 @@ public sealed class FailClosedLoggingGovernanceTests
         "src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs",
         "src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiationRuntimeGate.cs",
     ];
+
+    private static readonly HashSet<string> AllowedUnwrappedParameterNames = new(StringComparer.Ordinal)
+    {
+        "exceptionType",
+        "diagnosticId",
+    };
 
     [Fact]
     public void McpSources_HaveExactGeneratedFailClosedInventoryAndNoDirectCalls()
@@ -41,6 +48,11 @@ public sealed class FailClosedLoggingGovernanceTests
         directCalls.ShouldBeEmpty(
             "MCP has no remaining direct ILogger.Log* inventory; add generated helpers before introducing a call. "
             + FormatSites(directCalls));
+
+        string[] unwrappedArguments = [.. sources.SelectMany(FindUnwrappedIdentifierArguments)];
+        unwrappedArguments.ShouldBeEmpty(
+            "generated security log calls must not pass raw string parameters directly; wrap with a sanitizing helper. "
+            + string.Join(", ", unwrappedArguments));
 
         LoggerEvent[] events = [.. sources.SelectMany(FindLoggerEvents)];
         AssertUniqueEventIds(events);
@@ -92,6 +104,94 @@ public sealed class FailClosedLoggingGovernanceTests
         events.ShouldContain(static entry => entry.HasExceptionParameter);
     }
 
+    [Fact]
+    public void GovernanceGuard_SyntheticUnwrappedIdentifierArgument_IsReported()
+    {
+        SourceFile[] sources =
+        [
+            new(
+                "src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs",
+                "using Microsoft.Extensions.Logging; namespace Synthetic; internal static partial class FrontComposerMcpLog { "
+                + "public static void Unsafe(ILogger logger, string tenantId) { LogUnsafe(logger, tenantId); } "
+                + "[LoggerMessage(EventId = 9999, EventName = \"Unsafe\", Level = LogLevel.Warning, Message = \"{TenantId}\")] "
+                + "private static partial void LogUnsafe(ILogger logger, string tenantId); }"),
+        ];
+
+        string[] unwrappedArguments = [.. sources.SelectMany(FindUnwrappedIdentifierArguments)];
+        unwrappedArguments.ShouldContain("src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs:Unsafe:tenantId");
+    }
+
+    [Fact]
+    public void GovernanceGuard_EmptySourceCensusAndOverBroadSecurityAllowlist_AreReported()
+    {
+        Should.Throw<ShouldAssertException>(() =>
+            Array.Empty<SourceFile>().ShouldNotBeEmpty("the MCP logging governance scan must cover production sources"));
+
+        SourceFile[] overBroadSources =
+        [
+            new(
+                SecuritySourcePaths[0],
+                "using Microsoft.Extensions.Logging; namespace Synthetic; internal sealed class Gate { "
+                + "void Run(ILogger logger) => logger.LogWarning(\"still raw\"); }"),
+        ];
+        DirectLogSite[] overBroadCalls = [.. overBroadSources.SelectMany(FindDirectLogSites)];
+        Should.Throw<ShouldAssertException>(() =>
+            overBroadCalls.ShouldBeEmpty(
+                "MCP has no remaining direct ILogger.Log* inventory; add generated helpers before introducing a call."));
+    }
+
+    private static IEnumerable<string> FindUnwrappedIdentifierArguments(SourceFile source)
+    {
+        SyntaxTree tree = Parse(source);
+        SyntaxNode root = tree.GetRoot();
+        HashSet<string> generatedMethodNames = [.. root.DescendantNodes()
+            .OfType<AttributeSyntax>()
+            .Where(IsLoggerMessageAttribute)
+            .Select(static attribute => attribute.FirstAncestorOrSelf<MethodDeclarationSyntax>())
+            .OfType<MethodDeclarationSyntax>()
+            .Select(static method => method.Identifier.ValueText)];
+
+        foreach (InvocationExpressionSyntax invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            if (invocation.Expression is not IdentifierNameSyntax invokedName || invocation.ArgumentList is null)
+            {
+                continue;
+            }
+
+            MethodDeclarationSyntax? enclosingMethod = invocation.FirstAncestorOrSelf<MethodDeclarationSyntax>();
+            if (enclosingMethod is null)
+            {
+                continue;
+            }
+
+            bool isGeneratedCall = generatedMethodNames.Contains(invokedName.Identifier.ValueText);
+            bool isDelegateCall = !isGeneratedCall && enclosingMethod.ParameterList.Parameters.Any(parameter =>
+                string.Equals(parameter.Identifier.ValueText, invokedName.Identifier.ValueText, StringComparison.Ordinal)
+                && parameter.Type?.ToString().Contains("Action", StringComparison.Ordinal) == true);
+            if (!isGeneratedCall && !isDelegateCall)
+            {
+                continue;
+            }
+
+            foreach (ArgumentSyntax argument in invocation.ArgumentList.Arguments)
+            {
+                if (argument.Expression is not IdentifierNameSyntax identifier
+                    || AllowedUnwrappedParameterNames.Contains(identifier.Identifier.ValueText))
+                {
+                    continue;
+                }
+
+                string name = identifier.Identifier.ValueText;
+                ParameterSyntax? parameter = enclosingMethod.ParameterList.Parameters
+                    .FirstOrDefault(candidate => string.Equals(candidate.Identifier.ValueText, name, StringComparison.Ordinal));
+                if (parameter?.Type?.ToString().TrimEnd('?') == "string")
+                {
+                    yield return $"{source.Path}:{enclosingMethod.Identifier.ValueText}:{name}";
+                }
+            }
+        }
+    }
+
     private static IEnumerable<DirectLogSite> FindDirectLogSites(SourceFile source)
     {
         SyntaxTree tree = Parse(source);
@@ -131,10 +231,26 @@ public sealed class FailClosedLoggingGovernanceTests
                 ? literal.Token.ValueText
                 : null;
             bool hasExceptionParameter = method.ParameterList.Parameters.Any(static parameter =>
-                parameter.Type?.ToString() is "Exception" or "System.Exception");
+                IsExceptionParameterType(parameter.Type));
             int line = tree.GetLineSpan(attribute.Span).StartLinePosition.Line + 1;
             yield return new(source.Path, line, eventId.Value, eventName, hasExceptionParameter);
         }
+    }
+
+    private static bool IsExceptionParameterType(TypeSyntax? type)
+    {
+        if (type is null)
+        {
+            return false;
+        }
+
+        string text = type.ToString().TrimEnd('?');
+        if (text.StartsWith("global::", StringComparison.Ordinal))
+        {
+            text = text["global::".Length..];
+        }
+
+        return text.EndsWith("Exception", StringComparison.Ordinal);
     }
 
     private static void AssertUniqueEventIds(IEnumerable<LoggerEvent> events)
