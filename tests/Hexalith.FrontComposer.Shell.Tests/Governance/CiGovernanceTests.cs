@@ -445,7 +445,41 @@ public sealed class CiGovernanceTests {
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
 
-        workflow.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main");
+        // REL-6 (2026-07-21): domain-release.yml enforces a supply-chain identity check — the
+        // reusable workflow must be pinned to an exact 40-hex Builds commit SHA and the caller
+        // must pass builds-execution-sha equal to that same SHA (the reusable job validates
+        // job.workflow_sha == builds-execution-sha). A missing/mismatched input is a workflow
+        // startup_failure, so guard that the pin and the input are the identical full SHA (not
+        // @main or a tag, which would drift out of match as Builds main advances).
+        Match domainReleasePin = Regex.Match(
+            workflow,
+            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})\b");
+        domainReleasePin.Success.ShouldBeTrue(
+            "release.yml must pin domain-release.yml to an exact 40-hex lowercase Builds commit SHA (not @main or a tag).");
+        Match buildsExecutionSha = Regex.Match(
+            workflow,
+            @"builds-execution-sha: (?<sha>[0-9a-f]{40})\b");
+        buildsExecutionSha.Success.ShouldBeTrue(
+            "release.yml must pass builds-execution-sha as an exact 40-hex lowercase Builds commit SHA.");
+        buildsExecutionSha.Groups["sha"].Value.ShouldBe(
+            domainReleasePin.Groups["sha"].Value,
+            "builds-execution-sha must equal the domain-release.yml @sha pin so job.workflow_sha == builds-execution-sha.");
+
+        // Third lockstep leg: the pin must also equal the references/Hexalith.Builds submodule gitlink
+        // SHA. This ties the pin to a guaranteed-real, locally-present git commit — a typo'd but
+        // well-formed SHA (which still passes the pin == input check above) or a stale pin left behind
+        // by a routine submodule bump would otherwise stay green yet reintroduce the release
+        // startup_failure. Read the gitlink from the committed tree so it resolves even when the
+        // submodule content is not initialized (a shallow, submodules:false checkout still works).
+        ProcessResult gitlink = RunProcess(root, "git", ["ls-tree", "HEAD", "references/Hexalith.Builds"]);
+        gitlink.ExitCode.ShouldBe(0, "git ls-tree must resolve the references/Hexalith.Builds gitlink.");
+        Match gitlinkSha = Regex.Match(gitlink.Output, @"\bcommit (?<sha>[0-9a-f]{40})\b");
+        gitlinkSha.Success.ShouldBeTrue(
+            "references/Hexalith.Builds must be a submodule gitlink with a 40-hex commit SHA.");
+        domainReleasePin.Groups["sha"].Value.ShouldBe(
+            gitlinkSha.Groups["sha"].Value,
+            "release.yml's domain-release.yml pin must equal the references/Hexalith.Builds gitlink SHA "
+            + "(three-way lockstep: uses@sha == builds-execution-sha == submodule gitlink).");
         workflow.ShouldContain("solution: Hexalith.FrontComposer.slnx");
         workflow.ShouldContain("test-projects: ''");
         workflow.ShouldContain("NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}");
