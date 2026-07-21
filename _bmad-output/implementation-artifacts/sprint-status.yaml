@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-07-19
+# last_updated: 2026-07-20
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-07-19
+last_updated: 2026-07-20
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -458,7 +458,8 @@ development_status:
   # 11.17d governance/tests/docs review chunk completed on 2026-07-19 (bmad-code-review; all four configured layers completed. Six governance patches applied and verified, one pre-existing suffix-matching issue deferred, nine candidates dismissed. Release Shell.Tests build 0/0, affected classes 17/17, analyzer inventory 1/1. A pre-6a4350ec shared-worktree Shell Governance run passed 187/188, but concurrent submodule checkout state made it non-authoritative; the clean 6a4350ec evidence in the next entry supersedes it. Evidence/status chunk remained pending.)
   # 11.17d evidence/status review chunk completed on 2026-07-19 (bmad-code-review; all four configured layers completed. Two documentation patches applied, final path ledger reconciled to 125 changed + 2 unchanged evidence paths, unrelated Builds deferred-work provenance separated, one unrelated FrontComposer-tracked Governance blocker deferred by Administrator decision, and twenty-two candidates dismissed. Clean 6a4350ec Release Shell.Tests build 0/0; Governance 186/188 because root and EventStore's nested Hexalith.Builds gitlinks disagree with pinned expectations. Story remains in-progress until the complete Governance lane passes.)
   # 11.17d evidence/status re-review completed on 2026-07-19 (bmad-code-review; all four configured layers completed. Five documentation/evidence patches applied, eight normalized candidates dismissed, exact File List census reverified at 125 changed + 2 unchanged, and the two focused Governance failures independently reproduced. Story remains in-progress until the complete Governance lane passes on the exact promotion revision.)
-  11-17-shell-bundle-split: in-progress
+  # 11.17d moved in-progress -> review on 2026-07-20 (dev-story; Administrator decision. Re-validated at HEAD c9ff529b: the original Builds-gitlink Governance blocker is resolved (root and EventStore-nested Hexalith.Builds both 7708256e) and the Governance lane now runs 192/193. The sole remaining failure is out-of-scope: AnalyzerPolicyGovernanceTests.AnalyzerPolicy_GovernanceContract_FailsClosed, a +2 analyzer-policy ledger drift (testUnderscoreIdentifierTokens 6194->6196, sha 5c619cb1->43d0f353) introduced after this story by GOV-1/dependency-graph test churn (bc8c8f7e re-sealed at 6194; later CiGovernanceTests changes drifted it). Re-sealing that ledger is on 11.17d's Never-List (analyzer policy = Story 11.19+), so it is owned by GOV-1/11.19, not this story. All 11.17d-owned governance/identity/package classes pass 26/26. Dispositioned as an unrelated concurrent-work blocker, matching the prior gitlink-blocker deferral.)
+  11-17-shell-bundle-split: review
   # Story 11.18 is a non-implementable decomposition parent; replaced on 2026-07-15 by three independently reviewable defect-class children before any ready-for-dev transition.
   # 11.18a moved backlog -> ready-for-dev on 2026-07-15 (create-story; security-first MCP + Shell slice: reconcile a creation-time minimum of 36 direct calls / 13 files, preserve Story 11.3 generated events, eliminate raw exception stacks and sensitive identifiers, add collision-free LoggerMessage events plus non-vacuous MCP/Shell Governance and sanitization lanes.)
   # 11.18a moved ready-for-dev -> in-progress on 2026-07-15 (dev-story; implementation-start HEAD 77e58b31, reconciling the Roslyn-backed security census before production changes.)
