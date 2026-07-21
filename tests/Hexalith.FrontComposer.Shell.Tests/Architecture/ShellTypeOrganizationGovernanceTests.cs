@@ -480,7 +480,20 @@ public sealed class ShellTypeOrganizationGovernanceTests
             declarations.TryAdd(key, declaration);
         }
 
-        return [.. declarations.Values.OrderBy(declaration => declaration.SpanStart)];
+        // Collapse the multiple `partial` declarations of a single type into one candidate so a
+        // legally partial type in one file is not miscounted as several declarations. Same-identity
+        // declarations that are NOT partial (e.g. mutually exclusive conditional-branch duplicates)
+        // are deliberately kept separate so the guard still reports them.
+        return
+        [
+            .. declarations.Values
+                .GroupBy(declaration => declaration.Identity, StringComparer.Ordinal)
+                .SelectMany(group =>
+                    group.All(declaration => declaration.Modifiers.Contains("partial", StringComparison.Ordinal))
+                        ? [group.OrderBy(declaration => declaration.SpanStart).First()]
+                        : (IEnumerable<DirectDeclaration>)group)
+                .OrderBy(declaration => declaration.SpanStart),
+        ];
     }
 
     private static string ActivateAllConditionalBranches(string content, CompilationUnitSyntax root)
@@ -608,12 +621,26 @@ public sealed class ShellTypeOrganizationGovernanceTests
             return "enum";
         }
 
+        if (typeof(Delegate).IsAssignableFrom(type))
+        {
+            return "delegate";
+        }
+
         if (type.IsInterface)
         {
             return "interface";
         }
 
-        return type.IsValueType ? "record struct" : type.GetMethod("<Clone>$") is not null ? "record" : "class";
+        // Record classes expose the synthesized "<Clone>$" clone method; record structs are
+        // copied by value and do not, so detect either record kind via the synthesized
+        // "PrintMembers" method (generated for record classes and record structs, absent on
+        // plain classes and plain structs).
+        bool isRecord = type.GetMethod(
+            "PrintMembers",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) is not null;
+        return type.IsValueType
+            ? isRecord ? "record struct" : "struct"
+            : isRecord ? "record" : "class";
     }
 
     private static string NormalizeOwnerName(string path)
