@@ -86,10 +86,10 @@ jobs:
     # workflow startup_failure. Keep this SHA in lockstep with the references/Hexalith.Builds
     # submodule gitlink and bump all three together. @main cannot be used: main advances, so
     # job.workflow_sha would drift out of match.
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@7708256eba4974ba005fd7fe86ec5bfd6152a25e
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@79f82acc9cb9259ddcb90217c89bc72024ab7f72
     with:
       solution: Hexalith.FrontComposer.slnx
-      builds-execution-sha: 7708256eba4974ba005fd7fe86ec5bfd6152a25e
+      builds-execution-sha: 79f82acc9cb9259ddcb90217c89bc72024ab7f72
       # CI (the upstream workflow_run gate) already tested this exact head; leave
       # test-projects empty so the release path does not duplicate the test compute.
       test-projects: ''
