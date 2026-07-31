@@ -1,6 +1,6 @@
 # Hexalith.FrontComposer — Deployment / Release Guide
 
-> **Generated:** 2026-06-02 · deep scan. **Updated 2026-07-18 (REL-4/REL-3 implementation)** after live
+> **Generated:** 2026-06-02 · deep scan. **Updated 2026-07-21 (REL-6 permission/identity repair)** after live
 > v3.2.1/v3.2.2 evidence proved the G1 post-publication workflow is not an FR24 publication gate.
 > The REL-4 freeze guard is now implemented in `release.yml` (first live frozen-run verification
 > pending CI).
@@ -81,7 +81,7 @@ recorded in the REL-4 story after the next push-CI success on `main`. The active
 | `commitlint.yml` | PR **and** push to `main` | reusable `commitlint.yml@main` (Tenants parity; push guards direct-to-main commits) |
 | `ci.yml` | push / PR to `main` | reusable `domain-ci.yml@main`: build (Release, `-warnaserror`) · `scripts/` consumer validation · Tier 1 unit tests + coverage |
 | `quality.yml` | push / PR to `main` | supplemental FrontComposer gates (Gate 1/2a/2b/2c/2d, trait-filtered test lanes, telemetry, a11y/visual) — **CI-authoritative for these gates** |
-| `release.yml` | `workflow_run` after CI success (push) | REL-4 `freeze-guard` (default frozen) → reusable `domain-release.yml` pinned to an exact Builds commit SHA (REL-6: `uses:@<sha>` and the required `builds-execution-sha` input both equal the `references/Hexalith.Builds` gitlink): semantic-release publish (no container images) |
+| `release.yml` | `workflow_run` after CI success (push) | REL-4 `freeze-guard` (default frozen) → reusable `domain-release.yml` pinned to an exact Builds commit SHA (REL-6: `uses:@<sha>` and the required `builds-execution-sha` input are identical; the `references/Hexalith.Builds` gitlink is an independent release-build/catalog dependency): semantic-release publish (no container images) |
 | `release-evidence.yml` | `workflow_run` after `Release` completes (any conclusion) | REL-3 independent verification: downloaded NuGet/GitHub byte comparison against the sealed manifest |
 | `nightly.yml` | schedule | nightly checks (incl. skill-corpus prompt benchmark) |
 | `ide-parity-revalidation.yml` | schedule / drift | revalidates `docs/ide-parity-matrix.json` against IDE behavior |
@@ -89,8 +89,9 @@ recorded in the REL-4 story after the next push-CI success on `main`. The active
 | `flaky-test-governance.yml` | schedule/governance | flaky-test tracking |
 | `quarantine-governance-nightly.yml` | schedule | quarantined-test governance |
 
-Every workflow uses **root-declared submodule init only** (`submodules: false` +
-`initialize-build@main`); never recursive nested submodules.
+Submodule-initializing workflows use **root-declared submodule init only** (`submodules: false`).
+Reusable CI paths use `initialize-build@main`; Release executes the initializer from its approved,
+pinned Builds checkout. Nested submodules are never initialized recursively.
 
 CI build/test commands are the source of truth for local dev — see [development-guide.md](./development-guide.md).
 
@@ -118,9 +119,12 @@ Plugins: `commit-analyzer` → `release-notes-generator` → `changelog` → `ex
 `conclusion == 'success' && event == 'push'`, so PR/scheduled CI runs never release, and a failed CI
 can never publish). The REL-4 `freeze-guard` job then gates the `release` job (default frozen; see
 above). When enabled, it delegates to `domain-release.yml` pinned to an exact Builds commit SHA
-(REL-6: the `uses:@<sha>` pin and the required `builds-execution-sha` input both equal the
-`references/Hexalith.Builds` gitlink SHA; the reusable rejects a mismatch, and `@main` cannot be
-used because its resolved `job.workflow_sha` drifts) with `test-projects: ''` — the
+(REL-6: the `uses:@<sha>` pin and the required `builds-execution-sha` input must be identical;
+the reusable rejects a mismatch, while the independent `references/Hexalith.Builds` gitlink
+selects release-build/catalog content and need not match; `@main` cannot be used because its
+resolved `job.workflow_sha` drifts). The caller grants `actions: read` in the `release` job because
+the reusable validates exact-source CI evidence; the workflow-level `contents: read` grant cannot
+satisfy that callee permission. The caller uses `test-projects: ''` — the
 reusable's own test hook stays empty because `prepareCmd` below re-runs the full 7-project release
 test lane against the exact candidates (REL-3 AC4 requires test evidence over the bytes being
 published, not just the CI head). This makes `prepareCmd` a multi-tens-of-minutes step (restore/
