@@ -1863,3 +1863,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-18-fail-closed-security-log-sites.md`
   summary: `Reason` is baked into the message template for `AuthorizationMissingPolicyFailed`/`AuthorizationHandlerFailed` (e.g. `Reason=MissingPolicy`) instead of exposed as a structured `{Reason}` placeholder like sibling events (`AuthorizationBlocked`, `AuthorizationTenantContextFailed`, `DispatchBlocked`), so structured-log queries filtering on a `Reason` field will not match those two events.
   evidence: `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerSecurityLog.cs` (rev 3356ae7e, diff lines ~958-974). No test asserts per-event structured state keys, so the asymmetry is unverified; the two events remain distinguishable by unique EventId/EventName, so observability impact is minor. Reopen trigger: a structured `Reason` dimension is standardized across the security-log family, or a log query is found to miss these events.
+
+## Deferred from: code review of run-current-tests-and-fix-failures (2026-07-31)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-run-all-tests-fix-failures-2.md`
+  summary: Refresh generated project-context dependency facts that no longer match the selected shared catalog.
+  evidence: `_bmad-output/project-context.md` still lists FsCheck.Xunit.v3 3.3.3 and Verify/Verify.XunitV3 31.22.0, while baseline Builds catalog `b529b665` selects 3.3.4 and 31.27.0. The drift pre-dated this repair's policy edit and requires a separately owned project-context regeneration.
+- source_spec: `_bmad-output/implementation-artifacts/spec-run-all-tests-fix-failures-2.md`
+  summary: Add an EventStore behavioral regression test proving each generated package consumer contains exactly one direct manifest package reference.
+  evidence: The concurrently advanced, otherwise clean EventStore checkout adds isolated consumer generation in `scripts/validate-consumer-package-references.py`, but its current packaging tests inspect source markers and healthy packages rather than a deliberately incomplete package consumed alone. This submodule work was unrelated to and preserved by the FrontComposer repair.
+- source_spec: `_bmad-output/implementation-artifacts/spec-run-all-tests-fix-failures-2.md`
+  summary: Add invalid-manifest fixtures for EventStore release-manifest normalization and containment guards.
+  evidence: The concurrently advanced EventStore checkout's `tools/release_package_contract.py` rejects malformed, duplicate, foreign, traversal, non-normalized, and out-of-root entries, while current tests exercise the checked-in valid manifest only. This submodule work was unrelated to and preserved by the FrontComposer repair.
