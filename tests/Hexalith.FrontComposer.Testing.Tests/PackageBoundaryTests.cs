@@ -12,6 +12,7 @@ namespace Hexalith.FrontComposer.Testing.Tests;
 public sealed class PackageBoundaryTests {
     private const string FluentV5Version = "5.0.0-rc.4-26180.1";
     private const string LocalizationAbstractionsVersion = "10.0.10";
+    private const string MicrosoftNetTestSdkVersion = "18.8.1";
 
     [Fact]
     public void PublicApi_ExportedTypes_MatchIntentionalBaseline() {
@@ -61,18 +62,21 @@ public sealed class PackageBoundaryTests {
         nuspec.ShouldNotContain("xunit.v3");
     }
 
-    [Fact]
-    public void CentralPackageVersion_Mismatch_ReportsExpectedAndActualBeforePackaging() {
-        const string mismatchedVersion = "10.0.9";
-
+    [Theory]
+    [InlineData("Microsoft.Extensions.Localization.Abstractions", "10.0.9", LocalizationAbstractionsVersion)]
+    [InlineData("Microsoft.NET.Test.Sdk", "18.7.0", MicrosoftNetTestSdkVersion)]
+    public void CentralPackageVersion_Mismatch_ReportsExpectedAndActualBeforePackaging(
+        string packageId,
+        string mismatchedVersion,
+        string actualVersion) {
         ShouldAssertException exception = Should.Throw<ShouldAssertException>(() =>
             AssertCentralPackageVersion(
                 FindRepoRoot(),
-                "Microsoft.Extensions.Localization.Abstractions",
+                packageId,
                 mismatchedVersion));
 
         exception.Message.ShouldContain(mismatchedVersion);
-        exception.Message.ShouldContain(LocalizationAbstractionsVersion);
+        exception.Message.ShouldContain(actualVersion);
     }
 
     [Fact]
@@ -81,6 +85,7 @@ public sealed class PackageBoundaryTests {
         AssertCentralPackageVersion(root, "Microsoft.FluentUI.AspNetCore.Components", FluentV5Version);
         AssertCentralPackageVersion(root, "Microsoft.FluentUI.AspNetCore.Components.Icons", FluentV5Version);
         AssertCentralPackageVersion(root, "Microsoft.Extensions.Localization.Abstractions", LocalizationAbstractionsVersion);
+        AssertCentralPackageVersion(root, "Microsoft.NET.Test.Sdk", MicrosoftNetTestSdkVersion);
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-testing-clean-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-testing-consumer-" + Guid.NewGuid().ToString("N"));
         string packageVersion = "2.0.0-review." + Guid.NewGuid().ToString("N")[..8];
@@ -117,7 +122,7 @@ public sealed class PackageBoundaryTests {
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="xunit.v3.assert" Version="3.2.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.7.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="{{MicrosoftNetTestSdkVersion}}" />
   </ItemGroup>
 </Project>
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
@@ -181,6 +186,7 @@ public sealed class ConsumerSmokeTests
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components/" + FluentV5Version + "\"");
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/" + FluentV5Version + "\"");
         assets.ShouldContain("\"Microsoft.Extensions.Localization.Abstractions/" + LocalizationAbstractionsVersion + "\"");
+        assets.ShouldContain("\"Microsoft.NET.Test.Sdk/" + MicrosoftNetTestSdkVersion + "\"");
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components/4.");
         assets.ShouldNotContain("\"Microsoft.FluentUI.AspNetCore.Components.Icons/4.");
         assets.ShouldNotContain("\"type\": \"project\"");
