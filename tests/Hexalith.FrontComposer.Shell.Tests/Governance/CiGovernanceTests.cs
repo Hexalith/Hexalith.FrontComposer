@@ -31,6 +31,47 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void AgentEntryPoints_CommitMessageGuidance_IsSynchronizedAndFailClosed() {
+        string root = RepositoryRoot();
+        string agents = File.ReadAllText(Path.Combine(root, "AGENTS.md")).ReplaceLineEndings("\n");
+        string claude = File.ReadAllText(Path.Combine(root, "CLAUDE.md")).ReplaceLineEndings("\n");
+        string copilot = File.ReadAllText(Path.Combine(root, ".github/copilot-instructions.md")).ReplaceLineEndings("\n");
+
+        claude.ShouldBe(agents);
+        copilot.ShouldBe(agents);
+
+        string expectedGitAndSubmodulesGuidance = """
+            ## Git and Submodules
+
+            - Before Git work, inspect the current repository's branch, working tree,
+              remotes, and recent history.
+            - Any commit message you create, suggest, or use must follow Conventional
+              Commits and satisfy both the owning repository's effective commitlint policy
+              and its tracked Git guidance. Before presenting or using a message, validate
+              the exact full candidate with the owning repository's pinned commitlint CLI
+              and preserve successful validation evidence. If validation cannot run or
+              rejects the candidate, do not present or use it as compliant: report the exact
+              blocker or rule violations, revise invalid messages, and revalidate them.
+              Never bypass commit validation.
+            - In an umbrella workspace, initialize or update only dependencies declared by
+              the top-level workspace `.gitmodules` file.
+            - Never initialize or update a submodule's nested submodules unless the user
+              explicitly requests that nested work. Never use recursive or remote submodule
+              updates by default.
+            - If nested submodules were initialized accidentally, deinitialize them before
+              continuing.
+            """.ReplaceLineEndings("\n");
+        int guidanceStart = agents.IndexOf("## Git and Submodules\n", StringComparison.Ordinal);
+        int guidanceEnd = agents.IndexOf("## Shared Entry Points\n", StringComparison.Ordinal);
+
+        guidanceStart.ShouldBeGreaterThanOrEqualTo(0);
+        guidanceEnd.ShouldBeGreaterThan(guidanceStart);
+        guidanceStart.ShouldBe(agents.LastIndexOf("## Git and Submodules\n", StringComparison.Ordinal));
+        guidanceEnd.ShouldBe(agents.LastIndexOf("## Shared Entry Points\n", StringComparison.Ordinal));
+        agents[guidanceStart..guidanceEnd].TrimEnd().ShouldBe(expectedGitAndSubmodulesGuidance);
+    }
+
+    [Fact]
     public void BuildAndTestJob_IsBlockingAndHasGovernanceTelemetryGate() {
         // REL-2 (2026-07-13): the FrontComposer-only Gate 2b governance lane moved from the
         // inline ci.yml build-and-test job into the supplemental quality.yml (ci.yml now delegates

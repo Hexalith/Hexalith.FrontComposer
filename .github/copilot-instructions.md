@@ -46,8 +46,14 @@ Before working in a Hexalith repository, locate, read, and follow
 
 - Before Git work, inspect the current repository's branch, working tree,
   remotes, and recent history.
-- Use Conventional Commits whenever a commit is requested. Never bypass commit
-  validation.
+- Any commit message you create, suggest, or use must follow Conventional
+  Commits and satisfy both the owning repository's effective commitlint policy
+  and its tracked Git guidance. Before presenting or using a message, validate
+  the exact full candidate with the owning repository's pinned commitlint CLI
+  and preserve successful validation evidence. If validation cannot run or
+  rejects the candidate, do not present or use it as compliant: report the exact
+  blocker or rule violations, revise invalid messages, and revalidate them.
+  Never bypass commit validation.
 - In an umbrella workspace, initialize or update only dependencies declared by
   the top-level workspace `.gitmodules` file.
 - Never initialize or update a submodule's nested submodules unless the user
