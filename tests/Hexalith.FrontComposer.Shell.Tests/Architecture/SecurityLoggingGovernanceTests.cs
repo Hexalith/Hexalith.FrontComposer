@@ -9,6 +9,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.Architecture;
 [Trait("Category", "Governance")]
 public sealed class SecurityLoggingGovernanceTests
 {
+    private static readonly Lazy<MetadataReference[]> CompilationReferences = new(CreateCompilationReferences);
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<SourceFile, SemanticContext> SemanticContexts = new();
+
     private static readonly HashSet<string> DirectLogMethodNames =
     [
         "Log",
@@ -434,17 +437,23 @@ public sealed class SecurityLoggingGovernanceTests
         [
             new(
                 SecuritySourcePaths[0],
-                "using Microsoft.Extensions.Logging; namespace Synthetic; internal sealed class Gate { "
-                + "void Run(ILogger logger) => logger.LogWarning(\"unsafe\"); }"),
+                "using static Microsoft.Extensions.Logging.LoggerExtensions; using Microsoft.Extensions.Logging; "
+                + "namespace Synthetic; internal sealed class Gate { "
+                + "void Run(ILogger logger, Audit audit) { LogWarning(logger, \"unsafe\"); audit.Log(\"not logging\"); } "
+                + "internal sealed class Audit { public void Log(string message) { } } }"),
             new(
                 "src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerSecurityLog.cs",
-                "using System; using Microsoft.Extensions.Logging; namespace Synthetic; internal static partial class FrontComposerSecurityLog { "
-                + "[LoggerMessage(EventId = 5660, EventName = \"First\", Level = LogLevel.Warning, Message = \"first\")] "
-                + "static partial void First(ILogger logger, Exception exception); "
-                + "[LoggerMessage(EventId = 5660, EventName = \"Second\", Level = LogLevel.Warning, Message = \"second\")] "
-                + "static partial void Second(ILogger logger); "
-                + "[LoggerMessage(EventId = 5661, EventName = \"Drift\", Level = LogLevel.Warning, Message = \"{First} {Missing}\")] "
-                + "static partial void Drift(ILogger logger, string first); }"),
+                "using System; using Boom = System.InvalidOperationException; using Microsoft.Extensions.Logging; "
+                + "namespace Synthetic; internal static partial class FrontComposerSecurityLog { "
+                + "private const int SharedId = 5660; private const string SharedName = \"First\"; "
+                + "[global::Microsoft.Extensions.Logging.LoggerMessage(EventId = SharedId, EventName = SharedName, Level = LogLevel.Warning, Message = \"first\")] "
+                + "static partial void First(ILogger logger, Boom exception); "
+                + "[LoggerMessage(EventId = SharedId, EventName = \"Second\", Level = LogLevel.Warning, Message = \"{Exception}\")] "
+                + "static partial void Second(ILogger logger, FakeException exception); "
+                + "[LoggerMessage(EventId = 5661, EventName = \"Drift\", Level = LogLevel.Warning, Message = \"{{Literal}} {First} {Missing}\")] "
+                + "static partial void Drift(ILogger logger, string first); "
+                + "[LoggerMessage(EventId = 5662, EventName = \"Escaped\", Level = LogLevel.Warning, Message = \"{{Literal}} {First}\")] "
+                + "static partial void Escaped(ILogger logger, string first); private sealed class FakeException { } }"),
         ];
 
         DirectLogSite directCall = sources.SelectMany(FindDirectLogSites).ShouldHaveSingleItem();
@@ -454,6 +463,8 @@ public sealed class SecurityLoggingGovernanceTests
         events.GroupBy(static entry => entry.EventId).ShouldContain(group => group.Count() == 2);
         events.ShouldContain(static entry => entry.HasExceptionParameter);
         events.ShouldContain(static entry => entry.HasPlaceholderSignatureDrift);
+        events.Single(static entry => entry.EventName == "Second").HasExceptionParameter.ShouldBeFalse();
+        events.Single(static entry => entry.EventName == "Escaped").HasPlaceholderSignatureDrift.ShouldBeFalse();
     }
 
     [Fact]
@@ -549,9 +560,14 @@ public sealed class SecurityLoggingGovernanceTests
     [Fact]
     public void ResidualWarningAndAboveLedger_DirectCalls_AreFullyMigrated()
     {
-        DirectLogSite[] sites = [.. LoadSources("src/Hexalith.FrontComposer.Shell")
+        SourceFile[] sources = LoadSources("src/Hexalith.FrontComposer.Shell");
+        DirectLogSite[] sites = [.. sources
             .SelectMany(FindDirectLogSites)
             .Where(site => ClassifyOwnership(site) == LogOwnership.ResidualWarningAndAbove)];
+        GeneratedLogCallSite[] generatedSites = [.. sources.SelectMany(FindWarningWrapperCallSites)];
+        LoggerEvent[] warningEvents = [.. sources
+            .SelectMany(FindLoggerEvents)
+            .Where(static entry => entry.Path.EndsWith("/FrontComposerWarningLog.cs", StringComparison.Ordinal))];
 
         ExpectedResidualWarningAndAboveLocations.Length.ShouldBe(54);
         ExpectedResidualWarningAndAboveLocations.Count(static location =>
@@ -562,26 +578,50 @@ public sealed class SecurityLoggingGovernanceTests
             location.EndsWith("LogCritical", StringComparison.Ordinal)).ShouldBe(0);
         sites.ShouldBeEmpty(
             "every frozen residual Warning/Error/Critical site must use generated logging. " + FormatSites(sites));
+        generatedSites.Select(static site => site.MemberKey).Order(StringComparer.Ordinal).ShouldBe(
+            ExpectedResidualWarningAndAboveLocations.Select(GetMemberKey).Order(StringComparer.Ordinal),
+            "each frozen production branch must retain exactly one generated warning wrapper call");
+        generatedSites.Select(static site => site.MethodName).Distinct(StringComparer.Ordinal).Count().ShouldBe(54);
+        generatedSites.Select(static site => site.MethodName).Order(StringComparer.Ordinal).ShouldBe(
+            warningEvents.Select(static entry => entry.EventName).OfType<string>().Order(StringComparer.Ordinal),
+            "all 54 generated warning events must each have one production call site");
     }
 
     private static IEnumerable<DirectLogSite> FindDirectLogSites(SourceFile source)
     {
-        SyntaxTree tree = Parse(source);
+        SemanticContext context = CreateSemanticContext(source);
+        SyntaxTree tree = context.Tree;
         foreach (InvocationExpressionSyntax invocation in tree.GetRoot().DescendantNodes().OfType<InvocationExpressionSyntax>())
         {
-            string? methodName = invocation.Expression switch
-            {
-                MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.ValueText,
-                MemberBindingExpressionSyntax memberBinding => memberBinding.Name.Identifier.ValueText,
-                _ => null,
-            };
-            if (methodName is null || !DirectLogMethodNames.Contains(methodName))
+            IMethodSymbol? method = ResolveMethod(context.Model, invocation);
+            string? methodName = method?.Name;
+            bool isLoggingMethod = method is not null && IsDirectLoggingMethod(method);
+            if (!isLoggingMethod
+                && !IsUnqualifiedStaticLoggingCall(context.Model, invocation, out methodName))
             {
                 continue;
             }
 
             int line = tree.GetLineSpan(invocation.Span).StartLinePosition.Line + 1;
-            yield return new(source.Path, FindContainingMember(invocation), line, methodName);
+            yield return new(source.Path, FindContainingMember(invocation), line, methodName!);
+        }
+    }
+
+    private static IEnumerable<GeneratedLogCallSite> FindWarningWrapperCallSites(SourceFile source)
+    {
+        SyntaxTree tree = Parse(source);
+        foreach (InvocationExpressionSyntax invocation in tree.GetRoot().DescendantNodes().OfType<InvocationExpressionSyntax>())
+        {
+            if (invocation.Expression is not MemberAccessExpressionSyntax
+                {
+                    Expression: IdentifierNameSyntax { Identifier.ValueText: "FrontComposerWarningLog" },
+                    Name: SimpleNameSyntax methodName,
+                })
+            {
+                continue;
+            }
+
+            yield return new(source.Path, FindContainingMember(invocation), methodName.Identifier.ValueText);
         }
     }
 
@@ -635,26 +675,25 @@ public sealed class SecurityLoggingGovernanceTests
 
     private static IEnumerable<LoggerEvent> FindLoggerEvents(SourceFile source)
     {
-        SyntaxTree tree = Parse(source);
-        foreach (AttributeSyntax attribute in tree.GetRoot().DescendantNodes().OfType<AttributeSyntax>().Where(IsLoggerMessageAttribute))
+        SemanticContext context = CreateSemanticContext(source);
+        SyntaxTree tree = context.Tree;
+        foreach (AttributeSyntax attribute in tree.GetRoot().DescendantNodes().OfType<AttributeSyntax>()
+            .Where(attribute => IsLoggerMessageAttribute(attribute, context.Model)))
         {
             MethodDeclarationSyntax? method = attribute.FirstAncestorOrSelf<MethodDeclarationSyntax>();
-            int? eventId = ReadEventId(attribute);
+            int? eventId = ReadEventId(attribute, context.Model);
             if (method is null || eventId is null)
             {
                 continue;
             }
 
-            string? eventName = attribute.ArgumentList?.Arguments
-                .FirstOrDefault(static argument => argument.NameEquals?.Name.Identifier.ValueText == "EventName")
-                ?.Expression is LiteralExpressionSyntax literal
-                ? literal.Token.ValueText
-                : null;
-            string? level = attribute.ArgumentList?.Arguments
-                .FirstOrDefault(static argument => argument.NameEquals?.Name.Identifier.ValueText == "Level")
-                ?.Expression.ToString().Split('.').LastOrDefault();
-            bool hasExceptionParameter = method.ParameterList.Parameters.Any(static parameter =>
-                IsExceptionParameterType(parameter.Type));
+            string? eventName = ReadNamedConstant<string>(attribute, context.Model, "EventName");
+            int? levelValue = ReadNamedConstant<int>(attribute, context.Model, "Level");
+            string? level = levelValue is null
+                ? null
+                : Enum.GetName(typeof(Microsoft.Extensions.Logging.LogLevel), levelValue.Value);
+            bool hasExceptionParameter = method.ParameterList.Parameters.Any(parameter =>
+                IsExceptionParameterType(parameter.Type, context.Model));
             int line = tree.GetLineSpan(attribute.Span).StartLinePosition.Line + 1;
             yield return new(
                 source.Path,
@@ -663,24 +702,24 @@ public sealed class SecurityLoggingGovernanceTests
                 eventName,
                 level,
                 hasExceptionParameter,
-                HasPlaceholderSignatureDrift(attribute, method));
+                HasPlaceholderSignatureDrift(attribute, method, context.Model));
         }
     }
 
-    private static bool IsExceptionParameterType(TypeSyntax? type)
+    private static bool IsExceptionParameterType(TypeSyntax? type, SemanticModel model)
     {
-        if (type is null)
+        INamedTypeSymbol? symbol = type is null ? null : model.GetTypeInfo(type).Type as INamedTypeSymbol;
+        while (symbol is not null)
         {
-            return false;
+            if (symbol.ToDisplayString() == "System.Exception")
+            {
+                return true;
+            }
+
+            symbol = symbol.BaseType;
         }
 
-        string text = type.ToString().TrimEnd('?');
-        if (text.StartsWith("global::", StringComparison.Ordinal))
-        {
-            text = text["global::".Length..];
-        }
-
-        return text.EndsWith("Exception", StringComparison.Ordinal);
+        return false;
     }
 
     private static IEnumerable<string> FindUnwrappedIdentifierArguments(SourceFile source)
@@ -737,19 +776,14 @@ public sealed class SecurityLoggingGovernanceTests
 
     private static bool HasPlaceholderSignatureDrift(
         AttributeSyntax attribute,
-        MethodDeclarationSyntax method)
+        MethodDeclarationSyntax method,
+        SemanticModel model)
     {
-        string? message = attribute.ArgumentList?.Arguments
-            .FirstOrDefault(static argument => argument.NameEquals?.Name.Identifier.ValueText == "Message")
-            ?.Expression is LiteralExpressionSyntax literal
-            ? literal.Token.ValueText
-            : null;
+        string? message = ReadNamedConstant<string>(attribute, model, "Message");
         HashSet<string> placeholders = ReadPlaceholders(message);
         HashSet<string> parameters = method.ParameterList.Parameters
-            .Where(static parameter => parameter.Type?.ToString() is not "ILogger"
-                and not "Microsoft.Extensions.Logging.ILogger"
-                and not "Exception"
-                and not "System.Exception")
+            .Where(parameter => !IsLoggerParameterType(parameter.Type, model)
+                && !IsExceptionParameterType(parameter.Type, model))
             .Select(static parameter => parameter.Identifier.ValueText)
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
         return !placeholders.SetEquals(parameters);
@@ -765,8 +799,14 @@ public sealed class SecurityLoggingGovernanceTests
 
         for (int index = 0; index < message.Length; index++)
         {
-            if (message[index] != '{' || (index + 1 < message.Length && message[index + 1] == '{'))
+            if (message[index] != '{')
             {
+                continue;
+            }
+
+            if (index + 1 < message.Length && message[index + 1] == '{')
+            {
+                index++;
                 continue;
             }
 
@@ -799,18 +839,135 @@ public sealed class SecurityLoggingGovernanceTests
         duplicates.ShouldBeEmpty("LoggerMessage EventIds must be unique. " + string.Join("; ", duplicates));
     }
 
-    private static int? ReadEventId(AttributeSyntax attribute)
+    private static int? ReadEventId(AttributeSyntax attribute, SemanticModel model)
     {
         AttributeArgumentSyntax? argument = attribute.ArgumentList?.Arguments
             .FirstOrDefault(static candidate => candidate.NameEquals?.Name.Identifier.ValueText == "EventId")
             ?? attribute.ArgumentList?.Arguments.FirstOrDefault(static candidate => candidate.NameEquals is null);
-        return argument is not null && int.TryParse(argument.Expression.ToString(), out int eventId)
-            ? eventId
+        Optional<object?> value = argument is null
+            ? default
+            : model.GetConstantValue(argument.Expression);
+        return value.HasValue && value.Value is not null
+            ? Convert.ToInt32(value.Value, System.Globalization.CultureInfo.InvariantCulture)
             : null;
     }
 
     private static bool IsLoggerMessageAttribute(AttributeSyntax attribute)
         => attribute.Name.ToString() is "LoggerMessage" or "LoggerMessageAttribute";
+
+    private static bool IsLoggerMessageAttribute(AttributeSyntax attribute, SemanticModel model)
+    {
+        ISymbol? symbol = model.GetSymbolInfo(attribute).Symbol;
+        return symbol is IMethodSymbol method
+            && method.ContainingType.ToDisplayString() == "Microsoft.Extensions.Logging.LoggerMessageAttribute";
+    }
+
+    private static T? ReadNamedConstant<T>(AttributeSyntax attribute, SemanticModel model, string name)
+    {
+        AttributeArgumentSyntax? argument = attribute.ArgumentList?.Arguments
+            .FirstOrDefault(candidate => candidate.NameEquals?.Name.Identifier.ValueText == name);
+        Optional<object?> value = argument is null
+            ? default
+            : model.GetConstantValue(argument.Expression);
+        if (!value.HasValue || value.Value is null)
+        {
+            return default;
+        }
+
+        return value.Value is T typed
+            ? typed
+            : (T)Convert.ChangeType(value.Value, typeof(T), System.Globalization.CultureInfo.InvariantCulture);
+    }
+
+    private static SemanticContext CreateSemanticContext(SourceFile source)
+        => SemanticContexts.GetOrAdd(source, static item =>
+        {
+            SyntaxTree tree = Parse(item);
+            CSharpCompilation compilation = CSharpCompilation.Create(
+                "SecurityLoggingGovernance",
+                [tree],
+                CompilationReferences.Value,
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                    .WithNullableContextOptions(NullableContextOptions.Enable));
+            return new(tree, compilation.GetSemanticModel(tree, ignoreAccessibility: true));
+        });
+
+    private static MetadataReference[] CreateCompilationReferences()
+    {
+        string[] paths = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
+            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
+            ?? [];
+        return [.. paths
+            .Where(File.Exists)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(static path => MetadataReference.CreateFromFile(path))];
+    }
+
+    private static IMethodSymbol? ResolveMethod(SemanticModel model, InvocationExpressionSyntax invocation)
+    {
+        SymbolInfo symbolInfo = model.GetSymbolInfo(invocation);
+        IMethodSymbol? method = symbolInfo.Symbol as IMethodSymbol
+            ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault(IsDirectLoggingMethod);
+        if (method is not null)
+        {
+            return method;
+        }
+
+        symbolInfo = model.GetSymbolInfo(invocation.Expression);
+        return symbolInfo.Symbol as IMethodSymbol
+            ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault(IsDirectLoggingMethod);
+    }
+
+    private static bool IsDirectLoggingMethod(IMethodSymbol method)
+    {
+        if (!DirectLogMethodNames.Contains(method.Name))
+        {
+            return false;
+        }
+
+        IMethodSymbol canonical = method.ReducedFrom ?? method;
+        string containingType = canonical.ContainingType.ToDisplayString();
+        if (containingType == "Microsoft.Extensions.Logging.LoggerExtensions"
+            || containingType == "Microsoft.Extensions.Logging.ILogger")
+        {
+            return true;
+        }
+
+        return method.Name == "Log"
+            && canonical.ContainingType.AllInterfaces.Any(static interfaceType =>
+                interfaceType.ToDisplayString() == "Microsoft.Extensions.Logging.ILogger");
+    }
+
+    private static bool IsLoggerParameterType(TypeSyntax? type, SemanticModel model)
+    {
+        INamedTypeSymbol? symbol = type is null ? null : model.GetTypeInfo(type).Type as INamedTypeSymbol;
+        return IsLoggerType(symbol);
+    }
+
+    private static bool IsUnqualifiedStaticLoggingCall(
+        SemanticModel model,
+        InvocationExpressionSyntax invocation,
+        out string? methodName)
+    {
+        methodName = (invocation.Expression as IdentifierNameSyntax)?.Identifier.ValueText;
+        if (methodName is null
+            || !DirectLogMethodNames.Contains(methodName)
+            || invocation.ArgumentList.Arguments.Count == 0)
+        {
+            return false;
+        }
+
+        INamedTypeSymbol? firstArgumentType = model.GetTypeInfo(invocation.ArgumentList.Arguments[0].Expression).Type
+            as INamedTypeSymbol;
+        return IsLoggerType(firstArgumentType);
+    }
+
+    private static bool IsLoggerType(INamedTypeSymbol? symbol)
+        => symbol is not null
+            && (symbol.OriginalDefinition.ToDisplayString() is "Microsoft.Extensions.Logging.ILogger"
+                or "Microsoft.Extensions.Logging.ILogger<TCategoryName>"
+                || symbol.AllInterfaces.Any(static interfaceType =>
+                    interfaceType.ToDisplayString() == "Microsoft.Extensions.Logging.ILogger"));
 
     private static SyntaxTree Parse(SourceFile source)
         => CSharpSyntaxTree.ParseText(
@@ -856,11 +1013,18 @@ public sealed class SecurityLoggingGovernanceTests
 
     private sealed record SourceFile(string Path, string Content);
 
+    private sealed record SemanticContext(SyntaxTree Tree, SemanticModel Model);
+
     private sealed record DirectLogSite(string Path, string MemberName, int Line, string MethodName)
     {
         public string MemberKey => $"{Path}:{MemberName}";
 
         public string Location => $"{Path}:{MemberName}:{Line}:{MethodName}";
+    }
+
+    private sealed record GeneratedLogCallSite(string Path, string MemberName, string MethodName)
+    {
+        public string MemberKey => $"{Path}:{MemberName}";
     }
 
     private enum LogOwnership

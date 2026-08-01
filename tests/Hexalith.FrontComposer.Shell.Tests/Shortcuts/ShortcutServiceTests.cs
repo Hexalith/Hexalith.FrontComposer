@@ -190,7 +190,7 @@ public class ShortcutServiceTests {
         entry.State["DiagnosticId"].ShouldBe(FcDiagnosticIds.HFC2109_ShortcutHandlerFault);
         entry.State["BindingDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
         entry.State["DescriptionKeyDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
-        entry.State["ExceptionType"].ShouldBe(nameof(InvalidOperationException));
+        entry.State["ExceptionType"].ShouldBe(typeof(InvalidOperationException).FullName);
         entry.State["ExceptionMessageDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
         entry.Message.ShouldNotContain("ctrl+k");
         entry.Message.ShouldNotContain("DescriptionKeyDigest=Desc");
@@ -214,7 +214,7 @@ public class ShortcutServiceTests {
         entry.State["DiagnosticId"].ShouldBe(FcDiagnosticIds.HFC2109_ShortcutHandlerFault);
         entry.State["BindingDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
         entry.State["DescriptionKeyDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
-        entry.State["ExceptionType"].ShouldBe(nameof(OperationCanceledException));
+        entry.State["ExceptionType"].ShouldBe(typeof(OperationCanceledException).FullName);
         entry.State["ExceptionMessageDigest"].ShouldBeOfType<string>().ShouldStartWith("sha256:");
         entry.Message.ShouldNotContain("ctrl+k");
         entry.Message.ShouldNotContain("DescriptionKeyDigest=Desc");

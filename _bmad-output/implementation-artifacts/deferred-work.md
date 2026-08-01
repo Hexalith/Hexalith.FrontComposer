@@ -1875,3 +1875,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-run-all-tests-fix-failures-2.md`
   summary: Add invalid-manifest fixtures for EventStore release-manifest normalization and containment guards.
   evidence: The concurrently advanced EventStore checkout's `tools/release_package_contract.py` rejects malformed, duplicate, foreign, traversal, non-normalized, and out-of-root entries, while current tests exercise the checked-in valid manifest only. This submodule work was unrelated to and preserved by the FrontComposer repair.
+
+## Deferred from: code review of 11-18-warning-and-above-log-sites.md (2026-07-31)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-18-warning-and-above-log-sites.md`
+  summary: Prevent generic-host startup exception logging from exposing raw customization identifiers.
+  evidence: `CustomizationContractValidationGate.StartAsync` emits a digested generated event and then throws `InvalidOperationException(final)` with raw projection, field, role, and component values (`src/Hexalith.FrontComposer.Shell/Services/Customization/CustomizationContractValidationGate.cs:101-107`). The raw exception behavior predates this logging-only migration and needs an owning startup-contract decision because changing it affects adopter-facing fail-closed diagnostics.
+- source_spec: `_bmad-output/implementation-artifacts/11-18-fail-closed-security-log-sites.md`
+  summary: Make the unwrapped-identifier governance guard follow data flow rather than argument syntax or reserved parameter names.
+  evidence: `FindUnwrappedIdentifierArguments` examines direct identifier arguments only and exempts `diagnosticId` and `exceptionType` by name, so a raw sensitive value wrapped in `Trim()`, interpolation, a local, or a renamed parameter can evade it (`tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs:686-735`). Git provenance assigns this guard to the later Story 11.18a review commit `78705260`, not Story 11.18b.
+- source_spec: `_bmad-output/implementation-artifacts/sprint-status.yaml`
+  summary: Reconcile contradictory SDK, REL-1, and REL-4 truth-state records introduced after Story 11.18b.
+  evidence: The current baseline-to-HEAD status file says the expected and reported SDK are both `10.0.302` while calling that a blocker, reopens REL-1 as backlog after recording it closed as superseded, and still says REL-4 enforcement is pending after later entries record implementation and review (`_bmad-output/implementation-artifacts/sprint-status.yaml:381,524-525,621-623`). Git blame places these edits in later non-11.18b commits, so their owning status/release work must reconcile them separately.

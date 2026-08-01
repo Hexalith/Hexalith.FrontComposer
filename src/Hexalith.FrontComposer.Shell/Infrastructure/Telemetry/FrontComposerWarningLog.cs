@@ -8,6 +8,8 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 internal static partial class FrontComposerWarningLog
 {
+    private const int MaxDigestCharacters = 4096;
+
     /// <summary>Emits the <c>BadgeCatalogEnumerationFailed</c> residual warning-and-above event.</summary>
     public static void BadgeCatalogEnumerationFailed(
         ILogger? logger,
@@ -21,7 +23,7 @@ internal static partial class FrontComposerWarningLog
 
         LogBadgeCatalogEnumerationFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             ExceptionType(exception),
             Digest(exception.Message));
     }
@@ -40,7 +42,7 @@ internal static partial class FrontComposerWarningLog
 
         LogBadgeReaderFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
             ExceptionType(exception),
             Digest(exception.Message));
@@ -60,7 +62,7 @@ internal static partial class FrontComposerWarningLog
 
         LogBadgeNegativeCount(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             newCount,
             Digest(projectionType));
     }
@@ -79,7 +81,7 @@ internal static partial class FrontComposerWarningLog
 
         LogBadgeNotifierFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
             ExceptionType(exception),
             Digest(exception.Message));
@@ -113,7 +115,7 @@ internal static partial class FrontComposerWarningLog
 
         LogLayoutSubscribeFailed(
             logger,
-            Category(defaultTier),
+            EnumCategory(defaultTier),
             ExceptionType(exception));
     }
 
@@ -134,7 +136,7 @@ internal static partial class FrontComposerWarningLog
 
         LogFieldSlotMissingParameters(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
             Digest(fieldType),
             parentNull,
@@ -158,7 +160,7 @@ internal static partial class FrontComposerWarningLog
 
         LogFieldSlotTypeMismatch(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
             Digest(field),
             Digest(descriptorFieldType),
@@ -182,10 +184,10 @@ internal static partial class FrontComposerWarningLog
 
         LogFieldSlotRenderFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
             Digest(componentType),
-            Category(role),
+            RoleCategory(role, "<default>"),
             Digest(field),
             ExceptionType(exception));
     }
@@ -238,10 +240,10 @@ internal static partial class FrontComposerWarningLog
 
         LogProjectionTemplateRenderFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
             Digest(componentType),
-            Category(role),
+            RoleCategory(role, "<default>"),
             ExceptionType(exception));
     }
 
@@ -265,11 +267,11 @@ internal static partial class FrontComposerWarningLog
 
         LogProjectionViewOverrideRenderFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
             Digest(componentType),
-            Category(role),
-            Category(exceptionCategory),
+            RoleCategory(role, "<default>"),
+            ExceptionCategory(exceptionCategory),
             Digest(tenantId),
             Digest(userId),
             consecutiveFailures,
@@ -306,7 +308,7 @@ internal static partial class FrontComposerWarningLog
         LogProblemDetailsContentLengthExceeded(
             logger,
             maxBytes,
-            Category(contentType));
+            Digest(contentType));
     }
 
     /// <summary>Emits the <c>ProblemDetailsReadExceeded</c> residual warning-and-above event.</summary>
@@ -323,7 +325,7 @@ internal static partial class FrontComposerWarningLog
         LogProblemDetailsReadExceeded(
             logger,
             maxBytes,
-            Category(contentType));
+            Digest(contentType));
     }
 
     /// <summary>Emits the <c>ProblemDetailsParseFailed</c> residual warning-and-above event.</summary>
@@ -339,8 +341,8 @@ internal static partial class FrontComposerWarningLog
 
         LogProblemDetailsParseFailed(
             logger,
-            Category(contentType),
-            Category(failureCategory));
+            Digest(contentType),
+            ExceptionCategory(failureCategory));
     }
 
     /// <summary>Emits the <c>LocalStorageDeserializeFailed</c> residual warning-and-above event.</summary>
@@ -448,7 +450,7 @@ internal static partial class FrontComposerWarningLog
 
         LogCustomizationValidationFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             rejectionCount,
             Digest(message));
     }
@@ -467,8 +469,8 @@ internal static partial class FrontComposerWarningLog
 
         LogDiagnosticSinkPublished(
             logger,
-            Category(code),
-            Category(category),
+            DiagnosticCode(code),
+            DiagnosticCategory(category),
             Digest(message));
     }
 
@@ -512,10 +514,10 @@ internal static partial class FrontComposerWarningLog
 
         LogProjectionSlotIncompatibleContractVersion(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
             Digest(field),
-            Category(decision),
+            EnumCategory(decision),
             expectedMajor,
             expectedMinor,
             expectedBuild,
@@ -546,7 +548,7 @@ internal static partial class FrontComposerWarningLog
             Digest(expectedProjectionType),
             Digest(expectedFieldType),
             Digest(componentType),
-            Category(reason));
+            Digest(reason));
     }
 
     /// <summary>Emits the <c>ProjectionSlotDuplicate</c> residual warning-and-above event.</summary>
@@ -566,7 +568,7 @@ internal static partial class FrontComposerWarningLog
         LogProjectionSlotDuplicate(
             logger,
             Digest(projectionType),
-            Category(role),
+            RoleCategory(role, "<any>"),
             Digest(field),
             Digest(existingComponent),
             Digest(newComponent));
@@ -593,10 +595,10 @@ internal static partial class FrontComposerWarningLog
 
         LogProjectionTemplateIncompatibleContractVersion(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
-            Category(role),
-            Category(decision),
+            RoleCategory(role, "<any>"),
+            EnumCategory(decision),
             expectedMajor,
             expectedMinor,
             expectedBuild,
@@ -621,7 +623,7 @@ internal static partial class FrontComposerWarningLog
         LogProjectionTemplateDuplicate(
             logger,
             Digest(projectionType),
-            Category(role),
+            RoleCategory(role, "<any>"),
             Digest(existingTemplate),
             Digest(newTemplate));
     }
@@ -657,9 +659,9 @@ internal static partial class FrontComposerWarningLog
 
         LogProjectionViewOverrideInvalidContractVersion(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
-            Category(role),
+            RoleCategory(role, "<any>"),
             contractVersion,
             Digest(source));
     }
@@ -686,10 +688,10 @@ internal static partial class FrontComposerWarningLog
 
         LogProjectionViewOverrideIncompatibleContractVersion(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
-            Category(role),
-            Category(decision),
+            RoleCategory(role, "<any>"),
+            EnumCategory(decision),
             expectedMajor,
             expectedMinor,
             expectedBuild,
@@ -716,12 +718,12 @@ internal static partial class FrontComposerWarningLog
 
         LogProjectionViewOverrideInvalidComponent(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
-            Category(role),
+            RoleCategory(role, "<any>"),
             Digest(componentType),
             Digest(source),
-            Category(reason));
+            Digest(reason));
     }
 
     /// <summary>Emits the <c>ProjectionViewOverrideDuplicate</c> residual warning-and-above event.</summary>
@@ -742,9 +744,9 @@ internal static partial class FrontComposerWarningLog
 
         LogProjectionViewOverrideDuplicate(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(projectionType),
-            Category(role),
+            RoleCategory(role, "<any>"),
             Digest(componentA),
             Digest(sourceA),
             Digest(componentB),
@@ -798,7 +800,7 @@ internal static partial class FrontComposerWarningLog
 
         LogShortcutHandlerFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(binding),
             Digest(descriptionKey),
             ExceptionType(exception),
@@ -819,7 +821,7 @@ internal static partial class FrontComposerWarningLog
 
         LogCapabilityPersistFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(capability),
             ExceptionType(exception),
             Digest(exception.Message));
@@ -838,7 +840,7 @@ internal static partial class FrontComposerWarningLog
 
         LogCapabilityHydrateFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             ExceptionType(exception),
             Digest(exception.Message));
     }
@@ -856,7 +858,7 @@ internal static partial class FrontComposerWarningLog
 
         LogBadgeSnapshotFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             ExceptionType(exception),
             Digest(exception.Message));
     }
@@ -873,7 +875,7 @@ internal static partial class FrontComposerWarningLog
 
         LogPaletteShortcutServiceMissing(
             logger,
-            Category(diagnosticId));
+            DiagnosticCode(diagnosticId));
     }
 
     /// <summary>Emits the <c>PaletteRegistryEnumerationFailed</c> residual warning-and-above event.</summary>
@@ -889,7 +891,7 @@ internal static partial class FrontComposerWarningLog
 
         LogPaletteRegistryEnumerationFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             ExceptionType(exception));
     }
 
@@ -907,7 +909,7 @@ internal static partial class FrontComposerWarningLog
 
         LogPaletteManifestScoringFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(boundedContext),
             ExceptionType(exception));
     }
@@ -924,7 +926,7 @@ internal static partial class FrontComposerWarningLog
 
         LogPaletteNavigationServiceMissing(
             logger,
-            Category(diagnosticId));
+            DiagnosticCode(diagnosticId));
     }
 
     /// <summary>Emits the <c>PaletteNavigationRefused</c> residual warning-and-above event.</summary>
@@ -940,7 +942,7 @@ internal static partial class FrontComposerWarningLog
 
         LogPaletteNavigationRefused(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             ExceptionType(exception));
     }
 
@@ -957,7 +959,7 @@ internal static partial class FrontComposerWarningLog
 
         LogPaletteOpenRegistryEnumerationFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             ExceptionType(exception));
     }
 
@@ -975,7 +977,7 @@ internal static partial class FrontComposerWarningLog
 
         LogPaletteOpenManifestFailed(
             logger,
-            Category(diagnosticId),
+            DiagnosticCode(diagnosticId),
             Digest(boundedContext),
             ExceptionType(exception));
     }
@@ -1007,7 +1009,7 @@ internal static partial class FrontComposerWarningLog
         LogProjectionLoadSchemaFailed(
             logger,
             Digest(projectionType),
-            Category(failureCategory));
+            ExceptionCategory(failureCategory));
     }
 
     /// <summary>Emits the <c>ProjectionLoadTerminalDispatchFailed</c> residual warning-and-above event.</summary>
@@ -1076,38 +1078,142 @@ internal static partial class FrontComposerWarningLog
             ExceptionType(exception));
     }
 
-    private static string Category(object? value)
+    private static string DiagnosticCode(object? value)
     {
-        string? text = Convert.ToString(value, CultureInfo.InvariantCulture);
-        if (string.IsNullOrWhiteSpace(text))
+        if (!TryReadBoundedText(value, 16, out string text))
+        {
+            return value is null ? "Absent" : Digest(value);
+        }
+
+        bool isDevCode = text.Length is >= 2 and <= 8
+            && text[0] == 'D'
+            && text.AsSpan(1).IndexOfAnyExceptInRange('0', '9') < 0;
+        bool isHfcCode = text.Length is >= 4 and <= 16
+            && text.StartsWith("HFC", StringComparison.Ordinal)
+            && text.AsSpan(3).IndexOfAnyExceptInRange('0', '9') < 0;
+        return isDevCode || isHfcCode
+            ? text
+            : Digest(text);
+    }
+
+    private static string DiagnosticCategory(object? value)
+    {
+        if (!TryReadBoundedText(value, 32, out string text))
+        {
+            return value is null ? "Absent" : Digest(value);
+        }
+
+        return text switch
+        {
+            "Customization" or "FailClosed" or "LastUsed" => text,
+            _ => Digest(text),
+        };
+    }
+
+    private static string EnumCategory(object? value)
+    {
+        if (value is null)
         {
             return "Absent";
         }
 
-        text = text.Trim();
-        if (text.Length > 64 || text.Any(static character => !char.IsLetterOrDigit(character)
-            && character is not '.' and not '_' and not '-'))
+        if (value is not Enum)
         {
-            return Digest(text);
+            return Digest(value);
         }
 
-        return text;
+        bool bounded = TryReadBoundedText(value, 64, out string text);
+        return bounded
+            ? text
+            : Digest(value);
+    }
+
+    private static string ExceptionCategory(object? value)
+    {
+        bool bounded = TryReadBoundedText(value, 256, out string text);
+        return bounded
+            && text.EndsWith("Exception", StringComparison.Ordinal)
+            ? text
+            : Digest(value);
+    }
+
+    private static string RoleCategory(object? value, string absenceCategory)
+    {
+        if (value is null)
+        {
+            return absenceCategory;
+        }
+
+        if (!TryReadBoundedText(value, 64, out string text))
+        {
+            return Digest(value);
+        }
+
+        return text switch
+        {
+            "ActionQueue" or "StatusOverview" or "DetailRecord" or "Timeline" or "Dashboard" => text,
+            _ => Digest(text),
+        };
+    }
+
+    private static bool TryReadBoundedText(object? value, int maxCharacters, out string text)
+    {
+        string? converted = Convert.ToString(value, CultureInfo.InvariantCulture);
+        if (string.IsNullOrEmpty(converted) || converted.Length > maxCharacters)
+        {
+            text = string.Empty;
+            return false;
+        }
+
+        text = converted.Trim();
+        return text.Length > 0;
     }
 
     private static string Digest(object? value)
     {
         string? text = Convert.ToString(value, CultureInfo.InvariantCulture);
-        if (string.IsNullOrWhiteSpace(text))
+        if (string.IsNullOrEmpty(text))
         {
             return "absent";
         }
 
-        byte[] bytes = Encoding.UTF8.GetBytes(text.Trim());
+        int originalCharacterCount = text.Length;
+        bool truncated = text.Length > MaxDigestCharacters;
+        ReadOnlySpan<char> leadingCharacters;
+        ReadOnlySpan<char> trailingCharacters = [];
+        if (truncated)
+        {
+            int segmentLength = MaxDigestCharacters / 2;
+            leadingCharacters = text.AsSpan(0, segmentLength);
+            trailingCharacters = text.AsSpan(text.Length - segmentLength, segmentLength);
+        }
+        else
+        {
+            leadingCharacters = text.AsSpan().Trim();
+            if (leadingCharacters.IsEmpty)
+            {
+                return "absent";
+            }
+        }
+
+        int leadingByteCount = Encoding.UTF8.GetByteCount(leadingCharacters);
+        int trailingByteCount = Encoding.UTF8.GetByteCount(trailingCharacters);
+        byte[] bytes = GC.AllocateUninitializedArray<byte>(leadingByteCount + trailingByteCount + (truncated ? 1 : 0));
         byte[]? hash = null;
         try
         {
+            _ = Encoding.UTF8.GetBytes(leadingCharacters, bytes.AsSpan(0, leadingByteCount));
+            if (truncated)
+            {
+                bytes[leadingByteCount] = 0;
+                _ = Encoding.UTF8.GetBytes(trailingCharacters, bytes.AsSpan(leadingByteCount + 1));
+            }
+
             hash = SHA256.HashData(bytes);
-            return "sha256:" + Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant();
+            string digest = "sha256:" + Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant();
+            return truncated
+                ? string.Create(CultureInfo.InvariantCulture, $"{digest}:len:{originalCharacterCount}")
+                : digest;
         }
         finally
         {
@@ -1123,7 +1229,11 @@ internal static partial class FrontComposerWarningLog
     private static string ExceptionType(Exception exception)
     {
         ArgumentNullException.ThrowIfNull(exception);
-        return exception.GetType().Name;
+        Type type = exception.GetType();
+        string typeName = type.FullName ?? type.Name;
+        return typeName.Length <= 256
+            ? typeName
+            : Digest(typeName);
     }
 
     [LoggerMessage(EventId = 5800, EventName = "BadgeCatalogEnumerationFailed", Level = LogLevel.Warning,
@@ -1151,11 +1261,11 @@ internal static partial class FrontComposerWarningLog
     private static partial void LogLayoutSubscribeFailed(ILogger logger, string defaultTier, string exceptionType);
 
     [LoggerMessage(EventId = 5806, EventName = "FieldSlotMissingParameters", Level = LogLevel.Warning,
-        Message = "{DiagnosticId}: FcFieldSlotHost received null required parameters. ProjectionTypeDigest={ProjectionTypeDigest} FieldTypeDigest={FieldTypeDigest} ParentNull={ParentNull} FieldNull={FieldNull} RenderContextNull={RenderContextNull}. Field renders nothing.")]
+        Message = "{DiagnosticId}: FcFieldSlotHost received null required parameters. ProjectionTypeDigest={ProjectionTypeDigest} FieldTypeDigest={FieldTypeDigest} ParentNull={ParentNull} FieldNull={FieldNull} RenderContextNull={RenderContextNull}. Field renders nothing. Fix: ensure the calling generated emitter or adopter component supplies all required parameters.")]
     private static partial void LogFieldSlotMissingParameters(ILogger logger, string diagnosticId, string projectionTypeDigest, string fieldTypeDigest, bool parentNull, bool fieldNull, bool renderContextNull);
 
     [LoggerMessage(EventId = 5807, EventName = "FieldSlotTypeMismatch", Level = LogLevel.Warning,
-        Message = "{DiagnosticId}: Level 3 slot descriptor field type does not match the host field type. ProjectionTypeDigest={ProjectionTypeDigest} FieldDigest={FieldDigest} DescriptorFieldTypeDigest={DescriptorFieldTypeDigest} HostFieldTypeDigest={HostFieldTypeDigest}. Descriptor ignored; default rendering used.")]
+        Message = "{DiagnosticId}: Level 3 slot descriptor field type does not match the host field type. ProjectionTypeDigest={ProjectionTypeDigest} FieldDigest={FieldDigest} DescriptorFieldTypeDigest={DescriptorFieldTypeDigest} HostFieldTypeDigest={HostFieldTypeDigest}. Descriptor ignored; default rendering used. Fix: re-register the slot using the typed AddSlotOverride extension so FieldType is derived from the expression.")]
     private static partial void LogFieldSlotTypeMismatch(ILogger logger, string diagnosticId, string projectionTypeDigest, string fieldDigest, string descriptorFieldTypeDigest, string hostFieldTypeDigest);
 
     [LoggerMessage(EventId = 5808, EventName = "FieldSlotRenderFailed", Level = LogLevel.Warning,
@@ -1223,23 +1333,23 @@ internal static partial class FrontComposerWarningLog
     private static partial void LogDiagnosticSinkPublished(ILogger logger, string code, string category, string messageDigest);
 
     [LoggerMessage(EventId = 5824, EventName = "ProjectionSlotInvalidContractVersion", Level = LogLevel.Warning,
-        Message = "HFC1041: Level 3 slot descriptor declares an invalid contract version. ProjectionTypeDigest={ProjectionTypeDigest} FieldDigest={FieldDigest} ContractVersion={ContractVersion}. Descriptor ignored.")]
+        Message = "HFC1041: Level 3 slot descriptor declares an invalid contract version. ProjectionTypeDigest={ProjectionTypeDigest} FieldDigest={FieldDigest} ContractVersion={ContractVersion}. Expected: a positive integer packed as Major*1_000_000 + Minor*1_000 + Build. Descriptor ignored.")]
     private static partial void LogProjectionSlotInvalidContractVersion(ILogger logger, string projectionTypeDigest, string fieldDigest, int contractVersion);
 
     [LoggerMessage(EventId = 5825, EventName = "ProjectionSlotIncompatibleContractVersion", Level = LogLevel.Warning,
-        Message = "{DiagnosticId}: Level 3 slot descriptor has an incompatible contract version. ProjectionTypeDigest={ProjectionTypeDigest} FieldDigest={FieldDigest} Decision={Decision} Expected={ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} Actual={ActualMajor}.{ActualMinor}.{ActualBuild}. Descriptor ignored.")]
+        Message = "{DiagnosticId}: Level 3 slot descriptor has an incompatible contract version. ProjectionTypeDigest={ProjectionTypeDigest} FieldDigest={FieldDigest} Decision={Decision} Expected={ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} Actual={ActualMajor}.{ActualMinor}.{ActualBuild}. Descriptor ignored. Fix: rebuild the slot component against the installed framework. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1041.")]
     private static partial void LogProjectionSlotIncompatibleContractVersion(ILogger logger, string diagnosticId, string projectionTypeDigest, string fieldDigest, string decision, int expectedMajor, int expectedMinor, int expectedBuild, int actualMajor, int actualMinor, int actualBuild);
 
     [LoggerMessage(EventId = 5826, EventName = "ProjectionSlotInvalidComponent", Level = LogLevel.Warning,
-        Message = "HFC1039: Invalid Level 3 slot component. ProjectionTypeDigest={ProjectionTypeDigest} FieldDigest={FieldDigest} ExpectedProjectionTypeDigest={ExpectedProjectionTypeDigest} ExpectedFieldTypeDigest={ExpectedFieldTypeDigest} ComponentTypeDigest={ComponentTypeDigest} ReasonCategory={ReasonCategory}.")]
+        Message = "HFC1039: Invalid Level 3 slot component. ProjectionTypeDigest={ProjectionTypeDigest} FieldDigest={FieldDigest} ExpectedProjectionTypeDigest={ExpectedProjectionTypeDigest} ExpectedFieldTypeDigest={ExpectedFieldTypeDigest} ComponentTypeDigest={ComponentTypeDigest} ReasonCategory={ReasonCategory}. Expected: a Razor component with a matching public Context parameter. Fix: add the matching Context parameter or register a compatible component. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1039.")]
     private static partial void LogProjectionSlotInvalidComponent(ILogger logger, string projectionTypeDigest, string fieldDigest, string expectedProjectionTypeDigest, string expectedFieldTypeDigest, string componentTypeDigest, string reasonCategory);
 
     [LoggerMessage(EventId = 5827, EventName = "ProjectionSlotDuplicate", Level = LogLevel.Warning,
-        Message = "HFC1040: Duplicate Level 3 slot overrides registered. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} FieldDigest={FieldDigest} ExistingComponentDigest={ExistingComponentDigest} NewComponentDigest={NewComponentDigest}.")]
+        Message = "HFC1040: Duplicate Level 3 slot overrides registered. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} FieldDigest={FieldDigest} ExistingComponentDigest={ExistingComponentDigest} NewComponentDigest={NewComponentDigest}. Expected: one descriptor. Fix: remove one registration or make one role-specific. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1040.")]
     private static partial void LogProjectionSlotDuplicate(ILogger logger, string projectionTypeDigest, string roleCategory, string fieldDigest, string existingComponentDigest, string newComponentDigest);
 
     [LoggerMessage(EventId = 5828, EventName = "ProjectionTemplateIncompatibleContractVersion", Level = LogLevel.Warning,
-        Message = "{DiagnosticId}: Projection template has an incompatible contract version. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} Decision={Decision} Expected={ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} Actual={ActualMajor}.{ActualMinor}.{ActualBuild}. Descriptor ignored.")]
+        Message = "{DiagnosticId}: Projection template has an incompatible contract version. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} Decision={Decision} Expected={ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} Actual={ActualMajor}.{ActualMinor}.{ActualBuild}. Descriptor ignored. Fix: rebuild the template against the installed framework. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1035.")]
     private static partial void LogProjectionTemplateIncompatibleContractVersion(ILogger logger, string diagnosticId, string projectionTypeDigest, string roleCategory, string decision, int expectedMajor, int expectedMinor, int expectedBuild, int actualMajor, int actualMinor, int actualBuild);
 
     [LoggerMessage(EventId = 5829, EventName = "ProjectionTemplateDuplicate", Level = LogLevel.Warning,
@@ -1247,23 +1357,23 @@ internal static partial class FrontComposerWarningLog
     private static partial void LogProjectionTemplateDuplicate(ILogger logger, string projectionTypeDigest, string roleCategory, string existingTemplateDigest, string newTemplateDigest);
 
     [LoggerMessage(EventId = 5830, EventName = "ProjectionViewOverrideNullSource", Level = LogLevel.Warning,
-        Message = "Null ProjectionViewOverrideDescriptorSource at index {Index} was skipped during registry construction.")]
+        Message = "Null ProjectionViewOverrideDescriptorSource at index {Index} was skipped during registry construction. Fix the DI registration that produced a null source.")]
     private static partial void LogProjectionViewOverrideNullSource(ILogger logger, int index);
 
     [LoggerMessage(EventId = 5831, EventName = "ProjectionViewOverrideInvalidContractVersion", Level = LogLevel.Warning,
-        Message = "{DiagnosticId}: Invalid Level 4 view override contract version. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} ContractVersion={ContractVersion} SourceDigest={SourceDigest}.")]
+        Message = "{DiagnosticId}: Invalid Level 4 view override contract version. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} ContractVersion={ContractVersion} SourceDigest={SourceDigest}. Expected: a positive packed version. Fix: register with ProjectionViewOverrideContractVersion.Current. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1045.")]
     private static partial void LogProjectionViewOverrideInvalidContractVersion(ILogger logger, string diagnosticId, string projectionTypeDigest, string roleCategory, int contractVersion, string sourceDigest);
 
     [LoggerMessage(EventId = 5832, EventName = "ProjectionViewOverrideIncompatibleContractVersion", Level = LogLevel.Warning,
-        Message = "{DiagnosticId}: Incompatible Level 4 view override contract version. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} Decision={Decision} Expected={ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} Actual={ActualMajor}.{ActualMinor}.{ActualBuild} SourceDigest={SourceDigest}.")]
+        Message = "{DiagnosticId}: Incompatible Level 4 view override contract version. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} Decision={Decision} Expected={ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} Actual={ActualMajor}.{ActualMinor}.{ActualBuild} SourceDigest={SourceDigest}. Fix: rebuild the replacement against the installed FrontComposer contracts. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1045.")]
     private static partial void LogProjectionViewOverrideIncompatibleContractVersion(ILogger logger, string diagnosticId, string projectionTypeDigest, string roleCategory, string decision, int expectedMajor, int expectedMinor, int expectedBuild, int actualMajor, int actualMinor, int actualBuild, string sourceDigest);
 
     [LoggerMessage(EventId = 5833, EventName = "ProjectionViewOverrideInvalidComponent", Level = LogLevel.Warning,
-        Message = "{DiagnosticId}: Invalid Level 4 view override component. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} ComponentTypeDigest={ComponentTypeDigest} SourceDigest={SourceDigest} ReasonCategory={ReasonCategory}.")]
+        Message = "{DiagnosticId}: Invalid Level 4 view override component. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} ComponentTypeDigest={ComponentTypeDigest} SourceDigest={SourceDigest} ReasonCategory={ReasonCategory}. Expected: a concrete Razor component with a public Context parameter of the projection view type. Fix: add the matching Context parameter or register a compatible component. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1043.")]
     private static partial void LogProjectionViewOverrideInvalidComponent(ILogger logger, string diagnosticId, string projectionTypeDigest, string roleCategory, string componentTypeDigest, string sourceDigest, string reasonCategory);
 
     [LoggerMessage(EventId = 5834, EventName = "ProjectionViewOverrideDuplicate", Level = LogLevel.Error,
-        Message = "{DiagnosticId}: Duplicate Level 4 view overrides registered. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} ComponentADigest={ComponentADigest} SourceADigest={SourceADigest} ComponentBDigest={ComponentBDigest} SourceBDigest={SourceBDigest}.")]
+        Message = "{DiagnosticId}: Duplicate Level 4 view overrides registered. ProjectionTypeDigest={ProjectionTypeDigest} RoleCategory={RoleCategory} ComponentADigest={ComponentADigest} SourceADigest={SourceADigest} ComponentBDigest={ComponentBDigest} SourceBDigest={SourceBDigest}. Fix: remove one registration or make one role-specific. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1044.")]
     private static partial void LogProjectionViewOverrideDuplicate(ILogger logger, string diagnosticId, string projectionTypeDigest, string roleCategory, string componentADigest, string sourceADigest, string componentBDigest, string sourceBDigest);
 
     [LoggerMessage(EventId = 5835, EventName = "StubLifecycleCallbackFailed", Level = LogLevel.Error,
@@ -1319,7 +1429,7 @@ internal static partial class FrontComposerWarningLog
     private static partial void LogPaletteOpenManifestFailed(ILogger logger, string diagnosticId, string boundedContextDigest, string exceptionType);
 
     [LoggerMessage(EventId = 5848, EventName = "PaletteAuthorizationEvaluatorMissing", Level = LogLevel.Warning,
-        Message = "Command palette filter could not resolve ICommandAuthorizationEvaluator; protected commands will be hidden.")]
+        Message = "Command palette filter could not resolve ICommandAuthorizationEvaluator; protected commands will be hidden. Ensure the host registers FrontComposer authorization services via AddHexalithFrontComposer* or equivalent.")]
     private static partial void LogPaletteAuthorizationEvaluatorMissing(ILogger logger);
 
     [LoggerMessage(EventId = 5849, EventName = "ProjectionLoadSchemaFailed", Level = LogLevel.Warning,

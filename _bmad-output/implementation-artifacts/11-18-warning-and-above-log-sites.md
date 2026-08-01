@@ -1,19 +1,19 @@
 ---
 created: 2026-07-15
-updated: 2026-07-16
+updated: 2026-08-01
 epic: 11
 childStory: 11.18b
 parentStory: 11.18
 owner: Developer + Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
-status: review
+status: done
 implementationGate: post-correction-readiness-pass
 baseline_commit: 615605e3a358a542dcbb49b5b82601e60db7eb28
 ---
 
 # Story 11.18b: Residual Warning-And-Above Log Sites
 
-Status: review.
+Status: done.
 
 ## Story
 
@@ -67,6 +67,24 @@ so that operator-relevant failures follow one performant, structured, support-sa
 - [x] Add focused event-contract, cardinality, exception, and adversarial-redaction tests.
 - [x] Replace the temporary severity-only ownership guard with the final exclusive child ledger.
 - [x] Run the required validation and reconcile the story File List from tracked plus untracked files.
+
+### Review Findings
+
+- [x] [Review][Patch] [High] Replace the generic category converter with field-specific bounded sanitizers [src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerWarningLog.cs:1079]
+- [x] [Review][Patch] [Medium] Bound digest work for adversarially large values [src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerWarningLog.cs:1097]
+- [x] [Review][Patch] [Medium] Preserve the documented exception-type field semantics [src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerWarningLog.cs:1123]
+- [x] [Review][Patch] [Medium] Restore support-safe remediation and documentation guidance in generated messages [src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerWarningLog.cs:1225]
+- [x] [Review][Patch] [High] Make the direct-log census detect static imports without matching unrelated Log methods [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs:567]
+- [x] [Review][Patch] [High] Resolve LoggerMessage attributes, constants, and exception parameters semantically [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs:636]
+- [x] [Review][Patch] [Medium] Parse escaped logging-template braces correctly [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs:758]
+- [x] [Review][Patch] [Medium] Pin the 54 migrated production wrapper call sites and cardinality [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs:550]
+- [x] [Review][Patch] [Low] Rename new tests to the required three-part convention [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerWarningLogTests.cs:15]
+- [x] [Review][Patch] [Medium] Exercise customization startup logging through StartAsync before the throw [src/Hexalith.FrontComposer.Shell/Services/Customization/CustomizationContractValidationGate.cs:102]
+- [x] [Review][Patch] [Medium] Pin every generated event name instead of only distinctness [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerWarningLogTests.cs:148]
+- [x] [Review][Patch] [Medium] Use distinct sensitive inputs to verify digest-field attribution [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerWarningLogTests.cs:27]
+- [x] [Review][Defer] [Medium] Hosted startup exception text can still expose raw customization identifiers [src/Hexalith.FrontComposer.Shell/Services/Customization/CustomizationContractValidationGate.cs:107] — deferred, pre-existing
+- [x] [Review][Defer] [High] The later 11.18a unwrapped-identifier guard can be bypassed by expression shape and reserved parameter names [tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs:686] — deferred, pre-existing
+- [x] [Review][Defer] [Medium] Later sprint-status edits contain contradictory SDK, REL-1, and REL-4 truth-state records [_bmad-output/implementation-artifacts/sprint-status.yaml:381] — deferred, pre-existing
 
 ## Dev Notes
 
@@ -146,6 +164,7 @@ GPT-5 Codex
 - 2026-07-15: GREEN — all 54 sites migrated to EventIds 5800–5853; focused event contracts passed 2/2 and the exact ownership/governance class passed 5/5.
 - 2026-07-15: RED — the broad Shell lane found 14 behavior assertions coupled to raw free-form text, attached exceptions, or `LoggerExtensions` call shapes.
 - 2026-07-15: GREEN — owner tests now pin EventId/EventName, null exception attachment, and digested payloads; the Release solution build passed with 0 warnings/errors, broad non-Contract Shell passed 2,332/2,332, and Governance passed 158/158.
+- 2026-08-01: Review validation passed the Release solution build with 0 warnings/errors, the complete Shell project at 2,385/2,385, the exact story File List plus full sentinel scan, and `git diff --check`. The validator's default baseline discovery remains non-zero because current HEAD contains 231 later out-of-story paths after the frozen story baseline; those paths were not misattributed to this story.
 
 ### Completion Notes List
 
@@ -155,11 +174,14 @@ GPT-5 Codex
 - Replaced the temporary severity owner with an exclusive implementation-start ledger, an empty residual Warning+ owner, and the exact remaining 73 low-severity direct calls across 20 files. Governance now rejects duplicate EventIds, placeholder/signature drift, residual Warning+ calls, and unowned calls with synthetic negative coverage.
 - Added exhaustive 54-event identity/severity/redaction coverage and disabled-path deferred-evaluation coverage; updated affected owner tests to assert generated contracts and support-safe payloads.
 - Final validation passed: Release solution and Shell Tests builds with 0 warnings/errors; 2 focused helper tests; 5 exact ownership/governance tests; 2,332 broad non-Contract Shell tests; 158 Governance tests; exact File List, CRLF/UTF-8/final-newline, submodule, story-artifact, and `git diff --check` gates.
+- Review remediation applied all 12 accepted patches: field-specific bounded sanitization, bounded digest work, full exception type names, restored remediation guidance, semantic governance analysis, exact 54-call-site and EventName pins, distinct digest attribution, and startup log-before-throw coverage. Release solution build passed with 0 warnings/errors and the complete Shell project passed 2,385/2,385 tests.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/11-18-warning-and-above-log-sites.md` (modified — baseline, implementation record, validation evidence, exact File List, and review transition)
-- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — surgical Story 11.18b in-progress/review transitions)
+- `_bmad-output/implementation-artifacts/deferred-work.md` (modified — three pre-existing review findings recorded for later ownership)
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` (modified — deterministic test identifier inventory refreshed for review-added tests)
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (modified — surgical Story 11.18b in-progress, review, and done transitions)
 - `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerWarningLog.cs` (added — generated EventIds 5800–5853, enabled-check wrappers, bounded categories, and SHA-256 digests)
 - `src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs` (modified — generated badge catalog, reader, negative-count, and notifier diagnostics)
 - `src/Hexalith.FrontComposer.Shell/Components/Layout/FcLayoutBreakpointWatcher.razor.cs` (modified — generated viewport-tier and subscription diagnostics)
@@ -193,9 +215,11 @@ GPT-5 Codex
 - `tests/Hexalith.FrontComposer.Shell.Tests/Registration/FrontComposerRegistryTests.cs` (modified — generated registration event and digest assertions)
 - `tests/Hexalith.FrontComposer.Shell.Tests/Services/ProjectionSlots/ProjectionSlotRegistryTests.cs` (modified — generated invalid/duplicate event and digest assertions)
 - `tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutServiceTests.cs` (modified — generated shortcut event, deferred logging, digest, and null-exception assertions)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Customization/CustomizationContractValidationGateTests.cs` (added — strict startup log-before-throw and support-safe payload coverage)
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/Theme/ThemeEffectsTests.cs` (modified — generated persistence event and null-exception assertions)
 
 ## Change Log
 
 - 2026-07-15: Materialized approved 11.18b child with live post-11.18a census and exclusive ownership gate.
 - 2026-07-15: Implemented Story 11.18b, migrated the exact 54 residual Warning+ sites to generated support-safe logging, finalized the exclusive remainder ledger, and passed Release, broad Shell, and Governance gates.
+- 2026-08-01: Applied all 12 adversarial review patches, reconciled review artifacts and the CA1707 identifier inventory, passed the Release solution build and all 2,385 Shell tests, and moved the story to done.
