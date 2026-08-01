@@ -3,7 +3,7 @@ baseline_commit: 0a84e818b0ce220f291510ad094340f7296bb488
 ---
 # Story 11.17d: Shell bundle split
 
-Status: review
+Status: in-progress
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 <!-- Type: mechanical refactor; fourth executable child of the non-implementable Story 11.17 decomposition parent. -->
