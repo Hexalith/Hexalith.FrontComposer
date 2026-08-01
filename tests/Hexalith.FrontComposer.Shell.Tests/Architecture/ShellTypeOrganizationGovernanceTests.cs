@@ -801,7 +801,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
 
     private readonly struct SampleStruct
     {
-        public string Value => string.Empty;
+        public int Value { get; }
     }
 
     private sealed class SampleClass;
