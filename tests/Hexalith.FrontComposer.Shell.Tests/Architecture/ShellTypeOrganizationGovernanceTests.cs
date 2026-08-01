@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Text;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -292,6 +293,74 @@ public sealed class ShellTypeOrganizationGovernanceTests
         violations.ShouldContain("duplicate manifest identity Hexalith.FrontComposer.Shell.Services.Example");
     }
 
+    [Fact]
+    public void OrganizationGuard_PartialDeclarationsInOneFile_AreNotReported()
+    {
+        SourceFile[] sources =
+        [
+            new(
+                "Services/PartialOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "public sealed partial class PartialOwner { }\n"
+                + "public sealed partial class PartialOwner { }"),
+        ];
+
+        FindOrganizationViolations(sources, new Dictionary<string, string[]>(StringComparer.Ordinal))
+            .ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void OrganizationGuard_MixedPartialAndNonPartialSameIdentity_AreReported()
+    {
+        SourceFile[] sources =
+        [
+            new(
+                "Services/MixedOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "#if FIRST\npublic sealed partial class MixedOwner { }\n"
+                + "#else\npublic sealed class MixedOwner { }\n#endif"),
+        ];
+
+        AssertSyntheticViolation(sources, "Services/MixedOwner.cs", "2 direct declarations");
+    }
+
+    [Fact]
+    public void OrganizationGuard_PartialDeclarationsWithDivergentAccessibility_AreReported()
+    {
+        SourceFile[] sources =
+        [
+            new(
+                "Services/DivergentOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "#if FIRST\npublic sealed partial class DivergentOwner { }\n"
+                + "#else\ninternal sealed partial class DivergentOwner { }\n#endif"),
+        ];
+
+        AssertSyntheticViolation(sources, "Services/DivergentOwner.cs", "2 direct declarations");
+    }
+
+    [Fact]
+    public void RuntimeKind_ClassifiesEveryPinnableDeclarationKind()
+    {
+        RuntimeKind(typeof(SampleEnum)).ShouldBe("enum");
+        RuntimeKind(typeof(SampleDelegate)).ShouldBe("delegate");
+        RuntimeKind(typeof(ISampleInterface)).ShouldBe("interface");
+        RuntimeKind(typeof(SampleRecord)).ShouldBe("record");
+        RuntimeKind(typeof(SampleRecordStruct)).ShouldBe("record struct");
+        RuntimeKind(typeof(SampleStruct)).ShouldBe("struct");
+        RuntimeKind(typeof(SampleClass)).ShouldBe("class");
+    }
+
+    [Fact]
+    public void RuntimeKind_ClassDeclaringItsOwnPrintMembers_RemainsClass()
+    {
+        // This repository hand-writes PrintMembers for redaction (CommandAuthorizationRequest,
+        // CommandAuthorizationResource, and the inheritable QueryRequest), so the reference-type
+        // branch must key on the unspeakable "<Clone>$" marker rather than that legal identifier.
+        RuntimeKind(typeof(SampleClassWithPrintMembers)).ShouldBe("class");
+        RuntimeKind(typeof(SampleClassInheritingPrintMembers)).ShouldBe("class");
+    }
+
     private static void AssertSyntheticViolation(
         IReadOnlyList<SourceFile> sources,
         string expectedPath,
@@ -481,20 +550,36 @@ public sealed class ShellTypeOrganizationGovernanceTests
         }
 
         // Collapse the multiple `partial` declarations of a single type into one candidate so a
-        // legally partial type in one file is not miscounted as several declarations. Same-identity
-        // declarations that are NOT partial (e.g. mutually exclusive conditional-branch duplicates)
-        // are deliberately kept separate so the guard still reports them.
+        // legally partial type in one file is not miscounted as several declarations. Collapsing is
+        // deliberately narrow: every member of the group must be `partial` AND agree on kind,
+        // accessibility, and modifiers. Same-identity declarations that are NOT partial (e.g.
+        // mutually exclusive conditional-branch duplicates), or that disagree on shape (e.g. a
+        // `#if DEBUG public partial` / `#else internal partial` pair), are kept separate so the
+        // guard still reports them rather than silently pinning whichever branch parsed first.
         return
         [
             .. declarations.Values
                 .GroupBy(declaration => declaration.Identity, StringComparer.Ordinal)
-                .SelectMany(group =>
-                    group.All(declaration => declaration.Modifiers.Contains("partial", StringComparison.Ordinal))
-                        ? [group.OrderBy(declaration => declaration.SpanStart).First()]
-                        : (IEnumerable<DirectDeclaration>)group)
+                .SelectMany(group => IsCollapsiblePartialGroup(group)
+                    ? [group.OrderBy(declaration => declaration.SpanStart).First()]
+                    : (IEnumerable<DirectDeclaration>)group)
                 .OrderBy(declaration => declaration.SpanStart),
         ];
     }
+
+    private static bool IsCollapsiblePartialGroup(IEnumerable<DirectDeclaration> group)
+    {
+        DirectDeclaration[] members = [.. group];
+        return Array.TrueForAll(members, IsPartial)
+            && members.DistinctBy(
+                declaration => (declaration.Kind, declaration.Accessibility, declaration.Modifiers))
+                .Count() == 1;
+    }
+
+    private static bool IsPartial(DirectDeclaration declaration)
+        => declaration.Modifiers
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Contains("partial", StringComparer.Ordinal);
 
     private static string ActivateAllConditionalBranches(string content, CompilationUnitSyntax root)
     {
@@ -631,17 +716,26 @@ public sealed class ShellTypeOrganizationGovernanceTests
             return "interface";
         }
 
-        // Record classes expose the synthesized "<Clone>$" clone method; record structs are
-        // copied by value and do not, so detect either record kind via the synthesized
-        // "PrintMembers" method (generated for record classes and record structs, absent on
-        // plain classes and plain structs).
-        bool isRecord = type.GetMethod(
-            "PrintMembers",
-            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic) is not null;
+        // Record classes expose the synthesized "<Clone>$" clone method, whose name is not a legal
+        // C# identifier and therefore cannot be declared, shadowed, or overloaded by user code. Use
+        // it for reference types. Record structs are copied by value and have no "<Clone>$", so the
+        // value-type branch falls back to the synthesized "PrintMembers". That name IS a legal
+        // identifier this repository hand-writes for redaction (see CommandAuthorizationRequest and
+        // QueryRequest), so bind it to the exact synthesized signature and to declarations on the
+        // type itself, keeping a plain struct from being misread as a record struct and avoiding an
+        // AmbiguousMatchException when an unrelated "PrintMembers" overload exists.
         return type.IsValueType
-            ? isRecord ? "record struct" : "struct"
-            : isRecord ? "record" : "class";
+            ? DeclaresSynthesizedPrintMembers(type) ? "record struct" : "struct"
+            : type.GetMethod("<Clone>$") is not null ? "record" : "class";
     }
+
+    private static bool DeclaresSynthesizedPrintMembers(Type type)
+        => type.GetMethod(
+            "PrintMembers",
+            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly,
+            binder: null,
+            [typeof(StringBuilder)],
+            modifiers: null) is { ReturnType: Type returnType } && returnType == typeof(bool);
 
     private static string NormalizeOwnerName(string path)
     {
@@ -689,6 +783,39 @@ public sealed class ShellTypeOrganizationGovernanceTests
         string Kind,
         string Accessibility,
         string Modifiers);
+
+    // Fixtures for RuntimeKind. The pinned manifest contains no delegate and no plain struct, so
+    // without these the classifier's delegate and struct branches would never execute.
+    private delegate void SampleDelegate(string value);
+
+    private enum SampleEnum
+    {
+        None = 0,
+    }
+
+    private interface ISampleInterface;
+
+    private sealed record SampleRecord(string Value);
+
+    private readonly record struct SampleRecordStruct(string Value);
+
+    private readonly struct SampleStruct
+    {
+        public string Value => string.Empty;
+    }
+
+    private sealed class SampleClass;
+
+    private class SampleClassWithPrintMembers
+    {
+        protected virtual bool PrintMembers(StringBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            return false;
+        }
+    }
+
+    private sealed class SampleClassInheritingPrintMembers : SampleClassWithPrintMembers;
 
     private const string TargetDeclarationManifest = """
 Components/Badges/OptimisticBadgeState.cs|Hexalith.FrontComposer.Shell.Components.Badges.OptimisticBadgeState|enum|public|public
