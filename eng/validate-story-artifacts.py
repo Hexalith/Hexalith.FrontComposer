@@ -112,6 +112,83 @@ TASK_PATH_SUFFIXES = {
     ".yaml",
     ".yml",
 }
+# Verbs that denote producing or altering an output file. Single source of truth: the
+# negation probe ("does not update `x`") and the preservation-clause exception ("keep
+# behavior and update `x`") must not drift apart, because a verb present in one and
+# absent from the other produced contradictory results — "must not update" was
+# suppressed while "must not move" was demanded as evidence.
+ACTION_VERBS = (
+    "add",
+    "change",
+    "create",
+    "delete",
+    "edit",
+    "extend",
+    "generate",
+    "implement",
+    "modify",
+    "move",
+    "remove",
+    "rename",
+    "retarget",
+    "split",
+    "touch",
+    "update",
+    "wire",
+    "write",
+)
+# A story may also deny a requirement ("does not require `x`"). That is not an action
+# that produces output, so it belongs to the negation probe only.
+NEGATION_ONLY_VERBS = ("require",)
+# Verbs claiming a file was brought into existence. A creation claim keeps full
+# strictness even when the token is a bare basename absent from the tree: a file this
+# story created is absent from `git ls-files` by construction, so exempting it would
+# make every phantom new-file claim unenforceable.
+CREATION_VERBS = ("add", "create", "generate", "introduce", "write")
+NEGATION_PREFIXES = (
+    "do not",
+    "don't",
+    "does not",
+    "did not",
+    "must not",
+    "should not",
+    "never",
+    "no longer",
+)
+
+
+def verb_alternation(verbs: tuple[str, ...]) -> str:
+    """Alternation covering each verb and its third-person form.
+
+    Suppression must not depend on which conjugation the author happened to write, and a
+    bare `s?` quantifier cannot form `modifies` or `touches`.
+    """
+    forms: set[str] = set()
+    for verb in verbs:
+        forms.add(verb)
+        if verb.endswith("y") and verb[-2:-1] not in "aeiou":
+            forms.add(verb[:-1] + "ies")
+        elif verb.endswith(("s", "x", "z", "ch", "sh")):
+            forms.add(verb + "es")
+        else:
+            forms.add(verb + "s")
+    return "|".join(sorted(forms, key=lambda form: (-len(form), form)))
+
+
+NEGATED_ACTION = re.compile(
+    r"\b(?:" + "|".join(NEGATION_PREFIXES) + r")\s+"
+    r"(?:" + verb_alternation(ACTION_VERBS + NEGATION_ONLY_VERBS) + r")\s*$",
+    re.IGNORECASE,
+)
+POSITIVE_ACTION = re.compile(
+    r"\b(?:" + verb_alternation(ACTION_VERBS) + r")\s*$",
+    re.IGNORECASE,
+)
+CREATION_ACTION = re.compile(
+    r"\b(?:" + verb_alternation(CREATION_VERBS) + r")\b",
+    re.IGNORECASE,
+)
+PATH_COORDINATE = re.compile(r":\d+(?:[-,:]\d+)*$")
 
 
 @dataclass(frozen=True)
@@ -512,7 +589,9 @@ def check_checked_tasks(
     # for — it is declared, reviewable, and asserted not to be story output. Citing one
     # in review prose is therefore evidenced, exactly as a File List row would be. This
     # consults an existing explicit classification; it does not infer exemption from prose.
-    classified_unrelated = set(unrelated or {})
+    # The classification is bounded so it cannot become a blanket exemption: see
+    # usable_classified_paths.
+    classified_unrelated = usable_classified_paths(root, unrelated or {}, changed)
     evidence_basenames = {
         path.rsplit("/", 1)[-1] for path in (changed | listed | classified_unrelated)
     }
@@ -583,7 +662,11 @@ def extract_path_mentions(text: str, *, root: Path | None = None) -> set[str]:
         normalized = match.group(1).strip().replace("\\", "/")
         if " " in normalized or normalized.startswith("--") or normalized.startswith("<"):
             continue
-        if mention_is_not_an_output_path(normalized, root):
+        if mention_is_not_an_output_path(
+            normalized,
+            root,
+            creation_claimed=mention_claims_creation(text, match.start()),
+        ):
             continue
         if any(token in normalized for token in ("*", "?")):
             continue
@@ -599,6 +682,30 @@ def extract_path_mentions(text: str, *, root: Path | None = None) -> set[str]:
     return paths
 
 
+def usable_classified_paths(root: Path, classified: dict[str, str], changed: set[str]) -> set[str]:
+    """Bound the classification so it accounts for a path without exempting the tree.
+
+    Two bounds, because this set grants evidence and the story author writes it.
+    A top-level directory (`src`, `tests`) covers so much of the repository that one
+    bullet would exempt every path beneath it, so it is refused; a classification must
+    name a file, or a directory at least one level down such as
+    `references/Hexalith.Builds`. And the entry must be real — tracked in the repository
+    or present in the changed set — so a story cannot account for a fabricated path by
+    inventing a bullet for it. Trailing slashes are stripped: a directory written the
+    natural way (`references/Hexalith.Builds/`) must cover the same paths as without.
+    """
+    usable: set[str] = set()
+    for entry in classified:
+        path = entry.strip().rstrip("/")
+        if not path or path == ".":
+            continue
+        if "/" not in path and (root / path).is_dir():
+            continue
+        if path in changed or path_is_tracked(path, root):
+            usable.add(path)
+    return usable
+
+
 def path_is_classified_unrelated(path: str, classified: set[str]) -> bool:
     """A classified directory or submodule covers the paths beneath it.
 
@@ -608,36 +715,55 @@ def path_is_classified_unrelated(path: str, classified: set[str]) -> bool:
     Matching is on full path segments, so `references/Hexalith.BuildsExtra` is not
     covered by a `references/Hexalith.Builds` classification.
     """
-    if path in classified:
+    entries = {entry.rstrip("/") for entry in classified}
+    if path in entries:
         return True
-    return any(path.startswith(entry + "/") for entry in classified)
+    return any(path.startswith(entry + "/") for entry in entries)
 
 
-def mention_is_not_an_output_path(normalized: str, root: Path | None) -> bool:
+def mention_is_not_an_output_path(
+    normalized: str,
+    root: Path | None,
+    *,
+    creation_claimed: bool = False,
+) -> bool:
     """Reject backticked tokens that cannot denote an output path this story produced.
 
     Review-follow-up prose legitimately cites code the story did not change: bare suffix
     literals, `path:line` coordinates, directories, method tokens, and hypothetical
-    filenames used to describe a scenario. Each class is rejected on its own shape, so a
-    real repository-relative output path is never exempted. Do NOT replace this with a
-    surrounding-prose heuristic: an action-verb probe was tried and silently exempted
-    past-tense claims ("Updated `src/x.cs`"), non-adjacent objects ("update the file
-    `src/x.cs`"), and every path after the first in a coordinated list, which is precisely
-    the phantom-fix class this gate exists to catch.
+    filenames used to describe a scenario. Each class is rejected on its own shape.
+
+    The boundary, stated exactly: a *qualified* repository-relative path is never
+    exempted. A *bare basename* is exempted when it matches nothing tracked in the tree,
+    because that shape is how prose names a hypothetical ("the idiomatic `Foo.cs` +
+    `Foo.Handlers.cs` split"). That exemption does not apply when a creation verb governs
+    the token — a file the story claims to have created is absent from `git ls-files` by
+    construction, so exempting it would make every phantom new-file claim unenforceable.
+
+    Do NOT replace this with a surrounding-prose heuristic for the other classes: an
+    action-verb probe was tried and silently exempted past-tense claims ("Updated
+    `src/x.cs`"), non-adjacent objects ("update the file `src/x.cs`"), and every path
+    after the first in a coordinated list, which is precisely the phantom-fix class this
+    gate exists to catch. `creation_claimed` is deliberately the inverse: it only ever
+    makes the gate stricter, so a false positive costs a demanded path, not a missed one.
     """
     # NOTE: bare suffix chains (".g.cs", ".AssemblyInfo.cs") need no rule of their own —
     # they carry no directory and match no tracked basename, so the tree-absent-basename
     # rule below rejects them. A dedicated suffix rule was written first and removed: it
     # could not be made load-bearing (deleting it left the suite green), and shipping a
     # guard no test can fail is the defect this review was closing.
-    # A "path:line" or "path:line-line" coordinate cites a location, not an output.
-    if re.search(r"\.[A-Za-z0-9]+:\d+(?:[-,]\d+)*$", normalized):
+    # A "path:line", "path:line-line", or "path:line:column" coordinate cites a location,
+    # not an output. The trailing digit run is what makes it a coordinate: a token ending
+    # in ":abc" is not one, and stays strict.
+    if PATH_COORDINATE.search(normalized):
         return True
     # A method or invocation token (".First()", "Foo.Bar()") is code, not a path.
     if "(" in normalized or ")" in normalized:
         return True
-    # An ellipsis-elided citation ("…/CommandAuthorizationResource.cs") is not resolvable.
-    if normalized.startswith("...") or normalized.startswith("…"):
+    # An ellipsis-elided citation is not resolvable, wherever the elision falls
+    # ("…/CommandAuthorizationResource.cs", "src/.../Widget.cs"). extract_file_list_entry
+    # rejects the same notation anywhere in the token; the two parsers must agree.
+    if "..." in normalized or "…" in normalized:
         return True
     if root is not None:
         # A directory names a scan scope, not a produced file.
@@ -646,27 +772,65 @@ def mention_is_not_an_output_path(normalized: str, root: Path | None) -> bool:
         # A bare basename that matches nothing in the tree is a hypothetical used to
         # describe a scenario ("the idiomatic `Foo.cs` + `Foo.Handlers.cs` split").
         # Qualified paths keep full strictness, so a fabricated `src/NewThing.cs` claim
-        # is still reported.
-        if "/" not in normalized and not basename_exists_in_tree(normalized, root):
+        # is still reported — and so is a bare basename a creation verb governs.
+        if (
+            "/" not in normalized
+            and not creation_claimed
+            and not basename_exists_in_tree(normalized, root)
+        ):
             return True
     return False
 
 
 @lru_cache(maxsize=1)
-def tracked_basenames(root: Path) -> frozenset[str]:
-    result = subprocess.run(
-        ["git", "-C", str(root), "ls-files"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+def tracked_files(root: Path) -> frozenset[str] | None:
+    """Every tracked path, or None when the tree cannot be listed.
+
+    None is distinct from "no files": a missing git binary, a non-repository root, or a
+    failed invocation must not read as "nothing is tracked", because every caller treats
+    absence as grounds to relax. Callers fail closed on None instead.
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "ls-files"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except (FileNotFoundError, OSError):
+        return None
     if result.returncode != 0:
-        return frozenset()
-    return frozenset(line.rsplit("/", 1)[-1] for line in result.stdout.splitlines() if line)
+        return None
+    return frozenset(line for line in result.stdout.splitlines() if line)
+
+
+def tracked_basenames(root: Path) -> frozenset[str] | None:
+    paths = tracked_files(root)
+    if paths is None:
+        return None
+    return frozenset(path.rsplit("/", 1)[-1] for path in paths)
 
 
 def basename_exists_in_tree(basename: str, root: Path) -> bool:
-    return basename in tracked_basenames(root)
+    names = tracked_basenames(root)
+    # Fail closed: an unlistable tree cannot prove the basename is hypothetical, so the
+    # token keeps full strictness rather than being exempted wholesale.
+    if names is None:
+        return True
+    return basename in names
+
+
+def path_is_tracked(path: str, root: Path) -> bool:
+    """True when the path is a tracked file, or a directory containing tracked files."""
+    paths = tracked_files(root)
+    # Fail closed in the other direction: without a listing no classification can be
+    # shown to be real, so none is granted evidence.
+    if paths is None:
+        return False
+    if path in paths:
+        return True
+    prefix = path + "/"
+    return any(tracked.startswith(prefix) for tracked in paths)
 
 
 def path_mention_is_explicitly_non_evidence(text: str, start: int, end: int) -> bool:
@@ -681,16 +845,8 @@ def path_mention_is_explicitly_non_evidence(text: str, start: int, end: int) -> 
 
     before = text[clause_start:start]
     after = text[end:clause_end]
-    # Keep the negation verb set aligned with the positive-action verb set below; a verb
-    # present in one and absent from the other produced contradictory results
-    # ("must not update" suppressed while "must not move" was demanded as evidence).
-    if re.search(
-        r"\b(?:do not|don't|does not|did not|must not|should not|never|no longer)\s+"
-        r"(?:require|add|change|edit|create|delete|extend|generate|implement|modify|"
-        r"move|remove|rename|retarget|split|touch|update|wire|write)s?\s*$",
-        before,
-        re.IGNORECASE,
-    ):
+    # Both probes derive from ACTION_VERBS, so the two vocabularies cannot drift apart.
+    if NEGATED_ACTION.search(before):
         return True
 
     return bool(
@@ -699,13 +855,22 @@ def path_mention_is_explicitly_non_evidence(text: str, start: int, end: int) -> 
         # ...but not when a positive action verb directly governs the path
         # (e.g. "Keep behavior and update `x` so output stays unchanged"), which makes
         # the path that verb's object — genuine evidence, not a preservation target.
-        and not re.search(
-            r"\b(?:add|change|edit|create|modify|update|touch|write|split|"
-            r"move|delete|rename|retarget|generate|implement|wire|extend)s?\s*$",
-            before,
-            re.IGNORECASE,
-        )
+        and not POSITIVE_ACTION.search(before)
     )
+
+
+def mention_claims_creation(text: str, start: int) -> bool:
+    """True when a creation verb governs the token's clause.
+
+    Scoped to the clause, and matched anywhere within it rather than adjacent to the
+    token, so "add a new file `Foo.cs`" counts. Breadth is safe here because the only
+    effect is to withhold the tree-absent-basename exemption, which makes the gate
+    stricter.
+    """
+    clause_start = 0
+    for boundary in re.finditer(r"[.!?;]\s+", text[:start]):
+        clause_start = boundary.end()
+    return bool(CREATION_ACTION.search(text[clause_start:start]))
 
 
 if __name__ == "__main__":

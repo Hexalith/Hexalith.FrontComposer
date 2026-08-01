@@ -107,6 +107,16 @@ public sealed class ShellTypeOrganizationGovernanceTests
         expected.Count(pin => pin.Kind == "record").ShouldBe(37);
         expected.Count(pin => pin.Kind == "record struct").ShouldBe(2);
 
+        // Seal the manifest itself. The census below is derived from the manifest, so a
+        // pin row swapped for another already-conforming declaration of the same kind
+        // moves both sides in lockstep and every count stays invariant — measured: doing
+        // exactly that left this class green. A content hash is the only check that makes
+        // substitution visible, because it does not depend on the manifest to describe
+        // itself. Re-seal deliberately when the split output legitimately changes.
+        ManifestChecksum().ShouldBe(
+            "f7512dcfa0fb4c1c4bba45049f8c364d5f13a72fa0916a25a7d64aefa88b4967",
+            "the 111-declaration manifest is sealed; re-seal only for a deliberate split change");
+
         FindManifestUniquenessViolations(expected).ShouldBeEmpty();
         actual.ShouldNotBeEmpty("the source-shape pin must scan real Shell declarations");
 
@@ -446,6 +456,75 @@ public sealed class ShellTypeOrganizationGovernanceTests
             .ShouldBeEmpty();
     }
 
+    [Fact]
+    public void OrganizationGuard_ConditionalAttributeOrLeadingModifier_IsOneDeclaration()
+    {
+        // A member's span starts at its first attribute list, so a conditional attribute —
+        // or a conditional modifier written before the accessibility keyword — moves
+        // SpanStart. Both are one physical type and neither is partial, so nothing may be
+        // reported. Anchoring the span to the identifier is what makes this hold.
+        SourceFile[] sources =
+        [
+            new(
+                "Services/AttributeOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "#if DEBUG\n[System.Obsolete]\n#endif\npublic sealed class AttributeOwner { }"),
+            new(
+                "Services/LeadingModifierOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "#if FOO\nsealed\n#endif\npublic class LeadingModifierOwner { }"),
+        ];
+
+        FindOrganizationViolations(sources, new Dictionary<string, string[]>(StringComparer.Ordinal))
+            .ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void OrganizationGuard_ConditionalModifierFold_KeepsTheAllBranchesActiveVariant()
+    {
+        // The fold's selection rule, not merely its existence. Asserting only that nothing
+        // is reported cannot distinguish which variant survived, because the collapsed
+        // count is 1 either way — so inverting the ordering left the suite green.
+        SourceFile source = new(
+            "Services/ConditionalModifierOwner.cs",
+            "namespace Hexalith.FrontComposer.Shell.Services;\n"
+            + "public\n#if FOO\nsealed\n#endif\npartial class ConditionalModifierOwner { }");
+
+        DirectDeclaration[] declarations = ParseDirectDeclarations(source);
+
+        declarations.Length.ShouldBe(1);
+        declarations[0].Modifiers.ShouldBe("public sealed partial");
+    }
+
+    [Fact]
+    public void OrganizationGuard_ActionGroupDrift_IsCollectedAndDoesNotMaskOtherViolations()
+    {
+        // The identity assertion used to throw from inside the collector, so the first
+        // action-group drift aborted the run and hid every later violation — including the
+        // count message, which the throw made unreachable.
+        SourceFile[] sources =
+        [
+            new(
+                "State/Theme/ThemeActions.cs",
+                "namespace Hexalith.FrontComposer.Shell.State.Theme;\n"
+                + "public sealed record ThemeHydratingAction;"),
+            new(
+                "Services/BundleOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "public sealed class BundleOwner { }\npublic sealed class BundleCompanion { }"),
+        ];
+        Dictionary<string, string[]> exceptions = new(StringComparer.Ordinal)
+        {
+            ["State/Theme/ThemeActions.cs"] = ["ThemeChangedAction", "ThemeHydratingAction"],
+        };
+
+        List<string> violations = FindOrganizationViolations(sources, exceptions);
+
+        violations.ShouldContain(violation => violation.Contains("found 1", StringComparison.Ordinal));
+        violations.ShouldContain(violation => violation.Contains("exact ordered action identity set", StringComparison.Ordinal));
+        violations.ShouldContain(violation => violation.Contains("Services/BundleOwner.cs", StringComparison.Ordinal));
+    }
+
     private static void AssertSyntheticViolation(
         IReadOnlyList<SourceFile> sources,
         string expectedPath,
@@ -480,13 +559,20 @@ public sealed class ShellTypeOrganizationGovernanceTests
 
             DirectDeclaration[] declarations = ParseDirectDeclarations(source);
             string expectedNamespace = NamespaceFromPath(path);
-            declarations.Select(declaration => declaration.Name).ShouldBe(
-                expectedNames,
-                ignoreOrder: false,
-                $"{path} must retain its exact ordered action identity set");
             if (declarations.Length != expectedNames.Length)
             {
                 violations.Add($"{reportPath}: expected {expectedNames.Length} exact action declarations, found {declarations.Length}");
+            }
+
+            // Collect, never throw. A throwing assertion here aborted the whole method on
+            // the first action-group drift, so one such drift masked every other
+            // organization violation in the run and made the count message above
+            // unreachable — the only state that would emit it had already thrown.
+            string[] actualNames = [.. declarations.Select(declaration => declaration.Name)];
+            if (!actualNames.SequenceEqual(expectedNames, StringComparer.Ordinal))
+            {
+                violations.Add(
+                    $"{reportPath}: must retain its exact ordered action identity set, found [{string.Join(", ", actualNames)}]");
             }
 
             foreach (DirectDeclaration declaration in declarations)
@@ -717,7 +803,21 @@ public sealed class ShellTypeOrganizationGovernanceTests
         SyntaxTokenList modifiers;
         string name;
         string kind;
-        int spanStart = member.SpanStart;
+
+        // Anchor the span to the identifier, not to the member start. A member's span
+        // begins at its first attribute list, so a conditionally compiled attribute — or a
+        // leading modifier, as in `#if FOO sealed #endif public partial class C` — moves
+        // SpanStart and splits one physical declaration into two rows the per-SpanStart
+        // fold can no longer merge, reporting "2 direct declarations" for a single legal
+        // type. An identifier cannot be conditionally compiled without changing identity,
+        // so it is the stable anchor. Genuinely distinct conditional declarations of the
+        // same identity still sit at different identifier positions and stay separate rows.
+        int spanStart = member switch
+        {
+            BaseTypeDeclarationSyntax typeDeclaration => typeDeclaration.Identifier.SpanStart,
+            DelegateDeclarationSyntax delegateDeclaration => delegateDeclaration.Identifier.SpanStart,
+            _ => member.SpanStart,
+        };
         switch (member)
         {
             case RecordDeclarationSyntax record:
@@ -795,6 +895,15 @@ public sealed class ShellTypeOrganizationGovernanceTests
         return violations;
     }
 
+    private static string ManifestChecksum()
+    {
+        // Normalize line endings so the seal survives CRLF/LF checkout differences and
+        // pins the manifest's content rather than its encoding.
+        string normalized = TargetDeclarationManifest.Replace("\r\n", "\n", StringComparison.Ordinal);
+        byte[] hash = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(normalized));
+        return Convert.ToHexStringLower(hash);
+    }
+
     private static DeclarationPin[] ParseDeclarationPins()
         =>
         [
@@ -825,8 +934,12 @@ public sealed class ShellTypeOrganizationGovernanceTests
         // it for reference types. Record structs are copied by value and have no "<Clone>$", so the
         // value-type branch falls back to the synthesized "PrintMembers". That name IS a legal
         // identifier this repository hand-writes for redaction (see CommandAuthorizationRequest and
-        // QueryRequest), so bind it to the exact synthesized signature — instance, declared on the
-        // type itself, taking a single StringBuilder, returning bool. That narrows the misread
+        // QueryRequest), so bind it to the exact synthesized signature — instance, taking a single
+        // StringBuilder, returning bool. Those three constraints are each load-bearing and covered
+        // by fixtures below. DeclaredOnly is also passed, but it is inert by construction on this
+        // path and no fixture can reach it: a value type inherits only from ValueType and object,
+        // neither of which declares PrintMembers. It is kept because the branch is a declaration
+        // probe and the flag states that intent. That narrows the misread
         // surface to a hand-written member matching the synthesized signature EXACTLY, and stops an
         // unrelated overload from throwing AmbiguousMatchException and aborting the pin loop. It
         // does NOT make a plain struct indistinguishable from a record struct: a struct that

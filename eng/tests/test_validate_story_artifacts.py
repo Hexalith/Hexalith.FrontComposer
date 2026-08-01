@@ -775,6 +775,245 @@ class PathMentionRejectionTests(unittest.TestCase):
     def test_tree_present_bare_basename_stays_strict(self) -> None:
         self.assertFalse(self._rejected("validate-story-artifacts.py"))
 
+    def test_path_line_column_coordinates_are_rejected(self) -> None:
+        """The grep/compiler `file:line:column` form is a citation, not an output."""
+        for token in ("src/reference.cs:487:12", "tests/Bar.cs:42-50:3", "src/Makefile:42"):
+            with self.subTest(token=token):
+                self.assertTrue(self._rejected(token))
+
+    def test_colon_token_without_a_line_number_stays_strict(self) -> None:
+        """Pins the coordinate rule's shape: widening it to `":" in token` must fail here."""
+        self.assertFalse(self._rejected("src/Foo.cs:abc"))
+        self.assertFalse(self._rejected("src/weird:name.cs"))
+
+    def test_mid_token_elisions_are_rejected(self) -> None:
+        """extract_file_list_entry rejects `...` anywhere; both parsers must agree."""
+        for token in ("src/.../Shell/Services/Widget.cs", "src/…/Widget.cs"):
+            with self.subTest(token=token):
+                self.assertTrue(self._rejected(token))
+
+    def test_dot_prefixed_real_paths_are_never_rejected(self) -> None:
+        """Pins the ellipsis rule's shape: narrowing it to `startswith(".")` must fail here."""
+        for token in (".github/workflows/ci.yml", ".editorconfig", ".gitmodules"):
+            with self.subTest(token=token):
+                self.assertFalse(self._rejected(token))
+
+    def test_creation_claim_keeps_a_bare_basename_strict(self) -> None:
+        """A file the story claims to have created is tree-absent by construction."""
+        for token in ("NewStrictGuard.cs", "PendingCommandBatchReducers.cs"):
+            with self.subTest(token=token):
+                self.assertTrue(self._rejected(token))
+                self.assertFalse(
+                    self.validator.mention_is_not_an_output_path(
+                        token, self.root, creation_claimed=True
+                    )
+                )
+
+    def test_creation_verbs_are_detected_within_the_clause(self) -> None:
+        claims = (
+            "Fix: add `NewStrictGuard.cs` implementing the check.",
+            "Fix: create a new file `NewStrictGuard.cs` for the seam.",
+            "Fix: generate `NewStrictGuard.cs` from the template.",
+        )
+        for text in claims:
+            with self.subTest(text=text):
+                self.assertTrue(
+                    self.validator.mention_claims_creation(text, text.index("`"))
+                )
+        # A prior sentence's creation verb must not govern a later clause.
+        text = "Fix: create the seam. The idiomatic `Foo.cs` split stays supported."
+        self.assertFalse(self.validator.mention_claims_creation(text, text.index("`")))
+
+    def test_verb_alternation_covers_third_person_inflections(self) -> None:
+        """`s?` cannot form `modifies` or `touches`; suppression must not hinge on tense."""
+        alternation = self.validator.verb_alternation(("modify", "touch", "update"))
+        for form in ("modifies", "touches", "updates", "modify", "touch", "update"):
+            with self.subTest(form=form):
+                self.assertIn(form, alternation.split("|"))
+
+    def test_negation_and_positive_verb_sets_cannot_drift(self) -> None:
+        """`remove` was a negation verb but not a positive one, so a genuine deletion
+        claim inside a preservation clause was suppressed while `delete` was enforced.
+
+        The expected vocabulary is spelled out rather than read from the module: deriving
+        it from ACTION_VERBS would let a dropped verb shrink the loop instead of failing.
+        """
+        expected = {
+            "add",
+            "change",
+            "create",
+            "delete",
+            "edit",
+            "extend",
+            "generate",
+            "implement",
+            "modify",
+            "move",
+            "remove",
+            "rename",
+            "retarget",
+            "split",
+            "touch",
+            "update",
+            "wire",
+            "write",
+        }
+        self.assertEqual(set(self.validator.ACTION_VERBS), expected)
+        for verb in sorted(expected):
+            with self.subTest(verb=verb):
+                self.assertIsNotNone(
+                    self.validator.POSITIVE_ACTION.search(f"and {verb} ")
+                )
+                self.assertIsNotNone(
+                    self.validator.NEGATED_ACTION.search(f"this story did not {verb} ")
+                )
+
+    def test_unlistable_tree_fails_closed(self) -> None:
+        """A tree that cannot be listed must not exempt every bare basename wholesale."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            self.assertTrue(self.validator.basename_exists_in_tree("Anything.cs", root))
+            self.assertFalse(self.validator.path_is_tracked("references/Thing", root))
+
+
+class ClassifiedUnrelatedTests(unittest.TestCase):
+    """Pin the classification-as-evidence mechanism.
+
+    The story author writes the Documented Unrelated section, so this set grants evidence
+    from prose the author controls. Every bound on it must be independently load-bearing.
+    """
+
+    @staticmethod
+    def _module():
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("story_artifact_validator", VALIDATOR)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["story_artifact_validator"] = module
+        spec.loader.exec_module(module)
+        return module
+
+    def setUp(self) -> None:
+        self.validator = self._module()
+
+    def test_classified_directory_covers_nested_paths(self) -> None:
+        covered = self.validator.path_is_classified_unrelated(
+            "references/Hexalith.Builds/Props/Directory.Packages.props",
+            {"references/Hexalith.Builds"},
+        )
+        self.assertTrue(covered)
+
+    def test_classification_matches_whole_segments_only(self) -> None:
+        """`references/Hexalith.BuildsExtra` is not covered by `references/Hexalith.Builds`."""
+        covered = self.validator.path_is_classified_unrelated(
+            "references/Hexalith.BuildsExtra/x.cs",
+            {"references/Hexalith.Builds"},
+        )
+        self.assertFalse(covered)
+
+    def test_trailing_slash_classification_covers_the_same_paths(self) -> None:
+        for entry in ("references/Hexalith.Builds", "references/Hexalith.Builds/"):
+            with self.subTest(entry=entry):
+                self.assertTrue(
+                    self.validator.path_is_classified_unrelated(
+                        "references/Hexalith.Builds/Props/Directory.Packages.props",
+                        {entry},
+                    )
+                )
+
+    def test_top_level_directory_classification_is_refused(self) -> None:
+        """One `src` bullet must not exempt every path beneath it."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            init_repo(root)
+            write(root / "src/real.cs", "// real\n")
+            git(root, "add", "src/real.cs")
+            git(root, "commit", "-m", "add src")
+
+            usable = self.validator.usable_classified_paths(
+                root, {"src": "pre-existing", "src/real.cs": "pre-existing"}, set()
+            )
+
+            self.assertNotIn("src", usable)
+            self.assertIn("src/real.cs", usable)
+
+    def test_classification_of_an_unreal_path_is_refused(self) -> None:
+        """A story must not account for a fabricated path by inventing a bullet for it."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            init_repo(root)
+
+            usable = self.validator.usable_classified_paths(
+                root, {"src/ghost.cs": "pre-existing"}, set()
+            )
+            self.assertEqual(usable, set())
+
+            dirty = self.validator.usable_classified_paths(
+                root, {"src/ghost.cs": "pre-existing"}, {"src/ghost.cs"}
+            )
+            self.assertEqual(dirty, {"src/ghost.cs"})
+
+    def _run_story(self, root: Path, unrelated_section: str, task: str) -> subprocess.CompletedProcess[str]:
+        baseline = init_repo(root)
+        write(root / "references/Hexalith.Builds/Props/Directory.Packages.props", "<Project />\n")
+        git(root, "add", "references/Hexalith.Builds/Props/Directory.Packages.props")
+        git(root, "commit", "-m", "add builds")
+        write(
+            root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+            story_text(baseline=baseline, file_list="- `README.md` - test evidence.", tasks=task)
+            + unrelated_section,
+        )
+        return run(
+            [
+                sys.executable,
+                str(VALIDATOR),
+                "--project-root",
+                str(root),
+                "--story",
+                "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                "--changed-file",
+                "README.md",
+                "--skip-sentinel",
+            ],
+            root,
+        )
+
+    def test_classified_path_counts_as_evidence_end_to_end(self) -> None:
+        task = (
+            "- [x] [Review][Patch] Fix: update "
+            "`references/Hexalith.Builds/Props/Directory.Packages.props` for the pin."
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            result = self._run_story(
+                root,
+                "\n### Documented Unrelated Workspace State\n\n"
+                "- `references/Hexalith.Builds` - accepted submodule drift.\n",
+                task,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            result = self._run_story(root, "", task)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(
+                "references/Hexalith.Builds/Props/Directory.Packages.props", result.stderr
+            )
+
+    def test_classified_basename_counts_as_evidence(self) -> None:
+        """Pins the classified_unrelated contribution to the basename evidence set."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            result = self._run_story(
+                root,
+                "\n### Documented Unrelated Workspace State\n\n"
+                "- `references/Hexalith.Builds/Props/Directory.Packages.props`"
+                " - accepted submodule drift.\n",
+                "- [x] [Review][Patch] Fix: update `Directory.Packages.props` for the pin.",
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()
