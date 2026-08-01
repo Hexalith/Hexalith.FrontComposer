@@ -337,6 +337,148 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertIn("missing evidence path: src/missing.txt", result.stderr)
             self.assertNotIn("missing evidence path: .nupkg", result.stderr)
 
+    def test_checked_review_patch_ignores_descriptive_path_mentions(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                story_text(
+                    baseline=baseline,
+                    file_list="- `README.md` - test evidence.",
+                    tasks=(
+                        "- [x] [Review][Patch] `RuntimeKind` is also discussed at "
+                        "`src/reference.cs:42`; `.First()`, `.g.cs`, and `Foo.cs` are examples. "
+                        "Fix: keep the classifier strict."
+                    ),
+                ),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("Story artifact validation passed.", result.stdout)
+
+    def _assert_review_patch_task_is_strict(self, task: str, *expected_paths: str) -> None:
+        """A qualified output path in a checked review task must be reconciled regardless
+        of the prose around it. Phrasing must never decide enforcement."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                story_text(
+                    baseline=baseline,
+                    file_list="- `README.md` - test evidence.",
+                    tasks=task,
+                ),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            for expected in expected_paths:
+                self.assertIn(expected, result.stderr)
+
+    def test_checked_review_patch_keeps_action_governed_path_strict(self) -> None:
+        self._assert_review_patch_task_is_strict(
+            "- [x] [Review][Patch] Fix: update `src/missing.cs` with the strict classifier.",
+            "missing evidence path: src/missing.cs",
+        )
+
+    def test_checked_review_patch_keeps_past_tense_claim_strict(self) -> None:
+        self._assert_review_patch_task_is_strict(
+            "- [x] [Review][Patch] Fix: updated `src/missing.cs` with the strict classifier.",
+            "missing evidence path: src/missing.cs",
+        )
+
+    def test_checked_review_patch_keeps_non_adjacent_object_strict(self) -> None:
+        self._assert_review_patch_task_is_strict(
+            "- [x] [Review][Patch] Fix: update the file `src/missing.cs` in place.",
+            "missing evidence path: src/missing.cs",
+        )
+
+    def test_checked_review_patch_keeps_every_path_in_a_list_strict(self) -> None:
+        self._assert_review_patch_task_is_strict(
+            "- [x] [Review][Patch] Fix: update `src/first.cs` and `src/second.cs` together.",
+            "missing evidence path: src/first.cs, src/second.cs",
+        )
+
+    def test_checked_review_patch_keeps_qualified_hypothetical_path_strict(self) -> None:
+        """Only a bare, tree-absent basename is treated as a scenario placeholder; a
+        qualified path that resolves to nothing is still a phantom-fix claim."""
+        self._assert_review_patch_task_is_strict(
+            "- [x] [Review][Patch] Fix: add `src/Fabricated.cs` for the new seam.",
+            "missing evidence path: src/Fabricated.cs",
+        )
+
+    def test_checked_review_patch_ignores_directory_and_negated_mentions(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(root / "src/scanned/keep.cs", "// scanned\n")
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, capture_output=True)
+            subprocess.run(
+                ["git", "-C", str(root), "commit", "-m", "add scanned tree"],
+                check=True,
+                capture_output=True,
+            )
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                story_text(
+                    baseline=baseline,
+                    file_list="- `README.md` - test evidence.",
+                    tasks=(
+                        "- [x] [Review][Patch] Fix: update the guard to scan `src/scanned` "
+                        "recursively. This story did not move `src/scanned/keep.cs`."
+                    ),
+                ),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("Story artifact validation passed.", result.stdout)
+
     def test_checked_deferred_review_task_accepts_preexisting_path_classification(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -557,6 +699,81 @@ class ReviewVerifierTests(unittest.TestCase):
             self.assertFalse(result["verified"])
             self.assertEqual(result["reason"], "artifact_validation_failed")
             self.assertIn("src/owned.txt", str(result.get("artifactValidationOutput")))
+
+
+class PathMentionRejectionTests(unittest.TestCase):
+    """Pin each non-output-path rejection class directly.
+
+    End-to-end story fixtures cannot isolate these: a bare token is rejected by the
+    tree-absent-basename rule before the suffix-literal or invocation-token rule is
+    reached, so deleting either rule leaves an end-to-end suite green. These unit
+    assertions make every rule independently load-bearing.
+    """
+
+    @staticmethod
+    def _module():
+        import importlib.util
+
+        spec = importlib.util.spec_from_file_location("story_artifact_validator", VALIDATOR)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules["story_artifact_validator"] = module
+        spec.loader.exec_module(module)
+        return module
+
+    def setUp(self) -> None:
+        self.validator = self._module()
+        self.root = Path(REPO_ROOT)
+
+    def _rejected(self, token: str) -> bool:
+        return self.validator.mention_is_not_an_output_path(token, self.root)
+
+    def test_bare_suffix_literals_are_rejected(self) -> None:
+        """Rejected via the tree-absent-basename rule; there is no separate suffix rule."""
+        for token in (".g.cs", ".generated.cs", ".designer.cs", ".AssemblyInfo.cs", ".razor.cs"):
+            with self.subTest(token=token):
+                self.assertTrue(self._rejected(token))
+
+    def test_path_line_coordinates_are_rejected(self) -> None:
+        for token in (
+            "src/Foo.cs:42",
+            "tests/Bar.cs:487-496",
+            "eng/baz.py:1,7",
+        ):
+            with self.subTest(token=token):
+                self.assertTrue(self._rejected(token))
+
+    def test_invocation_tokens_are_rejected(self) -> None:
+        # The qualified form is the load-bearing case: a directory-carrying token skips
+        # the bare-basename rule, so only the invocation rule can reject it.
+        for token in (".First()", "Foo.Bar()", "GetMethod(name)", "src/Foo.Bar()", "eng/x.py:run()"):
+            with self.subTest(token=token):
+                self.assertTrue(self._rejected(token))
+
+    def test_elided_citations_are_rejected(self) -> None:
+        self.assertTrue(self._rejected(".../CommandAuthorizationResource.cs"))
+
+    def test_directories_are_rejected(self) -> None:
+        self.assertTrue(self._rejected("src/Hexalith.FrontComposer.Shell"))
+        self.assertTrue(self._rejected("eng"))
+
+    def test_tree_absent_bare_basenames_are_rejected(self) -> None:
+        for token in ("Foo.cs", "Foo.Handlers.cs", "NotARealFileAnywhere.cs"):
+            with self.subTest(token=token):
+                self.assertTrue(self._rejected(token))
+
+    def test_real_output_paths_are_never_rejected(self) -> None:
+        """The fail-closed floor: anything that could denote produced work stays strict."""
+        for token in (
+            "src/Hexalith.FrontComposer.Shell/Extensions/DomainBootstrapMarker.cs",
+            "eng/validate-story-artifacts.py",
+            "src/Fabricated.cs",
+            "src/does/not/exist/Phantom.cs",
+        ):
+            with self.subTest(token=token):
+                self.assertFalse(self._rejected(token))
+
+    def test_tree_present_bare_basename_stays_strict(self) -> None:
+        self.assertFalse(self._rejected("validate-story-artifacts.py"))
 
 
 if __name__ == "__main__":

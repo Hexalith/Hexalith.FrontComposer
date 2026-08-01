@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 
@@ -147,7 +148,7 @@ def main() -> int:
         cli_unrelated = parse_cli_unrelated(root, args.unrelated, args.reason)
         unrelated = {**metadata.unrelated, **cli_unrelated}
         failures.extend(check_file_list(root, story, changed_files, metadata.file_list, unrelated))
-        failures.extend(check_checked_tasks(root, story, changed_files.files, metadata))
+        failures.extend(check_checked_tasks(root, story, changed_files.files, metadata, unrelated))
         unrelated_changed = [path for path in changed_files.files if path in unrelated]
         if unrelated_changed:
             notices.append(
@@ -497,17 +498,30 @@ def extract_checked_tasks(text: str) -> list[tuple[int, str]]:
     return tasks
 
 
-def check_checked_tasks(root: Path, story: Path, changed_files: list[str], metadata: StoryMetadata) -> list[str]:
+def check_checked_tasks(
+    root: Path,
+    story: Path,
+    changed_files: list[str],
+    metadata: StoryMetadata,
+    unrelated: dict[str, str] | None = None,
+) -> list[str]:
     failures: list[str] = []
     changed = set(changed_files)
     listed = set(metadata.file_list)
-    evidence_basenames = {path.rsplit("/", 1)[-1] for path in (changed | listed)}
+    # A path the story explicitly classified as unrelated workspace state is accounted
+    # for — it is declared, reviewable, and asserted not to be story output. Citing one
+    # in review prose is therefore evidenced, exactly as a File List row would be. This
+    # consults an existing explicit classification; it does not infer exemption from prose.
+    classified_unrelated = set(unrelated or {})
+    evidence_basenames = {
+        path.rsplit("/", 1)[-1] for path in (changed | listed | classified_unrelated)
+    }
     blocker_text = "\n".join(metadata.blockers.values()).lower()
     evidence_text = metadata.evidence_text.lower()
     for line_number, task in metadata.checked_tasks:
         if not task_needs_evidence(task):
             continue
-        task_paths = extract_path_mentions(task)
+        task_paths = extract_path_mentions(task, root=root)
         if task_is_classified_defer(task):
             # Deferred pre-existing work is intentionally absent from the changed set and
             # File List, so it is exempt from output-path evidence reconciliation. But a
@@ -530,6 +544,7 @@ def check_checked_tasks(root: Path, story: Path, changed_files: list[str], metad
             for path in task_paths
             if path not in changed
             and path not in listed
+            and not path_is_classified_unrelated(path, classified_unrelated)
             # A bare basename (no directory) is evidenced when a changed/listed path shares it,
             # so "`checklist.md`" shorthand beside a full path is not flagged as brittle overreach.
             and not ("/" not in path and path in evidence_basenames)
@@ -560,13 +575,15 @@ def task_is_classified_defer(task: str) -> bool:
     )
 
 
-def extract_path_mentions(text: str) -> set[str]:
+def extract_path_mentions(text: str, *, root: Path | None = None) -> set[str]:
     paths: set[str] = set()
     for match in re.finditer(r"`([^`]+)`", text):
         if path_mention_is_explicitly_non_evidence(text, match.start(), match.end()):
             continue
         normalized = match.group(1).strip().replace("\\", "/")
         if " " in normalized or normalized.startswith("--") or normalized.startswith("<"):
+            continue
+        if mention_is_not_an_output_path(normalized, root):
             continue
         if any(token in normalized for token in ("*", "?")):
             continue
@@ -582,6 +599,76 @@ def extract_path_mentions(text: str) -> set[str]:
     return paths
 
 
+def path_is_classified_unrelated(path: str, classified: set[str]) -> bool:
+    """A classified directory or submodule covers the paths beneath it.
+
+    Classifying `references/Hexalith.Builds` as unrelated workspace state accounts for
+    `references/Hexalith.Builds/Props/Directory.Packages.props` too; requiring every
+    nested file to be listed separately would push authors toward blanket exemptions.
+    Matching is on full path segments, so `references/Hexalith.BuildsExtra` is not
+    covered by a `references/Hexalith.Builds` classification.
+    """
+    if path in classified:
+        return True
+    return any(path.startswith(entry + "/") for entry in classified)
+
+
+def mention_is_not_an_output_path(normalized: str, root: Path | None) -> bool:
+    """Reject backticked tokens that cannot denote an output path this story produced.
+
+    Review-follow-up prose legitimately cites code the story did not change: bare suffix
+    literals, `path:line` coordinates, directories, method tokens, and hypothetical
+    filenames used to describe a scenario. Each class is rejected on its own shape, so a
+    real repository-relative output path is never exempted. Do NOT replace this with a
+    surrounding-prose heuristic: an action-verb probe was tried and silently exempted
+    past-tense claims ("Updated `src/x.cs`"), non-adjacent objects ("update the file
+    `src/x.cs`"), and every path after the first in a coordinated list, which is precisely
+    the phantom-fix class this gate exists to catch.
+    """
+    # NOTE: bare suffix chains (".g.cs", ".AssemblyInfo.cs") need no rule of their own —
+    # they carry no directory and match no tracked basename, so the tree-absent-basename
+    # rule below rejects them. A dedicated suffix rule was written first and removed: it
+    # could not be made load-bearing (deleting it left the suite green), and shipping a
+    # guard no test can fail is the defect this review was closing.
+    # A "path:line" or "path:line-line" coordinate cites a location, not an output.
+    if re.search(r"\.[A-Za-z0-9]+:\d+(?:[-,]\d+)*$", normalized):
+        return True
+    # A method or invocation token (".First()", "Foo.Bar()") is code, not a path.
+    if "(" in normalized or ")" in normalized:
+        return True
+    # An ellipsis-elided citation ("…/CommandAuthorizationResource.cs") is not resolvable.
+    if normalized.startswith("...") or normalized.startswith("…"):
+        return True
+    if root is not None:
+        # A directory names a scan scope, not a produced file.
+        if (root / normalized).is_dir():
+            return True
+        # A bare basename that matches nothing in the tree is a hypothetical used to
+        # describe a scenario ("the idiomatic `Foo.cs` + `Foo.Handlers.cs` split").
+        # Qualified paths keep full strictness, so a fabricated `src/NewThing.cs` claim
+        # is still reported.
+        if "/" not in normalized and not basename_exists_in_tree(normalized, root):
+            return True
+    return False
+
+
+@lru_cache(maxsize=1)
+def tracked_basenames(root: Path) -> frozenset[str]:
+    result = subprocess.run(
+        ["git", "-C", str(root), "ls-files"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        return frozenset()
+    return frozenset(line.rsplit("/", 1)[-1] for line in result.stdout.splitlines() if line)
+
+
+def basename_exists_in_tree(basename: str, root: Path) -> bool:
+    return basename in tracked_basenames(root)
+
+
 def path_mention_is_explicitly_non_evidence(text: str, start: int, end: int) -> bool:
     clause_start = 0
     for boundary in re.finditer(r"[.!?;]\s+", text[:start]):
@@ -594,9 +681,13 @@ def path_mention_is_explicitly_non_evidence(text: str, start: int, end: int) -> 
 
     before = text[clause_start:start]
     after = text[end:clause_end]
+    # Keep the negation verb set aligned with the positive-action verb set below; a verb
+    # present in one and absent from the other produced contradictory results
+    # ("must not update" suppressed while "must not move" was demanded as evidence).
     if re.search(
-        r"\b(?:do not|don't|must not|should not)\s+"
-        r"(?:require|change|edit|create|modify|touch|update)\s*$",
+        r"\b(?:do not|don't|does not|did not|must not|should not|never|no longer)\s+"
+        r"(?:require|add|change|edit|create|delete|extend|generate|implement|modify|"
+        r"move|remove|rename|retarget|split|touch|update|wire|write)s?\s*$",
         before,
         re.IGNORECASE,
     ):

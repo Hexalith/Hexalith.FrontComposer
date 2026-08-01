@@ -97,8 +97,28 @@ public sealed class ShellTypeOrganizationGovernanceTests
         expected.Length.ShouldBe(111);
         expected.Count(pin => pin.Accessibility == "public").ShouldBe(97);
         expected.Count(pin => pin.Accessibility == "internal").ShouldBe(14);
+
+        // AC2's exact type-kind census. Without this a pin row could be swapped for any
+        // other already-conforming public declaration and the suite would stay green,
+        // because the loop below validates each pin only against itself.
+        expected.Count(pin => pin.Kind == "class").ShouldBe(33);
+        expected.Count(pin => pin.Kind == "enum").ShouldBe(22);
+        expected.Count(pin => pin.Kind == "interface").ShouldBe(17);
+        expected.Count(pin => pin.Kind == "record").ShouldBe(37);
+        expected.Count(pin => pin.Kind == "record struct").ShouldBe(2);
+
         FindManifestUniquenessViolations(expected).ShouldBeEmpty();
         actual.ShouldNotBeEmpty("the source-shape pin must scan real Shell declarations");
+
+        // Bind the manifest to the live census: the pinned files must contain exactly the
+        // pinned declarations and nothing else, so a declaration added to or removed from
+        // a pinned file cannot pass unnoticed.
+        HashSet<string> pinnedPaths = [.. expected.Select(pin => pin.Path)];
+        DirectDeclaration[] livingInPinnedPaths =
+            [.. actual.Where(declaration => pinnedPaths.Contains(declaration.Path))];
+        livingInPinnedPaths.Length.ShouldBe(
+            expected.Length,
+            "every declaration in a pinned file must be pinned, and every pin must be live");
 
         foreach (DeclarationPin pin in expected)
         {
@@ -361,6 +381,71 @@ public sealed class ShellTypeOrganizationGovernanceTests
         RuntimeKind(typeof(SampleClassInheritingPrintMembers)).ShouldBe("class");
     }
 
+    [Fact]
+    public void RuntimeKind_ValueTypeWithLookalikePrintMembers_RemainsStruct()
+    {
+        // Pins the binder's parameter list and return type. Without either constraint a
+        // plain struct carrying an unrelated PrintMembers is misread as a record struct.
+        RuntimeKind(typeof(SampleStructWithWrongPrintMembersParameter)).ShouldBe("struct");
+        RuntimeKind(typeof(SampleStructWithWrongPrintMembersReturn)).ShouldBe("struct");
+    }
+
+    [Fact]
+    public void RuntimeKind_RecordStructWithExtraPrintMembersOverload_DoesNotThrow()
+    {
+        // An unbound GetMethod("PrintMembers") throws AmbiguousMatchException here and
+        // aborts the whole 111-pin loop; the signature-bound probe resolves the
+        // synthesized member instead.
+        RuntimeKind(typeof(SampleRecordStructWithExtraOverload)).ShouldBe("record struct");
+    }
+
+    [Fact]
+    public void OrganizationGuard_PartialDeclarationsWithDivergentKind_AreReported()
+    {
+        SourceFile[] sources =
+        [
+            new(
+                "Services/KindOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "#if FIRST\npublic partial class KindOwner { }\n"
+                + "#else\npublic partial record KindOwner { }\n#endif"),
+        ];
+
+        AssertSyntheticViolation(sources, "Services/KindOwner.cs", "2 direct declarations");
+    }
+
+    [Fact]
+    public void OrganizationGuard_PartialDeclarationsWithDivergentModifiers_AreReported()
+    {
+        SourceFile[] sources =
+        [
+            new(
+                "Services/ModifierOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "#if FIRST\npublic sealed partial class ModifierOwner { }\n"
+                + "#else\npublic partial class ModifierOwner { }\n#endif"),
+        ];
+
+        AssertSyntheticViolation(sources, "Services/ModifierOwner.cs", "2 direct declarations");
+    }
+
+    [Fact]
+    public void OrganizationGuard_SingleDeclarationWithConditionalModifiers_IsNotReported()
+    {
+        // One physical type whose modifiers are conditionally compiled parses into several
+        // dictionary entries at the same SpanStart. It is one declaration, not several.
+        SourceFile[] sources =
+        [
+            new(
+                "Services/ConditionalModifierOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "public\n#if FOO\nsealed\n#endif\npartial class ConditionalModifierOwner { }"),
+        ];
+
+        FindOrganizationViolations(sources, new Dictionary<string, string[]>(StringComparer.Ordinal))
+            .ShouldBeEmpty();
+    }
+
     private static void AssertSyntheticViolation(
         IReadOnlyList<SourceFile> sources,
         string expectedPath,
@@ -556,9 +641,27 @@ public sealed class ShellTypeOrganizationGovernanceTests
         // mutually exclusive conditional-branch duplicates), or that disagree on shape (e.g. a
         // `#if DEBUG public partial` / `#else internal partial` pair), are kept separate so the
         // guard still reports them rather than silently pinning whichever branch parsed first.
-        return
+        // One physical declaration can yield several dictionary entries when its own
+        // MODIFIERS are conditionally compiled (`public #if FOO sealed #endif partial class C`):
+        // the mask sweep parses it once per symbol combination and the dedup key includes
+        // Modifiers, so the same SpanStart appears with "public partial" and
+        // "public sealed partial". Those are one declaration, not two, and must be folded
+        // before shape agreement is judged — otherwise a single legal type is reported as
+        // "2 direct declarations". Keep the richest variant, which is what the
+        // all-branches-active pass represents.
+        DirectDeclaration[] perSpan =
         [
             .. declarations.Values
+                .GroupBy(declaration => (declaration.Identity, declaration.SpanStart))
+                .Select(group => group
+                    .OrderByDescending(declaration => ModifierTokens(declaration).Length)
+                    .ThenBy(declaration => declaration.Modifiers, StringComparer.Ordinal)
+                    .First()),
+        ];
+
+        return
+        [
+            .. perSpan
                 .GroupBy(declaration => declaration.Identity, StringComparer.Ordinal)
                 .SelectMany(group => IsCollapsiblePartialGroup(group)
                     ? [group.OrderBy(declaration => declaration.SpanStart).First()]
@@ -566,6 +669,9 @@ public sealed class ShellTypeOrganizationGovernanceTests
                 .OrderBy(declaration => declaration.SpanStart),
         ];
     }
+
+    private static string[] ModifierTokens(DirectDeclaration declaration)
+        => declaration.Modifiers.Split(' ', StringSplitOptions.RemoveEmptyEntries);
 
     private static bool IsCollapsiblePartialGroup(IEnumerable<DirectDeclaration> group)
     {
@@ -577,9 +683,7 @@ public sealed class ShellTypeOrganizationGovernanceTests
     }
 
     private static bool IsPartial(DirectDeclaration declaration)
-        => declaration.Modifiers
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Contains("partial", StringComparer.Ordinal);
+        => ModifierTokens(declaration).Contains("partial", StringComparer.Ordinal);
 
     private static string ActivateAllConditionalBranches(string content, CompilationUnitSyntax root)
     {
@@ -721,9 +825,13 @@ public sealed class ShellTypeOrganizationGovernanceTests
         // it for reference types. Record structs are copied by value and have no "<Clone>$", so the
         // value-type branch falls back to the synthesized "PrintMembers". That name IS a legal
         // identifier this repository hand-writes for redaction (see CommandAuthorizationRequest and
-        // QueryRequest), so bind it to the exact synthesized signature and to declarations on the
-        // type itself, keeping a plain struct from being misread as a record struct and avoiding an
-        // AmbiguousMatchException when an unrelated "PrintMembers" overload exists.
+        // QueryRequest), so bind it to the exact synthesized signature — instance, declared on the
+        // type itself, taking a single StringBuilder, returning bool. That narrows the misread
+        // surface to a hand-written member matching the synthesized signature EXACTLY, and stops an
+        // unrelated overload from throwing AmbiguousMatchException and aborting the pin loop. It
+        // does NOT make a plain struct indistinguishable from a record struct: a struct that
+        // hand-writes that exact signature still classifies as "record struct", which reflection
+        // alone cannot resolve. That residual collision is tracked in deferred-work.md.
         return type.IsValueType
             ? DeclaresSynthesizedPrintMembers(type) ? "record struct" : "struct"
             : type.GetMethod("<Clone>$") is not null ? "record" : "class";
@@ -816,6 +924,36 @@ public sealed class ShellTypeOrganizationGovernanceTests
     }
 
     private sealed class SampleClassInheritingPrintMembers : SampleClassWithPrintMembers;
+
+    // Value-type fixtures for DeclaresSynthesizedPrintMembers. Each diverges from the
+    // synthesized signature in exactly one dimension, so every constraint in the binder
+    // (parameter list, return type, and the presence of an unrelated overload) is
+    // independently load-bearing.
+    // Every member below reads instance state deliberately: CA1822 is warning-as-error in
+    // this repository, and a constant-returning fixture member is what broke the Release
+    // build during the previous remediation pass.
+    private readonly struct SampleStructWithWrongPrintMembersParameter
+    {
+        public int Value { get; }
+
+        public bool PrintMembers(string builder) => builder?.Length == Value;
+    }
+
+    private readonly struct SampleStructWithWrongPrintMembersReturn
+    {
+        public int Value { get; }
+
+        public void PrintMembers(StringBuilder builder)
+        {
+            ArgumentNullException.ThrowIfNull(builder);
+            builder.Append(Value);
+        }
+    }
+
+    private readonly record struct SampleRecordStructWithExtraOverload(string Value)
+    {
+        public bool PrintMembers(string other) => string.Equals(other, Value, StringComparison.Ordinal);
+    }
 
     private const string TargetDeclarationManifest = """
 Components/Badges/OptimisticBadgeState.cs|Hexalith.FrontComposer.Shell.Components.Badges.OptimisticBadgeState|enum|public|public
