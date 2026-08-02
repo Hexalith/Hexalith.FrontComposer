@@ -814,6 +814,9 @@ class PathMentionRejectionTests(unittest.TestCase):
             "Fix: add `NewStrictGuard.cs` implementing the check.",
             "Fix: create a new file `NewStrictGuard.cs` for the seam.",
             "Fix: generate `NewStrictGuard.cs` from the template.",
+            "Fix: created `NewStrictGuard.cs` for the seam.",
+            "Fix: added `NewStrictGuard.cs` implementing the check.",
+            "Fix: wrote `NewStrictGuard.cs` from the template.",
         )
         for text in claims:
             with self.subTest(text=text):
@@ -824,12 +827,70 @@ class PathMentionRejectionTests(unittest.TestCase):
         text = "Fix: create the seam. The idiomatic `Foo.cs` split stays supported."
         self.assertFalse(self.validator.mention_claims_creation(text, text.index("`")))
 
-    def test_verb_alternation_covers_third_person_inflections(self) -> None:
-        """`s?` cannot form `modifies` or `touches`; suppression must not hinge on tense."""
-        alternation = self.validator.verb_alternation(("modify", "touch", "update"))
-        for form in ("modifies", "touches", "updates", "modify", "touch", "update"):
+    def test_verb_alternation_covers_third_person_and_past_inflections(self) -> None:
+        """`s?` cannot form `modifies` or `touches`; past tense must not evade either."""
+        alternation = self.validator.verb_alternation(("modify", "touch", "update", "create", "write"))
+        for form in (
+            "modifies",
+            "touches",
+            "updates",
+            "creates",
+            "writes",
+            "modified",
+            "touched",
+            "updated",
+            "created",
+            "wrote",
+            "written",
+            "modify",
+            "touch",
+            "update",
+            "create",
+            "write",
+        ):
             with self.subTest(form=form):
                 self.assertIn(form, alternation.split("|"))
+
+    def test_past_tense_preserve_clause_does_not_hide_action_governed_path(self) -> None:
+        # Past-tense "updated" must trip the preserve-clause exception the same way "update" does.
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                story_text(
+                    baseline=baseline,
+                    file_list="- `README.md` - test evidence.",
+                    tasks="- [x] Keep behavior and updated `src/ghost.cs` so output stays unchanged.",
+                ),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("missing evidence path: src/ghost.cs", result.stderr)
+
+    def test_past_tense_creation_claim_keeps_bare_basename_strict(self) -> None:
+        text = "Fix: created `PhantomNew.cs` for the guard."
+        self.assertTrue(self.validator.mention_claims_creation(text, text.index("`")))
+        self.assertFalse(
+            self.validator.mention_is_not_an_output_path(
+                "PhantomNew.cs", self.root, creation_claimed=True
+            )
+        )
 
     def test_negation_and_positive_verb_sets_cannot_drift(self) -> None:
         """`remove` was a negation verb but not a positive one, so a genuine deletion
@@ -936,6 +997,25 @@ class ClassifiedUnrelatedTests(unittest.TestCase):
 
             self.assertNotIn("src", usable)
             self.assertIn("src/real.cs", usable)
+
+    def test_top_level_directory_classification_is_refused_without_workdir_dir(self) -> None:
+        """Refuse bare `src` even when the working-tree directory is gone but paths remain tracked."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            init_repo(root)
+            write(root / "src/real.cs", "// real\n")
+            git(root, "add", "src/real.cs")
+            git(root, "commit", "-m", "add src")
+            # Remove the working-tree directory without untracking: is_dir() alone would miss this.
+            import shutil
+
+            shutil.rmtree(root / "src")
+
+            usable = self.validator.usable_classified_paths(
+                root, {"src": "pre-existing"}, set()
+            )
+
+            self.assertNotIn("src", usable)
 
     def test_classification_of_an_unreal_path_is_refused(self) -> None:
         """A story must not account for a fabricated path by inventing a bullet for it."""

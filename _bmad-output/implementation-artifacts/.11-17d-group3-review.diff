@@ -1,0 +1,2728 @@
+diff --git a/.github/workflows/quality.yml b/.github/workflows/quality.yml
+index c8043b51..d587b372 100644
+--- a/.github/workflows/quality.yml
++++ b/.github/workflows/quality.yml
+@@ -41,7 +41,7 @@ jobs:
+ 
+       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+         with:
+-          dotnet-version: '10.0.301'
++          dotnet-version: '10.0.302'
+ 
+       - name: Record full CI lane start
+         shell: bash
+@@ -61,13 +61,13 @@ jobs:
+         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+         with:
+           path: ~/.nuget/packages
+-          key: nuget-${{ hashFiles('Directory.Packages.props') }}
++          key: nuget-${{ hashFiles('Directory.Packages.props', 'references/Hexalith.Builds/Props/Directory.Packages.props') }}
+           restore-keys: nuget-
+ 
+       # Gate 1: Contracts builds in isolation targeting netstandard2.0
+       - name: 'Gate 1: Contracts Build (netstandard2.0)'
+         run: |
+-          dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release
++          dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:EnableFrontComposerPackageValidation=true
+           dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -f netstandard2.0 --configuration Release --no-restore
+ 
+       # Gate 2: Full solution builds
+@@ -118,6 +118,16 @@ jobs:
+           DiffEngine_Disabled: true
+         run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
+ 
++      - name: 'Gate 2b: Release suppression lifecycle tests'
++        run: python3 -m unittest tests/eng/test_pack_release_packages.py
++
++      # The two catalog-compatibility Governance facts above shell out to
++      # eng/dependency_graph.py, whose own semantic rules are covered only by this suite.
++      # Without this step the required-property and required-package checks could be
++      # deleted or silenced with every lane still green.
++      - name: 'Gate 2b: Dependency graph semantic policy tests'
++        run: python3 -m unittest tests/eng/test_dependency_graph.py
++
+       # Gate 2c: File-based consumer pacts for the FrontComposer/EventStore REST boundary.
+       # This lane intentionally uses explicit root-declared submodule initialization above and
+       # does not run recursive nested submodule initialization.
+@@ -419,7 +429,7 @@ jobs:
+ 
+       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+         with:
+-          dotnet-version: '10.0.301'
++          dotnet-version: '10.0.302'
+ 
+       - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+         with:
+diff --git a/eng/dependency-graph-policy.json b/eng/dependency-graph-policy.json
+new file mode 100644
+index 00000000..64e73679
+--- /dev/null
++++ b/eng/dependency-graph-policy.json
+@@ -0,0 +1,182 @@
++{
++  "schema": "hexalith.dependency-graph-policy.v1",
++  "builds_identity": "github.com/hexalith/hexalith.builds",
++  "trusted_identities": [
++    { "identity": "github.com/hexalith/hexalith.frontcomposer", "local_path": "." },
++    { "identity": "github.com/hexalith/hexalith.eventstore", "local_path": "references/Hexalith.EventStore" },
++    { "identity": "github.com/hexalith/hexalith.tenants", "local_path": "references/Hexalith.Tenants" },
++    { "identity": "github.com/hexalith/hexalith.commons", "local_path": "references/Hexalith.Commons" },
++    { "identity": "github.com/hexalith/hexalith.builds", "local_path": "references/Hexalith.Builds" },
++    { "identity": "github.com/hexalith/hexalith.polymorphicserializations", "local_path": "references/Hexalith.PolymorphicSerializations" },
++    { "identity": "github.com/hexalith/hexalith.ai.tools", "local_path": "references/Hexalith.AI.Tools" },
++    { "identity": "github.com/hexalith/hexalith.memories", "local_path": "references/Hexalith.Memories" },
++    { "identity": "github.com/hexalith/hexalith.parties", "local_path": "references/Hexalith.Parties" }
++  ],
++  "semantic_profiles": {
++    "github.com/hexalith/hexalith.frontcomposer": "frontcomposer-catalog-v1",
++    "github.com/hexalith/hexalith.eventstore": "eventstore-catalog-v1",
++    "github.com/hexalith/hexalith.memories": "memories-catalog-v1",
++    "github.com/hexalith/hexalith.parties": "parties-catalog-v1",
++    "github.com/hexalith/hexalith.builds": "shared-catalog-baseline-v1",
++    "github.com/hexalith/hexalith.commons": "shared-catalog-baseline-v1",
++    "github.com/hexalith/hexalith.polymorphicserializations": "shared-catalog-baseline-v1",
++    "github.com/hexalith/hexalith.tenants": "shared-catalog-baseline-v1",
++    "github.com/hexalith/hexalith.ai.tools": "shared-catalog-baseline-v1"
++  },
++  "profiles": {
++    "frontcomposer-catalog-v1": {
++      "owner_checks": {
++        "no_package_version_rows": true,
++        "bom_crlf_on_selected_catalog": true
++      },
++      "selected_catalog_required_properties": {
++        "HexalithCommonsVersion": "2.30.0",
++        "HexalithEventStoreVersion": "3.89.0",
++        "HexalithMemoriesVersion": "2.19.9",
++        "HexalithPartiesVersion": "1.0.0",
++        "HexalithPolymorphicSerializationsVersion": "1.19.2",
++        "HexalithTenantsVersion": "5.4.0"
++      },
++      "selected_catalog_required_packages": {
++        "BenchmarkDotNet": "0.15.8",
++        "FsCheck.Xunit.v3": "3.3.4",
++        "Microsoft.CodeAnalysis.Workspaces.Common": "5.6.0",
++        "Microsoft.Extensions.Localization": "10.0.10",
++        "Microsoft.Extensions.TimeProvider.Testing": "10.8.0",
++        "ModelContextProtocol.AspNetCore": "1.4.1",
++        "NUlid": "1.7.3",
++        "PactNet": "5.0.1",
++        "System.Collections.Immutable": "10.0.10",
++        "System.ComponentModel.Annotations": "5.0.0",
++        "System.Reactive": "7.0.0",
++        "System.Threading.Tasks.Extensions": "4.6.3",
++        "Verify": "31.27.0",
++        "Verify.XunitV3": "31.27.0"
++      }
++    },
++    "eventstore-catalog-v1": {
++      "owner_checks": {
++        "no_local_override_for_selected_catalog_packages": true
++      },
++      "selected_catalog_required_properties": {},
++      "selected_catalog_required_packages": {
++        "Microsoft.Extensions.TimeProvider.Testing": "10.8.0",
++        "System.CommandLine": "2.0.10",
++        "ModelContextProtocol": "1.4.1"
++      }
++    },
++    "memories-catalog-v1": {
++      "owner_checks": {
++        "no_local_override_for_selected_catalog_packages": true
++      },
++      "selected_catalog_required_properties": {},
++      "selected_catalog_required_packages": {
++        "ModelContextProtocol.AspNetCore": "1.4.1",
++        "Microsoft.Extensions.TimeProvider.Testing": "10.8.0"
++      }
++    },
++    "parties-catalog-v1": {
++      "owner_checks": {
++        "no_local_override_for_selected_catalog_packages": true,
++        "no_minver": true,
++        "no_inline_versions_in_tracked_files": {
++          "extensions": [".csproj", ".props", ".targets"]
++        },
++        "guarded_imports": {
++          "import_projects": [
++            "$(Hexalith1BuildPackageProps)",
++            "$(Hexalith2BuildPackageProps)",
++            "$(Hexalith3BuildPackageProps)"
++          ],
++          "import_conditions": [
++            "Exists('$(Hexalith1BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'",
++            "Exists('$(Hexalith2BuildPackageProps)') And '$(HexalithVersionsLoaded)' != 'true'",
++            "'$(HexalithVersionsLoaded)' != 'true'"
++          ],
++          "required_properties": {
++            "ManagePackageVersionsCentrally": "true",
++            "CentralPackageTransitivePinningEnabled": "true",
++            "Hexalith1BuildPackageProps": "$(MSBuildThisFileDirectory)references/Hexalith.Builds/Props/Directory.Packages.props",
++            "Hexalith2BuildPackageProps": "$(MSBuildThisFileDirectory)../Hexalith.Builds/Props/Directory.Packages.props",
++            "Hexalith3BuildPackageProps": "$(MSBuildThisFileDirectory)../../Hexalith.Builds/Props/Directory.Packages.props"
++          }
++        }
++      },
++      "selected_catalog_required_properties": {},
++      "selected_catalog_required_packages": {
++        "Microsoft.AspNetCore.Components.CustomElements": "10.0.10",
++        "ModelContextProtocol": "1.4.1",
++        "ModelContextProtocol.AspNetCore": "1.4.1"
++      }
++    },
++    "shared-catalog-baseline-v1": {
++      "owner_checks": {
++        "well_formed_project_root": true,
++        "override_not_enabled": true
++      },
++      "selected_catalog_required_properties": {},
++      "selected_catalog_required_packages": {}
++    }
++  },
++  "module_build_registry": {
++    "github.com/hexalith/hexalith.frontcomposer": {
++      "disposition": "build",
++      "solution": "Hexalith.FrontComposer.slnx",
++      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
++    },
++    "github.com/hexalith/hexalith.eventstore": {
++      "disposition": "build",
++      "solution": "Hexalith.EventStore.slnx",
++      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
++    },
++    "github.com/hexalith/hexalith.tenants": {
++      "disposition": "build",
++      "solution": "Hexalith.Tenants.slnx",
++      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
++    },
++    "github.com/hexalith/hexalith.commons": {
++      "disposition": "build",
++      "solution": "Hexalith.Commons.slnx",
++      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
++    },
++    "github.com/hexalith/hexalith.builds": {
++      "disposition": "build",
++      "solution": "Hexalith.Builds.slnx",
++      "builds_contract_source": "self"
++    },
++    "github.com/hexalith/hexalith.polymorphicserializations": {
++      "disposition": "build",
++      "solution": "Hexalith.PolymorphicSerializations.slnx",
++      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
++    },
++    "github.com/hexalith/hexalith.memories": {
++      "disposition": "build",
++      "solution": "Hexalith.Memories.slnx",
++      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
++    },
++    "github.com/hexalith/hexalith.parties": {
++      "disposition": "build",
++      "solution": "Hexalith.Parties.slnx",
++      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
++    },
++    "github.com/hexalith/hexalith.ai.tools": {
++      "disposition": "evidence-only",
++      "solution": null,
++      "builds_contract_source": "none"
++    }
++  },
++  "resource_limits": {
++    "max_edges": 4096,
++    "max_ls_tree_bytes_per_owner_commit": 67108864,
++    "max_gitmodules_blob_bytes": 1048576,
++    "max_catalog_blob_bytes": 4194304,
++    "max_contract_tree_files": 16384,
++    "max_contract_tree_blob_bytes": 16777216,
++    "max_contract_tree_total_bytes": 268435456
++  },
++  "evaluator_authorizations": {
++    "ci": [],
++    "release": [],
++    "post_release": []
++  }
++}
+diff --git a/eng/dependency_graph.py b/eng/dependency_graph.py
+new file mode 100644
+index 00000000..8f62922c
+--- /dev/null
++++ b/eng/dependency_graph.py
+@@ -0,0 +1,720 @@
++#!/usr/bin/env python3
++"""Committed-object dependency-graph engine (GOV-1 / FC-DEP-1).
++
++Collects the bounded depth-1/depth-2 `hexalith.dependency-graph.v1` gitlink graph from
++an explicit FrontComposer root commit, computes its AD-5 canonical digest, and evaluates
++every Builds-selector edge under its AD-6 semantic profile. This is the single canonical
++semantic-policy implementation; C# Governance invokes its machine-readable result rather
++than reimplementing catalog policy.
++
++Scope note: this module implements Task 2/3 of GOV-1 (local graph collection + semantic
++validation). CI graph diffing, affected-module build gates, and release-manifest binding
++(Task 4/5, AD-8/AD-12 evaluator trust, AD-13/AD-14/AD-15) remain blocked pending an
++owner-accepted Hexalith.Builds issue 17 / BUILD-REL-1 revision (AD-16) and are not
++implemented here.
++"""
++
++from __future__ import annotations
++
++import argparse
++import fnmatch
++import hashlib
++import json
++import re
++import subprocess
++import sys
++import xml.etree.ElementTree as ET
++from pathlib import Path
++from typing import Any
++
++__version__ = "1.0.0"
++
++SCHEMA = "hexalith.dependency-graph.v1"
++POLICY_SCHEMA = "hexalith.dependency-graph-policy.v1"
++
++# A shared-catalog property may carry only the canonical "default it if unset" condition.
++_SELF_DEFAULT_CONDITION = re.compile(r"^\s*'\$\((?P<name>[A-Za-z_][A-Za-z0-9_]*)\)'\s*==\s*''\s*$")
++
++# Every key a semantic profile may declare. An unknown key -- a rename or a typo in
++# selected_catalog_required_properties, say -- would otherwise silently validate nothing,
++# so load_policy rejects it instead of defaulting the missing key to an empty mapping.
++_PROFILE_KEYS = frozenset({
++    "owner_checks",
++    "selected_catalog_required_properties",
++    "selected_catalog_required_packages",
++})
++
++
++class GraphError(Exception):
++    """Raised for any fail-closed condition during collection or semantic evaluation."""
++
++
++# ---------------------------------------------------------------------------
++# Git plumbing — argv-only subprocess calls, never shell interpolation.
++# `.gitmodules` and nested repository content are untrusted candidate data.
++# ---------------------------------------------------------------------------
++
++
++def _run_git(args: list[str], cwd: Path) -> subprocess.CompletedProcess[bytes]:
++    return subprocess.run(["git", *args], cwd=str(cwd), capture_output=True, check=False)
++
++
++def _git_ok(args: list[str], cwd: Path) -> bytes:
++    proc = _run_git(args, cwd)
++    if proc.returncode != 0:
++        raise GraphError(
++            f"git {' '.join(args)} failed in {cwd}: {proc.stderr.decode('utf-8', 'replace').strip()}"
++        )
++    return proc.stdout
++
++
++_COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
++
++
++def require_commit(value: str, context: str) -> str:
++    if not isinstance(value, str) or not _COMMIT_RE.match(value):
++        raise GraphError(f"{context}: expected a strict lowercase 40-hex commit, got {value!r}")
++    return value
++
++
++def _tree_entry(local_path: Path, commit: str, path: str) -> tuple[str, str, str] | None:
++    """Return (mode, type, sha) for an exact path at commit, or None if absent."""
++    out = _git_ok(["ls-tree", commit, "--", path], local_path)
++    line = out.decode("utf-8").strip()
++    if not line:
++        return None
++    meta, _, entry_path = line.partition("\t")
++    mode, obj_type, sha = meta.split()
++    if entry_path != path:
++        return None
++    return mode, obj_type, sha
++
++
++def _blob_size(local_path: Path, blob_sha: str) -> int:
++    return int(_git_ok(["cat-file", "-s", blob_sha], local_path).decode("ascii").strip())
++
++
++def read_blob(local_path: Path, commit: str, path: str, max_bytes: int, context: str) -> bytes | None:
++    entry = _tree_entry(local_path, commit, path)
++    if entry is None:
++        return None
++    _mode, obj_type, sha = entry
++    if obj_type != "blob":
++        raise GraphError(f"{context}: {path} at {commit} is a {obj_type}, not a blob")
++    size = _blob_size(local_path, sha)
++    if size > max_bytes:
++        raise GraphError(f"{context}: {path} at {commit} is {size} bytes, exceeds the {max_bytes}-byte ceiling")
++    return _git_ok(["cat-file", "blob", sha], local_path)
++
++
++def list_gitlinks(local_path: Path, commit: str, max_ls_tree_bytes: int) -> dict[str, str]:
++    """Every mode-160000 (gitlink) tree entry at commit: path -> commit sha."""
++    out = _git_ok(["ls-tree", "-r", "-z", "--full-tree", commit], local_path)
++    if len(out) > max_ls_tree_bytes:
++        raise GraphError(
++            f"ls-tree output for {commit} in {local_path} is {len(out)} bytes, "
++            f"exceeds the {max_ls_tree_bytes}-byte ceiling"
++        )
++    gitlinks: dict[str, str] = {}
++    for record in out.split(b"\x00"):
++        if not record:
++            continue
++        meta, _, path_bytes = record.partition(b"\t")
++        _mode, obj_type, sha = meta.split()
++        if obj_type == b"commit":
++            gitlinks[path_bytes.decode("utf-8")] = sha.decode("ascii")
++    return gitlinks
++
++
++_GITMODULES_KEY_RE = re.compile(r"^submodule\.(?P<name>.+)\.(?P<field>path|url)$")
++
++
++def read_gitmodules(local_path: Path, commit: str, max_bytes: int) -> dict[str, dict[str, str]]:
++    """Parse committed `.gitmodules` at commit via `git config --blob`. name -> {path, url}."""
++    entry = _tree_entry(local_path, commit, ".gitmodules")
++    if entry is None:
++        return {}
++    _mode, obj_type, sha = entry
++    if obj_type != "blob":
++        raise GraphError(f".gitmodules at {commit} in {local_path} is a {obj_type}, not a blob")
++    size = _blob_size(local_path, sha)
++    if size > max_bytes:
++        raise GraphError(f".gitmodules at {commit} in {local_path} is {size} bytes, exceeds the {max_bytes}-byte ceiling")
++    out = _git_ok(["config", "--blob", f"{commit}:.gitmodules", "--list"], local_path)
++    entries: dict[str, dict[str, str]] = {}
++    for line in out.decode("utf-8").splitlines():
++        if not line:
++            continue
++        key, _, value = line.partition("=")
++        m = _GITMODULES_KEY_RE.match(key)
++        if not m:
++            continue
++        entries.setdefault(m.group("name"), {})[m.group("field")] = value
++    return entries
++
++
++# ---------------------------------------------------------------------------
++# AD-3 identity/path normalization — closed-world, no clones, no candidate URLs.
++# ---------------------------------------------------------------------------
++
++_HTTPS_RE = re.compile(r"^https://github\.com/(?P<owner>[A-Za-z0-9._-]+)/(?P<repo>[A-Za-z0-9._-]+?)(?:\.git)?/?$")
++_SSH_SCP_RE = re.compile(r"^git@github\.com:(?P<owner>[A-Za-z0-9._-]+)/(?P<repo>[A-Za-z0-9._-]+?)(?:\.git)?/?$")
++_SSH_URL_RE = re.compile(r"^ssh://git@github\.com/(?P<owner>[A-Za-z0-9._-]+)/(?P<repo>[A-Za-z0-9._-]+?)(?:\.git)?/?$")
++_CONTROL_RE = re.compile(r"[\x00-\x1f\x7f]")
++
++
++def normalize_identity(url: str, context: str) -> str:
++    if not isinstance(url, str) or not url:
++        raise GraphError(f"{context}: empty repository URL")
++    if _CONTROL_RE.search(url):
++        raise GraphError(f"{context}: control characters in repository URL {url!r}")
++    if "%" in url:
++        raise GraphError(f"{context}: percent-escapes are not permitted in repository URL {url!r}")
++
++    match = _HTTPS_RE.match(url) or _SSH_SCP_RE.match(url) or _SSH_URL_RE.match(url)
++    if not match:
++        raise GraphError(f"{context}: unrecognized or unsafe repository URL {url!r}")
++
++    owner, repo = match.group("owner"), match.group("repo")
++    for segment, label in ((owner, "owner"), (repo, "repository")):
++        if segment in (".", ".."):
++            raise GraphError(f"{context}: unsafe {label} segment in repository URL {url!r}")
++
++    return f"github.com/{owner.lower()}/{repo.lower()}"
++
++
++def normalize_path(path: str, context: str) -> str:
++    if not isinstance(path, str) or not path:
++        raise GraphError(f"{context}: empty path")
++    if _CONTROL_RE.search(path) or "\\" in path:
++        raise GraphError(f"{context}: unsafe path {path!r}")
++    if path.startswith("/"):
++        raise GraphError(f"{context}: absolute path not permitted: {path!r}")
++    for segment in path.split("/"):
++        if segment in ("", ".", ".."):
++            raise GraphError(f"{context}: unsafe path segment in {path!r}")
++    return path
++
++
++def resolve_local_path(policy: dict[str, Any], identity: str, root_dir: Path) -> Path:
++    for entry in policy["trusted_identities"]:
++        if entry["identity"] == identity:
++            return (root_dir / entry["local_path"]).resolve()
++    raise GraphError(f"unknown/untrusted repository identity {identity!r}")
++
++
++# ---------------------------------------------------------------------------
++# AD-4/AD-5 — edge collection, canonical envelope, and digest.
++# ---------------------------------------------------------------------------
++
++
++def canonical_bytes(obj: Any) -> bytes:
++    return json.dumps(obj, ensure_ascii=True, allow_nan=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
++
++
++def canonical_digest(obj: Any) -> str:
++    return hashlib.sha256(canonical_bytes(obj)).hexdigest()
++
++
++def _owner_edges(
++    local_path: Path,
++    commit: str,
++    owner_identity: str,
++    depth: int,
++    policy: dict[str, Any],
++    root_dir: Path,
++) -> list[dict[str, Any]]:
++    limits = policy["resource_limits"]
++    modules = read_gitmodules(local_path, commit, limits["max_gitmodules_blob_bytes"])
++    gitlinks = list_gitlinks(local_path, commit, limits["max_ls_tree_bytes_per_owner_commit"])
++
++    path_to_identity: dict[str, str] = {}
++    for name, fields in modules.items():
++        if "path" not in fields or "url" not in fields:
++            raise GraphError(f"{owner_identity}@{commit}: .gitmodules entry {name!r} missing path/url")
++        path = normalize_path(fields["path"], f"{owner_identity}@{commit} .gitmodules[{name}]")
++        identity = normalize_identity(fields["url"], f"{owner_identity}@{commit} .gitmodules[{name}]")
++        # fail closed on any identity the policy does not already trust (AD-3/AD-12)
++        resolve_local_path(policy, identity, root_dir)
++        path_to_identity[path] = identity
++
++    declared_paths = {fields["path"] for fields in modules.values() if "path" in fields}
++    missing = declared_paths - set(gitlinks.keys())
++    if missing:
++        raise GraphError(f"{owner_identity}@{commit}: declared .gitmodules paths missing a gitlink: {sorted(missing)}")
++
++    edges: list[dict[str, Any]] = []
++    for path, target_commit in sorted(gitlinks.items()):
++        identity = path_to_identity.get(path)
++        if identity is None:
++            raise GraphError(f"{owner_identity}@{commit}: gitlink at {path!r} has no matching .gitmodules mapping")
++        edges.append(
++            {
++                "owner_repository": owner_identity,
++                "owner_commit": commit,
++                "path": path,
++                "repository": identity,
++                "commit": target_commit,
++                "depth": depth,
++            }
++        )
++    return edges
++
++
++def collect_graph(root_dir: Path, root_identity: str, root_commit: str, policy: dict[str, Any]) -> dict[str, Any]:
++    require_commit(root_commit, "root commit")
++    limits = policy["resource_limits"]
++    builds_identity = policy["builds_identity"]
++
++    edges = _owner_edges(root_dir, root_commit, root_identity, 1, policy, root_dir)
++    for depth1_edge in list(edges):
++        owner_local = resolve_local_path(policy, depth1_edge["repository"], root_dir)
++        edges.extend(
++            _owner_edges(owner_local, depth1_edge["commit"], depth1_edge["repository"], 2, policy, root_dir)
++        )
++
++    if len(edges) > limits["max_edges"]:
++        raise GraphError(f"graph has {len(edges)} edges, exceeds the {limits['max_edges']}-edge ceiling")
++
++    catalog_cache: dict[str, str] = {}
++    for edge in edges:
++        if edge["repository"] != builds_identity:
++            continue
++        if edge["commit"] not in catalog_cache:
++            builds_local = resolve_local_path(policy, builds_identity, root_dir)
++            blob = read_blob(
++                builds_local,
++                edge["commit"],
++                "Props/Directory.Packages.props",
++                limits["max_catalog_blob_bytes"],
++                f"{builds_identity}@{edge['commit']}",
++            )
++            if blob is None:
++                raise GraphError(f"{builds_identity}@{edge['commit']}: missing Props/Directory.Packages.props")
++            catalog_cache[edge["commit"]] = hashlib.sha256(blob).hexdigest()
++        edge["catalog_sha256"] = catalog_cache[edge["commit"]]
++        # nullable until Hexalith.Builds supplies a marker (BUILD-CAT-1); see AD-6
++        edge["catalog_contract_version"] = None
++
++    edges.sort(key=lambda e: (e["depth"], e["owner_repository"], e["owner_commit"], e["path"], e["repository"], e["commit"]))
++
++    envelope: dict[str, Any] = {
++        "schema": SCHEMA,
++        "root": {"repository": root_identity, "commit": root_commit},
++        "edge_count": len(edges),
++        "edges": edges,
++    }
++    envelope["graph_digest"] = canonical_digest(
++        {"schema": envelope["schema"], "root": envelope["root"], "edge_count": envelope["edge_count"], "edges": envelope["edges"]}
++    )
++    return envelope
++
++
++# ---------------------------------------------------------------------------
++# AD-6 — semantic catalog evaluation (MSBuild XML introspection, not evaluation).
++# ---------------------------------------------------------------------------
++
++
++def parse_project_xml(blob: bytes, context: str) -> ET.Element:
++    try:
++        return ET.fromstring(blob)
++    except ET.ParseError as exc:
++        raise GraphError(f"{context}: malformed XML ({exc})") from exc
++
++
++def _simple_match(item_spec: str | None, package_id: str) -> bool:
++    if not item_spec:
++        return False
++    for spec in item_spec.split(";"):
++        spec = spec.strip()
++        if spec and fnmatch.fnmatch(spec.lower(), package_id.lower()):
++            return True
++    return False
++
++
++def find_package_version_ops(root: ET.Element, package_id: str) -> list[ET.Element]:
++    ops = []
++    for el in root.iter("PackageVersion"):
++        if any(_simple_match(el.get(attr), package_id) for attr in ("Include", "Update", "Remove")):
++            ops.append(el)
++    return ops
++
++
++def _parent_map(root: ET.Element) -> dict[ET.Element, ET.Element]:
++    return {child: parent for parent in root.iter() for child in parent}
++
++
++def _ancestors(el: ET.Element, parents: dict[ET.Element, ET.Element]) -> list[ET.Element]:
++    chain = []
++    cur = el
++    while cur in parents:
++        cur = parents[cur]
++        chain.append(cur)
++    return chain
++
++
++def assert_selected_catalog_property(root: ET.Element, prop_name: str, expected_value: str, context: str) -> None:
++    """Assert the selected shared catalog defines prop_name exactly once, with expected_value.
++
++    The shared catalog declares every Hexalith version property in the canonical
++    self-default form Condition="'$(Name)' == ''", which resolves to the literal value
++    whenever the property is not already set. That exact shape is accepted. Any other
++    condition, a conditional ancestor, or selection through an MSBuild Choose branch is
++    rejected, because the effective value would then depend on evaluation state this
++    validator cannot observe -- the same rule assert_authoritative_package_version
++    applies to package rows.
++    """
++    matches = list(root.iter(prop_name))
++    if len(matches) != 1:
++        observed_values = [match.text or "" for match in matches]
++        observed = "<missing>" if not observed_values else repr(observed_values)
++        raise GraphError(
++            f"{context}: {prop_name} expected exactly one value {expected_value!r}, "
++            f"found {len(matches)} values {observed}"
++        )
++    element = matches[0]
++    parents = _parent_map(root)
++    ancestors = _ancestors(element, parents)
++    if any(node.tag in ("Choose", "When", "Otherwise") for node in ancestors):
++        raise GraphError(f"{context}: {prop_name} must not be selected through an MSBuild Choose branch")
++    if any(node.get("Condition") is not None for node in ancestors):
++        raise GraphError(f"{context}: {prop_name} must not be declared under a conditional group in the shared catalog")
++    condition = element.get("Condition")
++    if condition is not None:
++        match = _SELF_DEFAULT_CONDITION.match(condition)
++        if match is None or match.group("name") != prop_name:
++            raise GraphError(
++                f"{context}: {prop_name} must be unconditional or use the canonical self-default "
++                f"condition \"'$({prop_name})' == ''\", found {condition!r}"
++            )
++    observed_text = element.text or ""
++    if observed_text != expected_value:
++        raise GraphError(f"{context}: {prop_name} expected {expected_value!r}, found {observed_text!r}")
++
++
++def assert_authoritative_package_version(root: ET.Element, package_id: str, expected_version: str, context: str) -> None:
++    ops = find_package_version_ops(root, package_id)
++    if len(ops) != 1:
++        raise GraphError(f"{context}: {package_id} must have exactly one unmasked shared operation (found {len(ops)})")
++    el = ops[0]
++    include = el.get("Include")
++    if not include or include.strip().lower() != package_id.lower():
++        raise GraphError(f"{context}: {package_id} must be an authoritative Include item, not Update")
++    if el.get("Update") is not None:
++        raise GraphError(f"{context}: {package_id} must not use Update in the shared catalog")
++    if el.get("Exclude") is not None:
++        raise GraphError(f"{context}: {package_id} must not use Exclude in the shared catalog")
++    parents = _parent_map(root)
++    ancestors = _ancestors(el, parents)
++    if el.get("Condition") is not None or any(node.get("Condition") is not None for node in ancestors):
++        raise GraphError(f"{context}: {package_id} must be unconditional in the shared catalog")
++    if any(node.tag in ("Choose", "When", "Otherwise") for node in ancestors):
++        raise GraphError(f"{context}: {package_id} must not be selected through an MSBuild Choose branch")
++    version = el.get("Version")
++    if version != expected_version:
++        raise GraphError(f"{context}: {package_id} expected version {expected_version!r}, found {version!r}")
++
++
++_UTF8_BOM = b"\xef\xbb\xbf"
++
++
++def assert_utf8_bom_and_crlf(data: bytes, context: str) -> None:
++    if not data.startswith(_UTF8_BOM):
++        raise GraphError(f"{context}: must start with a UTF-8 BOM")
++    body = data[len(_UTF8_BOM):]
++    try:
++        body.decode("utf-8", errors="strict")
++    except UnicodeDecodeError as exc:
++        raise GraphError(f"{context}: invalid UTF-8 after BOM ({exc})") from exc
++    for i, byte in enumerate(body):
++        if byte == 0x0A and (i == 0 or body[i - 1] != 0x0D):
++            raise GraphError(f"{context}: bare LF at byte offset {i + len(_UTF8_BOM)}")
++        if byte == 0x0D and (i + 1 >= len(body) or body[i + 1] != 0x0A):
++            raise GraphError(f"{context}: bare CR at byte offset {i + len(_UTF8_BOM)}")
++
++
++def _check_attr(local_path: Path, relative_path: str, attribute: str) -> str:
++    out = _git_ok(["check-attr", attribute, "--", relative_path], local_path).decode("utf-8")
++    prefix = f"{relative_path}: {attribute}: "
++    if not out.startswith(prefix):
++        raise GraphError(f"git check-attr produced unexpected output for {relative_path}: {out!r}")
++    return out[len(prefix):].strip()
++
++
++def assert_builds_checkout_format_policy(builds_local: Path, context: str) -> None:
++    """Root-only BOM/CRLF + gitattributes format policy, ported as-is from the pre-GOV-1
++    test. Deliberately reads the checked-out working tree rather than a committed-object
++    blob: eol=crlf only rewrites bytes on checkout, so the raw commit object for a
++    catalog can legitimately carry bare LF (a known, separately tracked upstream
++    Hexalith.Builds formatting issue) while every local checkout still renders CRLF.
++    Dev Notes call this out as remaining "a local format policy unless separately
++    generalized" — it stays scoped to the local checkout, not graph provenance.
++    """
++    catalog_relative = "Props/Directory.Packages.props"
++    if _check_attr(builds_local, catalog_relative, "text") != "set":
++        raise GraphError(f"{context}: {catalog_relative} must declare text=set")
++    if _check_attr(builds_local, catalog_relative, "eol") != "crlf":
++        raise GraphError(f"{context}: {catalog_relative} must declare eol=crlf")
++    if _check_attr(builds_local, "Directory.Build.props", "eol") != "unspecified":
++        raise GraphError(f"{context}: Directory.Build.props eol must remain unspecified (the catalog-only checkout policy must not broaden to unrelated Builds files)")
++    catalog_path = builds_local / "Props" / "Directory.Packages.props"
++    if not catalog_path.is_file():
++        raise GraphError(f"{context}: missing checked-out {catalog_relative}")
++    assert_utf8_bom_and_crlf(catalog_path.read_bytes(), context)
++
++
++def assert_override_not_enabled(root: ET.Element, context: str) -> None:
++    for el in root.iter("CentralPackageVersionOverrideEnabled"):
++        if (el.text or "").strip().lower() == "true":
++            raise GraphError(f"{context}: CentralPackageVersionOverrideEnabled must not be enabled")
++
++
++def assert_no_minver(root: ET.Element, context: str) -> None:
++    for el in root.iter("PackageReference"):
++        if _simple_match(el.get("Include"), "MinVer"):
++            raise GraphError(f"{context}: release versioning is owned by semantic-release, not MinVer")
++    for el in root.iter():
++        if el.tag.startswith("MinVer"):
++            raise GraphError(f"{context}: must not retain MinVer configuration after semantic-release ownership")
++
++
++def assert_guarded_imports(root: ET.Element, spec: dict[str, Any], context: str) -> None:
++    imports = list(root.iter("Import"))
++    expected_projects = spec["import_projects"]
++    expected_conditions = spec["import_conditions"]
++    if len(imports) != len(expected_projects):
++        raise GraphError(f"{context}: must preserve exactly {len(expected_projects)} guarded shared-catalog import paths (found {len(imports)})")
++    for idx, el in enumerate(imports):
++        if el.get("Project") != expected_projects[idx]:
++            raise GraphError(f"{context}: import[{idx}] Project mismatch (found {el.get('Project')!r})")
++        if el.get("Condition") != expected_conditions[idx]:
++            raise GraphError(f"{context}: import[{idx}] Condition mismatch (found {el.get('Condition')!r})")
++    for prop_name, expected_value in spec["required_properties"].items():
++        matches = list(root.iter(prop_name))
++        if len(matches) != 1:
++            raise GraphError(f"{context}: expected exactly one {prop_name} property (found {len(matches)})")
++        if (matches[0].text or "") != expected_value:
++            raise GraphError(f"{context}: {prop_name} expected {expected_value!r}, found {matches[0].text!r}")
++
++
++def list_tracked_files(local_path: Path, commit: str, extensions: list[str], max_ls_tree_bytes: int) -> list[str]:
++    out = _git_ok(["ls-tree", "-r", "-z", "--full-tree", commit], local_path)
++    if len(out) > max_ls_tree_bytes:
++        raise GraphError(f"ls-tree output for {commit} in {local_path} exceeds the {max_ls_tree_bytes}-byte ceiling")
++    files = []
++    for record in out.split(b"\x00"):
++        if not record:
++            continue
++        meta, _, path_bytes = record.partition(b"\t")
++        _mode, obj_type, _sha = meta.split()
++        if obj_type != b"blob":
++            continue
++        path = path_bytes.decode("utf-8")
++        if any(path.endswith(ext) for ext in extensions):
++            files.append(path)
++    return sorted(files)
++
++
++def assert_no_inline_versions(local_path: Path, commit: str, extensions: list[str], limits: dict[str, int], context: str) -> None:
++    for rel_path in list_tracked_files(local_path, commit, extensions, limits["max_ls_tree_bytes_per_owner_commit"]):
++        blob = read_blob(local_path, commit, rel_path, limits["max_catalog_blob_bytes"], f"{context}:{rel_path}")
++        if blob is None:
++            continue
++        root = parse_project_xml(blob, f"{context}:{rel_path}")
++        parents = _parent_map(root)
++        for el in root.iter("PackageVersion"):
++            parent = parents.get(el)
++            if parent is not None and parent.tag == "ItemGroup":
++                raise GraphError(f"{context}:{rel_path} must inherit every package version from the pinned Builds catalog")
++        for el in root.iter():
++            if el.tag in ("PackageReference", "GlobalPackageReference"):
++                if el.get("Version") is not None:
++                    raise GraphError(f"{context}:{rel_path} must not declare an inline Version")
++                if el.get("VersionOverride") is not None:
++                    raise GraphError(f"{context}:{rel_path} must not declare VersionOverride")
++                for child in el:
++                    if child.tag in ("Version", "VersionOverride"):
++                        raise GraphError(f"{context}:{rel_path} must not declare inline package-version metadata")
++
++
++def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[str, Any]) -> dict[str, Any]:
++    """Evaluate every Builds-selector edge under its owner's explicit semantic profile (AD-6)."""
++    limits = policy["resource_limits"]
++    profiles = policy["profiles"]
++    semantic_profiles = policy["semantic_profiles"]
++    builds_identity = policy["builds_identity"]
++
++    by_owner: dict[str, list[dict[str, Any]]] = {}
++    for edge in envelope["edges"]:
++        if edge["repository"] == builds_identity:
++            by_owner.setdefault(edge["owner_repository"], []).append(edge)
++
++    catalog_cache: dict[str, tuple[ET.Element, bytes]] = {}
++
++    def load_catalog(commit: str) -> tuple[ET.Element, bytes]:
++        if commit not in catalog_cache:
++            builds_local = resolve_local_path(policy, builds_identity, root_dir)
++            blob = read_blob(
++                builds_local, commit, "Props/Directory.Packages.props", limits["max_catalog_blob_bytes"], f"{builds_identity}@{commit}"
++            )
++            if blob is None:
++                raise GraphError(f"{builds_identity}@{commit}: missing Props/Directory.Packages.props")
++            catalog_cache[commit] = (parse_project_xml(blob, f"{builds_identity}@{commit}"), blob)
++        return catalog_cache[commit]
++
++    diagnostics: list[str] = []
++    for owner_identity, owner_edges in sorted(by_owner.items()):
++        profile_name = semantic_profiles.get(owner_identity)
++        if profile_name is None:
++            raise GraphError(f"{owner_identity}: no semantic profile mapping in policy (fails closed)")
++        profile = profiles.get(profile_name)
++        if profile is None:
++            raise GraphError(f"{owner_identity}: unknown semantic profile {profile_name!r}")
++
++        owner_local = resolve_local_path(policy, owner_identity, root_dir)
++        owner_commit = owner_edges[0]["owner_commit"]
++        owner_checks = profile.get("owner_checks", {})
++
++        own_blob = read_blob(owner_local, owner_commit, "Directory.Packages.props", limits["max_catalog_blob_bytes"], f"{owner_identity}@{owner_commit}")
++        own_xml = parse_project_xml(own_blob, f"{owner_identity}@{owner_commit} Directory.Packages.props") if own_blob is not None else None
++
++        if owner_checks.get("no_package_version_rows"):
++            if own_xml is None:
++                raise GraphError(f"{owner_identity}@{owner_commit}: missing Directory.Packages.props")
++            if list(own_xml.iter("PackageVersion")):
++                raise GraphError(f"{owner_identity}@{owner_commit}: root Directory.Packages.props must be an import shim owning no PackageVersion rows")
++
++        if owner_checks.get("well_formed_project_root"):
++            if own_xml is None:
++                raise GraphError(f"{owner_identity}@{owner_commit}: missing Directory.Packages.props")
++            if own_xml.tag != "Project":
++                raise GraphError(f"{owner_identity}@{owner_commit}: Directory.Packages.props must have a Project root")
++
++        if owner_checks.get("override_not_enabled") and own_xml is not None:
++            assert_override_not_enabled(own_xml, f"{owner_identity}@{owner_commit}")
++
++        if owner_checks.get("no_minver"):
++            build_props_blob = read_blob(owner_local, owner_commit, "Directory.Build.props", limits["max_catalog_blob_bytes"], f"{owner_identity}@{owner_commit}")
++            if build_props_blob is not None:
++                build_props_xml = parse_project_xml(build_props_blob, f"{owner_identity}@{owner_commit} Directory.Build.props")
++                assert_no_minver(build_props_xml, f"{owner_identity}@{owner_commit} Directory.Build.props")
++
++        guarded = owner_checks.get("guarded_imports")
++        if guarded:
++            if own_xml is None:
++                raise GraphError(f"{owner_identity}@{owner_commit}: missing Directory.Packages.props")
++            assert_guarded_imports(own_xml, guarded, f"{owner_identity}@{owner_commit} Directory.Packages.props")
++
++        inline = owner_checks.get("no_inline_versions_in_tracked_files")
++        if inline:
++            assert_no_inline_versions(owner_local, owner_commit, inline["extensions"], limits, f"{owner_identity}@{owner_commit}")
++
++        required_props = profile.get("selected_catalog_required_properties", {})
++        required_packages = profile.get("selected_catalog_required_packages", {})
++        for edge in owner_edges:
++            catalog_xml, catalog_blob = load_catalog(edge["commit"])
++            edge_context = f"{owner_identity}@{owner_commit} -> {edge['path']} -> {builds_identity}@{edge['commit']}"
++
++            if owner_checks.get("bom_crlf_on_selected_catalog"):
++                builds_local = resolve_local_path(policy, builds_identity, root_dir)
++                assert_builds_checkout_format_policy(builds_local, edge_context)
++
++            for prop_name, expected_value in required_props.items():
++                assert_selected_catalog_property(catalog_xml, prop_name, expected_value, edge_context)
++
++            for package_id, expected_version in required_packages.items():
++                assert_authoritative_package_version(catalog_xml, package_id, expected_version, edge_context)
++                if owner_checks.get("no_local_override_for_selected_catalog_packages") and own_xml is not None:
++                    if find_package_version_ops(own_xml, package_id):
++                        raise GraphError(
++                            f"{owner_identity}@{owner_commit}: must inherit {package_id} {expected_version} from the shared catalog without local override"
++                        )
++
++            diagnostics.append(f"validated {edge_context} under profile {profile_name}")
++
++    return {"selectors_validated": sum(len(v) for v in by_owner.values()), "diagnostics": diagnostics}
++
++
++# ---------------------------------------------------------------------------
++# CLI
++# ---------------------------------------------------------------------------
++
++
++def load_policy(path: Path) -> dict[str, Any]:
++    with open(path, "rb") as handle:
++        policy = json.loads(handle.read().decode("utf-8"))
++    if policy.get("schema") != POLICY_SCHEMA:
++        raise GraphError(f"policy schema mismatch: expected {POLICY_SCHEMA!r}, found {policy.get('schema')!r}")
++    assert_profiles_well_formed(policy)
++    return policy
++
++
++def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
++    """Reject a profile whose shape would make a required check silently vacuous."""
++    profiles = policy.get("profiles")
++    if not isinstance(profiles, dict):
++        raise GraphError("policy profiles must be an object")
++    for profile_name, profile in profiles.items():
++        if not isinstance(profile, dict):
++            raise GraphError(f"policy profile {profile_name!r} must be an object")
++        unknown = sorted(set(profile) - _PROFILE_KEYS)
++        if unknown:
++            raise GraphError(
++                f"policy profile {profile_name!r} has unknown keys {unknown}; "
++                f"expected only {sorted(_PROFILE_KEYS)}"
++            )
++        for key in ("selected_catalog_required_properties", "selected_catalog_required_packages"):
++            required = profile.get(key)
++            if required is None:
++                continue
++            if not isinstance(required, dict):
++                raise GraphError(f"policy profile {profile_name!r}: {key} must be an object")
++            for name, expected in required.items():
++                if not isinstance(expected, str):
++                    raise GraphError(
++                        f"policy profile {profile_name!r}: {key}[{name!r}] must be a string, found {expected!r}"
++                    )
++
++
++def build_arg_parser() -> argparse.ArgumentParser:
++    parser = argparse.ArgumentParser(description=__doc__)
++    parser.add_argument("--root", default=".", help="FrontComposer root working directory")
++    parser.add_argument("--policy", default=None, help="Path to dependency-graph-policy.json (default: <root>/eng/dependency-graph-policy.json)")
++    sub = parser.add_subparsers(dest="command", required=True)
++
++    graph_cmd = sub.add_parser("graph", help="Collect and emit the canonical v1 graph envelope")
++    graph_cmd.add_argument("--commit", required=True)
++    graph_cmd.add_argument("--root-identity", default="github.com/hexalith/hexalith.frontcomposer")
++
++    validate_cmd = sub.add_parser("validate", help="Collect the graph and evaluate every selector's semantic profile")
++    validate_cmd.add_argument("--commit", required=True)
++    validate_cmd.add_argument("--root-identity", default="github.com/hexalith/hexalith.frontcomposer")
++
++    return parser
++
++
++def main(argv: list[str] | None = None) -> int:
++    parser = build_arg_parser()
++    args = parser.parse_args(argv)
++    root_dir = Path(args.root).resolve()
++    policy_path = Path(args.policy).resolve() if args.policy else root_dir / "eng" / "dependency-graph-policy.json"
++
++    try:
++        policy = load_policy(policy_path)
++        commit = require_commit(args.commit, "--commit")
++        envelope = collect_graph(root_dir, args.root_identity, commit, policy)
++        if args.command == "graph":
++            print(json.dumps({"ok": True, "envelope": envelope}, indent=2, sort_keys=True))
++            return 0
++        if args.command == "validate":
++            semantics = evaluate_semantics(root_dir, policy, envelope)
++            print(json.dumps({"ok": True, "envelope": envelope, "semantics": semantics}, indent=2, sort_keys=True))
++            return 0
++        raise GraphError(f"unknown command {args.command!r}")
++    except GraphError as exc:
++        print(json.dumps({"ok": False, "error": str(exc)}, indent=2, sort_keys=True))
++        return 1
++
++
++if __name__ == "__main__":
++    sys.exit(main())
+diff --git a/eng/tests/test_validate_story_artifacts.py b/eng/tests/test_validate_story_artifacts.py
+index eb8276c7..7ea4aa9a 100644
+--- a/eng/tests/test_validate_story_artifacts.py
++++ b/eng/tests/test_validate_story_artifacts.py
+@@ -269,6 +269,216 @@ class StoryArtifactValidatorTests(unittest.TestCase):
+             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+             self.assertIn("Story artifact validation passed.", result.stdout)
+ 
++    def test_checked_task_ignores_explicitly_non_evidence_path_mentions(self) -> None:
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            baseline = init_repo(root)
++            write(
++                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                story_text(
++                    baseline=baseline,
++                    file_list="- `README.md` - test evidence.",
++                    tasks=(
++                        "- [x] Run package validation. Do not require `.nupkg` byte identity.\n"
++                        "- [x] Leave planning artifacts, "
++                        "`_bmad-output/implementation-artifacts/deferred-work.md`, and review provenance untouched."
++                    ),
++                ),
++            )
++
++            result = run(
++                [
++                    sys.executable,
++                    str(VALIDATOR),
++                    "--project-root",
++                    str(root),
++                    "--story",
++                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                    "--changed-file",
++                    "README.md",
++                    "--skip-sentinel",
++                ],
++                root,
++            )
++
++            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
++            self.assertIn("Story artifact validation passed.", result.stdout)
++
++    def test_checked_task_non_evidence_path_does_not_hide_required_evidence(self) -> None:
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            baseline = init_repo(root)
++            write(
++                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                story_text(
++                    baseline=baseline,
++                    file_list="- `README.md` - test evidence.",
++                    tasks="- [x] Update `src/missing.txt`; do not require `.nupkg` byte identity.",
++                ),
++            )
++
++            result = run(
++                [
++                    sys.executable,
++                    str(VALIDATOR),
++                    "--project-root",
++                    str(root),
++                    "--story",
++                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                    "--changed-file",
++                    "README.md",
++                    "--skip-sentinel",
++                ],
++                root,
++            )
++
++            self.assertNotEqual(result.returncode, 0)
++            self.assertIn("src/missing.txt", result.stderr)
++            self.assertIn("missing evidence path: src/missing.txt", result.stderr)
++            self.assertNotIn("missing evidence path: .nupkg", result.stderr)
++
++    def test_checked_review_patch_ignores_descriptive_path_mentions(self) -> None:
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            baseline = init_repo(root)
++            write(
++                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                story_text(
++                    baseline=baseline,
++                    file_list="- `README.md` - test evidence.",
++                    tasks=(
++                        "- [x] [Review][Patch] `RuntimeKind` is also discussed at "
++                        "`src/reference.cs:42`; `.First()`, `.g.cs`, and `Foo.cs` are examples. "
++                        "Fix: keep the classifier strict."
++                    ),
++                ),
++            )
++
++            result = run(
++                [
++                    sys.executable,
++                    str(VALIDATOR),
++                    "--project-root",
++                    str(root),
++                    "--story",
++                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                    "--changed-file",
++                    "README.md",
++                    "--skip-sentinel",
++                ],
++                root,
++            )
++
++            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
++            self.assertIn("Story artifact validation passed.", result.stdout)
++
++    def _assert_review_patch_task_is_strict(self, task: str, *expected_paths: str) -> None:
++        """A qualified output path in a checked review task must be reconciled regardless
++        of the prose around it. Phrasing must never decide enforcement."""
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            baseline = init_repo(root)
++            write(
++                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                story_text(
++                    baseline=baseline,
++                    file_list="- `README.md` - test evidence.",
++                    tasks=task,
++                ),
++            )
++
++            result = run(
++                [
++                    sys.executable,
++                    str(VALIDATOR),
++                    "--project-root",
++                    str(root),
++                    "--story",
++                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                    "--changed-file",
++                    "README.md",
++                    "--skip-sentinel",
++                ],
++                root,
++            )
++
++            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
++            for expected in expected_paths:
++                self.assertIn(expected, result.stderr)
++
++    def test_checked_review_patch_keeps_action_governed_path_strict(self) -> None:
++        self._assert_review_patch_task_is_strict(
++            "- [x] [Review][Patch] Fix: update `src/missing.cs` with the strict classifier.",
++            "missing evidence path: src/missing.cs",
++        )
++
++    def test_checked_review_patch_keeps_past_tense_claim_strict(self) -> None:
++        self._assert_review_patch_task_is_strict(
++            "- [x] [Review][Patch] Fix: updated `src/missing.cs` with the strict classifier.",
++            "missing evidence path: src/missing.cs",
++        )
++
++    def test_checked_review_patch_keeps_non_adjacent_object_strict(self) -> None:
++        self._assert_review_patch_task_is_strict(
++            "- [x] [Review][Patch] Fix: update the file `src/missing.cs` in place.",
++            "missing evidence path: src/missing.cs",
++        )
++
++    def test_checked_review_patch_keeps_every_path_in_a_list_strict(self) -> None:
++        self._assert_review_patch_task_is_strict(
++            "- [x] [Review][Patch] Fix: update `src/first.cs` and `src/second.cs` together.",
++            "missing evidence path: src/first.cs, src/second.cs",
++        )
++
++    def test_checked_review_patch_keeps_qualified_hypothetical_path_strict(self) -> None:
++        """Only a bare, tree-absent basename is treated as a scenario placeholder; a
++        qualified path that resolves to nothing is still a phantom-fix claim."""
++        self._assert_review_patch_task_is_strict(
++            "- [x] [Review][Patch] Fix: add `src/Fabricated.cs` for the new seam.",
++            "missing evidence path: src/Fabricated.cs",
++        )
++
++    def test_checked_review_patch_ignores_directory_and_negated_mentions(self) -> None:
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            baseline = init_repo(root)
++            write(root / "src/scanned/keep.cs", "// scanned\n")
++            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, capture_output=True)
++            subprocess.run(
++                ["git", "-C", str(root), "commit", "-m", "add scanned tree"],
++                check=True,
++                capture_output=True,
++            )
++            write(
++                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                story_text(
++                    baseline=baseline,
++                    file_list="- `README.md` - test evidence.",
++                    tasks=(
++                        "- [x] [Review][Patch] Fix: update the guard to scan `src/scanned` "
++                        "recursively. This story did not move `src/scanned/keep.cs`."
++                    ),
++                ),
++            )
++
++            result = run(
++                [
++                    sys.executable,
++                    str(VALIDATOR),
++                    "--project-root",
++                    str(root),
++                    "--story",
++                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                    "--changed-file",
++                    "README.md",
++                    "--skip-sentinel",
++                ],
++                root,
++            )
++
++            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
++            self.assertIn("Story artifact validation passed.", result.stdout)
++
+     def test_checked_deferred_review_task_accepts_preexisting_path_classification(self) -> None:
+         with tempfile.TemporaryDirectory() as temp:
+             root = Path(temp)
+@@ -303,6 +513,75 @@ class StoryArtifactValidatorTests(unittest.TestCase):
+             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+             self.assertIn("Story artifact validation passed.", result.stdout)
+ 
++    def test_checked_task_preserve_clause_does_not_hide_action_governed_path(self) -> None:
++        # A preserve/unchanged clause must not exempt a path that a positive action verb
++        # directly governs ("... update `src/ghost.cs` ..."); that path is real evidence.
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            baseline = init_repo(root)
++            write(
++                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                story_text(
++                    baseline=baseline,
++                    file_list="- `README.md` - test evidence.",
++                    tasks="- [x] Keep behavior and update `src/ghost.cs` so output stays unchanged.",
++                ),
++            )
++
++            result = run(
++                [
++                    sys.executable,
++                    str(VALIDATOR),
++                    "--project-root",
++                    str(root),
++                    "--story",
++                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                    "--changed-file",
++                    "README.md",
++                    "--skip-sentinel",
++                ],
++                root,
++            )
++
++            self.assertNotEqual(result.returncode, 0)
++            self.assertIn("missing evidence path: src/ghost.cs", result.stderr)
++
++    def test_checked_deferred_review_task_rejects_nonexistent_cited_path(self) -> None:
++        # A deferred task is exempt from output-path evidence reconciliation, but it may not
++        # self-exempt by citing a fabricated location: a qualified path must actually exist.
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            baseline = init_repo(root)
++            write(
++                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                story_text(
++                    baseline=baseline,
++                    file_list="- `README.md` - test evidence.",
++                    tasks=(
++                        "- [x] [Review][Defer] Update `src/ghost.cs` handling - "
++                        "deferred, pre-existing."
++                    ),
++                ),
++            )
++
++            result = run(
++                [
++                    sys.executable,
++                    str(VALIDATOR),
++                    "--project-root",
++                    str(root),
++                    "--story",
++                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                    "--changed-file",
++                    "README.md",
++                    "--skip-sentinel",
++                ],
++                root,
++            )
++
++            self.assertNotEqual(result.returncode, 0)
++            self.assertIn("deferred path does not exist: src/ghost.cs", result.stderr)
++
+     def test_dotfile_file_list_entry_reconciles_without_stripping_leading_dot(self) -> None:
+         with tempfile.TemporaryDirectory() as temp:
+             root = Path(temp)
+@@ -364,6 +643,10 @@ class StoryArtifactValidatorTests(unittest.TestCase):
+             self.assertIn("missing from story File List", result.stderr)
+ 
+ 
++@unittest.skipUnless(
++    (STORY_AUTOMATOR_SRC / "story_automator/core/success_verifiers.py").is_file(),
++    "bmad-story-automator skill is not installed",
++)
+ class ReviewVerifierTests(unittest.TestCase):
+     def test_incomplete_review_reports_workflow_not_complete(self) -> None:
+         sys.path.insert(0, str(STORY_AUTOMATOR_SRC))
+@@ -418,5 +701,319 @@ class ReviewVerifierTests(unittest.TestCase):
+             self.assertIn("src/owned.txt", str(result.get("artifactValidationOutput")))
+ 
+ 
++class PathMentionRejectionTests(unittest.TestCase):
++    """Pin each non-output-path rejection class directly.
++
++    End-to-end story fixtures cannot isolate these: a bare token is rejected by the
++    tree-absent-basename rule before the suffix-literal or invocation-token rule is
++    reached, so deleting either rule leaves an end-to-end suite green. These unit
++    assertions make every rule independently load-bearing.
++    """
++
++    @staticmethod
++    def _module():
++        import importlib.util
++
++        spec = importlib.util.spec_from_file_location("story_artifact_validator", VALIDATOR)
++        module = importlib.util.module_from_spec(spec)
++        sys.modules["story_artifact_validator"] = module
++        spec.loader.exec_module(module)
++        return module
++
++    def setUp(self) -> None:
++        self.validator = self._module()
++        self.root = Path(REPO_ROOT)
++
++    def _rejected(self, token: str) -> bool:
++        return self.validator.mention_is_not_an_output_path(token, self.root)
++
++    def test_bare_suffix_literals_are_rejected(self) -> None:
++        """Rejected via the tree-absent-basename rule; there is no separate suffix rule."""
++        for token in (".g.cs", ".generated.cs", ".designer.cs", ".AssemblyInfo.cs", ".razor.cs"):
++            with self.subTest(token=token):
++                self.assertTrue(self._rejected(token))
++
++    def test_path_line_coordinates_are_rejected(self) -> None:
++        for token in (
++            "src/Foo.cs:42",
++            "tests/Bar.cs:487-496",
++            "eng/baz.py:1,7",
++        ):
++            with self.subTest(token=token):
++                self.assertTrue(self._rejected(token))
++
++    def test_invocation_tokens_are_rejected(self) -> None:
++        # The qualified form is the load-bearing case: a directory-carrying token skips
++        # the bare-basename rule, so only the invocation rule can reject it.
++        for token in (".First()", "Foo.Bar()", "GetMethod(name)", "src/Foo.Bar()", "eng/x.py:run()"):
++            with self.subTest(token=token):
++                self.assertTrue(self._rejected(token))
++
++    def test_elided_citations_are_rejected(self) -> None:
++        self.assertTrue(self._rejected(".../CommandAuthorizationResource.cs"))
++
++    def test_directories_are_rejected(self) -> None:
++        self.assertTrue(self._rejected("src/Hexalith.FrontComposer.Shell"))
++        self.assertTrue(self._rejected("eng"))
++
++    def test_tree_absent_bare_basenames_are_rejected(self) -> None:
++        for token in ("Foo.cs", "Foo.Handlers.cs", "NotARealFileAnywhere.cs"):
++            with self.subTest(token=token):
++                self.assertTrue(self._rejected(token))
++
++    def test_real_output_paths_are_never_rejected(self) -> None:
++        """The fail-closed floor: anything that could denote produced work stays strict."""
++        for token in (
++            "src/Hexalith.FrontComposer.Shell/Extensions/DomainBootstrapMarker.cs",
++            "eng/validate-story-artifacts.py",
++            "src/Fabricated.cs",
++            "src/does/not/exist/Phantom.cs",
++        ):
++            with self.subTest(token=token):
++                self.assertFalse(self._rejected(token))
++
++    def test_tree_present_bare_basename_stays_strict(self) -> None:
++        self.assertFalse(self._rejected("validate-story-artifacts.py"))
++
++    def test_path_line_column_coordinates_are_rejected(self) -> None:
++        """The grep/compiler `file:line:column` form is a citation, not an output."""
++        for token in ("src/reference.cs:487:12", "tests/Bar.cs:42-50:3", "src/Makefile:42"):
++            with self.subTest(token=token):
++                self.assertTrue(self._rejected(token))
++
++    def test_colon_token_without_a_line_number_stays_strict(self) -> None:
++        """Pins the coordinate rule's shape: widening it to `":" in token` must fail here."""
++        self.assertFalse(self._rejected("src/Foo.cs:abc"))
++        self.assertFalse(self._rejected("src/weird:name.cs"))
++
++    def test_mid_token_elisions_are_rejected(self) -> None:
++        """extract_file_list_entry rejects `...` anywhere; both parsers must agree."""
++        for token in ("src/.../Shell/Services/Widget.cs", "src/…/Widget.cs"):
++            with self.subTest(token=token):
++                self.assertTrue(self._rejected(token))
++
++    def test_dot_prefixed_real_paths_are_never_rejected(self) -> None:
++        """Pins the ellipsis rule's shape: narrowing it to `startswith(".")` must fail here."""
++        for token in (".github/workflows/ci.yml", ".editorconfig", ".gitmodules"):
++            with self.subTest(token=token):
++                self.assertFalse(self._rejected(token))
++
++    def test_creation_claim_keeps_a_bare_basename_strict(self) -> None:
++        """A file the story claims to have created is tree-absent by construction."""
++        for token in ("NewStrictGuard.cs", "PendingCommandBatchReducers.cs"):
++            with self.subTest(token=token):
++                self.assertTrue(self._rejected(token))
++                self.assertFalse(
++                    self.validator.mention_is_not_an_output_path(
++                        token, self.root, creation_claimed=True
++                    )
++                )
++
++    def test_creation_verbs_are_detected_within_the_clause(self) -> None:
++        claims = (
++            "Fix: add `NewStrictGuard.cs` implementing the check.",
++            "Fix: create a new file `NewStrictGuard.cs` for the seam.",
++            "Fix: generate `NewStrictGuard.cs` from the template.",
++        )
++        for text in claims:
++            with self.subTest(text=text):
++                self.assertTrue(
++                    self.validator.mention_claims_creation(text, text.index("`"))
++                )
++        # A prior sentence's creation verb must not govern a later clause.
++        text = "Fix: create the seam. The idiomatic `Foo.cs` split stays supported."
++        self.assertFalse(self.validator.mention_claims_creation(text, text.index("`")))
++
++    def test_verb_alternation_covers_third_person_inflections(self) -> None:
++        """`s?` cannot form `modifies` or `touches`; suppression must not hinge on tense."""
++        alternation = self.validator.verb_alternation(("modify", "touch", "update"))
++        for form in ("modifies", "touches", "updates", "modify", "touch", "update"):
++            with self.subTest(form=form):
++                self.assertIn(form, alternation.split("|"))
++
++    def test_negation_and_positive_verb_sets_cannot_drift(self) -> None:
++        """`remove` was a negation verb but not a positive one, so a genuine deletion
++        claim inside a preservation clause was suppressed while `delete` was enforced.
++
++        The expected vocabulary is spelled out rather than read from the module: deriving
++        it from ACTION_VERBS would let a dropped verb shrink the loop instead of failing.
++        """
++        expected = {
++            "add",
++            "change",
++            "create",
++            "delete",
++            "edit",
++            "extend",
++            "generate",
++            "implement",
++            "modify",
++            "move",
++            "remove",
++            "rename",
++            "retarget",
++            "split",
++            "touch",
++            "update",
++            "wire",
++            "write",
++        }
++        self.assertEqual(set(self.validator.ACTION_VERBS), expected)
++        for verb in sorted(expected):
++            with self.subTest(verb=verb):
++                self.assertIsNotNone(
++                    self.validator.POSITIVE_ACTION.search(f"and {verb} ")
++                )
++                self.assertIsNotNone(
++                    self.validator.NEGATED_ACTION.search(f"this story did not {verb} ")
++                )
++
++    def test_unlistable_tree_fails_closed(self) -> None:
++        """A tree that cannot be listed must not exempt every bare basename wholesale."""
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            self.assertTrue(self.validator.basename_exists_in_tree("Anything.cs", root))
++            self.assertFalse(self.validator.path_is_tracked("references/Thing", root))
++
++
++class ClassifiedUnrelatedTests(unittest.TestCase):
++    """Pin the classification-as-evidence mechanism.
++
++    The story author writes the Documented Unrelated section, so this set grants evidence
++    from prose the author controls. Every bound on it must be independently load-bearing.
++    """
++
++    @staticmethod
++    def _module():
++        import importlib.util
++
++        spec = importlib.util.spec_from_file_location("story_artifact_validator", VALIDATOR)
++        module = importlib.util.module_from_spec(spec)
++        sys.modules["story_artifact_validator"] = module
++        spec.loader.exec_module(module)
++        return module
++
++    def setUp(self) -> None:
++        self.validator = self._module()
++
++    def test_classified_directory_covers_nested_paths(self) -> None:
++        covered = self.validator.path_is_classified_unrelated(
++            "references/Hexalith.Builds/Props/Directory.Packages.props",
++            {"references/Hexalith.Builds"},
++        )
++        self.assertTrue(covered)
++
++    def test_classification_matches_whole_segments_only(self) -> None:
++        """`references/Hexalith.BuildsExtra` is not covered by `references/Hexalith.Builds`."""
++        covered = self.validator.path_is_classified_unrelated(
++            "references/Hexalith.BuildsExtra/x.cs",
++            {"references/Hexalith.Builds"},
++        )
++        self.assertFalse(covered)
++
++    def test_trailing_slash_classification_covers_the_same_paths(self) -> None:
++        for entry in ("references/Hexalith.Builds", "references/Hexalith.Builds/"):
++            with self.subTest(entry=entry):
++                self.assertTrue(
++                    self.validator.path_is_classified_unrelated(
++                        "references/Hexalith.Builds/Props/Directory.Packages.props",
++                        {entry},
++                    )
++                )
++
++    def test_top_level_directory_classification_is_refused(self) -> None:
++        """One `src` bullet must not exempt every path beneath it."""
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            init_repo(root)
++            write(root / "src/real.cs", "// real\n")
++            git(root, "add", "src/real.cs")
++            git(root, "commit", "-m", "add src")
++
++            usable = self.validator.usable_classified_paths(
++                root, {"src": "pre-existing", "src/real.cs": "pre-existing"}, set()
++            )
++
++            self.assertNotIn("src", usable)
++            self.assertIn("src/real.cs", usable)
++
++    def test_classification_of_an_unreal_path_is_refused(self) -> None:
++        """A story must not account for a fabricated path by inventing a bullet for it."""
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            init_repo(root)
++
++            usable = self.validator.usable_classified_paths(
++                root, {"src/ghost.cs": "pre-existing"}, set()
++            )
++            self.assertEqual(usable, set())
++
++            dirty = self.validator.usable_classified_paths(
++                root, {"src/ghost.cs": "pre-existing"}, {"src/ghost.cs"}
++            )
++            self.assertEqual(dirty, {"src/ghost.cs"})
++
++    def _run_story(self, root: Path, unrelated_section: str, task: str) -> subprocess.CompletedProcess[str]:
++        baseline = init_repo(root)
++        write(root / "references/Hexalith.Builds/Props/Directory.Packages.props", "<Project />\n")
++        git(root, "add", "references/Hexalith.Builds/Props/Directory.Packages.props")
++        git(root, "commit", "-m", "add builds")
++        write(
++            root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++            story_text(baseline=baseline, file_list="- `README.md` - test evidence.", tasks=task)
++            + unrelated_section,
++        )
++        return run(
++            [
++                sys.executable,
++                str(VALIDATOR),
++                "--project-root",
++                str(root),
++                "--story",
++                "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
++                "--changed-file",
++                "README.md",
++                "--skip-sentinel",
++            ],
++            root,
++        )
++
++    def test_classified_path_counts_as_evidence_end_to_end(self) -> None:
++        task = (
++            "- [x] [Review][Patch] Fix: update "
++            "`references/Hexalith.Builds/Props/Directory.Packages.props` for the pin."
++        )
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            result = self._run_story(
++                root,
++                "\n### Documented Unrelated Workspace State\n\n"
++                "- `references/Hexalith.Builds` - accepted submodule drift.\n",
++                task,
++            )
++            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
++
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            result = self._run_story(root, "", task)
++            self.assertNotEqual(result.returncode, 0)
++            self.assertIn(
++                "references/Hexalith.Builds/Props/Directory.Packages.props", result.stderr
++            )
++
++    def test_classified_basename_counts_as_evidence(self) -> None:
++        """Pins the classified_unrelated contribution to the basename evidence set."""
++        with tempfile.TemporaryDirectory() as temp:
++            root = Path(temp)
++            result = self._run_story(
++                root,
++                "\n### Documented Unrelated Workspace State\n\n"
++                "- `references/Hexalith.Builds/Props/Directory.Packages.props`"
++                " - accepted submodule drift.\n",
++                "- [x] [Review][Patch] Fix: update `Directory.Packages.props` for the pin.",
++            )
++            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
++
++
+ if __name__ == "__main__":
+     unittest.main()
+diff --git a/eng/validate-story-artifacts.py b/eng/validate-story-artifacts.py
+index 1ee59ea4..43736ce3 100644
+--- a/eng/validate-story-artifacts.py
++++ b/eng/validate-story-artifacts.py
+@@ -9,6 +9,7 @@ import re
+ import subprocess
+ import sys
+ from dataclasses import dataclass
++from functools import lru_cache
+ from pathlib import Path
+ 
+ 
+@@ -111,6 +112,83 @@ TASK_PATH_SUFFIXES = {
+     ".yaml",
+     ".yml",
+ }
++# Verbs that denote producing or altering an output file. Single source of truth: the
++# negation probe ("does not update `x`") and the preservation-clause exception ("keep
++# behavior and update `x`") must not drift apart, because a verb present in one and
++# absent from the other produced contradictory results — "must not update" was
++# suppressed while "must not move" was demanded as evidence.
++ACTION_VERBS = (
++    "add",
++    "change",
++    "create",
++    "delete",
++    "edit",
++    "extend",
++    "generate",
++    "implement",
++    "modify",
++    "move",
++    "remove",
++    "rename",
++    "retarget",
++    "split",
++    "touch",
++    "update",
++    "wire",
++    "write",
++)
++# A story may also deny a requirement ("does not require `x`"). That is not an action
++# that produces output, so it belongs to the negation probe only.
++NEGATION_ONLY_VERBS = ("require",)
++# Verbs claiming a file was brought into existence. A creation claim keeps full
++# strictness even when the token is a bare basename absent from the tree: a file this
++# story created is absent from `git ls-files` by construction, so exempting it would
++# make every phantom new-file claim unenforceable.
++CREATION_VERBS = ("add", "create", "generate", "introduce", "write")
++NEGATION_PREFIXES = (
++    "do not",
++    "don't",
++    "does not",
++    "did not",
++    "must not",
++    "should not",
++    "never",
++    "no longer",
++)
++
++
++def verb_alternation(verbs: tuple[str, ...]) -> str:
++    """Alternation covering each verb and its third-person form.
++
++    Suppression must not depend on which conjugation the author happened to write, and a
++    bare `s?` quantifier cannot form `modifies` or `touches`.
++    """
++    forms: set[str] = set()
++    for verb in verbs:
++        forms.add(verb)
++        if verb.endswith("y") and verb[-2:-1] not in "aeiou":
++            forms.add(verb[:-1] + "ies")
++        elif verb.endswith(("s", "x", "z", "ch", "sh")):
++            forms.add(verb + "es")
++        else:
++            forms.add(verb + "s")
++    return "|".join(sorted(forms, key=lambda form: (-len(form), form)))
++
++
++NEGATED_ACTION = re.compile(
++    r"\b(?:" + "|".join(NEGATION_PREFIXES) + r")\s+"
++    r"(?:" + verb_alternation(ACTION_VERBS + NEGATION_ONLY_VERBS) + r")\s*$",
++    re.IGNORECASE,
++)
++POSITIVE_ACTION = re.compile(
++    r"\b(?:" + verb_alternation(ACTION_VERBS) + r")\s*$",
++    re.IGNORECASE,
++)
++CREATION_ACTION = re.compile(
++    r"\b(?:" + verb_alternation(CREATION_VERBS) + r")\b",
++    re.IGNORECASE,
++)
++PATH_COORDINATE = re.compile(r":\d+(?:[-,:]\d+)*$")
+ 
+ 
+ @dataclass(frozen=True)
+@@ -147,7 +225,7 @@ def main() -> int:
+         cli_unrelated = parse_cli_unrelated(root, args.unrelated, args.reason)
+         unrelated = {**metadata.unrelated, **cli_unrelated}
+         failures.extend(check_file_list(root, story, changed_files, metadata.file_list, unrelated))
+-        failures.extend(check_checked_tasks(root, story, changed_files.files, metadata))
++        failures.extend(check_checked_tasks(root, story, changed_files.files, metadata, unrelated))
+         unrelated_changed = [path for path in changed_files.files if path in unrelated]
+         if unrelated_changed:
+             notices.append(
+@@ -497,24 +575,55 @@ def extract_checked_tasks(text: str) -> list[tuple[int, str]]:
+     return tasks
+ 
+ 
+-def check_checked_tasks(root: Path, story: Path, changed_files: list[str], metadata: StoryMetadata) -> list[str]:
++def check_checked_tasks(
++    root: Path,
++    story: Path,
++    changed_files: list[str],
++    metadata: StoryMetadata,
++    unrelated: dict[str, str] | None = None,
++) -> list[str]:
+     failures: list[str] = []
+     changed = set(changed_files)
+     listed = set(metadata.file_list)
+-    evidence_basenames = {path.rsplit("/", 1)[-1] for path in (changed | listed)}
++    # A path the story explicitly classified as unrelated workspace state is accounted
++    # for — it is declared, reviewable, and asserted not to be story output. Citing one
++    # in review prose is therefore evidenced, exactly as a File List row would be. This
++    # consults an existing explicit classification; it does not infer exemption from prose.
++    # The classification is bounded so it cannot become a blanket exemption: see
++    # usable_classified_paths.
++    classified_unrelated = usable_classified_paths(root, unrelated or {}, changed)
++    evidence_basenames = {
++        path.rsplit("/", 1)[-1] for path in (changed | listed | classified_unrelated)
++    }
+     blocker_text = "\n".join(metadata.blockers.values()).lower()
+     evidence_text = metadata.evidence_text.lower()
+     for line_number, task in metadata.checked_tasks:
+         if not task_needs_evidence(task):
+             continue
++        task_paths = extract_path_mentions(task, root=root)
+         if task_is_classified_defer(task):
++            # Deferred pre-existing work is intentionally absent from the changed set and
++            # File List, so it is exempt from output-path evidence reconciliation. But a
++            # deferral must still cite a real pre-existing location — verify each fully
++            # qualified path exists so a task cannot self-exempt by naming a fabricated one.
++            nonexistent_paths = sorted(
++                path
++                for path in task_paths
++                if "/" in path and not (root / path).exists()
++            )
++            if nonexistent_paths:
++                failures.append(
++                    "deferred review task cites nonexistent path in "
++                    f"{story.relative_to(root).as_posix()}:{line_number}: {task}"
++                    f"\n  - deferred path does not exist: {', '.join(nonexistent_paths)}"
++                )
+             continue
+-        task_paths = extract_path_mentions(task)
+         missing_paths = sorted(
+             path
+             for path in task_paths
+             if path not in changed
+             and path not in listed
++            and not path_is_classified_unrelated(path, classified_unrelated)
+             # A bare basename (no directory) is evidenced when a changed/listed path shares it,
+             # so "`checklist.md`" shorthand beside a full path is not flagged as brittle overreach.
+             and not ("/" not in path and path in evidence_basenames)
+@@ -545,12 +654,20 @@ def task_is_classified_defer(task: str) -> bool:
+     )
+ 
+ 
+-def extract_path_mentions(text: str) -> set[str]:
++def extract_path_mentions(text: str, *, root: Path | None = None) -> set[str]:
+     paths: set[str] = set()
+-    for candidate in re.findall(r"`([^`]+)`", text):
+-        normalized = candidate.strip().replace("\\", "/")
++    for match in re.finditer(r"`([^`]+)`", text):
++        if path_mention_is_explicitly_non_evidence(text, match.start(), match.end()):
++            continue
++        normalized = match.group(1).strip().replace("\\", "/")
+         if " " in normalized or normalized.startswith("--") or normalized.startswith("<"):
+             continue
++        if mention_is_not_an_output_path(
++            normalized,
++            root,
++            creation_claimed=mention_claims_creation(text, match.start()),
++        ):
++            continue
+         if any(token in normalized for token in ("*", "?")):
+             continue
+         if "/" in normalized:
+@@ -565,5 +682,196 @@ def extract_path_mentions(text: str) -> set[str]:
+     return paths
+ 
+ 
++def usable_classified_paths(root: Path, classified: dict[str, str], changed: set[str]) -> set[str]:
++    """Bound the classification so it accounts for a path without exempting the tree.
++
++    Two bounds, because this set grants evidence and the story author writes it.
++    A top-level directory (`src`, `tests`) covers so much of the repository that one
++    bullet would exempt every path beneath it, so it is refused; a classification must
++    name a file, or a directory at least one level down such as
++    `references/Hexalith.Builds`. And the entry must be real — tracked in the repository
++    or present in the changed set — so a story cannot account for a fabricated path by
++    inventing a bullet for it. Trailing slashes are stripped: a directory written the
++    natural way (`references/Hexalith.Builds/`) must cover the same paths as without.
++    """
++    usable: set[str] = set()
++    for entry in classified:
++        path = entry.strip().rstrip("/")
++        if not path or path == ".":
++            continue
++        if "/" not in path and (root / path).is_dir():
++            continue
++        if path in changed or path_is_tracked(path, root):
++            usable.add(path)
++    return usable
++
++
++def path_is_classified_unrelated(path: str, classified: set[str]) -> bool:
++    """A classified directory or submodule covers the paths beneath it.
++
++    Classifying `references/Hexalith.Builds` as unrelated workspace state accounts for
++    `references/Hexalith.Builds/Props/Directory.Packages.props` too; requiring every
++    nested file to be listed separately would push authors toward blanket exemptions.
++    Matching is on full path segments, so `references/Hexalith.BuildsExtra` is not
++    covered by a `references/Hexalith.Builds` classification.
++    """
++    entries = {entry.rstrip("/") for entry in classified}
++    if path in entries:
++        return True
++    return any(path.startswith(entry + "/") for entry in entries)
++
++
++def mention_is_not_an_output_path(
++    normalized: str,
++    root: Path | None,
++    *,
++    creation_claimed: bool = False,
++) -> bool:
++    """Reject backticked tokens that cannot denote an output path this story produced.
++
++    Review-follow-up prose legitimately cites code the story did not change: bare suffix
++    literals, `path:line` coordinates, directories, method tokens, and hypothetical
++    filenames used to describe a scenario. Each class is rejected on its own shape.
++
++    The boundary, stated exactly: a *qualified* repository-relative path is never
++    exempted. A *bare basename* is exempted when it matches nothing tracked in the tree,
++    because that shape is how prose names a hypothetical ("the idiomatic `Foo.cs` +
++    `Foo.Handlers.cs` split"). That exemption does not apply when a creation verb governs
++    the token — a file the story claims to have created is absent from `git ls-files` by
++    construction, so exempting it would make every phantom new-file claim unenforceable.
++
++    Do NOT replace this with a surrounding-prose heuristic for the other classes: an
++    action-verb probe was tried and silently exempted past-tense claims ("Updated
++    `src/x.cs`"), non-adjacent objects ("update the file `src/x.cs`"), and every path
++    after the first in a coordinated list, which is precisely the phantom-fix class this
++    gate exists to catch. `creation_claimed` is deliberately the inverse: it only ever
++    makes the gate stricter, so a false positive costs a demanded path, not a missed one.
++    """
++    # NOTE: bare suffix chains (".g.cs", ".AssemblyInfo.cs") need no rule of their own —
++    # they carry no directory and match no tracked basename, so the tree-absent-basename
++    # rule below rejects them. A dedicated suffix rule was written first and removed: it
++    # could not be made load-bearing (deleting it left the suite green), and shipping a
++    # guard no test can fail is the defect this review was closing.
++    # A "path:line", "path:line-line", or "path:line:column" coordinate cites a location,
++    # not an output. The trailing digit run is what makes it a coordinate: a token ending
++    # in ":abc" is not one, and stays strict.
++    if PATH_COORDINATE.search(normalized):
++        return True
++    # A method or invocation token (".First()", "Foo.Bar()") is code, not a path.
++    if "(" in normalized or ")" in normalized:
++        return True
++    # An ellipsis-elided citation is not resolvable, wherever the elision falls
++    # ("…/CommandAuthorizationResource.cs", "src/.../Widget.cs"). extract_file_list_entry
++    # rejects the same notation anywhere in the token; the two parsers must agree.
++    if "..." in normalized or "…" in normalized:
++        return True
++    if root is not None:
++        # A directory names a scan scope, not a produced file.
++        if (root / normalized).is_dir():
++            return True
++        # A bare basename that matches nothing in the tree is a hypothetical used to
++        # describe a scenario ("the idiomatic `Foo.cs` + `Foo.Handlers.cs` split").
++        # Qualified paths keep full strictness, so a fabricated `src/NewThing.cs` claim
++        # is still reported — and so is a bare basename a creation verb governs.
++        if (
++            "/" not in normalized
++            and not creation_claimed
++            and not basename_exists_in_tree(normalized, root)
++        ):
++            return True
++    return False
++
++
++@lru_cache(maxsize=1)
++def tracked_files(root: Path) -> frozenset[str] | None:
++    """Every tracked path, or None when the tree cannot be listed.
++
++    None is distinct from "no files": a missing git binary, a non-repository root, or a
++    failed invocation must not read as "nothing is tracked", because every caller treats
++    absence as grounds to relax. Callers fail closed on None instead.
++    """
++    try:
++        result = subprocess.run(
++            ["git", "-C", str(root), "ls-files"],
++            capture_output=True,
++            text=True,
++            check=False,
++        )
++    except (FileNotFoundError, OSError):
++        return None
++    if result.returncode != 0:
++        return None
++    return frozenset(line for line in result.stdout.splitlines() if line)
++
++
++def tracked_basenames(root: Path) -> frozenset[str] | None:
++    paths = tracked_files(root)
++    if paths is None:
++        return None
++    return frozenset(path.rsplit("/", 1)[-1] for path in paths)
++
++
++def basename_exists_in_tree(basename: str, root: Path) -> bool:
++    names = tracked_basenames(root)
++    # Fail closed: an unlistable tree cannot prove the basename is hypothetical, so the
++    # token keeps full strictness rather than being exempted wholesale.
++    if names is None:
++        return True
++    return basename in names
++
++
++def path_is_tracked(path: str, root: Path) -> bool:
++    """True when the path is a tracked file, or a directory containing tracked files."""
++    paths = tracked_files(root)
++    # Fail closed in the other direction: without a listing no classification can be
++    # shown to be real, so none is granted evidence.
++    if paths is None:
++        return False
++    if path in paths:
++        return True
++    prefix = path + "/"
++    return any(tracked.startswith(prefix) for tracked in paths)
++
++
++def path_mention_is_explicitly_non_evidence(text: str, start: int, end: int) -> bool:
++    clause_start = 0
++    for boundary in re.finditer(r"[.!?;]\s+", text[:start]):
++        clause_start = boundary.end()
++
++    clause_end = len(text)
++    boundary = re.search(r"[.!?;](?:\s+|$)", text[end:])
++    if boundary:
++        clause_end = end + boundary.start()
++
++    before = text[clause_start:start]
++    after = text[end:clause_end]
++    # Both probes derive from ACTION_VERBS, so the two vocabularies cannot drift apart.
++    if NEGATED_ACTION.search(before):
++        return True
++
++    return bool(
++        re.search(r"\b(?:leave|keep|preserve)\b", before, re.IGNORECASE)
++        and re.search(r"\b(?:untouched|unchanged|unmodified)\b", after, re.IGNORECASE)
++        # ...but not when a positive action verb directly governs the path
++        # (e.g. "Keep behavior and update `x` so output stays unchanged"), which makes
++        # the path that verb's object — genuine evidence, not a preservation target.
++        and not POSITIVE_ACTION.search(before)
++    )
++
++
++def mention_claims_creation(text: str, start: int) -> bool:
++    """True when a creation verb governs the token's clause.
++
++    Scoped to the clause, and matched anywhere within it rather than adjacent to the
++    token, so "add a new file `Foo.cs`" counts. Breadth is safe here because the only
++    effect is to withhold the tree-absent-basename exemption, which makes the gate
++    stricter.
++    """
++    clause_start = 0
++    for boundary in re.finditer(r"[.!?;]\s+", text[:start]):
++        clause_start = boundary.end()
++    return bool(CREATION_ACTION.search(text[clause_start:start]))
++
++
+ if __name__ == "__main__":
+     sys.exit(main())
+diff --git a/tests/eng/test_dependency_graph.py b/tests/eng/test_dependency_graph.py
+new file mode 100644
+index 00000000..1192a780
+--- /dev/null
++++ b/tests/eng/test_dependency_graph.py
+@@ -0,0 +1,740 @@
++#!/usr/bin/env python3
++"""Synthetic committed-object graph and semantic-policy tests for eng/dependency_graph.py.
++
++Scope note: this covers GOV-1 Task 2/3 (local collection + semantic evaluation). CI graph
++diffing and affected-module contract-tree extraction (Task 4, blocked pending Hexalith.Builds
++issue 17 / BUILD-REL-1 per AD-16) are not implemented yet and are out of scope here.
++"""
++
++from __future__ import annotations
++
++import copy
++import hashlib
++import json
++import pathlib
++import subprocess
++import sys
++import tempfile
++import unittest
++
++ROOT = pathlib.Path(__file__).resolve().parents[2]
++sys.path.insert(0, str(ROOT / "eng"))
++
++import dependency_graph as dg  # noqa: E402
++
++
++def _run(args: list[str], cwd: pathlib.Path) -> bytes:
++    proc = subprocess.run(["git", *args], cwd=str(cwd), capture_output=True)
++    if proc.returncode != 0:
++        raise RuntimeError(f"git {args} failed in {cwd}: {proc.stderr.decode('utf-8', 'replace')}")
++    return proc.stdout
++
++
++class TempGitRepo:
++    def __init__(self, root: pathlib.Path) -> None:
++        self.root = root
++        root.mkdir(parents=True, exist_ok=True)
++        _run(["init", "--quiet", "-b", "main"], root)
++        _run(["config", "user.email", "test@example.com"], root)
++        _run(["config", "user.name", "Test"], root)
++        self._gitmodules_entries: list[str] = []
++
++    def write_text(self, relative: str, content: str) -> pathlib.Path:
++        return self.write_bytes(relative, content.encode("utf-8"))
++
++    def write_bytes(self, relative: str, data: bytes) -> pathlib.Path:
++        path = self.root / relative
++        path.parent.mkdir(parents=True, exist_ok=True)
++        path.write_bytes(data)
++        _run(["add", "--", relative], self.root)
++        return path
++
++    def link_gitlink(self, path: str, commit_sha: str) -> None:
++        _run(["update-index", "--add", "--cacheinfo", f"160000,{commit_sha},{path}"], self.root)
++
++    def add_submodule(self, name: str, path: str, url: str, commit_sha: str) -> None:
++        self._gitmodules_entries.append(f'[submodule "{name}"]\n\tpath = {path}\n\turl = {url}\n')
++        self.write_text(".gitmodules", "".join(self._gitmodules_entries))
++        self.link_gitlink(path, commit_sha)
++
++    def commit(self, message: str = "commit") -> str:
++        _run(["-c", "commit.gpgsign=false", "commit", "--quiet", "-m", message], self.root)
++        return self.head()
++
++    def head(self) -> str:
++        return _run(["rev-parse", "HEAD"], self.root).decode("ascii").strip()
++
++
++BASELINE_CATALOG = (
++    b"\xef\xbb\xbf<Project>\r\n"
++    b"  <ItemGroup>\r\n"
++    b'    <PackageVersion Include="Some.Package" Version="1.0.0" />\r\n'
++    b"  </ItemGroup>\r\n"
++    b"</Project>\r\n"
++)
++
++OWNER_SHIM = (
++    "<Project>\n"
++    "  <PropertyGroup>\n"
++    "    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>\n"
++    "  </PropertyGroup>\n"
++    "</Project>\n"
++)
++
++
++class GraphFixture:
++    """Builds a synthetic closed-world graph across temp git repositories."""
++
++    def __init__(self, tmp_path: pathlib.Path) -> None:
++        self.tmp_path = tmp_path
++        self.repos: dict[str, TempGitRepo] = {}
++        self.policy: dict = {
++            "schema": dg.POLICY_SCHEMA,
++            "builds_identity": self.identity("Builds"),
++            "trusted_identities": [],
++            "semantic_profiles": {},
++            "profiles": {},
++            "module_build_registry": {},
++            "resource_limits": {
++                "max_edges": 4096,
++                "max_ls_tree_bytes_per_owner_commit": 67108864,
++                "max_gitmodules_blob_bytes": 1048576,
++                "max_catalog_blob_bytes": 4194304,
++                "max_contract_tree_files": 16384,
++                "max_contract_tree_blob_bytes": 16777216,
++                "max_contract_tree_total_bytes": 268435456,
++            },
++            "evaluator_authorizations": {"ci": [], "release": [], "post_release": []},
++        }
++
++    def add_repo(self, name: str) -> TempGitRepo:
++        repo = TempGitRepo(self.tmp_path / name)
++        self.repos[name] = repo
++        self.policy["trusted_identities"].append({"identity": self.identity(name), "local_path": str(repo.root)})
++        return repo
++
++    @staticmethod
++    def identity(name: str) -> str:
++        return f"github.com/test/{name.lower()}"
++
++    @staticmethod
++    def url(name: str) -> str:
++        return f"https://github.com/test/{name}.git"
++
++    def link(self, owner: str, path: str, target: str, target_commit: str) -> None:
++        self.repos[owner].add_submodule(target, path, self.url(target), target_commit)
++
++
++class CollectionTests(unittest.TestCase):
++    def setUp(self) -> None:
++        self._tmp = tempfile.TemporaryDirectory()
++        self.tmp_path = pathlib.Path(self._tmp.name)
++        self.addCleanup(self._tmp.cleanup)
++
++    def test_depth1_depth2_collection_and_digest_determinism(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        builds = fx.add_repo("Builds")
++        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
++        builds_commit = builds.commit()
++
++        mid = fx.add_repo("Mid")
++        mid.write_text("Directory.Packages.props", OWNER_SHIM)
++        fx.link("Mid", "references/Builds", "Builds", builds_commit)
++        mid_commit = mid.commit()
++
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        fx.link("Root", "references/Mid", "Mid", mid_commit)
++        root_commit = root.commit()
++
++        envelope1 = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        envelope2 = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        self.assertEqual(envelope1["graph_digest"], envelope2["graph_digest"])
++        self.assertEqual(envelope1["edge_count"], 2)
++        depth1 = [e for e in envelope1["edges"] if e["depth"] == 1]
++        depth2 = [e for e in envelope1["edges"] if e["depth"] == 2]
++        self.assertEqual(len(depth1), 1)
++        self.assertEqual(depth1[0]["repository"], fx.identity("Mid"))
++        self.assertEqual(len(depth2), 1)
++        self.assertEqual(depth2[0]["repository"], fx.identity("Builds"))
++        self.assertEqual(depth2[0]["catalog_sha256"], hashlib.sha256(BASELINE_CATALOG).hexdigest())
++
++    def test_depth2_boundary_excludes_depth3(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        deepest = fx.add_repo("Deepest")
++        deepest.write_text("marker.txt", "x")
++        deepest_commit = deepest.commit()
++
++        builds = fx.add_repo("Builds")
++        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
++        # Builds' own gitlink to Deepest would only surface as depth 3 (Builds' own edges are
++        # never collected, since it is itself a depth-2 node here); it must be excluded.
++        fx.link("Builds", "references/Deepest", "Deepest", deepest_commit)
++        builds_commit = builds.commit()
++
++        mid = fx.add_repo("Mid")
++        mid.write_text("Directory.Packages.props", OWNER_SHIM)
++        fx.link("Mid", "references/Builds", "Builds", builds_commit)
++        mid_commit = mid.commit()
++
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        fx.link("Root", "references/Mid", "Mid", mid_commit)
++        root_commit = root.commit()
++
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        self.assertEqual(envelope["edge_count"], 2)
++        self.assertEqual({e["depth"] for e in envelope["edges"]}, {1, 2})
++        self.assertFalse(any(e["owner_repository"] == fx.identity("Builds") for e in envelope["edges"]))
++
++    def test_self_back_reference_edge_is_recorded(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        root_commit_stub = root.commit("stub")
++
++        mid = fx.add_repo("Mid")
++        mid.write_text("Directory.Packages.props", OWNER_SHIM)
++        fx.link("Mid", "references/Root", "Root", root_commit_stub)  # back edge to root
++        mid_commit = mid.commit()
++
++        fx.link("Root", "references/Mid", "Mid", mid_commit)
++        root_commit = root.commit("add mid")
++
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        depth2 = [e for e in envelope["edges"] if e["depth"] == 2]
++        self.assertEqual(len(depth2), 1)
++        self.assertEqual(depth2[0]["repository"], fx.identity("Root"))
++
++    def test_multiple_owners_selecting_same_builds_commit(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        builds = fx.add_repo("Builds")
++        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
++        builds_commit = builds.commit()
++
++        for name in ("Alpha", "Beta"):
++            owner = fx.add_repo(name)
++            owner.write_text("Directory.Packages.props", OWNER_SHIM)
++            fx.link(name, "references/Builds", "Builds", builds_commit)
++            owner.commit()
++
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        fx.link("Root", "references/Alpha", "Alpha", fx.repos["Alpha"].head())
++        fx.link("Root", "references/Beta", "Beta", fx.repos["Beta"].head())
++        root_commit = root.commit()
++
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        builds_edges = [e for e in envelope["edges"] if e["repository"] == fx.identity("Builds")]
++        self.assertEqual(len(builds_edges), 2)
++        self.assertEqual(builds_edges[0]["catalog_sha256"], builds_edges[1]["catalog_sha256"])
++        self.assertEqual(builds_edges[0]["catalog_sha256"], hashlib.sha256(BASELINE_CATALOG).hexdigest())
++        self.assertIsNone(builds_edges[0]["catalog_contract_version"])
++
++    def test_deterministic_edge_ordering(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        for name in ("Zeta", "Alpha", "Mu"):
++            child = fx.add_repo(name)
++            child.write_text("marker.txt", name)
++            child_commit = child.commit()
++            fx.link("Root", f"references/{name}", name, child_commit)
++        root_commit = root.commit()
++
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        paths = [e["path"] for e in envelope["edges"]]
++        self.assertEqual(paths, sorted(paths))
++
++    def test_missing_gitmodules_mapping_fails_closed(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        # a gitlink with no corresponding .gitmodules entry
++        root.link_gitlink("references/Ghost", "f" * 40)
++        root_commit = root.commit()
++
++        with self.assertRaises(dg.GraphError):
++            dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++
++    def test_unknown_identity_fails_closed(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        root.add_submodule("Untrusted", "references/Untrusted", "https://github.com/other/untrusted.git", "1" * 40)
++        root_commit = root.commit()
++
++        with self.assertRaises(dg.GraphError):
++            dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++
++    def test_missing_catalog_fails_closed(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        builds = fx.add_repo("Builds")
++        builds.write_text("README.md", "no catalog here")
++        builds_commit = builds.commit()
++
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        fx.link("Root", "references/Builds", "Builds", builds_commit)
++        root_commit = root.commit()
++
++        with self.assertRaises(dg.GraphError):
++            dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++
++    def test_malformed_gitmodules_url_fails_closed(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        bad_urls = [
++            "https://user:pass@github.com/test/evil.git",  # userinfo
++            "https://github.com:8443/test/evil.git",  # port
++            "https://github.com/test/evil?x=1",  # query
++            "https://not-github.com/test/evil.git",  # wrong host
++            "https://github.com/test/%2e%2e",  # percent-escape
++            "not-a-url",
++        ]
++        for index, url in enumerate(bad_urls):
++            with self.subTest(url=url):
++                with self.assertRaises(dg.GraphError):
++                    dg.normalize_identity(url, f"case[{index}]")
++
++    def test_unsafe_path_rejected(self) -> None:
++        for path in ("/absolute", "a/../b", "a/./b", "a\\b", "", "a//b".replace("//", "/") + "/.."):
++            with self.subTest(path=path):
++                with self.assertRaises(dg.GraphError):
++                    dg.normalize_path(path, "case")
++
++    def test_edge_count_ceiling_fails_closed(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        fx.policy["resource_limits"]["max_edges"] = 0
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        child = fx.add_repo("Child")
++        child.write_text("marker.txt", "x")
++        child_commit = child.commit()
++        fx.link("Root", "references/Child", "Child", child_commit)
++        root_commit = root.commit()
++
++        with self.assertRaises(dg.GraphError):
++            dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++
++    def test_catalog_blob_ceiling_fails_closed(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        fx.policy["resource_limits"]["max_catalog_blob_bytes"] = 4
++        builds = fx.add_repo("Builds")
++        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
++        builds_commit = builds.commit()
++
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        fx.link("Root", "references/Builds", "Builds", builds_commit)
++        root_commit = root.commit()
++
++        with self.assertRaises(dg.GraphError):
++            dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++
++    def test_gitmodules_blob_ceiling_fails_closed(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        fx.policy["resource_limits"]["max_gitmodules_blob_bytes"] = 4
++        builds = fx.add_repo("Builds")
++        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
++        builds_commit = builds.commit()
++
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        fx.link("Root", "references/Builds", "Builds", builds_commit)
++        root_commit = root.commit()
++
++        with self.assertRaises(dg.GraphError):
++            dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++
++    def test_ls_tree_ceiling_fails_closed(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        fx.policy["resource_limits"]["max_ls_tree_bytes_per_owner_commit"] = 1
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        root_commit = root.commit()
++
++        with self.assertRaises(dg.GraphError):
++            dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++
++
++BASELINE_PROFILE = {
++    "owner_checks": {"well_formed_project_root": True, "override_not_enabled": True},
++    "selected_catalog_required_properties": {},
++    "selected_catalog_required_packages": {},
++}
++
++REQUIRED_PACKAGE_PROFILE = {
++    "owner_checks": {"no_local_override_for_selected_catalog_packages": True},
++    "selected_catalog_required_properties": {},
++    "selected_catalog_required_packages": {"Some.Package": "1.0.0"},
++}
++
++REQUIRED_PROPERTY_PROFILE = {
++    "owner_checks": {},
++    "selected_catalog_required_properties": {"SomeVersion": "1.0.0"},
++    "selected_catalog_required_packages": {},
++}
++
++
++class SemanticEvaluationTests(unittest.TestCase):
++    def setUp(self) -> None:
++        self._tmp = tempfile.TemporaryDirectory()
++        self.tmp_path = pathlib.Path(self._tmp.name)
++        self.addCleanup(self._tmp.cleanup)
++
++    def _catalog_at(self, version: str) -> bytes:
++        return (
++            b"\xef\xbb\xbf<Project>\r\n"
++            b"  <ItemGroup>\r\n"
++            b'    <PackageVersion Include="Some.Package" Version="' + version.encode("ascii") + b'" />\r\n'
++            b"  </ItemGroup>\r\n"
++            b"</Project>\r\n"
++        )
++
++    def _catalog_with_properties(self, values: list[str]) -> bytes:
++        properties = b"".join(
++            b"    <SomeVersion>" + value.encode("ascii") + b"</SomeVersion>\r\n"
++            for value in values
++        )
++        return (
++            b"\xef\xbb\xbf<Project>\r\n  <PropertyGroup>\r\n"
++            + properties
++            + b"  </PropertyGroup>\r\n</Project>\r\n"
++        )
++
++    def _catalog_with_property_body(self, body: bytes) -> bytes:
++        """Build a catalog whose <Project> children are supplied verbatim.
++
++        Lets a case express the conditional, ancestor-conditional, and Choose shapes the
++        real shared catalog can take, which _catalog_with_properties cannot.
++        """
++        return b"\xef\xbb\xbf<Project>\r\n" + body + b"</Project>\r\n"
++
++    def _evaluate_required_property_catalog(self, catalog: bytes) -> dict:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        _owner, owner_commit = self._build(
++            fx,
++            "Owner",
++            catalog,
++            "required-property-profile",
++            REQUIRED_PROPERTY_PROFILE,
++        )
++        fx.link("Root", "references/Owner", "Owner", owner_commit)
++        root_commit = root.commit()
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        return dg.evaluate_semantics(root.root, fx.policy, envelope)
++
++    def _evaluate_required_property(self, values: list[str]) -> dict:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        _owner, owner_commit = self._build(
++            fx,
++            "Owner",
++            self._catalog_with_properties(values),
++            "required-property-profile",
++            REQUIRED_PROPERTY_PROFILE,
++        )
++        fx.link("Root", "references/Owner", "Owner", owner_commit)
++        root_commit = root.commit()
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        return dg.evaluate_semantics(root.root, fx.policy, envelope)
++
++    def _build(self, fx: GraphFixture, owner_name: str, catalog_bytes: bytes, profile_name: str, profile: dict) -> tuple[TempGitRepo, str]:
++        # one shared Builds repository per fixture (matching policy["builds_identity"] /
++        # its single local_path); each call commits a new catalog state, mirroring how
++        # different owners in reality pin different commits of the SAME Builds repo.
++        builds = fx.repos.get("Builds") or fx.add_repo("Builds")
++        builds.write_bytes("Props/Directory.Packages.props", catalog_bytes)
++        builds_commit = builds.commit(f"catalog for {owner_name}")
++
++        owner = fx.add_repo(owner_name)
++        owner.write_text("Directory.Packages.props", OWNER_SHIM)
++        fx.link(owner_name, "references/Builds", "Builds", builds_commit)
++        owner_commit = owner.commit()
++
++        fx.policy["semantic_profiles"][fx.identity(owner_name)] = profile_name
++        fx.policy["profiles"][profile_name] = profile
++        return owner, owner_commit
++
++    def test_compatible_pointer_advance_passes_under_same_profile(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++
++        ownerA, commitA = self._build(fx, "OwnerA", self._catalog_at("1.0.0"), "shared-profile", BASELINE_PROFILE)
++        ownerB, commitB = self._build(fx, "OwnerB", self._catalog_at("2.0.0"), "shared-profile", BASELINE_PROFILE)
++        self.assertNotEqual(commitA, commitB)
++
++        fx.link("Root", "references/OwnerA", "OwnerA", commitA)
++        fx.link("Root", "references/OwnerB", "OwnerB", commitB)
++        root_commit = root.commit()
++
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        semantics = dg.evaluate_semantics(root.root, fx.policy, envelope)
++        self.assertEqual(semantics["selectors_validated"], 2)
++
++    def test_semantic_mismatch_fails_with_actionable_diagnostic(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        wrong_catalog = self._catalog_at("9.9.9")
++        _owner, owner_commit = self._build(fx, "Owner", wrong_catalog, "required-profile", REQUIRED_PACKAGE_PROFILE)
++        fx.link("Root", "references/Owner", "Owner", owner_commit)
++        root_commit = root.commit()
++
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        with self.assertRaises(dg.GraphError) as ctx:
++            dg.evaluate_semantics(root.root, fx.policy, envelope)
++        self.assertIn("Some.Package", str(ctx.exception))
++
++    def test_required_property_match_passes(self) -> None:
++        semantics = self._evaluate_required_property(["1.0.0"])
++        self.assertEqual(semantics["selectors_validated"], 1)
++
++    def test_required_property_missing_fails_with_actionable_diagnostic(self) -> None:
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._evaluate_required_property([])
++        message = str(ctx.exception)
++        self.assertIn("references/Builds", message)
++        self.assertIn("SomeVersion expected exactly one value '1.0.0'", message)
++        self.assertIn("found 0 values <missing>", message)
++
++    def test_required_property_duplicate_fails_with_actionable_diagnostic(self) -> None:
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._evaluate_required_property(["1.0.0", "2.0.0"])
++        message = str(ctx.exception)
++        self.assertIn("references/Builds", message)
++        self.assertIn("SomeVersion expected exactly one value '1.0.0'", message)
++        self.assertIn("found 2 values ['1.0.0', '2.0.0']", message)
++
++    def test_required_property_mismatch_fails_with_actionable_diagnostic(self) -> None:
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._evaluate_required_property(["2.0.0"])
++        message = str(ctx.exception)
++        self.assertIn("references/Builds", message)
++        self.assertIn("SomeVersion expected '1.0.0', found '2.0.0'", message)
++
++    # The real shared catalog declares every Hexalith version property as
++    # Condition="'$(Name)' == ''". That canonical self-default form must pass; any other
++    # condition, a conditional ancestor, or a Choose branch must be rejected, because the
++    # effective value would then depend on state this validator cannot observe.
++    def test_required_property_canonical_self_default_condition_passes(self) -> None:
++        catalog = self._catalog_with_property_body(
++            b"  <PropertyGroup>\r\n"
++            b"    <SomeVersion Condition=\"'$(SomeVersion)' == ''\">1.0.0</SomeVersion>\r\n"
++            b"  </PropertyGroup>\r\n"
++        )
++        semantics = self._evaluate_required_property_catalog(catalog)
++        self.assertEqual(semantics["selectors_validated"], 1)
++
++    def test_required_property_foreign_condition_is_rejected(self) -> None:
++        catalog = self._catalog_with_property_body(
++            b"  <PropertyGroup>\r\n"
++            b"    <SomeVersion Condition=\"'$(NeverSet)' == 'yes'\">1.0.0</SomeVersion>\r\n"
++            b"  </PropertyGroup>\r\n"
++        )
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._evaluate_required_property_catalog(catalog)
++        self.assertIn("canonical self-default", str(ctx.exception))
++
++    def test_required_property_condition_naming_another_property_is_rejected(self) -> None:
++        catalog = self._catalog_with_property_body(
++            b"  <PropertyGroup>\r\n"
++            b"    <SomeVersion Condition=\"'$(OtherVersion)' == ''\">1.0.0</SomeVersion>\r\n"
++            b"  </PropertyGroup>\r\n"
++        )
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._evaluate_required_property_catalog(catalog)
++        self.assertIn("canonical self-default", str(ctx.exception))
++
++    def test_required_property_under_conditional_group_is_rejected(self) -> None:
++        catalog = self._catalog_with_property_body(
++            b"  <PropertyGroup Condition=\"'$(NeverSet)' == 'yes'\">\r\n"
++            b"    <SomeVersion>1.0.0</SomeVersion>\r\n"
++            b"  </PropertyGroup>\r\n"
++        )
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._evaluate_required_property_catalog(catalog)
++        self.assertIn("conditional group", str(ctx.exception))
++
++    def test_required_property_selected_through_choose_is_rejected(self) -> None:
++        catalog = self._catalog_with_property_body(
++            b"  <Choose>\r\n"
++            b"    <When Condition=\"'$(NeverSet)' == 'yes'\">\r\n"
++            b"      <PropertyGroup>\r\n"
++            b"        <SomeVersion>1.0.0</SomeVersion>\r\n"
++            b"      </PropertyGroup>\r\n"
++            b"    </When>\r\n"
++            b"  </Choose>\r\n"
++        )
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._evaluate_required_property_catalog(catalog)
++        self.assertIn("Choose branch", str(ctx.exception))
++
++    def test_required_property_empty_element_reports_empty_string_not_none(self) -> None:
++        catalog = self._catalog_with_property_body(
++            b"  <PropertyGroup>\r\n    <SomeVersion />\r\n  </PropertyGroup>\r\n"
++        )
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._evaluate_required_property_catalog(catalog)
++        message = str(ctx.exception)
++        self.assertIn("SomeVersion expected '1.0.0', found ''", message)
++        self.assertNotIn("None", message)
++
++    def test_no_semantic_profile_mapping_fails_closed(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        _owner, owner_commit = self._build(fx, "Owner", self._catalog_at("1.0.0"), "unused-profile", BASELINE_PROFILE)
++        fx.link("Root", "references/Owner", "Owner", owner_commit)
++        root_commit = root.commit()
++        del fx.policy["semantic_profiles"][fx.identity("Owner")]
++
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        with self.assertRaises(dg.GraphError):
++            dg.evaluate_semantics(root.root, fx.policy, envelope)
++
++    def test_root_import_shim_violation_fails(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text(
++            "Directory.Packages.props",
++            '<Project><ItemGroup><PackageVersion Include="Own.Package" Version="1.0.0" /></ItemGroup></Project>',
++        )
++        builds = fx.add_repo("Builds")
++        builds.write_bytes("Props/Directory.Packages.props", self._catalog_at("1.0.0"))
++        builds_commit = builds.commit()
++        fx.link("Root", "references/Builds", "Builds", builds_commit)
++        root_commit = root.commit()
++
++        profile = copy.deepcopy(BASELINE_PROFILE)
++        profile["owner_checks"]["no_package_version_rows"] = True
++        fx.policy["semantic_profiles"][fx.identity("Root")] = "root-shim-profile"
++        fx.policy["profiles"]["root-shim-profile"] = profile
++
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        with self.assertRaises(dg.GraphError) as ctx:
++            dg.evaluate_semantics(root.root, fx.policy, envelope)
++        self.assertIn("import shim", str(ctx.exception))
++
++    def test_no_local_override_violation_fails(self) -> None:
++        fx = GraphFixture(self.tmp_path)
++        root = fx.add_repo("Root")
++        root.write_text("Directory.Packages.props", OWNER_SHIM)
++        builds = fx.add_repo("Builds")
++        builds.write_bytes("Props/Directory.Packages.props", self._catalog_at("1.0.0"))
++        builds_commit = builds.commit()
++
++        owner = fx.add_repo("Owner")
++        owner.write_text(
++            "Directory.Packages.props",
++            '<Project><ItemGroup><PackageVersion Update="Some.Package" Version="1.0.0" /></ItemGroup></Project>',
++        )
++        fx.link("Owner", "references/Builds", "Builds", builds_commit)
++        owner_commit = owner.commit()
++
++        fx.policy["semantic_profiles"][fx.identity("Owner")] = "no-override-profile"
++        fx.policy["profiles"]["no-override-profile"] = REQUIRED_PACKAGE_PROFILE
++        fx.link("Root", "references/Owner", "Owner", owner_commit)
++        root_commit = root.commit()
++
++        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
++        with self.assertRaises(dg.GraphError) as ctx:
++            dg.evaluate_semantics(root.root, fx.policy, envelope)
++        self.assertIn("without local override", str(ctx.exception))
++
++    def test_no_minver_violation_fails(self) -> None:
++        root_xml = dg.parse_project_xml(
++            b'<Project><ItemGroup><PackageReference Include="MinVer" /></ItemGroup></Project>', "test"
++        )
++        with self.assertRaises(dg.GraphError):
++            dg.assert_no_minver(root_xml, "test")
++
++    def test_guarded_imports_mismatch_fails(self) -> None:
++        spec = {
++            "import_projects": ["$(A)"],
++            "import_conditions": ["true"],
++            "required_properties": {},
++        }
++        xml = dg.parse_project_xml(b"<Project></Project>", "test")
++        with self.assertRaises(dg.GraphError):
++            dg.assert_guarded_imports(xml, spec, "test")
++
++    def test_bom_crlf_violations_fail(self) -> None:
++        with self.assertRaises(dg.GraphError):
++            dg.assert_utf8_bom_and_crlf(b"<Project></Project>", "no-bom")
++        with self.assertRaises(dg.GraphError):
++            dg.assert_utf8_bom_and_crlf(b"\xef\xbb\xbf<Project>\n</Project>\n", "bare-lf")
++        # correct BOM + CRLF must pass without raising
++        dg.assert_utf8_bom_and_crlf(b"\xef\xbb\xbf<Project>\r\n</Project>\r\n", "ok")
++
++
++class CanonicalDigestTests(unittest.TestCase):
++    def test_canonical_bytes_are_compact_sorted_ascii(self) -> None:
++        payload = {"b": 1, "a": [3, 2, 1], "c": "café"}
++        raw = dg.canonical_bytes(payload)
++        self.assertEqual(raw, b'{"a":[3,2,1],"b":1,"c":"caf\\u00e9"}')
++        self.assertFalse(raw.endswith(b"\n"))
++
++    def test_digest_is_sha256_of_canonical_bytes(self) -> None:
++        payload = {"x": 1}
++        self.assertEqual(dg.canonical_digest(payload), hashlib.sha256(dg.canonical_bytes(payload)).hexdigest())
++
++
++class PolicyShapeTests(unittest.TestCase):
++    """A profile whose shape would make a required check silently vacuous must fail closed.
++
++    Before these pins, `profile.get("selected_catalog_required_properties", {})` meant a
++    renamed or misspelled key validated nothing while `validate` still reported ok: true.
++    """
++
++    def setUp(self) -> None:
++        self._tmp = tempfile.TemporaryDirectory()
++        self.tmp_path = pathlib.Path(self._tmp.name)
++        self.addCleanup(self._tmp.cleanup)
++
++    def _load(self, profile: object) -> dict:
++        path = self.tmp_path / "policy.json"
++        path.write_text(
++            json.dumps({
++                "schema": dg.POLICY_SCHEMA,
++                "profiles": {"some-profile": profile},
++            }),
++            encoding="utf-8",
++        )
++        return dg.load_policy(path)
++
++    def test_known_profile_keys_load(self) -> None:
++        policy = self._load({
++            "owner_checks": {},
++            "selected_catalog_required_properties": {"SomeVersion": "1.0.0"},
++            "selected_catalog_required_packages": {},
++        })
++        self.assertEqual(
++            policy["profiles"]["some-profile"]["selected_catalog_required_properties"],
++            {"SomeVersion": "1.0.0"},
++        )
++
++    def test_misspelled_required_properties_key_fails_closed(self) -> None:
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._load({"selected_catalog_required_propertys": {"SomeVersion": "1.0.0"}})
++        self.assertIn("unknown keys", str(ctx.exception))
++
++    def test_non_dict_required_properties_fails_closed(self) -> None:
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._load({"selected_catalog_required_properties": ["SomeVersion"]})
++        self.assertIn("must be an object", str(ctx.exception))
++
++    def test_non_string_expected_value_fails_closed(self) -> None:
++        with self.assertRaises(dg.GraphError) as ctx:
++            self._load({"selected_catalog_required_properties": {"SomeVersion": 1.0}})
++        self.assertIn("must be a string", str(ctx.exception))
++
++
++if __name__ == "__main__":
++    unittest.main()

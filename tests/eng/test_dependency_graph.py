@@ -655,6 +655,150 @@ class SemanticEvaluationTests(unittest.TestCase):
         with self.assertRaises(dg.GraphError):
             dg.assert_no_minver(root_xml, "test")
 
+    def test_no_minver_missing_directory_build_props_fails_closed(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        owner, owner_commit = self._build(fx, "Owner", self._catalog_at("1.0.0"), "no-minver-profile", {
+            "owner_checks": {"no_minver": True},
+            "selected_catalog_required_properties": {},
+            "selected_catalog_required_packages": {},
+        })
+        fx.link("Root", "references/Owner", "Owner", owner_commit)
+        root_commit = root.commit()
+        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        with self.assertRaises(dg.GraphError) as ctx:
+            dg.evaluate_semantics(root.root, fx.policy, envelope)
+        self.assertIn("missing Directory.Build.props while no_minver is required", str(ctx.exception))
+
+    def test_no_inline_versions_in_tracked_files_fails(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        builds = fx.add_repo("Builds")
+        builds.write_bytes("Props/Directory.Packages.props", self._catalog_at("1.0.0"))
+        builds_commit = builds.commit()
+
+        owner = fx.add_repo("Owner")
+        owner.write_text("Directory.Packages.props", OWNER_SHIM)
+        owner.write_text(
+            "src/Widget.csproj",
+            '<Project><ItemGroup><PackageReference Include="Some.Package" Version="1.0.0" /></ItemGroup></Project>\n',
+        )
+        fx.link("Owner", "references/Builds", "Builds", builds_commit)
+        owner_commit = owner.commit()
+
+        fx.policy["semantic_profiles"][fx.identity("Owner")] = "no-inline-profile"
+        fx.policy["profiles"]["no-inline-profile"] = {
+            "owner_checks": {
+                "no_inline_versions_in_tracked_files": {"extensions": [".csproj", ".props", ".targets"]},
+            },
+            "selected_catalog_required_properties": {},
+            "selected_catalog_required_packages": {},
+        }
+        fx.link("Root", "references/Owner", "Owner", owner_commit)
+        root_commit = root.commit()
+
+        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        with self.assertRaises(dg.GraphError) as ctx:
+            dg.evaluate_semantics(root.root, fx.policy, envelope)
+        self.assertIn("must not declare an inline Version", str(ctx.exception))
+
+    def test_validate_with_zero_builds_selectors_fails_closed(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        root_commit = root.commit()
+        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        with self.assertRaises(dg.GraphError) as ctx:
+            dg.evaluate_semantics(root.root, fx.policy, envelope)
+        self.assertIn("no Builds-selector edges", str(ctx.exception))
+
+    def test_duplicate_gitmodules_path_fails_closed(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        builds = fx.add_repo("Builds")
+        builds.write_bytes("Props/Directory.Packages.props", self._catalog_at("1.0.0"))
+        builds_commit = builds.commit()
+        other = fx.add_repo("Other")
+        other.write_text("README.md", "x\n")
+        other_commit = other.commit()
+
+        # Two .gitmodules entries sharing one path — last-wins must not be silent.
+        root._gitmodules_entries.append(
+            f'[submodule "builds"]\n\tpath = references/Shared\n\turl = {fx.url("Builds")}\n'
+        )
+        root._gitmodules_entries.append(
+            f'[submodule "other"]\n\tpath = references/Shared\n\turl = {fx.url("Other")}\n'
+        )
+        root.write_text(".gitmodules", "".join(root._gitmodules_entries))
+        root.link_gitlink("references/Shared", builds_commit)
+        root_commit = root.commit()
+
+        with self.assertRaises(dg.GraphError) as ctx:
+            dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        self.assertIn("duplicate .gitmodules path", str(ctx.exception))
+
+    def test_multi_owner_commit_pins_are_each_owner_checked(self) -> None:
+        """Two Builds-selector edges from the same identity at different owner commits
+        must run owner_checks against each commit, not only the first.
+        """
+        fx = GraphFixture(self.tmp_path)
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        builds = fx.add_repo("Builds")
+        builds.write_bytes("Props/Directory.Packages.props", self._catalog_at("1.0.0"))
+        builds_commit = builds.commit()
+
+        # Fabricate an envelope: same owner identity, two owner_commits. The later pin
+        # introduces a PackageVersion row that no_package_version_rows must catch.
+        # Use a real owner repo so read_blob works for both commits.
+        owner = fx.add_repo("Owner")
+        owner.write_text("Directory.Packages.props", OWNER_SHIM)
+        fx.link("Owner", "references/Builds", "Builds", builds_commit)
+        commit_clean = owner.commit("clean shim")
+        owner.write_text(
+            "Directory.Packages.props",
+            '<Project><ItemGroup><PackageVersion Include="Own.Package" Version="1.0.0" /></ItemGroup></Project>\n',
+        )
+        commit_dirty = owner.commit("dirty shim")
+
+        fx.policy["semantic_profiles"][fx.identity("Owner")] = "shim-profile"
+        fx.policy["profiles"]["shim-profile"] = {
+            "owner_checks": {"no_package_version_rows": True},
+            "selected_catalog_required_properties": {},
+            "selected_catalog_required_packages": {},
+        }
+
+        envelope = {
+            "schema": dg.SCHEMA,
+            "root": {"repository": fx.identity("Root"), "commit": "cccccccccccccccccccccccccccccccccccccccc"},
+            "edges": [
+                {
+                    "owner_repository": fx.identity("Owner"),
+                    "owner_commit": commit_clean,
+                    "path": "references/Builds",
+                    "repository": fx.identity("Builds"),
+                    "commit": builds_commit,
+                    "depth": 1,
+                },
+                {
+                    "owner_repository": fx.identity("Owner"),
+                    "owner_commit": commit_dirty,
+                    "path": "references/Builds",
+                    "repository": fx.identity("Builds"),
+                    "commit": builds_commit,
+                    "depth": 1,
+                },
+            ],
+            "graph_digest": "0" * 64,
+        }
+        with self.assertRaises(dg.GraphError) as ctx:
+            dg.evaluate_semantics(root.root, fx.policy, envelope)
+        self.assertIn("import shim", str(ctx.exception))
+        self.assertIn(commit_dirty, str(ctx.exception))
+
     def test_guarded_imports_mismatch_fails(self) -> None:
         spec = {
             "import_projects": ["$(A)"],
@@ -734,6 +878,24 @@ class PolicyShapeTests(unittest.TestCase):
         with self.assertRaises(dg.GraphError) as ctx:
             self._load({"selected_catalog_required_properties": {"SomeVersion": 1.0}})
         self.assertIn("must be a string", str(ctx.exception))
+
+    def test_unknown_owner_checks_key_fails_closed(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({
+                "owner_checks": {"no_package_version_row": True},
+                "selected_catalog_required_properties": {},
+                "selected_catalog_required_packages": {},
+            })
+        self.assertIn("owner_checks has unknown keys", str(ctx.exception))
+
+    def test_non_object_owner_checks_fails_closed(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({
+                "owner_checks": ["no_minver"],
+                "selected_catalog_required_properties": {},
+                "selected_catalog_required_packages": {},
+            })
+        self.assertIn("owner_checks must be an object", str(ctx.exception))
 
 
 if __name__ == "__main__":

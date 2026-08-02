@@ -78,6 +78,32 @@ public sealed class ShellTypeOrganizationGovernanceTests
         };
 
     [Fact]
+    public void ActionGroupExceptions_AreExactlyTheSixAc3Groups()
+    {
+        // AC3 freezes membership of the grandfathered exception set. Live-vs-map checks
+        // alone stay green when a seventh path is added in lockstep with a new multi-type
+        // action file, or when the 38-identity census shrinks with its sources.
+        string[] expectedPaths =
+        [
+            "State/CapabilityDiscovery/CapabilityDiscoveryActions.cs",
+            "State/CommandPalette/CommandPaletteActions.cs",
+            "State/DataGridNavigation/GridViewHydratedAction.cs",
+            "State/Density/DensityActions.cs",
+            "State/Navigation/NavigationActions.cs",
+            "State/Theme/ThemeActions.cs",
+        ];
+
+        ActionGroupExceptions.Count.ShouldBe(6);
+        ActionGroupExceptions.Keys.OrderBy(path => path, StringComparer.Ordinal)
+            .ShouldBe(expectedPaths.OrderBy(path => path, StringComparer.Ordinal));
+        ActionGroupExceptions.Sum(entry => entry.Value.Length).ShouldBe(38);
+        foreach (string[] names in ActionGroupExceptions.Values)
+        {
+            names.Length.ShouldBeGreaterThan(0);
+        }
+    }
+
+    [Fact]
     public void HandwrittenShellSources_DirectDeclarations_FollowExactFileOrganization()
     {
         SourceFile[] sources = LoadShellSources();
@@ -525,6 +551,72 @@ public sealed class ShellTypeOrganizationGovernanceTests
         violations.ShouldContain(violation => violation.Contains("Services/BundleOwner.cs", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public void OrganizationGuard_MissingActionGroupExceptionFile_IsReported()
+    {
+        // The missing-file branch is unreachable on a green production run. Without a
+        // synthetic, a typo'd or phantom ActionGroupExceptions entry (and deletion of the
+        // missing-file check itself) stays invisible.
+        SourceFile[] sources =
+        [
+            new(
+                "Services/BundleOwner.cs",
+                "namespace Hexalith.FrontComposer.Shell.Services;\n"
+                + "public sealed class BundleOwner { }\npublic sealed class BundleCompanion { }"),
+        ];
+        Dictionary<string, string[]> exceptions = new(StringComparer.Ordinal)
+        {
+            ["State/Theme/NonexistentActions.cs"] = ["ThemeChangedAction", "ThemeHydratingAction"],
+        };
+
+        List<string> violations = FindOrganizationViolations(sources, exceptions);
+
+        violations.ShouldContain(violation => violation.Contains(
+            "exact action-group exception file is missing",
+            StringComparison.Ordinal));
+        violations.ShouldContain(violation => violation.Contains(
+            "Services/BundleOwner.cs",
+            StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void OrganizationGuard_ThemeChangedActionOutsideThemeActions_MustBeSealed()
+    {
+        const string path = "State/Example/ExampleActions.cs";
+        SourceFile[] sources =
+        [
+            new(
+                path,
+                "namespace Hexalith.FrontComposer.Shell.State.Example;\n"
+                + "public record ThemeChangedAction;\n"
+                + "public sealed record ExampleHydratingAction;"),
+        ];
+        Dictionary<string, string[]> exceptions = new(StringComparer.Ordinal)
+        {
+            [path] = ["ThemeChangedAction", "ExampleHydratingAction"],
+        };
+
+        FindOrganizationViolations(sources, exceptions).ShouldContain(
+            violation => violation.Contains(path, StringComparison.Ordinal)
+                && violation.Contains("ThemeChangedAction", StringComparison.Ordinal)
+                && violation.Contains("sealed", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void DeclarationManifest_MalformedRow_IsReported()
+    {
+        List<string> violations = FindManifestShapeViolations(
+        [
+            "Services/Example.cs|Hexalith.FrontComposer.Shell.Services.Example|class|public",
+            "Services/Example.cs|Hexalith.FrontComposer.Shell.Services.Example|class|public|public sealed|extra",
+        ]);
+
+        violations.ShouldContain(violation => violation.Contains(
+            "exactly 5 pipe-separated fields",
+            StringComparison.Ordinal));
+        violations.Count.ShouldBe(2);
+    }
+
     private static void AssertSyntheticViolation(
         IReadOnlyList<SourceFile> sources,
         string expectedPath,
@@ -577,7 +669,13 @@ public sealed class ShellTypeOrganizationGovernanceTests
 
             foreach (DirectDeclaration declaration in declarations)
             {
-                string expectedModifiers = declaration.Name == "ThemeChangedAction" ? "public" : "public sealed";
+                // ThemeChangedAction is intentionally non-sealed only in ThemeActions.cs
+                // (AC3). A name-global special case would let any allowlisted action file
+                // host a non-sealed ThemeChangedAction and stay green.
+                string expectedModifiers = path == "State/Theme/ThemeActions.cs"
+                    && declaration.Name == "ThemeChangedAction"
+                        ? "public"
+                        : "public sealed";
                 if (!declaration.Name.EndsWith("Action", StringComparison.Ordinal)
                     || declaration.Kind != "record"
                     || declaration.Accessibility != "public"
@@ -895,6 +993,28 @@ public sealed class ShellTypeOrganizationGovernanceTests
         return violations;
     }
 
+    private static List<string> FindManifestShapeViolations(IEnumerable<string> lines)
+    {
+        List<string> violations = [];
+        foreach (string line in lines)
+        {
+            string trimmed = line.Trim();
+            if (trimmed.Length == 0)
+            {
+                continue;
+            }
+
+            string[] parts = trimmed.Split('|');
+            if (parts.Length != 5)
+            {
+                violations.Add(
+                    $"manifest row must have exactly 5 pipe-separated fields: {trimmed}");
+            }
+        }
+
+        return violations;
+    }
+
     private static string ManifestChecksum()
     {
         // Normalize line endings so the seal survives CRLF/LF checkout differences and
@@ -905,13 +1025,21 @@ public sealed class ShellTypeOrganizationGovernanceTests
     }
 
     private static DeclarationPin[] ParseDeclarationPins()
-        =>
+    {
+        string[] lines = TargetDeclarationManifest.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        List<string> shapeViolations = FindManifestShapeViolations(lines);
+        if (shapeViolations.Count > 0)
+        {
+            throw new InvalidOperationException(string.Join("; ", shapeViolations));
+        }
+
+        return
         [
-            .. TargetDeclarationManifest.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .. lines
                 .Select(line => line.Trim().Split('|'))
                 .Select(parts => new DeclarationPin(parts[0], parts[1], parts[2], parts[3], parts[4])),
         ];
-
+    }
     private static string RuntimeKind(Type type)
     {
         if (type.IsEnum)

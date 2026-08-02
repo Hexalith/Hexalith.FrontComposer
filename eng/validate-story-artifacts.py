@@ -157,11 +157,21 @@ NEGATION_PREFIXES = (
 )
 
 
+# Irregular simple-past / past-participle forms for ACTION_VERBS / CREATION_VERBS.
+# Regular past is derived in verb_alternation; only non-regular stems belong here.
+_IRREGULAR_PAST = {
+    "split": ("split",),
+    "write": ("wrote", "written"),
+}
+
+
 def verb_alternation(verbs: tuple[str, ...]) -> str:
-    """Alternation covering each verb and its third-person form.
+    """Alternation covering each verb, third-person, and simple past / past participle.
 
     Suppression must not depend on which conjugation the author happened to write, and a
-    bare `s?` quantifier cannot form `modifies` or `touches`.
+    bare `s?` quantifier cannot form `modifies` or `touches`. Past tense matters too:
+    `created` / `updated` must not evade creation-claim strictness or the preserve-clause
+    exception that `create` / `update` already hit.
     """
     forms: set[str] = set()
     for verb in verbs:
@@ -172,6 +182,14 @@ def verb_alternation(verbs: tuple[str, ...]) -> str:
             forms.add(verb + "es")
         else:
             forms.add(verb + "s")
+        if verb in _IRREGULAR_PAST:
+            forms.update(_IRREGULAR_PAST[verb])
+        elif verb.endswith("e"):
+            forms.add(verb + "d")
+        elif verb.endswith("y") and verb[-2:-1] not in "aeiou":
+            forms.add(verb[:-1] + "ied")
+        else:
+            forms.add(verb + "ed")
     return "|".join(sorted(forms, key=lambda form: (-len(form), form)))
 
 
@@ -695,12 +713,20 @@ def usable_classified_paths(root: Path, classified: dict[str, str], changed: set
     natural way (`references/Hexalith.Builds/`) must cover the same paths as without.
     """
     usable: set[str] = set()
+    tracked = tracked_files(root)
     for entry in classified:
         path = entry.strip().rstrip("/")
         if not path or path == ".":
             continue
-        if "/" not in path and (root / path).is_dir():
-            continue
+        # Bare top-level names that cover nested paths are refused. Do not depend on
+        # working-tree is_dir() alone: a deleted checkout of `src` while `src/...` remains
+        # tracked must still refuse a bare `src` classification.
+        if "/" not in path:
+            covers_nested = tracked is not None and path not in tracked and any(
+                tracked_path.startswith(path + "/") for tracked_path in tracked
+            )
+            if covers_nested or (root / path).is_dir():
+                continue
         if path in changed or path_is_tracked(path, root):
             usable.add(path)
     return usable

@@ -44,6 +44,20 @@ _PROFILE_KEYS = frozenset({
     "selected_catalog_required_packages",
 })
 
+# Every owner_checks key evaluate_semantics understands. A typo such as
+# `no_package_version_row` would otherwise leave `.get(...)` returning None while
+# validate still reports ok: true — the same vacuous-check defect profile keys close.
+_OWNER_CHECK_KEYS = frozenset({
+    "bom_crlf_on_selected_catalog",
+    "guarded_imports",
+    "no_inline_versions_in_tracked_files",
+    "no_local_override_for_selected_catalog_packages",
+    "no_minver",
+    "no_package_version_rows",
+    "override_not_enabled",
+    "well_formed_project_root",
+})
+
 
 class GraphError(Exception):
     """Raised for any fail-closed condition during collection or semantic evaluation."""
@@ -236,6 +250,11 @@ def _owner_edges(
         identity = normalize_identity(fields["url"], f"{owner_identity}@{commit} .gitmodules[{name}]")
         # fail closed on any identity the policy does not already trust (AD-3/AD-12)
         resolve_local_path(policy, identity, root_dir)
+        if path in path_to_identity:
+            raise GraphError(
+                f"{owner_identity}@{commit}: duplicate .gitmodules path {path!r} "
+                f"(entries map to {path_to_identity[path]!r} and {identity!r})"
+            )
         path_to_identity[path] = identity
 
     declared_paths = {fields["path"] for fields in modules.values() if "path" in fields}
@@ -442,13 +461,19 @@ def _check_attr(local_path: Path, relative_path: str, attribute: str) -> str:
 
 
 def assert_builds_checkout_format_policy(builds_local: Path, context: str) -> None:
-    """Root-only BOM/CRLF + gitattributes format policy, ported as-is from the pre-GOV-1
-    test. Deliberately reads the checked-out working tree rather than a committed-object
-    blob: eol=crlf only rewrites bytes on checkout, so the raw commit object for a
-    catalog can legitimately carry bare LF (a known, separately tracked upstream
-    Hexalith.Builds formatting issue) while every local checkout still renders CRLF.
+    """Root-only BOM/CRLF + gitattributes format policy on the local Builds checkout.
+
+    Deliberately reads the checked-out working tree rather than a committed-object blob.
+    `eol=crlf` only rewrites bytes on checkout, so the raw commit object for a catalog can
+    legitimately carry bare LF (a known, separately tracked upstream Hexalith.Builds
+    formatting issue) while every local checkout still renders CRLF. Property and package
+    asserts on the same Builds-selector edge use `read_blob(..., edge["commit"], ...)` for
+    provenance; this check answers a different question — “is this machine’s Builds
+    checkout safe to consume under the catalog-only format policy?” — and must not be
+    read as blob provenance. Edge context strings that name `Builds@<commit>` therefore
+    describe which selector triggered the checkout check, not which blob was byte-scanned.
     Dev Notes call this out as remaining "a local format policy unless separately
-    generalized" — it stays scoped to the local checkout, not graph provenance.
+    generalized"; it stays scoped to the local checkout, not graph provenance.
     """
     catalog_relative = "Props/Directory.Packages.props"
     if _check_attr(builds_local, catalog_relative, "text") != "set":
@@ -572,67 +597,86 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
             raise GraphError(f"{owner_identity}: unknown semantic profile {profile_name!r}")
 
         owner_local = resolve_local_path(policy, owner_identity, root_dir)
-        owner_commit = owner_edges[0]["owner_commit"]
         owner_checks = profile.get("owner_checks", {})
-
-        own_blob = read_blob(owner_local, owner_commit, "Directory.Packages.props", limits["max_catalog_blob_bytes"], f"{owner_identity}@{owner_commit}")
-        own_xml = parse_project_xml(own_blob, f"{owner_identity}@{owner_commit} Directory.Packages.props") if own_blob is not None else None
-
-        if owner_checks.get("no_package_version_rows"):
-            if own_xml is None:
-                raise GraphError(f"{owner_identity}@{owner_commit}: missing Directory.Packages.props")
-            if list(own_xml.iter("PackageVersion")):
-                raise GraphError(f"{owner_identity}@{owner_commit}: root Directory.Packages.props must be an import shim owning no PackageVersion rows")
-
-        if owner_checks.get("well_formed_project_root"):
-            if own_xml is None:
-                raise GraphError(f"{owner_identity}@{owner_commit}: missing Directory.Packages.props")
-            if own_xml.tag != "Project":
-                raise GraphError(f"{owner_identity}@{owner_commit}: Directory.Packages.props must have a Project root")
-
-        if owner_checks.get("override_not_enabled") and own_xml is not None:
-            assert_override_not_enabled(own_xml, f"{owner_identity}@{owner_commit}")
-
-        if owner_checks.get("no_minver"):
-            build_props_blob = read_blob(owner_local, owner_commit, "Directory.Build.props", limits["max_catalog_blob_bytes"], f"{owner_identity}@{owner_commit}")
-            if build_props_blob is not None:
-                build_props_xml = parse_project_xml(build_props_blob, f"{owner_identity}@{owner_commit} Directory.Build.props")
-                assert_no_minver(build_props_xml, f"{owner_identity}@{owner_commit} Directory.Build.props")
-
-        guarded = owner_checks.get("guarded_imports")
-        if guarded:
-            if own_xml is None:
-                raise GraphError(f"{owner_identity}@{owner_commit}: missing Directory.Packages.props")
-            assert_guarded_imports(own_xml, guarded, f"{owner_identity}@{owner_commit} Directory.Packages.props")
-
-        inline = owner_checks.get("no_inline_versions_in_tracked_files")
-        if inline:
-            assert_no_inline_versions(owner_local, owner_commit, inline["extensions"], limits, f"{owner_identity}@{owner_commit}")
+        if not isinstance(owner_checks, dict):
+            raise GraphError(f"{owner_identity}: owner_checks must be an object")
 
         required_props = profile.get("selected_catalog_required_properties", {})
         required_packages = profile.get("selected_catalog_required_packages", {})
-        for edge in owner_edges:
-            catalog_xml, catalog_blob = load_catalog(edge["commit"])
-            edge_context = f"{owner_identity}@{owner_commit} -> {edge['path']} -> {builds_identity}@{edge['commit']}"
 
-            if owner_checks.get("bom_crlf_on_selected_catalog"):
-                builds_local = resolve_local_path(policy, builds_identity, root_dir)
-                assert_builds_checkout_format_policy(builds_local, edge_context)
+        # Each distinct owner_commit pin of this identity must run owner_checks against
+        # its own tree. Using only owner_edges[0] left later pins' shim/override/minver/
+        # inline state unchecked.
+        for owner_commit in sorted({edge["owner_commit"] for edge in owner_edges}):
+            commit_edges = [edge for edge in owner_edges if edge["owner_commit"] == owner_commit]
 
-            for prop_name, expected_value in required_props.items():
-                assert_selected_catalog_property(catalog_xml, prop_name, expected_value, edge_context)
+            own_blob = read_blob(owner_local, owner_commit, "Directory.Packages.props", limits["max_catalog_blob_bytes"], f"{owner_identity}@{owner_commit}")
+            own_xml = parse_project_xml(own_blob, f"{owner_identity}@{owner_commit} Directory.Packages.props") if own_blob is not None else None
 
-            for package_id, expected_version in required_packages.items():
-                assert_authoritative_package_version(catalog_xml, package_id, expected_version, edge_context)
-                if owner_checks.get("no_local_override_for_selected_catalog_packages") and own_xml is not None:
-                    if find_package_version_ops(own_xml, package_id):
-                        raise GraphError(
-                            f"{owner_identity}@{owner_commit}: must inherit {package_id} {expected_version} from the shared catalog without local override"
-                        )
+            if owner_checks.get("no_package_version_rows"):
+                if own_xml is None:
+                    raise GraphError(f"{owner_identity}@{owner_commit}: missing Directory.Packages.props")
+                if list(own_xml.iter("PackageVersion")):
+                    raise GraphError(f"{owner_identity}@{owner_commit}: root Directory.Packages.props must be an import shim owning no PackageVersion rows")
 
-            diagnostics.append(f"validated {edge_context} under profile {profile_name}")
+            if owner_checks.get("well_formed_project_root"):
+                if own_xml is None:
+                    raise GraphError(f"{owner_identity}@{owner_commit}: missing Directory.Packages.props")
+                if own_xml.tag != "Project":
+                    raise GraphError(f"{owner_identity}@{owner_commit}: Directory.Packages.props must have a Project root")
 
-    return {"selectors_validated": sum(len(v) for v in by_owner.values()), "diagnostics": diagnostics}
+            if owner_checks.get("override_not_enabled") and own_xml is not None:
+                assert_override_not_enabled(own_xml, f"{owner_identity}@{owner_commit}")
+
+            if owner_checks.get("no_minver"):
+                build_props_blob = read_blob(owner_local, owner_commit, "Directory.Build.props", limits["max_catalog_blob_bytes"], f"{owner_identity}@{owner_commit}")
+                if build_props_blob is None:
+                    raise GraphError(
+                        f"{owner_identity}@{owner_commit}: missing Directory.Build.props while no_minver is required"
+                    )
+                build_props_xml = parse_project_xml(build_props_blob, f"{owner_identity}@{owner_commit} Directory.Build.props")
+                assert_no_minver(build_props_xml, f"{owner_identity}@{owner_commit} Directory.Build.props")
+
+            guarded = owner_checks.get("guarded_imports")
+            if guarded:
+                if own_xml is None:
+                    raise GraphError(f"{owner_identity}@{owner_commit}: missing Directory.Packages.props")
+                assert_guarded_imports(own_xml, guarded, f"{owner_identity}@{owner_commit} Directory.Packages.props")
+
+            inline = owner_checks.get("no_inline_versions_in_tracked_files")
+            if inline:
+                assert_no_inline_versions(owner_local, owner_commit, inline["extensions"], limits, f"{owner_identity}@{owner_commit}")
+
+            for edge in commit_edges:
+                catalog_xml, catalog_blob = load_catalog(edge["commit"])
+                edge_context = f"{owner_identity}@{owner_commit} -> {edge['path']} -> {builds_identity}@{edge['commit']}"
+
+                if owner_checks.get("bom_crlf_on_selected_catalog"):
+                    builds_local = resolve_local_path(policy, builds_identity, root_dir)
+                    assert_builds_checkout_format_policy(
+                        builds_local,
+                        f"{edge_context} [Builds checkout format; not blob provenance]",
+                    )
+
+                for prop_name, expected_value in required_props.items():
+                    assert_selected_catalog_property(catalog_xml, prop_name, expected_value, edge_context)
+
+                for package_id, expected_version in required_packages.items():
+                    assert_authoritative_package_version(catalog_xml, package_id, expected_version, edge_context)
+                    if owner_checks.get("no_local_override_for_selected_catalog_packages") and own_xml is not None:
+                        if find_package_version_ops(own_xml, package_id):
+                            raise GraphError(
+                                f"{owner_identity}@{owner_commit}: must inherit {package_id} {expected_version} from the shared catalog without local override"
+                            )
+
+                diagnostics.append(f"validated {edge_context} under profile {profile_name}")
+
+    selectors_validated = sum(len(v) for v in by_owner.values())
+    if selectors_validated == 0:
+        raise GraphError(
+            "validate found no Builds-selector edges; semantic profiles were not exercised"
+        )
+    return {"selectors_validated": selectors_validated, "diagnostics": diagnostics}
 
 
 # ---------------------------------------------------------------------------
@@ -663,6 +707,16 @@ def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
                 f"policy profile {profile_name!r} has unknown keys {unknown}; "
                 f"expected only {sorted(_PROFILE_KEYS)}"
             )
+        owner_checks = profile.get("owner_checks")
+        if owner_checks is not None:
+            if not isinstance(owner_checks, dict):
+                raise GraphError(f"policy profile {profile_name!r}: owner_checks must be an object")
+            unknown_checks = sorted(set(owner_checks) - _OWNER_CHECK_KEYS)
+            if unknown_checks:
+                raise GraphError(
+                    f"policy profile {profile_name!r}: owner_checks has unknown keys {unknown_checks}; "
+                    f"expected only {sorted(_OWNER_CHECK_KEYS)}"
+                )
         for key in ("selected_catalog_required_properties", "selected_catalog_required_packages"):
             required = profile.get(key)
             if required is None:

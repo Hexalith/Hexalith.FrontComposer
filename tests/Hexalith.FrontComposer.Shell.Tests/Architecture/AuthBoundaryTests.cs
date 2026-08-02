@@ -108,6 +108,53 @@ public sealed class AuthBoundaryTests {
     }
 
     [Fact]
+    public void OrganizationManifest_AllowedLines_MatchLiveManifestAndCannotHideBannedFragments()
+    {
+        string path = Normalize(
+            "tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellTypeOrganizationGovernanceTests.cs");
+        string[] allowedLines = AllowedOrganizationManifestLines[path];
+        string[] bannedFragments =
+        [
+            "OpenIdConnect",
+            "OAuthOptions",
+            "OAuthCreatingTicketContext",
+            "Saml",
+            "GitHubOAuth",
+        ];
+
+        allowedLines.Length.ShouldBe(3);
+        foreach (string allowedLine in allowedLines)
+        {
+            allowedLine.ShouldContain("|");
+            foreach (string fragment in bannedFragments)
+            {
+                // A short allow entry that is a proper substring of a banned fragment (or
+                // equal to one) would strip real type usage during the AuthBoundary scan.
+                string.Equals(allowedLine, fragment, StringComparison.Ordinal).ShouldBeFalse();
+                fragment.Contains(allowedLine, StringComparison.Ordinal).ShouldBeFalse(
+                    customMessage: $"allow-list entry '{allowedLine}' must not be a substring of banned fragment '{fragment}'");
+            }
+        }
+
+        string root = FindRepositoryRoot();
+        string liveSource = File.ReadAllText(Path.Combine(root, path));
+        foreach (string allowedLine in allowedLines)
+        {
+            liveSource.ShouldContain(allowedLine);
+        }
+
+        // Short banned substring in the allow-list must still leave a synthetic leak visible.
+        string shortAllow = "OpenIdConnect";
+        string leaked = $"{shortAllow}\nOpenIdConnectOptions leaked = new();";
+        string afterShortStrip = leaked.Replace(shortAllow, string.Empty, StringComparison.Ordinal);
+        afterShortStrip.ShouldContain("Options leaked = new();");
+        // Prove today's allow-list does not behave like that short strip: after removing the
+        // three full manifest lines, a real OpenIdConnectOptions usage remains intact.
+        string filteredLive = RemoveAllowedSourceLiterals(path, $"{allowedLines[1]}\nOpenIdConnectOptions leaked = new();");
+        filteredLive.ShouldContain("OpenIdConnectOptions leaked = new();");
+    }
+
+    [Fact]
     public void AuthBridge_DoesNotWriteTokensToFrameworkStorage() {
         string root = FindRepositoryRoot();
         string[] authFiles = Directory.EnumerateFiles(

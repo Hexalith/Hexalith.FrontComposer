@@ -107,13 +107,20 @@ public sealed class CiGovernanceTests {
 
         stepBody.ShouldNotContain("continue-on-error: true");
 
-        // Story 11.17d code review (2026-08-01): the two catalog-compatibility facts in this
-        // gate shell out to eng/dependency_graph.py, whose own semantic rules -- the
-        // required-property and required-package checks -- are covered only by
+        // Story 11.17d code review (2026-08-01 / 2026-08-02): the two catalog-compatibility
+        // facts in this gate shell out to eng/dependency_graph.py, whose own semantic rules
+        // -- the required-property and required-package checks -- are covered only by
         // tests/eng/test_dependency_graph.py. That suite ran in no workflow, so the entire
-        // required-property loop could be deleted with every lane still green. Pin the step
-        // the way the release suppression lifecycle suite is pinned.
-        workflow.ShouldContain("python3 -m unittest tests/eng/test_dependency_graph.py");
+        // required-property loop could be deleted with every lane still green. Pin the named
+        // Gate 2b step itself (comment-stripped, step-scoped) and refuse an advisory posture
+        // on that block — a raw full-file ShouldContain would stay green on a YAML comment
+        // or a sibling job while the blocking step was gone or marked continue-on-error.
+        string stripped = StripYamlComments(workflow);
+        string dependencyGraphStep = ExtractNamedStep(
+            stripped,
+            "Gate 2b: Dependency graph semantic policy tests");
+        dependencyGraphStep.ShouldContain("python3 -m unittest tests/eng/test_dependency_graph.py");
+        dependencyGraphStep.ShouldNotContain("continue-on-error: true");
     }
 
     [Fact]

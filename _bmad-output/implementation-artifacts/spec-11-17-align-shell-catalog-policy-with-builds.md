@@ -9,28 +9,41 @@ context:
   - '_bmad-output/implementation-artifacts/epic-11-context.md'
 ---
 
-<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
+<frozen-after-approval reason="human-owned intent — renegotiated 2026-08-02 by Administrator (bmad-code-review group 4 Decision 2 option 1)">
 
 ## Intent
 
 **Problem:** FrontComposer `HEAD` selects Hexalith.Builds commit
-`e69891f67578c2f0dec1cd7d7eea113430d31077`, whose catalog defines
-`HexalithTenantsVersion` as `5.4.0`, while the FrontComposer semantic profile still expects `5.3.0`.
-The mismatch makes both catalog Governance facts fail and blocks Story 11.17d promotion.
+`e69891f67578c2f0dec1cd7d7eea113430d31077`, whose catalog advanced six Hexalith
+version properties FrontComposer restores through selected `PackageVersion` rows
+(notably `HexalithTenantsVersion` `5.3.0` → `5.4.0`), while the FrontComposer
+semantic profile still expected the prior catalog values (Tenants at `5.3.0`,
+and no pins for the other five consumed version properties). The mismatch makes
+catalog Governance facts fail and blocks Story 11.17d promotion.
 
-**Approach:** Align the FrontComposer-owned semantic policy with the already-selected catalog, then
-rerun the exact focused and promotion lanes. Use the existing fail-closed Governance facts as the
-regression coverage; they demonstrably fail before this policy correction.
+**Approach:** Align the FrontComposer-owned semantic policy
+(`frontcomposer-catalog-v1`) with the already-selected catalog for every version
+property FrontComposer actually consumes —
+`HexalithCommonsVersion`, `HexalithEventStoreVersion`, `HexalithMemoriesVersion`,
+`HexalithPartiesVersion`, `HexalithPolymorphicSerializationsVersion`, and
+`HexalithTenantsVersion` — then harden required-property evaluation
+(condition-awareness, diagnostics, fail-closed policy shape) and wire its suite
+into CI, and rerun the exact focused and promotion lanes. Use the existing
+fail-closed Governance facts as the regression coverage; they demonstrably fail
+before this policy correction. Exclude with recorded reason:
+`HexalithChatbotVersion` (no consumer in this repository) and
+`HexalithFrontComposerVersion` (self-version / release-owned).
 
 ## Boundaries & Constraints
 
 **Always:** Preserve the committed root dependency graph and all public/runtime behavior; keep the
 policy semantic rather than introducing a commit or catalog-fingerprint allowlist; preserve the
-unrelated untracked commitlint specification; record exact validation evidence in Story 11.17d.
+unrelated untracked commitlint specification; record exact validation evidence in Story 11.17d;
+pin exactly the six consumed version properties named above (not a blanket catalog fingerprint).
 
-**Ask First:** Any dependency/gitlink movement, package-version change outside the single semantic
-expectation, test relaxation, public API/baseline change, or correction broader than this diagnosed
-catalog mismatch.
+**Ask First:** Any dependency/gitlink movement, package-version change outside the selected-catalog
+alignment for those six properties, test relaxation, public API/baseline change, or correction
+broader than this diagnosed catalog mismatch and its authorized validator/CI hardening.
 
 **Never:** Edit `references/Hexalith.Builds`, initialize nested submodules, change central package
 versions, weaken or bypass Governance, modify `PublicAPI.FcTbl.Shipped.txt`, or claim Story 11.17d
@@ -40,8 +53,8 @@ promotion if any required lane fails.
 
 | Scenario | Input / State | Expected Output / Behavior | Error Handling |
 |----------|---------------|----------------------------|----------------|
-| Selected catalog matches policy | Root Builds commit exposes `HexalithTenantsVersion=5.4.0` | Dependency validation succeeds and retains all selector diagnostics | N/A |
-| Selected catalog drifts again | Catalog property is absent, duplicated, or differs from policy | Existing Governance validation fails with owner path, exact commit, property, expected value, and actual value | Fail closed; do not promote the story |
+| Selected catalog matches policy | Root Builds commit exposes the six pinned FrontComposer version properties at their selected values | Dependency validation succeeds and retains all selector diagnostics | N/A |
+| Selected catalog drifts again | Any pinned catalog property is absent, duplicated, or differs from policy | Existing Governance validation fails with owner path, exact commit, property, expected value, and actual value | Fail closed; do not promote the story |
 
 </frozen-after-approval>
 
@@ -59,7 +72,7 @@ promotion if any required lane fails.
 ## Tasks & Acceptance
 
 **Execution:**
-- [x] `eng/dependency-graph-policy.json` -- change only the FrontComposer profile's `HexalithTenantsVersion` expectation from `5.3.0` to `5.4.0` so policy matches the selected catalog.
+- [x] `eng/dependency-graph-policy.json` -- align `frontcomposer-catalog-v1` `selected_catalog_required_properties` for the six FrontComposer-consumed version properties (including `HexalithTenantsVersion` `5.3.0` → `5.4.0`) so policy matches the selected catalog.
 - [x] `eng/dependency_graph.py`, `tests/eng/test_dependency_graph.py`, and `tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs` -- retain the existing regression assertions and add non-redundant required-property match, missing, duplicate, and mismatch coverage with actionable diagnostics.
 - [x] `_bmad-output/implementation-artifacts/epic-11-context.md` and `_bmad-output/implementation-artifacts/deferred-work.md` -- correct the stale generated context and defer the pre-existing final architecture-seed drift to its owner.
 - [x] `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md` and `_bmad-output/implementation-artifacts/sprint-status.yaml` -- append exact gate evidence and move Story 11.17d to `review` only if every required gate passes.
@@ -87,6 +100,10 @@ promotion if any required lane fails.
   `load_policy` now fails closed on an unknown, non-object, or non-string profile shape; and
   `tests/eng/test_dependency_graph.py` was wired into Gate 2b and pinned in `CiGovernanceTests`,
   having previously run in no workflow. Suite 28 → 38 tests.
+- 2026-08-02 (`bmad-code-review` group 4): Administrator renegotiated the frozen Intent in-place to
+  the six-property consumed-version scope (Decision 2 option 1). Companion remains `done` for its
+  bounded remediation; parent Story 11.17d returned to `in-progress` after group 2/3/4 re-reviews and
+  still has AC6 open at the recorded 102/111 body census pending 111/111 or re-baseline.
 
 ## Verification
 
