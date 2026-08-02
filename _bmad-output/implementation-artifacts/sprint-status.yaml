@@ -487,7 +487,7 @@ development_status:
   # 11.18b moved review -> done on 2026-08-01 (bmad-code-review; all 12 patch findings applied, 3 pre-existing findings deferred, Release build passed with 0 warnings/errors, and the complete Shell project passed 2,385/2,385 tests.)
   11-18-warning-and-above-log-sites: done
   # 11.18c moved backlog -> ready-for-dev on 2026-07-15 (create-story; freeze and migrate command-lifecycle, projection-refresh, and polling hot paths before 11.18b residual ownership is finalized).
-  11-18-hot-path-log-sites: review
+  11-18-hot-path-log-sites: done
   # Story 11.19 is a nonimplementable decomposition parent; its queue state belongs only to 11.19a-d.
   # 11.19a moved backlog -> ready-for-dev on 2026-07-15 (create-story; CS1591 enforcement realignment).
   # 11.19a moved ready-for-dev -> in-progress on 2026-07-16 (dev-story).

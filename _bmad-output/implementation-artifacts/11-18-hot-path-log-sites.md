@@ -6,14 +6,14 @@ childStory: 11.18c
 parentStory: 11.18
 owner: Developer + Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
-status: review
+status: done
 implementationGate: post-correction-readiness-pass
 baseline_commit: 3356ae7e9758fc95d86bcccf8b485d9a497ace91
 ---
 
 # Story 11.18c: Hot-Path Log Sites
 
-Status: review.
+Status: done.
 
 ## Story
 
@@ -66,6 +66,18 @@ changing lifecycle or realtime behavior.
 - [x] Add allocation/enabled-check, event-contract, behavior, and support-safety tests.
 - [x] Publish the exact intentional low-severity remainder and 11.18b residual ledger.
 - [x] Run Release, focused, broad, Governance, artifact, and file-integrity validation.
+
+### Review Findings
+
+- [x] [Review][Decision] Accept AC3 telemetry-contract rewrite (digests + exception-type-only) — resolved: accept documented AC4/NFR-6 relaxation; keep digests and exception-type-only payloads.
+- [x] [Review][Patch] Digest LifecycleTransitionObserved CorrelationId/MessageId to match HotPath join keys [`src/Hexalith.FrontComposer.Shell/Services/Lifecycle/LifecycleStateService.cs:299`] — Decision 2: digest TransitionObserved too so HotPath and FrontComposerLog share one opaque CorrelationId.
+- [x] [Review][Patch] Allow `+` (nested types) in Category charset [`src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerHotPathLog.cs:541`]
+- [x] [Review][Patch] Unify Absent/absent sentinel casing between Category and Digest [`src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerHotPathLog.cs:537`]
+- [x] [Review][Patch] Distinguish identical Message templates for distinct EventIds 5716/5718 and 5720/5721 [`src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerHotPathLog.cs:648`]
+- [x] [Review][Patch] Zeroize Digest UTF-8/hash buffers like FrontComposerSecurityLog [`src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerHotPathLog.cs:550`]
+- [x] [Review][Patch] Pin Digest for allowlisted identifiers (ULID/ViewKey), not only sensitive samples [`tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerHotPathLogTests.cs:12`]
+- [x] [Review][Patch] Expand disabled-path allocation coverage beyond three wrappers [`tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerHotPathLogTests.cs:54`]
+- [x] [Review][Patch] Pin full EventId/Name/Level contracts for 5700–5780 like WarningLogTests [`tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerHotPathLogTests.cs:12`]
 
 ## Dev Notes
 
@@ -190,3 +202,4 @@ GPT-5 Codex
 
 - 2026-07-15: Materialized approved 11.18c child with semantic hot-path precedence and exact remainder requirements.
 - 2026-07-15: Implemented Story 11.18c, migrated 81 semantic hot-path sites to generated logging, froze the exact 127-call remainder, passed all gates, and moved the story to review.
+- 2026-08-02: Code review applied: TransitionObserved digests join HotPath; Category/`absent`/zeroize/template fixes; HotPathLogTests pin EventId contracts, allowlisted digests, and broader disabled-path allocation; story moved to done.

@@ -289,17 +289,18 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         // subscriber-initiated work (DOM dispatch, follow-on queries, etc.) nests correctly
         // under Activity.Current. The previous layout disposed the activity at method exit
         // but logically delimited the span around just the in-process transition.
-        // F09 — sanitize correlationId / messageId at the log boundary so trace tags and
-        // structured log fields share the same bounded format.
+        // F09 / 11.18c Decision 2 — digest CorrelationId / MessageId at the log boundary so
+        // TransitionObserved joins HotPath lifecycle events on the same opaque sha256 key.
         using Activity? activity = FrontComposerTelemetry.StartLifecycleTransition(
             applied.ToString(),
             correlationId,
             transition.MessageId,
             effectiveIdempotencyResolved);
+        // Join key with HotPath lifecycle events: same opaque sha256 digest (Decision 2).
         FrontComposerLog.LifecycleTransitionObserved(
             _logger,
-            FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
-            FrontComposerTelemetry.SafeIdentifier(transition.MessageId),
+            FrontComposerHotPathLog.DigestIdentifier(correlationId),
+            FrontComposerHotPathLog.DigestIdentifier(transition.MessageId),
             applied.ToString(),
             effectiveIdempotencyResolved);
 

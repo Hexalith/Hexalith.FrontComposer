@@ -529,17 +529,25 @@ internal static partial class FrontComposerHotPathLog
             Category(failureCategory));
     }
 
+    /// <summary>
+    /// Digests an identifier to the support-safe <c>sha256:</c> form used by hot-path and
+    /// lifecycle join keys. Null/whitespace becomes <c>absent</c>.
+    /// </summary>
+    internal static string DigestIdentifier(string? value) => Digest(value);
+
     private static string Category<T>(T value)
     {
         string? text = value?.ToString();
         if (string.IsNullOrWhiteSpace(text))
         {
-            return "Absent";
+            return "absent";
         }
 
         text = text.Trim();
+        // Allow nested (`+`) and generic (`` ` ``) CLR type-name characters so FailureCategory
+        // stays readable for nested/generic exceptions; mirror SanitizeBounded's `+` allowance.
         if (text.Length > 64 || text.Any(static character => !char.IsLetterOrDigit(character)
-            && character is not '.' and not '_' and not '-'))
+            && character is not '.' and not '_' and not '-' and not '+' and not '`'))
         {
             return Digest(text);
         }
@@ -554,8 +562,22 @@ internal static partial class FrontComposerHotPathLog
             return "absent";
         }
 
-        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(value.Trim()));
-        return $"sha256:{Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant()}";
+        byte[] bytes = Encoding.UTF8.GetBytes(value.Trim());
+        byte[]? hash = null;
+        try
+        {
+            hash = SHA256.HashData(bytes);
+            return $"sha256:{Convert.ToHexString(hash.AsSpan(0, 8)).ToLowerInvariant()}";
+        }
+        finally
+        {
+            if (hash is not null)
+            {
+                CryptographicOperations.ZeroMemory(hash);
+            }
+
+            CryptographicOperations.ZeroMemory(bytes);
+        }
     }
 
     [LoggerMessage(EventId = 5700, EventName = "LifecycleUnexpectedCorrelation", Level = LogLevel.Warning,
@@ -646,7 +668,7 @@ internal static partial class FrontComposerHotPathLog
 
     /// <summary>Emits the <c>HubClosedRestartDisposedSource</c> hot-path event.</summary>
     [LoggerMessage(EventId = 5718, EventName = "HubClosedRestartDisposedSource", Level = LogLevel.Warning,
-        Message = "EventStore projection hub closed-restart canceled during disposal. FailureCategory={FailureCategory}")]
+        Message = "EventStore projection hub closed-restart skipped because the source was disposed. FailureCategory={FailureCategory}")]
     public static partial void HubClosedRestartDisposedSource(ILogger logger, string failureCategory);
 
     /// <summary>Emits the <c>ProjectionReconnectRejoinGateUnavailable</c> hot-path event.</summary>
@@ -661,7 +683,7 @@ internal static partial class FrontComposerHotPathLog
 
     /// <summary>Emits the <c>ProjectionDisposalOperationCanceledByTimeout</c> hot-path event.</summary>
     [LoggerMessage(EventId = 5721, EventName = "ProjectionDisposalOperationCanceledByTimeout", Level = LogLevel.Warning,
-        Message = "EventStore projection subscription disposal operation timed out. Operation={Operation}, FailureCategory={FailureCategory}")]
+        Message = "EventStore projection subscription disposal operation was canceled by timeout. Operation={Operation}, FailureCategory={FailureCategory}")]
     public static partial void ProjectionDisposalOperationCanceledByTimeout(ILogger logger, string operation, string failureCategory);
 
     /// <summary>Emits the <c>ProjectionDisposalOperationFailed</c> hot-path event.</summary>
