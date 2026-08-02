@@ -121,6 +121,13 @@ jobs:
       - name: 'Gate 2b: Release suppression lifecycle tests'
         run: python3 -m unittest tests/eng/test_pack_release_packages.py
 
+      # The two catalog-compatibility Governance facts above shell out to
+      # eng/dependency_graph.py, whose own semantic rules are covered only by this suite.
+      # Without this step the required-property and required-package checks could be
+      # deleted or silenced with every lane still green.
+      - name: 'Gate 2b: Dependency graph semantic policy tests'
+        run: python3 -m unittest tests/eng/test_dependency_graph.py
+
       # Gate 2c: File-based consumer pacts for the FrontComposer/EventStore REST boundary.
       # This lane intentionally uses explicit root-declared submodule initialization above and
       # does not run recursive nested submodule initialization.

@@ -32,6 +32,18 @@ __version__ = "1.0.0"
 SCHEMA = "hexalith.dependency-graph.v1"
 POLICY_SCHEMA = "hexalith.dependency-graph-policy.v1"
 
+# A shared-catalog property may carry only the canonical "default it if unset" condition.
+_SELF_DEFAULT_CONDITION = re.compile(r"^\s*'\$\((?P<name>[A-Za-z_][A-Za-z0-9_]*)\)'\s*==\s*''\s*$")
+
+# Every key a semantic profile may declare. An unknown key -- a rename or a typo in
+# selected_catalog_required_properties, say -- would otherwise silently validate nothing,
+# so load_policy rejects it instead of defaulting the missing key to an empty mapping.
+_PROFILE_KEYS = frozenset({
+    "owner_checks",
+    "selected_catalog_required_properties",
+    "selected_catalog_required_packages",
+})
+
 
 class GraphError(Exception):
     """Raised for any fail-closed condition during collection or semantic evaluation."""
@@ -341,6 +353,45 @@ def _ancestors(el: ET.Element, parents: dict[ET.Element, ET.Element]) -> list[ET
     return chain
 
 
+def assert_selected_catalog_property(root: ET.Element, prop_name: str, expected_value: str, context: str) -> None:
+    """Assert the selected shared catalog defines prop_name exactly once, with expected_value.
+
+    The shared catalog declares every Hexalith version property in the canonical
+    self-default form Condition="'$(Name)' == ''", which resolves to the literal value
+    whenever the property is not already set. That exact shape is accepted. Any other
+    condition, a conditional ancestor, or selection through an MSBuild Choose branch is
+    rejected, because the effective value would then depend on evaluation state this
+    validator cannot observe -- the same rule assert_authoritative_package_version
+    applies to package rows.
+    """
+    matches = list(root.iter(prop_name))
+    if len(matches) != 1:
+        observed_values = [match.text or "" for match in matches]
+        observed = "<missing>" if not observed_values else repr(observed_values)
+        raise GraphError(
+            f"{context}: {prop_name} expected exactly one value {expected_value!r}, "
+            f"found {len(matches)} values {observed}"
+        )
+    element = matches[0]
+    parents = _parent_map(root)
+    ancestors = _ancestors(element, parents)
+    if any(node.tag in ("Choose", "When", "Otherwise") for node in ancestors):
+        raise GraphError(f"{context}: {prop_name} must not be selected through an MSBuild Choose branch")
+    if any(node.get("Condition") is not None for node in ancestors):
+        raise GraphError(f"{context}: {prop_name} must not be declared under a conditional group in the shared catalog")
+    condition = element.get("Condition")
+    if condition is not None:
+        match = _SELF_DEFAULT_CONDITION.match(condition)
+        if match is None or match.group("name") != prop_name:
+            raise GraphError(
+                f"{context}: {prop_name} must be unconditional or use the canonical self-default "
+                f"condition \"'$({prop_name})' == ''\", found {condition!r}"
+            )
+    observed_text = element.text or ""
+    if observed_text != expected_value:
+        raise GraphError(f"{context}: {prop_name} expected {expected_value!r}, found {observed_text!r}")
+
+
 def assert_authoritative_package_version(root: ET.Element, package_id: str, expected_version: str, context: str) -> None:
     ops = find_package_version_ops(root, package_id)
     if len(ops) != 1:
@@ -569,11 +620,7 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
                 assert_builds_checkout_format_policy(builds_local, edge_context)
 
             for prop_name, expected_value in required_props.items():
-                matches = list(catalog_xml.iter(prop_name))
-                if len(matches) != 1:
-                    raise GraphError(f"{edge_context}: expected exactly one {prop_name} property (found {len(matches)})")
-                if (matches[0].text or "") != expected_value:
-                    raise GraphError(f"{edge_context}: {prop_name} expected {expected_value!r}, found {matches[0].text!r}")
+                assert_selected_catalog_property(catalog_xml, prop_name, expected_value, edge_context)
 
             for package_id, expected_version in required_packages.items():
                 assert_authoritative_package_version(catalog_xml, package_id, expected_version, edge_context)
@@ -598,7 +645,35 @@ def load_policy(path: Path) -> dict[str, Any]:
         policy = json.loads(handle.read().decode("utf-8"))
     if policy.get("schema") != POLICY_SCHEMA:
         raise GraphError(f"policy schema mismatch: expected {POLICY_SCHEMA!r}, found {policy.get('schema')!r}")
+    assert_profiles_well_formed(policy)
     return policy
+
+
+def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
+    """Reject a profile whose shape would make a required check silently vacuous."""
+    profiles = policy.get("profiles")
+    if not isinstance(profiles, dict):
+        raise GraphError("policy profiles must be an object")
+    for profile_name, profile in profiles.items():
+        if not isinstance(profile, dict):
+            raise GraphError(f"policy profile {profile_name!r} must be an object")
+        unknown = sorted(set(profile) - _PROFILE_KEYS)
+        if unknown:
+            raise GraphError(
+                f"policy profile {profile_name!r} has unknown keys {unknown}; "
+                f"expected only {sorted(_PROFILE_KEYS)}"
+            )
+        for key in ("selected_catalog_required_properties", "selected_catalog_required_packages"):
+            required = profile.get(key)
+            if required is None:
+                continue
+            if not isinstance(required, dict):
+                raise GraphError(f"policy profile {profile_name!r}: {key} must be an object")
+            for name, expected in required.items():
+                if not isinstance(expected, str):
+                    raise GraphError(
+                        f"policy profile {profile_name!r}: {key}[{name!r}] must be a string, found {expected!r}"
+                    )
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

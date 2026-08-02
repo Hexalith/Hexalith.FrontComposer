@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import pathlib
 import subprocess
 import sys
@@ -370,6 +371,12 @@ REQUIRED_PACKAGE_PROFILE = {
     "selected_catalog_required_packages": {"Some.Package": "1.0.0"},
 }
 
+REQUIRED_PROPERTY_PROFILE = {
+    "owner_checks": {},
+    "selected_catalog_required_properties": {"SomeVersion": "1.0.0"},
+    "selected_catalog_required_packages": {},
+}
+
 
 class SemanticEvaluationTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -385,6 +392,57 @@ class SemanticEvaluationTests(unittest.TestCase):
             b"  </ItemGroup>\r\n"
             b"</Project>\r\n"
         )
+
+    def _catalog_with_properties(self, values: list[str]) -> bytes:
+        properties = b"".join(
+            b"    <SomeVersion>" + value.encode("ascii") + b"</SomeVersion>\r\n"
+            for value in values
+        )
+        return (
+            b"\xef\xbb\xbf<Project>\r\n  <PropertyGroup>\r\n"
+            + properties
+            + b"  </PropertyGroup>\r\n</Project>\r\n"
+        )
+
+    def _catalog_with_property_body(self, body: bytes) -> bytes:
+        """Build a catalog whose <Project> children are supplied verbatim.
+
+        Lets a case express the conditional, ancestor-conditional, and Choose shapes the
+        real shared catalog can take, which _catalog_with_properties cannot.
+        """
+        return b"\xef\xbb\xbf<Project>\r\n" + body + b"</Project>\r\n"
+
+    def _evaluate_required_property_catalog(self, catalog: bytes) -> dict:
+        fx = GraphFixture(self.tmp_path)
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        _owner, owner_commit = self._build(
+            fx,
+            "Owner",
+            catalog,
+            "required-property-profile",
+            REQUIRED_PROPERTY_PROFILE,
+        )
+        fx.link("Root", "references/Owner", "Owner", owner_commit)
+        root_commit = root.commit()
+        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        return dg.evaluate_semantics(root.root, fx.policy, envelope)
+
+    def _evaluate_required_property(self, values: list[str]) -> dict:
+        fx = GraphFixture(self.tmp_path)
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        _owner, owner_commit = self._build(
+            fx,
+            "Owner",
+            self._catalog_with_properties(values),
+            "required-property-profile",
+            REQUIRED_PROPERTY_PROFILE,
+        )
+        fx.link("Root", "references/Owner", "Owner", owner_commit)
+        root_commit = root.commit()
+        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        return dg.evaluate_semantics(root.root, fx.policy, envelope)
 
     def _build(self, fx: GraphFixture, owner_name: str, catalog_bytes: bytes, profile_name: str, profile: dict) -> tuple[TempGitRepo, str]:
         # one shared Builds repository per fixture (matching policy["builds_identity"] /
@@ -433,6 +491,100 @@ class SemanticEvaluationTests(unittest.TestCase):
         with self.assertRaises(dg.GraphError) as ctx:
             dg.evaluate_semantics(root.root, fx.policy, envelope)
         self.assertIn("Some.Package", str(ctx.exception))
+
+    def test_required_property_match_passes(self) -> None:
+        semantics = self._evaluate_required_property(["1.0.0"])
+        self.assertEqual(semantics["selectors_validated"], 1)
+
+    def test_required_property_missing_fails_with_actionable_diagnostic(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_required_property([])
+        message = str(ctx.exception)
+        self.assertIn("references/Builds", message)
+        self.assertIn("SomeVersion expected exactly one value '1.0.0'", message)
+        self.assertIn("found 0 values <missing>", message)
+
+    def test_required_property_duplicate_fails_with_actionable_diagnostic(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_required_property(["1.0.0", "2.0.0"])
+        message = str(ctx.exception)
+        self.assertIn("references/Builds", message)
+        self.assertIn("SomeVersion expected exactly one value '1.0.0'", message)
+        self.assertIn("found 2 values ['1.0.0', '2.0.0']", message)
+
+    def test_required_property_mismatch_fails_with_actionable_diagnostic(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_required_property(["2.0.0"])
+        message = str(ctx.exception)
+        self.assertIn("references/Builds", message)
+        self.assertIn("SomeVersion expected '1.0.0', found '2.0.0'", message)
+
+    # The real shared catalog declares every Hexalith version property as
+    # Condition="'$(Name)' == ''". That canonical self-default form must pass; any other
+    # condition, a conditional ancestor, or a Choose branch must be rejected, because the
+    # effective value would then depend on state this validator cannot observe.
+    def test_required_property_canonical_self_default_condition_passes(self) -> None:
+        catalog = self._catalog_with_property_body(
+            b"  <PropertyGroup>\r\n"
+            b"    <SomeVersion Condition=\"'$(SomeVersion)' == ''\">1.0.0</SomeVersion>\r\n"
+            b"  </PropertyGroup>\r\n"
+        )
+        semantics = self._evaluate_required_property_catalog(catalog)
+        self.assertEqual(semantics["selectors_validated"], 1)
+
+    def test_required_property_foreign_condition_is_rejected(self) -> None:
+        catalog = self._catalog_with_property_body(
+            b"  <PropertyGroup>\r\n"
+            b"    <SomeVersion Condition=\"'$(NeverSet)' == 'yes'\">1.0.0</SomeVersion>\r\n"
+            b"  </PropertyGroup>\r\n"
+        )
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_required_property_catalog(catalog)
+        self.assertIn("canonical self-default", str(ctx.exception))
+
+    def test_required_property_condition_naming_another_property_is_rejected(self) -> None:
+        catalog = self._catalog_with_property_body(
+            b"  <PropertyGroup>\r\n"
+            b"    <SomeVersion Condition=\"'$(OtherVersion)' == ''\">1.0.0</SomeVersion>\r\n"
+            b"  </PropertyGroup>\r\n"
+        )
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_required_property_catalog(catalog)
+        self.assertIn("canonical self-default", str(ctx.exception))
+
+    def test_required_property_under_conditional_group_is_rejected(self) -> None:
+        catalog = self._catalog_with_property_body(
+            b"  <PropertyGroup Condition=\"'$(NeverSet)' == 'yes'\">\r\n"
+            b"    <SomeVersion>1.0.0</SomeVersion>\r\n"
+            b"  </PropertyGroup>\r\n"
+        )
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_required_property_catalog(catalog)
+        self.assertIn("conditional group", str(ctx.exception))
+
+    def test_required_property_selected_through_choose_is_rejected(self) -> None:
+        catalog = self._catalog_with_property_body(
+            b"  <Choose>\r\n"
+            b"    <When Condition=\"'$(NeverSet)' == 'yes'\">\r\n"
+            b"      <PropertyGroup>\r\n"
+            b"        <SomeVersion>1.0.0</SomeVersion>\r\n"
+            b"      </PropertyGroup>\r\n"
+            b"    </When>\r\n"
+            b"  </Choose>\r\n"
+        )
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_required_property_catalog(catalog)
+        self.assertIn("Choose branch", str(ctx.exception))
+
+    def test_required_property_empty_element_reports_empty_string_not_none(self) -> None:
+        catalog = self._catalog_with_property_body(
+            b"  <PropertyGroup>\r\n    <SomeVersion />\r\n  </PropertyGroup>\r\n"
+        )
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_required_property_catalog(catalog)
+        message = str(ctx.exception)
+        self.assertIn("SomeVersion expected '1.0.0', found ''", message)
+        self.assertNotIn("None", message)
 
     def test_no_semantic_profile_mapping_fails_closed(self) -> None:
         fx = GraphFixture(self.tmp_path)
@@ -532,6 +684,56 @@ class CanonicalDigestTests(unittest.TestCase):
     def test_digest_is_sha256_of_canonical_bytes(self) -> None:
         payload = {"x": 1}
         self.assertEqual(dg.canonical_digest(payload), hashlib.sha256(dg.canonical_bytes(payload)).hexdigest())
+
+
+class PolicyShapeTests(unittest.TestCase):
+    """A profile whose shape would make a required check silently vacuous must fail closed.
+
+    Before these pins, `profile.get("selected_catalog_required_properties", {})` meant a
+    renamed or misspelled key validated nothing while `validate` still reported ok: true.
+    """
+
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp_path = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _load(self, profile: object) -> dict:
+        path = self.tmp_path / "policy.json"
+        path.write_text(
+            json.dumps({
+                "schema": dg.POLICY_SCHEMA,
+                "profiles": {"some-profile": profile},
+            }),
+            encoding="utf-8",
+        )
+        return dg.load_policy(path)
+
+    def test_known_profile_keys_load(self) -> None:
+        policy = self._load({
+            "owner_checks": {},
+            "selected_catalog_required_properties": {"SomeVersion": "1.0.0"},
+            "selected_catalog_required_packages": {},
+        })
+        self.assertEqual(
+            policy["profiles"]["some-profile"]["selected_catalog_required_properties"],
+            {"SomeVersion": "1.0.0"},
+        )
+
+    def test_misspelled_required_properties_key_fails_closed(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({"selected_catalog_required_propertys": {"SomeVersion": "1.0.0"}})
+        self.assertIn("unknown keys", str(ctx.exception))
+
+    def test_non_dict_required_properties_fails_closed(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({"selected_catalog_required_properties": ["SomeVersion"]})
+        self.assertIn("must be an object", str(ctx.exception))
+
+    def test_non_string_expected_value_fails_closed(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({"selected_catalog_required_properties": {"SomeVersion": 1.0}})
+        self.assertIn("must be a string", str(ctx.exception))
 
 
 if __name__ == "__main__":
