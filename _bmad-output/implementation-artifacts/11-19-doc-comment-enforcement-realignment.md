@@ -6,14 +6,14 @@ childStory: 11.19a
 parentStory: 11.19
 owner: Developer + Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
-status: review
+status: done
 implementationGate: post-correction-readiness-pass
 baseline_commit: 32db5c3460a4aa0ae6382ae9db36fa42e512ffd3
 ---
 
 # Story 11.19a: Doc-Comment Enforcement Realignment
 
-Status: review.
+Status: done.
 
 ## Story
 
@@ -55,6 +55,18 @@ so that public documentation policy matches what Release builds actually verify.
 - [x] Close in-scope XML-doc gaps without changing public signatures or behavior.
 - [x] Add non-vacuous config, source-set, and synthetic compile governance tests.
 - [x] Run Release/Contracts/Governance/docs/artifact validation and reconcile the File List.
+
+### Review Findings
+
+- [x] [Review][Patch] Synthetic CS1591 compile never exercises freeze-folder root files [tests/Hexalith.FrontComposer.Contracts.Tests/Architecture/Cs1591DocumentationPolicyTests.cs:133] — applied: each freeze scope now writes undocumented/documented specimens at both `{scope}/` root and `{scope}/Nested/`.
+- [x] [Review][Patch] Cancelled/hung synthetic `dotnet` builds leave orphan processes [tests/Hexalith.FrontComposer.Contracts.Tests/Architecture/Cs1591DocumentationPolicyTests.cs:243] — applied: linked 2-minute timeout plus `Kill(entireProcessTree: true)` on cancel.
+- [x] [Review][Patch] Anti-pattern CS1591 escape hatches are unpinned [tests/Hexalith.FrontComposer.Contracts.Tests/Architecture/Cs1591DocumentationPolicyTests.cs] — applied: effective `WarningsNotAsErrors`, root-owned `WarningsNotAsErrors` XML, `#pragma warning disable`, and CLI `/nowarn`/`-p:NoWarn` scans reject CS1591.
+- [x] [Review][Patch] Stale project-context still documents old CS1591 NoWarn posture [_bmad-output/project-context.md:79] — applied: guidance now matches scoped EditorConfig enforcement without compiler `1591` NoWarn.
+- [x] [Review][Defer] CA1707 EditorConfig suppressions ride in the review baseline delta [.editorconfig:70] — deferred, pre-existing (landed in `67154049`, owned by analyzer-policy/11.20 surface, not the 11.19a CS1591 commit).
+- [x] [Review][Defer] GetEditorConfigSection first-match ignores a later conflicting freeze section [tests/.../Cs1591DocumentationPolicyTests.cs:204] — deferred, pre-existing hardening gap; no duplicate freeze headers exist today.
+- [x] [Review][Defer] Malformed props/targets XML aborts the root-owned NoWarn scan mid-loop [tests/.../Cs1591DocumentationPolicyTests.cs:77] — deferred, pre-existing hardening; fail-fast leaves later files unchecked.
+- [x] [Review][Defer] Synthetic enforcement build covers only net10.0 [tests/.../Cs1591DocumentationPolicyTests.cs:121] — deferred, pre-existing coverage gap; EditorConfig is TFM-agnostic and effective NoWarn is already dual-TFM.
+- [x] [Review][Defer] sprint-status.yaml baseline delta includes unrelated story/REL churn [_bmad-output/implementation-artifacts/sprint-status.yaml] — deferred, pre-existing concurrent-work absorption (rel-1 `superseded`→`backlog`, REL-AI-1 freeze text vs `rel-4: review`); not an 11.19a policy defect.
 
 ## Dev Notes
 
@@ -141,6 +153,9 @@ GPT-5 Codex
 
 - `_bmad-output/implementation-artifacts/11-19-doc-comment-enforcement-realignment.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/project-context.md`
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`
 - `.editorconfig`
 - `src/Directory.Build.props`
 - `src/Hexalith.FrontComposer.Contracts/Rendering/FrontComposerRenderContract.cs`
@@ -151,3 +166,4 @@ GPT-5 Codex
 
 - 2026-07-15: Materialized approved 11.19a child from the live inert-CS1591 configuration.
 - 2026-07-16: Activated scoped CS1591 enforcement, documented the bounded rendering-contract gaps, added non-vacuous Governance coverage, and passed all completion gates.
+- 2026-08-02: Code review applied four patches (root-path synthetic specimens, process kill/timeout, escape-hatch pins, project-context correction) and re-sealed the analyzer-policy test inventory; promoted to done.

@@ -2005,3 +2005,21 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
   summary: Gate 2b / CI advisory pins match only the literal `continue-on-error: true` spelling.
   evidence: `CiGovernanceTests` repo-wide pattern; alternate YAML booleans (`True`, `yes`, `on`, compacted form) would keep the new step-scoped fact green. Pre-existing pin style. Reopen trigger: pins normalize YAML boolean forms, or the workflow schema forbids non-canonical spellings.
+
+## Deferred from: code review of 11-19-doc-comment-enforcement-realignment (2026-08-02)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-19-doc-comment-enforcement-realignment.md`
+  summary: CA1707 EditorConfig suppressions for `tests/**.cs` and `FcDiagnosticIds.cs` appear in the 11.19a baseline-to-HEAD delta but were landed later in `67154049` (analyzer-policy / Story 11.20 surface), not the CS1591 realignment commit.
+  evidence: `.editorconfig` CA1707 blocks between CS1591 default and freeze scopes. Reopen trigger: 11.20/AnalyzerPolicyGovernance owns or rejects those suppressions explicitly.
+- source_spec: `_bmad-output/implementation-artifacts/11-19-doc-comment-enforcement-realignment.md`
+  summary: `GetEditorConfigSection` uses first `IndexOf` and would miss a later section that re-disables CS1591 for the same freeze header.
+  evidence: `Cs1591DocumentationPolicyTests.GetEditorConfigSection`. Reopen trigger: last-match or multi-section conflict assertion is added.
+- source_spec: `_bmad-output/implementation-artifacts/11-19-doc-comment-enforcement-realignment.md`
+  summary: Root-owned NoWarn scan aborts the whole loop if one `.props`/`.targets`/`.csproj` fails XML parse.
+  evidence: `ContractsDocumentationPolicy_RootOwnedNoWarnEntries_ExcludeCs1591` `XDocument.Load` without per-file catch. Reopen trigger: per-file fail-closed assert continues the scan.
+- source_spec: `_bmad-output/implementation-artifacts/11-19-doc-comment-enforcement-realignment.md`
+  summary: Synthetic CS1591 positive/negative compile proves only `net10.0`, not `netstandard2.0`.
+  evidence: `ContractsDocumentationPolicy_SyntheticBuilds_EnforceEveryScopeOnly` project TFM. Reopen trigger: dual-TFM synthetic build or documented rationale that EditorConfig+compiler behavior is TFM-identical for CS1591.
+- source_spec: `_bmad-output/implementation-artifacts/11-19-doc-comment-enforcement-realignment.md`
+  summary: Baseline-scoped review diff of `sprint-status.yaml` absorbs unrelated story/REL status churn (including rel-1 `superseded`→`backlog` and REL-AI-1 freeze-control text that disagrees with `rel-4: review`).
+  evidence: `_bmad-output/implementation-artifacts/sprint-status.yaml` in 32db5c34..HEAD File List delta. Reopen trigger: status ledger reconciliation story or a re-baselined 11.19a File List that excludes foreign sprint churn.

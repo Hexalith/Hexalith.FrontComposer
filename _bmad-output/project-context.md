@@ -76,11 +76,13 @@ _This file contains critical rules and patterns that AI agents must follow when 
   private fields, **`Async` suffix** on async methods
 - **ULIDs, never GUIDs** for `messageId`/`correlationId` — generate via the `IUlidFactory`
   abstraction (NUlid), not `Guid.NewGuid()`; don't `Guid.TryParse` these fields
-- **XML docs:** `GenerateDocumentationFile=true`, **but the doc-comment warnings (0419, 1570–1574,
-  1591, 1734) are `NoWarn`'d repo-wide** in `src/Directory.Build.props` — missing docs do **not**
-  break the build today. They ARE expected on public-API surfaces (`Contracts/{Attributes,
-  Rendering,Mcp,Conformance}`, where `.editorconfig` re-raises CS1591 to `warning`) because that's
-  public API freeze targets; owned `PublicAPI*.Shipped.txt` baselines pin strict public surfaces
+- **XML docs:** `GenerateDocumentationFile=true`. Compiler `NoWarn` in `src/Directory.Build.props`
+  still suppresses 0419/1570/1572/1573/1574/1734, but **not** `1591`. Default `.editorconfig`
+  sets `CS1591=none`; the four Contracts freeze globs (`Attributes`, `Rendering`, `Mcp`,
+  `Conformance` with `**.cs`) set `CS1591=warning`, which fails Release builds under
+  `TreatWarningsAsErrors=true`. Do not re-add `1591` to `NoWarn`, `WarningsNotAsErrors`, CLI
+  `/nowarn`, or a broad `#pragma warning disable`. Owned `PublicAPI*.Shipped.txt` baselines pin
+  strict public surfaces
 - **Contracts kernel guard:** do not add new net10/Blazor/FluentUI dependencies to the `Contracts`
   kernel. Blazor/Fluent rendering contracts belong in Contracts.UI, keeping both Contracts targets
   and the netstandard2.0 analyzer build clean
