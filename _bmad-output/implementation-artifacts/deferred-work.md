@@ -1986,6 +1986,22 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
   summary: `baseline_commit` remains `0a84e818` despite repeated foreign-absorption and ~40–122 commit staleness warnings across review chunks.
   evidence: Frontmatter still pins `0a84e818` while review text and validator File List class repeatedly note that diffs absorb concurrent Story 11.18 and other foreign work. Re-baselining is a process action, not a docs-only patch. Reopen trigger: a dated Administrator decision to move `baseline_commit` past the contaminating range, or the next promotion measurement that requires a clean identity census.
+  resolution: Closed 2026-08-02 chunk C — Administrator Decision 1 updated frontmatter `baseline_commit` to `32db5c3460a4aa0ae6382ae9db36fa42e512ffd3` (post-11.18 tip / latest 111-target touch).
 - source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
   summary: Committed catalog pins are mutation-blind to Governance/synthetic suites — emptying `selected_catalog_required_*` still passes shape checks and profile-visit diagnostics.
   evidence: Group 3 deferred this as "already recorded", but no prior `deferred-work.md` entry matched. Live facts assert profile visit / shape, not pin contents. Owner: GOV-1 / dependency-graph maintainers. Reopen trigger: Governance or synthetic suite asserts non-empty pin contents against the selected catalog, or the profile schema gains a fail-closed content seal.
+
+## Deferred from: code review of 11-17-shell-bundle-split (2026-08-02, AC6 promotion chunk C)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+  summary: Analyzer-policy ledger re-seal remains an opaque SHA paste with narrative-only token provenance.
+  evidence: Chunk C lands `6221→6226` / new `testInventorySha256` beside five new underscore-bearing facts without an inventory dump or delta assertion of which tokens moved. Same paste-back failure mode prior reviews deferred. Reopen trigger: ledger seal includes a mutation-verified token delta, or Governance pins the exact added identifiers.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+  summary: Story-artifact unit suite still unwired from Gate 2b while promotion cites its green counts.
+  evidence: Already recorded in group 3; resurfaced because Chunk C adds suite coverage and cites 51/49/2 as promotion evidence while `quality.yml` Gate 2b still runs only dependency-graph / pack-release. Reopen trigger: `eng/tests/test_validate_story_artifacts.py` is wired into CI, or promotion evidence stops citing the unwired suite.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+  summary: Past-tense irregular-verb table covers only `split`/`write`; future ACTION_VERBS additions stay brittle.
+  evidence: `eng/validate-story-artifacts.py` `_IRREGULAR_PAST`. Pre-existing incomplete hardening surfaced again in Chunk C. Reopen trigger: table is generated from / pinned against the full ACTION_VERBS+CREATION_VERBS set, or irregular stems are rejected at vocabulary-edit time.
+- source_spec: `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md`
+  summary: Gate 2b / CI advisory pins match only the literal `continue-on-error: true` spelling.
+  evidence: `CiGovernanceTests` repo-wide pattern; alternate YAML booleans (`True`, `yes`, `on`, compacted form) would keep the new step-scoped fact green. Pre-existing pin style. Reopen trigger: pins normalize YAML boolean forms, or the workflow schema forbids non-canonical spellings.

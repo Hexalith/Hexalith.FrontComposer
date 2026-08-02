@@ -102,8 +102,11 @@ promotion if any required lane fails.
   having previously run in no workflow. Suite 28 → 38 tests.
 - 2026-08-02 (`bmad-code-review` group 4): Administrator renegotiated the frozen Intent in-place to
   the six-property consumed-version scope (Decision 2 option 1). Companion remains `done` for its
-  bounded remediation; parent Story 11.17d returned to `in-progress` after group 2/3/4 re-reviews and
-  still has AC6 open at the recorded 102/111 body census pending 111/111 or re-baseline.
+  bounded remediation; parent Story 11.17d was then returned to `in-progress` after group 2/3/4
+  re-reviews with AC6 open at the recorded 102/111 body census.
+- 2026-08-02 (`bmad-code-review` chunk C): parent formally re-baselined `baseline_commit` to
+  `32db5c3460a4aa0ae6382ae9db36fa42e512ffd3` and closed AC6 at **111/111** against that baseline.
+  Parent promotion evidence records default **4,211/4,211** and Governance **375/375**.
 
 ## Verification
 
@@ -111,7 +114,7 @@ promotion if any required lane fails.
 - `python3 -m unittest discover -s tests/eng -p 'test_dependency_graph.py' -v` -- expected: all dependency-graph unit tests pass.
 - `python3 eng/dependency_graph.py --root . validate --commit 628414061366d703e944131f00fc86197ffda718` -- expected: `ok: true` and all 7 selectors validated. **Caveat (2026-08-01 code review):** `load_policy` reads `eng/dependency-graph-policy.json` from the **working tree**, not from the named commit, so this command reproduces `ok: true` only where the policy edit is present. On a clean checkout of `62841406` it fails, which is why the promotion must be measured at a revision that commits the policy.
 - `DiffEngine_Disabled=true ./tests/Hexalith.FrontComposer.Shell.Tests/bin/Release/net10.0/Hexalith.FrontComposer.Shell.Tests -class Hexalith.FrontComposer.Shell.Tests.Governance.InfrastructureGovernanceTests -parallel none` -- expected: all facts pass, including both previously red catalog facts.
-- The exact serialized restore/build, direct focused, direct eight-project default/Governance, package, artifact, and `git diff --check` command blocks in `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md` -- expected: 0 build warnings/errors, 4,206/4,206 default, 370/370 Governance, package artifacts emitted, and every remaining gate passes.
+- The exact serialized restore/build, direct focused, direct eight-project default/Governance, package, artifact, and `git diff --check` command blocks in `_bmad-output/implementation-artifacts/11-17-shell-bundle-split.md` -- expected: 0 build warnings/errors; after the 2026-08-02 AC6 re-baseline completion pass, default **4,211/4,211** and Governance **375/375** (earlier companion measurement at `65e7d8fb` was 4,206/4,206 and 370/370).
 
 ## Suggested Review Order
 

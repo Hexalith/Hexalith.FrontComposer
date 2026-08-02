@@ -58,6 +58,21 @@ _OWNER_CHECK_KEYS = frozenset({
     "well_formed_project_root",
 })
 
+# Boolean owner_checks are truthy flags. Object-shaped checks carry nested configuration
+# and must not accept `true` / `{}` / wrong types that evaluate would TypeError or skip.
+_OWNER_CHECK_BOOLEAN_KEYS = frozenset({
+    "bom_crlf_on_selected_catalog",
+    "no_local_override_for_selected_catalog_packages",
+    "no_minver",
+    "no_package_version_rows",
+    "override_not_enabled",
+    "well_formed_project_root",
+})
+_OWNER_CHECK_OBJECT_KEYS = frozenset({
+    "guarded_imports",
+    "no_inline_versions_in_tracked_files",
+})
+
 
 class GraphError(Exception):
     """Raised for any fail-closed condition during collection or semantic evaluation."""
@@ -717,6 +732,31 @@ def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
                     f"policy profile {profile_name!r}: owner_checks has unknown keys {unknown_checks}; "
                     f"expected only {sorted(_OWNER_CHECK_KEYS)}"
                 )
+            for check_name, check_value in owner_checks.items():
+                if check_name in _OWNER_CHECK_BOOLEAN_KEYS and not isinstance(check_value, bool):
+                    raise GraphError(
+                        f"policy profile {profile_name!r}: owner_checks[{check_name!r}] must be a boolean, "
+                        f"found {check_value!r}"
+                    )
+                if check_name in _OWNER_CHECK_OBJECT_KEYS:
+                    if not isinstance(check_value, dict):
+                        raise GraphError(
+                            f"policy profile {profile_name!r}: owner_checks[{check_name!r}] must be an object, "
+                            f"found {check_value!r}"
+                        )
+                    if check_name == "no_inline_versions_in_tracked_files":
+                        extensions = check_value.get("extensions")
+                        if not isinstance(extensions, list) or not extensions or not all(
+                            isinstance(item, str) and item for item in extensions
+                        ):
+                            raise GraphError(
+                                f"policy profile {profile_name!r}: owner_checks[{check_name!r}].extensions "
+                                f"must be a non-empty list of strings, found {extensions!r}"
+                            )
+                    if check_name == "guarded_imports" and not check_value:
+                        raise GraphError(
+                            f"policy profile {profile_name!r}: owner_checks[{check_name!r}] must be a non-empty object"
+                        )
         for key in ("selected_catalog_required_properties", "selected_catalog_required_packages"):
             required = profile.get(key)
             if required is None:

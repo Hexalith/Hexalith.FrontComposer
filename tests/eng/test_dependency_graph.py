@@ -897,6 +897,41 @@ class PolicyShapeTests(unittest.TestCase):
             })
         self.assertIn("owner_checks must be an object", str(ctx.exception))
 
+    def test_owner_checks_boolean_value_must_be_bool(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({
+                "owner_checks": {"no_minver": "yes"},
+                "selected_catalog_required_properties": {},
+                "selected_catalog_required_packages": {},
+            })
+        self.assertIn("must be a boolean", str(ctx.exception))
+
+    def test_owner_checks_inline_versions_must_be_object_with_extensions(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({
+                "owner_checks": {"no_inline_versions_in_tracked_files": True},
+                "selected_catalog_required_properties": {},
+                "selected_catalog_required_packages": {},
+            })
+        self.assertIn("must be an object", str(ctx.exception))
+
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({
+                "owner_checks": {"no_inline_versions_in_tracked_files": {}},
+                "selected_catalog_required_properties": {},
+                "selected_catalog_required_packages": {},
+            })
+        self.assertIn("extensions", str(ctx.exception))
+
+    def test_owner_checks_guarded_imports_must_be_non_empty_object(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({
+                "owner_checks": {"guarded_imports": {}},
+                "selected_catalog_required_properties": {},
+                "selected_catalog_required_packages": {},
+            })
+        self.assertIn("must be a non-empty object", str(ctx.exception))
+
 
 if __name__ == "__main__":
     unittest.main()
