@@ -727,6 +727,10 @@ def usable_classified_paths(root: Path, classified: dict[str, str], changed: set
             )
             if covers_nested or (root / path).is_dir():
                 continue
+            # Without a tracked listing we cannot prove a bare name is not a nested-covering
+            # directory that vanished from the worktree; refuse unless it is a real file.
+            if tracked is None and not (root / path).is_file():
+                continue
         if path in changed or path_is_tracked(path, root):
             usable.add(path)
     return usable

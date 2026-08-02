@@ -122,7 +122,16 @@ public sealed class AuthBoundaryTests {
             "GitHubOAuth",
         ];
 
-        allowedLines.Length.ShouldBe(3);
+        // Seal the dictionary key set and the exact three lines — length + live substring
+        // alone stay green when a second path key or a decoy pipe-bearing line is added.
+        AllowedOrganizationManifestLines.Count.ShouldBe(1);
+        AllowedOrganizationManifestLines.Keys.ShouldBe([path]);
+        allowedLines.ShouldBe(
+        [
+            "Options/FrontComposerGitHubOAuthOptions.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerGitHubOAuthOptions|class|public|public sealed",
+            "Options/FrontComposerOpenIdConnectOptions.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerOpenIdConnectOptions|class|public|public sealed",
+            "Options/FrontComposerSaml2Options.cs|Hexalith.FrontComposer.Shell.Options.FrontComposerSaml2Options|class|public|public sealed",
+        ]);
         foreach (string allowedLine in allowedLines)
         {
             allowedLine.ShouldContain("|");

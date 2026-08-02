@@ -82,24 +82,76 @@ public sealed class ShellTypeOrganizationGovernanceTests
     {
         // AC3 freezes membership of the grandfathered exception set. Live-vs-map checks
         // alone stay green when a seventh path is added in lockstep with a new multi-type
-        // action file, or when the 38-identity census shrinks with its sources.
-        string[] expectedPaths =
-        [
-            "State/CapabilityDiscovery/CapabilityDiscoveryActions.cs",
-            "State/CommandPalette/CommandPaletteActions.cs",
-            "State/DataGridNavigation/GridViewHydratedAction.cs",
-            "State/Density/DensityActions.cs",
-            "State/Navigation/NavigationActions.cs",
-            "State/Theme/ThemeActions.cs",
-        ];
+        // action file, or when the 38-identity census shrinks with its sources. Path set
+        // plus cardinality alone also stay green when identities are swapped in lockstep
+        // with their sources — pin the exact ordered name arrays independently.
+        Dictionary<string, string[]> expected = new(StringComparer.Ordinal)
+        {
+            ["State/CapabilityDiscovery/CapabilityDiscoveryActions.cs"] =
+            [
+                "BadgeCountsSeededAction",
+                "BadgeCountChangedAction",
+                "CapabilityVisitedAction",
+                "SeenCapabilitiesHydratedAction",
+            ],
+            ["State/CommandPalette/CommandPaletteActions.cs"] =
+            [
+                "PaletteOpenedAction",
+                "PaletteClosedAction",
+                "PaletteQueryChangedAction",
+                "PaletteScopeChangedAction",
+                "PaletteResultsComputedAction",
+                "PaletteSelectionMovedAction",
+                "PaletteResultActivatedAction",
+                "RecentRouteVisitedAction",
+                "PaletteHydratedAction",
+                "PaletteHydratingAction",
+                "PaletteHydratedCompletedAction",
+            ],
+            ["State/DataGridNavigation/GridViewHydratedAction.cs"] =
+            [
+                "GridViewHydratedAction",
+                "DataGridNavigationHydratingAction",
+                "DataGridNavigationHydratedCompletedAction",
+            ],
+            ["State/Density/DensityActions.cs"] =
+            [
+                "DensityChangedAction",
+                "UserPreferenceChangedAction",
+                "UserPreferenceClearedAction",
+                "DensityHydratedAction",
+                "EffectiveDensityRecomputedAction",
+                "DensityHydratingAction",
+                "DensityHydratedCompletedAction",
+            ],
+            ["State/Navigation/NavigationActions.cs"] =
+            [
+                "SidebarToggledAction",
+                "NavGroupToggledAction",
+                "ViewportTierChangedAction",
+                "SidebarExpandedAction",
+                "NavigationHydratedAction",
+                "LastActiveRouteChangedAction",
+                "LastActiveRouteHydratedAction",
+                "StorageReadyAction",
+                "NavigationHydratingAction",
+                "NavigationHydratedCompletedAction",
+            ],
+            ["State/Theme/ThemeActions.cs"] =
+            [
+                "ThemeChangedAction",
+                "ThemeHydratingAction",
+                "ThemeHydratedCompletedAction",
+            ],
+        };
 
         ActionGroupExceptions.Count.ShouldBe(6);
         ActionGroupExceptions.Keys.OrderBy(path => path, StringComparer.Ordinal)
-            .ShouldBe(expectedPaths.OrderBy(path => path, StringComparer.Ordinal));
+            .ShouldBe(expected.Keys.OrderBy(path => path, StringComparer.Ordinal));
         ActionGroupExceptions.Sum(entry => entry.Value.Length).ShouldBe(38);
-        foreach (string[] names in ActionGroupExceptions.Values)
+        foreach ((string path, string[] expectedNames) in expected)
         {
-            names.Length.ShouldBeGreaterThan(0);
+            ActionGroupExceptions[path].ShouldBe(expectedNames);
         }
     }
 
@@ -605,16 +657,21 @@ public sealed class ShellTypeOrganizationGovernanceTests
     [Fact]
     public void DeclarationManifest_MalformedRow_IsReported()
     {
-        List<string> violations = FindManifestShapeViolations(
+        // Exercise the live fail-closed call site, not only the helper in isolation —
+        // otherwise deleting the shape check inside ParseDeclarationPins leaves this fact green.
+        string[] malformed =
         [
             "Services/Example.cs|Hexalith.FrontComposer.Shell.Services.Example|class|public",
             "Services/Example.cs|Hexalith.FrontComposer.Shell.Services.Example|class|public|public sealed|extra",
-        ]);
+            "   ",
+        ];
 
-        violations.ShouldContain(violation => violation.Contains(
-            "exactly 5 pipe-separated fields",
-            StringComparison.Ordinal));
-        violations.Count.ShouldBe(2);
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(
+            () => ParseDeclarationPins(malformed));
+
+        exception.Message.ShouldContain("exactly 5 pipe-separated fields");
+        exception.Message.ShouldContain("must not be whitespace-only");
+        FindManifestShapeViolations(malformed).Count.ShouldBe(3);
     }
 
     private static void AssertSyntheticViolation(
@@ -1001,6 +1058,12 @@ public sealed class ShellTypeOrganizationGovernanceTests
             string trimmed = line.Trim();
             if (trimmed.Length == 0)
             {
+                // Whitespace-only rows must not fall through to index-based pin construction.
+                if (line.Length > 0)
+                {
+                    violations.Add("manifest row must not be whitespace-only");
+                }
+
                 continue;
             }
 
@@ -1025,9 +1088,12 @@ public sealed class ShellTypeOrganizationGovernanceTests
     }
 
     private static DeclarationPin[] ParseDeclarationPins()
+        => ParseDeclarationPins(TargetDeclarationManifest.Split('\n', StringSplitOptions.RemoveEmptyEntries));
+
+    private static DeclarationPin[] ParseDeclarationPins(IEnumerable<string> lines)
     {
-        string[] lines = TargetDeclarationManifest.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        List<string> shapeViolations = FindManifestShapeViolations(lines);
+        string[] material = [.. lines];
+        List<string> shapeViolations = FindManifestShapeViolations(material);
         if (shapeViolations.Count > 0)
         {
             throw new InvalidOperationException(string.Join("; ", shapeViolations));
@@ -1035,8 +1101,10 @@ public sealed class ShellTypeOrganizationGovernanceTests
 
         return
         [
-            .. lines
-                .Select(line => line.Trim().Split('|'))
+            .. material
+                .Select(line => line.Trim())
+                .Where(trimmed => trimmed.Length > 0)
+                .Select(trimmed => trimmed.Split('|'))
                 .Select(parts => new DeclarationPin(parts[0], parts[1], parts[2], parts[3], parts[4])),
         ];
     }

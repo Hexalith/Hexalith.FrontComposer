@@ -1017,6 +1017,16 @@ class ClassifiedUnrelatedTests(unittest.TestCase):
 
             self.assertNotIn("src", usable)
 
+    def test_bare_top_level_in_changed_refused_when_tracked_listing_fails(self) -> None:
+        """When git ls-files fails, a bare name present only in `changed` must not be usable."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            # No git repository → tracked_files returns None.
+            usable = self.validator.usable_classified_paths(
+                root, {"src": "pre-existing"}, {"src"}
+            )
+            self.assertNotIn("src", usable)
+
     def test_classification_of_an_unreal_path_is_refused(self) -> None:
         """A story must not account for a fabricated path by inventing a bullet for it."""
         with tempfile.TemporaryDirectory() as temp:
