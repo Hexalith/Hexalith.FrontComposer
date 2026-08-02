@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 using Shouldly;
@@ -11,6 +12,7 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Architecture;
 public sealed class Cs1591DocumentationPolicyTests
 {
     private const string ContractsProject = "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj";
+    private static readonly TimeSpan DotnetTimeout = TimeSpan.FromMinutes(2);
 
     private static readonly string[] _freezeScopes =
     {
@@ -20,28 +22,43 @@ public sealed class Cs1591DocumentationPolicyTests
         "Conformance",
     };
 
+    private static readonly Regex _pragmaDisableCs1591 = new(
+        @"^\s*#pragma\s+warning\s+disable\s+(?<ids>[^/\r\n]+)",
+        RegexOptions.Multiline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    private static readonly Regex _cliCs1591Suppression = new(
+        @"(?:/nowarn:|/p:NoWarn=|-p:NoWarn=|--property:NoWarn=)[^\s""']*1591",
+        RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
     [Theory]
     [InlineData("net10.0")]
     [InlineData("netstandard2.0")]
     public async Task ContractsDocumentationPolicy_EffectiveNoWarn_ExcludesCs1591(string targetFramework)
     {
         string root = FindRepoRoot();
-        string noWarn = await RunDotnetAsync(
+        string evaluation = await RunDotnetAsync(
             root,
             TestContext.Current.CancellationToken,
             "msbuild",
             ContractsProject,
             "-p:Configuration=Release",
             $"-p:TargetFramework={targetFramework}",
-            "-getProperty:NoWarn").ConfigureAwait(true);
+            "-getProperty:NoWarn,WarningsNotAsErrors",
+            "-nologo").ConfigureAwait(true);
 
-        string[] diagnosticIds = SplitDiagnosticIds(noWarn);
-        diagnosticIds.ShouldNotContain("1591");
-        diagnosticIds.ShouldNotContain("CS1591");
-        diagnosticIds.ShouldContain("1570");
-        diagnosticIds.ShouldContain("1572");
-        diagnosticIds.ShouldContain("1573");
-        diagnosticIds.ShouldContain("1574");
+        (string noWarn, string warningsNotAsErrors) = ParseMsBuildProperties(evaluation, "NoWarn", "WarningsNotAsErrors");
+
+        string[] noWarnIds = SplitDiagnosticIds(noWarn);
+        noWarnIds.ShouldNotContain("1591");
+        noWarnIds.ShouldNotContain("CS1591");
+        noWarnIds.ShouldContain("1570");
+        noWarnIds.ShouldContain("1572");
+        noWarnIds.ShouldContain("1573");
+        noWarnIds.ShouldContain("1574");
+
+        string[] warningsNotAsErrorsIds = SplitDiagnosticIds(warningsNotAsErrors);
+        warningsNotAsErrorsIds.ShouldNotContain("1591");
+        warningsNotAsErrorsIds.ShouldNotContain("CS1591");
     }
 
     [Fact]
@@ -76,16 +93,20 @@ public sealed class Cs1591DocumentationPolicyTests
 
         foreach (string file in files)
         {
-            foreach (XElement noWarn in XDocument.Load(file).Descendants().Where(element => element.Name.LocalName == "NoWarn"))
+            foreach (XElement property in XDocument.Load(file).Descendants()
+                .Where(element => element.Name.LocalName is "NoWarn" or "WarningsNotAsErrors"))
             {
-                bool suppressesCs1591 = SplitDiagnosticIds(noWarn.Value)
+                bool suppressesCs1591 = SplitDiagnosticIds(property.Value)
                     .Any(id => id.Equals("1591", StringComparison.OrdinalIgnoreCase)
                         || id.Equals("CS1591", StringComparison.OrdinalIgnoreCase));
 
                 suppressesCs1591.ShouldBeFalse(
-                    $"{Path.GetRelativePath(root, file)} must not suppress CS1591 through NoWarn.");
+                    $"{Path.GetRelativePath(root, file)} must not suppress CS1591 through {property.Name.LocalName}.");
             }
         }
+
+        AssertNoCs1591PragmaDisables(root, excludedSegments);
+        AssertNoCliCs1591Suppressions(root, excludedSegments);
     }
 
     [Fact]
@@ -132,9 +153,11 @@ public sealed class Cs1591DocumentationPolicyTests
 
             foreach (string scope in _freezeScopes)
             {
-                string sourceDirectory = Path.Combine(temporaryContracts, scope, "Nested");
-                _ = Directory.CreateDirectory(sourceDirectory);
-                await WriteSpecimenAsync(sourceDirectory, scope, documented: false).ConfigureAwait(true);
+                string scopeRoot = Path.Combine(temporaryContracts, scope);
+                string nestedDirectory = Path.Combine(scopeRoot, "Nested");
+                _ = Directory.CreateDirectory(nestedDirectory);
+                await WriteSpecimenAsync(scopeRoot, $"{scope}Root", documented: false).ConfigureAwait(true);
+                await WriteSpecimenAsync(nestedDirectory, scope, documented: false).ConfigureAwait(true);
             }
 
             string outsideDirectory = Path.Combine(temporaryContracts, "OutsideFreeze", "Nested");
@@ -160,13 +183,16 @@ public sealed class Cs1591DocumentationPolicyTests
             negativeOutput.ShouldNotContain("'UndocumentedOutsideFreeze'");
             foreach (string scope in _freezeScopes)
             {
+                negativeOutput.ShouldContain($"'Undocumented{scope}Root'");
                 negativeOutput.ShouldContain($"'Undocumented{scope}'");
             }
 
             foreach (string scope in _freezeScopes)
             {
-                string sourceDirectory = Path.Combine(temporaryContracts, scope, "Nested");
-                await WriteSpecimenAsync(sourceDirectory, scope, documented: true).ConfigureAwait(true);
+                string scopeRoot = Path.Combine(temporaryContracts, scope);
+                string nestedDirectory = Path.Combine(scopeRoot, "Nested");
+                await WriteSpecimenAsync(scopeRoot, $"{scope}Root", documented: true).ConfigureAwait(true);
+                await WriteSpecimenAsync(nestedDirectory, scope, documented: true).ConfigureAwait(true);
             }
 
             (int positiveExitCode, string positiveOutput) = await RunDotnetResultAsync(
@@ -196,9 +222,80 @@ public sealed class Cs1591DocumentationPolicyTests
         }
     }
 
+    private static void AssertNoCs1591PragmaDisables(string root, string[] excludedSegments)
+    {
+        IEnumerable<string> sourceFiles = Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)
+            .Where(path => !Path.GetRelativePath(root, path)
+                .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Any(segment => excludedSegments.Contains(segment, StringComparer.OrdinalIgnoreCase)));
+
+        foreach (string file in sourceFiles)
+        {
+            foreach (Match match in _pragmaDisableCs1591.Matches(File.ReadAllText(file)))
+            {
+                bool disablesCs1591 = SplitDiagnosticIds(match.Groups["ids"].Value)
+                    .Any(id => id.Equals("1591", StringComparison.OrdinalIgnoreCase)
+                        || id.Equals("CS1591", StringComparison.OrdinalIgnoreCase));
+
+                disablesCs1591.ShouldBeFalse(
+                    $"{Path.GetRelativePath(root, file)} must not disable CS1591 with #pragma warning disable.");
+            }
+        }
+    }
+
+    private static void AssertNoCliCs1591Suppressions(string root, string[] excludedSegments)
+    {
+        string[] extensions = { ".yml", ".yaml", ".ps1", ".sh", ".py", ".md", ".props", ".targets", ".csproj" };
+        IEnumerable<string> files = Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+            .Where(path => extensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
+            .Where(path => !Path.GetRelativePath(root, path)
+                .Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+                .Any(segment => excludedSegments.Contains(segment, StringComparer.OrdinalIgnoreCase)));
+
+        foreach (string file in files)
+        {
+            string relativePath = Path.GetRelativePath(root, file);
+            if (relativePath.StartsWith("_bmad-output", StringComparison.OrdinalIgnoreCase)
+                || relativePath.StartsWith("docs", StringComparison.OrdinalIgnoreCase))
+            {
+                // Story/docs prose may cite the forbidden forms; only executable/config surfaces are sealed.
+                continue;
+            }
+
+            _cliCs1591Suppression.IsMatch(File.ReadAllText(file)).ShouldBeFalse(
+                $"{relativePath} must not suppress CS1591 through a command-line NoWarn/nowarn argument.");
+        }
+    }
+
+    private static (string NoWarn, string WarningsNotAsErrors) ParseMsBuildProperties(
+        string evaluation,
+        string noWarnName,
+        string warningsNotAsErrorsName)
+    {
+        // -getProperty:A,B emits either JSON (SDK 8+) or bare values; accept both shapes.
+        string trimmed = evaluation.Trim();
+        if (trimmed.StartsWith('{'))
+        {
+            using System.Text.Json.JsonDocument document = System.Text.Json.JsonDocument.Parse(trimmed);
+            System.Text.Json.JsonElement properties = document.RootElement.TryGetProperty("Properties", out System.Text.Json.JsonElement nested)
+                ? nested
+                : document.RootElement;
+            return (
+                properties.GetProperty(noWarnName).GetString() ?? string.Empty,
+                properties.GetProperty(warningsNotAsErrorsName).GetString() ?? string.Empty);
+        }
+
+        // Fallback: sequential -getProperty without JSON returns newline-separated values in request order.
+        string[] lines = trimmed.Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        lines.Length.ShouldBeGreaterThanOrEqualTo(
+            2,
+            $"Expected NoWarn and WarningsNotAsErrors values from msbuild evaluation.{Environment.NewLine}{evaluation}");
+        return (lines[0], lines[1]);
+    }
+
     private static string[] SplitDiagnosticIds(string value)
         => value.Split(
-            new[] { ';', ',', ' ', '\r', '\n', '\t' },
+            [';', ',', ' ', '\r', '\n', '\t'],
             StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static string GetEditorConfigSection(string editorConfig, string header)
@@ -212,14 +309,14 @@ public sealed class Cs1591DocumentationPolicyTests
             : editorConfig[sectionStart..nextSection];
     }
 
-    private static Task WriteSpecimenAsync(string directory, string scope, bool documented)
+    private static Task WriteSpecimenAsync(string directory, string symbolSuffix, bool documented)
     {
         string documentation = documented
-            ? $"/// <summary>Documented synthetic symbol for the {scope} freeze scope.</summary>{Environment.NewLine}"
+            ? $"/// <summary>Documented synthetic symbol for the {symbolSuffix} freeze specimen.</summary>{Environment.NewLine}"
             : string.Empty;
-        string source = $"namespace Synthetic;{Environment.NewLine}{documentation}public sealed class Undocumented{scope};{Environment.NewLine}";
+        string source = $"namespace Synthetic;{Environment.NewLine}{documentation}public sealed class Undocumented{symbolSuffix};{Environment.NewLine}";
         return File.WriteAllTextAsync(
-            Path.Combine(directory, $"Undocumented{scope}.cs"),
+            Path.Combine(directory, $"Undocumented{symbolSuffix}.cs"),
             source,
             TestContext.Current.CancellationToken);
     }
@@ -259,13 +356,45 @@ public sealed class Cs1591DocumentationPolicyTests
 
         using Process process = Process.Start(startInfo)
             ?? throw new InvalidOperationException("Failed to start dotnet.");
-        Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync(cancellationToken);
-        Task<string> stderrTask = process.StandardError.ReadToEndAsync(cancellationToken);
-        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-        string stdout = await stdoutTask.ConfigureAwait(false);
-        string stderr = await stderrTask.ConfigureAwait(false);
 
-        return (process.ExitCode, stdout + Environment.NewLine + stderr);
+        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(DotnetTimeout);
+        CancellationToken effectiveToken = timeout.Token;
+
+        try
+        {
+            Task<string> stdoutTask = process.StandardOutput.ReadToEndAsync(effectiveToken);
+            Task<string> stderrTask = process.StandardError.ReadToEndAsync(effectiveToken);
+            await process.WaitForExitAsync(effectiveToken).ConfigureAwait(false);
+            string stdout = await stdoutTask.ConfigureAwait(false);
+            string stderr = await stderrTask.ConfigureAwait(false);
+
+            return (process.ExitCode, stdout + Environment.NewLine + stderr);
+        }
+        catch (OperationCanceledException)
+        {
+            TryKillProcessTree(process);
+            throw;
+        }
+    }
+
+    private static void TryKillProcessTree(Process process)
+    {
+        try
+        {
+            if (!process.HasExited)
+            {
+                process.Kill(entireProcessTree: true);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+            // Process already exited between the HasExited check and Kill.
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // Process already gone or not killable in this environment.
+        }
     }
 
     private static string FindRepoRoot()
