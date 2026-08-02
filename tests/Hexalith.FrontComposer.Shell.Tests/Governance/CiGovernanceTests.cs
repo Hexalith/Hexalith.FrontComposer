@@ -46,7 +46,7 @@ public sealed class CiGovernanceTests {
             - Before Git work, inspect the current repository's branch, working tree,
               remotes, and recent history.
             - Any commit message an assistant creates, suggests, or uses, including Claude,
-              Codex, GitHub Copilot, and supported Visual Studio Copilot commit-message
+              Codex, Cursor, GitHub Copilot, and supported Visual Studio Copilot commit-message
               generation, must follow Conventional Commits and satisfy both the owning
               repository's effective commitlint policy and its tracked Git guidance.
             - Before presenting or using a message, an assistant capable of running repository tooling must validate the exact full candidate with the owning repository's pinned commitlint CLI and preserve successful validation evidence.
