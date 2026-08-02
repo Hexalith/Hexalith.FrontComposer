@@ -45,14 +45,14 @@ public sealed class CiGovernanceTests {
 
             - Before Git work, inspect the current repository's branch, working tree,
               remotes, and recent history.
-            - Any commit message you create, suggest, or use must follow Conventional
-              Commits and satisfy both the owning repository's effective commitlint policy
-              and its tracked Git guidance. Before presenting or using a message, validate
-              the exact full candidate with the owning repository's pinned commitlint CLI
-              and preserve successful validation evidence. If validation cannot run or
-              rejects the candidate, do not present or use it as compliant: report the exact
-              blocker or rule violations, revise invalid messages, and revalidate them.
-              Never bypass commit validation.
+            - Any commit message an assistant creates, suggests, or uses, including Claude,
+              Codex, GitHub Copilot, and supported Visual Studio Copilot commit-message
+              generation, must follow Conventional Commits and satisfy both the owning
+              repository's effective commitlint policy and its tracked Git guidance.
+            - Before presenting or using a message, an assistant capable of running repository tooling must validate the exact full candidate with the owning repository's pinned commitlint CLI and preserve successful validation evidence.
+              If validation rejects the candidate, report the rule violations, revise the message, and revalidate it; if the validator cannot run, report the exact command and blocker and do not present or use the candidate until validation succeeds. Never bypass commit validation.
+            - When repository instructions are enabled, Visual Studio 2026 version 18.6 and later reads `.github/copilot-instructions.md`; older, disabled, or unsupported cases are not controlled by this file.
+              These instructions guide generation but cannot execute commitlint or guarantee compliance; the installed commit-message hook and blocking CI commitlint gate remain enforcement layers.
             - In an umbrella workspace, initialize or update only dependencies declared by
               the top-level workspace `.gitmodules` file.
             - Never initialize or update a submodule's nested submodules unless the user
@@ -106,6 +106,14 @@ public sealed class CiGovernanceTests {
         string stepBody = nextStep < 0 ? workflow[idx..] : workflow[idx..nextStep];
 
         stepBody.ShouldNotContain("continue-on-error: true");
+
+        // Story 11.17d code review (2026-08-01): the two catalog-compatibility facts in this
+        // gate shell out to eng/dependency_graph.py, whose own semantic rules -- the
+        // required-property and required-package checks -- are covered only by
+        // tests/eng/test_dependency_graph.py. That suite ran in no workflow, so the entire
+        // required-property loop could be deleted with every lane still green. Pin the step
+        // the way the release suppression lifecycle suite is pinned.
+        workflow.ShouldContain("python3 -m unittest tests/eng/test_dependency_graph.py");
     }
 
     [Fact]

@@ -30,7 +30,12 @@
         "bom_crlf_on_selected_catalog": true
       },
       "selected_catalog_required_properties": {
-        "HexalithTenantsVersion": "5.3.0"
+        "HexalithCommonsVersion": "2.30.0",
+        "HexalithEventStoreVersion": "3.89.0",
+        "HexalithMemoriesVersion": "2.19.9",
+        "HexalithPartiesVersion": "1.0.0",
+        "HexalithPolymorphicSerializationsVersion": "1.19.2",
+        "HexalithTenantsVersion": "5.4.0"
       },
       "selected_catalog_required_packages": {
         "BenchmarkDotNet": "0.15.8",
