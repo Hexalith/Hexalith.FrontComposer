@@ -379,6 +379,7 @@ def validate_graph_envelope(envelope: Any) -> dict[str, Any]:
 
     normalized: list[dict[str, Any]] = []
     identities: set[tuple[str, str, str]] = set()
+    logical_identities: set[tuple[str, str, str]] = set()
     for index, edge in enumerate(edges):
         if not isinstance(edge, dict):
             raise GraphError(f"dependency graph edge[{index}] must be an object")
@@ -402,6 +403,15 @@ def validate_graph_envelope(envelope: Any) -> dict[str, Any]:
         normalize_path(edge["path"], f"dependency graph edge[{index}] path")
         if isinstance(edge["depth"], bool) or edge["depth"] not in (1, 2):
             raise GraphError(f"dependency graph edge[{index}] depth must be integer 1 or 2")
+        if edge["depth"] == 1:
+            if edge["owner_repository"] != root["repository"]:
+                raise GraphError(
+                    f"dependency graph edge[{index}] depth-1 owner_repository must equal the root repository"
+                )
+            if edge["owner_commit"] != root["commit"]:
+                raise GraphError(
+                    f"dependency graph edge[{index}] depth-1 owner_commit must equal the root commit"
+                )
         if "catalog_sha256" in edge:
             if not isinstance(edge["catalog_sha256"], str) or not re.fullmatch(
                 r"[0-9a-f]{64}", edge["catalog_sha256"]
@@ -417,7 +427,22 @@ def validate_graph_envelope(envelope: Any) -> dict[str, Any]:
         if identity in identities:
             raise GraphError(f"dependency graph contains duplicate edge identity {identity!r}")
         identities.add(identity)
+        logical_identity = (edge["owner_repository"], edge["path"], edge["repository"])
+        if logical_identity in logical_identities:
+            raise GraphError(f"dependency graph contains duplicate logical edge {logical_identity!r}")
+        logical_identities.add(logical_identity)
         normalized.append(edge)
+
+    depth1_targets = {
+        (edge["repository"], edge["commit"])
+        for edge in normalized
+        if edge["depth"] == 1
+    }
+    for index, edge in enumerate(normalized):
+        if edge["depth"] == 2 and (edge["owner_repository"], edge["owner_commit"]) not in depth1_targets:
+            raise GraphError(
+                f"dependency graph edge[{index}] depth-2 owner must equal a depth-1 target repository and commit"
+            )
 
     expected_order = sorted(
         normalized,

@@ -1135,6 +1135,66 @@ class DiffAndMaterializationTests(unittest.TestCase):
         with self.assertRaises(dg.GraphError):
             dg.validate_graph_envelope(out_of_order)
 
+    def _reseal(self, graph: dict) -> None:
+        graph["edges"].sort(key=lambda edge: (
+            edge["depth"], edge["owner_repository"], edge["owner_commit"],
+            edge["path"], edge["repository"], edge["commit"],
+        ))
+        graph["edge_count"] = len(graph["edges"])
+        graph["graph_digest"] = dg.canonical_digest({
+            "schema": graph["schema"],
+            "root": graph["root"],
+            "edge_count": graph["edge_count"],
+            "edges": graph["edges"],
+        })
+
+    def test_offline_graph_validation_rejects_forged_depth1_root_ownership(self) -> None:
+        _fx, _base_graph, candidate_graph = self._pointer_advance()
+        for field, value, diagnostic in (
+            ("owner_repository", "github.com/test/forged", "root repository"),
+            ("owner_commit", "d" * 40, "root commit"),
+        ):
+            with self.subTest(field=field):
+                hostile = copy.deepcopy(candidate_graph)
+                depth1 = next(edge for edge in hostile["edges"] if edge["depth"] == 1)
+                depth1[field] = value
+                self._reseal(hostile)
+                with self.assertRaises(dg.GraphError) as ctx:
+                    dg.validate_graph_envelope(hostile)
+                self.assertIn(diagnostic, str(ctx.exception))
+
+    def test_offline_graph_validation_rejects_orphan_depth2_ancestry(self) -> None:
+        _fx, _base_graph, candidate_graph = self._pointer_advance()
+        hostile = copy.deepcopy(candidate_graph)
+        depth2 = next(edge for edge in hostile["edges"] if edge["depth"] == 2)
+        depth2["owner_commit"] = "d" * 40
+        self._reseal(hostile)
+
+        with self.assertRaises(dg.GraphError) as ctx:
+            dg.validate_graph_envelope(hostile)
+
+        self.assertIn("depth-1 target", str(ctx.exception))
+
+    def test_offline_graph_validation_rejects_duplicate_logical_edges(self) -> None:
+        _fx, _base_graph, candidate_graph = self._pointer_advance()
+        hostile = copy.deepcopy(candidate_graph)
+        depth1 = next(edge for edge in hostile["edges"] if edge["depth"] == 1)
+        depth2 = next(edge for edge in hostile["edges"] if edge["depth"] == 2)
+        alternate_owner_commit = "d" * 40
+
+        alternate_depth1 = copy.deepcopy(depth1)
+        alternate_depth1["path"] = "references/OwnerAlternate"
+        alternate_depth1["commit"] = alternate_owner_commit
+        alternate_depth2 = copy.deepcopy(depth2)
+        alternate_depth2["owner_commit"] = alternate_owner_commit
+        hostile["edges"].extend((alternate_depth1, alternate_depth2))
+        self._reseal(hostile)
+
+        with self.assertRaises(dg.GraphError) as ctx:
+            dg.validate_graph_envelope(hostile)
+
+        self.assertIn("duplicate logical edge", str(ctx.exception))
+
 
 class CanonicalDigestTests(unittest.TestCase):
     def test_canonical_bytes_are_compact_sorted_ascii(self) -> None:
@@ -1270,16 +1330,17 @@ class PolicyShapeTests(unittest.TestCase):
             ["dotnet", "restore"],
         )
 
-    def test_landed_dependency_build_targets_are_standalone_owned_surfaces(self) -> None:
+    def test_landed_dependency_build_targets_are_complete_owned_surfaces(self) -> None:
         policy = dg.load_policy(ROOT / "eng" / "dependency-graph-policy.json")
         expected = {
+            "github.com/hexalith/hexalith.frontcomposer": "Hexalith.FrontComposer.slnx",
             "github.com/hexalith/hexalith.eventstore": "Hexalith.EventStore.slnx",
-            "github.com/hexalith/hexalith.tenants": "src/Hexalith.Tenants/Hexalith.Tenants.csproj",
-            "github.com/hexalith/hexalith.commons": "src/libraries/Hexalith.Commons/Hexalith.Commons.csproj",
+            "github.com/hexalith/hexalith.tenants": "Hexalith.Tenants.Standalone.slnx",
+            "github.com/hexalith/hexalith.commons": "Hexalith.Commons.Standalone.slnx",
             "github.com/hexalith/hexalith.builds": "Hexalith.Builds.slnx",
             "github.com/hexalith/hexalith.polymorphicserializations": "Hexalith.PolymorphicSerializations.slnx",
             "github.com/hexalith/hexalith.memories": "Hexalith.Memories.slnx",
-            "github.com/hexalith/hexalith.parties": "src/Hexalith.Parties/Hexalith.Parties.csproj",
+            "github.com/hexalith/hexalith.parties": "Hexalith.Parties.Standalone.slnx",
         }
 
         for identity, target in expected.items():

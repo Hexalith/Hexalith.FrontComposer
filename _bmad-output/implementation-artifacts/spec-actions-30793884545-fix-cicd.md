@@ -3,11 +3,13 @@ title: 'Fix dependency-governance diff and materialization'
 type: 'bugfix'
 created: '2026-08-03'
 status: 'in-progress'
-review_loop_iteration: 0
-baseline_commit: '874fe13bbecc0bbebdbe765b081782381c93b3fa'
+review_loop_iteration: 1
+baseline_commit: '663a88ec647d6ea804dd3f4c900ff2a139488c50'
 context:
   - '{project-root}/_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md'
   - '{project-root}/_bmad-output/planning-artifacts/architecture.md'
+  - '{project-root}/references/Hexalith.Tenants/_bmad-output/project-context.md'
+  - '{project-root}/references/Hexalith.Parties/_bmad-output/project-context.md'
 ---
 
 <frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
@@ -39,32 +41,45 @@ context:
 
 ## Code Map
 
-- `eng/dependency_graph.py` -- owns logical edge diffing, bounded Builds contract-tree extraction, exact module materialization, and policy-authorized affected builds.
-- `tests/eng/test_dependency_graph.py` -- synthetic Git fixtures for edge diff/cascade behavior, unsafe modes, exact-byte extraction, and isolated gitlink handling.
-- `.github/workflows/ci.yml` -- read-only caller proving the failed `diff` to `run-affected` execution path; no workflow edit is expected.
-- `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md` -- approved FC-DEP-1 invariants: targeted pointer-change cost, regular-file contract trees, and no nested initialization.
+- `references/Hexalith.{Commons,Tenants,Parties}/Hexalith.*.Standalone.slnx` -- complete owned-project Release/NuGet surfaces.
+- `references/Hexalith.Tenants/{src,tests}/**` -- package-mode fallbacks and solution tests.
+- `references/Hexalith.Parties/{src,tests}/**` -- path-based AppHost resources, package-built gateway test host, and tests.
+- `eng/dependency_graph.py`, its policy/tests, and the three parent gitlinks -- safe diff/materialization and delayed-activation targets.
 
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] `eng/dependency_graph.py` -- use a deterministic depth-aware equality projection that ignores only the depth-1 root `owner_commit` for change detection while retaining full before/after edge records; normalize tree paths, omit only `160000 commit` gitlinks, and reject all other non-regular entries.
-- [ ] `tests/eng/test_dependency_graph.py` -- add regression fixtures for root-owner-only revision churn and a real-shaped Builds tree containing `.gitmodules`, regular blobs, and a nested gitlink; retain genuine pointer-advance, exact-byte, symlink, and resource-limit coverage.
+- [x] `references/Hexalith.Commons` -- add the 20-project standalone solution, inventory test, and build note.
+- [x] `references/Hexalith.Tenants` -- add the 17-project standalone solution; gate the six external project edges, add matching package references, and extend solution/package-governance tests and guidance.
+- [x] `references/Hexalith.Parties` -- add the complete standalone solution, path-based AppHost resources, an owned package-built gateway test host, tests, and guidance.
+- [x] `eng/dependency_graph.py` -- validate depth-1 root ownership and depth-2 ancestry, reject duplicate logical edges, ignore only validated depth-1 root `owner_commit` churn, and omit only path-validated `160000 commit` entries.
+- [x] `eng/dependency-graph-policy.json` and `tests/eng/test_dependency_graph.py` -- select the standalone solutions and cover target shape, hostile envelopes, pointer advances, extraction, unsafe modes, and mount replacement.
+- [ ] Git history -- on typed local branches, commit each submodule, then make separate commitlint-validated FrontComposer policy/code and pointer-advance commits after isolated builds pass; do not push.
 
 **Acceptance Criteria:**
-- Given the exact `f25c4493` to `874fe13b` run revisions, when dependency evidence is replayed and affected modules execute, then contract-tree materialization no longer fails on `references/Hexalith.AI.Tools` and every scheduled static command remains blocking.
-- Given two collected graphs whose root revisions differ only by an unrelated regular file, when they are diffed, then `changes` and `affected_modules` are empty without removing `owner_commit` from either graph.
-- Given a genuine root gitlink advance, when graphs are diffed, then the target is scheduled exactly once and complete before/after provenance remains reviewable.
+- Given isolated exact module trees plus the Builds contract, when policy commands run, then every owned project (Commons 20, Tenants 17, and all Parties projects including its gateway host) builds without nested checkouts.
+- Given root-only churn, hostile ownership/duplicate edges, or a genuine pointer advance, then the diff respectively schedules nothing, fails closed, or schedules the target once with full provenance.
+- Given delayed policy activation, the policy/code commit precedes the separate pointer-advance commit so a later CI push can execute the new immutable-base commands rather than merely assert their strings.
 
 ## Spec Change Log
 
 ## Design Notes
 
-Depth-1 `owner_commit` is the FrontComposer root revision and changes on every commit; it is provenance, not dependency drift. Depth-2 `owner_commit` remains change-significant so descendant changes can be recorded and subsumed when their owning root dependency advances. Gitlinks are normalized and recognized, then omitted from the regular-file projection, matching the approved no-nested-initialization boundary without turning unsupported modes into an allowlist.
+Primary source/topology solutions remain canonical; standalone files are governance-only package-mode surfaces. Tenants gets package fallbacks. Parties retains runtime topology validation while using path-based Aspire resources and an owned package gateway host. Policy activation precedes pointer advancement because CI authorizes commands from the immutable event base.
 
 ## Verification
 
 **Commands:**
 - `python3 -m py_compile eng/dependency_graph.py` -- expected: helper parses successfully.
 - `python3 -m unittest tests/eng/test_dependency_graph.py -v` -- expected: all dependency graph, diff, materialization, policy, and regression tests pass.
-- Replay `python3 eng/dependency_graph.py diff --event push --event-base f25c4493ff2e26f38c641394ab699309f03679be --candidate 874fe13bbecc0bbebdbe765b081782381c93b3fa`, then feed its evidence to `run-affected` in a fresh temporary output root -- expected: successful result for all eight policy dispositions with no unsupported gitlink error.
+- `dotnet restore Hexalith.*.Standalone.slnx -p:Configuration=Release -p:UseNuGetDeps=true` then the matching Release `--no-restore` build in each isolated module tree -- expected: all three exit zero without nested content.
+- Focused Commons inventory, Tenants Contracts, and Parties CI/topology/gateway test projects -- expected: standalone membership, package routing, and preserved behavior pass.
+- Repository-pinned commitlint against every exact local commit message -- expected: zero violations before committing.
 - `git diff --check` -- expected: no whitespace errors.
+
+**Results:**
+- Root dependency-graph suite: 64/64 passed; Python compilation and `git diff --check` passed.
+- Isolated Release/package-mode builds with only regular Builds contract files materialized: Commons 20/20, Tenants 17/17, and Parties 30/30 projects built with zero warnings and zero errors; no nested gitlink content was initialized.
+- Focused changed-surface tests: Commons 1/1, Tenants 26/26, and Parties 71/71 passed.
+- Frozen matrix rows passed in the root suite: exact nested-gitlink omission, unsafe path/mode rejection, root-only no-op scheduling, and at-most-once pointer-advance scheduling with provenance.
+- Exact submodule and root commit messages passed the owning repositories' pinned commitlint CLIs before commit creation.
