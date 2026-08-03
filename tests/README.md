@@ -132,11 +132,18 @@ the exact catalog its gitlink actually selects — not a hard-coded commit allow
 catalog policy.
 
 ```bash
-# Synthetic committed-object graph + semantic-policy fixtures (no network, temp git repos).
+# Synthetic committed-object graph, semantic-policy, exact diff, cascade, and bounded
+# materialization fixtures (no network, temp git repos).
 python3 -m unittest tests/eng/test_dependency_graph.py -v
 
-# Compile-check the engine and its release-evidence siblings.
-python3 -m py_compile eng/dependency_graph.py eng/release_evidence.py eng/release_prepublish.py
+# Exact-blob conditional/composite workflow closure and active-policy authorization.
+python3 -m unittest tests/eng/test_workflow_source_closure.py -v
+
+# Exact CI-to-Release and Release-to-verifier handoff schemas/candidate consistency.
+python3 -m unittest tests/eng/test_dependency_handoff.py -v
+
+# Compile-check the governance and release-evidence helpers.
+python3 -m py_compile eng/dependency_graph.py eng/dependency_handoff.py eng/workflow_source_closure.py eng/release_evidence.py eng/release_prepublish.py
 
 # Collect and print the canonical v1 graph envelope for the current checkout.
 python3 eng/dependency_graph.py --root . graph --commit "$(git rev-parse HEAD)"
@@ -145,14 +152,20 @@ python3 eng/dependency_graph.py --root . graph --commit "$(git rev-parse HEAD)"
 # test actually invokes).
 python3 eng/dependency_graph.py --root . validate --commit "$(git rev-parse HEAD)"
 
+# Compare one exact push base/candidate pair. Pull requests use --event pull_request and
+# additionally require the computed merge-base to equal --event-base.
+python3 eng/dependency_graph.py --root . diff --event push \
+  --event-base "$(git rev-parse HEAD^)" --candidate "$(git rev-parse HEAD)"
+
 # The C# Governance lane that consumes the above.
 DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category=Governance"
 ```
 
 `eng/dependency-graph-policy.json` (schema `hexalith.dependency-graph-policy.v1`) is the single
 FrontComposer-owned source for trusted repository identities/paths, semantic profiles, the
-module-build/evidence-only registry, and AD-7 resource ceilings. A gitlink whose normalized identity
-is not already declared there fails closed (AD-3) — this is deliberate, not a bug.
+module-build/evidence-only registry, exact standalone Release/NuGet argv, evaluator authorizations,
+and AD-7/AD-13 resource ceilings. A gitlink whose normalized identity is not already declared there
+fails closed (AD-3) — this is deliberate, not a bug.
 
 **Compatibility vs. provenance (AD-6):** a Builds gitlink advancing to a different, still-compatible
 commit must pass — the exact commit/hash only ever appears in diagnostics and provenance, never in an
@@ -160,9 +173,16 @@ acceptance list. If `validate` fails on a real pointer advance, that is either a
 regression in the selected catalog or a policy gap (missing/incorrect profile), not a stale SHA to
 patch back in.
 
-**Scope boundary:** CI graph diffing, affected-module build gates, immutable workflow/action pinning,
-and the release-manifest v2 binding (GOV-1 Tasks 4/5) remain blocked pending an owner-accepted
-Hexalith.Builds issue 17 / BUILD-REL-1 revision (AD-16) and are not implemented yet.
+**Offline vs. live provenance (AD-9):** offline verification checks closed member sets, types,
+ordering, uniqueness, counts, and canonical digests without consulting a checkout. Live verification
+reloads the sealed policy and exact root commit, reconstructs the graph from Git objects, and rejects
+edge or raw-catalog drift. Semantic compatibility remains a separate decision from both modes.
+
+**External integration boundary:** FrontComposer-local graph diff, root-subsumed affected-module
+proof/materialization, workflow closure, handoff schemas, and manifest-v2 verification are implemented.
+Pinning and authorizing the real reusable CI/Release workflow plus end-to-end handoff evidence remain
+blocked pending the owner-accepted immutable Hexalith.Builds revision required by AD-16. Empty
+`evaluator_authorizations` authorize no release; they must never be replaced with fabricated evidence.
 
 ### Playwright E2E
 

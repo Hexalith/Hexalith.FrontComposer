@@ -239,9 +239,12 @@ _This file contains critical rules and patterns that AI agents must follow when 
   edge's **actually selected** catalog against `eng/dependency-graph-policy.json`. A compatible
   gitlink advance must pass regardless of its commit SHA; a Gate 2b failure here means a real
   semantic/policy problem, not a stale SHA constant to patch. Run
-  `python3 -m unittest tests/eng/test_dependency_graph.py` for the engine's own fixtures. CI
-  graph-diff/affected-module gates and the release-manifest v2 binding (GOV-1 Tasks 4/5) remain
-  blocked pending Hexalith.Builds issue 17 / BUILD-REL-1
+  `python3 -m unittest tests/eng/test_dependency_graph.py` for the engine's own fixtures.
+  FrontComposer-local exact graph diff, root-subsumed affected-module proof/materialization,
+  static workflow closure, handoff schemas, and release-manifest v2 verification are implemented.
+  The real reusable CI/Release workflow pin, populated evaluator authorization registry, end-to-end
+  handoff proof, and release eligibility remain blocked on the owner-accepted immutable
+  Hexalith.Builds revision required by AD-16; an empty registry authorizes no evaluator
 - **Benchmarks** live ONLY in the separate `Shell.Tests.Bench` exe under
   `[Trait("Category","Performance")]`; use `FakeTimeProvider` for deterministic timer-driven tests
 - **e2e (a11y/visual):** Playwright workspace in `tests/e2e` (`nvm use` or Node `>=24` →

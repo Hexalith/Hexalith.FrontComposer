@@ -32,7 +32,8 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           # Root-declared references submodules only; no recursive nested submodule checkout.
-          fetch-depth: 1
+          # GOV-1 exact base/candidate object proof requires complete root history.
+          fetch-depth: 0
           persist-credentials: false
           submodules: false
 
@@ -126,7 +127,10 @@ jobs:
       # Without this step the required-property and required-package checks could be
       # deleted or silenced with every lane still green.
       - name: 'Gate 2b: Dependency graph semantic policy tests'
-        run: python3 -m unittest tests/eng/test_dependency_graph.py
+        run: |
+          python3 -m unittest tests/eng/test_dependency_graph.py
+          python3 -m unittest tests/eng/test_workflow_source_closure.py
+          python3 -m unittest tests/eng/test_dependency_handoff.py
 
       # Gate 2c: File-based consumer pacts for the FrontComposer/EventStore REST boundary.
       # This lane intentionally uses explicit root-declared submodule initialization above and

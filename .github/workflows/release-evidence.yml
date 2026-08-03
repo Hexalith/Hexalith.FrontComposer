@@ -14,9 +14,9 @@ name: Release Evidence
 # assets and the published NuGet bytes, verifies package signatures over the downloaded
 # bytes, and compares every hash against the sealed manifest (AC13). It runs on Release
 # workflow COMPLETION REGARDLESS OF CONCLUSION (AC19) so failed or cancelled publish runs
-# are still reconciled; it no-ops green only when no publication side effect occurred
-# (e.g. a REL-4 frozen run, a non-releasing push, or a run that died before the tag was
-# created). It never repacks, rebuilds, re-signs, or attests — provenance attestation
+# are still reconciled. Even when no publication side effect occurred, both authenticated
+# handoffs retain the failed/unpublished attempt and original CI candidate; missing evidence
+# is never a green no-op. It never repacks, rebuilds, re-signs, or attests — provenance attestation
 # over the exact candidates belongs to the upstream governed release contract (AC18),
 # with the sealed owner-approved fallback record as the only alternative. Divergent or
 # partial publication state writes a partial-publish incident record and fails until
@@ -34,6 +34,7 @@ concurrency:
 
 # Read-only: this lane must not be able to mutate releases, attestations, or contents.
 permissions:
+  actions: read
   contents: read
 
 jobs:
@@ -43,15 +44,97 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
+      - name: Authenticate mandatory Release verification handoff
+        id: release-handoff
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
+          RELEASE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          RELEASE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+          mkdir -p authenticated-handoffs/release
+          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}")"
+          test "$(jq -r '.id' <<<"$run_json")" = "$RELEASE_RUN_ID"
+          test "$(jq -r '.run_attempt' <<<"$run_json")" = "$RELEASE_RUN_ATTEMPT"
+          test "$(jq -r '.event' <<<"$run_json")" = "workflow_run"
+          test "$(jq -r '.conclusion' <<<"$run_json")" = "$RELEASE_CONCLUSION"
+          test "$(jq -r '.head_branch' <<<"$run_json")" = "main"
+
+          artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}/artifacts?per_page=100")"
+          count="$(jq '[.artifacts[] | select(.name == "release-verification-handoff" and (.expired | not))] | length' <<<"$artifacts")"
+          test "$count" = "1" || { echo "::error::expected exactly one non-expired release-verification-handoff artifact, found $count"; exit 1; }
+          artifact_id="$(jq -r '.artifacts[] | select(.name == "release-verification-handoff" and (.expired | not)) | .id' <<<"$artifacts")"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > authenticated-handoffs/release.zip
+          test "$(unzip -Z1 authenticated-handoffs/release.zip | sort -u)" = "release-verification-handoff.json"
+          unzip -q authenticated-handoffs/release.zip -d authenticated-handoffs/release
+
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import re
+          from pathlib import Path
+
+          def closed(pairs):
+              value = {}
+              for key, item in pairs:
+                  if key in value:
+                      raise SystemExit(f"duplicate handoff member: {key}")
+                  value[key] = item
+              return value
+
+          value = json.loads(
+              Path("authenticated-handoffs/release/release-verification-handoff.json").read_text(),
+              object_pairs_hook=closed,
+          )
+          expected = {"schema", "release_run", "ci_handoff", "candidate", "dependency_policy", "release", "manifest", "assets", "evaluator"}
+          if set(value) != expected or value.get("schema") != "hexalith.release-verification-handoff.v1":
+              raise SystemExit("invalid release-verification handoff envelope")
+          candidate = value.get("candidate")
+          if not isinstance(candidate, str) or re.fullmatch(r"[0-9a-f]{40}", candidate) is None:
+              raise SystemExit("invalid original CI candidate")
+          ci = value.get("ci_handoff", {})
+          print(f"candidate={candidate}")
+          print(f"ci-run-id={ci.get('run_id', '')}")
+          print(f"ci-run-attempt={ci.get('run_attempt', '')}")
+          PY
+
       - name: Checkout repository
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          # Verify against the exact commit the Release run published from, not whatever
-          # main has advanced to since (e.g. the chore(release) commit).
-          ref: ${{ github.event.workflow_run.head_sha }}
+          # The authenticated handoff's original CI candidate is the sole authority.
+          ref: ${{ steps.release-handoff.outputs.candidate }}
           fetch-depth: 0
           # Root-declared references submodules only; no recursive nested submodule checkout.
           submodules: false
+
+      - name: Authenticate CI handoff and exact-candidate chain
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CI_RUN_ID: ${{ steps.release-handoff.outputs.ci-run-id }}
+          CI_RUN_ATTEMPT: ${{ steps.release-handoff.outputs.ci-run-attempt }}
+        run: |
+          set -euo pipefail
+          mkdir -p authenticated-handoffs/ci
+          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}")"
+          test "$(jq -r '.id' <<<"$run_json")" = "$CI_RUN_ID"
+          test "$(jq -r '.run_attempt' <<<"$run_json")" = "$CI_RUN_ATTEMPT"
+          test "$(jq -r '.event' <<<"$run_json")" = "push"
+          test "$(jq -r '.head_branch' <<<"$run_json")" = "main"
+          test "$(jq -r '.conclusion' <<<"$run_json")" = "success"
+          test "$(jq -r '.head_sha' <<<"$run_json")" = "${{ steps.release-handoff.outputs.candidate }}"
+          artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}/artifacts?per_page=100")"
+          count="$(jq '[.artifacts[] | select(.name == "dependency-release-handoff" and (.expired | not))] | length' <<<"$artifacts")"
+          test "$count" = "1" || { echo "::error::expected exactly one non-expired dependency-release-handoff artifact, found $count"; exit 1; }
+          artifact_id="$(jq -r '.artifacts[] | select(.name == "dependency-release-handoff" and (.expired | not)) | .id' <<<"$artifacts")"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > authenticated-handoffs/ci.zip
+          test "$(unzip -Z1 authenticated-handoffs/ci.zip | sort -u)" = "dependency-release-handoff.json"
+          unzip -q authenticated-handoffs/ci.zip -d authenticated-handoffs/ci
+          python3 eng/dependency_handoff.py --root . verify-release \
+            --handoff authenticated-handoffs/release/release-verification-handoff.json \
+            --ci-handoff authenticated-handoffs/ci/dependency-release-handoff.json \
+            --live
 
       # verify-manifest recomputes release-definition fingerprints, which include
       # references/Hexalith.Builds/Props/Directory.Packages.props — the root submodule
@@ -76,9 +159,11 @@ jobs:
           RUN_META_REF: ${{ github.ref }}
           RUN_META_RUN_ID: ${{ github.run_id }}
           RUN_META_RUN_ATTEMPT: ${{ github.run_attempt }}
-          RUN_META_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_META_SHA: ${{ steps.release-handoff.outputs.candidate }}
         run: |
           mkdir -p verification-evidence
+          cp authenticated-handoffs/release/release-verification-handoff.json verification-evidence/
+          cp authenticated-handoffs/ci/dependency-release-handoff.json verification-evidence/
           python3 - <<'PYEOF'
           import json, os
           metadata = {
@@ -100,10 +185,9 @@ jobs:
       # repacking. semantic-release (@semantic-release/git) tags the `chore(release)`
       # commit whose first PARENT is the released head_sha, so match the tag whose commit
       # IS head_sha (no git-plugin commit) OR whose first parent IS head_sha. semantic-
-      # release pushes the tag before any publish plugin runs, so if NO tag references
-      # this commit then no publication side effect occurred — a frozen (REL-4) run, a
-      # non-releasing push, or a run that failed before tagging all resolve to a clean
-      # green no-op (AC19). A failed run that DID tag still verifies below.
+      # release pushes the tag before any publish plugin runs. If NO tag references the
+      # authenticated candidate, the mandatory handoffs still preserve and report the
+      # failed/unpublished attempt; a failed run that DID tag verifies below.
       - name: Resolve release tag
         id: tag
         shell: bash
@@ -115,7 +199,7 @@ jobs:
           if ! git fetch --tags --force origin >/dev/null 2>&1; then
             echo "::notice::tag fetch skipped (tags already present or origin unreachable)."
           fi
-          head_sha="${{ github.event.workflow_run.head_sha }}"
+          head_sha="${{ steps.release-handoff.outputs.candidate }}"
           tag=""
           for candidate in $(git tag --list 'v*' --sort=-v:refname); do
             target="$(git rev-list -n1 "$candidate" 2>/dev/null)" || continue

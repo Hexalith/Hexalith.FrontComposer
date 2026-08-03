@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
-"""Synthetic committed-object graph and semantic-policy tests for eng/dependency_graph.py.
-
-Scope note: this covers GOV-1 Task 2/3 (local collection + semantic evaluation). CI graph
-diffing and affected-module contract-tree extraction (Task 4, blocked pending Hexalith.Builds
-issue 17 / BUILD-REL-1 per AD-16) are not implemented yet and are out of scope here.
-"""
+"""Synthetic graph, semantic-policy, AD-8 diff, and materialization tests."""
 
 from __future__ import annotations
 
 import copy
 import hashlib
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -103,6 +99,10 @@ class GraphFixture:
                 "max_contract_tree_files": 16384,
                 "max_contract_tree_blob_bytes": 16777216,
                 "max_contract_tree_total_bytes": 268435456,
+                "max_workflow_closure_depth": 16,
+                "max_workflow_closure_sources": 256,
+                "max_workflow_source_blob_bytes": 1048576,
+                "max_workflow_source_total_bytes": 16777216,
             },
             "evaluator_authorizations": {"ci": [], "release": [], "post_release": []},
         }
@@ -123,6 +123,31 @@ class GraphFixture:
 
     def link(self, owner: str, path: str, target: str, target_commit: str) -> None:
         self.repos[owner].add_submodule(target, path, self.url(target), target_commit)
+
+    def register_module(self, name: str, *, evidence_only: bool = False) -> None:
+        identity = self.identity(name)
+        if evidence_only:
+            self.policy["module_build_registry"][identity] = {
+                "disposition": "evidence-only",
+                "solution": None,
+                "builds_contract_source": "none",
+                "restore_argv": None,
+                "build_argv": None,
+            }
+            return
+        solution = f"{name}.slnx"
+        self.policy["module_build_registry"][identity] = {
+            "disposition": "build",
+            "solution": solution,
+            "builds_contract_source": "self" if name == "Builds" else "edge-tree:references/Builds",
+            "restore_argv": [
+                "dotnet", "restore", solution, "-p:Configuration=Release", "-p:UseNuGetDeps=true",
+            ],
+            "build_argv": [
+                "dotnet", "build", solution, "--configuration", "Release", "--no-restore",
+                "-p:UseNuGetDeps=true",
+            ],
+        }
 
 
 class CollectionTests(unittest.TestCase):
@@ -818,6 +843,169 @@ class SemanticEvaluationTests(unittest.TestCase):
         dg.assert_utf8_bom_and_crlf(b"\xef\xbb\xbf<Project>\r\n</Project>\r\n", "ok")
 
 
+class DiffAndMaterializationTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.tmp_path = pathlib.Path(self._tmp.name)
+        self.addCleanup(self._tmp.cleanup)
+
+    def _pointer_advance(self) -> tuple[GraphFixture, dict, dict]:
+        fx = GraphFixture(self.tmp_path)
+        builds = fx.add_repo("Builds")
+        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
+        builds_base = builds.commit("base catalog")
+
+        owner = fx.add_repo("Owner")
+        owner.write_text("Directory.Packages.props", OWNER_SHIM)
+        fx.link("Owner", "references/Builds", "Builds", builds_base)
+        owner_base = owner.commit("base owner")
+
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        fx.link("Root", "references/Owner", "Owner", owner_base)
+        root_base = root.commit("base root")
+
+        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG + b"<!-- compatible advance -->\r\n")
+        builds_candidate = builds.commit("compatible catalog advance")
+        owner.link_gitlink("references/Builds", builds_candidate)
+        owner_candidate = owner.commit("advance catalog")
+        root.link_gitlink("references/Owner", owner_candidate)
+        root_candidate = root.commit("advance owner")
+
+        for name in ("Root", "Owner", "Builds"):
+            fx.register_module(name)
+        base_graph = dg.collect_graph(root.root, fx.identity("Root"), root_base, fx.policy)
+        candidate_graph = dg.collect_graph(root.root, fx.identity("Root"), root_candidate, fx.policy)
+        return fx, base_graph, candidate_graph
+
+    def test_depth1_pointer_advance_subsumes_descendant_churn_and_builds_once(self) -> None:
+        fx, base_graph, candidate_graph = self._pointer_advance()
+        evidence = dg.diff_graphs(
+            base_graph,
+            candidate_graph,
+            fx.policy,
+            event="push",
+            event_base=base_graph["root"]["commit"],
+            candidate=candidate_graph["root"]["commit"],
+            merge_base=None,
+            release_eligible=True,
+        )
+        self.assertEqual([row["repository"] for row in evidence["affected_modules"]], [fx.identity("Owner")])
+        self.assertEqual(len(evidence["changes"]), 2)
+        descendant = next(change for change in evidence["changes"] if (change["after"] or change["before"])["depth"] == 2)
+        self.assertEqual(descendant["subsumed_by"], fx.identity("Owner"))
+        self.assertEqual(
+            evidence["affected_modules"][0]["restore_argv"],
+            ["dotnet", "restore", "Owner.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+        )
+
+    def test_unchanged_graph_builds_nothing(self) -> None:
+        fx, base_graph, _candidate_graph = self._pointer_advance()
+        evidence = dg.diff_graphs(
+            base_graph,
+            base_graph,
+            fx.policy,
+            event="push",
+            event_base=base_graph["root"]["commit"],
+            candidate=base_graph["root"]["commit"],
+            merge_base=None,
+            release_eligible=True,
+        )
+        self.assertEqual(evidence["changes"], [])
+        self.assertEqual(evidence["affected_modules"], [])
+
+    def test_removed_depth1_edge_collapses_to_frontcomposer_root(self) -> None:
+        fx, base_graph, candidate_graph = self._pointer_advance()
+        removed_candidate = copy.deepcopy(candidate_graph)
+        removed_candidate["edges"] = []
+        removed_candidate["edge_count"] = 0
+        removed_candidate["graph_digest"] = dg.canonical_digest({
+            "schema": removed_candidate["schema"],
+            "root": removed_candidate["root"],
+            "edge_count": 0,
+            "edges": [],
+        })
+        evidence = dg.diff_graphs(
+            base_graph,
+            removed_candidate,
+            fx.policy,
+            event="push",
+            event_base=base_graph["root"]["commit"],
+            candidate=removed_candidate["root"]["commit"],
+            merge_base=None,
+            release_eligible=True,
+        )
+        self.assertEqual([row["repository"] for row in evidence["affected_modules"]], [fx.identity("Root")])
+
+    def test_contract_tree_materializes_exact_regular_bytes(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        builds = fx.add_repo("Builds")
+        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
+        builds.write_bytes("eng/config.bin", b"\x00\x01\xff")
+        commit = builds.commit()
+        destination = self.tmp_path / "materialized"
+        result = dg.materialize_contract_tree(builds.root, commit, destination, fx.policy)
+        self.assertEqual(result["file_count"], 2)
+        self.assertEqual((destination / "eng/config.bin").read_bytes(), b"\x00\x01\xff")
+        self.assertEqual((destination / "Props/Directory.Packages.props").read_bytes(), BASELINE_CATALOG)
+
+    def test_contract_tree_rejects_symlink_and_limits_before_extraction(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        builds = fx.add_repo("Builds")
+        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
+        os.symlink("Props/Directory.Packages.props", builds.root / "catalog-link")
+        _run(["add", "catalog-link"], builds.root)
+        commit = builds.commit()
+        destination = self.tmp_path / "rejected"
+        with self.assertRaises(dg.GraphError):
+            dg.materialize_contract_tree(builds.root, commit, destination, fx.policy)
+        self.assertFalse(destination.exists())
+
+        fx.policy["resource_limits"]["max_contract_tree_files"] = 1
+        clean = fx.add_repo("CleanBuilds")
+        clean.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
+        clean.write_text("second.txt", "x")
+        clean_commit = clean.commit()
+        with self.assertRaises(dg.GraphError):
+            dg.materialize_contract_tree(clean.root, clean_commit, destination, fx.policy)
+        self.assertFalse(destination.exists())
+
+    def test_module_materialization_is_detached_exact_and_does_not_initialize_gitlinks(self) -> None:
+        owner = TempGitRepo(self.tmp_path / "Owner")
+        owner.write_text("value.txt", "base")
+        owner.link_gitlink("references/Nested", "f" * 40)
+        base = owner.commit("base")
+        owner.write_text("value.txt", "candidate")
+        owner.commit("candidate")
+
+        destination = self.tmp_path / "isolated-owner"
+        dg.materialize_repository_tree(owner.root, base, destination)
+
+        self.assertEqual((destination / "value.txt").read_text(), "base")
+        self.assertTrue((destination / ".git").exists())
+        self.assertFalse((destination / "references/Nested/.git").exists())
+        observed = _run(["rev-parse", "HEAD"], destination).decode("ascii").strip()
+        self.assertEqual(observed, base)
+
+    def test_offline_graph_validation_rejects_drift_and_out_of_order_edges(self) -> None:
+        _fx, _base_graph, candidate_graph = self._pointer_advance()
+        drifted = copy.deepcopy(candidate_graph)
+        drifted["edge_count"] += 1
+        with self.assertRaises(dg.GraphError):
+            dg.validate_graph_envelope(drifted)
+
+        out_of_order = copy.deepcopy(candidate_graph)
+        out_of_order["edges"].reverse()
+        out_of_order["graph_digest"] = dg.canonical_digest({
+            "schema": out_of_order["schema"],
+            "root": out_of_order["root"],
+            "edge_count": out_of_order["edge_count"],
+            "edges": out_of_order["edges"],
+        })
+        with self.assertRaises(dg.GraphError):
+            dg.validate_graph_envelope(out_of_order)
+
+
 class CanonicalDigestTests(unittest.TestCase):
     def test_canonical_bytes_are_compact_sorted_ascii(self) -> None:
         payload = {"b": 1, "a": [3, 2, 1], "c": "café"}
@@ -844,13 +1032,9 @@ class PolicyShapeTests(unittest.TestCase):
 
     def _load(self, profile: object) -> dict:
         path = self.tmp_path / "policy.json"
-        path.write_text(
-            json.dumps({
-                "schema": dg.POLICY_SCHEMA,
-                "profiles": {"some-profile": profile},
-            }),
-            encoding="utf-8",
-        )
+        policy = json.loads((ROOT / "eng" / "dependency-graph-policy.json").read_text(encoding="utf-8-sig"))
+        policy["profiles"]["some-profile"] = profile
+        path.write_text(json.dumps(policy), encoding="utf-8")
         return dg.load_policy(path)
 
     def test_known_profile_keys_load(self) -> None:
@@ -931,6 +1115,30 @@ class PolicyShapeTests(unittest.TestCase):
                 "selected_catalog_required_packages": {},
             })
         self.assertIn("must be a non-empty object", str(ctx.exception))
+
+    def test_landed_task2_seed_is_non_executable_delayed_activation_only(self) -> None:
+        policy = json.loads((ROOT / "eng" / "dependency-graph-policy.json").read_text(encoding="utf-8-sig"))
+        for row in policy["module_build_registry"].values():
+            del row["restore_argv"]
+            del row["build_argv"]
+        for name in (
+            "max_workflow_closure_depth",
+            "max_workflow_closure_sources",
+            "max_workflow_source_blob_bytes",
+            "max_workflow_source_total_bytes",
+        ):
+            del policy["resource_limits"][name]
+        raw = json.dumps(policy).encode("utf-8")
+
+        with self.assertRaises(dg.GraphError):
+            dg.load_policy_bytes(raw, "strict candidate")
+
+        migrated = dg.load_policy_bytes(raw, "immutable base", allow_legacy_registry=True)
+        self.assertIs(migrated["__legacy_registry_migration__"], True)
+        self.assertEqual(
+            migrated["module_build_registry"]["github.com/hexalith/hexalith.frontcomposer"]["restore_argv"][:2],
+            ["dotnet", "restore"],
+        )
 
 
 if __name__ == "__main__":

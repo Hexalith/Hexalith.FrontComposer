@@ -194,8 +194,9 @@ flowchart LR
 - **Binds:** all GOV-1 implementation tasks and completion evidence.
 - **Prevents:** dependency provenance work absorbing runtime, API, packaging, or UX scope.
 - **Rule:** GOV-1 changes no runtime/public API behavior, generated output, package inventory,
-  dependency versions, or UX. After GOV-1, Story 11.17d reruns its complete promotion lane on the exact
-  candidate revision; GOV-1 does not mark that story complete.
+  dependency versions, or UX. Story 11.17d completed on 2026-08-02 under its recorded one-story GOV-1
+  promotion waiver and is not reopened by this architecture; governed release eligibility remains
+  independently gated by GOV-1.
 
 ### AD-12 — `[ADOPTED]` one versioned trust and semantic policy
 
@@ -204,16 +205,21 @@ flowchart LR
 - **Rule:** a FrontComposer-owned versioned `eng/dependency-graph-policy.json` is the single declarative
   policy for trusted repository identity/path mappings, owner semantic profiles, supported module argv,
   evidence-only dispositions, evaluator authorizations, and v1 limits. Base/candidate `.gitmodules`,
-  workflows, and action metadata are untrusted candidate data.
+  workflows, and action metadata are untrusted candidate data. This file is the sole executable
+  authority for profile IDs/values, target dispositions/argv, limits, and evaluator authorizations;
+  architecture defines their schema, coverage invariants, activation rule, and trust boundary without
+  duplicating volatile policy rows.
   For a PR, the active policy is read from `event_base`; for a push, it is read from the non-zero
   `github.event.before`. Both base and candidate graphs are evaluated with that exact policy revision,
-  and evidence records its repository, 40-hex commit, raw-byte SHA-256, and policy schema. A policy
+  and evidence records its repository, canonical path, 40-hex commit, raw-byte SHA-256, and policy
+  schema. A policy
   change cannot authorize itself: it becomes eligible only as the active base policy of a later change.
   A zero/unavailable `before` cannot select trust: it may run full-affected diagnostics, but the gate
   fails and the run is never release-eligible.
   The one-time v1 bootstrap is allowed only when no base policy exists, the dependency graph is
-  unchanged, the candidate policy exactly projects this spine's closed seed registries/schema,
-  publication remains frozen, and the Release Owner-controlled repository variable
+  unchanged, the candidate policy conforms to this spine's closed registry schemas and complete
+  coverage invariants, its exact digest is independently approved rather than reconstructed from
+  planning prose, publication remains frozen, and the Release Owner-controlled repository variable
   `HEXALITH_DEPENDENCY_POLICY_BOOTSTRAP_SHA256` equals the exact candidate policy digest approved by the
   Architect + Release Owner in GOV-1 review evidence. The bootstrap record names that authority and
   digest. After that policy lands, base-policy existence makes bootstrap mode permanently unavailable;
@@ -237,19 +243,20 @@ flowchart LR
 
 - **Binds:** the `workflow_run` caller, reusable release workflow, release evidence, and publication freeze.
 - **Prevents:** a successful CI run for one commit authorizing checkout or publication from a later default-branch head.
-- **Rule:** the caller passes `github.event.workflow_run.head_sha` as an explicit required 40-hex input;
-  the reusable release workflow checks out exactly that input and every preparation, seal, live verify,
-  fallback, and publication step consumes it. The reusable workflow itself is referenced by an approved
-  immutable 40-hex Hexalith.Builds commit, and that workflow commit plus the caller workflow hash are
-  sealed as release definition provenance. The caller also passes the triggering CI run ID; release
-  uses a read-only GitHub token and the Actions run/artifact APIs to verify repository
+- **Rule:** the caller passes the triggering CI run ID and event head as authentication coordinates;
+  release uses a read-only GitHub token and the Actions run/artifact APIs to verify repository
   `Hexalith/Hexalith.FrontComposer`, workflow path `.github/workflows/ci.yml`, event `push`, branch
-  `main`, conclusion `success`, run ID, artifact name `dependency-release-handoff`, and
-  `head_sha == workflow_run.head_sha`. It then requires the artifact's recorded candidate to equal that
-  same SHA before accepting graph/policy coordinates. CI supplies the active policy coordinates selected
-  by AD-12; release reloads `eng/dependency-graph-policy.json` from that exact recorded FrontComposer
-  commit, verifies the raw SHA-256 and closed policy schema, and reuses it rather than selecting policy
-  from the ambient branch. The current `@main` caller
+  `main`, conclusion `success`, run ID/attempt, artifact name `dependency-release-handoff`, and event
+  head. It then authenticates the artifact and requires its recorded candidate to equal that run head.
+  The authenticated handoff candidate is the sole release-candidate authority: the reusable Release
+  workflow receives, checks out, and propagates exactly that value, and every preparation, seal, live
+  verify, fallback, and publication step consumes it. No tag, ambient/default branch, caller checkout,
+  or later `workflow_run.head_sha` may select or replace the candidate. The reusable workflow itself is
+  referenced by an approved immutable 40-hex Hexalith.Builds commit, and that workflow commit plus the
+  caller workflow hash are sealed as release-definition provenance. CI supplies the active policy
+  coordinates selected by AD-12; release reloads `eng/dependency-graph-policy.json` from that exact
+  recorded FrontComposer commit, verifies the raw SHA-256 and closed policy schema, and reuses it rather
+  than selecting policy from the ambient branch. The current `@main` caller
   and reusable workflow contract without a release-commit input are non-conforming, so the REL-4
   publication freeze remains mandatory until the exact-revision seam and its tests exist.
 
@@ -299,8 +306,9 @@ flowchart LR
 - **Prevents:** legacy evidence being silently upgraded, resealed, or treated as dependency-complete.
 - **Rule:** GOV-1 introduces the required top-level members
   `manifest_schema: hexalith.release-evidence.v2`, `dependency_graph: <complete AD-5 envelope>`, and
-  `dependency_policy: {schema, repository, commit, sha256}`, where the policy object has exactly those
-  four members and `schema` is `hexalith.dependency-graph-policy.v1`. It also introduces top-level
+  `dependency_policy: {schema, repository, path, commit, sha256}`, where the policy object has exactly
+  those five members, `path` is `eng/dependency-graph-policy.json`, and `schema` is
+  `hexalith.dependency-graph-policy.v1`. It also introduces top-level
   `workflow_provenance` with exactly `{ci, release, definition_digest}`. `ci` is exactly
   `{run:{repository,workflow_path,run_id,head_sha},evidence_sha256,caller,reusable,actions}` and `release`
   is exactly `{caller,reusable,actions}`. Each caller/reusable source is exactly
@@ -360,14 +368,18 @@ flowchart LR
 
 - **Binds:** primary CI, reusable release, GOV-1 completion, REL-4 unfreeze, and the next governed release.
 - **Prevents:** FrontComposer editing shared Builds source, silently weakening provenance, or claiming completion against `@main`.
-- **Rule:** Hexalith.Builds issue 17 / BUILD-REL-1 is amended by GOV-1 to deliver the exact AD-13/AD-15
-  reusable CI/release inputs, outputs, runtime identity checks, static closure, handoff, exact-candidate,
-  and `if: always()` verification-artifact contracts. FrontComposer records an owner-accepted immutable
-  40-hex Builds revision and its workflow/action blob hashes in the upstream request and active policy
-  before integrating it. Local graph, semantic, policy, and fixture work may proceed, but GOV-1 Tasks
-  4/5, story completion, release eligibility, and any REL-4 unfreeze remain blocked while the accepted
-  revision is `pending`. No FrontComposer-owned contingency is authorized by GOV-1; one requires a new
-  dated Release Owner + Architect decision with scope, expiry, migration trigger, and equivalent proofs.
+- **Rule:** Hexalith.Builds issue 17 closed on 2026-07-20 without accepting the GOV-1 amendment or
+  recording a qualifying immutable revision. The Release Owner reopens it with the complete amendment
+  or creates a successor request for the exact AD-13/AD-15 reusable CI/release inputs, outputs, runtime
+  identity checks, static closure, exact-candidate handoff, and `if: always()` verification-artifact
+  contracts. FrontComposer records an owner-accepted immutable 40-hex Builds revision and its exact
+  workflow/action blob closure in the upstream request and active policy before integration.
+  FrontComposer-local graph diff, affected-module materialization/proof, evaluator closure, handoff
+  schemas/consumers, manifest v2, and hostile fixtures proceed now. Only reusable-workflow wiring,
+  end-to-end exact-candidate evidence proof, GOV-1 completion, release eligibility, and any REL-4
+  unfreeze remain blocked while the replacement revision is pending. No FrontComposer-owned contingency
+  is authorized by GOV-1; one requires a new dated Release Owner + Architect decision with scope,
+  expiry, migration trigger, and equivalent proofs.
 
 ## Consistency Conventions
 
@@ -381,60 +393,40 @@ flowchart LR
 | Errors | Fail closed with owner repository/commit/path, selected repository/commit, and precise mismatch. |
 | Commands | FrontComposer-owned static argv arrays; no shell interpolation or candidate-supplied command. |
 
-## Closed Policy Seed
+## Executable Policy Authority and Closed Registry Shape
 
-Every Builds selector owner resolves through this semantic-profile registry. The baseline requires
-well-formed XML with a `Project` root, central package management enabled, override disabled,
-`HexalithVersionsLoaded=true`, and a structurally valid package catalog. For every package named by a
-consumer profile, require exactly one case-insensitively matching, unconditional authoritative
-`PackageVersion Include` row with the exact nonempty version and no `Update`, `Exclude`, `Remove`, or
-conditional shadowing for that package. The named consumer profiles add the existing owner-specific
-contract below; profile requirements are versioned policy, not implementation discretion.
+`eng/dependency-graph-policy.json` is the sole executable authority for semantic profile identifiers,
+owner-to-profile assignments, required catalog properties/packages/versions, target dispositions and
+argv, evaluator authorizations, and resource limits. This spine intentionally does not mirror their
+volatile values. A planning-document edit therefore cannot authorize a catalog, command, repository,
+workflow, or evaluator.
 
-| Canonical owner identity | Semantic profile |
-| --- | --- |
-| `github.com/hexalith/hexalith.frontcomposer` | `frontcomposer-catalog-v1` |
-| `github.com/hexalith/hexalith.eventstore` | `eventstore-catalog-v1` |
-| `github.com/hexalith/hexalith.memories` | `memories-catalog-v1` |
-| `github.com/hexalith/hexalith.parties` | `parties-catalog-v1` |
-| `github.com/hexalith/hexalith.builds` | `shared-catalog-baseline-v1` |
-| `github.com/hexalith/hexalith.commons` | `shared-catalog-baseline-v1` |
-| `github.com/hexalith/hexalith.polymorphicserializations` | `shared-catalog-baseline-v1` |
-| `github.com/hexalith/hexalith.tenants` | `shared-catalog-baseline-v1` |
-| `github.com/hexalith/hexalith.ai.tools` | `shared-catalog-baseline-v1` |
+The active policy's semantic registry is closed and must satisfy all of these structural invariants:
 
-| Consumer profile | Additional required contract |
-| --- | --- |
-| `frontcomposer-catalog-v1` | Root `Directory.Packages.props` is the three guarded-import shim and owns no package rows; selected catalog has `HexalithTenantsVersion=3.2.18` and exact rows `BenchmarkDotNet=0.15.8`, `FsCheck.Xunit.v3=3.3.3`, `Microsoft.CodeAnalysis.Workspaces.Common=5.6.0`, `Microsoft.Extensions.Localization=10.0.9`, `Microsoft.Extensions.TimeProvider.Testing=10.8.0`, `ModelContextProtocol.AspNetCore=1.4.1`, `NUlid=1.7.3`, `PactNet=5.0.1`, `System.Collections.Immutable=10.0.10`, `System.ComponentModel.Annotations=5.0.0`, `System.Reactive=7.0.0`, `System.Threading.Tasks.Extensions=4.6.3`, `Verify=31.24.2`, and `Verify.XunitV3=31.24.2`. The selected root catalog alone retains its existing BOM/CRLF format assertion. |
-| `eventstore-catalog-v1` | Owner catalog inherits without local override; selected catalog has `Microsoft.Extensions.TimeProvider.Testing=10.8.0`, `System.CommandLine=2.0.10`, and `ModelContextProtocol=1.4.1`. |
-| `memories-catalog-v1` | Owner catalog inherits without local override; selected catalog has `ModelContextProtocol.AspNetCore=1.4.1` and `Microsoft.Extensions.TimeProvider.Testing=10.8.0`. |
-| `parties-catalog-v1` | Owner keeps the exact three guarded imports and central-package properties, contains no inline package versions or MinVer ownership, and selected catalog has `Microsoft.AspNetCore.Components.CustomElements=10.0.10`, `ModelContextProtocol=1.4.1`, and `ModelContextProtocol.AspNetCore=1.4.1`. |
-| `shared-catalog-baseline-v1` | Baseline structural/ownership contract only; standalone build proof detects consumer-specific evaluation failures not represented by a named semantic assertion. |
+- every Builds selector owner discovered in the defined graph resolves to exactly one named profile;
+- every referenced profile exists and has a closed, schema-valid semantic contract;
+- baseline catalog structure, central-package ownership, import/marker rules, and any owner-specific
+  property/package requirements are explicit rather than supplied by implementation defaults;
+- every required package row is unique, unconditional, authoritative, nonempty, and protected from
+  `Update`, `Exclude`, `Remove`, conditional shadowing, or an inline consumer override; and
+- exact commits and catalog fingerprints are evidence only and never profile acceptance allowlists.
 
-The affected-module registry is also closed. Each `build` row contains these two literal argv arrays,
-with the listed solution substituted as one argv element and executed from an isolated checkout of the
-exact candidate commit: `['dotnet','restore',solution,'-p:Configuration=Release',
-'-p:UseNuGetDeps=true']`, then `['dotnet','build',solution,'--configuration','Release',
-'--no-restore','-p:UseNuGetDeps=true']`. `edge-tree:references/Hexalith.Builds` requires exactly one
-candidate Builds edge at that owner/path; its bounded regular-file tree is materialized at the matching
-path and the graph's catalog blob is re-hashed before restore. This supplies current consumers of both
-`Props/Directory.Packages.props` and `Hexalith.Build.props` without nested initialization. `self` uses
-the contract tree in the target repository.
+The graph engine and Governance fixtures enforce these invariants against the exact active policy.
+Changing any profile ID/value or owner assignment follows AD-12 delayed activation and must update the
+policy's tests; it does not require copying the new value into this spine.
 
-| Canonical target identity | Disposition | Solution / proof | Builds contract source |
-| --- | --- | --- | --- |
-| `github.com/hexalith/hexalith.frontcomposer` | `build` | `Hexalith.FrontComposer.slnx` | `edge-tree:references/Hexalith.Builds` |
-| `github.com/hexalith/hexalith.eventstore` | `build` | `Hexalith.EventStore.slnx` | `edge-tree:references/Hexalith.Builds` |
-| `github.com/hexalith/hexalith.tenants` | `build` | `Hexalith.Tenants.slnx` | `edge-tree:references/Hexalith.Builds` |
-| `github.com/hexalith/hexalith.commons` | `build` | `Hexalith.Commons.slnx` | `edge-tree:references/Hexalith.Builds` |
-| `github.com/hexalith/hexalith.builds` | `build` | `Hexalith.Builds.slnx` | `self` |
-| `github.com/hexalith/hexalith.polymorphicserializations` | `build` | `Hexalith.PolymorphicSerializations.slnx` | `edge-tree:references/Hexalith.Builds` |
-| `github.com/hexalith/hexalith.memories` | `build` | `Hexalith.Memories.slnx` | `edge-tree:references/Hexalith.Builds` |
-| `github.com/hexalith/hexalith.parties` | `build` | `Hexalith.Parties.slnx` | `edge-tree:references/Hexalith.Builds` |
-| `github.com/hexalith/hexalith.ai.tools` | `evidence-only` | No solution/build surface at the seed commit; graph, trust, and semantic evidence remain mandatory. | `none` |
+The affected-module registry is likewise closed and policy-owned. Every governed target identity has
+exactly one explicit `build` or `evidence-only` disposition. A `build` row contains literal argv arrays,
+an explicit working solution, and an explicit Builds contract source; no shell fragment or candidate
+data may supply a command. An edge-tree source requires exactly one candidate Builds edge at the named
+owner/path, bounded regular-file materialization, and graph/catalog re-hashing before execution. A self
+source consumes the target repository's own exact tree. An `evidence-only` row records why no supported
+standalone build surface exists while retaining graph, trust, and semantic evidence.
 
-An identity missing from either required registry fails closed. Changing `evidence-only` to `build`,
-changing argv, or adding an identity follows the delayed activation rule in AD-12.
+Every in-boundary affected identity must resolve through the active registry. Missing, duplicate, or
+unknown identities/dispositions fail closed. Changing an evidence disposition, argv, solution, contract
+source, or identity follows AD-12 delayed activation and requires policy/Governance fixtures; it is not
+authorized by architecture prose.
 
 ## Stack
 
@@ -487,7 +479,7 @@ flowchart TD
 | Manifest migration and legacy audit | `eng/release_evidence.py` + fixtures | AD-9, AD-14 |
 | Exact-object acquisition | CI temporary bare stores | AD-3, AD-7, AD-10 |
 | External catalog marker | BUILD-CAT-1 in Hexalith.Builds | AD-6 |
-| External reusable workflow contract | BUILD-REL-1 / Hexalith.Builds issue 17 | AD-13, AD-15, AD-16 |
+| External reusable workflow contract | Reopened BUILD-REL-1 issue 17 or successor request | AD-13, AD-15, AD-16 |
 
 ## Deferred
 
@@ -495,8 +487,9 @@ flowchart TD
   identity/object resolution, traversal budgets, unresolved-edge policy, and migration fixtures are approved.
 - **Mandatory catalog marker:** BUILD-CAT-1 owns the marker and canonical catalog contract; absence remains
   valid until supported selectors migrate and a separate approval changes AD-6.
-- **Accepted Builds workflow revision:** BUILD-REL-1 issue 17 is filed, but its accepted immutable
-  revision is pending. AD-16 makes that external delivery an explicit completion/unfreeze gate rather
-  than an implementation choice.
+- **Accepted Builds workflow revision:** BUILD-REL-1 issue 17 closed on 2026-07-20 without accepting
+  the GOV-1 amendment or recording a qualifying immutable revision. The Release Owner must reopen it or
+  file a successor. AD-16 gates only reusable-workflow integration, end-to-end proof, completion,
+  release eligibility, and unfreeze on that delivery; FrontComposer-local controls proceed.
 - **Deployment/provider topology:** GOV-1 adds no runtime service or infrastructure. It runs inside the
   existing CI and governed release environments; environment/provider design remains owned by FR-24.

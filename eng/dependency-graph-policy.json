@@ -122,47 +122,65 @@
     "github.com/hexalith/hexalith.frontcomposer": {
       "disposition": "build",
       "solution": "Hexalith.FrontComposer.slnx",
-      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds",
+      "restore_argv": ["dotnet", "restore", "Hexalith.FrontComposer.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "Hexalith.FrontComposer.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.eventstore": {
       "disposition": "build",
       "solution": "Hexalith.EventStore.slnx",
-      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds",
+      "restore_argv": ["dotnet", "restore", "Hexalith.EventStore.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "Hexalith.EventStore.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.tenants": {
       "disposition": "build",
       "solution": "Hexalith.Tenants.slnx",
-      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds",
+      "restore_argv": ["dotnet", "restore", "Hexalith.Tenants.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "Hexalith.Tenants.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.commons": {
       "disposition": "build",
       "solution": "Hexalith.Commons.slnx",
-      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds",
+      "restore_argv": ["dotnet", "restore", "Hexalith.Commons.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "Hexalith.Commons.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.builds": {
       "disposition": "build",
       "solution": "Hexalith.Builds.slnx",
-      "builds_contract_source": "self"
+      "builds_contract_source": "self",
+      "restore_argv": ["dotnet", "restore", "Hexalith.Builds.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "Hexalith.Builds.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.polymorphicserializations": {
       "disposition": "build",
       "solution": "Hexalith.PolymorphicSerializations.slnx",
-      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds",
+      "restore_argv": ["dotnet", "restore", "Hexalith.PolymorphicSerializations.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "Hexalith.PolymorphicSerializations.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.memories": {
       "disposition": "build",
       "solution": "Hexalith.Memories.slnx",
-      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds",
+      "restore_argv": ["dotnet", "restore", "Hexalith.Memories.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "Hexalith.Memories.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.parties": {
       "disposition": "build",
       "solution": "Hexalith.Parties.slnx",
-      "builds_contract_source": "edge-tree:references/Hexalith.Builds"
+      "builds_contract_source": "edge-tree:references/Hexalith.Builds",
+      "restore_argv": ["dotnet", "restore", "Hexalith.Parties.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "Hexalith.Parties.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.ai.tools": {
       "disposition": "evidence-only",
       "solution": null,
-      "builds_contract_source": "none"
+      "builds_contract_source": "none",
+      "restore_argv": null,
+      "build_argv": null
     }
   },
   "resource_limits": {
@@ -172,7 +190,11 @@
     "max_catalog_blob_bytes": 4194304,
     "max_contract_tree_files": 16384,
     "max_contract_tree_blob_bytes": 16777216,
-    "max_contract_tree_total_bytes": 268435456
+    "max_contract_tree_total_bytes": 268435456,
+    "max_workflow_closure_depth": 16,
+    "max_workflow_closure_sources": 256,
+    "max_workflow_source_blob_bytes": 1048576,
+    "max_workflow_source_total_bytes": 16777216
   },
   "evaluator_authorizations": {
     "ci": [],

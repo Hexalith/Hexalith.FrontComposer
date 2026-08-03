@@ -8,10 +8,12 @@ import datetime as dt
 import fnmatch
 import hashlib
 import html
+import importlib
 import json
 import os
 import pathlib
 import re
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from typing import Any
@@ -26,7 +28,7 @@ from typing import Any
 # a `__version__` bump produces a `release-definition drift` signal.
 # 1.2.0 (REL-3, 2026-07-18): APPROVAL_MATRIX rewritten to the REL-3/REL-4 authorization
 # model (freeze variable + publishable readiness evidence; no dispatch/approver inputs).
-__version__ = "1.2.0"
+__version__ = "2.0.0"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -51,6 +53,19 @@ _CANDIDATE_BLOCKER_TEMPLATE = "candidate evidence from {context_class} cannot au
 PACKAGE_COLLAPSE_MARKER = "<!-- frontcomposer:package-count-collapse -->"
 MAX_FIELD = 600
 SHA256_RE = re.compile(r"^[a-fA-F0-9]{64}$")
+LOWER_SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
+COMMIT_RE = re.compile(r"^[a-f0-9]{40}$")
+MARKER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+REPOSITORY_RE = re.compile(r"^[a-z0-9.-]+/[a-z0-9._-]+/[a-z0-9._-]+$")
+MANIFEST_SCHEMA = "hexalith.release-evidence.v2"
+GRAPH_SCHEMA = "hexalith.dependency-graph.v1"
+POLICY_SCHEMA = "hexalith.dependency-graph-policy.v1"
+CI_HANDOFF_SCHEMA = "hexalith.dependency-release-handoff.v1"
+POLICY_PATH = "eng/dependency-graph-policy.json"
+CI_WORKFLOW_PATH = ".github/workflows/ci.yml"
+MAX_MANIFEST_BYTES = 16 * 1024 * 1024
+MAX_HANDOFF_BYTES = 16 * 1024 * 1024
+MAX_WORKFLOW_ACTIONS = 256
 REQUIRED_ROW_FIELDS = [
     "package_id",
     "version",
@@ -85,8 +100,13 @@ REQUIRED_ROW_FIELDS = [
 # refactors that bump `__version__` are recognized as deliberate and do not invalidate
 # unrelated fallback approvals.
 RELEASE_DEFINITION_FILES = [
+    ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
     ".releaserc.json",
+    "eng/dependency-graph-policy.json",
+    "eng/dependency_graph.py",
+    "eng/dependency_handoff.py",
+    "eng/workflow_source_closure.py",
     "eng/release-package-inventory.json",
     "Directory.Build.props",
     "Directory.Build.targets",
@@ -101,8 +121,13 @@ RELEASE_DEFINITION_FILES = [
 # CR-12-4-P215 (round-8): `eng/release_evidence.py` excluded for the same reason as in
 # `RELEASE_DEFINITION_FILES`; drift is caught via the helper_version field instead.
 FALLBACK_INVALIDATION_FILES = [
+    ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
     ".releaserc.json",
+    "eng/dependency-graph-policy.json",
+    "eng/dependency_graph.py",
+    "eng/dependency_handoff.py",
+    "eng/workflow_source_closure.py",
     "eng/release-package-inventory.json",
     "Directory.Build.props",
     "Directory.Build.targets",
@@ -332,8 +357,489 @@ def sha256_text(text: str) -> str:
 
 
 def canonical_sha256(value: Any) -> str:
-    canonical = json.dumps(value, sort_keys=True, separators=(",", ":"))
+    canonical = json.dumps(
+        value,
+        ensure_ascii=True,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     return sha256_text(canonical)
+
+
+class DuplicateJsonMember(ValueError):
+    """Raised when governed evidence contains the same JSON member more than once."""
+
+
+def _reject_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise DuplicateJsonMember(f"duplicate JSON member {key!r}")
+        result[key] = value
+    return result
+
+
+def _read_strict_json_bytes(raw: bytes, context: str) -> Any:
+    try:
+        return json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_members,
+            parse_constant=lambda value: (_ for _ in ()).throw(
+                ValueError(f"non-finite JSON number {value!r}")
+            ),
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError, DuplicateJsonMember, ValueError) as exc:
+        raise ValueError(f"{context}: invalid duplicate-member-free UTF-8 JSON: {exc}") from exc
+
+
+def _read_bounded_strict_json(
+    path: str | pathlib.Path,
+    context: str,
+    *,
+    max_bytes: int,
+) -> tuple[bytes, Any]:
+    candidate = pathlib.Path(path)
+    if not candidate.is_file():
+        raise ValueError(f"{context}: file is missing")
+    size = candidate.stat().st_size
+    if size > max_bytes:
+        raise ValueError(f"{context}: {size} bytes exceeds the {max_bytes}-byte ceiling")
+    raw = candidate.read_bytes()
+    return raw, _read_strict_json_bytes(raw, context)
+
+
+def _exact_members(
+    value: Any,
+    expected: set[str],
+    context: str,
+    diagnostics: list[str],
+) -> dict[str, Any] | None:
+    if not isinstance(value, dict):
+        diagnostics.append(f"{context} must be an object")
+        return None
+    actual = set(value)
+    missing = sorted(expected - actual)
+    unknown = sorted(actual - expected)
+    if missing:
+        diagnostics.append(f"{context} missing member(s): {', '.join(missing)}")
+    if unknown:
+        diagnostics.append(f"{context} has unknown member(s): {', '.join(unknown)}")
+    return value
+
+
+def _is_ascii(value: str) -> bool:
+    try:
+        value.encode("ascii")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def _valid_path(value: Any) -> bool:
+    if not isinstance(value, str) or not value or not _is_ascii(value):
+        return False
+    if value.startswith("/") or "\\" in value or any(ord(char) < 32 or ord(char) == 127 for char in value):
+        return False
+    return all(segment not in {"", ".", ".."} for segment in value.split("/"))
+
+
+def _valid_repository(value: Any) -> bool:
+    return isinstance(value, str) and _is_ascii(value) and REPOSITORY_RE.fullmatch(value) is not None
+
+
+def _valid_commit(value: Any) -> bool:
+    return isinstance(value, str) and COMMIT_RE.fullmatch(value) is not None
+
+
+def _valid_sha256(value: Any) -> bool:
+    return isinstance(value, str) and LOWER_SHA256_RE.fullmatch(value) is not None
+
+
+def _positive_integer(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 1
+
+
+def _load_dependency_graph_engine() -> Any:
+    engine_dir = str(pathlib.Path(__file__).resolve().parent)
+    inserted = False
+    if engine_dir not in sys.path:
+        sys.path.insert(0, engine_dir)
+        inserted = True
+    try:
+        return importlib.import_module("dependency_graph")
+    finally:
+        if inserted:
+            sys.path.remove(engine_dir)
+
+
+def _load_dependency_handoff_engine() -> Any:
+    engine_dir = str(pathlib.Path(__file__).resolve().parent)
+    inserted = False
+    if engine_dir not in sys.path:
+        sys.path.insert(0, engine_dir)
+        inserted = True
+    try:
+        _load_dependency_graph_engine()
+        return importlib.import_module("dependency_handoff")
+    finally:
+        if inserted:
+            sys.path.remove(engine_dir)
+
+
+def _validate_graph(graph: Any, diagnostics: list[str], context: str = "dependency_graph") -> dict[str, Any] | None:
+    envelope = _exact_members(
+        graph,
+        {"schema", "root", "edge_count", "edges", "graph_digest"},
+        context,
+        diagnostics,
+    )
+    if envelope is None:
+        return None
+    if envelope.get("schema") != GRAPH_SCHEMA:
+        diagnostics.append(f"{context}.schema must be {GRAPH_SCHEMA!r}")
+    root = _exact_members(envelope.get("root"), {"repository", "commit"}, f"{context}.root", diagnostics)
+    if root is not None:
+        if not _valid_repository(root.get("repository")):
+            diagnostics.append(f"{context}.root.repository must be a canonical lowercase ASCII repository identity")
+        if not _valid_commit(root.get("commit")):
+            diagnostics.append(f"{context}.root.commit must be a lowercase 40-hex Git SHA-1")
+    edges = envelope.get("edges")
+    if not isinstance(edges, list):
+        diagnostics.append(f"{context}.edges must be an array")
+        edge_items: list[Any] = []
+    else:
+        edge_items = edges
+        if len(edge_items) > 4096:
+            diagnostics.append(f"{context}.edges exceeds the 4096-edge ceiling")
+    edge_count = envelope.get("edge_count")
+    if not isinstance(edge_count, int) or isinstance(edge_count, bool) or edge_count < 0:
+        diagnostics.append(f"{context}.edge_count must be a non-negative JSON integer")
+    elif edge_count != len(edge_items):
+        diagnostics.append(f"{context}.edge_count does not equal len(edges)")
+    identities: set[tuple[str, str, str]] = set()
+    sort_keys: list[tuple[Any, ...]] = []
+    for index, edge_value in enumerate(edge_items):
+        edge_context = f"{context}.edges[{index}]"
+        if not isinstance(edge_value, dict):
+            diagnostics.append(f"{edge_context} must be an object")
+            continue
+        is_builds = edge_value.get("repository") == "github.com/hexalith/hexalith.builds"
+        expected = {"owner_repository", "owner_commit", "path", "repository", "commit", "depth"}
+        if is_builds:
+            expected |= {"catalog_sha256", "catalog_contract_version"}
+        edge = _exact_members(edge_value, expected, edge_context, diagnostics)
+        if edge is None:
+            continue
+        for name in ("owner_repository", "repository"):
+            if not _valid_repository(edge.get(name)):
+                diagnostics.append(f"{edge_context}.{name} must be a canonical lowercase ASCII repository identity")
+        for name in ("owner_commit", "commit"):
+            if not _valid_commit(edge.get(name)):
+                diagnostics.append(f"{edge_context}.{name} must be a lowercase 40-hex Git SHA-1")
+        if not _valid_path(edge.get("path")):
+            diagnostics.append(f"{edge_context}.path must be a normalized relative ASCII POSIX path")
+        depth = edge.get("depth")
+        if not isinstance(depth, int) or isinstance(depth, bool) or depth not in {1, 2}:
+            diagnostics.append(f"{edge_context}.depth must be JSON integer 1 or 2")
+        if is_builds:
+            if not _valid_sha256(edge.get("catalog_sha256")):
+                diagnostics.append(f"{edge_context}.catalog_sha256 must be a lowercase 64-hex SHA-256")
+            marker = edge.get("catalog_contract_version")
+            if marker is not None and (not isinstance(marker, str) or MARKER_RE.fullmatch(marker) is None):
+                diagnostics.append(f"{edge_context}.catalog_contract_version is malformed")
+        identity = (str(edge.get("owner_repository")), str(edge.get("owner_commit")), str(edge.get("path")))
+        if identity in identities:
+            diagnostics.append(f"{edge_context} duplicates edge identity {identity!r}")
+        identities.add(identity)
+        sort_keys.append(
+            (
+                edge.get("depth"),
+                edge.get("owner_repository"),
+                edge.get("owner_commit"),
+                edge.get("path"),
+                edge.get("repository"),
+                edge.get("commit"),
+            )
+        )
+    if sort_keys != sorted(sort_keys):
+        diagnostics.append(f"{context}.edges are not in canonical ordinal order")
+    digest = envelope.get("graph_digest")
+    if not _valid_sha256(digest):
+        diagnostics.append(f"{context}.graph_digest must be a lowercase 64-hex SHA-256")
+    elif isinstance(edges, list) and canonical_sha256(
+        {
+            "schema": envelope.get("schema"),
+            "root": envelope.get("root"),
+            "edge_count": envelope.get("edge_count"),
+            "edges": edges,
+        }
+    ) != digest:
+        diagnostics.append(f"{context}.graph_digest does not match canonical graph material")
+    return envelope
+
+
+def _validate_policy_projection(
+    value: Any,
+    diagnostics: list[str],
+    context: str = "dependency_policy",
+) -> dict[str, Any] | None:
+    policy = _exact_members(value, {"schema", "repository", "path", "commit", "sha256"}, context, diagnostics)
+    if policy is None:
+        return None
+    if policy.get("schema") != POLICY_SCHEMA:
+        diagnostics.append(f"{context}.schema must be {POLICY_SCHEMA!r}")
+    if not _valid_repository(policy.get("repository")):
+        diagnostics.append(f"{context}.repository must be a canonical lowercase ASCII repository identity")
+    if policy.get("path") != POLICY_PATH:
+        diagnostics.append(f"{context}.path must be {POLICY_PATH!r}")
+    if not _valid_commit(policy.get("commit")):
+        diagnostics.append(f"{context}.commit must be a lowercase 40-hex Git SHA-1")
+    if not _valid_sha256(policy.get("sha256")):
+        diagnostics.append(f"{context}.sha256 must be a lowercase 64-hex SHA-256")
+    return policy
+
+
+def _validate_workflow_source(
+    value: Any,
+    diagnostics: list[str],
+    context: str,
+    *,
+    action: bool = False,
+) -> dict[str, Any] | None:
+    path_member = "path" if action else "workflow_path"
+    source = _exact_members(
+        value,
+        {"repository", path_member, "commit", "blob_sha256"},
+        context,
+        diagnostics,
+    )
+    if source is None:
+        return None
+    if not _valid_repository(source.get("repository")):
+        diagnostics.append(f"{context}.repository must be a canonical lowercase ASCII repository identity")
+    if not _valid_path(source.get(path_member)):
+        diagnostics.append(f"{context}.{path_member} must be a normalized relative ASCII POSIX path")
+    if not _valid_commit(source.get("commit")):
+        diagnostics.append(f"{context}.commit must be a lowercase 40-hex Git SHA-1")
+    if not _valid_sha256(source.get("blob_sha256")):
+        diagnostics.append(f"{context}.blob_sha256 must be a lowercase 64-hex SHA-256")
+    return source
+
+
+def _validate_evaluator(
+    value: Any,
+    diagnostics: list[str],
+    context: str,
+) -> dict[str, Any] | None:
+    evaluator = _exact_members(
+        value,
+        {"caller", "reusable", "actions", "definition_digest"},
+        context,
+        diagnostics,
+    )
+    if evaluator is None:
+        return None
+    _validate_workflow_source(evaluator.get("caller"), diagnostics, f"{context}.caller")
+    _validate_workflow_source(evaluator.get("reusable"), diagnostics, f"{context}.reusable")
+    actions = evaluator.get("actions")
+    if not isinstance(actions, list):
+        diagnostics.append(f"{context}.actions must be an array")
+        action_items: list[Any] = []
+    else:
+        action_items = actions
+        if len(action_items) > MAX_WORKFLOW_ACTIONS:
+            diagnostics.append(f"{context}.actions exceeds the {MAX_WORKFLOW_ACTIONS}-source ceiling")
+    action_keys: list[tuple[Any, ...]] = []
+    for index, action_value in enumerate(action_items):
+        action = _validate_workflow_source(
+            action_value,
+            diagnostics,
+            f"{context}.actions[{index}]",
+            action=True,
+        )
+        if action is not None:
+            action_keys.append(
+                (
+                    action.get("repository"),
+                    action.get("path"),
+                    action.get("commit"),
+                    action.get("blob_sha256"),
+                )
+            )
+    if action_keys != sorted(action_keys):
+        diagnostics.append(f"{context}.actions are not in canonical ordinal order")
+    if len(action_keys) != len(set(action_keys)):
+        diagnostics.append(f"{context}.actions must be unique")
+    expected_digest = canonical_sha256(
+        {
+            "caller": evaluator.get("caller"),
+            "reusable": evaluator.get("reusable"),
+            "actions": evaluator.get("actions"),
+        }
+    )
+    if evaluator.get("definition_digest") != expected_digest:
+        diagnostics.append(f"{context}.definition_digest does not match canonical evaluator material")
+    return evaluator
+
+
+def _authorization_projection(evaluator: dict[str, Any], stage: str) -> dict[str, Any]:
+    caller = evaluator["caller"]
+    authorized_caller = {
+        "repository": caller["repository"],
+        "workflow_path": caller["workflow_path"],
+        "blob_sha256": caller["blob_sha256"],
+    }
+    material = {
+        "stage": stage,
+        "caller": authorized_caller,
+        "reusable": evaluator["reusable"],
+        "actions": evaluator["actions"],
+    }
+    return {**material, "closure_digest": canonical_sha256(material)}
+
+
+def _evaluator_authorization_diagnostics(
+    policy: dict[str, Any],
+    evaluator: dict[str, Any],
+    stage: str,
+) -> list[str]:
+    try:
+        handoff_engine = _load_dependency_handoff_engine()
+        handoff_engine.require_evaluator_authorized(policy, stage, evaluator)
+        return []
+    except Exception as exc:
+        return [str(exc)]
+
+
+def _load_active_policy(
+    graph_root: pathlib.Path,
+    projection: dict[str, Any],
+) -> tuple[bytes, dict[str, Any]]:
+    engine = _load_dependency_graph_engine()
+    policy, raw, expected_projection = engine.load_policy_at_commit(graph_root, projection["commit"])
+    if expected_projection != projection:
+        raise ValueError("dependency_policy raw-byte coordinate does not match the sealed projection")
+    return raw, policy
+
+
+def _workflow_provenance(
+    handoff: dict[str, Any],
+    handoff_sha256: str,
+    release_evaluator: dict[str, Any],
+) -> dict[str, Any]:
+    ci_evaluator = handoff["evaluator"]
+    run = handoff["run"]
+    ci = {
+        "run": {
+            "repository": run["repository"],
+            "workflow_path": run["workflow_path"],
+            "run_id": run["run_id"],
+            "head_sha": run["candidate"],
+        },
+        "evidence_sha256": handoff_sha256,
+        "caller": ci_evaluator["caller"],
+        "reusable": ci_evaluator["reusable"],
+        "actions": ci_evaluator["actions"],
+    }
+    release = {
+        "caller": release_evaluator["caller"],
+        "reusable": release_evaluator["reusable"],
+        "actions": release_evaluator["actions"],
+    }
+    definition_material = {
+        "ci": {"caller": ci["caller"], "reusable": ci["reusable"], "actions": ci["actions"]},
+        "release": release,
+    }
+    return {"ci": ci, "release": release, "definition_digest": canonical_sha256(definition_material)}
+
+
+def _validate_workflow_provenance(
+    value: Any,
+    diagnostics: list[str],
+) -> dict[str, Any] | None:
+    provenance = _exact_members(value, {"ci", "release", "definition_digest"}, "workflow_provenance", diagnostics)
+    if provenance is None:
+        return None
+    ci = _exact_members(
+        provenance.get("ci"),
+        {"run", "evidence_sha256", "caller", "reusable", "actions"},
+        "workflow_provenance.ci",
+        diagnostics,
+    )
+    release = _exact_members(
+        provenance.get("release"),
+        {"caller", "reusable", "actions"},
+        "workflow_provenance.release",
+        diagnostics,
+    )
+    ci_evaluator: dict[str, Any] | None = None
+    release_evaluator: dict[str, Any] | None = None
+    if ci is not None:
+        run = _exact_members(
+            ci.get("run"),
+            {"repository", "workflow_path", "run_id", "head_sha"},
+            "workflow_provenance.ci.run",
+            diagnostics,
+        )
+        if run is not None:
+            if not _valid_repository(run.get("repository")) or run.get("workflow_path") != CI_WORKFLOW_PATH:
+                diagnostics.append("workflow_provenance.ci.run repository/workflow_path is malformed")
+            if not _positive_integer(run.get("run_id")):
+                diagnostics.append("workflow_provenance.ci.run.run_id must be a JSON integer >= 1")
+            if not _valid_commit(run.get("head_sha")):
+                diagnostics.append("workflow_provenance.ci.run.head_sha must be a lowercase 40-hex Git SHA-1")
+        if not _valid_sha256(ci.get("evidence_sha256")):
+            diagnostics.append("workflow_provenance.ci.evidence_sha256 must be a lowercase 64-hex SHA-256")
+        ci_evaluator_value = {
+            "caller": ci.get("caller"),
+            "reusable": ci.get("reusable"),
+            "actions": ci.get("actions"),
+        }
+        ci_evaluator_value["definition_digest"] = canonical_sha256(ci_evaluator_value)
+        ci_evaluator = _validate_evaluator(ci_evaluator_value, diagnostics, "workflow_provenance.ci evaluator")
+    if release is not None:
+        release_evaluator_value = {
+            "caller": release.get("caller"),
+            "reusable": release.get("reusable"),
+            "actions": release.get("actions"),
+        }
+        release_evaluator_value["definition_digest"] = canonical_sha256(release_evaluator_value)
+        release_evaluator = _validate_evaluator(
+            release_evaluator_value,
+            diagnostics,
+            "workflow_provenance.release evaluator",
+        )
+    if ci is not None and release is not None:
+        expected = canonical_sha256(
+            {
+                "ci": {"caller": ci.get("caller"), "reusable": ci.get("reusable"), "actions": ci.get("actions")},
+                "release": release,
+            }
+        )
+        if provenance.get("definition_digest") != expected:
+            diagnostics.append("workflow_provenance.definition_digest does not match canonical CI/Release sources")
+    elif not _valid_sha256(provenance.get("definition_digest")):
+        diagnostics.append("workflow_provenance.definition_digest must be a lowercase 64-hex SHA-256")
+    return provenance
+
+
+def _provenance_evaluators(provenance: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any]]:
+    ci = provenance["ci"]
+    release = provenance["release"]
+    ci_evaluator = {
+        "caller": ci["caller"],
+        "reusable": ci["reusable"],
+        "actions": ci["actions"],
+    }
+    ci_evaluator["definition_digest"] = canonical_sha256(ci_evaluator)
+    release_evaluator = {
+        "caller": release["caller"],
+        "reusable": release["reusable"],
+        "actions": release["actions"],
+    }
+    release_evaluator["definition_digest"] = canonical_sha256(release_evaluator)
+    return ci_evaluator, release_evaluator
 
 
 def normalize_under_root(root: pathlib.Path, name: str) -> pathlib.Path:
@@ -742,8 +1248,184 @@ def deep_merge(base: Any, override: Any) -> Any:
     return override if override is not None else base
 
 
-def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = None) -> list[str]:
+def _manifest_v2_diagnostics(
+    manifest: dict[str, Any],
+    *,
+    require_seal: bool,
+) -> list[str]:
     diagnostics: list[str] = []
+    required = {
+        "manifest_schema",
+        "commit_sha",
+        "tag",
+        "run_id",
+        "workflow_ref",
+        "sbom_hash",
+        "benchmark_summary_hash",
+        "packages",
+        "release_definition_fingerprints",
+        "package_set_fingerprint",
+        "helper_version",
+        "dependency_graph",
+        "dependency_policy",
+        "workflow_provenance",
+    }
+    optional = {"attestation_bundle"}
+    if require_seal:
+        required.add("seal")
+    else:
+        optional.add("seal")
+    missing_required = sorted(required - set(manifest))
+    unknown = sorted(set(manifest) - required - optional)
+    if missing_required:
+        diagnostics.append(f"manifest missing required v2 member(s): {', '.join(missing_required)}")
+    if unknown:
+        diagnostics.append(f"manifest has unknown v2 member(s): {', '.join(unknown)}")
+    if manifest.get("manifest_schema") != MANIFEST_SCHEMA:
+        diagnostics.append(f"manifest_schema must be {MANIFEST_SCHEMA!r}")
+    if not _valid_commit(manifest.get("commit_sha")):
+        diagnostics.append("manifest commit_sha must be a lowercase 40-hex Git SHA-1 and cannot be 'local'")
+    graph = _validate_graph(manifest.get("dependency_graph"), diagnostics)
+    policy = _validate_policy_projection(manifest.get("dependency_policy"), diagnostics)
+    provenance = _validate_workflow_provenance(manifest.get("workflow_provenance"), diagnostics)
+    if graph is not None:
+        root = graph.get("root") if isinstance(graph.get("root"), dict) else {}
+        if root.get("commit") != manifest.get("commit_sha"):
+            diagnostics.append("manifest commit_sha does not match dependency_graph.root.commit")
+        if policy is not None and policy.get("repository") != root.get("repository"):
+            diagnostics.append("dependency_policy.repository does not match dependency_graph.root.repository")
+        if provenance is not None:
+            ci = provenance.get("ci") if isinstance(provenance.get("ci"), dict) else {}
+            run = ci.get("run") if isinstance(ci.get("run"), dict) else {}
+            if run.get("head_sha") != root.get("commit"):
+                diagnostics.append("workflow_provenance CI head does not match dependency_graph.root.commit")
+            if run.get("repository") != root.get("repository"):
+                diagnostics.append("workflow_provenance CI repository does not match dependency_graph.root.repository")
+    helper = _exact_members(
+        manifest.get("helper_version"),
+        {"version", "content_sha256"},
+        "helper_version",
+        diagnostics,
+    )
+    if helper is not None:
+        version = helper.get("version")
+        if not isinstance(version, str) or re.fullmatch(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$", version) is None:
+            diagnostics.append("helper_version.version must be a non-empty semantic version")
+        if not _valid_sha256(helper.get("content_sha256")):
+            diagnostics.append("helper_version.content_sha256 must be a lowercase 64-hex SHA-256")
+    fingerprints = manifest.get("release_definition_fingerprints")
+    if isinstance(fingerprints, dict):
+        missing_fingerprints = sorted(set(RELEASE_DEFINITION_FILES) - set(fingerprints))
+        unknown_fingerprints = sorted(set(fingerprints) - set(RELEASE_DEFINITION_FILES))
+        if missing_fingerprints:
+            diagnostics.append(
+                "manifest release_definition_fingerprints missing required path(s): "
+                + ", ".join(missing_fingerprints)
+            )
+        if unknown_fingerprints:
+            diagnostics.append(
+                "manifest release_definition_fingerprints has unknown path(s): "
+                + ", ".join(unknown_fingerprints)
+            )
+        for name, value in fingerprints.items():
+            if value != "missing" and not _valid_sha256(value):
+                diagnostics.append(f"manifest release_definition_fingerprints[{name!r}] must be 'missing' or lowercase SHA-256")
+    if not _valid_sha256(manifest.get("package_set_fingerprint")):
+        diagnostics.append("manifest package_set_fingerprint must be a lowercase 64-hex SHA-256")
+    packages = manifest.get("packages")
+    if isinstance(packages, list):
+        package_members = {
+            "package_id",
+            "version",
+            "commit_sha",
+            "artifact_path",
+            "checksum",
+            "symbol_artifact",
+            "symbol_checksum",
+            "sbom_component",
+            "signing_status",
+            "timestamp_status",
+            "attestation_status",
+            "publish_status",
+        }
+        package_ids: set[str] = set()
+        for index, row in enumerate(packages):
+            package = _exact_members(row, package_members, f"packages[{index}]", diagnostics)
+            if package is None:
+                continue
+            package_id = package.get("package_id")
+            if not isinstance(package_id, str) or not package_id or not _is_ascii(package_id):
+                diagnostics.append(f"packages[{index}].package_id must be a non-empty ASCII string")
+            elif package_id in package_ids:
+                diagnostics.append(f"packages[{index}].package_id is duplicated")
+            else:
+                package_ids.add(package_id)
+            if package.get("commit_sha") != manifest.get("commit_sha"):
+                diagnostics.append(f"packages[{index}].commit_sha does not match manifest commit_sha")
+    if (
+        "attestation_bundle" in manifest
+        and manifest.get("attestation_bundle") is not None
+        and manifest.get("attestation_bundle") is not False
+    ):
+        bundle = _exact_members(
+            manifest.get("attestation_bundle"),
+            {"path", "sha256"},
+            "attestation_bundle",
+            diagnostics,
+        )
+        if bundle is not None:
+            if not _valid_path(bundle.get("path")):
+                diagnostics.append("attestation_bundle.path must be a normalized relative ASCII POSIX path")
+            if not _valid_sha256(bundle.get("sha256")):
+                diagnostics.append("attestation_bundle.sha256 must be a lowercase 64-hex SHA-256")
+    if require_seal:
+        seal = _exact_members(manifest.get("seal"), {"algorithm", "hash", "sealed_at"}, "seal", diagnostics)
+        if seal is not None:
+            if seal.get("algorithm") != "sha256" or not _valid_sha256(seal.get("hash")):
+                diagnostics.append("seal must identify a lowercase SHA-256 hash")
+            sealed_at = seal.get("sealed_at")
+            if not isinstance(sealed_at, str) or not sealed_at:
+                diagnostics.append("seal.sealed_at must be a non-empty timestamp string")
+    return diagnostics
+
+
+def _live_manifest_v2_diagnostics(
+    manifest: dict[str, Any],
+    graph_root: pathlib.Path,
+) -> list[str]:
+    diagnostics: list[str] = []
+    graph = manifest.get("dependency_graph")
+    projection = manifest.get("dependency_policy")
+    provenance = manifest.get("workflow_provenance")
+    if not isinstance(graph, dict) or not isinstance(projection, dict) or not isinstance(provenance, dict):
+        return diagnostics
+    try:
+        _, policy = _load_active_policy(graph_root, projection)
+        engine = _load_dependency_graph_engine()
+        root = graph["root"]
+        recomputed = engine.collect_graph(graph_root, root["repository"], manifest["commit_sha"], policy)
+        if recomputed != graph:
+            diagnostics.append("dependency-graph drift: live exact-commit graph/catalog evidence differs from the sealed graph")
+        ci_evaluator, release_evaluator = _provenance_evaluators(provenance)
+        diagnostics.extend(_evaluator_authorization_diagnostics(policy, ci_evaluator, "ci"))
+        diagnostics.extend(_evaluator_authorization_diagnostics(policy, release_evaluator, "release"))
+    except (KeyError, TypeError, ValueError, OSError, subprocess.SubprocessError) as exc:
+        diagnostics.append(f"live dependency provenance verification failed: {sanitize(exc)}")
+    except Exception as exc:
+        diagnostics.append(f"live dependency provenance verification failed: {sanitize(exc)}")
+    return diagnostics
+
+
+def manifest_diagnostics(
+    manifest: dict[str, Any],
+    root: pathlib.Path | None = None,
+    *,
+    graph_root: pathlib.Path | None = None,
+    enforce_v2: bool = True,
+) -> list[str]:
+    diagnostics: list[str] = []
+    if enforce_v2:
+        diagnostics.extend(_manifest_v2_diagnostics(manifest, require_seal=True))
     rows = manifest.get("packages", [])
     row_items = rows if isinstance(rows, list) else []
     typed_rows = [row for row in row_items if isinstance(row, dict)]
@@ -928,6 +1610,8 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
             diagnostics.append("package-set drift: release-package-inventory.json missing on disk")
         elif embedded_package_set != current_package_set:
             diagnostics.append("package-set drift: release-package-inventory.json hash does not match sealed baseline")
+        if enforce_v2:
+            diagnostics.extend(_live_manifest_v2_diagnostics(manifest, graph_root or root))
     return diagnostics
 
 
@@ -1429,6 +2113,9 @@ def fallback_complete(
     *,
     evidence_root: pathlib.Path | None = None,
     package_set: str | None = None,
+    dependency_graph_digest: str | None = None,
+    dependency_policy_sha256: str | None = None,
+    workflow_definition_digest: str | None = None,
 ) -> tuple[bool, str | None]:
     """Validate fallback completeness. Returns (complete, diagnostic-or-None).
 
@@ -1523,9 +2210,28 @@ def fallback_complete(
             return False, f"fallback evidence file missing or empty: {sanitize(evidence_name)}"
     if fingerprints is not None:
         approved_digest = approved_digest_raw.lower()
-        if package_set is not None:
-            # CR-12-4-P120 (round-6): fold package_set_fingerprint into the
-            # invalidation digest so package-set drift invalidates fallback per AC34.
+        v2_values = (
+            dependency_graph_digest,
+            dependency_policy_sha256,
+            workflow_definition_digest,
+        )
+        if any(value is not None for value in v2_values) and not all(
+            _valid_sha256(value) for value in v2_values
+        ):
+            return False, "fallback v2 graph/policy/workflow invalidation inputs are missing or malformed"
+        if all(_valid_sha256(value) for value in v2_values):
+            if not _valid_sha256(package_set):
+                return False, "fallback v2 package_set_fingerprint is missing or malformed"
+            current_digest = canonical_sha256(
+                {
+                    "definition": fingerprints,
+                    "package_set": package_set,
+                    "dependency_graph": dependency_graph_digest,
+                    "dependency_policy": dependency_policy_sha256,
+                    "workflow_definition": workflow_definition_digest,
+                }
+            ).lower()
+        elif package_set is not None:
             current_digest = canonical_sha256(
                 {"definition": fingerprints, "package_set": package_set}
             ).lower()
@@ -1818,6 +2524,21 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
                 fingerprints_for_drift,
                 evidence_root=evidence_root,
                 package_set=current_package_set if isinstance(current_package_set, str) else None,
+                dependency_graph_digest=(
+                    manifest.get("dependency_graph", {}).get("graph_digest")
+                    if isinstance(manifest.get("dependency_graph"), dict)
+                    else None
+                ),
+                dependency_policy_sha256=(
+                    manifest.get("dependency_policy", {}).get("sha256")
+                    if isinstance(manifest.get("dependency_policy"), dict)
+                    else None
+                ),
+                workflow_definition_digest=(
+                    manifest.get("workflow_provenance", {}).get("definition_digest")
+                    if isinstance(manifest.get("workflow_provenance"), dict)
+                    else None
+                ),
             )
             if complete:
                 fallback_reasons.append("GitHub artifact attestation unavailable; approved unsupported-attestation fallback is in force")
@@ -2181,8 +2902,16 @@ def test_results(args: argparse.Namespace) -> int:
 
 
 def verify_manifest(args: argparse.Namespace) -> int:
-    manifest = read_json(args.manifest)
     diagnostics: list[str] = []
+    try:
+        _, manifest = _read_bounded_strict_json(
+            args.manifest,
+            "sealed manifest",
+            max_bytes=MAX_MANIFEST_BYTES,
+        )
+    except ValueError as exc:
+        diagnostics.append(str(exc))
+        manifest = None
     # CR-12-4-P236 (round-10, EC-8): guard against non-dict top-level manifest. The
     # workflow's pre-classify JSON parse check (P227) validates parseability but not
     # dict shape. A sealed-manifest.json with top-level `[]`, `null`, or scalar
@@ -2193,7 +2922,22 @@ def verify_manifest(args: argparse.Namespace) -> int:
         diagnostics.append("sealed manifest must be an object")
         if args.output:
             write_json(args.output, {"status": "invalid", "diagnostics": diagnostics})
+        else:
+            for diagnostic in diagnostics:
+                print(diagnostic)
         return 1
+    if manifest.get("manifest_schema") != MANIFEST_SCHEMA and args.audit_legacy:
+        audit_diagnostics = manifest_diagnostics(manifest, None, enforce_v2=False)
+        audit_diagnostics.append(
+            "legacy manifest is audit-only, non-publishable, non-fallback-eligible, and cannot be upgraded or resealed"
+        )
+        payload = {"status": "audit-only", "publishable": False, "diagnostics": audit_diagnostics}
+        if args.output:
+            write_json(args.output, payload)
+        else:
+            for diagnostic in audit_diagnostics:
+                print(diagnostic)
+        return 0
     if args.no_root:
         root = None
     elif args.root:
@@ -2203,7 +2947,10 @@ def verify_manifest(args: argparse.Namespace) -> int:
     else:
         root = None
         diagnostics.append("--root is required for live manifest verification; pass --no-root only for offline fixture verification")
-    diagnostics.extend(manifest_diagnostics(manifest, root))
+    graph_root = pathlib.Path(args.graph_root) if args.graph_root else pathlib.Path(".")
+    if root is not None and not graph_root.is_dir():
+        diagnostics.append("--graph-root must be an existing directory")
+    diagnostics.extend(manifest_diagnostics(manifest, root, graph_root=graph_root))
     if args.output:
         write_json(args.output, {"status": "valid" if not diagnostics else "invalid", "diagnostics": diagnostics})
     # CR-12-4-Def23: when no --output sink is given, surface the diagnostics on stdout so
@@ -2217,7 +2964,38 @@ def verify_manifest(args: argparse.Namespace) -> int:
 
 
 def seal_manifest(args: argparse.Namespace) -> int:
-    manifest = read_json(args.manifest)
+    try:
+        _, manifest = _read_bounded_strict_json(
+            args.manifest,
+            "unsealed manifest",
+            max_bytes=MAX_MANIFEST_BYTES,
+        )
+    except ValueError as exc:
+        print(str(exc))
+        return 1
+    if not isinstance(manifest, dict):
+        print("unsealed manifest must be an object")
+        return 1
+    if manifest.get("manifest_schema") != MANIFEST_SCHEMA:
+        print("legacy manifests are audit-only and cannot be sealed, resealed, or upgraded in place")
+        return 1
+    if "seal" in manifest:
+        print("sealed v2 manifests cannot be resealed")
+        return 1
+    diagnostics = _manifest_v2_diagnostics(manifest, require_seal=False)
+    # Sealing is an integrity operation, not authorization. A v2 fixture may seal an
+    # intentionally incomplete fingerprint map so offline verification can prove the
+    # precise fail-closed diagnostic. Production preparation never reaches this point
+    # with incomplete fingerprints because prepare-manifest exits nonzero first.
+    diagnostics = [
+        diagnostic
+        for diagnostic in diagnostics
+        if not diagnostic.startswith("manifest release_definition_fingerprints missing required path(s):")
+    ]
+    if diagnostics:
+        for diagnostic in diagnostics:
+            print(diagnostic)
+        return 1
     canonical = json.dumps({k: v for k, v in manifest.items() if k != "seal"}, sort_keys=True, separators=(",", ":"))
     manifest["seal"] = {
         "algorithm": "sha256",
@@ -2238,6 +3016,75 @@ def prepare_manifest(args: argparse.Namespace) -> int:
     }
     packages = []
     diagnostics: list[str] = []
+    graph_root = pathlib.Path(args.graph_root or ".").resolve()
+    dependency_graph: dict[str, Any] | None = None
+    dependency_policy: dict[str, Any] | None = None
+    workflow_provenance: dict[str, Any] | None = None
+    commit_sha = args.commit_sha
+    if commit_sha == "local" or not _valid_commit(commit_sha):
+        diagnostics.append("commit_sha must be an explicit lowercase 40-hex Git SHA-1; the local sentinel is forbidden")
+    elif not graph_root.is_dir():
+        diagnostics.append("--graph-root must be an existing directory")
+    if not args.ci_handoff:
+        diagnostics.append("authenticated dependency-release CI handoff evidence is required")
+    if not args.release_evaluator:
+        diagnostics.append("active-policy-authorized Release evaluator evidence is required")
+    if args.ci_handoff and args.release_evaluator and _valid_commit(commit_sha) and graph_root.is_dir():
+        try:
+            handoff_raw, handoff_value = _read_bounded_strict_json(
+                args.ci_handoff,
+                "CI handoff",
+                max_bytes=MAX_HANDOFF_BYTES,
+            )
+            _, release_value = _read_bounded_strict_json(
+                args.release_evaluator,
+                "Release evaluator",
+                max_bytes=MAX_HANDOFF_BYTES,
+            )
+            provenance_diagnostics: list[str] = []
+            handoff_engine = _load_dependency_handoff_engine()
+            try:
+                handoff = handoff_engine.validate_ci_handoff(handoff_value)
+                ci_evaluator = handoff_engine.validate_evaluator(
+                    handoff["evaluator"],
+                    "CI handoff evaluator",
+                )
+                release_evaluator = handoff_engine.validate_evaluator(
+                    release_value,
+                    "Release evaluator",
+                )
+            except Exception as exc:
+                provenance_diagnostics.append(str(exc))
+                handoff = None
+                ci_evaluator = None
+                release_evaluator = None
+            if handoff is not None and handoff.get("run", {}).get("candidate") != commit_sha:
+                provenance_diagnostics.append("prepare-manifest commit_sha does not match the authenticated CI candidate")
+            if not provenance_diagnostics and handoff is not None and ci_evaluator is not None and release_evaluator is not None:
+                projection = handoff["dependency_policy"]
+                _, policy = _load_active_policy(graph_root, projection)
+                provenance_diagnostics.extend(_evaluator_authorization_diagnostics(policy, ci_evaluator, "ci"))
+                provenance_diagnostics.extend(_evaluator_authorization_diagnostics(policy, release_evaluator, "release"))
+                engine = _load_dependency_graph_engine()
+                root_identity = handoff["dependency_graph"]["root"]["repository"]
+                recomputed_graph = engine.collect_graph(graph_root, root_identity, commit_sha, policy)
+                if recomputed_graph != handoff["dependency_graph"]:
+                    provenance_diagnostics.append(
+                        "authenticated CI handoff graph differs from the exact prepare-manifest candidate graph/catalog evidence"
+                    )
+                if not provenance_diagnostics:
+                    dependency_graph = recomputed_graph
+                    dependency_policy = dict(projection)
+                    workflow_provenance = _workflow_provenance(
+                        handoff,
+                        hashlib.sha256(handoff_raw).hexdigest(),
+                        release_evaluator,
+                    )
+            diagnostics.extend(provenance_diagnostics)
+        except (KeyError, TypeError, ValueError, OSError, subprocess.SubprocessError) as exc:
+            diagnostics.append(f"dependency provenance preparation failed: {sanitize(exc)}")
+        except Exception as exc:
+            diagnostics.append(f"dependency provenance preparation failed: {sanitize(exc)}")
     sbom_hash = args.sbom_hash
     if not sbom_hash:
         sbom_hash = next((v for k, v in checksums_by_path.items() if k.startswith("release-evidence/sbom/")), "")
@@ -2333,7 +3180,7 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         packages.append({
             "package_id": package_id,
             "version": args.version,
-            "commit_sha": args.commit_sha,
+            "commit_sha": commit_sha,
             "artifact_path": nupkg,
             "checksum": checksum,
             "symbol_artifact": snupkg if row.get("symbol_required") else row.get("exception", "not-required"),
@@ -2345,7 +3192,8 @@ def prepare_manifest(args: argparse.Namespace) -> int:
             "publish_status": "pending",
         })
     manifest = {
-        "commit_sha": args.commit_sha,
+        "manifest_schema": MANIFEST_SCHEMA,
+        "commit_sha": commit_sha,
         "tag": args.tag,
         "run_id": args.run_id,
         "workflow_ref": args.workflow_ref,
@@ -2363,6 +3211,9 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         # `release_definition_fingerprints`. Helper-bytes change without a deliberate
         # `__version__` bump still fails closed via `manifest_diagnostics`.
         "helper_version": helper_version_record(),
+        "dependency_graph": dependency_graph,
+        "dependency_policy": dependency_policy,
+        "workflow_provenance": workflow_provenance,
     }
     if attestation_bundle:
         manifest["attestation_bundle"] = attestation_bundle
@@ -2604,12 +3455,40 @@ def fallback_digest(args: argparse.Namespace) -> int:
         raise SystemExit(f"--root must be an existing directory: {sanitize(str(root))}")
     fingerprints = fallback_invalidation_fingerprints(root)
     package_set = package_set_fingerprint(root)
-    digest = canonical_sha256({"definition": fingerprints, "package_set": package_set})
+    manifest_path = pathlib.Path(args.manifest) if args.manifest else root / "release-evidence" / "sealed-manifest.json"
+    try:
+        _, manifest = _read_bounded_strict_json(
+            manifest_path,
+            "fallback manifest",
+            max_bytes=MAX_MANIFEST_BYTES,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    if not isinstance(manifest, dict) or manifest.get("manifest_schema") != MANIFEST_SCHEMA:
+        raise SystemExit("fallback digest requires a sealed hexalith.release-evidence.v2 manifest")
+    structure = _manifest_v2_diagnostics(manifest, require_seal=True)
+    if structure:
+        raise SystemExit("fallback digest manifest is invalid: " + "; ".join(structure))
+    graph_digest = manifest["dependency_graph"]["graph_digest"]
+    policy_sha256 = manifest["dependency_policy"]["sha256"]
+    workflow_digest = manifest["workflow_provenance"]["definition_digest"]
+    digest = canonical_sha256(
+        {
+            "definition": fingerprints,
+            "package_set": package_set,
+            "dependency_graph": graph_digest,
+            "dependency_policy": policy_sha256,
+            "workflow_definition": workflow_digest,
+        }
+    )
     payload = {
-        "decision_contract": "frontcomposer.fallback-digest.v1",
+        "decision_contract": "frontcomposer.fallback-digest.v2",
         "digest_sha256": digest,
         "fallback_invalidation_fingerprints": fingerprints,
         "package_set_fingerprint": package_set,
+        "dependency_graph_digest": graph_digest,
+        "dependency_policy_sha256": policy_sha256,
+        "workflow_definition_digest": workflow_digest,
     }
     if args.output:
         write_json(args.output, payload)
@@ -2889,7 +3768,9 @@ def main() -> int:
     ver = sub.add_parser("verify-manifest")
     ver.add_argument("--manifest", required=True)
     ver.add_argument("--root")
+    ver.add_argument("--graph-root")
     ver.add_argument("--no-root", action="store_true")
+    ver.add_argument("--audit-legacy", action="store_true")
     ver.add_argument("--output")
     ver.set_defaults(func=verify_manifest)
 
@@ -2904,7 +3785,10 @@ def main() -> int:
     prep.add_argument("--output", required=True)
     prep.add_argument("--version", required=True)
     prep.add_argument("--root", default=".")
+    prep.add_argument("--graph-root", default=os.environ.get("RELEASE_GRAPH_ROOT", "."))
     prep.add_argument("--commit-sha", default=os.environ.get("GITHUB_SHA", "local"))
+    prep.add_argument("--ci-handoff", default=os.environ.get("DEPENDENCY_RELEASE_HANDOFF", ""))
+    prep.add_argument("--release-evaluator", default=os.environ.get("RELEASE_EVALUATOR", ""))
     prep.add_argument("--tag", required=True)
     prep.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", "local"))
     prep.add_argument("--workflow-ref", default=os.environ.get("GITHUB_WORKFLOW_REF", "local"))
@@ -3025,6 +3909,7 @@ def main() -> int:
     # can read the value without reimplementing the formula by hand.
     fdigest = sub.add_parser("fallback-digest")
     fdigest.add_argument("--root", default=".")
+    fdigest.add_argument("--manifest", default="")
     fdigest.add_argument("--output")
     fdigest.set_defaults(func=fallback_digest)
 

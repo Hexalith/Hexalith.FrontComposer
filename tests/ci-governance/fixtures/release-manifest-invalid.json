@@ -1,20 +1,105 @@
 {
-  "commit_sha": "abc123",
-  "tag": "v1.2.3",
-  "run_id": "42",
-  "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3",
+  "benchmark_summary_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "commit_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "dependency_graph": {
+    "edge_count": 0,
+    "edges": [],
+    "graph_digest": "5048c040915d58475dfc3c8fd9180290ba9c0eaf4d420e51346f25bf6e64bcd4",
+    "root": {
+      "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "repository": "github.com/hexalith/hexalith.frontcomposer"
+    },
+    "schema": "hexalith.dependency-graph.v1"
+  },
+  "dependency_policy": {
+    "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "path": "eng/dependency-graph-policy.json",
+    "repository": "github.com/hexalith/hexalith.frontcomposer",
+    "schema": "hexalith.dependency-graph-policy.v1",
+    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "helper_version": {
+    "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "version": "1.1.0"
+  },
+  "manifest_schema": "hexalith.release-evidence.v2",
+  "package_set_fingerprint": "401023c2e71d46f22d911e3ac8a125c3d7ee1a0a5ebff35dbb0df4f364e0f329",
   "packages": [
     {
-      "package_id": "Hexalith.FrontComposer.Contracts",
-      "version": "1.2.3",
-      "commit_sha": "abc123",
       "artifact_path": "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+      "attestation_status": "failed",
       "checksum": "checksum",
-      "symbol_artifact": "",
+      "commit_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "package_id": "Hexalith.FrontComposer.Contracts",
+      "publish_status": "pending",
       "sbom_component": "Hexalith.FrontComposer.Contracts",
       "signing_status": "unsigned",
-      "attestation_status": "failed",
-      "publish_status": "pending"
+      "symbol_artifact": "",
+      "version": "1.2.3"
     }
-  ]
+  ],
+  "release_definition_fingerprints": {
+    ".github/workflows/ci.yml": "1111111111111111111111111111111111111111111111111111111111111101",
+    ".github/workflows/release.yml": "04adc9b92bac844bbc444ab31cbcf957e770d32a3de009fb2c13145990585a07",
+    ".releaserc.json": "4e0a6288e9391bfcf27c4881f74eb51fbe25a42729a261ed9b8e656423450a23",
+    "Directory.Build.props": "1111111111111111111111111111111111111111111111111111111111111102",
+    "Directory.Build.targets": "1111111111111111111111111111111111111111111111111111111111111103",
+    "Directory.Packages.props": "fd652550e0fabbad76a7d6ba9cbd6eb6e56968cfee10f9b88e8e43d5e1d017f3",
+    "deps.nuget.props": "1111111111111111111111111111111111111111111111111111111111111104",
+    "eng/dependency-graph-policy.json": "1111111111111111111111111111111111111111111111111111111111111105",
+    "eng/dependency_graph.py": "1111111111111111111111111111111111111111111111111111111111111106",
+    "eng/dependency_handoff.py": "1111111111111111111111111111111111111111111111111111111111111107",
+    "eng/release-package-inventory.json": "401023c2e71d46f22d911e3ac8a125c3d7ee1a0a5ebff35dbb0df4f364e0f329",
+    "eng/workflow_source_closure.py": "1111111111111111111111111111111111111111111111111111111111111108",
+    "references/Hexalith.Builds/Props/Directory.Packages.props": "cfdaf0c5755eaf00d7e4bed07a591e794802f26b8ad17f596904d7d49a08581e"
+  },
+  "run_id": "42",
+  "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "seal": {
+    "algorithm": "sha256",
+    "hash": "ee676370348ea245ee1262f33340e0fb053dc07b5796bd91e42b6923f5ea026c",
+    "sealed_at": "2026-05-19T00:00:00+00:00"
+  },
+  "tag": "v1.2.3",
+  "workflow_provenance": {
+    "ci": {
+      "actions": [],
+      "caller": {
+        "blob_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "github.com/hexalith/hexalith.frontcomposer",
+        "workflow_path": ".github/workflows/ci.yml"
+      },
+      "evidence_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+      "reusable": {
+        "blob_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "repository": "github.com/hexalith/hexalith.builds",
+        "workflow_path": ".github/workflows/domain-ci.yml"
+      },
+      "run": {
+        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "github.com/hexalith/hexalith.frontcomposer",
+        "run_id": 42,
+        "workflow_path": ".github/workflows/ci.yml"
+      }
+    },
+    "definition_digest": "d6053bda7b18a5f5d6f646261a72fb85c51bfef9344acfb4f970048c85a1d9ff",
+    "release": {
+      "actions": [],
+      "caller": {
+        "blob_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "repository": "github.com/hexalith/hexalith.frontcomposer",
+        "workflow_path": ".github/workflows/release.yml"
+      },
+      "reusable": {
+        "blob_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "repository": "github.com/hexalith/hexalith.builds",
+        "workflow_path": ".github/workflows/domain-release.yml"
+      }
+    }
+  },
+  "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3"
 }

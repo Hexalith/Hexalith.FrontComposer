@@ -37,3 +37,127 @@ jobs:
         tests/Hexalith.FrontComposer.Contracts.Tests
         tests/Hexalith.FrontComposer.Contracts.UI.Tests
         tests/Hexalith.FrontComposer.Testing.Tests
+
+  # GOV-1 local gate. The shared domain-ci reference remains mutable until the external
+  # AD-16 delivery exists, so this job cannot emit a release-eligible handoff yet. It does
+  # prove the exact event-base/candidate graph diff and policy-owned affected modules.
+  dependency-governance:
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout exact candidate and root-declared dependencies
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          # Exact stores are acquired below from active-policy-approved identities.
+          submodules: false
+
+      - name: Select exact dependency revisions
+        id: revisions
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PULL_REQUEST_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          CANDIDATE: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            event_base="$PULL_REQUEST_BASE"
+          elif [ "$EVENT_NAME" = "push" ]; then
+            event_base="$PUSH_BEFORE"
+          else
+            echo "::error::unsupported dependency-governance event: $EVENT_NAME"
+            exit 1
+          fi
+          test -n "$event_base"
+          test -n "$CANDIDATE"
+          echo "event=$EVENT_NAME" >> "$GITHUB_OUTPUT"
+          echo "event-base=$event_base" >> "$GITHUB_OUTPUT"
+          echo "candidate=$CANDIDATE" >> "$GITHUB_OUTPUT"
+
+      - name: Collect exact graph diff and affected-module proof
+        id: dependency-diff
+        shell: bash
+        env:
+          EVENT_NAME: ${{ steps.revisions.outputs.event }}
+          EVENT_BASE: ${{ steps.revisions.outputs.event-base }}
+          CANDIDATE: ${{ steps.revisions.outputs.candidate }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/dependency-governance
+          object_root="$RUNNER_TEMP/dependency-object-stores"
+          python3 eng/dependency_graph.py acquire \
+            --event-base "$EVENT_BASE" \
+            --candidate "$CANDIDATE" \
+            --destination "$object_root" \
+            > artifacts/dependency-governance/object-acquisition.json
+          set +e
+          python3 eng/dependency_graph.py --root "$object_root" diff \
+            --event "$EVENT_NAME" \
+            --event-base "$EVENT_BASE" \
+            --candidate "$CANDIDATE" \
+            > artifacts/dependency-governance/dependency-graph-diff.json
+          status=$?
+          set -e
+          echo "exit-code=$status" >> "$GITHUB_OUTPUT"
+          echo "object-root=$object_root" >> "$GITHUB_OUTPUT"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          payload = json.loads(Path("artifacts/dependency-governance/dependency-graph-diff.json").read_text())
+          evidence = payload.get("evidence", {})
+          print(f"graph diff ok={payload.get('ok')} changes={len(evidence.get('changes', []))} affected={len(evidence.get('affected_modules', []))}")
+          PY
+
+      - name: Build policy-authorized affected modules
+        if: steps.dependency-diff.outputs.exit-code == '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 eng/dependency_graph.py --root "${{ steps.dependency-diff.outputs.object-root }}" run-affected \
+            --evidence artifacts/dependency-governance/dependency-graph-diff.json \
+            --output-root "$RUNNER_TEMP/hexalith-affected-modules" \
+            > artifacts/dependency-governance/affected-module-results.json
+
+      - name: Record release-handoff eligibility
+        if: github.event_name == 'push' && steps.dependency-diff.outputs.exit-code == '0'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          policy = json.loads(Path("eng/dependency-graph-policy.json").read_text(encoding="utf-8-sig"))
+          if policy["evaluator_authorizations"]["ci"]:
+              raise SystemExit("CI evaluator authorization exists but the external AD-16 reusable-workflow integration is not yet enabled")
+          print("::notice::GOV-1 AD-16 external workflow revision is pending; no dependency-release-handoff was emitted.")
+          PY
+
+      - name: Upload deterministic dependency evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependency-graph-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 30
+          if-no-files-found: error
+          path: artifacts/dependency-governance/*.json
+
+      - name: Enforce dependency-governance result
+        if: always()
+        shell: bash
+        env:
+          DIFF_EXIT_CODE: ${{ steps.dependency-diff.outputs.exit-code }}
+        run: |
+          set -euo pipefail
+          if [ "$DIFF_EXIT_CODE" != "0" ]; then
+            echo "::error::dependency graph diff/affected-module gate failed closed (exit=$DIFF_EXIT_CODE)"
+            exit 1
+          fi

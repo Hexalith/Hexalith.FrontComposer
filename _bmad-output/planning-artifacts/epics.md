@@ -218,7 +218,11 @@ no expected SHA allowlist. Pointer changes emit a deterministic graph diff and r
 Release/NuGet gates. Manifest v2 seals the graph, active closed-policy coordinates, authenticated CI
 handoff, and active-policy-authorized static CI/release workflow/action closures. Every Release attempt
 emits an authenticated post-release handoff preserving the original CI candidate. BUILD-CAT-1 routes
-the semantic catalog marker; BUILD-REL-1 issue 17 is a separate blocking upstream workflow revision.
+the semantic catalog marker. **Execution correction 2026-08-02:** issue 17 closed without accepting the
+GOV-1 amendment or recording a qualifying immutable revision. FrontComposer-local graph diff,
+affected-module proof, evaluator closure, handoff schema/consumer, manifest-v2, and fixture work proceeds;
+a reopened issue 17 or successor gates only reusable-workflow integration, end-to-end proof, GOV-1
+completion, release eligibility, and unfreeze.
 Source of record:
 `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`; focused spine:
 `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md`.
@@ -246,7 +250,7 @@ records v3.2.1/v3.2.2 in the compliance ledger. This stop-the-line gate blocks t
 release; no new product epic is required. See
 `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md`.
 
-**Update (truth-state reconciled 2026-07-19):** `REL-4` is the stop-the-line predecessor to `REL-3`. Its caller-side `release.yml` freeze guard and Governance pins are implemented and the story is in review, but live frozen-run evidence remains outstanding. The source control therefore exists while operational acceptance and publication authorization remain closed. The common Hexalith.Builds gate is still upstream work; GOV-1 additionally blocks completion/unfreeze on the owner-accepted immutable BUILD-REL-1 revision and exact-candidate/evaluator-handoff contract. Follow-up: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md`.
+**Update (truth-state reconciled 2026-08-02):** `REL-4` remains the stop-the-line predecessor to `REL-3`; publication authorization remains closed. Hexalith.Builds issue 17 closed without a qualifying GOV-1 revision. FrontComposer-local GOV-1 work is unblocked, while a reopened issue 17 or successor and its owner-accepted immutable revision still gate reusable-workflow integration, end-to-end exact-candidate/evaluator-handoff proof, completion, release eligibility, and unfreeze. Follow-ups: `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md` and `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-02.md`.
 
 **Update (correct-course 2026-07-15, upstream governed contract):** the Hexalith.Builds dependency
 is corrected from signing-secret forwarding to the full **BUILD-REL-1 opt-in governed NuGet release
@@ -2207,10 +2211,13 @@ EventStore container; any behavioral migration is routed to a separately approve
 
 ### GOV-1: Validate Shared-Catalog Compatibility and Seal Dependency Provenance
 
-**Status:** ready-for-dev; the architecture entry gate was ratified 2026-07-19. **Owners:** Product Owner + Architect + Developer + Release Owner.
-**Priority:** before Story 11.17d promotion and the next accepted governed release manifest.
+**Status:** in-progress; the architecture entry gate was ratified 2026-07-19 and the execution boundary
+was corrected 2026-08-02. **Owners:** Product Owner + Architect + Developer + Release Owner.
+**Priority:** before the next accepted governed release manifest. Story 11.17d completed 2026-08-02
+under its recorded one-story waiver and is not reopened.
 **Decision:** `_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md`.
 **Architecture:** `_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md`.
+**Course correction:** `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-02.md`.
 
 As a framework maintainer and Release Owner,
 I want compatibility validated from the catalogs selected by actual gitlinks while exact identities
@@ -2272,10 +2279,14 @@ requires matching policy/candidate projections even on pre-manifest failure, der
 candidate and sealed assets from that evidence, never substitutes the second-hop/default-branch SHA, and
 cannot green-no-op. Its own closure must be active-policy-authorized.
 
-**Given** Hexalith.Builds issue 17 has no owner-accepted immutable revision,
+**Given** Hexalith.Builds issue 17 closed without accepting the GOV-1 amendment or recording a
+qualifying immutable revision,
 **When** GOV-1 delivery is assessed,
-**Then** local graph/policy work may proceed but Tasks 4/5, story completion, release eligibility, and
-REL-4 unfreeze remain blocked; FrontComposer does not edit the Builds submodule or invent a contingency.
+**Then** all FrontComposer-local graph diff, bounded affected-module, policy/evaluator closure, handoff
+schema/consumer, manifest-v2, and fixture work proceeds; only reusable-workflow integration,
+end-to-end exact-candidate evidence proof, story completion, release eligibility, and REL-4 unfreeze
+remain blocked on a reopened issue 17 or successor with an accepted immutable revision. FrontComposer
+does not edit the Builds submodule or invent a contingency.
 
 **Given** Hexalith.Builds has no semantic catalog contract version,
 **When** GOV-1 is handed off,

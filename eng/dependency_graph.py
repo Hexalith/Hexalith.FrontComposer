@@ -2,16 +2,16 @@
 """Committed-object dependency-graph engine (GOV-1 / FC-DEP-1).
 
 Collects the bounded depth-1/depth-2 `hexalith.dependency-graph.v1` gitlink graph from
-an explicit FrontComposer root commit, computes its AD-5 canonical digest, and evaluates
-every Builds-selector edge under its AD-6 semantic profile. This is the single canonical
-semantic-policy implementation; C# Governance invokes its machine-readable result rather
-than reimplementing catalog policy.
+an explicit FrontComposer root commit, computes its AD-5 canonical digest, evaluates
+every Builds-selector edge under its AD-6 semantic profile, and produces the deterministic
+AD-8 graph diff and affected-module proof used by CI. This is the single canonical
+semantic and affected-module policy implementation; callers consume its machine-readable
+results rather than reimplementing policy.
 
-Scope note: this module implements Task 2/3 of GOV-1 (local graph collection + semantic
-validation). CI graph diffing, affected-module build gates, and release-manifest binding
-(Task 4/5, AD-8/AD-12 evaluator trust, AD-13/AD-14/AD-15) remain blocked pending an
-owner-accepted Hexalith.Builds issue 17 / BUILD-REL-1 revision (AD-16) and are not
-implemented here.
+The owner-accepted reusable-workflow revision required by AD-16 remains an external
+integration gate. This helper implements the FrontComposer-local graph, policy, diff,
+materialization, and proof surfaces without substituting a mutable or fabricated workflow
+identity for that missing upstream revision.
 """
 
 from __future__ import annotations
@@ -27,10 +27,12 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
 
-__version__ = "1.0.0"
+__version__ = "2.0.0"
 
 SCHEMA = "hexalith.dependency-graph.v1"
 POLICY_SCHEMA = "hexalith.dependency-graph-policy.v1"
+DIFF_SCHEMA = "hexalith.dependency-graph-diff.v1"
+POLICY_PATH = "eng/dependency-graph-policy.json"
 
 # A shared-catalog property may carry only the canonical "default it if unset" condition.
 _SELF_DEFAULT_CONDITION = re.compile(r"^\s*'\$\((?P<name>[A-Za-z_][A-Za-z0-9_]*)\)'\s*==\s*''\s*$")
@@ -342,6 +344,573 @@ def collect_graph(root_dir: Path, root_identity: str, root_commit: str, policy: 
         {"schema": envelope["schema"], "root": envelope["root"], "edge_count": envelope["edge_count"], "edges": envelope["edges"]}
     )
     return envelope
+
+
+def validate_graph_envelope(envelope: Any) -> dict[str, Any]:
+    """Validate and return one closed AD-5 graph envelope.
+
+    This verifier is intentionally checkout-free. Live verification is performed by
+    collecting the graph again from its sealed root commit and comparing the complete
+    envelope.
+    """
+    if not isinstance(envelope, dict):
+        raise GraphError("dependency graph must be a JSON object")
+    expected_envelope = {"schema", "root", "edge_count", "edges", "graph_digest"}
+    if set(envelope) != expected_envelope:
+        raise GraphError(
+            f"dependency graph members must be exactly {sorted(expected_envelope)}, found {sorted(envelope)}"
+        )
+    if envelope["schema"] != SCHEMA:
+        raise GraphError(f"dependency graph schema must be {SCHEMA!r}")
+    root = envelope["root"]
+    if not isinstance(root, dict) or set(root) != {"repository", "commit"}:
+        raise GraphError("dependency graph root must contain exactly repository and commit")
+    if not isinstance(root["repository"], str) or re.fullmatch(
+        r"github\.com/[a-z0-9._-]+/[a-z0-9._-]+", root["repository"]
+    ) is None:
+        raise GraphError("dependency graph root repository must be a normalized ASCII identity")
+    require_commit(root["commit"], "dependency graph root commit")
+    edges = envelope["edges"]
+    if not isinstance(edges, list):
+        raise GraphError("dependency graph edges must be an array")
+    edge_count = envelope["edge_count"]
+    if isinstance(edge_count, bool) or not isinstance(edge_count, int) or edge_count != len(edges):
+        raise GraphError("dependency graph edge_count must be an integer equal to len(edges)")
+
+    normalized: list[dict[str, Any]] = []
+    identities: set[tuple[str, str, str]] = set()
+    for index, edge in enumerate(edges):
+        if not isinstance(edge, dict):
+            raise GraphError(f"dependency graph edge[{index}] must be an object")
+        base_members = {
+            "owner_repository", "owner_commit", "path", "repository", "commit", "depth"
+        }
+        builds_members = base_members | {"catalog_sha256", "catalog_contract_version"}
+        is_builds_edge = isinstance(edge.get("repository"), str) and edge["repository"].rsplit("/", 1)[-1] in (
+            "builds", "hexalith.builds"
+        )
+        expected_members = builds_members if is_builds_edge else base_members
+        if set(edge) != expected_members:
+            raise GraphError(f"dependency graph edge[{index}] has an invalid closed member set")
+        for name in ("owner_repository", "repository"):
+            if not isinstance(edge[name], str) or re.fullmatch(
+                r"github\.com/[a-z0-9._-]+/[a-z0-9._-]+", edge[name]
+            ) is None:
+                raise GraphError(f"dependency graph edge[{index}].{name} must be a normalized ASCII identity")
+        require_commit(edge["owner_commit"], f"dependency graph edge[{index}] owner_commit")
+        require_commit(edge["commit"], f"dependency graph edge[{index}] commit")
+        normalize_path(edge["path"], f"dependency graph edge[{index}] path")
+        if isinstance(edge["depth"], bool) or edge["depth"] not in (1, 2):
+            raise GraphError(f"dependency graph edge[{index}] depth must be integer 1 or 2")
+        if "catalog_sha256" in edge:
+            if not isinstance(edge["catalog_sha256"], str) or not re.fullmatch(
+                r"[0-9a-f]{64}", edge["catalog_sha256"]
+            ):
+                raise GraphError(f"dependency graph edge[{index}] catalog_sha256 must be lowercase 64-hex")
+            marker = edge["catalog_contract_version"]
+            if marker is not None and (
+                not isinstance(marker, str)
+                or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]{0,63}", marker) is None
+            ):
+                raise GraphError(f"dependency graph edge[{index}] catalog marker is invalid")
+        identity = (edge["owner_repository"], edge["owner_commit"], edge["path"])
+        if identity in identities:
+            raise GraphError(f"dependency graph contains duplicate edge identity {identity!r}")
+        identities.add(identity)
+        normalized.append(edge)
+
+    expected_order = sorted(
+        normalized,
+        key=lambda item: (
+            item["depth"], item["owner_repository"], item["owner_commit"],
+            item["path"], item["repository"], item["commit"],
+        ),
+    )
+    if normalized != expected_order:
+        raise GraphError("dependency graph edges are out of AD-4 ordinal order")
+    material = {
+        "schema": envelope["schema"],
+        "root": envelope["root"],
+        "edge_count": edge_count,
+        "edges": edges,
+    }
+    expected_digest = canonical_digest(material)
+    if envelope["graph_digest"] != expected_digest:
+        raise GraphError(
+            f"dependency graph digest mismatch: expected {expected_digest}, found {envelope['graph_digest']!r}"
+        )
+    return envelope
+
+
+def policy_projection(policy: dict[str, Any], commit: str, raw_bytes: bytes) -> dict[str, Any]:
+    """Return the closed AD-14 coordinate for an exact active-policy blob."""
+    return {
+        "schema": POLICY_SCHEMA,
+        "repository": "github.com/hexalith/hexalith.frontcomposer",
+        "path": POLICY_PATH,
+        "commit": require_commit(commit, "dependency policy commit"),
+        "sha256": hashlib.sha256(raw_bytes).hexdigest(),
+    }
+
+
+def load_policy_at_commit(root_dir: Path, commit: str) -> tuple[dict[str, Any], bytes, dict[str, Any]]:
+    """Load the active policy from an immutable FrontComposer commit."""
+    commit = require_commit(commit, "dependency policy commit")
+    raw = read_blob(root_dir, commit, POLICY_PATH, 4 * 1024 * 1024, "dependency policy")
+    if raw is None:
+        raise GraphError(f"dependency policy is absent at {commit}:{POLICY_PATH}")
+    policy = load_policy_bytes(raw, f"{commit}:{POLICY_PATH}", allow_legacy_registry=True)
+    return policy, raw, policy_projection(policy, commit, raw)
+
+
+def _logical_edge_map(graph: dict[str, Any]) -> dict[tuple[str, str, str], dict[str, Any]]:
+    return {
+        (edge["owner_repository"], edge["path"], edge["repository"]): edge
+        for edge in graph["edges"]
+    }
+
+
+def _candidate_module_commits(graph: dict[str, Any]) -> dict[str, str]:
+    commits = {graph["root"]["repository"]: graph["root"]["commit"]}
+    for edge in graph["edges"]:
+        if edge["depth"] != 1:
+            continue
+        existing = commits.get(edge["repository"])
+        if existing is not None and existing != edge["commit"]:
+            raise GraphError(
+                f"candidate graph selects multiple commits for module {edge['repository']}: "
+                f"{existing} and {edge['commit']}"
+            )
+        commits[edge["repository"]] = edge["commit"]
+    return commits
+
+
+def _module_proof(
+    repository: str,
+    commit: str,
+    reasons: list[str],
+    policy: dict[str, Any],
+) -> dict[str, Any]:
+    registry = policy["module_build_registry"]
+    if repository not in registry:
+        raise GraphError(f"affected module {repository!r} has no active-policy disposition")
+    row = registry[repository]
+    proof: dict[str, Any] = {
+        "repository": repository,
+        "commit": require_commit(commit, f"affected module {repository} commit"),
+        "disposition": row["disposition"],
+        "solution": row["solution"],
+        "builds_contract_source": row["builds_contract_source"],
+        "restore_argv": row["restore_argv"],
+        "build_argv": row["build_argv"],
+        "reasons": sorted(set(reasons)),
+    }
+    return proof
+
+
+def diff_graphs(
+    base_graph: dict[str, Any],
+    candidate_graph: dict[str, Any],
+    policy: dict[str, Any],
+    *,
+    event: str,
+    event_base: str,
+    candidate: str,
+    merge_base: str | None,
+    release_eligible: bool,
+    full_affected: bool = False,
+) -> dict[str, Any]:
+    """Return deterministic AD-8 edge changes and root-subsumed module proof."""
+    validate_graph_envelope(base_graph)
+    validate_graph_envelope(candidate_graph)
+    if event not in ("pull_request", "push"):
+        raise GraphError(f"unsupported dependency graph event {event!r}")
+    require_commit(event_base, "event base")
+    require_commit(candidate, "candidate")
+    if merge_base is not None:
+        require_commit(merge_base, "merge base")
+
+    before_map = _logical_edge_map(base_graph)
+    after_map = _logical_edge_map(candidate_graph)
+    changes: list[dict[str, Any]] = []
+    for key in sorted(set(before_map) | set(after_map)):
+        before = before_map.get(key)
+        after = after_map.get(key)
+        if before == after:
+            continue
+        status = "added" if before is None else "removed" if after is None else "changed"
+        changes.append({
+            "status": status,
+            "key": {"owner_repository": key[0], "path": key[1], "repository": key[2]},
+            "before": before,
+            "after": after,
+            "subsumed_by": None,
+        })
+
+    root_repository = candidate_graph["root"]["repository"]
+    module_commits = _candidate_module_commits(candidate_graph)
+    affected_reasons: dict[str, list[str]] = {}
+
+    def affect(repository: str, reason: str) -> None:
+        affected_reasons.setdefault(repository, []).append(reason)
+
+    depth1 = [
+        change for change in changes
+        if (change["after"] or change["before"])["depth"] == 1
+    ]
+    subsumed_owners: dict[str, str] = {}
+    for change in depth1:
+        status = change["status"]
+        selected = change["after"] or change["before"]
+        target = root_repository if status == "removed" else selected["repository"]
+        reason = f"depth-1 {status}: {selected['path']} -> {selected['repository']}"
+        affect(target, reason)
+        before_repository = change["before"]["repository"] if change["before"] else None
+        after_repository = change["after"]["repository"] if change["after"] else None
+        for owner in (before_repository, after_repository):
+            if owner:
+                subsumed_owners[owner] = target
+
+    for change in changes:
+        selected = change["after"] or change["before"]
+        if selected["depth"] != 2:
+            continue
+        owner = selected["owner_repository"]
+        if owner in subsumed_owners:
+            change["subsumed_by"] = subsumed_owners[owner]
+            continue
+        target = owner if owner in module_commits else root_repository
+        affect(target, f"depth-2 {change['status']}: {selected['path']} -> {selected['repository']}")
+
+    if full_affected:
+        for repository in sorted(module_commits):
+            affect(repository, "fail-closed full-affected diagnostic")
+
+    affected_modules = [
+        _module_proof(repository, module_commits.get(repository, candidate), reasons, policy)
+        for repository, reasons in sorted(affected_reasons.items())
+    ]
+    evidence: dict[str, Any] = {
+        "schema": DIFF_SCHEMA,
+        "revisions": {
+            "event": event,
+            "event_base": event_base,
+            "candidate": candidate,
+            "merge_base": merge_base,
+            "release_eligible": release_eligible,
+        },
+        "base_graph": base_graph,
+        "candidate_graph": candidate_graph,
+        "changes": changes,
+        "affected_modules": affected_modules,
+    }
+    evidence["evidence_digest"] = canonical_digest(evidence)
+    return evidence
+
+
+def materialize_contract_tree(
+    builds_local: Path,
+    commit: str,
+    destination: Path,
+    policy: dict[str, Any],
+) -> dict[str, Any]:
+    """Extract the bounded regular-file Builds contract tree from one exact commit."""
+    commit = require_commit(commit, "Builds contract-tree commit")
+    limits = policy["resource_limits"]
+    raw = _git_ok(["ls-tree", "-r", "-z", "--full-tree", commit], builds_local)
+    if len(raw) > limits["max_ls_tree_bytes_per_owner_commit"]:
+        raise GraphError("Builds contract-tree ls-tree output exceeds the active-policy ceiling")
+    entries: list[tuple[str, str, int]] = []
+    total = 0
+    for record in raw.split(b"\x00"):
+        if not record:
+            continue
+        meta, separator, path_bytes = record.partition(b"\t")
+        if not separator:
+            raise GraphError("malformed Builds contract-tree ls-tree record")
+        try:
+            mode_bytes, obj_type, sha_bytes = meta.split()
+            path = path_bytes.decode("ascii")
+        except (ValueError, UnicodeDecodeError) as exc:
+            raise GraphError("non-ASCII or malformed Builds contract-tree entry") from exc
+        if obj_type != b"blob" or mode_bytes not in (b"100644", b"100755"):
+            raise GraphError(f"Builds contract tree contains unsupported mode/type at {path!r}")
+        normalize_path(path, "Builds contract-tree path")
+        size = _blob_size(builds_local, sha_bytes.decode("ascii"))
+        if size > limits["max_contract_tree_blob_bytes"]:
+            raise GraphError(f"Builds contract-tree blob {path!r} exceeds the per-blob ceiling")
+        total += size
+        if total > limits["max_contract_tree_total_bytes"]:
+            raise GraphError("Builds contract tree exceeds the total-byte ceiling")
+        entries.append((path, sha_bytes.decode("ascii"), int(mode_bytes, 8)))
+        if len(entries) > limits["max_contract_tree_files"]:
+            raise GraphError("Builds contract tree exceeds the file-count ceiling")
+
+    destination.mkdir(parents=True, exist_ok=False)
+    for path, sha, mode in entries:
+        target = destination.joinpath(*path.split("/"))
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(_git_ok(["cat-file", "blob", sha], builds_local))
+        target.chmod(0o755 if mode == 0o100755 else 0o644)
+    return {"file_count": len(entries), "total_bytes": total, "commit": commit}
+
+
+def materialize_repository_tree(local_path: Path, commit: str, destination: Path) -> None:
+    """Clone and detach one exact repository commit without initializing gitlinks."""
+    commit = require_commit(commit, "module materialization commit")
+    if destination.exists():
+        raise GraphError(f"module materialization destination already exists: {destination}")
+    clone = subprocess.run(
+        ["git", "clone", "--quiet", "--no-checkout", "--no-hardlinks", str(local_path), str(destination)],
+        capture_output=True,
+        check=False,
+    )
+    if clone.returncode != 0:
+        raise GraphError(f"failed to clone isolated module tree: {clone.stderr.decode('utf-8', 'replace').strip()}")
+    checkout = _run_git(["checkout", "--quiet", "--detach", commit], destination)
+    if checkout.returncode != 0:
+        raise GraphError(
+            f"failed to checkout exact module commit {commit}: {checkout.stderr.decode('utf-8', 'replace').strip()}"
+        )
+
+
+def _canonical_clone_url(identity: str) -> str:
+    match = re.fullmatch(r"github\.com/([a-z0-9._-]+)/([a-z0-9._-]+)", identity)
+    if match is None:
+        raise GraphError(f"cannot acquire non-canonical repository identity {identity!r}")
+    return f"https://github.com/{match.group(1)}/{match.group(2)}.git"
+
+
+def _ensure_commit_available(local_path: Path, commit: str) -> None:
+    commit = require_commit(commit, "acquisition commit")
+    probe = _run_git(["cat-file", "-e", f"{commit}^{{commit}}"], local_path)
+    if probe.returncode == 0:
+        return
+    fetch = _run_git(["fetch", "--no-tags", "origin", commit], local_path)
+    if fetch.returncode != 0:
+        raise GraphError(
+            f"failed to acquire exact approved commit {commit} in {local_path}: "
+            f"{fetch.stderr.decode('utf-8', 'replace').strip()}"
+        )
+    _git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], local_path)
+
+
+def acquire_object_stores(
+    root_dir: Path,
+    destination: Path,
+    event_base: str,
+    candidate: str,
+) -> dict[str, Any]:
+    """Acquire the exact bounded graph into isolated stores from policy-approved remotes.
+
+    Candidate `.gitmodules` URLs are validated but never used as clone/fetch endpoints.
+    Every remote URL is reconstructed from the active policy's canonical identity.
+    """
+    zero_base = event_base == "0" * 40
+    if not zero_base:
+        event_base = require_commit(event_base, "acquisition event base")
+    candidate = require_commit(candidate, "acquisition candidate")
+    if destination.exists():
+        raise GraphError(f"acquisition destination already exists: {destination}")
+    policy, _raw, _projection = load_policy_at_commit(root_dir, candidate if zero_base else event_base)
+
+    # Validate both root mappings before any network operation.
+    root_identity = "github.com/hexalith/hexalith.frontcomposer"
+    base_root_edges = [] if zero_base else _owner_edges(root_dir, event_base, root_identity, 1, policy, root_dir)
+    candidate_root_edges = _owner_edges(root_dir, candidate, root_identity, 1, policy, root_dir)
+
+    clone_root = subprocess.run(
+        ["git", "clone", "--quiet", "--no-checkout", "--no-hardlinks", str(root_dir), str(destination)],
+        capture_output=True,
+        check=False,
+    )
+    if clone_root.returncode != 0:
+        raise GraphError(f"failed to create isolated root object store: {clone_root.stderr.decode('utf-8', 'replace').strip()}")
+    if not zero_base:
+        _ensure_commit_available(destination, event_base)
+    _ensure_commit_available(destination, candidate)
+
+    for trusted in policy["trusted_identities"]:
+        identity = trusted["identity"]
+        if identity == root_identity:
+            continue
+        local = destination / trusted["local_path"]
+        local.parent.mkdir(parents=True, exist_ok=True)
+        clone = subprocess.run(
+            ["git", "clone", "--quiet", "--no-checkout", _canonical_clone_url(identity), str(local)],
+            capture_output=True,
+            check=False,
+        )
+        if clone.returncode != 0:
+            raise GraphError(
+                f"failed to acquire approved repository {identity}: {clone.stderr.decode('utf-8', 'replace').strip()}"
+            )
+
+    root_edges = base_root_edges + candidate_root_edges
+    for edge in root_edges:
+        local = resolve_local_path(policy, edge["repository"], destination)
+        _ensure_commit_available(local, edge["commit"])
+
+    direct_edges: list[dict[str, Any]] = []
+    for edge in root_edges:
+        owner_local = resolve_local_path(policy, edge["repository"], destination)
+        direct_edges.extend(
+            _owner_edges(owner_local, edge["commit"], edge["repository"], 2, policy, destination)
+        )
+    if len(root_edges) + len(direct_edges) > policy["resource_limits"]["max_edges"] * 2:
+        raise GraphError("base/candidate acquisition exceeds the doubled AD-7 graph-edge ceiling")
+    for edge in direct_edges:
+        local = resolve_local_path(policy, edge["repository"], destination)
+        _ensure_commit_available(local, edge["commit"])
+
+    candidate_builds = [edge for edge in candidate_root_edges if edge["repository"] == policy["builds_identity"]]
+    if len(candidate_builds) != 1:
+        raise GraphError("candidate root must select exactly one Builds commit for checkout-format governance")
+    builds_local = resolve_local_path(policy, policy["builds_identity"], destination)
+    checkout = _run_git(["checkout", "--quiet", "--detach", candidate_builds[0]["commit"]], builds_local)
+    if checkout.returncode != 0:
+        raise GraphError(
+            "failed to materialize the isolated candidate Builds checkout for the root-only format guard: "
+            f"{checkout.stderr.decode('utf-8', 'replace').strip()}"
+        )
+
+    return {
+        "schema": "hexalith.dependency-object-acquisition.v1",
+        "event_base": event_base,
+        "candidate": candidate,
+        "stores": [entry["identity"] for entry in policy["trusted_identities"]],
+        "root_edges": len(root_edges),
+        "direct_edges": len(direct_edges),
+    }
+
+
+def validate_diff_evidence(root_dir: Path, evidence: Any) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Validate a live AD-8 evidence document against its immutable active policy."""
+    if not isinstance(evidence, dict) or evidence.get("schema") != DIFF_SCHEMA:
+        raise GraphError(f"affected-module evidence schema must be {DIFF_SCHEMA!r}")
+    supplied_digest = evidence.get("evidence_digest")
+    expected_digest = canonical_digest({
+        name: value for name, value in evidence.items() if name != "evidence_digest"
+    })
+    if supplied_digest != expected_digest:
+        raise GraphError(f"affected-module evidence digest mismatch: expected {expected_digest}")
+    revisions = _require_closed_object(
+        evidence.get("revisions"),
+        {"event", "event_base", "candidate", "merge_base", "release_eligible"},
+        "affected-module evidence revisions",
+    )
+    candidate = require_commit(revisions["candidate"], "affected-module candidate")
+    policy_coordinate = _require_closed_object(
+        evidence.get("dependency_policy"), {"schema", "repository", "path", "commit", "sha256"},
+        "affected-module dependency_policy",
+    )
+    policy_commit = require_commit(policy_coordinate["commit"], "affected-module policy commit")
+    policy, _raw, expected_coordinate = load_policy_at_commit(root_dir, policy_commit)
+    if policy_coordinate != expected_coordinate:
+        raise GraphError("affected-module evidence policy coordinate/hash drift")
+    validate_graph_envelope(evidence.get("base_graph"))
+    validate_graph_envelope(evidence.get("candidate_graph"))
+    if evidence["candidate_graph"]["root"]["commit"] != candidate:
+        raise GraphError("affected-module candidate does not match candidate graph root commit")
+    if policy_commit != revisions["event_base"] and revisions["event_base"] != "0" * 40:
+        raise GraphError("affected-module active policy commit does not match event base")
+    expected = diff_graphs(
+        evidence["base_graph"],
+        evidence["candidate_graph"],
+        policy,
+        event=revisions["event"],
+        event_base=candidate if revisions["event_base"] == "0" * 40 else revisions["event_base"],
+        candidate=candidate,
+        merge_base=revisions["merge_base"],
+        release_eligible=revisions["release_eligible"],
+        full_affected=evidence.get("diagnostic") is not None,
+    )
+    if expected["changes"] != evidence.get("changes") or expected["affected_modules"] != evidence.get("affected_modules"):
+        raise GraphError("affected-module changes/proof do not match canonical AD-8 projection")
+    return policy, evidence
+
+
+def run_affected_builds(root_dir: Path, evidence: dict[str, Any], output_root: Path) -> dict[str, Any]:
+    """Materialize and execute only active-policy static argv for affected build targets."""
+    policy, evidence = validate_diff_evidence(root_dir, evidence)
+    if output_root.exists():
+        raise GraphError(f"affected-module output root already exists: {output_root}")
+    output_root.mkdir(parents=True)
+    graph = evidence["candidate_graph"]
+    builds_identity = policy["builds_identity"]
+    builds_local = resolve_local_path(policy, builds_identity, root_dir)
+    results: list[dict[str, Any]] = []
+    for index, module in enumerate(evidence["affected_modules"]):
+        repository = module["repository"]
+        commit = module["commit"]
+        row = policy["module_build_registry"].get(repository)
+        if row is None:
+            raise GraphError(f"affected module {repository} is absent from active policy")
+        expected = _module_proof(repository, commit, module["reasons"], policy)
+        if module != expected:
+            raise GraphError(f"affected module {repository} does not match active-policy proof")
+        if row["disposition"] == "evidence-only":
+            results.append({"repository": repository, "commit": commit, "disposition": "evidence-only"})
+            continue
+
+        destination = output_root / f"module-{index:03d}"
+        module_local = resolve_local_path(policy, repository, root_dir)
+        materialize_repository_tree(module_local, commit, destination)
+        source = row["builds_contract_source"]
+        if source.startswith("edge-tree:"):
+            contract_path = source.removeprefix("edge-tree:")
+            selectors = [
+                edge for edge in graph["edges"]
+                if edge["owner_repository"] == repository
+                and edge["owner_commit"] == commit
+                and edge["path"] == contract_path
+                and edge["repository"] == builds_identity
+            ]
+            if len(selectors) != 1:
+                raise GraphError(
+                    f"affected module {repository}@{commit} requires exactly one Builds edge at {contract_path}"
+                )
+            selector = selectors[0]
+            contract_destination = destination / contract_path
+            if contract_destination.exists():
+                if not contract_destination.is_dir() or any(contract_destination.iterdir()):
+                    raise GraphError(
+                        f"affected module {repository} archive already materialized non-empty contract path {contract_path}"
+                    )
+                contract_destination.rmdir()
+            materialize_contract_tree(builds_local, selector["commit"], contract_destination, policy)
+            catalog = destination / contract_path / "Props" / "Directory.Packages.props"
+            observed_hash = hashlib.sha256(catalog.read_bytes()).hexdigest()
+            if observed_hash != selector["catalog_sha256"]:
+                raise GraphError(f"affected module {repository} materialized catalog hash drift")
+        elif source != "self":
+            raise GraphError(f"affected module {repository} has unsupported contract source {source!r}")
+
+        command_results = []
+        for name in ("restore_argv", "build_argv"):
+            argv = row[name]
+            proc = subprocess.run(argv, cwd=str(destination), capture_output=True, text=True, check=False)
+            command_results.append({
+                "name": name,
+                "argv": argv,
+                "exit_code": proc.returncode,
+                "stdout": proc.stdout,
+                "stderr": proc.stderr,
+            })
+            if proc.returncode != 0:
+                raise GraphError(
+                    f"affected module {repository}@{commit} {name} failed with exit {proc.returncode}: "
+                    f"{proc.stderr.strip()}"
+                )
+        results.append({
+            "repository": repository,
+            "commit": commit,
+            "disposition": "build",
+            "commands": command_results,
+        })
+    result = {"schema": "hexalith.affected-module-build-results.v1", "modules": results}
+    result["result_digest"] = canonical_digest(result)
+    return result
 
 
 # ---------------------------------------------------------------------------
@@ -699,13 +1268,264 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
 # ---------------------------------------------------------------------------
 
 
-def load_policy(path: Path) -> dict[str, Any]:
-    with open(path, "rb") as handle:
-        policy = json.loads(handle.read().decode("utf-8"))
+def _reject_duplicate_members(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for name, value in pairs:
+        if name in result:
+            raise GraphError(f"duplicate JSON member {name!r}")
+        result[name] = value
+    return result
+
+
+def load_json_bytes(raw: bytes, context: str) -> Any:
+    try:
+        return json.loads(raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_members)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise GraphError(f"{context}: malformed UTF-8 JSON ({exc})") from exc
+
+
+def load_policy_bytes(raw: bytes, context: str, *, allow_legacy_registry: bool = False) -> dict[str, Any]:
+    policy = load_json_bytes(raw, context)
+    if not isinstance(policy, dict):
+        raise GraphError(f"{context}: policy must be a JSON object")
     if policy.get("schema") != POLICY_SCHEMA:
         raise GraphError(f"policy schema mismatch: expected {POLICY_SCHEMA!r}, found {policy.get('schema')!r}")
-    assert_profiles_well_formed(policy)
+    if allow_legacy_registry and _upgrade_legacy_module_registry(policy):
+        policy["__legacy_registry_migration__"] = True
+    assert_policy_well_formed(policy, allow_migration_marker=allow_legacy_registry)
     return policy
+
+
+def load_policy(path: Path) -> dict[str, Any]:
+    with open(path, "rb") as handle:
+        raw = handle.read()
+    return load_policy_bytes(raw, str(path))
+
+
+def _require_closed_object(value: Any, members: set[str], context: str) -> dict[str, Any]:
+    if not isinstance(value, dict) or set(value) != members:
+        found = sorted(value) if isinstance(value, dict) else type(value).__name__
+        raise GraphError(f"{context} members must be exactly {sorted(members)}, found {found}")
+    return value
+
+
+def _require_sha256(value: Any, context: str) -> str:
+    if not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None:
+        raise GraphError(f"{context} must be lowercase 64-hex")
+    return value
+
+
+def _upgrade_legacy_module_registry(policy: dict[str, Any]) -> bool:
+    """Upgrade the already-landed Task-2 seed only for delayed-policy activation.
+
+    The migration is deliberately non-executable: diff rejects any affected module while
+    this marker is present. It exists so the policy-only correction can prove an unchanged
+    graph under the immutable prior policy; the strict candidate policy activates only on
+    the following change, as AD-12 requires.
+    """
+    registry = policy.get("module_build_registry")
+    if not isinstance(registry, dict) or not registry:
+        return False
+    legacy = False
+    for row in registry.values():
+        if not isinstance(row, dict):
+            return False
+        if set(row) == {"disposition", "solution", "builds_contract_source"}:
+            legacy = True
+            if row.get("disposition") == "build" and isinstance(row.get("solution"), str):
+                solution = row["solution"]
+                row["restore_argv"] = [
+                    "dotnet", "restore", solution, "-p:Configuration=Release", "-p:UseNuGetDeps=true",
+                ]
+                row["build_argv"] = [
+                    "dotnet", "build", solution, "--configuration", "Release", "--no-restore",
+                    "-p:UseNuGetDeps=true",
+                ]
+            elif row.get("disposition") == "evidence-only":
+                row["restore_argv"] = None
+                row["build_argv"] = None
+            else:
+                return False
+        elif set(row) != {"disposition", "solution", "builds_contract_source", "restore_argv", "build_argv"}:
+            return False
+    limits = policy.get("resource_limits")
+    if not isinstance(limits, dict):
+        return False
+    workflow_defaults = {
+        "max_workflow_closure_depth": 16,
+        "max_workflow_closure_sources": 256,
+        "max_workflow_source_blob_bytes": 1_048_576,
+        "max_workflow_source_total_bytes": 16_777_216,
+    }
+    missing_limits = set(workflow_defaults) - set(limits)
+    if missing_limits:
+        if set(limits) & set(workflow_defaults):
+            return False
+        limits.update(workflow_defaults)
+        legacy = True
+    return legacy
+
+
+def assert_policy_well_formed(policy: dict[str, Any], *, allow_migration_marker: bool = False) -> None:
+    expected = {
+        "schema", "builds_identity", "trusted_identities", "semantic_profiles", "profiles",
+        "module_build_registry", "resource_limits", "evaluator_authorizations",
+    }
+    if allow_migration_marker and policy.get("__legacy_registry_migration__") is True:
+        expected.add("__legacy_registry_migration__")
+    _require_closed_object(policy, expected, "dependency policy")
+    assert_profiles_well_formed(policy)
+
+    trusted = policy["trusted_identities"]
+    if not isinstance(trusted, list) or not trusted:
+        raise GraphError("policy trusted_identities must be a non-empty array")
+    identities: set[str] = set()
+    paths: set[str] = set()
+    for index, entry_value in enumerate(trusted):
+        entry = _require_closed_object(entry_value, {"identity", "local_path"}, f"trusted identity[{index}]")
+        identity = entry["identity"]
+        local_path = entry["local_path"]
+        if not isinstance(identity, str) or not identity.isascii() or not identity.startswith("github.com/"):
+            raise GraphError(f"trusted identity[{index}] identity is invalid")
+        if identity in identities:
+            raise GraphError(f"duplicate trusted identity {identity!r}")
+        if not isinstance(local_path, str) or (local_path != "." and normalize_path(local_path, "trusted local_path") != local_path):
+            raise GraphError(f"trusted identity[{index}] local_path is invalid")
+        if local_path in paths:
+            raise GraphError(f"duplicate trusted local_path {local_path!r}")
+        identities.add(identity)
+        paths.add(local_path)
+    if policy["builds_identity"] not in identities:
+        raise GraphError("policy builds_identity must name one trusted identity")
+
+    semantic_profiles = policy["semantic_profiles"]
+    if not isinstance(semantic_profiles, dict) or set(semantic_profiles) != identities:
+        raise GraphError("policy semantic_profiles must cover every trusted identity exactly")
+    for identity, profile_name in semantic_profiles.items():
+        if profile_name not in policy["profiles"]:
+            raise GraphError(f"semantic profile {profile_name!r} for {identity} is undefined")
+
+    registry = policy["module_build_registry"]
+    if not isinstance(registry, dict) or set(registry) != identities:
+        raise GraphError("policy module_build_registry must cover every trusted identity exactly")
+    build_members = {
+        "disposition", "solution", "builds_contract_source", "restore_argv", "build_argv"
+    }
+    for identity, row_value in registry.items():
+        row = _require_closed_object(row_value, build_members, f"module registry[{identity}]")
+        disposition = row["disposition"]
+        if disposition not in ("build", "evidence-only"):
+            raise GraphError(f"module registry[{identity}] has invalid disposition {disposition!r}")
+        if disposition == "evidence-only":
+            if any(row[name] is not None for name in ("solution", "restore_argv", "build_argv")):
+                raise GraphError(f"evidence-only module registry[{identity}] must not declare executable argv")
+            if row["builds_contract_source"] != "none":
+                raise GraphError(f"evidence-only module registry[{identity}] must use builds_contract_source 'none'")
+            continue
+        solution = row["solution"]
+        if not isinstance(solution, str) or normalize_path(solution, f"module registry[{identity}] solution") != solution:
+            raise GraphError(f"module registry[{identity}] solution is invalid")
+        source = row["builds_contract_source"]
+        if source != "self" and not (isinstance(source, str) and source.startswith("edge-tree:") and normalize_path(
+            source.removeprefix("edge-tree:"), f"module registry[{identity}] contract source"
+        )):
+            raise GraphError(f"module registry[{identity}] builds_contract_source is invalid")
+        expected_restore = [
+            "dotnet", "restore", solution, "-p:Configuration=Release", "-p:UseNuGetDeps=true"
+        ]
+        expected_build = [
+            "dotnet", "build", solution, "--configuration", "Release", "--no-restore",
+            "-p:UseNuGetDeps=true",
+        ]
+        if row["restore_argv"] != expected_restore or row["build_argv"] != expected_build:
+            raise GraphError(f"module registry[{identity}] argv must equal the closed standalone Release/NuGet commands")
+
+    required_limits = {
+        "max_edges", "max_ls_tree_bytes_per_owner_commit", "max_gitmodules_blob_bytes",
+        "max_catalog_blob_bytes", "max_contract_tree_files", "max_contract_tree_blob_bytes",
+        "max_contract_tree_total_bytes", "max_workflow_closure_depth", "max_workflow_closure_sources",
+        "max_workflow_source_blob_bytes", "max_workflow_source_total_bytes",
+    }
+    limits = _require_closed_object(policy["resource_limits"], required_limits, "policy resource_limits")
+    if any(isinstance(value, bool) or not isinstance(value, int) or value < 1 for value in limits.values()):
+        raise GraphError("every policy resource limit must be a positive JSON integer")
+
+    authorizations = _require_closed_object(
+        policy["evaluator_authorizations"], {"ci", "release", "post_release"},
+        "policy evaluator_authorizations",
+    )
+    for stage in ("ci", "release", "post_release"):
+        rows = authorizations[stage]
+        if not isinstance(rows, list):
+            raise GraphError(f"policy evaluator_authorizations.{stage} must be an array")
+        previous: tuple[str, ...] | None = None
+        for index, value in enumerate(rows):
+            row = _require_closed_object(
+                value, {"stage", "caller", "reusable", "actions", "closure_digest"},
+                f"evaluator authorization {stage}[{index}]",
+            )
+            if row["stage"] != stage:
+                raise GraphError(f"evaluator authorization {stage}[{index}] stage mismatch")
+            caller = _require_closed_object(
+                row["caller"], {"repository", "workflow_path", "blob_sha256"},
+                f"evaluator authorization {stage}[{index}].caller",
+            )
+            _validate_source(caller, workflow=True, commit_required=False)
+            reusable = _require_closed_object(
+                row["reusable"], {"repository", "workflow_path", "commit", "blob_sha256"},
+                f"evaluator authorization {stage}[{index}].reusable",
+            )
+            _validate_source(reusable, workflow=True, commit_required=True)
+            actions = row["actions"]
+            if not isinstance(actions, list):
+                raise GraphError(f"evaluator authorization {stage}[{index}].actions must be an array")
+            sorted_actions = sorted(
+                actions,
+                key=lambda item: (item["repository"], item["path"], item["commit"], item["blob_sha256"]),
+            ) if all(isinstance(item, dict) for item in actions) else []
+            if actions != sorted_actions or len({canonical_bytes(item) for item in actions}) != len(actions):
+                raise GraphError(f"evaluator authorization {stage}[{index}].actions must be sorted and unique")
+            for action_index, action_value in enumerate(actions):
+                action = _require_closed_object(
+                    action_value, {"repository", "path", "commit", "blob_sha256"},
+                    f"evaluator authorization {stage}[{index}].actions[{action_index}]",
+                )
+                _validate_source(action, workflow=False, commit_required=True)
+            projection = {name: row[name] for name in ("stage", "caller", "reusable", "actions")}
+            if row["closure_digest"] != canonical_digest(projection):
+                raise GraphError(f"evaluator authorization {stage}[{index}] closure_digest mismatch")
+            sort_key = _authorization_sort_key(row)
+            if previous is not None and sort_key <= previous:
+                raise GraphError(f"policy evaluator_authorizations.{stage} must be ordinally sorted and unique")
+            previous = sort_key
+
+
+def _validate_source(source: dict[str, Any], *, workflow: bool, commit_required: bool) -> None:
+    repository = source["repository"]
+    if not isinstance(repository, str) or re.fullmatch(
+        r"github\.com/[a-z0-9._-]+/[a-z0-9._-]+", repository
+    ) is None:
+        raise GraphError("evaluator source repository must be a normalized ASCII identity")
+    path_name = "workflow_path" if workflow else "path"
+    source_path = normalize_path(source[path_name], f"evaluator source {path_name}")
+    if workflow and (
+        not source_path.startswith(".github/workflows/")
+        or not source_path.endswith((".yml", ".yaml"))
+    ):
+        raise GraphError("evaluator workflow source must be a .github/workflows/*.yml or *.yaml path")
+    _require_sha256(source["blob_sha256"], "evaluator source blob_sha256")
+    if commit_required:
+        require_commit(source["commit"], "evaluator source commit")
+
+
+def _authorization_sort_key(value: dict[str, Any]) -> tuple[str, ...]:
+    caller = value["caller"]
+    reusable = value["reusable"]
+    return (
+        caller["repository"], caller["workflow_path"], caller["blob_sha256"],
+        reusable["repository"], reusable["workflow_path"], reusable["commit"],
+        reusable["blob_sha256"], value["closure_digest"],
+    )
 
 
 def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
@@ -784,6 +1604,24 @@ def build_arg_parser() -> argparse.ArgumentParser:
     validate_cmd.add_argument("--commit", required=True)
     validate_cmd.add_argument("--root-identity", default="github.com/hexalith/hexalith.frontcomposer")
 
+    diff_cmd = sub.add_parser("diff", help="Collect exact base/candidate graphs and emit AD-8 affected-module evidence")
+    diff_cmd.add_argument("--event", required=True, choices=("pull_request", "push"))
+    diff_cmd.add_argument("--event-base", required=True)
+    diff_cmd.add_argument("--candidate", required=True)
+    diff_cmd.add_argument("--root-identity", default="github.com/hexalith/hexalith.frontcomposer")
+
+    verify_cmd = sub.add_parser("verify-graph", help="Verify one AD-5 graph envelope without consulting a checkout")
+    verify_cmd.add_argument("--input", required=True)
+
+    run_cmd = sub.add_parser("run-affected", help="Materialize affected exact commits and run active-policy static argv")
+    run_cmd.add_argument("--evidence", required=True)
+    run_cmd.add_argument("--output-root", required=True)
+
+    acquire_cmd = sub.add_parser("acquire", help="Acquire exact base/candidate graph objects into isolated approved stores")
+    acquire_cmd.add_argument("--event-base", required=True)
+    acquire_cmd.add_argument("--candidate", required=True)
+    acquire_cmd.add_argument("--destination", required=True)
+
     return parser
 
 
@@ -794,6 +1632,101 @@ def main(argv: list[str] | None = None) -> int:
     policy_path = Path(args.policy).resolve() if args.policy else root_dir / "eng" / "dependency-graph-policy.json"
 
     try:
+        if args.command == "verify-graph":
+            with open(args.input, "rb") as handle:
+                envelope = load_json_bytes(handle.read(), args.input)
+            validate_graph_envelope(envelope)
+            print(json.dumps({"ok": True, "graph_digest": envelope["graph_digest"]}, indent=2, sort_keys=True))
+            return 0
+
+        if args.command == "run-affected":
+            with open(args.evidence, "rb") as handle:
+                evidence_document = load_json_bytes(handle.read(), args.evidence)
+            if not isinstance(evidence_document, dict):
+                raise GraphError("affected-module evidence file must contain a JSON object")
+            evidence = evidence_document.get("evidence", evidence_document)
+            results = run_affected_builds(root_dir, evidence, Path(args.output_root).resolve())
+            print(json.dumps({"ok": True, "results": results}, indent=2, sort_keys=True))
+            return 0
+
+        if args.command == "acquire":
+            result = acquire_object_stores(
+                root_dir,
+                Path(args.destination).resolve(),
+                args.event_base,
+                args.candidate,
+            )
+            print(json.dumps({"ok": True, "acquisition": result}, indent=2, sort_keys=True))
+            return 0
+
+        if args.command == "diff":
+            candidate = require_commit(args.candidate, "--candidate")
+            zero_base = args.event_base == "0" * 40
+            if zero_base:
+                policy, policy_raw, policy_coordinates = load_policy_at_commit(root_dir, candidate)
+                candidate_graph = collect_graph(root_dir, args.root_identity, candidate, policy)
+                candidate_semantics = evaluate_semantics(root_dir, policy, candidate_graph)
+                evidence = diff_graphs(
+                    candidate_graph,
+                    candidate_graph,
+                    policy,
+                    event=args.event,
+                    event_base=candidate,
+                    candidate=candidate,
+                    merge_base=None,
+                    release_eligible=False,
+                    full_affected=True,
+                )
+                evidence["revisions"]["event_base"] = "0" * 40
+                evidence["dependency_policy"] = policy_coordinates
+                evidence["base_semantics"] = None
+                evidence["candidate_semantics"] = candidate_semantics
+                evidence["diagnostic"] = "zero/unavailable push base: full-affected diagnostics only; not release-eligible"
+                evidence["evidence_digest"] = canonical_digest({
+                    name: value for name, value in evidence.items() if name != "evidence_digest"
+                })
+                print(json.dumps({"ok": False, "evidence": evidence}, indent=2, sort_keys=True))
+                return 2
+
+            event_base = require_commit(args.event_base, "--event-base")
+            policy, policy_raw, policy_coordinates = load_policy_at_commit(root_dir, event_base)
+            base_graph = collect_graph(root_dir, args.root_identity, event_base, policy)
+            candidate_graph = collect_graph(root_dir, args.root_identity, candidate, policy)
+            base_semantics = evaluate_semantics(root_dir, policy, base_graph)
+            candidate_semantics = evaluate_semantics(root_dir, policy, candidate_graph)
+            merge_base: str | None = None
+            if args.event == "pull_request":
+                merge_base = _git_ok(["merge-base", event_base, candidate], root_dir).decode("ascii").strip()
+                require_commit(merge_base, "computed merge base")
+                if merge_base != event_base:
+                    raise GraphError(
+                        f"pull-request event base {event_base} does not equal computed merge-base {merge_base}"
+                    )
+            evidence = diff_graphs(
+                base_graph,
+                candidate_graph,
+                policy,
+                event=args.event,
+                event_base=event_base,
+                candidate=candidate,
+                merge_base=merge_base,
+                release_eligible=args.event == "push",
+            )
+            if policy.get("__legacy_registry_migration__") is True and evidence["affected_modules"]:
+                raise GraphError(
+                    "immutable base policy is the non-executable Task-2 seed: only an unchanged graph may "
+                    "land the strict static-argv/workflow-limit policy correction; affected modules require "
+                    "a later change governed by that landed policy"
+                )
+            evidence["dependency_policy"] = policy_coordinates
+            evidence["base_semantics"] = base_semantics
+            evidence["candidate_semantics"] = candidate_semantics
+            evidence["evidence_digest"] = canonical_digest({
+                name: value for name, value in evidence.items() if name != "evidence_digest"
+            })
+            print(json.dumps({"ok": True, "evidence": evidence}, indent=2, sort_keys=True))
+            return 0
+
         policy = load_policy(policy_path)
         commit = require_commit(args.commit, "--commit")
         envelope = collect_graph(root_dir, args.root_identity, commit, policy)

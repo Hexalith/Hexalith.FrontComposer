@@ -77,6 +77,11 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
 > **Approved 2026-07-19:** Administrator ratified the depth-1/2 boundary, canonical contracts, and
 > numeric ceilings below as Architect and Release Owner. This amendment supersedes the former unbounded
 > complete-reachable interpretation of v1.
+>
+> **Execution correction approved 2026-08-02:** the architecture remains ratified. Hexalith.Builds
+> issue 17 closed without accepting the GOV-1 amendment or recording a qualifying immutable revision.
+> FrontComposer-local controls proceed; only reusable-workflow integration, end-to-end proof, GOV-1
+> completion, release eligibility, and unfreeze remain externally gated.
 
 Dependency governance uses a **bounded committed-object graph** and separates two concerns that must
 not be conflated:
@@ -110,14 +115,17 @@ digest, enforced by the Release Owner-controlled
 `HEXALITH_DEPENDENCY_POLICY_BOOTSTRAP_SHA256` repository variable. Base-policy existence permanently
 disables bootstrap after the initial landing. A zero/unavailable before revision may produce
 diagnostic/full-affected evidence, but the gate fails and is never release-eligible. The policy is
-release-definition and fallback-invalidation material.
+release-definition and fallback-invalidation material. Handoffs and manifest v2 record its repository,
+canonical `eng/dependency-graph-policy.json` path, schema, 40-hex revision, and raw-byte SHA-256.
 
 The policy has no implicit semantic or build defaults. Every Builds-selector owner maps to exactly one
 named semantic profile; every governed target identity maps either to the exact standalone .NET
-restore/build argv and solution or to an explicit evidence-only disposition. The seed closes those
-registries over FrontComposer plus the eight root-declared repositories; only AI.Tools is evidence-only
-because its selected seed commit contains no solution/build surface. Missing identities, profiles,
-commands, or dispositions fail closed. The focused spine contains the exact seed matrices.
+restore/build argv and solution or to an explicit evidence-only disposition. Missing identities,
+profiles, commands, or dispositions fail closed. `eng/dependency-graph-policy.json` is the sole
+executable authority for profile IDs and values, target dispositions/argv, resource limits, and
+evaluator authorizations. Architecture owns their closed schemas, coverage invariants, activation rule,
+and trust boundary but does not duplicate volatile policy rows. Evidence seals the policy repository,
+path, schema version, 40-hex revision, and canonical raw-byte SHA-256.
 
 Every build row runs its exact static `dotnet restore`/`dotnet build` argv in Release/NuGet mode from
 an isolated checkout of the candidate owner commit. For edge-bound consumers, CI safely materializes
@@ -209,14 +217,16 @@ evaluator closures. It pre-authorizes local caller blob hashes and literal-40-he
 coordinates; runtime sources must project exactly one authorized closure. Candidate workflow/policy
 changes cannot authorize themselves and activate through the same delayed two-change rule.
 
-The release caller must pass `github.event.workflow_run.head_sha` as an explicit required 40-hex input,
-and the reusable workflow must check out and propagate exactly that revision. The reusable workflow is
-referenced by an active-policy-authorized immutable Hexalith.Builds commit, whose identity is sealed with the caller
-workflow hash and the CI-selected policy coordinates. The triggering CI run ID is also passed; its
-single versioned `dependency-release-handoff.json` artifact is fetched through the read-only GitHub
-Actions run/artifact APIs only after repository, workflow, event, branch, conclusion, run ID, and head
-SHA match the triggering CI run; its recorded candidate must equal the event `head_sha`. Actual
-caller/reusable workflow refs and SHAs are checked against sealed coordinates. The exact policy blob is
+The release caller passes the triggering CI run ID and the event's 40-hex head only as run-authentication
+coordinates. Its single versioned `dependency-release-handoff.json` artifact is fetched through the
+read-only GitHub Actions run/artifact APIs only after repository, workflow, event, branch, conclusion,
+run ID/attempt, and head SHA match the triggering CI run. The handoff's authenticated candidate is the
+sole release-candidate authority and must equal the authenticated run head before use; Release passes,
+checks out, and propagates that handoff candidate everywhere. No tag, ambient/default branch, caller
+checkout, or later `workflow_run.head_sha` may select or replace it. The reusable workflow is referenced
+by an active-policy-authorized immutable Hexalith.Builds commit, whose identity is sealed with the caller
+workflow hash and the CI-selected policy coordinates. Actual caller/reusable workflow refs and SHAs are
+checked against sealed coordinates. The exact policy blob is
 then reloaded from its recorded FrontComposer commit and its raw hash/schema revalidated. A deterministic
 static source closure includes every conditional or unconditional `uses:` plus recursively resolved local
 composite metadata, independent of the runtime path; every transitive non-local `uses:` is a literal
@@ -228,11 +238,13 @@ CI/release `@main` calls and reusable release contract without an exact release-
 non-conforming; the REL-4 publication freeze remains mandatory until that upstream seam and its
 FrontComposer tests exist.
 
-Hexalith.Builds issue 17 / BUILD-REL-1 must deliver the exact reusable CI/release inputs, outputs,
-runtime-identity checks, static closure, CI handoff, exact-candidate, and always-emitted verification
-handoff contracts. Its owner-accepted immutable revision is pending. GOV-1 may implement local graph and
-policy work, but Tasks 4/5, story completion, release eligibility, and any unfreeze remain blocked until
-that revision and its workflow/action blob hashes are recorded in the active policy.
+Hexalith.Builds issue 17 / BUILD-REL-1 closed on 2026-07-20 without accepting the GOV-1 amendment or
+recording a qualifying immutable revision. The Release Owner must reopen it with the complete amendment
+or create a successor request. FrontComposer-local graph diff, bounded affected-module proof,
+policy-authorized evaluator closure, handoff schemas/consumers, manifest v2, and hostile fixtures proceed.
+Only reusable CI/release integration, end-to-end exact-candidate evidence proof, GOV-1 completion,
+release eligibility, and any unfreeze remain blocked until the replacement request records an
+owner-accepted 40-hex revision and the active policy authorizes its exact workflow/action closure.
 
 The handoff's CI evaluator digest is canonical SHA-256 over its exact caller/reusable/action sources.
 Manifest CI provenance must copy those sources exactly, project the authenticated run identity, and bind

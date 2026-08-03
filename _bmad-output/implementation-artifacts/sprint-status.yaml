@@ -532,6 +532,10 @@ development_status:
   # e3e3dcf592fd7fa962c559e6e9fee034427cbe32 preserved. Implementing Tasks 1-3 and the local-only
   # portion of Task 6 now that the Implementation Entry Gate is ratified; Tasks 4/5 stay blocked
   # per AD-16/decision 16 pending Hexalith.Builds issue 17 / BUILD-REL-1.)
+  # GOV-1 execution boundary corrected 2026-08-02 (approved bmad-correct-course; issue 17 closed
+  # 2026-07-20 without the GOV-1 amendment or a qualifying revision. All FrontComposer-local Task 4/5
+  # work proceeds; only reusable-workflow integration, end-to-end proof, completion, release eligibility,
+  # and unfreeze await a reopened issue 17 or successor and its owner-accepted immutable revision.)
   gov-1-validate-shared-catalog-compatibility-and-seal-dependency-provenance: in-progress
   epic-11-retrospective: optional
   # rel-1 surfaced on 2026-07-05 (correct-course; FR24/REL-AI-1 release-evidence implementation story, story file at _bmad-output/implementation-artifacts/rel-1-release-evidence-gate-before-v1-rc.md; keep REL-AI-1 action open until Release Owner records evidence)
@@ -623,13 +627,15 @@ action_items:
     action: "GOV-1: Replace historical SHA compatibility assertions with semantic catalog profiles for every Builds selector in the defined depth-1/2 v1 graph; add exact-revision graph diff, bounded affected-module proof, policy-authorized evaluator closure, both exact-candidate handoffs, and sealed graph/policy/workflow provenance."
     owner: "Product Owner + Architect + Developer + Release Owner"
     assigned: "2026-07-19"
-    due: "before Story 11.17d promotion and the next accepted governed release manifest"
+    due: "before the next accepted governed release manifest"
     status: open
-    source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md"
+    source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-02.md"
+    original_source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md"
     decision: "_bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md"
     architecture: "_bmad-output/planning-artifacts/architecture/architecture-gov-1-2026-07-19/ARCHITECTURE-SPINE.md"
-    external_gate: "Hexalith.Builds issue 17 / BUILD-REL-1 accepted immutable revision pending; blocks Tasks 4/5, completion, release eligibility, and unfreeze."
-    waiver: "2026-08-01 (Administrator, recorded by bmad-code-review promotion-delta chunk): the 'before Story 11.17d promotion' clause of the due condition is expressly waived for Story 11.17d only. GOV-1 is blocked on an external gate that 11.17d cannot influence (Hexalith.Builds issue 17), and 11.17d is a behavior-preserving Shell organization change that introduces no dependency, catalog, workflow, or release-manifest surface for GOV-1 to validate. This matches the disposition already applied to the Builds-gitlink blocker (2026-07-19) and the analyzer-policy ledger blocker (2026-07-20). The 'next accepted governed release manifest' half of the due condition is NOT waived and continues to gate release eligibility."
+    external_gate: "Hexalith.Builds issue 17 closed 2026-07-20 without the GOV-1 amendment or a qualifying revision. Reopen it or file a successor; only reusable-workflow integration, end-to-end exact-candidate evidence proof, completion, release eligibility, and unfreeze await the accepted immutable revision."
+    local_work: "unblocked 2026-08-02: exact-revision graph diff, bounded affected-module proof, evaluator authorization/closure, both handoff schemas/consumers, manifest v2, policy governance, and hostile fixtures"
+    waiver: "Historical: Administrator waived only the Story 11.17d promotion clause on 2026-08-01; Story 11.17d completed 2026-08-02 and is not reopened. The remaining due condition is now represented directly as 'before the next accepted governed release manifest'."
   - epic: release
     action: "REL-AI-1: Own the FR24 exact-artifact pre-publication gate for signed/timestamped packages, symbols, SBOM, checksums, package inventory, consumer validation, sealed manifest/readiness, durable GitHub Release evidence, published-byte verification, and historical reconciliation."
     owner: "Release Owner"

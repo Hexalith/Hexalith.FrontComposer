@@ -187,7 +187,8 @@ public sealed class Story12_4_RedPhaseDefTests {
         try {
             File.WriteAllText(unsealedManifest, """
                 {
-                  "commit_sha": "abc123",
+                  "manifest_schema": "hexalith.release-evidence.v2",
+                  "commit_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                   "tag": "v1.2.3",
                   "run_id": "42",
                   "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3",
@@ -196,14 +197,72 @@ public sealed class Story12_4_RedPhaseDefTests {
                   "helper_version": { "version": "1.0.0", "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" },
                   "release_definition_fingerprints": {},
                   "package_set_fingerprint": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+                  "dependency_graph": {
+                    "schema": "hexalith.dependency-graph.v1",
+                    "root": {
+                      "repository": "github.com/hexalith/hexalith.frontcomposer",
+                      "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                    },
+                    "edge_count": 0,
+                    "edges": [],
+                    "graph_digest": "5048c040915d58475dfc3c8fd9180290ba9c0eaf4d420e51346f25bf6e64bcd4"
+                  },
+                  "dependency_policy": {
+                    "schema": "hexalith.dependency-graph-policy.v1",
+                    "repository": "github.com/hexalith/hexalith.frontcomposer",
+                    "path": "eng/dependency-graph-policy.json",
+                    "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+                  },
+                  "workflow_provenance": {
+                    "ci": {
+                      "run": {
+                        "repository": "github.com/hexalith/hexalith.frontcomposer",
+                        "workflow_path": ".github/workflows/ci.yml",
+                        "run_id": 42,
+                        "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+                      },
+                      "evidence_sha256": "5555555555555555555555555555555555555555555555555555555555555555",
+                      "caller": {
+                        "repository": "github.com/hexalith/hexalith.frontcomposer",
+                        "workflow_path": ".github/workflows/ci.yml",
+                        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        "blob_sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+                      },
+                      "reusable": {
+                        "repository": "github.com/hexalith/hexalith.builds",
+                        "workflow_path": ".github/workflows/domain-ci.yml",
+                        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                        "blob_sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+                      },
+                      "actions": []
+                    },
+                    "release": {
+                      "caller": {
+                        "repository": "github.com/hexalith/hexalith.frontcomposer",
+                        "workflow_path": ".github/workflows/release.yml",
+                        "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                        "blob_sha256": "3333333333333333333333333333333333333333333333333333333333333333"
+                      },
+                      "reusable": {
+                        "repository": "github.com/hexalith/hexalith.builds",
+                        "workflow_path": ".github/workflows/domain-release.yml",
+                        "commit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                        "blob_sha256": "4444444444444444444444444444444444444444444444444444444444444444"
+                      },
+                      "actions": []
+                    },
+                    "definition_digest": "d6053bda7b18a5f5d6f646261a72fb85c51bfef9344acfb4f970048c85a1d9ff"
+                  },
                   "packages": [
                     {
                       "package_id": "Hexalith.FrontComposer.Cli",
                       "version": "1.2.3",
-                      "commit_sha": "abc123",
+                      "commit_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
                       "artifact_path": "release-evidence/packages/Hexalith.FrontComposer.Cli.1.2.3.nupkg",
                       "checksum": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
                       "symbol_artifact": "release-evidence/packages/Hexalith.FrontComposer.Cli.1.2.3.snupkg",
+                      "symbol_checksum": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
                       "sbom_component": "Hexalith.FrontComposer.Cli@1.2.3",
                       "signing_status": "verified",
                       "timestamp_status": "verified",

@@ -685,6 +685,7 @@ def cmd_publish(args: argparse.Namespace) -> int:
         "python3", "eng/release_evidence.py", "verify-manifest",
         "--manifest", str(base / EVIDENCE_DIR / "sealed-manifest.json"),
         "--root", str(base),
+        "--graph-root", str(base),
         "--output", str(base / EVIDENCE_DIR / "release-verification.json"),
     ], tolerate_failure=True)
     if verify.returncode != 0:
