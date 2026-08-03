@@ -1,6 +1,7 @@
 ---
 created: 2026-07-15
 updated: 2026-08-03
+baseline_commit: 874fe13ba4d2a979898fc9b10451827bab94988c
 owner: Release Owner (executes) + Developer (verification tooling/evidence assistance)
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md
 correctionProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-03.md
@@ -109,15 +110,22 @@ trust model (REL-3 Engineering Guardrails).
         common freeze gate). The issue closed 2026-07-20 without a qualifying accepted revision;
         a reopened or successor accepted revision is required for integration, end-to-end
         completion, release eligibility, and unfreeze.*
-  - [ ] Approve and record the RFC 3161 timestamp authority (AC3). *Candidate: DigiCert
+  - [x] Approve and record the RFC 3161 timestamp authority (AC3). *Approved 2026-08-03:
+        DigiCert
         (`http://timestamp.digicert.com`) — already the pipeline default in
-        `eng/release_prepublish.py` and the `NUGET_SIGNING_TIMESTAMPER` fallback; needs one
-        explicit owner confirmation line here to close AC3.*
+        `eng/release_prepublish.py` and the `NUGET_SIGNING_TIMESTAMPER` fallback. Official
+        DigiCert guidance identifies this exact lowercase URL as its RFC 3161 endpoint for
+        NuGet; a live SHA-256 request returned `Granted` and verified against the .NET 10.0.302
+        stock NuGet timestamp trust bundle.*
 - [ ] T2 — Provision custody.
   - [ ] Provision the two signing secrets with Release Owner-only custody and a rotation
         procedure (AC2).
-  - [ ] Record the org-vs-repo variable/secret posture, honoring the shadowing hazard documented
-        in the G2 request and deployment guide.
+  - [x] Record the org-vs-repo variable/secret posture, honoring the shadowing hazard documented
+        in the G2 request and deployment guide. *Approved 2026-08-03: use repository-scoped
+        Actions secrets in `Hexalith/Hexalith.FrontComposer`, custodied by the Release Owner;
+        do not depend on organization-secret inheritance. Keep the repository-scoped
+        `HEXALITH_RELEASE_PUBLISH_ENABLED=false` override so an organization-level value cannot
+        enable this repository.*
 - [ ] T3 — Adopt the upstream governed mode when accepted.
   - [ ] Reopen issue 17 or file a successor and record the qualifying accepted upstream revision
         in the G2 request (AC4).
@@ -129,8 +137,8 @@ trust model (REL-3 Engineering Guardrails).
         publication authorization only on sealed ready/authorized evidence and reset the coarse
         switch after the attempt (AC6, AC10).
   - [ ] Verify downloaded NuGet and GitHub assets against the sealed manifest (AC7).
-  - [ ] Record the first compliant ledger entry (AC8) and finalize the v3.2.1, v3.2.2, v4.0.0,
-        and v4.0.1 historical dispositions.
+  - [ ] Record the first compliant ledger entry (AC8).
+  - [x] Finalize the v3.2.1, v3.2.2, v4.0.0, and v4.0.1 historical dispositions.
   - [ ] Close REL-AI-1 only on durable passing evidence (AC9).
 
 ## Implementation Boundary
@@ -158,9 +166,9 @@ trust model (REL-3 Engineering Guardrails).
 - [ ] Upstream accepted revision or approved bounded contingency recorded.
 - [ ] First governed release authorized, published, and byte-verified from NuGet and GitHub.
 - [x] Coarse execution switch reset and the enabled-window containment audit recorded.
-- [ ] Compliance ledger carries the first compliant record; v3.2.1, v3.2.2, v4.0.0, and v4.0.1
-      dispositions finalized.
-- [ ] REL-AI-1 closed on durable evidence, or open with the exact blocker recorded.
+- [ ] Compliance ledger carries the first compliant record.
+- [x] v3.2.1, v3.2.2, v4.0.0, and v4.0.1 dispositions finalized without retroactive relabeling.
+- [x] REL-AI-1 closed on durable evidence, or open with the exact blocker recorded.
 
 ## References
 
@@ -229,3 +237,146 @@ trust model (REL-3 Engineering Guardrails).
 
 - 2026-08-03: Release Owner restored the coarse publication switch to exact lowercase `false`,
   audited the complete enabled window, found no partial external publication, and completed T0.
+- 2026-08-03: Release Owner approved DigiCert's RFC 3161 timestamp authority and the
+  repository-scoped secret custody/rotation posture. Production identity approval and secret
+  provisioning remain blocked because no production certificate or password was supplied.
+- 2026-08-03: Completed the four-release historical byte/evidence reconciliation. Governed
+  preflight failed closed before candidate generation; no version, manifest, authorization, or
+  publication action was created.
+
+### REL-5 T1/T2 Release Owner Execution Record (2026-08-03)
+
+#### Implementation Plan
+
+- Revalidate current NuGet.org production-signing requirements against official Microsoft
+  documentation.
+- Verify DigiCert's documented RFC 3161 URL with its health endpoint and a live SHA-256 timestamp
+  response against the .NET SDK's stock NuGet timestamp trust bundle.
+- Inspect only approved external environment/secure-path presence and GitHub secret names; never
+  print, decode, persist, or pass certificate/password values in command arguments.
+- Provision only the two authorized repository secrets if both values are available; otherwise
+  stop fail-closed and leave AC1/AC2 incomplete.
+
+#### Debug Log
+
+- Microsoft NuGet guidance checked 2026-08-03:
+  <https://learn.microsoft.com/nuget/create-packages/sign-a-package> requires a public-CA code-
+  signing certificate for NuGet.org production packages, rejects self-issued production
+  signatures, recommends timestamping, and requires the certificate to be registered with the
+  publishing NuGet.org account or organization. The NuGet CLI reference defines `--timestamper`
+  as an RFC 3161 service and defaults timestamp hashing to SHA-256.
+- DigiCert suitability checked 2026-08-03:
+  <https://knowledge.digicert.com/solution/troubleshooting-timestamping-problems> identifies
+  `http://timestamp.digicert.com` as the exact RFC 3161 NuGet endpoint. The health endpoint returned
+  HTTP 204. A live SHA-256 RFC 3161 request returned `Granted`, policy
+  `2.16.840.1.114412.7.1`, and `Verification: OK` against
+  `/home/administrator/.dotnet/sdk/10.0.302/trustedroots/timestampctl.pem`.
+  DigiCert's current Public Trust CP/CPS also states that its timestamp authority complies with
+  RFC 3161, is recommended for signed code, and synchronizes to a UTC(k) source:
+  <https://www.digicert.com/content/dam/digicert/pdfs/legal/digicert-public-trust-cp-cps.pdf>.
+- Approved timestamp authority: DigiCert, `http://timestamp.digicert.com`. The governed signing
+  implementation already uses this exact URL as `DEFAULT_TIMESTAMPER`, so no workflow or source
+  change is required for AC3.
+- Approved custody posture: repository-scoped GitHub Actions secrets in
+  `Hexalith/Hexalith.FrontComposer`; Release Owner is the custody and rotation owner. Repository
+  scope prevents reliance on an inherited organization secret whose visibility cannot be audited
+  with the current GitHub token. The repository-level publication variable was independently
+  verified as exact lowercase `false` at `updated_at=2026-08-03T06:24:13Z`.
+- Rotation procedure: begin replacement no later than 60 days before certificate expiry; acquire a
+  successor public-CA code-signing certificate, validate its code-signing EKU/public trust chain
+  and validity, register it with the publishing NuGet.org owner, update both repository secrets via
+  stdin, verify names only, and run the non-publishing governed validation. Retire the predecessor
+  only after a successor-signed governed release passes independent downloaded-byte verification.
+  On compromise or revocation, freeze publication, rotate immediately, revoke/remove the old
+  certificate at the CA and NuGet.org, audit attempted releases, and record the incident/rotation
+  in this story and the compliance ledger.
+- Blocking evidence: `NUGET_SIGNING_CERTIFICATE_BASE64`,
+  `NUGET_SIGNING_CERTIFICATE_PASSWORD`, recognized certificate/password file variables, and
+  `/run/secrets` were unavailable. GitHub's repository secret-name list was empty. Organization
+  secret/variable listing returned HTTP 403, so no organization-level value is claimed absent.
+  No secret was created or changed.
+
+#### Completion Notes
+
+- Completed only the RFC 3161 authority approval (AC3) and the repository-vs-organization posture
+  record. T1 remains incomplete because no production certificate exists to verify or record its
+  CA, subject, issuer, SHA-256 thumbprint, validity, NuGet.org registration, or custody artifact.
+- T2 and AC2 remain incomplete because the production PFX/base64 value and password were not
+  supplied. Exact Release Owner action: place the approved public-CA production PFX/base64 and its
+  password in the external environment as `NUGET_SIGNING_CERTIFICATE_BASE64` and
+  `NUGET_SIGNING_CERTIFICATE_PASSWORD` (or provide separately identified secure files outside the
+  repository), ensure the PFX includes the full issuing chain, and provide non-secret CA/subject/
+  issuer/SHA-256-thumbprint/validity plus NuGet.org registration evidence. Then rerun REL-5 T1/T2.
+- `HEXALITH_RELEASE_PUBLISH_ENABLED` remains exactly `false`. No release was triggered or
+  authorized.
+
+### Historical Reconciliation and Governed Preflight Record (2026-08-03)
+
+#### Historical result
+
+- Completed the CI/Release/Release Evidence mapping, exact asset enumeration, SHA-256 comparison,
+  `dotnet nuget verify --all`, symbols/evidence inspection, consumer lineage, and provenance audit
+  for v3.2.1, v3.2.2, v4.0.0, and v4.0.1. The compliance ledger contains the complete hashes,
+  timestamps, run URLs, source/tag SHAs, and evidence-availability record.
+- All 32 GitHub `.nupkg` files and all 32 GitHub `.snupkg` files are unsigned (`NU3004`). All 32
+  nuget.org packages verify only with NuGet.org's Repository signature and timestamp, have no
+  Author signature, and differ byte-for-byte from the corresponding GitHub package.
+- Historical CI consumer validation passed against independently packed `0.0.0-ci-test` packages,
+  not the exact subsequently published candidates. Release Evidence later rebuilt another set;
+  its checksums matched GitHub Release assets 0/16 per release. Its SBOM, checksums, inventory,
+  manifest/readiness, and SLSA provenance therefore do not bind published bytes.
+- CI test artifacts have expired. The original Release Evidence artifacts remain temporarily
+  available under 30-day retention, but no complete FR24 evidence set is attached to any GitHub
+  Release. Unavailable evidence was not reconstructed or labeled original.
+- Historical dispositions remain non-compliant. Completion of this reconciliation is an explicit
+  non-closing residual and cannot supply retrospective pre-publication authorization.
+
+#### Preflight gate
+
+| Preflight condition | Result | Evidence / blocker |
+| --- | --- | --- |
+| Coarse switch exactly false | **PASS** | Repository variable is exact lowercase `false`, `updated_at=2026-08-03T06:24:13Z`. |
+| Accepted immutable Builds revision pinned | **FAIL** | `release.yml` mechanically pins `79f82acc9cb9259ddcb90217c89bc72024ab7f72`, but the G2 accepted-revision field remains `pending`; issue 17 closed without a qualifying BUILD-REL-1/GOV-1 governed-mode revision. The pinned commit is not owner-accepted release governance evidence. |
+| Production signing identity, secrets, timestamp authority, rotation | **FAIL** | DigiCert RFC 3161 and rotation posture are approved, but no production certificate is approved and both repository signing-secret names are absent. |
+| Protected reviewers and post-classification/pre-publication pause | **FAIL** | GitHub environment `production` has no protection rules or required reviewers; the current caller/reusable workflow exposes no operational protected post-evidence approval pause. |
+| GOV-1 handoffs and hostile tests | **FAIL (operational)** | Local hostile suites pass 77/77, but `eng/dependency-graph-policy.json` authorizes no CI, release, or post-release evaluator and no accepted upstream governed seam can execute the two exact-candidate handoffs end to end. |
+| Historical reconciliation complete or explicit non-closing residuals | **PASS** | Four releases fully reconciled; expired/temporary evidence and historically impossible pre-authorization are recorded honestly as non-closing residuals. |
+
+#### Stop decision
+
+Preflight is not eligible for the candidate phase. No candidate was packed, signed, timestamped,
+attested, classified, or sealed; therefore there is no candidate version or manifest SHA-256, no
+approval packet, and no publication authorization request. `classification=ready` and
+`publish_authorized=true` have not been established. Publication remains unauthorized,
+`HEXALITH_RELEASE_PUBLISH_ENABLED` remains exactly `false`, and REL-AI-1 remains open.
+
+Exact correction required before rerunning preflight:
+
+1. accept and record an immutable Builds revision that implements the governed release seam;
+2. approve/provision the production public-CA signing identity and both repository secrets;
+3. configure required reviewers and prove the protected pause after sealed evidence but before
+   publication;
+4. authorize GOV-1 evaluators and pass both exact-candidate handoffs end to end.
+
+## Suggested Review Order
+
+**Historical evidence**
+
+- Start with the complete run, byte, signature, evidence-lineage, and classification record.
+  [rel-ai-1-release-evidence-ledger.md:72](rel-ai-1-release-evidence-ledger.md#L72)
+
+- Confirm each historical non-compliant classification remains explicit and owner-routed.
+  [rel-ai-1-release-evidence-ledger.md:239](rel-ai-1-release-evidence-ledger.md#L239)
+
+**Fail-closed preflight**
+
+- Review the consolidated historical conclusion and governed-release preflight boundary.
+  [rel-5-provision-signing-identity-and-first-governed-release.md:313](rel-5-provision-signing-identity-and-first-governed-release.md#L313)
+
+- Verify failed prerequisites stopped execution before any candidate or authorization request.
+  [rel-5-provision-signing-identity-and-first-governed-release.md:334](rel-5-provision-signing-identity-and-first-governed-release.md#L334)
+
+**Open-gate tracking**
+
+- Confirm sprint tracking keeps REL-AI-1 open and publication unauthorized.
+  [sprint-status.yaml:642](sprint-status.yaml#L642)

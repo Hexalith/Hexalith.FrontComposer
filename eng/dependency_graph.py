@@ -470,6 +470,13 @@ def _logical_edge_map(graph: dict[str, Any]) -> dict[tuple[str, str, str], dict[
     }
 
 
+def _edge_change_projection(edge: dict[str, Any]) -> dict[str, Any]:
+    """Project one edge for dependency-meaning equality without losing evidence."""
+    if edge["depth"] != 1:
+        return edge
+    return {name: value for name, value in edge.items() if name != "owner_commit"}
+
+
 def _candidate_module_commits(graph: dict[str, Any]) -> dict[str, str]:
     commits = {graph["root"]["repository"]: graph["root"]["commit"]}
     for edge in graph["edges"]:
@@ -536,7 +543,11 @@ def diff_graphs(
     for key in sorted(set(before_map) | set(after_map)):
         before = before_map.get(key)
         after = after_map.get(key)
-        if before == after:
+        if (
+            before is not None
+            and after is not None
+            and _edge_change_projection(before) == _edge_change_projection(after)
+        ):
             continue
         status = "added" if before is None else "removed" if after is None else "changed"
         changes.append({
@@ -633,9 +644,11 @@ def materialize_contract_tree(
             path = path_bytes.decode("ascii")
         except (ValueError, UnicodeDecodeError) as exc:
             raise GraphError("non-ASCII or malformed Builds contract-tree entry") from exc
+        normalize_path(path, "Builds contract-tree path")
+        if mode_bytes == b"160000" and obj_type == b"commit":
+            continue
         if obj_type != b"blob" or mode_bytes not in (b"100644", b"100755"):
             raise GraphError(f"Builds contract tree contains unsupported mode/type at {path!r}")
-        normalize_path(path, "Builds contract-tree path")
         size = _blob_size(builds_local, sha_bytes.decode("ascii"))
         if size > limits["max_contract_tree_blob_bytes"]:
             raise GraphError(f"Builds contract-tree blob {path!r} exceeds the per-blob ceiling")

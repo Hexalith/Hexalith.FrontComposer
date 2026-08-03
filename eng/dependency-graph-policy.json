@@ -135,17 +135,17 @@
     },
     "github.com/hexalith/hexalith.tenants": {
       "disposition": "build",
-      "solution": "Hexalith.Tenants.slnx",
+      "solution": "src/Hexalith.Tenants/Hexalith.Tenants.csproj",
       "builds_contract_source": "edge-tree:references/Hexalith.Builds",
-      "restore_argv": ["dotnet", "restore", "Hexalith.Tenants.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
-      "build_argv": ["dotnet", "build", "Hexalith.Tenants.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
+      "restore_argv": ["dotnet", "restore", "src/Hexalith.Tenants/Hexalith.Tenants.csproj", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "src/Hexalith.Tenants/Hexalith.Tenants.csproj", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.commons": {
       "disposition": "build",
-      "solution": "Hexalith.Commons.slnx",
+      "solution": "src/libraries/Hexalith.Commons/Hexalith.Commons.csproj",
       "builds_contract_source": "edge-tree:references/Hexalith.Builds",
-      "restore_argv": ["dotnet", "restore", "Hexalith.Commons.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
-      "build_argv": ["dotnet", "build", "Hexalith.Commons.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
+      "restore_argv": ["dotnet", "restore", "src/libraries/Hexalith.Commons/Hexalith.Commons.csproj", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "src/libraries/Hexalith.Commons/Hexalith.Commons.csproj", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.builds": {
       "disposition": "build",
@@ -170,10 +170,10 @@
     },
     "github.com/hexalith/hexalith.parties": {
       "disposition": "build",
-      "solution": "Hexalith.Parties.slnx",
+      "solution": "src/Hexalith.Parties/Hexalith.Parties.csproj",
       "builds_contract_source": "edge-tree:references/Hexalith.Builds",
-      "restore_argv": ["dotnet", "restore", "Hexalith.Parties.slnx", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
-      "build_argv": ["dotnet", "build", "Hexalith.Parties.slnx", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
+      "restore_argv": ["dotnet", "restore", "src/Hexalith.Parties/Hexalith.Parties.csproj", "-p:Configuration=Release", "-p:UseNuGetDeps=true"],
+      "build_argv": ["dotnet", "build", "src/Hexalith.Parties/Hexalith.Parties.csproj", "--configuration", "Release", "--no-restore", "-p:UseNuGetDeps=true"]
     },
     "github.com/hexalith/hexalith.ai.tools": {
       "disposition": "evidence-only",

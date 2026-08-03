@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "eng"))
@@ -914,6 +915,41 @@ class DiffAndMaterializationTests(unittest.TestCase):
         self.assertEqual(evidence["changes"], [])
         self.assertEqual(evidence["affected_modules"], [])
 
+    def test_root_owner_commit_only_churn_builds_nothing_and_retains_provenance(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        owner = fx.add_repo("Owner")
+        owner.write_text("Directory.Packages.props", OWNER_SHIM)
+        owner_commit = owner.commit("owner")
+
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        fx.link("Root", "references/Owner", "Owner", owner_commit)
+        root_base = root.commit("base root")
+        root.write_text("docs/unrelated.md", "root-only change")
+        root_candidate = root.commit("candidate root")
+
+        for name in ("Root", "Owner"):
+            fx.register_module(name)
+        base_graph = dg.collect_graph(root.root, fx.identity("Root"), root_base, fx.policy)
+        candidate_graph = dg.collect_graph(root.root, fx.identity("Root"), root_candidate, fx.policy)
+
+        evidence = dg.diff_graphs(
+            base_graph,
+            candidate_graph,
+            fx.policy,
+            event="push",
+            event_base=root_base,
+            candidate=root_candidate,
+            merge_base=None,
+            release_eligible=True,
+        )
+
+        self.assertNotEqual(root_base, root_candidate)
+        self.assertEqual(base_graph["edges"][0]["owner_commit"], root_base)
+        self.assertEqual(candidate_graph["edges"][0]["owner_commit"], root_candidate)
+        self.assertEqual(evidence["changes"], [])
+        self.assertEqual(evidence["affected_modules"], [])
+
     def test_removed_depth1_edge_collapses_to_frontcomposer_root(self) -> None:
         fx, base_graph, candidate_graph = self._pointer_advance()
         removed_candidate = copy.deepcopy(candidate_graph)
@@ -949,6 +985,49 @@ class DiffAndMaterializationTests(unittest.TestCase):
         self.assertEqual((destination / "eng/config.bin").read_bytes(), b"\x00\x01\xff")
         self.assertEqual((destination / "Props/Directory.Packages.props").read_bytes(), BASELINE_CATALOG)
 
+    def test_contract_tree_omits_exact_nested_gitlink_and_materializes_regular_files(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        ai_tools = fx.add_repo("AI.Tools")
+        ai_tools.write_text("README.md", "nested repository content")
+        ai_tools_commit = ai_tools.commit("nested repository")
+
+        builds = fx.add_repo("Builds")
+        builds.write_bytes("Props/Directory.Packages.props", BASELINE_CATALOG)
+        builds.write_bytes("eng/config.bin", b"\x00\x01\xff")
+        executable = builds.write_text("eng/build.sh", "#!/bin/sh\nexit 0\n")
+        executable.chmod(0o755)
+        _run(["add", "--", "eng/build.sh"], builds.root)
+        builds.add_submodule(
+            "Hexalith.AI.Tools",
+            "references/Hexalith.AI.Tools",
+            fx.url("AI.Tools"),
+            ai_tools_commit,
+        )
+        commit = builds.commit("real-shaped Builds tree")
+
+        destination = self.tmp_path / "materialized-with-gitlink"
+        result = dg.materialize_contract_tree(builds.root, commit, destination, fx.policy)
+
+        self.assertEqual(result["file_count"], 4)
+        self.assertEqual((destination / "eng/config.bin").read_bytes(), b"\x00\x01\xff")
+        self.assertEqual((destination / "Props/Directory.Packages.props").read_bytes(), BASELINE_CATALOG)
+        self.assertEqual((destination / "eng/build.sh").stat().st_mode & 0o777, 0o755)
+        self.assertTrue((destination / ".gitmodules").is_file())
+        self.assertFalse((destination / "references/Hexalith.AI.Tools").exists())
+
+    def test_contract_tree_validates_gitlink_path_before_omitting_it(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        builds = fx.add_repo("Builds")
+        builds.link_gitlink(r"references\Nested", "f" * 40)
+        commit = builds.commit("unsafe gitlink path")
+        destination = self.tmp_path / "unsafe-gitlink"
+
+        with self.assertRaises(dg.GraphError) as ctx:
+            dg.materialize_contract_tree(builds.root, commit, destination, fx.policy)
+
+        self.assertIn("unsafe path", str(ctx.exception))
+        self.assertFalse(destination.exists())
+
     def test_contract_tree_rejects_symlink_and_limits_before_extraction(self) -> None:
         fx = GraphFixture(self.tmp_path)
         builds = fx.add_repo("Builds")
@@ -957,8 +1036,10 @@ class DiffAndMaterializationTests(unittest.TestCase):
         _run(["add", "catalog-link"], builds.root)
         commit = builds.commit()
         destination = self.tmp_path / "rejected"
-        with self.assertRaises(dg.GraphError):
+        with self.assertRaises(dg.GraphError) as ctx:
             dg.materialize_contract_tree(builds.root, commit, destination, fx.policy)
+        self.assertIn("catalog-link", str(ctx.exception))
+        self.assertIn("unsupported mode/type", str(ctx.exception))
         self.assertFalse(destination.exists())
 
         fx.policy["resource_limits"]["max_contract_tree_files"] = 1
@@ -986,6 +1067,55 @@ class DiffAndMaterializationTests(unittest.TestCase):
         self.assertFalse((destination / "references/Nested/.git").exists())
         observed = _run(["rev-parse", "HEAD"], destination).decode("ascii").strip()
         self.assertEqual(observed, base)
+
+    def test_run_affected_replaces_empty_gitlink_mount_before_contract_materialization(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        builds = fx.add_repo("Builds")
+        owner = fx.add_repo("Owner")
+        fx.register_module("Owner")
+        owner_commit = "a" * 40
+        builds_commit = "b" * 40
+        catalog_sha256 = hashlib.sha256(BASELINE_CATALOG).hexdigest()
+        selector = {
+            "owner_repository": fx.identity("Owner"),
+            "owner_commit": owner_commit,
+            "path": "references/Builds",
+            "repository": fx.identity("Builds"),
+            "commit": builds_commit,
+            "depth": 2,
+            "catalog_sha256": catalog_sha256,
+            "catalog_contract_version": None,
+        }
+        module = dg._module_proof(fx.identity("Owner"), owner_commit, ["test pointer advance"], fx.policy)
+        evidence = {"candidate_graph": {"edges": [selector]}, "affected_modules": [module]}
+        output_root = self.tmp_path / "affected-output"
+
+        def materialize_module(_local: pathlib.Path, _commit: str, destination: pathlib.Path) -> None:
+            (destination / "references/Builds").mkdir(parents=True)
+
+        def materialize_contract(
+            _local: pathlib.Path,
+            _commit: str,
+            destination: pathlib.Path,
+            _policy: dict,
+        ) -> dict:
+            self.assertFalse(destination.exists())
+            catalog = destination / "Props/Directory.Packages.props"
+            catalog.parent.mkdir(parents=True)
+            catalog.write_bytes(BASELINE_CATALOG)
+            return {"file_count": 1, "total_bytes": len(BASELINE_CATALOG), "commit": builds_commit}
+
+        completed = subprocess.CompletedProcess([], 0, stdout="", stderr="")
+        with (
+            mock.patch.object(dg, "validate_diff_evidence", return_value=(fx.policy, evidence)),
+            mock.patch.object(dg, "materialize_repository_tree", side_effect=materialize_module),
+            mock.patch.object(dg, "materialize_contract_tree", side_effect=materialize_contract),
+            mock.patch.object(dg.subprocess, "run", return_value=completed) as run,
+        ):
+            result = dg.run_affected_builds(owner.root, evidence, output_root)
+
+        self.assertEqual(result["modules"][0]["disposition"], "build")
+        self.assertEqual(run.call_count, 2)
 
     def test_offline_graph_validation_rejects_drift_and_out_of_order_edges(self) -> None:
         _fx, _base_graph, candidate_graph = self._pointer_advance()
@@ -1139,6 +1269,29 @@ class PolicyShapeTests(unittest.TestCase):
             migrated["module_build_registry"]["github.com/hexalith/hexalith.frontcomposer"]["restore_argv"][:2],
             ["dotnet", "restore"],
         )
+
+    def test_landed_dependency_build_targets_are_standalone_owned_surfaces(self) -> None:
+        policy = dg.load_policy(ROOT / "eng" / "dependency-graph-policy.json")
+        expected = {
+            "github.com/hexalith/hexalith.eventstore": "Hexalith.EventStore.slnx",
+            "github.com/hexalith/hexalith.tenants": "src/Hexalith.Tenants/Hexalith.Tenants.csproj",
+            "github.com/hexalith/hexalith.commons": "src/libraries/Hexalith.Commons/Hexalith.Commons.csproj",
+            "github.com/hexalith/hexalith.builds": "Hexalith.Builds.slnx",
+            "github.com/hexalith/hexalith.polymorphicserializations": "Hexalith.PolymorphicSerializations.slnx",
+            "github.com/hexalith/hexalith.memories": "Hexalith.Memories.slnx",
+            "github.com/hexalith/hexalith.parties": "src/Hexalith.Parties/Hexalith.Parties.csproj",
+        }
+
+        for identity, target in expected.items():
+            row = policy["module_build_registry"][identity]
+            self.assertEqual(row["solution"], target)
+            self.assertEqual(row["restore_argv"], [
+                "dotnet", "restore", target, "-p:Configuration=Release", "-p:UseNuGetDeps=true",
+            ])
+            self.assertEqual(row["build_argv"], [
+                "dotnet", "build", target, "--configuration", "Release", "--no-restore",
+                "-p:UseNuGetDeps=true",
+            ])
 
 
 if __name__ == "__main__":
