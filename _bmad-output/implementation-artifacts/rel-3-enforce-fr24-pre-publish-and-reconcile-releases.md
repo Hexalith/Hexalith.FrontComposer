@@ -1,11 +1,12 @@
 ---
 created: 2026-07-15
-updated: 2026-07-18
+updated: 2026-08-03
 amended: 2026-07-16 (freeze truth-state; approval-mechanism contract in AC20; prior governed-release and operational-authority amendments retained)
 owner: Release Owner + Developer + QA/Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md
 amendmentProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md
-status: done
+correctionProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-03.md
+status: in-review
 baseline_commit: 5c284c89d37dfc3d39593962631e376bd4c5e033
 scope: moderate
 implementationRisk: high
@@ -17,6 +18,12 @@ releaseControl: frozen-until-real-release-evidence
 Status: in-review.
 
 Approval: approved by Administrator on 2026-07-15.
+
+Status correction (2026-08-03): repository-local implementation and non-publishing validation are
+complete and under review. A real signed/timestamped governed release, the upstream/protected
+authorization seam, production credentials, durable GitHub Release evidence, published-byte
+verification, and historical closure remain transferred REL-5 / GOV-1 conditions and are not
+implied by this story's implementation status.
 
 ## Story
 

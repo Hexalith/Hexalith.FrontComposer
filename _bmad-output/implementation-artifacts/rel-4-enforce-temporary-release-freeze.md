@@ -1,8 +1,9 @@
 ---
 created: 2026-07-15
-updated: 2026-07-16
+updated: 2026-08-03
 owner: Release Owner + Developer + QA/Test Architect
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md
+correctionProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-03.md
 status: in-review
 implemented: 2026-07-18 (dev via REL-3 quick-dev run; stop-the-line precondition)
 scope: minor
@@ -30,8 +31,11 @@ Status: in-review.
 - Governance lane: 30/30 `CiGovernanceTests` release-related tests green via the direct xUnit v3
   runner (Release build, 0 warnings/errors).
 - Deployment guide freeze subsection flipped to active-state wording.
-- **Pending (CI-authoritative, post-merge):** first frozen Release run URL showing `freeze-guard`
-  success, `release` skip, and no publication side effect — record here on completion (AC6).
+- First CI-authoritative frozen Release run:
+  <https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29703682203>
+  (`freeze-guard` succeeded; the reusable `release` job was skipped).
+- This proves the coarse fail-closed enforcement path only. It does not prove FR24 readiness or
+  authorize publication.
 
 Approval: approved by Administrator on 2026-07-15 (Batch-mode correct-course).
 
