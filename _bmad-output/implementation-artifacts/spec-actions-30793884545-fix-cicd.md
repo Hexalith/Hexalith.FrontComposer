@@ -2,7 +2,7 @@
 title: 'Fix dependency-governance diff and materialization'
 type: 'bugfix'
 created: '2026-08-03'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 1
 baseline_commit: '663a88ec647d6ea804dd3f4c900ff2a139488c50'
 context:
@@ -54,7 +54,7 @@ context:
 - [x] `references/Hexalith.Parties` -- add the complete standalone solution, path-based AppHost resources, an owned package-built gateway test host, tests, and guidance.
 - [x] `eng/dependency_graph.py` -- validate depth-1 root ownership and depth-2 ancestry, reject duplicate logical edges, ignore only validated depth-1 root `owner_commit` churn, and omit only path-validated `160000 commit` entries.
 - [x] `eng/dependency-graph-policy.json` and `tests/eng/test_dependency_graph.py` -- select the standalone solutions and cover target shape, hostile envelopes, pointer advances, extraction, unsafe modes, and mount replacement.
-- [ ] Git history -- on typed local branches, commit each submodule, then make separate commitlint-validated FrontComposer policy/code and pointer-advance commits after isolated builds pass; do not push.
+- [x] Git history -- on typed local branches, commit each submodule, then make separate commitlint-validated FrontComposer policy/code and pointer-advance commits after isolated builds pass; do not push.
 
 **Acceptance Criteria:**
 - Given isolated exact module trees plus the Builds contract, when policy commands run, then every owned project (Commons 20, Tenants 17, and all Parties projects including its gateway host) builds without nested checkouts.
@@ -63,9 +63,13 @@ context:
 
 ## Spec Change Log
 
+- Review patches preserve the approved architecture while closing self-referential inventory checks, runtime path-resolution coverage, source/package gateway-host selection, and sealed-evidence trust binding.
+
 ## Design Notes
 
 Primary source/topology solutions remain canonical; standalone files are governance-only package-mode surfaces. Tenants gets package fallbacks. Parties retains runtime topology validation while using path-based Aspire resources and an owned package gateway host. Policy activation precedes pointer advancement because CI authorizes commands from the immutable event base.
+
+Activation requires two remote merge/push boundaries: land the policy/code commit and wait for it to become the immutable base before advancing dependency pointers. Do not publish the baseline-to-pointer range as one event; that event would correctly remain governed by the old base policy.
 
 ## Verification
 
@@ -78,8 +82,10 @@ Primary source/topology solutions remain canonical; standalone files are governa
 - `git diff --check` -- expected: no whitespace errors.
 
 **Results:**
-- Root dependency-graph suite: 64/64 passed; Python compilation and `git diff --check` passed.
+- Root dependency-graph suite: 67/67 passed; Python compilation and `git diff --check` passed.
 - Isolated Release/package-mode builds with only regular Builds contract files materialized: Commons 20/20, Tenants 17/17, and Parties 30/30 projects built with zero warnings and zero errors; no nested gitlink content was initialized.
-- Focused changed-surface tests: Commons 1/1, Tenants 26/26, and Parties 71/71 passed.
+- Focused changed-surface tests: Commons 1/1, Tenants 26/26, and Parties 75/75 passed; Parties' source-mode gateway test project also built successfully against the real EventStore host.
 - Frozen matrix rows passed in the root suite: exact nested-gitlink omission, unsafe path/mode rejection, root-only no-op scheduling, and at-most-once pointer-advance scheduling with provenance.
 - Exact submodule and root commit messages passed the owning repositories' pinned commitlint CLIs before commit creation.
+- Exact delayed-activation replay from policy commit `569ad3e441cd83661e1863c438644c789575c6ee` to pointer commit `1f0387e313ec0e157c5fdda4ed5a058aab121569` scheduled only Commons, Parties, and Tenants; all six static restore/build commands exited zero (`result_digest=ac0d9a062304c1026fdb936641bfaf228f8754ac85f101371a616273564c8137`).
+- Adversarial review patches bind evidence to the policy root/revisions/edge ceiling, discover owned projects from disk, behaviorally test all supported Parties dependency layouts and missing-path guidance, prefer umbrella dependencies over stale nested checkouts, and retain the production EventStore host for source-mode routing tests.

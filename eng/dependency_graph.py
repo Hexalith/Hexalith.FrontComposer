@@ -846,10 +846,34 @@ def validate_diff_evidence(root_dir: Path, evidence: Any) -> tuple[dict[str, Any
     policy, _raw, expected_coordinate = load_policy_at_commit(root_dir, policy_commit)
     if policy_coordinate != expected_coordinate:
         raise GraphError("affected-module evidence policy coordinate/hash drift")
-    validate_graph_envelope(evidence.get("base_graph"))
-    validate_graph_envelope(evidence.get("candidate_graph"))
-    if evidence["candidate_graph"]["root"]["commit"] != candidate:
-        raise GraphError("affected-module candidate does not match candidate graph root commit")
+    root_identities = [
+        entry["identity"] for entry in policy["trusted_identities"]
+        if entry["local_path"] == "."
+    ]
+    if len(root_identities) != 1:
+        raise GraphError("active policy must declare exactly one trusted root identity at local path '.'")
+    trusted_root_identity = root_identities[0]
+    max_edges = policy["resource_limits"]["max_edges"]
+    base_graph = validate_graph_envelope(evidence.get("base_graph"))
+    candidate_graph = validate_graph_envelope(evidence.get("candidate_graph"))
+    expected_base_commit = candidate if revisions["event_base"] == "0" * 40 else revisions["event_base"]
+    for label, graph, expected_commit in (
+        ("base", base_graph, expected_base_commit),
+        ("candidate", candidate_graph, candidate),
+    ):
+        if graph["root"]["repository"] != trusted_root_identity:
+            raise GraphError(
+                f"affected-module {label} graph root repository does not match active-policy trusted root identity"
+            )
+        if graph["root"]["commit"] != expected_commit:
+            raise GraphError(
+                f"affected-module {label} graph root commit does not match its sealed revision"
+            )
+        if graph["edge_count"] > max_edges:
+            raise GraphError(
+                f"affected-module {label} graph has {graph['edge_count']} edges, "
+                f"exceeds the active-policy {max_edges}-edge ceiling"
+            )
     if policy_commit != revisions["event_base"] and revisions["event_base"] != "0" * 40:
         raise GraphError("affected-module active policy commit does not match event base")
     expected = diff_graphs(

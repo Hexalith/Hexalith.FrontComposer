@@ -1148,6 +1148,87 @@ class DiffAndMaterializationTests(unittest.TestCase):
             "edges": graph["edges"],
         })
 
+    @staticmethod
+    def _reseal_evidence(evidence: dict) -> None:
+        evidence["evidence_digest"] = dg.canonical_digest({
+            name: value for name, value in evidence.items() if name != "evidence_digest"
+        })
+
+    def _live_evidence(self) -> tuple[GraphFixture, dict, dict]:
+        fx, base_graph, candidate_graph = self._pointer_advance()
+        root_identity = fx.identity("Root")
+        next(entry for entry in fx.policy["trusted_identities"] if entry["identity"] == root_identity)["local_path"] = "."
+        evidence = dg.diff_graphs(
+            base_graph,
+            candidate_graph,
+            fx.policy,
+            event="push",
+            event_base=base_graph["root"]["commit"],
+            candidate=candidate_graph["root"]["commit"],
+            merge_base=None,
+            release_eligible=True,
+        )
+        coordinate = {
+            "schema": dg.POLICY_SCHEMA,
+            "repository": root_identity,
+            "path": dg.POLICY_PATH,
+            "commit": base_graph["root"]["commit"],
+            "sha256": "a" * 64,
+        }
+        evidence["dependency_policy"] = coordinate
+        self._reseal_evidence(evidence)
+        return fx, evidence, coordinate
+
+    def test_affected_evidence_rejects_self_declared_untrusted_root_identity(self) -> None:
+        fx, evidence, coordinate = self._live_evidence()
+        hostile = copy.deepcopy(evidence)
+        for graph_name in ("base_graph", "candidate_graph"):
+            graph = hostile[graph_name]
+            graph["root"]["repository"] = "github.com/test/forged"
+            for edge in graph["edges"]:
+                if edge["depth"] == 1:
+                    edge["owner_repository"] = "github.com/test/forged"
+            self._reseal(graph)
+        self._reseal_evidence(hostile)
+
+        with (
+            mock.patch.object(dg, "load_policy_at_commit", return_value=(fx.policy, b"", coordinate)),
+            self.assertRaises(dg.GraphError) as ctx,
+        ):
+            dg.validate_diff_evidence(self.tmp_path, hostile)
+
+        self.assertIn("trusted root identity", str(ctx.exception))
+
+    def test_affected_evidence_rejects_base_graph_revision_mismatch(self) -> None:
+        fx, evidence, coordinate = self._live_evidence()
+        hostile = copy.deepcopy(evidence)
+        hostile["base_graph"]["root"]["commit"] = "d" * 40
+        for edge in hostile["base_graph"]["edges"]:
+            if edge["depth"] == 1:
+                edge["owner_commit"] = "d" * 40
+        self._reseal(hostile["base_graph"])
+        self._reseal_evidence(hostile)
+
+        with (
+            mock.patch.object(dg, "load_policy_at_commit", return_value=(fx.policy, b"", coordinate)),
+            self.assertRaises(dg.GraphError) as ctx,
+        ):
+            dg.validate_diff_evidence(self.tmp_path, hostile)
+
+        self.assertIn("base graph root commit", str(ctx.exception))
+
+    def test_affected_evidence_applies_active_policy_edge_ceiling(self) -> None:
+        fx, evidence, coordinate = self._live_evidence()
+        fx.policy["resource_limits"]["max_edges"] = 1
+
+        with (
+            mock.patch.object(dg, "load_policy_at_commit", return_value=(fx.policy, b"", coordinate)),
+            self.assertRaises(dg.GraphError) as ctx,
+        ):
+            dg.validate_diff_evidence(self.tmp_path, evidence)
+
+        self.assertIn("active-policy 1-edge ceiling", str(ctx.exception))
+
     def test_offline_graph_validation_rejects_forged_depth1_root_ownership(self) -> None:
         _fx, _base_graph, candidate_graph = self._pointer_advance()
         for field, value, diagnostic in (
