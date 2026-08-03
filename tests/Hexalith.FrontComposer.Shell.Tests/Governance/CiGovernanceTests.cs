@@ -1371,7 +1371,7 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("submodules: false");
         workflow.ShouldContain("Initialize build submodules");
 
-        // Evidence commands stay out of .releaserc.json — the orchestrator wraps them.
+        VerifyReleaseDispositionWorkflow(workflow, executable);
         releaseConfig.ShouldNotContain("classify-release");
         releaseConfig.ShouldNotContain("CycloneDX");
     }
@@ -1379,8 +1379,8 @@ public sealed class CiGovernanceTests {
     [Fact]
     public void ReleaseEvidenceWorkflow_NoTagProbe_UsesSupportedGithubApiAndFailsClosed() {
         // Regression for Release Evidence run 29703578735: `gh release list --json`
-        // does not expose `targetCommitish`, so the frozen no-op path failed before it
-        // could prove that no publication side effect existed. Use the REST field
+        // does not expose `targetCommitish`, so the governed no-publication path failed
+        // before it could prove that no publication side effect existed. Use the REST field
         // `target_commitish` and keep an API outage fail-closed.
         string root = RepositoryRoot();
         string workflow = StripYamlComments(
@@ -2461,6 +2461,300 @@ public sealed class CiGovernanceTests {
         finally {
             if (Directory.Exists(tempRoot)) {
                 Directory.Delete(tempRoot, recursive: true);
+            }
+        }
+    }
+
+    private static void VerifyReleaseDispositionWorkflow(string workflow, string executable) {
+        // Regression for Release Evidence run 30825852424: a proven frozen or caller-
+        // ineligible Release run is a non-attempt, so it retains disposition evidence
+        // without demanding a handoff that no release job could produce. Any invoked
+        // `release / release` job remains a governed attempt regardless of conclusion.
+        int seed = workflow.IndexOf("- name: Seed release disposition evidence", StringComparison.Ordinal);
+        int classifier = workflow.IndexOf("- name: Classify authenticated Release run disposition", StringComparison.Ordinal);
+        int publicationProbe = workflow.IndexOf("- name: Probe no-attempt publication side effects", StringComparison.Ordinal);
+        int handoff = workflow.IndexOf("- name: Authenticate mandatory Release verification handoff", StringComparison.Ordinal);
+        int checkout = workflow.IndexOf("- name: Checkout repository", StringComparison.Ordinal);
+        int upload = workflow.IndexOf("- name: Upload verification evidence artifact", StringComparison.Ordinal);
+        seed.ShouldBeGreaterThanOrEqualTo(0);
+        seed.ShouldBeLessThan(classifier);
+        classifier.ShouldBeLessThan(publicationProbe);
+        publicationProbe.ShouldBeLessThan(handoff);
+        handoff.ShouldBeLessThan(checkout);
+        checkout.ShouldBeLessThan(upload);
+
+        ExtractNamedStep(executable, "Seed release disposition evidence").ShouldContain("if: always()");
+        string classifierStep = ExtractNamedStep(executable, "Classify authenticated Release run disposition");
+        classifierStep.ShouldContain("actions/runs/${RELEASE_RUN_ID}/attempts/${RELEASE_RUN_ATTEMPT}/jobs?per_page=100");
+        classifierStep.ShouldContain("freeze-guard");
+        classifierStep.ShouldContain("release / release");
+        classifierStep.ShouldContain("disposition = \"frozen\"");
+        classifierStep.ShouldContain("disposition = \"ineligible\"");
+        classifierStep.ShouldContain("disposition = \"governed-attempt\"");
+        classifierStep.ShouldContain("diagnostic-head-sha={run['head_sha']}");
+        classifierStep.ShouldContain("timeout 60s gh api");
+        classifierStep.ShouldNotContain("HEXALITH_RELEASE_PUBLISH_ENABLED");
+
+        string probeStep = ExtractNamedStep(executable, "Probe no-attempt publication side effects");
+        probeStep.ShouldContain("if: steps.release-disposition.outputs.governed-attempt == 'false'");
+        probeStep.ShouldContain("DIAGNOSTIC_RELEASE_HEAD_SHA: ${{ steps.release-disposition.outputs.diagnostic-head-sha }}");
+        probeStep.ShouldContain("git/matching-refs/tags/v?per_page=100");
+        probeStep.ShouldContain("releases?per_page=100");
+        probeStep.ShouldContain("maximum_requests = 300");
+        probeStep.ShouldContain("probe_deadline = time.monotonic() + (15 * 60)");
+        probeStep.ShouldContain("parents[0] == head_sha");
+        probeStep.ShouldContain("\"draft\": draft");
+        probeStep.ShouldContain("publication-probe-api-failure");
+        probeStep.ShouldContain("publication-probe-ambiguous");
+        probeStep.ShouldContain("unexpected-publication-evidence");
+        probeStep.ShouldNotContain("steps.release-handoff.outputs.candidate");
+
+        foreach (string governedStepName in new[] {
+                     "Authenticate mandatory Release verification handoff",
+                     "Checkout repository",
+                     "Authenticate CI handoff and exact-candidate chain",
+                     "Initialize build submodules",
+                     "Initialize .NET",
+                     "Resolve release tag",
+                 }) {
+            ExtractNamedStep(executable, governedStepName).ShouldContain(
+                "if: steps.release-disposition.outputs.governed-attempt == 'true'",
+                customMessage: $"{governedStepName} must not run for an authenticated no-attempt disposition.");
+        }
+
+        string releaseHandoffStep = ExtractNamedStep(executable, "Authenticate mandatory Release verification handoff");
+        releaseHandoffStep.ShouldContain("release-verification handoff does not bind the authenticated Release run attempt");
+        releaseHandoffStep.ShouldContain("gh api --paginate");
+        releaseHandoffStep.ShouldContain("cp authenticated-handoffs/release/release-verification-handoff.json verification-evidence/");
+        string ciHandoffStep = ExtractNamedStep(executable, "Authenticate CI handoff and exact-candidate chain");
+        ciHandoffStep.ShouldContain("gh api --paginate");
+        ciHandoffStep.ShouldContain("cp authenticated-handoffs/ci/dependency-release-handoff.json verification-evidence/");
+
+        string uploadStep = ExtractNamedStep(executable, "Upload verification evidence artifact");
+        uploadStep.ShouldContain("if: always()");
+        uploadStep.ShouldContain("if-no-files-found: error");
+        VerifyReleaseDispositionClassifier(workflow);
+    }
+
+    private static void VerifyReleaseDispositionClassifier(string workflow) {
+        if (OperatingSystem.IsWindows()) {
+            return;
+        }
+
+        (string Scenario, string RunConclusion, string JobConclusion, string ProbeMode, int ClassifierExitCode, int ProbeExitCode, string Disposition, bool? Governed)[] cases = [
+            ("frozen", "success", "", "clean", 0, 0, "frozen", false),
+            ("ineligible", "skipped", "", "clean", 0, 0, "ineligible", false),
+            ("frozen", "success", "", "observed-tag", 0, 1, "unexpected-publication-evidence", false),
+            ("frozen", "success", "", "observed-release", 0, 1, "unexpected-publication-evidence", false),
+            ("frozen", "success", "", "observed-draft", 0, 1, "unexpected-publication-evidence", false),
+            ("frozen", "success", "", "observed-parent-tag", 0, 1, "unexpected-publication-evidence", false),
+            ("frozen", "success", "", "api-failure", 0, 1, "publication-probe-api-failure", false),
+            ("frozen", "success", "", "ambiguous", 0, 1, "publication-probe-ambiguous", false),
+            ("started-success", "success", "success", "skipped", 0, 0, "governed-attempt", true),
+            ("started-failure", "failure", "failure", "skipped", 0, 0, "governed-attempt", true),
+            ("started-cancelled", "cancelled", "cancelled", "skipped", 0, 0, "governed-attempt", true),
+            ("malformed", "success", "", "skipped", 1, 0, "unexpected", null),
+            ("freeze-extra-step", "success", "", "skipped", 1, 0, "unexpected", null),
+            ("run-id-mismatch", "success", "", "skipped", 1, 0, "unexpected", null),
+            ("attempt-mismatch", "success", "", "skipped", 1, 0, "unexpected", null),
+            ("jobs-api-failure", "success", "", "skipped", 1, 0, "api-failure", null),
+            ("api-failure", "success", "", "skipped", 1, 0, "api-failure", null),
+        ];
+        string seed = ExtractRunScript(workflow, "Seed release disposition evidence");
+        string classifier = ExtractRunScript(workflow, "Classify authenticated Release run disposition");
+        string publicationProbe = ExtractRunScript(workflow, "Probe no-attempt publication side effects");
+
+        foreach ((string scenario, string runConclusion, string jobConclusion, string probeMode, int classifierExitCode, int probeExitCode, string expectedDisposition, bool? governed) in cases) {
+            string workRoot = Path.Combine(Path.GetTempPath(), $"fc-release-disposition-{Guid.NewGuid():N}");
+            string binRoot = Path.Combine(workRoot, "bin");
+            string summary = Path.Combine(workRoot, "summary.txt");
+            string output = Path.Combine(workRoot, "output.txt");
+            Directory.CreateDirectory(binRoot);
+            try {
+                string fakeGh = Path.Combine(binRoot, "gh");
+                File.WriteAllText(fakeGh, """
+                    #!/usr/bin/env bash
+                    set -euo pipefail
+                    if [ "${TOPOLOGY_SCENARIO}" = "api-failure" ]; then
+                      exit 42
+                    fi
+                    if [[ "$*" == *"/jobs?per_page=100"* ]]; then
+                      case "${TOPOLOGY_SCENARIO}" in
+                        frozen|run-id-mismatch|attempt-mismatch)
+                          printf '%s\n' '{"total_count":2,"jobs":[{"id":1,"name":"freeze-guard","status":"completed","conclusion":"success","steps":[{"name":"Set up job","status":"completed","conclusion":"success"},{"name":"Evaluate release publication freeze","status":"completed","conclusion":"success"},{"name":"Complete job","status":"completed","conclusion":"success"}]},{"id":2,"name":"release","status":"completed","conclusion":"skipped","steps":[]}]}'
+                          ;;
+                        ineligible)
+                          printf '%s\n' '{"total_count":2,"jobs":[{"id":1,"name":"freeze-guard","status":"completed","conclusion":"skipped","steps":[]},{"id":2,"name":"release","status":"completed","conclusion":"skipped","steps":[]}]}'
+                          ;;
+                        started-*)
+                          printf '{"total_count":2,"jobs":[{"id":1,"name":"freeze-guard","status":"completed","conclusion":"success","steps":[{"name":"Set up job","status":"completed","conclusion":"success"},{"name":"Evaluate release publication freeze","status":"completed","conclusion":"success"},{"name":"Complete job","status":"completed","conclusion":"success"}]},{"id":2,"name":"release / release","status":"completed","conclusion":"%s","steps":[]}]}\n' "${RELEASE_JOB_CONCLUSION}"
+                          ;;
+                        freeze-extra-step)
+                          printf '%s\n' '{"total_count":2,"jobs":[{"id":1,"name":"freeze-guard","status":"completed","conclusion":"success","steps":[{"name":"Set up job","status":"completed","conclusion":"success"},{"name":"Evaluate release publication freeze","status":"completed","conclusion":"success"},{"name":"Publish something","status":"completed","conclusion":"success"},{"name":"Complete job","status":"completed","conclusion":"success"}]},{"id":2,"name":"release","status":"completed","conclusion":"skipped","steps":[]}]}'
+                          ;;
+                        jobs-api-failure)
+                          exit 46
+                          ;;
+                        malformed)
+                          printf '%s\n' '{"total_count":3,"jobs":[{"id":1,"name":"freeze-guard","status":"completed","conclusion":"success","steps":[]},{"id":2,"name":"freeze-guard","status":"completed","conclusion":"success","steps":[]},{"id":3,"name":"release","status":"completed","conclusion":"skipped","steps":[]}]}'
+                          ;;
+                        *)
+                          exit 43
+                          ;;
+                      esac
+                      exit 0
+                    fi
+                    if [[ "$*" == *"git/matching-refs/tags/v?per_page=100"* ]]; then
+                      case "${PROBE_MODE}" in
+                        clean)
+                          printf '%s\n' '{"ref":"refs/tags/v1.0.0","object":{"type":"commit","sha":"cccccccccccccccccccccccccccccccccccccccc"}}'
+                          exit 0
+                          ;;
+                        observed-tag)
+                          printf '%s\n' '{"ref":"refs/tags/v9.9.9","object":{"type":"commit","sha":"b0254994e279a21d0496d6b3286d6524eebb14b4"}}'
+                          exit 0
+                          ;;
+                        observed-parent-tag)
+                          printf '%s\n' '{"ref":"refs/tags/v9.9.9","object":{"type":"commit","sha":"dddddddddddddddddddddddddddddddddddddddd"}}'
+                          exit 0
+                          ;;
+                        observed-release|observed-draft) exit 0 ;;
+                        api-failure) exit 44 ;;
+                        ambiguous)
+                          printf '%s\n' '{"ref":"invalid-tag-ref","object":{}}'
+                          exit 0
+                          ;;
+                        *) exit 45 ;;
+                      esac
+                    fi
+                    if [[ "$*" == *"/releases?per_page=100"* ]]; then
+                      if [ "${PROBE_MODE}" = "observed-release" ]; then
+                        printf '%s\n' '{"id":999,"tag_name":"v9.9.9","target_commitish":"b0254994e279a21d0496d6b3286d6524eebb14b4","draft":false}'
+                      elif [ "${PROBE_MODE}" = "observed-draft" ]; then
+                        printf '%s\n' '{"id":998,"tag_name":"v9.9.8-draft","target_commitish":"b0254994e279a21d0496d6b3286d6524eebb14b4","draft":true}'
+                      elif [ "${PROBE_MODE}" = "clean" ]; then
+                        printf '%s\n' '{"id":100,"tag_name":"v1.0.0","target_commitish":"main","draft":false}'
+                      fi
+                      exit 0
+                    fi
+                    if [[ "$*" == *"/git/commits/"* ]]; then
+                      if [ "${PROBE_MODE}" = "observed-parent-tag" ]; then
+                        printf '%s\n' '{"sha":"dddddddddddddddddddddddddddddddddddddddd","parents":[{"sha":"b0254994e279a21d0496d6b3286d6524eebb14b4"}]}'
+                      elif [ "${PROBE_MODE}" = "clean" ]; then
+                        printf '%s\n' '{"sha":"cccccccccccccccccccccccccccccccccccccccc","parents":[{"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}'
+                      else
+                        printf '%s\n' '{"sha":"b0254994e279a21d0496d6b3286d6524eebb14b4","parents":[]}'
+                      fi
+                      exit 0
+                    fi
+                    run_id="${RELEASE_RUN_ID}"
+                    run_attempt="${RELEASE_RUN_ATTEMPT}"
+                    if [ "${TOPOLOGY_SCENARIO}" = "run-id-mismatch" ]; then run_id=4321; fi
+                    if [ "${TOPOLOGY_SCENARIO}" = "attempt-mismatch" ]; then run_attempt=2; fi
+                    printf '{"id":%s,"run_attempt":%s,"event":"workflow_run","status":"completed","conclusion":"%s","head_branch":"main","head_sha":"b0254994e279a21d0496d6b3286d6524eebb14b4","path":".github/workflows/release.yml"}\n' \
+                      "$run_id" "$run_attempt" "${RUN_CONCLUSION}"
+                    """.ReplaceLineEndings("\n"));
+                File.SetUnixFileMode(fakeGh, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+
+                Dictionary<string, string> environment = new() {
+                    ["PATH"] = $"{binRoot}{Path.PathSeparator}{Environment.GetEnvironmentVariable("PATH")}",
+                    ["DIAGNOSTIC_RELEASE_HEAD_SHA"] = "b0254994e279a21d0496d6b3286d6524eebb14b4",
+                    ["GH_TOKEN"] = "test-token",
+                    ["GITHUB_REPOSITORY"] = "Hexalith/Hexalith.FrontComposer",
+                    ["GITHUB_OUTPUT"] = output,
+                    ["GITHUB_REF"] = "refs/heads/main",
+                    ["GITHUB_RUN_ATTEMPT"] = "1",
+                    ["GITHUB_RUN_ID"] = "5678",
+                    ["GITHUB_STEP_SUMMARY"] = summary,
+                    ["RELEASE_CONCLUSION"] = runConclusion,
+                    ["RELEASE_JOB_CONCLUSION"] = jobConclusion,
+                    ["RELEASE_RUN_ATTEMPT"] = "1",
+                    ["RELEASE_RUN_ID"] = "1234",
+                    ["PROBE_MODE"] = probeMode,
+                    ["RUN_CONCLUSION"] = runConclusion,
+                    ["RUN_META_EVENT_NAME"] = "workflow_run",
+                    ["RUN_META_REF"] = "refs/heads/main",
+                    ["RUN_META_RUN_ATTEMPT"] = "1",
+                    ["RUN_META_RUN_ID"] = "5678",
+                    ["RUN_META_UPSTREAM_CONCLUSION"] = runConclusion,
+                    ["RUN_META_UPSTREAM_HEAD_SHA"] = "b0254994e279a21d0496d6b3286d6524eebb14b4",
+                    ["RUN_META_UPSTREAM_RUN_ATTEMPT"] = "1",
+                    ["RUN_META_UPSTREAM_RUN_ID"] = "1234",
+                    ["TOPOLOGY_SCENARIO"] = scenario,
+                };
+
+                ProcessResult seedResult = RunProcess(workRoot, "bash", ["-e", "-o", "pipefail", "-c", seed], environment);
+                seedResult.ExitCode.ShouldBe(0, seedResult.Error);
+                ProcessResult classifierResult = RunProcess(workRoot, "bash", ["-e", "-o", "pipefail", "-c", classifier], environment);
+                classifierResult.ExitCode.ShouldBe(classifierExitCode, $"{scenario}/{probeMode}: {classifierResult.Error}");
+                if (classifierExitCode == 0 && governed is false) {
+                    ProcessResult probeResult = RunProcess(workRoot, "bash", ["-e", "-o", "pipefail", "-c", publicationProbe], environment);
+                    probeResult.ExitCode.ShouldBe(probeExitCode, $"{scenario}/{probeMode}: {probeResult.Error}");
+                    string probePath = Path.Combine(workRoot, "verification-evidence", "publication-probe.json");
+                    new FileInfo(probePath).Length.ShouldBeGreaterThan(0);
+                    using JsonDocument probe = JsonDocument.Parse(File.ReadAllText(probePath));
+                    JsonElement probeDocument = probe.RootElement;
+                    probeDocument.GetProperty("decision_contract").GetString().ShouldBe("frontcomposer.no-attempt-publication-probe.v1");
+                    probeDocument.GetProperty("diagnostic_release_head_sha").GetString().ShouldBe("b0254994e279a21d0496d6b3286d6524eebb14b4");
+                    if (probeMode == "clean") {
+                        probeDocument.GetProperty("status").GetString().ShouldBe("clean");
+                        probeDocument.GetProperty("tag_matches").GetArrayLength().ShouldBe(0);
+                        probeDocument.GetProperty("release_matches").GetArrayLength().ShouldBe(0);
+                        probeDocument.GetProperty("tag_targets").GetArrayLength().ShouldBe(1);
+                    }
+                    else if (probeMode == "observed-release") {
+                        probeDocument.GetProperty("tag_matches").GetArrayLength().ShouldBe(0);
+                        probeDocument.GetProperty("release_matches").GetArrayLength().ShouldBe(1);
+                    }
+                    else if (probeMode == "observed-draft") {
+                        probeDocument.GetProperty("tag_matches").GetArrayLength().ShouldBe(0);
+                        JsonElement releaseMatch = probeDocument.GetProperty("release_matches")[0];
+                        releaseMatch.GetProperty("draft").GetBoolean().ShouldBeTrue();
+                    }
+                    else if (probeMode == "observed-parent-tag") {
+                        JsonElement tagMatch = probeDocument.GetProperty("tag_matches")[0];
+                        tagMatch.GetProperty("commit_sha").GetString().ShouldBe("dddddddddddddddddddddddddddddddddddddddd");
+                    }
+                }
+
+                string metadataPath = Path.Combine(workRoot, "verification-evidence", "run-metadata.json");
+                string dispositionPath = Path.Combine(workRoot, "verification-evidence", "release-disposition.json");
+                new FileInfo(metadataPath).Length.ShouldBeGreaterThan(0);
+                new FileInfo(dispositionPath).Length.ShouldBeGreaterThan(0);
+                using JsonDocument metadata = JsonDocument.Parse(File.ReadAllText(metadataPath));
+                JsonElement metadataDocument = metadata.RootElement;
+                metadataDocument.GetProperty("decision_contract").GetString().ShouldBe("frontcomposer.release-verification-metadata.v2");
+                metadataDocument.GetProperty("event_name").GetString().ShouldBe("workflow_run");
+                metadataDocument.GetProperty("upstream_run_id").GetString().ShouldBe("1234");
+                metadataDocument.GetProperty("upstream_run_attempt").GetString().ShouldBe("1");
+                metadataDocument.GetProperty("upstream_conclusion").GetString().ShouldBe(runConclusion);
+                metadataDocument.GetProperty("upstream_workflow_run_head_sha").GetString().ShouldBe("b0254994e279a21d0496d6b3286d6524eebb14b4");
+                metadataDocument.GetProperty("ref").GetString().ShouldBe("refs/heads/main");
+                metadataDocument.GetProperty("run_id").GetString().ShouldBe("5678");
+                metadataDocument.GetProperty("run_attempt").GetString().ShouldBe("1");
+                using JsonDocument disposition = JsonDocument.Parse(File.ReadAllText(dispositionPath));
+                JsonElement document = disposition.RootElement;
+                document.GetProperty("decision_contract").GetString().ShouldBe("frontcomposer.release-run-disposition.v1");
+                document.GetProperty("disposition").GetString().ShouldBe(expectedDisposition, scenario);
+                document.GetProperty("reason").GetString().ShouldNotBeNullOrWhiteSpace();
+                JsonElement trigger = document.GetProperty("trigger");
+                trigger.GetProperty("upstream_run_id").GetString().ShouldBe("1234");
+                trigger.GetProperty("upstream_run_attempt").GetString().ShouldBe("1");
+                if (scenario == "jobs-api-failure") {
+                    new FileInfo(Path.Combine(workRoot, "verification-evidence", "upstream-release-run.json")).Length.ShouldBeGreaterThan(0);
+                }
+                if (governed.HasValue) {
+                    document.GetProperty("governed_attempt").GetBoolean().ShouldBe(governed.Value, scenario);
+                    File.ReadAllText(output).ShouldContain($"governed-attempt={governed.Value.ToString().ToLowerInvariant()}");
+                }
+                else {
+                    document.GetProperty("governed_attempt").ValueKind.ShouldBe(JsonValueKind.Null, scenario);
+                }
+            }
+            finally {
+                if (Directory.Exists(workRoot)) {
+                    Directory.Delete(workRoot, recursive: true);
+                }
             }
         }
     }

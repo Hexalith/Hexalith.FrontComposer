@@ -2023,3 +2023,9 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-19-doc-comment-enforcement-realignment.md`
   summary: Baseline-scoped review diff of `sprint-status.yaml` absorbs unrelated story/REL status churn (including rel-1 `superseded`→`backlog` and REL-AI-1 freeze-control text that disagrees with `rel-4: review`).
   evidence: `_bmad-output/implementation-artifacts/sprint-status.yaml` in 32db5c34..HEAD File List delta. Reopen trigger: status ledger reconciliation story or a re-baselined 11.19a File List that excludes foreign sprint churn.
+
+## Deferred from: spec-actions-30825852424-fix-cicd (2026-08-03)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-30825852424-fix-cicd.md`
+  summary: The pre-existing governed release-tag resolver accepts the authenticated candidate as any parent of a tagged commit instead of only the documented first parent.
+  evidence: `.github/workflows/release-evidence.yml` `Resolve release tag` scans all parents despite its semantic-release first-parent contract, so an unrelated merge parent can select a tag. The new no-attempt probe was corrected in this story; changing the established governed verifier is outside this frozen-run repair.

@@ -14,7 +14,9 @@ name: Release Evidence
 # assets and the published NuGet bytes, verifies package signatures over the downloaded
 # bytes, and compares every hash against the sealed manifest (AC13). It runs on Release
 # workflow COMPLETION REGARDLESS OF CONCLUSION (AC19) so failed or cancelled publish runs
-# are still reconciled. Even when no publication side effect occurred, both authenticated
+# are still reconciled. It authenticates the exact Release run/attempt topology first: a
+# proven frozen or caller-ineligible run records a no-attempt disposition without demanding
+# handoffs from a producer that never ran. Once `release / release` starts, both authenticated
 # handoffs retain the failed/unpublished attempt and original CI candidate; missing evidence
 # is never a green no-op. It never repacks, rebuilds, re-signs, or attests — provenance attestation
 # over the exact candidates belongs to the upstream governed release contract (AC18),
@@ -40,12 +42,520 @@ permissions:
 jobs:
   verify-published-release:
     # AC19: no conclusion gate — verification runs for success, failure, AND cancellation
-    # of the upstream Release run. Side-effect detection below decides no-op vs verify.
+    # of the upstream Release run. Authenticated topology decides no-attempt vs governed verify.
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
+      # This must remain the first step: API/authentication failures still need a
+      # nonempty forensic artifact that identifies the observed Release run.
+      - name: Seed release disposition evidence
+        if: always()
+        shell: bash
+        env:
+          RUN_META_EVENT_NAME: ${{ github.event_name }}
+          RUN_META_UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_META_UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          RUN_META_UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          RUN_META_UPSTREAM_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_META_REF: ${{ github.ref }}
+          RUN_META_RUN_ID: ${{ github.run_id }}
+          RUN_META_RUN_ATTEMPT: ${{ github.run_attempt }}
+        run: |
+          set -euo pipefail
+          mkdir -p verification-evidence
+          python3 - <<'PYEOF'
+          import json
+          import os
+          from pathlib import Path
+
+          evidence = Path("verification-evidence")
+          metadata = {
+              "decision_contract": "frontcomposer.release-verification-metadata.v2",
+              "event_name": os.environ.get("RUN_META_EVENT_NAME", ""),
+              "upstream_run_id": os.environ.get("RUN_META_UPSTREAM_RUN_ID", ""),
+              "upstream_run_attempt": os.environ.get("RUN_META_UPSTREAM_RUN_ATTEMPT", ""),
+              "upstream_conclusion": os.environ.get("RUN_META_UPSTREAM_CONCLUSION", ""),
+              "upstream_workflow_run_head_sha": os.environ.get("RUN_META_UPSTREAM_HEAD_SHA", ""),
+              "ref": os.environ.get("RUN_META_REF", ""),
+              "run_id": os.environ.get("RUN_META_RUN_ID", ""),
+              "run_attempt": os.environ.get("RUN_META_RUN_ATTEMPT", ""),
+          }
+          disposition = {
+              "decision_contract": "frontcomposer.release-run-disposition.v1",
+              "disposition": "unclassified",
+              "governed_attempt": None,
+              "reason": "Release run authentication and topology classification have not completed.",
+              "status": "pending",
+              "trigger": metadata,
+          }
+          for name, value in (
+              ("run-metadata.json", metadata),
+              ("release-disposition.json", disposition),
+          ):
+              with (evidence / name).open("w", encoding="utf-8", newline="\n") as stream:
+                  json.dump(value, stream, indent=2, sort_keys=True)
+                  stream.write("\n")
+          PYEOF
+
+      # Classify only from the completed Release run's immutable run/attempt job
+      # records. The current repository freeze variable is mutable and is never
+      # consulted when deciding what this historical run did.
+      - name: Classify authenticated Release run disposition
+        id: release-disposition
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
+          RELEASE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          RELEASE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+
+          record_api_failure() {
+            local stage="$1"
+            FAILURE_STAGE="$stage" python3 - <<'PYEOF'
+          import json
+          import os
+          from pathlib import Path
+
+          path = Path("verification-evidence/release-disposition.json")
+          value = json.loads(path.read_text(encoding="utf-8"))
+          stage = os.environ["FAILURE_STAGE"]
+          value.update({
+              "disposition": "api-failure",
+              "governed_attempt": None,
+              "reason": f"GitHub Actions API authentication failed while reading {stage}.",
+              "status": "blocked",
+          })
+          with path.open("w", encoding="utf-8", newline="\n") as stream:
+              json.dump(value, stream, indent=2, sort_keys=True)
+              stream.write("\n")
+          PYEOF
+          }
+
+          if ! run_json="$(timeout 60s gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}")"; then
+            record_api_failure "Release run metadata"
+            echo "::error::unable to authenticate Release run ${RELEASE_RUN_ID}."
+            exit 1
+          fi
+          printf '%s\n' "$run_json" > verification-evidence/upstream-release-run.json
+
+          jobs_url="repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}/attempts/${RELEASE_RUN_ATTEMPT}/jobs?per_page=100"
+          if ! jobs_json="$(timeout 60s gh api "$jobs_url")"; then
+            record_api_failure "Release run attempt job topology"
+            echo "::error::unable to authenticate jobs for Release run ${RELEASE_RUN_ID} attempt ${RELEASE_RUN_ATTEMPT}."
+            exit 1
+          fi
+          printf '%s\n' "$jobs_json" > verification-evidence/upstream-release-jobs.json
+
+          python3 - <<'PYEOF' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          evidence = Path("verification-evidence")
+
+          def closed(pairs):
+              value = {}
+              for key, item in pairs:
+                  if key in value:
+                      raise ValueError(f"duplicate API response member: {key}")
+                  value[key] = item
+              return value
+
+          def load(name):
+              return json.loads((evidence / name).read_text(encoding="utf-8"), object_pairs_hook=closed)
+
+          def require(condition, message):
+              if not condition:
+                  raise ValueError(message)
+
+          def write_disposition(disposition, governed_attempt, reason, status, run=None, jobs=None):
+              value = {
+                  "decision_contract": "frontcomposer.release-run-disposition.v1",
+                  "disposition": disposition,
+                  "governed_attempt": governed_attempt,
+                  "reason": reason,
+                  "status": status,
+                  "trigger": load("run-metadata.json"),
+              }
+              if isinstance(run, dict):
+                  value["release_run"] = {
+                      key: run.get(key)
+                      for key in (
+                          "id", "run_attempt", "event", "status", "conclusion",
+                          "head_branch", "head_sha", "path",
+                      )
+                  }
+              if isinstance(jobs, list):
+                  value["jobs"] = [
+                      {
+                          "conclusion": job.get("conclusion"),
+                          "id": job.get("id"),
+                          "name": job.get("name"),
+                          "status": job.get("status"),
+                          "steps": [
+                              {
+                                  "conclusion": step.get("conclusion"),
+                                  "name": step.get("name"),
+                                  "status": step.get("status"),
+                              }
+                              for step in (job.get("steps") if isinstance(job.get("steps"), list) else [])
+                              if isinstance(step, dict)
+                          ],
+                      }
+                      for job in jobs
+                      if isinstance(job, dict)
+                  ]
+              with (evidence / "release-disposition.json").open("w", encoding="utf-8", newline="\n") as stream:
+                  json.dump(value, stream, indent=2, sort_keys=True)
+                  stream.write("\n")
+
+          run = None
+          jobs = None
+          try:
+              run = load("upstream-release-run.json")
+              envelope = load("upstream-release-jobs.json")
+              require(isinstance(run, dict), "Release run response must be an object")
+              require(isinstance(envelope, dict), "Release jobs response must be an object")
+              jobs = envelope.get("jobs")
+              require(isinstance(jobs, list), "Release jobs response must contain a jobs array")
+              require(envelope.get("total_count") == len(jobs), "Release jobs response was truncated or inconsistent")
+              require(len(jobs) == 2, f"expected exactly two Release jobs, found {len(jobs)}")
+
+              require(str(run.get("id")) == os.environ["RELEASE_RUN_ID"], "Release run ID mismatch")
+              require(str(run.get("run_attempt")) == os.environ["RELEASE_RUN_ATTEMPT"], "Release run attempt mismatch")
+              require(run.get("event") == "workflow_run", "Release run event mismatch")
+              require(run.get("status") == "completed", "Release run is not completed")
+              require(run.get("conclusion") == os.environ["RELEASE_CONCLUSION"], "Release run conclusion mismatch")
+              require(run.get("head_branch") == "main", "Release run branch mismatch")
+              require(run.get("path") == ".github/workflows/release.yml", "Release workflow path mismatch")
+              require(
+                  isinstance(run.get("head_sha"), str)
+                  and re.fullmatch(r"[0-9a-f]{40}", run["head_sha"]) is not None,
+                  "Release run head SHA is malformed",
+              )
+              require(all(isinstance(job, dict) for job in jobs), "Release job rows must be objects")
+              require(all(job.get("status") == "completed" for job in jobs), "every Release job must be completed")
+
+              freeze_jobs = [job for job in jobs if job.get("name") == "freeze-guard"]
+              caller_jobs = [job for job in jobs if job.get("name") == "release"]
+              governed_jobs = [job for job in jobs if job.get("name") == "release / release"]
+              require(len(freeze_jobs) == 1, f"expected exactly one freeze-guard job, found {len(freeze_jobs)}")
+              freeze = freeze_jobs[0]
+
+              if freeze.get("conclusion") == "success" and len(caller_jobs) == 1 and not governed_jobs:
+                  caller = caller_jobs[0]
+                  evaluation = [
+                      step for step in freeze.get("steps", [])
+                      if isinstance(step, dict) and step.get("name") == "Evaluate release publication freeze"
+                  ]
+                  require(len(evaluation) == 1, "frozen topology is missing the unique freeze evaluation step")
+                  require(evaluation[0].get("conclusion") == "success", "freeze evaluation did not succeed")
+                  require(
+                      [step.get("name") for step in freeze.get("steps", [])]
+                      == ["Set up job", "Evaluate release publication freeze", "Complete job"],
+                      "frozen freeze-guard contains an unexpected or reordered step",
+                  )
+                  require(
+                      all(step.get("status") == "completed" and step.get("conclusion") == "success" for step in freeze["steps"]),
+                      "frozen freeze-guard contains an incomplete or unsuccessful step",
+                  )
+                  require(caller.get("conclusion") == "skipped", "frozen caller release job was not skipped")
+                  require(caller.get("steps") == [], "frozen caller release job unexpectedly contains steps")
+                  require(run.get("conclusion") == "success", "frozen Release run did not conclude successfully")
+                  disposition = "frozen"
+                  governed_attempt = False
+                  reason = "The freeze guard succeeded and the reusable release job did not start."
+                  status = "no-attempt"
+              elif freeze.get("conclusion") == "skipped" and len(caller_jobs) == 1 and not governed_jobs:
+                  caller = caller_jobs[0]
+                  require(freeze.get("steps") == [], "ineligible freeze-guard job unexpectedly contains steps")
+                  require(caller.get("conclusion") == "skipped", "ineligible caller release job was not skipped")
+                  require(caller.get("steps") == [], "ineligible caller release job unexpectedly contains steps")
+                  require(run.get("conclusion") == "skipped", "ineligible Release run did not conclude as skipped")
+                  disposition = "ineligible"
+                  governed_attempt = False
+                  reason = "Caller conditions skipped both the freeze guard and reusable release job."
+                  status = "no-attempt"
+              elif freeze.get("conclusion") == "success" and not caller_jobs and len(governed_jobs) == 1:
+                  governed = governed_jobs[0]
+                  require(
+                      isinstance(governed.get("conclusion"), str)
+                      and governed.get("conclusion") not in {"", "skipped"},
+                      "invoked reusable release job has no governed attempt conclusion",
+                  )
+                  disposition = "governed-attempt"
+                  governed_attempt = True
+                  reason = "The reusable release job started; authenticated handoffs and independent verification are mandatory."
+                  status = "governed-attempt"
+              else:
+                  raise ValueError("Release job topology is missing, contradictory, or unsupported")
+
+              known = {"freeze-guard", "release", "release / release"}
+              require(all(job.get("name") in known for job in jobs), "Release job topology contains an unexpected job")
+          except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+              reason = str(error)
+              write_disposition("unexpected", None, reason, "blocked", run, jobs)
+              print(f"::error::Release run disposition is ambiguous: {reason}")
+              raise SystemExit(1) from error
+
+          write_disposition(disposition, governed_attempt, reason, status, run, jobs)
+          print(f"disposition={disposition}")
+          print(f"diagnostic-head-sha={run['head_sha']}")
+          print(f"governed-attempt={'true' if governed_attempt else 'false'}")
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as summary:
+              summary.write("## Release run disposition\n\n")
+              summary.write(f"- disposition: {disposition}\n")
+              summary.write(f"- governed attempt: {str(governed_attempt).lower()}\n")
+              summary.write(f"- reason: {reason}\n")
+          PYEOF
+
+      # A no-attempt disposition means the only repository-owned publication job did
+      # not execute. Confirm through read-only APIs that no tag or GitHub Release still
+      # resolves to the observed Release run head. This SHA is diagnostic only; it is
+      # never exported as, or substituted for, a governed release candidate.
+      - name: Probe no-attempt publication side effects
+        if: steps.release-disposition.outputs.governed-attempt == 'false'
+        shell: bash
+        env:
+          DIAGNOSTIC_RELEASE_HEAD_SHA: ${{ steps.release-disposition.outputs.diagnostic-head-sha }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PYEOF'
+          import json
+          import os
+          import re
+          import subprocess
+          import time
+          from pathlib import Path
+
+          evidence = Path("verification-evidence")
+          disposition_path = evidence / "release-disposition.json"
+          probe_path = evidence / "publication-probe.json"
+          repository = os.environ.get("GITHUB_REPOSITORY", "")
+          head_sha = os.environ.get("DIAGNOSTIC_RELEASE_HEAD_SHA", "")
+          sha_pattern = re.compile(r"[0-9a-f]{40}")
+          maximum_rows = 1000
+          maximum_requests = 300
+          maximum_tag_depth = 5
+          probe_deadline = time.monotonic() + (15 * 60)
+          request_count = 0
+
+          class ProbeApiError(RuntimeError):
+              pass
+
+          def closed(pairs):
+              value = {}
+              for key, item in pairs:
+                  if key in value:
+                      raise ValueError(f"duplicate API response member: {key}")
+                  value[key] = item
+              return value
+
+          def write_json(path, value):
+              with path.open("w", encoding="utf-8", newline="\n") as stream:
+                  json.dump(value, stream, indent=2, sort_keys=True)
+                  stream.write("\n")
+
+          def record(status, reason, tag_matches=None, release_matches=None, tag_targets=None):
+              probe = {
+                  "decision_contract": "frontcomposer.no-attempt-publication-probe.v1",
+                  "diagnostic_release_head_sha": head_sha,
+                  "reason": reason,
+                  "release_matches": release_matches or [],
+                  "status": status,
+                  "tag_matches": tag_matches or [],
+                  "tag_targets": tag_targets or [],
+              }
+              write_json(probe_path, probe)
+              disposition = json.loads(disposition_path.read_text(encoding="utf-8"), object_pairs_hook=closed)
+              disposition["publication_probe"] = probe
+              if status != "clean":
+                  disposition["status"] = "blocked"
+                  disposition["reason"] = reason
+                  disposition["disposition"] = {
+                      "api-failure": "publication-probe-api-failure",
+                      "ambiguous": "publication-probe-ambiguous",
+                      "observed": "unexpected-publication-evidence",
+                  }[status]
+              write_json(disposition_path, disposition)
+
+          def run_gh(arguments, stage):
+              global request_count
+              remaining = probe_deadline - time.monotonic()
+              if request_count >= maximum_requests or remaining <= 1:
+                  raise ProbeApiError("no-attempt publication probe exhausted its bounded API budget")
+              request_count += 1
+              try:
+                  result = subprocess.run(
+                      ["gh", "api", *arguments],
+                      check=False,
+                      capture_output=True,
+                      text=True,
+                      timeout=min(60, max(1, int(remaining))),
+                  )
+              except (OSError, subprocess.TimeoutExpired) as error:
+                  raise ProbeApiError(f"GitHub API {stage} failed before completion") from error
+              if result.returncode != 0:
+                  raise ProbeApiError(f"GitHub API {stage} returned exit code {result.returncode}")
+              return result.stdout
+
+          def paginated_rows(endpoint, stage):
+              output = run_gh(["--paginate", endpoint, "--jq", ".[]"], stage)
+              rows = [json.loads(line, object_pairs_hook=closed) for line in output.splitlines() if line.strip()]
+              if len(rows) > maximum_rows:
+                  raise ValueError(f"GitHub API {stage} exceeded the {maximum_rows}-row evidence ceiling")
+              if not all(isinstance(row, dict) for row in rows):
+                  raise ValueError(f"GitHub API {stage} returned a non-object row")
+              return rows
+
+          def api_object(endpoint, stage):
+              value = json.loads(run_gh([endpoint], stage), object_pairs_hook=closed)
+              if not isinstance(value, dict):
+                  raise ValueError(f"GitHub API {stage} returned a non-object response")
+              return value
+
+          write_json(probe_path, {
+              "decision_contract": "frontcomposer.no-attempt-publication-probe.v1",
+              "diagnostic_release_head_sha": head_sha,
+              "reason": "No-attempt publication probe has not completed.",
+              "release_matches": [],
+              "status": "pending",
+              "tag_matches": [],
+              "tag_targets": [],
+          })
+          try:
+              if re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository) is None:
+                  raise ValueError("repository identity is malformed")
+              if sha_pattern.fullmatch(head_sha) is None:
+                  raise ValueError("diagnostic Release run head SHA is malformed")
+
+              tags = paginated_rows(
+                  f"repos/{repository}/git/matching-refs/tags/v?per_page=100",
+                  "tag enumeration",
+              )
+              write_json(evidence / "no-attempt-tags.json", tags)
+              releases = paginated_rows(
+                  f"repos/{repository}/releases?per_page=100",
+                  "GitHub Release enumeration",
+              )
+              write_json(evidence / "no-attempt-releases.json", releases)
+
+              tag_targets = []
+              targets_by_name = {}
+              commit_cache = {}
+              for row in tags:
+                  ref = row.get("ref")
+                  target = row.get("object")
+                  if not isinstance(ref, str) or not ref.startswith("refs/tags/") or len(ref) <= len("refs/tags/"):
+                      raise ValueError("tag enumeration contains an invalid ref")
+                  name = ref[len("refs/tags/"):]
+                  if name in targets_by_name:
+                      raise ValueError(f"tag enumeration contains duplicate ref {name!r}")
+                  if not isinstance(target, dict):
+                      raise ValueError(f"tag {name!r} has no target object")
+
+                  seen = set()
+                  for _ in range(maximum_tag_depth + 1):
+                      object_type = target.get("type")
+                      object_sha = target.get("sha")
+                      if object_type not in {"commit", "tag"} or not isinstance(object_sha, str) or sha_pattern.fullmatch(object_sha) is None:
+                          raise ValueError(f"tag {name!r} has an unsupported or malformed target")
+                      if object_sha in seen:
+                          raise ValueError(f"tag {name!r} contains an annotated-tag cycle")
+                      seen.add(object_sha)
+                      if object_type == "commit":
+                          commit_sha = object_sha
+                          break
+                      annotated = api_object(
+                          f"repos/{repository}/git/tags/{object_sha}",
+                          f"annotated tag resolution for {name}",
+                      )
+                      target = annotated.get("object")
+                      if not isinstance(target, dict):
+                          raise ValueError(f"annotated tag {name!r} has no target object")
+                  else:
+                      raise ValueError(f"tag {name!r} exceeded the annotated-tag depth ceiling")
+
+                  if commit_sha not in commit_cache:
+                      commit = api_object(
+                          f"repos/{repository}/git/commits/{commit_sha}",
+                          f"tag commit resolution for {name}",
+                      )
+                      if commit.get("sha") != commit_sha or not isinstance(commit.get("parents"), list):
+                          raise ValueError(f"tag {name!r} commit response is inconsistent")
+                      parents = []
+                      for parent in commit["parents"]:
+                          if not isinstance(parent, dict) or not isinstance(parent.get("sha"), str) or sha_pattern.fullmatch(parent["sha"]) is None:
+                              raise ValueError(f"tag {name!r} commit contains a malformed parent")
+                          parents.append(parent["sha"])
+                      commit_cache[commit_sha] = parents
+                  parents = commit_cache[commit_sha]
+                  matches_head = commit_sha == head_sha or (bool(parents) and parents[0] == head_sha)
+                  target_row = {
+                      "commit_sha": commit_sha,
+                      "matches_diagnostic_head": matches_head,
+                      "name": name,
+                      "parents": parents,
+                  }
+                  targets_by_name[name] = target_row
+                  tag_targets.append(target_row)
+
+              tag_targets.sort(key=lambda row: row["name"])
+              write_json(evidence / "no-attempt-tag-targets.json", tag_targets)
+              tag_matches = [row for row in tag_targets if row["matches_diagnostic_head"]]
+
+              release_matches = []
+              for release in releases:
+                  tag_name = release.get("tag_name")
+                  target_commitish = release.get("target_commitish")
+                  draft = release.get("draft")
+                  if not isinstance(tag_name, str) or not tag_name:
+                      raise ValueError("GitHub Release enumeration contains an invalid tag name")
+                  if not isinstance(target_commitish, str) or not isinstance(draft, bool):
+                      raise ValueError(f"GitHub Release {tag_name!r} has malformed target/draft metadata")
+                  resolved = targets_by_name.get(tag_name)
+                  if resolved is None and target_commitish != head_sha and not draft:
+                      raise ValueError(f"published GitHub Release {tag_name!r} has no resolvable tag ref")
+                  if target_commitish == head_sha or (resolved is not None and resolved["matches_diagnostic_head"]):
+                      release_matches.append({
+                          "draft": draft,
+                          "id": release.get("id"),
+                          "tag_name": tag_name,
+                          "target_commitish": target_commitish,
+                      })
+
+              if tag_matches or release_matches:
+                  reason = (
+                      "A frozen/ineligible Release run has tag or GitHub Release evidence "
+                      "matching its diagnostic head SHA."
+                  )
+                  record("observed", reason, tag_matches, release_matches, tag_targets)
+                  print(f"::error::{reason}")
+                  raise SystemExit(1)
+
+              reason = "No tag or published GitHub Release resolves to the diagnostic Release run head SHA."
+              record("clean", reason, tag_targets=tag_targets)
+              with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as summary:
+                  summary.write(f"- no-attempt publication probe: clean ({reason})\n")
+          except ProbeApiError as error:
+              reason = str(error)
+              record("api-failure", reason)
+              print(f"::error::{reason}")
+              raise SystemExit(1) from error
+          except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+              reason = f"No-attempt publication probe is ambiguous: {error}"
+              record("ambiguous", reason)
+              print(f"::error::{reason}")
+              raise SystemExit(1) from error
+          PYEOF
+
       - name: Authenticate mandatory Release verification handoff
         id: release-handoff
+        if: steps.release-disposition.outputs.governed-attempt == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -55,23 +565,26 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p authenticated-handoffs/release
-          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}")"
+          run_json="$(timeout 60s gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}")"
           test "$(jq -r '.id' <<<"$run_json")" = "$RELEASE_RUN_ID"
           test "$(jq -r '.run_attempt' <<<"$run_json")" = "$RELEASE_RUN_ATTEMPT"
           test "$(jq -r '.event' <<<"$run_json")" = "workflow_run"
           test "$(jq -r '.conclusion' <<<"$run_json")" = "$RELEASE_CONCLUSION"
           test "$(jq -r '.head_branch' <<<"$run_json")" = "main"
 
-          artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}/artifacts?per_page=100")"
+          artifact_pages="$(timeout 60s gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}/artifacts?per_page=100" --jq '{total_count, artifacts}')"
+          artifacts="$(jq -sc 'if length == 0 then error("artifact API returned no pages") else {total_count: (.[0].total_count // 0), artifacts: [.[].artifacts[]]} end' <<<"$artifact_pages")"
+          test "$(jq -r '.total_count' <<<"$artifacts")" = "$(jq -r '.artifacts | length' <<<"$artifacts")"
           count="$(jq '[.artifacts[] | select(.name == "release-verification-handoff" and (.expired | not))] | length' <<<"$artifacts")"
           test "$count" = "1" || { echo "::error::expected exactly one non-expired release-verification-handoff artifact, found $count"; exit 1; }
           artifact_id="$(jq -r '.artifacts[] | select(.name == "release-verification-handoff" and (.expired | not)) | .id' <<<"$artifacts")"
-          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > authenticated-handoffs/release.zip
+          timeout 60s gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > authenticated-handoffs/release.zip
           test "$(unzip -Z1 authenticated-handoffs/release.zip | sort -u)" = "release-verification-handoff.json"
           unzip -q authenticated-handoffs/release.zip -d authenticated-handoffs/release
 
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
+          import os
           import re
           from pathlib import Path
 
@@ -90,6 +603,16 @@ jobs:
           expected = {"schema", "release_run", "ci_handoff", "candidate", "dependency_policy", "release", "manifest", "assets", "evaluator"}
           if set(value) != expected or value.get("schema") != "hexalith.release-verification-handoff.v1":
               raise SystemExit("invalid release-verification handoff envelope")
+          release_run = value.get("release_run")
+          release_run_members = {"repository", "workflow_path", "run_id", "run_attempt", "conclusion"}
+          if not isinstance(release_run, dict) or set(release_run) != release_run_members:
+              raise SystemExit("invalid release-verification handoff Release run coordinate")
+          if (
+              str(release_run.get("run_id")) != os.environ["RELEASE_RUN_ID"]
+              or str(release_run.get("run_attempt")) != os.environ["RELEASE_RUN_ATTEMPT"]
+              or release_run.get("conclusion") != os.environ["RELEASE_CONCLUSION"]
+          ):
+              raise SystemExit("release-verification handoff does not bind the authenticated Release run attempt")
           candidate = value.get("candidate")
           if not isinstance(candidate, str) or re.fullmatch(r"[0-9a-f]{40}", candidate) is None:
               raise SystemExit("invalid original CI candidate")
@@ -98,8 +621,10 @@ jobs:
           print(f"ci-run-id={ci.get('run_id', '')}")
           print(f"ci-run-attempt={ci.get('run_attempt', '')}")
           PY
+          cp authenticated-handoffs/release/release-verification-handoff.json verification-evidence/
 
       - name: Checkout repository
+        if: steps.release-disposition.outputs.governed-attempt == 'true'
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           # The authenticated handoff's original CI candidate is the sole authority.
@@ -109,6 +634,7 @@ jobs:
           submodules: false
 
       - name: Authenticate CI handoff and exact-candidate chain
+        if: steps.release-disposition.outputs.governed-attempt == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -117,69 +643,41 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p authenticated-handoffs/ci
-          run_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}")"
+          run_json="$(timeout 60s gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}")"
           test "$(jq -r '.id' <<<"$run_json")" = "$CI_RUN_ID"
           test "$(jq -r '.run_attempt' <<<"$run_json")" = "$CI_RUN_ATTEMPT"
           test "$(jq -r '.event' <<<"$run_json")" = "push"
           test "$(jq -r '.head_branch' <<<"$run_json")" = "main"
           test "$(jq -r '.conclusion' <<<"$run_json")" = "success"
           test "$(jq -r '.head_sha' <<<"$run_json")" = "${{ steps.release-handoff.outputs.candidate }}"
-          artifacts="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}/artifacts?per_page=100")"
+          artifact_pages="$(timeout 60s gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}/artifacts?per_page=100" --jq '{total_count, artifacts}')"
+          artifacts="$(jq -sc 'if length == 0 then error("artifact API returned no pages") else {total_count: (.[0].total_count // 0), artifacts: [.[].artifacts[]]} end' <<<"$artifact_pages")"
+          test "$(jq -r '.total_count' <<<"$artifacts")" = "$(jq -r '.artifacts | length' <<<"$artifacts")"
           count="$(jq '[.artifacts[] | select(.name == "dependency-release-handoff" and (.expired | not))] | length' <<<"$artifacts")"
           test "$count" = "1" || { echo "::error::expected exactly one non-expired dependency-release-handoff artifact, found $count"; exit 1; }
           artifact_id="$(jq -r '.artifacts[] | select(.name == "dependency-release-handoff" and (.expired | not)) | .id' <<<"$artifacts")"
-          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > authenticated-handoffs/ci.zip
+          timeout 60s gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > authenticated-handoffs/ci.zip
           test "$(unzip -Z1 authenticated-handoffs/ci.zip | sort -u)" = "dependency-release-handoff.json"
           unzip -q authenticated-handoffs/ci.zip -d authenticated-handoffs/ci
           python3 eng/dependency_handoff.py --root . verify-release \
             --handoff authenticated-handoffs/release/release-verification-handoff.json \
             --ci-handoff authenticated-handoffs/ci/dependency-release-handoff.json \
             --live
+          cp authenticated-handoffs/ci/dependency-release-handoff.json verification-evidence/
 
       # verify-manifest recomputes release-definition fingerprints, which include
       # references/Hexalith.Builds/Props/Directory.Packages.props — the root submodule
       # must be present for the sealed baseline comparison.
       - name: Initialize build submodules
+        if: steps.release-disposition.outputs.governed-attempt == 'true'
         uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
 
       # dotnet CLI is required for `dotnet nuget verify` over the downloaded bytes.
       - name: Initialize .NET
+        if: steps.release-disposition.outputs.governed-attempt == 'true'
         uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
           global-json-file: global.json
-
-      # Seed verification evidence so the final upload never produces an empty forensic
-      # artifact even if a later step fails.
-      - name: Seed verification evidence directory
-        if: always()
-        env:
-          RUN_META_EVENT_NAME: ${{ github.event.workflow_run.event }}
-          RUN_META_UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
-          RUN_META_UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          RUN_META_REF: ${{ github.ref }}
-          RUN_META_RUN_ID: ${{ github.run_id }}
-          RUN_META_RUN_ATTEMPT: ${{ github.run_attempt }}
-          RUN_META_SHA: ${{ steps.release-handoff.outputs.candidate }}
-        run: |
-          mkdir -p verification-evidence
-          cp authenticated-handoffs/release/release-verification-handoff.json verification-evidence/
-          cp authenticated-handoffs/ci/dependency-release-handoff.json verification-evidence/
-          python3 - <<'PYEOF'
-          import json, os
-          metadata = {
-              "decision_contract": "frontcomposer.release-verification-metadata.v1",
-              "event_name": os.environ.get("RUN_META_EVENT_NAME", ""),
-              "upstream_run_id": os.environ.get("RUN_META_UPSTREAM_RUN_ID", ""),
-              "upstream_conclusion": os.environ.get("RUN_META_UPSTREAM_CONCLUSION", ""),
-              "ref": os.environ.get("RUN_META_REF", ""),
-              "run_id": os.environ.get("RUN_META_RUN_ID", ""),
-              "run_attempt": os.environ.get("RUN_META_RUN_ATTEMPT", ""),
-              "sha": os.environ.get("RUN_META_SHA", ""),
-          }
-          with open("verification-evidence/run-metadata.json", "w", encoding="utf-8", newline="\n") as fh:
-              json.dump(metadata, fh, sort_keys=True, separators=(",", ":"))
-              fh.write("\n")
-          PYEOF
 
       # Resolve the tag/version the Release run published for this commit WITHOUT
       # repacking. semantic-release (@semantic-release/git) tags the `chore(release)`
@@ -190,6 +688,7 @@ jobs:
       # failed/unpublished attempt; a failed run that DID tag verifies below.
       - name: Resolve release tag
         id: tag
+        if: steps.release-disposition.outputs.governed-attempt == 'true'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -236,7 +735,7 @@ jobs:
             fi
             {
               echo "No release tag references this commit: no publication side effect occurred."
-              echo "Upstream Release run conclusion: ${UPSTREAM_CONCLUSION} (frozen, non-releasing, or failed before tagging)."
+              echo "Upstream Release run conclusion: ${UPSTREAM_CONCLUSION} (governed attempt produced no tag or failed before tagging)."
             } >> "$GITHUB_STEP_SUMMARY"
           fi
           echo "tag=$tag" >> "$GITHUB_OUTPUT"
