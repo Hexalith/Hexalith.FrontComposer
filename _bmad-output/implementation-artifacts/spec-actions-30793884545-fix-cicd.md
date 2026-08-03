@@ -2,7 +2,7 @@
 title: 'Fix dependency-governance diff and materialization'
 type: 'bugfix'
 created: '2026-08-03'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 1
 baseline_commit: '663a88ec647d6ea804dd3f4c900ff2a139488c50'
 context:
@@ -89,3 +89,59 @@ Activation requires two remote merge/push boundaries: land the policy/code commi
 - Exact submodule and root commit messages passed the owning repositories' pinned commitlint CLIs before commit creation.
 - Exact delayed-activation replay from policy commit `569ad3e441cd83661e1863c438644c789575c6ee` to pointer commit `1f0387e313ec0e157c5fdda4ed5a058aab121569` scheduled only Commons, Parties, and Tenants; all six static restore/build commands exited zero (`result_digest=ac0d9a062304c1026fdb936641bfaf228f8754ac85f101371a616273564c8137`).
 - Adversarial review patches bind evidence to the policy root/revisions/edge ceiling, discover owned projects from disk, behaviorally test all supported Parties dependency layouts and missing-path guidance, prefer umbrella dependencies over stale nested checkouts, and retain the production EventStore host for source-mode routing tests.
+- Final reviewed replay from the same immutable policy commit to `ef53fcd4923d7282f0a75334df4fe4bbd9c7154f` again scheduled only Commons, Parties, and Tenants; all six commands exited zero (`result_digest=4baecfcbbe6d53a40f0abfc0010b185e543cc256b79abeb19817179abb75a209`).
+
+## Suggested Review Order
+
+**Governance selection and trust boundaries**
+
+- Static policy selects complete package-mode surfaces under immutable-base authorization.
+  [`dependency-graph-policy.json:136`](../../eng/dependency-graph-policy.json#L136)
+
+- Depth-one equality ignores only root revision churn while retaining exact provenance.
+  [`dependency_graph.py:498`](../../eng/dependency_graph.py#L498)
+
+- Contract extraction omits only path-validated gitlinks and preserves regular bytes.
+  [`dependency_graph.py:647`](../../eng/dependency_graph.py#L647)
+
+- Evidence replay binds sealed graphs to trusted root, revisions, and resource limits.
+  [`dependency_graph.py:825`](../../eng/dependency_graph.py#L825)
+
+**Complete standalone build surfaces**
+
+- Commons exposes all 20 owned projects without dependency checkouts.
+  [`Hexalith.Commons.Standalone.slnx:1`](../../references/Hexalith.Commons/Hexalith.Commons.Standalone.slnx#L1)
+
+- Tenants exposes all 17 owned projects as a governance-only solution.
+  [`Hexalith.Tenants.Standalone.slnx:1`](../../references/Hexalith.Tenants/Hexalith.Tenants.Standalone.slnx#L1)
+
+- Complementary Commons package routing removes Tenants’ unconditional external edge.
+  [`Hexalith.Tenants.AppHost.csproj:14`](../../references/Hexalith.Tenants/src/Hexalith.Tenants.AppHost/Hexalith.Tenants.AppHost.csproj#L14)
+
+- Parties exposes all 30 owned projects, including its package gateway host.
+  [`Hexalith.Parties.Standalone.slnx:1`](../../references/Hexalith.Parties/Hexalith.Parties.Standalone.slnx#L1)
+
+**Parties runtime topology**
+
+- AppHost composes required external topology resources from resolved project paths.
+  [`Program.cs:32`](../../references/Hexalith.Parties/src/Hexalith.Parties.AppHost/Program.cs#L32)
+
+- Resolver prefers umbrella dependencies and reports every failed probe.
+  [`ReferenceProjectResolver.cs:4`](../../references/Hexalith.Parties/src/Hexalith.Parties.AppHost/ReferenceProjectResolver.cs#L4)
+
+- Gateway tests preserve production source mode and isolated package mode.
+  [`Hexalith.Parties.Tests.csproj:18`](../../references/Hexalith.Parties/tests/Hexalith.Parties.Tests/Hexalith.Parties.Tests.csproj#L18)
+
+**Verification guardrails**
+
+- Root tests cover no-op churn, exact omission, hostile evidence, and ceilings.
+  [`test_dependency_graph.py:918`](../../tests/eng/test_dependency_graph.py#L918)
+
+- Commons inventory derives owned projects from disk instead of duplicating a list.
+  [`SolutionInventoryTest.cs:23`](../../references/Hexalith.Commons/test/Hexalith.Commons.Tests/SolutionInventoryTest.cs#L23)
+
+- Tenants verifies complete discovery alongside complementary external dependency routing.
+  [`SolutionStructureTests.cs:82`](../../references/Hexalith.Tenants/tests/Hexalith.Tenants.Contracts.Tests/SolutionStructureTests.cs#L82)
+
+- Parties exercises umbrella, nested, sibling, and missing-project resolver behavior.
+  [`ReferenceProjectResolverTests.cs:10`](../../references/Hexalith.Parties/tests/Hexalith.Parties.IntegrationTests/Topology/ReferenceProjectResolverTests.cs#L10)
