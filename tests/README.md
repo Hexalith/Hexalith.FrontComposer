@@ -111,9 +111,9 @@ python eng/release_evidence.py verify-manifest --manifest tests/ci-governance/fi
 python eng/release_evidence.py release-budget --evidence tests/ci-governance/fixtures/release-budget-three-breaches.json --output artifacts/release/release-budget-summary.json
 ```
 
-Release verification is intentionally fail-closed: package inventory, lockstep versions, `.snupkg` symbols, CycloneDX SBOM, checksums, NuGet author signatures, RFC 3161 timestamps, attestation or approved unsupported-attestation evidence, benchmark summary hash, commit SHA, tag, run id, and workflow ref must be bound into the sealed manifest before publish. Forks, PRs, local dry runs, and unapproved scheduled runs can emit candidate evidence, but cannot update durable benchmark baselines, release markers, publish state, or package-count-collapse issues.
+Release verification is intentionally fail-closed: package inventory, lockstep versions, `.snupkg` symbols, CycloneDX SBOM, checksums, attestation or approved unsupported-attestation evidence, benchmark summary hash, commit SHA, tag, run id, and workflow ref must be bound into the sealed manifest before publish. Forks, PRs, local dry runs, and unapproved scheduled runs can emit candidate evidence, but cannot update durable benchmark baselines, release markers, publish state, or package-count-collapse issues.
 
-Local signature verification uses `dotnet nuget verify <package>.nupkg --all`. Local SBOM review uses the CycloneDX output under `release-evidence/sbom/`. Attestation verification is available only when GitHub artifact attestations are supported for the repository; otherwise the release publishes `attestation-unavailable.md` explaining the checksum, signature, SBOM, commit, tag, run, and workflow evidence that remains available.
+Author signing is not part of candidate preparation. Post-publication verification runs `dotnet nuget verify <package>.nupkg --all` over NuGet.org-served packages, requires a repository signature for every package, and compares every non-signature ZIP member with the sealed GitHub candidate. Local SBOM review uses the CycloneDX output under `release-evidence/sbom/`. When GitHub artifact attestations are unavailable, preparation records `attestation-unavailable.md` for bounded fallback review; durable attachment of that explanation remains tracked in the deferred-work ledger.
 
 Troubleshooting:
 
@@ -178,11 +178,12 @@ ordering, uniqueness, counts, and canonical digests without consulting a checkou
 reloads the sealed policy and exact root commit, reconstructs the graph from Git objects, and rejects
 edge or raw-catalog drift. Semantic compatibility remains a separate decision from both modes.
 
-**External integration boundary:** FrontComposer-local graph diff, root-subsumed affected-module
-proof/materialization, workflow closure, handoff schemas, and manifest-v2 verification are implemented.
-Pinning and authorizing the real reusable CI/Release workflow plus end-to-end handoff evidence remain
-blocked pending the owner-accepted immutable Hexalith.Builds revision required by AD-16. Empty
-`evaluator_authorizations` authorize no release; they must never be replaced with fabricated evidence.
+**Exact-source release boundary:** FrontComposer-local graph diff, root-subsumed affected-module
+proof/materialization, handoff schemas, and manifest verification are implemented. Push CI emits the
+closed repository-owned source proof consumed by manual Release; this is the approved replacement for
+the unrealized AD-16 evaluator handoff. It does not fabricate an immutable identity for the shared CI
+workflow. Release separately pins the reusable Builds workflow and its execution SHA to the same
+approved commit.
 
 ### Playwright E2E
 

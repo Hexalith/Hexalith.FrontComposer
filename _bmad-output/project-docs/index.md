@@ -28,7 +28,7 @@
 | **CLI** | `frontcomposer inspect` · `frontcomposer migrate` |
 | **Build** | `dotnet build Hexalith.FrontComposer.slnx -c Release` |
 | **Test (default lane)** | `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx -c Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` |
-| **Release** | semantic-release → signed NuGet packages (no containers) |
+| **Release** | exact-SHA operator dispatch → unsigned NuGet candidates; NuGet.org repository signatures verified after publication (no containers) |
 
 ## Generated documentation
 

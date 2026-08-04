@@ -8,10 +8,10 @@ AD-8 graph diff and affected-module proof used by CI. This is the single canonic
 semantic and affected-module policy implementation; callers consume its machine-readable
 results rather than reimplementing policy.
 
-The owner-accepted reusable-workflow revision required by AD-16 remains an external
-integration gate. This helper implements the FrontComposer-local graph, policy, diff,
-materialization, and proof surfaces without substituting a mutable or fabricated workflow
-identity for that missing upstream revision.
+The exact-source CI proof is FrontComposer's approved replacement for the unrealized AD-16
+evaluator handoff. This helper implements the repository-owned graph, policy, diff,
+materialization, and proof surfaces without fabricating an immutable identity for the shared
+CI workflow.
 """
 
 from __future__ import annotations

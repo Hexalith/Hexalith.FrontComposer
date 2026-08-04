@@ -563,6 +563,7 @@ development_status:
   # rel-5 moved ready-for-dev -> in-progress on 2026-07-18 (Release Owner directive "do it": BUILD-REL-1 filed upstream as https://github.com/Hexalith/Hexalith.Builds/issues/17 with the full two-item scope — governed contract + common freeze gate; URL recorded in the G2 request. Same directive resolved the shared-catalog governance pins to System.Reactive 7.0.0 + reconciled nested Builds gitlinks (99/99 governance green). Residual owner-physical items: AC1 public-trust signing identity (MUST chain to public NuGet code-signing roots), AC2 secret provisioning + rotation, AC3 one-line timestamp-authority confirmation (DigiCert candidate = pipeline default), AC5-AC9 trail REL-3 real release. Chain SBOM phase blocked on the unrelated unpublished Hexalith.Tenants.Client 3.15.1 (NU1102) — see deferred-work.)
   # rel-5 T1/T2 partial evidence recorded 2026-08-03 (Release Owner approved DigiCert RFC 3161 at http://timestamp.digicert.com after official review + live SHA-256 trust-bundle verification, and approved repository-scoped Actions-secret custody/rotation. Production identity and secret provisioning remain incomplete: no production certificate/password input was supplied and both repository secret names are absent. HEXALITH_RELEASE_PUBLISH_ENABLED remains exact false; no release authorized.)
   # rel-5 historical/preflight evidence recorded 2026-08-03 (v3.2.1/v3.2.2/v4.0.0/v4.0.1 fully reconciled and preserved non-compliant. Preflight stopped before candidate generation: accepted Builds revision, production signing identity/secrets, protected post-evidence reviewer pause, and operational GOV-1 handoffs are absent. REL-AI-1 remains open; publication unauthorized.)
+  # rel-5 corrected 2026-08-04: the dated certificate/timestamp notes above are historical. Author-signing identity, certificate, password, and timestamp prerequisites are retired. The active remainder is confirmation that the NuGet.org owner signer policy permits unsigned uploads plus the first exact-SHA operator-dispatched, production-approved release and durable evidence.
   rel-5-provision-signing-identity-and-first-governed-release: in-progress
 
 action_items:
@@ -639,7 +640,7 @@ action_items:
     local_work: "unblocked 2026-08-02: exact-revision graph diff, bounded affected-module proof, evaluator authorization/closure, both handoff schemas/consumers, manifest v2, policy governance, and hostile fixtures"
     waiver: "Historical: Administrator waived only the Story 11.17d promotion clause on 2026-08-01; Story 11.17d completed 2026-08-02 and is not reopened. The remaining due condition is now represented directly as 'before the next accepted governed release manifest'."
   - epic: release
-    action: "REL-AI-1: Own the FR24 exact-artifact pre-publication gate for signed/timestamped packages, symbols, SBOM, checksums, package inventory, consumer validation, sealed manifest/readiness, durable GitHub Release evidence, published-byte verification, and historical reconciliation."
+    action: "REL-AI-1: Own the FR24 exact-artifact gate for unsigned release candidates, symbols, SBOM, checksums, package inventory, consumer validation, sealed manifest/readiness, durable GitHub Release evidence, NuGet.org repository-signature/content verification, and historical reconciliation."
     owner: "Release Owner"
     assigned: "2026-07-05"
     due: "before the next NuGet or GitHub package release"
@@ -647,12 +648,11 @@ action_items:
     implementation_story: "REL-4 (coarse technical freeze) -> REL-3 (exact-artifact implementation) -> GOV-1 (dependency/provenance and governed upstream seam) -> REL-5 (Release Owner enablement, first governed release, and closure)"
     correction_source: "_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-03.md"
     release_control: >-
-      Publication is unauthorized. REL-4's coarse technical guard is implemented and has
-      CI-authoritative frozen-run evidence. The Release Owner restored
-      HEXALITH_RELEASE_PUBLISH_ENABLED from exact true to exact lowercase false at
-      2026-08-03T06:24:13Z and completed the enabled-window publication-surface audit. Keep the
-      variable non-true until GOV-1/upstream, production signing, sealed readiness, protected owner
-      authorization, and exact-byte publication controls are approved for one bounded candidate.
+      Publication is available only through manual workflow_dispatch from the exact current main
+      SHA after successful push CI for that SHA and approval in the protected production
+      environment. The transitional workflow_run and HEXALITH_RELEASE_PUBLISH_ENABLED path is
+      retired. Author signing is not required; the first attempt remains pending NuGet.org owner
+      signer-policy confirmation and explicit operator authorization.
     progress:
       - "2026-08-03: REL-4's guard and REL-3's local evidence implementation exist and remain under review; frozen run 29703682203 proves the default skip path."
       - "2026-08-03: The repository switch was true from 2026-08-02T08:27:15Z until the Release Owner restored exact lowercase false at 2026-08-03T06:24:13Z. No release was triggered by the variable change."
@@ -662,6 +662,7 @@ action_items:
       - "2026-08-03 REL-5 T0 audit: seven Release runs occurred in the enabled interval; four entered the reusable job and failed closed at 4.1.0 package-inventory validation before publication, and three skipped the release path. No GitHub Release/tag or NuGet publication occurred; no partial external publication was observed."
       - "2026-08-03 REL-5 T1/T2 partial: DigiCert RFC 3161 at http://timestamp.digicert.com and repository-scoped Release Owner custody/rotation are approved. Production identity approval and the two repository secrets remain blocked on externally supplied production certificate/password inputs; publication stays unauthorized and the switch stays exact false."
       - "2026-08-03 governed preflight stopped before candidate generation: exact switch false and historical reconciliation pass; accepted immutable Builds revision, production identity/secrets, protected reviewers/post-evidence pause, and operational GOV-1 handoffs fail. Local GOV-1 hostile suites pass 77/77 but evaluator authorizations are empty. No version, manifest hash, approval packet, or authorization request exists."
+      - "2026-08-04 supersession: the two preceding certificate/freeze preflight entries are historical. The current path is exact-SHA manual dispatch with exact-source CI proof, an immutable Builds workflow identity, an eight-package manifest, and protected production approval. Author signing and timestamp secrets are not required. NuGet.org owner signer-policy confirmation and the first real release evidence remain open."
     trigger_evidence:
       - "v3.2.1 runs: CI 29368280737, Release 29368461177, Evidence 29368682294; source e0a56f81d07024097db976ab20371ca8e3ca6394; release/tag d5935b833bc641475568aee573c584f0043afc83"
       - "v3.2.2 runs: CI 29375165477, Release 29375310946, Evidence 29375505915; source 4aa4210d4aeb066f8319ab8c7ced5bbfbe983b77; release/tag 303715e377f7d6af24a228be0a2a06d97673c263"
@@ -674,7 +675,7 @@ action_items:
     evidence_required:
       - "exact expected package inventory (8 packable + 2 explicit non-packable)"
       - "tests and package-consumer validation against the release candidates"
-      - "signed .nupkg author-signature verification with RFC 3161 timestamp"
+      - "NuGet.org Repository-signature verification and normalized content equality with each exact unsigned GitHub candidate"
       - "required .snupkg symbol packages and SBOM bound by checksums"
       - "complete checksums over packages, symbols, and evidence"
       - "valid sealed release manifest and verify-manifest output for exact publishable paths"
@@ -682,7 +683,7 @@ action_items:
       - "initial GitHub Release durable evidence assets"
       - "downloaded NuGet and GitHub package hashes match the authorized manifest"
       - "v3.2.1, v3.2.2, v4.0.0, and v4.0.1 historical compliance-ledger entries"
-    closure_rule: "Move to done only after a real release is authorized before publication, publishes the same signed manifest-bound bytes, passes downloaded NuGet/GitHub verification, and records durable evidence paths for every FR24 artifact. No unsigned or post-publication fallback can close the gate."
+    closure_rule: "Move to done only after a real release is authorized through the protected production environment, publishes the exact manifest-bound candidates, passes GitHub checksum plus NuGet.org repository-signature/normalized-content verification, and records durable evidence paths for every FR24 artifact."
   - epic: prd
     action: "PRD-AI-1: Resolve, route, or explicitly accept PRD open questions and assumptions; update PRD status only after Product approval."
     owner: "Product Owner"

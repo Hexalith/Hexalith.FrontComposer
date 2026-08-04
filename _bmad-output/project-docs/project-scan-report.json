@@ -58,7 +58,7 @@
     "orchestration": "Aspire.Hosting.AppHost 13.4.0 (Counter sample)",
     "testing": "xUnit v3 3.2.2, Shouldly 4.3.0, NSubstitute 5.3.0, bUnit 2.7.2, Verify 31.19.0, FsCheck.Xunit.v3 3.3.3, PactNet 5.0.1, BenchmarkDotNet 0.15.8, coverlet 10.0.1; Playwright e2e (tests/e2e)",
     "package_management": "Centralized (Directory.Packages.props, ManagePackageVersionsCentrally true)",
-    "release": "semantic-release (Conventional Commits) -> signed NuGet packages; no containers"
+    "release": "exact-SHA operator dispatch -> unsigned NuGet candidates; NuGet.org repository signatures verified after publication; no containers"
   },
   "completed_steps": [
     {"step": "step_1", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "Classified as monolith, single part, project_type=library with source-generator/blazor-ui/mcp-server/cli facets; 7 src + 7 test + 6 sample projects."},

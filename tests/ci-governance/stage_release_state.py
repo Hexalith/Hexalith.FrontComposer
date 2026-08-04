@@ -57,6 +57,12 @@ def main() -> int:
     fixture = json.loads((repo_root / "tests/ci-governance/fixtures/release-readiness-cases.json").read_text(encoding="utf-8"))
     evidence = json.loads(json.dumps(fixture["base_evidence"]))
     manifest = evidence["manifest"]
+    # Publisher runtime tests exercise the current v3 unsigned package-row shape.
+    manifest["manifest_schema"] = helper.CURRENT_MANIFEST_SCHEMA
+    for row in manifest["packages"]:
+        row["artifact_path"] = row["artifact_path"].replace("nupkgs-signed/", "nupkgs/")
+        row.pop("signing_status", None)
+        row.pop("timestamp_status", None)
 
     staged_files = set(helper.RELEASE_DEFINITION_FILES) | set(helper.FALLBACK_INVALIDATION_FILES) | {
         "eng/release-package-inventory.json",
@@ -86,7 +92,7 @@ def main() -> int:
         "builds_identity": "github.com/hexalith/hexalith.builds",
         "trusted_identities": [
             {"identity": "github.com/hexalith/hexalith.frontcomposer", "local_path": "."},
-            {"identity": "github.com/hexalith/hexalith.builds", "local_path": "builds"},
+            {"identity": "github.com/hexalith/hexalith.builds", "local_path": "references/Hexalith.Builds"},
         ],
         "semantic_profiles": {
             "github.com/hexalith/hexalith.frontcomposer": "fixture-profile",
@@ -127,6 +133,31 @@ def main() -> int:
     }
     (work_root / helper.POLICY_PATH).write_text(
         json.dumps(policy, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    builds_root = work_root / "references/Hexalith.Builds"
+    builds_workflow = builds_root / ".github/workflows/domain-release.yml"
+    builds_workflow.parent.mkdir(parents=True, exist_ok=True)
+    builds_workflow.write_text("name: staged domain release\n", encoding="utf-8")
+    for command in (
+        ["git", "init", "-q"],
+        ["git", "config", "user.email", "release-state@example.test"],
+        ["git", "config", "user.name", "Release State Fixture"],
+        ["git", "add", "."],
+        ["git", "commit", "-q", "-m", "test: stage Builds release workflow"],
+    ):
+        subprocess.run(command, cwd=builds_root, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    builds_commit = subprocess.run(
+        ["git", "rev-parse", "HEAD"],
+        cwd=builds_root,
+        check=True,
+        text=True,
+        stdout=subprocess.PIPE,
+    ).stdout.strip()
+    (work_root / ".gitmodules").write_text(
+        '[submodule "references/Hexalith.Builds"]\n'
+        "\tpath = references/Hexalith.Builds\n"
+        "\turl = https://github.com/Hexalith/Hexalith.Builds.git\n",
         encoding="utf-8",
     )
     for command in (
@@ -179,15 +210,71 @@ def main() -> int:
         "commit": base,
         "sha256": hashlib.sha256(policy_raw).hexdigest(),
     }
-    for section in (ci, release):
-        section["caller"]["commit"] = candidate
-    ci["run"]["head_sha"] = candidate
-    manifest["workflow_provenance"]["definition_digest"] = helper.canonical_sha256(
-        {
-            "ci": {"caller": ci["caller"], "reusable": ci["reusable"], "actions": ci["actions"]},
-            "release": release,
-        }
+    source_proof = {
+        "schema": helper._load_dependency_handoff_engine().SOURCE_PROOF_SCHEMA,
+        "run": {
+            "repository": "github.com/hexalith/hexalith.frontcomposer",
+            "workflow_path": ".github/workflows/ci.yml",
+            "run_id": 42,
+            "run_attempt": 1,
+            "event": "push",
+            "branch": "main",
+            "candidate": candidate,
+        },
+        "revisions": {"base": base, "candidate": candidate},
+        "dependency_policy": manifest["dependency_policy"],
+        "dependency_graph": manifest["dependency_graph"],
+    }
+    source_proof_path = work_root / "release-evidence/dependency-release-source.json"
+    source_proof_path.parent.mkdir(parents=True, exist_ok=True)
+    source_proof_path.write_text(
+        json.dumps(source_proof, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
     )
+    caller_bytes = subprocess.run(
+        ["git", "show", f"{candidate}:.github/workflows/release.yml"],
+        cwd=work_root,
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    reusable_bytes = subprocess.run(
+        ["git", "show", f"{builds_commit}:.github/workflows/domain-release.yml"],
+        cwd=builds_root,
+        check=True,
+        stdout=subprocess.PIPE,
+    ).stdout
+    current_ci = {
+        "run": {
+            "repository": "github.com/hexalith/hexalith.frontcomposer",
+            "workflow_path": ".github/workflows/ci.yml",
+            "run_id": 42,
+            "run_attempt": 1,
+            "event": "push",
+            "branch": "main",
+            "head_sha": candidate,
+        },
+        "evidence_sha256": hashlib.sha256(source_proof_path.read_bytes()).hexdigest(),
+    }
+    current_release = {
+        "caller": {
+            "repository": "github.com/hexalith/hexalith.frontcomposer",
+            "workflow_path": ".github/workflows/release.yml",
+            "commit": candidate,
+            "blob_sha256": hashlib.sha256(caller_bytes).hexdigest(),
+        },
+        "reusable": {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "workflow_path": ".github/workflows/domain-release.yml",
+            "commit": builds_commit,
+            "blob_sha256": hashlib.sha256(reusable_bytes).hexdigest(),
+        },
+        "builds_execution_sha": builds_commit,
+    }
+    manifest["workflow_provenance"] = {
+        "ci": current_ci,
+        "release": current_release,
+        "definition_digest": helper.canonical_sha256({"ci": current_ci, "release": current_release}),
+    }
 
     for row in manifest["packages"]:
         row["commit_sha"] = manifest["commit_sha"]

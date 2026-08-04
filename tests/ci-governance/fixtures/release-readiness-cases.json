@@ -280,7 +280,7 @@
     },
     {
       "expected_classification": "blocked",
-      "name": "unsigned-package",
+      "name": "legacy-v2-unsigned-package",
       "override": {
         "checks": {
           "signing_status": "unsigned"
@@ -301,7 +301,7 @@
     },
     {
       "expected_classification": "blocked",
-      "name": "stale-missing-timestamp",
+      "name": "legacy-v2-missing-timestamp",
       "override": {
         "checks": {
           "timestamp_status": "missing"

@@ -1,6 +1,6 @@
 ---
 created: 2026-07-15
-updated: 2026-08-03
+updated: 2026-08-04
 baseline_commit: 874fe13ba4d2a979898fc9b10451827bab94988c
 owner: Release Owner (executes) + Developer (verification tooling/evidence assistance)
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md
@@ -8,11 +8,11 @@ correctionProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-
 status: in-progress
 scope: moderate
 implementationRisk: medium (operational/custodial, not code)
-ordering: T0 control restoration/audit executes immediately; T1 owner prerequisites continue in parallel; ACs 5-10 trail the qualifying governed seam
-releaseControl: REL-AI-1 closure routes through this story; the REL-4 variable is coarse execution enablement only and stays non-`true` until a qualifying governed candidate and protected post-evidence authorization mechanism exist
+ordering: T0 historical containment is complete; T1-T3 production prerequisites are complete except the external NuGet.org signer-policy confirmation; T4 trails an explicitly authorized real release
+releaseControl: REL-AI-1 closure routes through this story; production publication is available only through exact-SHA workflow dispatch, exact-source CI proof, and the protected production environment
 ---
 
-# REL-5: Provision the Production Signing Identity and Prove the First Governed Release
+# REL-5: Prove the First Operator-Controlled Production Release
 
 Status: in-progress (owner-executed story; the developer agent assists with verification
 tooling and evidence capture, and must not perform custody, approval, or authorization actions).
@@ -22,61 +22,52 @@ Approval: approved by Administrator on 2026-07-15 (Batch-mode correct-course).
 ## Story
 
 As the Release Owner,
-I want the production signing identity, approvals, and governed release environment provisioned and
-the first gated release proven end to end,
+I want the production approval boundary and NuGet credential custody maintained and the first
+operator-dispatched release proven end to end,
 so that REL-AI-1 can close on durable real-release evidence that no developer can produce alone.
 
 ## Why This Story Exists
 
-REL-3 makes the FR-24 exact-artifact gate technically enforceable, but several of its terminal
-steps require authority a developer does not hold: selecting and provisioning the production
-package-signing identity, custody and rotation of certificate secrets, approving the RFC 3161
-timestamp authority, filing and accepting the upstream Hexalith.Builds contract, authorizing the
-first gated release, and signing off REL-AI-1. Leaving these inside REL-3 lets a developer-complete
-story sit indefinitely blocked on operational work with no owner. This story separates operational
-authority from development work.
+The exact-artifact gate is technically enforceable, but its terminal steps require authority a
+developer does not hold: maintaining the protected `production` environment, controlling the
+NuGet API key, confirming that the NuGet.org package-owner signer policy accepts unsigned uploads,
+authorizing the first real release, and signing off REL-AI-1. This story separates those
+operational decisions from development work.
 
-A local or test signing root can validate the REL-3 pipeline without publishing, but it does not
-establish a credible public package identity; only the Release Owner can select the production
-trust model (REL-3 Engineering Guardrails).
+Author signing, a production PFX, and an RFC 3161 author timestamp are deliberately not release
+requirements as of 2026-08-04. NuGet.org may add its repository signature after upload; the
+post-publication verifier must validate that repository signature and compare the normalized
+package content to the exact unsigned GitHub candidate, excluding only the root `.signature.p7s`
+entry introduced by NuGet.org.
 
 ## Acceptance Criteria
 
-1. Given the production trust requirements, when the Release Owner selects the package-signing
-   identity and trust model (certificate authority, subject, validity, storage), then the decision
-   is recorded durably (this story + the compliance ledger) before the first governed release.
+1. Given production publication authority, the `production` environment has required reviewers,
+   prevents administrator bypass, and is restricted to `main`; ordinary pushes and pull requests
+   cannot enter that boundary.
 
-2. Given the selected identity, when certificate secrets are provisioned, then
-   `NUGET_SIGNING_CERTIFICATE_BASE64` and `NUGET_SIGNING_CERTIFICATE_PASSWORD` exist as
-   Release Owner-custodied repository (or organization) secrets with a recorded rotation
-   procedure, and certificate material never enters the repository, logs, artifacts, or manifests.
+2. The workflow exposes `NUGET_API_KEY` only to the protected release job under Release Owner
+   custody. No author-signing certificate, password, or timestamp variable is required.
 
-3. Given RFC 3161 timestamping is required, when the Release Owner approves the timestamp
-   authority, then the approved service URL is recorded and configured for the governed release
-   path.
+3. Before the first release attempt, the Release Owner confirms that each NuGet.org package-owner
+   signer policy permits unsigned package uploads. Post-publication verification requires a valid
+   NuGet.org repository signature from the exact service index and normalized content equality
+   with the unsigned candidate.
 
-4. Given the BUILD-REL-1 contract in the G2 request document, when the upstream story is filed
-   against Hexalith/Hexalith.Builds, then the issue/story URL and later the accepted revision are
-   recorded in `g2-hexalith-builds-inline-pre-publish-gate-request.md` (fields currently
-   `pending`), and the filed scope is the full opt-in governed contract, not signing-secret
-   forwarding alone.
+4. The reusable `domain-release.yml` reference and `builds-execution-sha` are the same approved,
+   immutable 40-character Builds commit, and the eight-package manifest validates against that
+   selected workflow contract.
 
-5. Given the upstream governed mode lands with a protected release-environment input, when the
-   environment is adopted, then its required reviewers are configured under Release Owner control;
-   the caller-side REL-4 `HEXALITH_RELEASE_PUBLISH_ENABLED` variable remains a coarse execution
-   guard and is never sufficient FR24 publication authorization. The governed seam must pause
-   after exact-candidate evidence is sealed and before publication so that protected owner
-   authorization can be recorded. No approval tokens are added to FrontComposer's `release.yml`.
+5. Release uses manual `workflow_dispatch` from the exact current `refs/heads/main` SHA, proves a
+   successful completed push CI run for that same SHA before entering `production`, and fails
+   closed on stale main, malformed input or API responses, and missing or failed CI.
 
-6. The Release Owner treats `HEXALITH_RELEASE_PUBLISH_ENABLED` as coarse workflow-execution
-   enablement only, never as sufficient FR24 publication authorization. While no approved governed
-   candidate mechanism is active, the variable is absent or not exactly `true`. A qualifying
-   mechanism creates and seals the exact candidate evidence before a protected owner decision and
-   preserves byte identity from that decision through publication.
+6. The transitional `workflow_run` and `HEXALITH_RELEASE_PUBLISH_ENABLED` path is retired. There is
+   exactly one publication path, and it is the operator-dispatched protected production job.
 
 7. Given the first governed release publishes, when post-publication verification runs, then the
-   Release Owner confirms downloaded NuGet and GitHub assets verify (signatures, timestamps, exact
-   hashes) against the sealed manifest.
+   Release Owner confirms exact GitHub checksums and NuGet.org repository signatures, package
+   identities, and normalized content equality against the sealed manifest.
 
 8. Given verification passes, when the compliance ledger is updated, then
    `rel-ai-1-release-evidence-ledger.md` gains the first compliant release record with every
@@ -87,55 +78,41 @@ trust model (REL-3 Engineering Guardrails).
    match the authorized manifest; any gap keeps REL-AI-1 open with the exact blocker recorded.
 
 10. Every authorized release attempt is bounded and auditable: the owner records the candidate
-    identity, enablement time, sealed-ready evidence, protected approval, run URL, publication
-    result, verification result, and switch reset. Any failed, cancelled, invalid, or unauthorized
-    path remains fail-closed and triggers inspection for partial external side effects.
+    identity, dispatch time, exact-source CI proof, protected approval, run URL, publication result,
+    and verification result. Any failed, cancelled, invalid, or unauthorized path remains
+    fail-closed and triggers inspection for partial external side effects.
 
 ## Tasks
 
-- [x] T0 — Restore and audit the coarse release control immediately.
+- [x] T0 — Preserve the historical containment audit.
   - [x] Restore `HEXALITH_RELEASE_PUBLISH_ENABLED` to absent/non-`true`; record before/after
         evidence without exposing secrets (AC6, AC10).
   - [x] Reconcile every publish-capable run during the enabled window across GitHub Releases and
         every configured package registry; record any partial side effect (AC10).
-- [ ] T1 — Owner prerequisites (do not wait for REL-3).
-  - [ ] Select and record the production package-signing identity and trust model (AC1).
-        *2026-07-18 (REL-3 review constraint): the identity MUST chain to the publicly trusted
-        NuGet code-signing roots — the independent verifier checks downloaded bytes against the
-        stock public bundle, so an internal/self-signed CA passes preparation but always fails
-        post-publication verification. Certificate acquisition remains a physical owner action.*
+- [ ] T1 — Owner prerequisites.
+  - [x] Record the decision that author signing, certificate custody, and author timestamping are
+        not production prerequisites (AC2, AC3).
+  - [ ] Confirm the NuGet.org owner signer policy for all eight package IDs permits unsigned
+        uploads; do not dispatch until this external setting is confirmed (AC3).
   - [x] File BUILD-REL-1 upstream with the full governed contract; record the URL in the G2
         request (AC4). *Filed 2026-07-18 under Release Owner directive:
         <https://github.com/Hexalith/Hexalith.Builds/issues/17> (both items: governed contract +
         common freeze gate). The issue closed 2026-07-20 without a qualifying accepted revision;
-        a reopened or successor accepted revision is required for integration, end-to-end
-        completion, release eligibility, and unfreeze.*
-  - [x] Approve and record the RFC 3161 timestamp authority (AC3). *Approved 2026-08-03:
-        DigiCert
-        (`http://timestamp.digicert.com`) — already the pipeline default in
-        `eng/release_prepublish.py` and the `NUGET_SIGNING_TIMESTAMPER` fallback. Official
-        DigiCert guidance identifies this exact lowercase URL as its RFC 3161 endpoint for
-        NuGet; a live SHA-256 request returned `Granted` and verified against the .NET 10.0.302
-        stock NuGet timestamp trust bundle.*
-- [ ] T2 — Provision custody.
-  - [ ] Provision the two signing secrets with Release Owner-only custody and a rotation
-        procedure (AC2).
-  - [x] Record the org-vs-repo variable/secret posture, honoring the shadowing hazard documented
-        in the G2 request and deployment guide. *Approved 2026-08-03: use repository-scoped
-        Actions secrets in `Hexalith/Hexalith.FrontComposer`, custodied by the Release Owner;
-        do not depend on organization-secret inheritance. Keep the repository-scoped
-        `HEXALITH_RELEASE_PUBLISH_ENABLED=false` override so an organization-level value cannot
-        enable this repository.*
-- [ ] T3 — Adopt the upstream governed mode when accepted.
-  - [ ] Reopen issue 17 or file a successor and record the qualifying accepted upstream revision
-        in the G2 request (AC4).
-  - [ ] Configure protected-environment reviewers if the environment input lands (AC5).
-  - [ ] If upstream cannot land before a required release, decide and record the bounded
-        FrontComposer-owned contingency (scope, approver, expiry/reopen trigger, migration back).
-- [ ] T4 — First governed release (trails REL-3 completion).
-  - [ ] Enable only one bounded candidate through the approved mechanism; grant protected
-        publication authorization only on sealed ready/authorized evidence and reset the coarse
-        switch after the attempt (AC6, AC10).
+        the selected immutable Builds workflow now provides the accepted contract used by this
+        repository.*
+- [x] T2 — Provision protected custody.
+  - [x] Configure the `production` environment with required review, no administrator bypass, and
+        `main` branch restriction (AC1).
+  - [x] Make `NUGET_API_KEY` available to the protected job under Release Owner custody (AC2).
+- [x] T3 — Adopt the approved reusable production boundary.
+  - [x] Pin the reusable workflow and `builds-execution-sha` to the identical immutable Builds
+        commit (AC4).
+  - [x] Configure the exact-source dispatch and CI preflight before the protected job (AC5).
+  - [x] Remove the transitional automatic/freeze path without adding an alternate publisher
+        (AC6).
+- [ ] T4 — First governed release.
+  - [ ] Dispatch from the exact current `main` SHA only after confirming the NuGet.org owner signer
+        policy; grant protected production approval for that bounded attempt (AC3, AC5, AC10).
   - [ ] Verify downloaded NuGet and GitHub assets against the sealed manifest (AC7).
   - [ ] Record the first compliant ledger entry (AC8).
   - [x] Finalize the v3.2.1, v3.2.2, v4.0.0, and v4.0.1 historical dispositions.
@@ -143,27 +120,27 @@ trust model (REL-3 Engineering Guardrails).
 
 ## Implementation Boundary
 
-- Release Owner owns: identity/trust decisions, secret custody and rotation, timestamp-authority
-  approval, upstream filing/acceptance, environment reviewers, release authorization, ledger
-  sign-off, REL-AI-1 closure.
+- Release Owner owns: NuGet API-key custody and rotation, NuGet.org owner signer policy,
+  environment reviewers, release authorization, ledger sign-off, and REL-AI-1 closure.
 - Developer assists with: verification tooling, evidence capture/formatting, ledger mechanics —
   never custody, approval, or authorization.
-- Hexalith.Builds owner owns: BUILD-REL-1 implementation upstream. Do not modify or commit the
-  shared submodule from FrontComposer.
+- Hexalith.Builds owner owns the selected reusable workflow. Do not modify or commit the shared
+  submodule from FrontComposer.
 - REL-3 owns: the technical gate, orchestration command, governance tests, and workflow changes.
-- No FrontComposer code changes are owned here beyond evidence records.
+- The release implementation is complete; the remaining work in this story is external policy
+  confirmation, operator execution, and durable evidence capture.
 
 ## Engineering Guardrails
 
-- Never log, print, commit, or persist certificate material, passwords, or raw secrets.
+- Never log, print, commit, or persist the NuGet API key or other raw secrets.
 - Never authorize publication on dry-run, reconstructed, or partial evidence.
 - Never initialize nested submodules; use only root-declared `references/...` paths.
 - Preserve unrelated worktree changes.
 
 ## Definition of Done
 
-- [ ] ACs 1-4 recorded (identity, secrets, timestamp authority, upstream filing).
-- [ ] Upstream accepted revision or approved bounded contingency recorded.
+- [ ] ACs 1-4 recorded, including the external NuGet.org signer-policy confirmation.
+- [x] Approved immutable Builds workflow identity recorded.
 - [ ] First governed release authorized, published, and byte-verified from NuGet and GitHub.
 - [x] Coarse execution switch reset and the enabled-window containment audit recorded.
 - [ ] Compliance ledger carries the first compliant record.
@@ -179,7 +156,13 @@ trust model (REL-3 Engineering Guardrails).
 - `_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md`
 - `_bmad-output/planning-artifacts/sprint-change-proposal-2026-08-03.md`
 
+The filename is retained for historical link stability. The active story above supersedes the
+certificate-oriented requirements recorded before 2026-08-04.
+
 ## Dev Agent Record
+
+> Historical/superseded record: the 2026-08-03 certificate and timestamp investigation below is
+> retained as an audit trail. It is not a current release prerequisite or operator action.
 
 ### REL-5 T0 Release Owner Execution Record (2026-08-03)
 
@@ -350,13 +333,18 @@ approval packet, and no publication authorization request. `classification=ready
 `publish_authorized=true` have not been established. Publication remains unauthorized,
 `HEXALITH_RELEASE_PUBLISH_ENABLED` remains exactly `false`, and REL-AI-1 remains open.
 
-Exact correction required before rerunning preflight:
+Historical correction list recorded on 2026-08-03 (superseded on 2026-08-04):
 
 1. accept and record an immutable Builds revision that implements the governed release seam;
 2. approve/provision the production public-CA signing identity and both repository secrets;
 3. configure required reviewers and prove the protected pause after sealed evidence but before
    publication;
 4. authorize GOV-1 evaluators and pass both exact-candidate handoffs end to end.
+
+Current remaining operator action: confirm that the NuGet.org owner signer policy for all eight
+packages permits unsigned uploads, then dispatch the release from the exact current `main` SHA and
+approve that bounded attempt in the protected `production` environment. No signing certificate or
+timestamp authority is required.
 
 ## Suggested Review Order
 

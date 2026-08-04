@@ -4,11 +4,13 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import pathlib
 import re
 import subprocess
 import sys
+import zipfile
 from typing import Any
 
 EXPECTED_PACKAGES = (
@@ -22,10 +24,158 @@ EXPECTED_PACKAGES = (
     ("Hexalith.FrontComposer.Testing", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj"),
 )
 SHA_RE = re.compile(r"[0-9a-f]{40}")
+NUGET_SIGNATURE_MEMBER = ".signature.p7s"
+MAX_PACKAGE_ENTRIES = 65_536
+MAX_PACKAGE_MEMBER_BYTES = 512 * 1024 * 1024
+MAX_PACKAGE_CONTENT_BYTES = 2 * 1024 * 1024 * 1024
+MAX_SIGNATURE_BYTES = 16 * 1024 * 1024
+_VERIFIED_PACKAGE_RE = re.compile(
+    r"Successfully verified package '(.+?)\.(\d+(?:\.[0-9A-Za-z.+\-]+)*)'\."
+)
+_REPOSITORY_SIGNATURE_RE = re.compile(r"^\s*Signature type:\s*Repository\s*$", re.IGNORECASE | re.MULTILINE)
+_NUGET_ORG_SERVICE_INDEX_RE = re.compile(
+    r"^\s*Service index:\s*https://api\.nuget\.org/v3/index\.json\s*$",
+    re.IGNORECASE | re.MULTILINE,
+)
 
 
 class ContractError(ValueError):
     """Raised when a release boundary input is missing or ambiguous."""
+
+
+def _sha256_stream(source: Any) -> str:
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: source.read(1024 * 1024), b""):
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _sha256_file(path: pathlib.Path) -> str:
+    try:
+        with path.open("rb") as source:
+            return _sha256_stream(source)
+    except OSError as exc:
+        raise ContractError(f"{path}: cannot read package bytes") from exc
+
+
+def _package_content_projection(path: pathlib.Path, *, require_repository_signature: bool) -> list[dict[str, Any]]:
+    """Return the normalized package payload, excluding only NuGet's root signature entry."""
+    try:
+        archive = zipfile.ZipFile(path)
+    except (OSError, zipfile.BadZipFile) as exc:
+        raise ContractError(f"{path}: malformed NuGet ZIP archive") from exc
+    with archive:
+        entries = archive.infolist()
+        if not entries or len(entries) > MAX_PACKAGE_ENTRIES:
+            raise ContractError(f"{path}: NuGet archive entry count is empty or exceeds {MAX_PACKAGE_ENTRIES}")
+        seen: set[str] = set()
+        signature_count = 0
+        total_size = 0
+        projection: list[dict[str, Any]] = []
+        for entry in entries:
+            name = entry.filename
+            pure = pathlib.PurePosixPath(name)
+            windows = pathlib.PureWindowsPath(name)
+            folded = name.casefold()
+            if (
+                not name
+                or "\\" in name
+                or pure.is_absolute()
+                or bool(windows.drive)
+                or any(ord(character) < 32 or ord(character) == 127 for character in name)
+                or ".." in pure.parts
+                or pure.as_posix() != name
+                or folded in seen
+            ):
+                raise ContractError(f"{path}: unsafe, non-normalized, or duplicate ZIP member {name!r}")
+            seen.add(folded)
+            if folded == NUGET_SIGNATURE_MEMBER.casefold() and name != NUGET_SIGNATURE_MEMBER:
+                raise ContractError(f"{path}: NuGet signature entry must use the exact root name {NUGET_SIGNATURE_MEMBER}")
+            if name == NUGET_SIGNATURE_MEMBER:
+                if entry.is_dir() or entry.flag_bits & 0x1 or not 0 < entry.file_size <= MAX_SIGNATURE_BYTES:
+                    raise ContractError(f"{path}: NuGet repository signature entry is malformed")
+                signature_count += 1
+                continue
+            if entry.flag_bits & 0x1:
+                raise ContractError(f"{path}: encrypted ZIP member is not permitted: {name}")
+            if entry.file_size > MAX_PACKAGE_MEMBER_BYTES:
+                raise ContractError(f"{path}: ZIP member exceeds the size limit: {name}")
+            total_size += entry.file_size
+            if total_size > MAX_PACKAGE_CONTENT_BYTES:
+                raise ContractError(f"{path}: expanded package content exceeds the size limit")
+            try:
+                with archive.open(entry, "r") as source:
+                    member_hash = _sha256_stream(source)
+            except (OSError, RuntimeError, zipfile.BadZipFile) as exc:
+                raise ContractError(f"{path}: cannot read ZIP member {name!r}") from exc
+            projection.append({"path": name, "size": entry.file_size, "sha256": member_hash})
+        if signature_count > 1:
+            raise ContractError(f"{path}: NuGet archive contains duplicate repository signature entries")
+        if require_repository_signature and signature_count != 1:
+            raise ContractError(f"{path}: NuGet.org download lacks its root {NUGET_SIGNATURE_MEMBER} entry")
+        if not require_repository_signature and signature_count != 0:
+            raise ContractError(f"{path}: prepared candidate must not contain an author or repository signature")
+        return sorted(projection, key=lambda row: row["path"])
+
+
+def validate_unsigned_candidate(path: pathlib.Path) -> dict[str, Any]:
+    """Require a readable, safe NuGet archive with no author/repository signature."""
+    projection = _package_content_projection(path, require_repository_signature=False)
+    material = json.dumps(projection, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return {
+        "package_sha256": _sha256_file(path),
+        "content_sha256": hashlib.sha256(material.encode("utf-8")).hexdigest(),
+        "member_count": len(projection),
+    }
+
+
+def compare_nuget_package_content(candidate: pathlib.Path, published: pathlib.Path) -> dict[str, Any]:
+    """Require NuGet.org to add only its repository signature, without payload drift."""
+    candidate_projection = _package_content_projection(candidate, require_repository_signature=False)
+    published_projection = _package_content_projection(published, require_repository_signature=True)
+    if candidate_projection != published_projection:
+        raise ContractError(
+            "NuGet.org package content differs from the sealed candidate beyond the repository signature"
+        )
+    material = json.dumps(candidate_projection, ensure_ascii=True, sort_keys=True, separators=(",", ":"))
+    return {
+        "candidate_sha256": _sha256_file(candidate),
+        "published_sha256": _sha256_file(published),
+        "content_sha256": hashlib.sha256(material.encode("utf-8")).hexdigest(),
+        "member_count": len(candidate_projection),
+        "repository_signature_member": NUGET_SIGNATURE_MEMBER,
+    }
+
+
+def validate_repository_signature_transcript(text: str, package_ids: list[str], version: str) -> dict[str, Any]:
+    """Require one successful NuGet repository-signature verification per expected package."""
+    folded_package_ids = [package_id.casefold() for package_id in package_ids]
+    if not package_ids or len(set(folded_package_ids)) != len(package_ids):
+        raise ContractError("expected repository-signature package IDs must be non-empty and case-insensitively unique")
+    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[+-][0-9A-Za-z.-]+)?", version) is None:
+        raise ContractError("repository-signature version is malformed")
+    expected = {package_id.lower(): package_id for package_id in package_ids}
+    observed: dict[str, str] = {}
+    previous_end = 0
+    for match in _VERIFIED_PACKAGE_RE.finditer(text):
+        package_id = match.group(1)
+        observed_version = match.group(2)
+        block = text[previous_end:match.end()]
+        previous_end = match.end()
+        key = package_id.lower()
+        if key not in expected or observed_version != version:
+            raise ContractError(f"signature transcript contains an unexpected package coordinate: {package_id}.{observed_version}")
+        if key in observed:
+            raise ContractError(f"signature transcript contains duplicate verification for {package_id}")
+        if _REPOSITORY_SIGNATURE_RE.search(block) is None:
+            raise ContractError(f"{package_id}: successful verification is not a repository signature")
+        if _NUGET_ORG_SERVICE_INDEX_RE.search(block) is None:
+            raise ContractError(f"{package_id}: repository signature does not identify the NuGet.org service index")
+        observed[key] = package_id
+    missing = sorted(expected[key] for key in expected.keys() - observed.keys())
+    if missing:
+        raise ContractError(f"repository-signature verification is missing package(s): {', '.join(missing)}")
+    return {"package_count": len(observed), "packages": [expected[key] for key in expected]}
 
 
 def _strict_load(path: pathlib.Path) -> Any:
@@ -200,6 +350,16 @@ def main(argv: list[str] | None = None) -> int:
     builds.add_argument("--root", default=".")
     builds.add_argument("--commit", required=True)
     builds.add_argument("--approved", required=True)
+    content = sub.add_parser("package-content")
+    content.add_argument("--candidate", required=True)
+    content.add_argument("--published", required=True)
+    candidate = sub.add_parser("package-candidate")
+    candidate.add_argument("--package", required=True)
+    repository = sub.add_parser("repository-signatures")
+    repository.add_argument("--transcript", required=True)
+    repository.add_argument("--package-id", action="append", required=True)
+    repository.add_argument("--version", required=True)
+    repository.add_argument("--output")
     args = parser.parse_args(argv)
     try:
         if args.command == "manifest":
@@ -223,7 +383,7 @@ def main(argv: list[str] | None = None) -> int:
                 require_immutable=args.require_immutable,
             )
             print(json.dumps({"ok": True, "tag": args.expected_tag, "source_sha": args.expected_sha}, sort_keys=True))
-        else:
+        elif args.command == "builds":
             root = pathlib.Path(args.root).resolve()
             result = subprocess.run(
                 ["git", "-C", str(root), "ls-tree", args.commit, "references/Hexalith.Builds"],
@@ -243,6 +403,29 @@ def main(argv: list[str] | None = None) -> int:
                 raise ContractError("cannot resolve the exact candidate release workflow")
             validate_builds_identity(workflow_bytes.stdout.decode("utf-8-sig"), fields[2], args.approved)
             print(json.dumps({"ok": True, "builds_execution_sha": args.approved}, sort_keys=True))
+        elif args.command == "package-content":
+            comparison = compare_nuget_package_content(
+                pathlib.Path(args.candidate),
+                pathlib.Path(args.published),
+            )
+            print(json.dumps({"ok": True, **comparison}, sort_keys=True))
+        elif args.command == "package-candidate":
+            candidate = validate_unsigned_candidate(pathlib.Path(args.package))
+            print(json.dumps({"ok": True, **candidate}, sort_keys=True))
+        else:
+            transcript_path = pathlib.Path(args.transcript)
+            try:
+                transcript = transcript_path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError) as exc:
+                raise ContractError(f"{transcript_path}: cannot read repository-signature transcript") from exc
+            verified = validate_repository_signature_transcript(transcript, args.package_id, args.version)
+            payload = {"ok": True, "version": args.version, **verified}
+            if args.output:
+                pathlib.Path(args.output).write_text(
+                    json.dumps(payload, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8",
+                )
+            print(json.dumps(payload, sort_keys=True))
     except ContractError as exc:
         print(f"release contract rejected: {exc}", file=sys.stderr)
         return 1

@@ -4,11 +4,14 @@
 from __future__ import annotations
 
 import copy
+import contextlib
+import io
 import json
 import pathlib
 import sys
 import tempfile
 import unittest
+import zipfile
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "eng"))
@@ -106,6 +109,128 @@ class ReleaseContractTests(unittest.TestCase):
         ):
             with self.assertRaises(rc.ContractError):
                 rc.validate_builds_identity(changed_workflow, gitlink, approved)
+
+    def test_nuget_content_accepts_only_repository_signature_difference(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            candidate = root / "candidate.nupkg"
+            published = root / "published.nupkg"
+            members = {
+                "Hexalith.FrontComposer.Contracts.nuspec": b"<package />",
+                "lib/net10.0/Hexalith.FrontComposer.Contracts.dll": b"assembly bytes",
+            }
+            self._write_package(candidate, members)
+            self._write_package(published, {**members, rc.NUGET_SIGNATURE_MEMBER: b"repository signature"})
+
+            comparison = rc.compare_nuget_package_content(candidate, published)
+
+            self.assertEqual(2, comparison["member_count"])
+            self.assertNotEqual(comparison["candidate_sha256"], comparison["published_sha256"])
+            self.assertEqual(rc.NUGET_SIGNATURE_MEMBER, comparison["repository_signature_member"])
+
+    def test_nuget_content_rejects_missing_signature_payload_drift_and_unsafe_members(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            candidate = root / "candidate.nupkg"
+            published = root / "published.nupkg"
+            self._write_package(candidate, {"package.nuspec": b"original"})
+            cases = (
+                {"package.nuspec": b"original"},
+                {"package.nuspec": b"changed", rc.NUGET_SIGNATURE_MEMBER: b"signature"},
+                {"package.nuspec": b"original", "lib/net10.0/Injected.dll": b"injected", rc.NUGET_SIGNATURE_MEMBER: b"signature"},
+                {"other.nuspec": b"original", rc.NUGET_SIGNATURE_MEMBER: b"signature"},
+                {"../package.nuspec": b"original", rc.NUGET_SIGNATURE_MEMBER: b"signature"},
+                {"C:/escape.dll": b"original", rc.NUGET_SIGNATURE_MEMBER: b"signature"},
+                {"control\nname.dll": b"original", rc.NUGET_SIGNATURE_MEMBER: b"signature"},
+                {"package.nuspec": b"original", "PACKAGE.NUSPEC": b"duplicate", rc.NUGET_SIGNATURE_MEMBER: b"signature"},
+                {"package.nuspec": b"original", ".SIGNATURE.P7S": b"ambiguous signature"},
+                {"package.nuspec": b"original", rc.NUGET_SIGNATURE_MEMBER: b""},
+            )
+            for members in cases:
+                with self.subTest(members=members):
+                    self._write_package(published, members)
+                    with self.assertRaises(rc.ContractError):
+                        rc.compare_nuget_package_content(candidate, published)
+
+            self._write_package(candidate, {
+                "package.nuspec": b"original",
+                rc.NUGET_SIGNATURE_MEMBER: b"unexpected author signature",
+            })
+            self._write_package(published, {
+                "package.nuspec": b"original",
+                rc.NUGET_SIGNATURE_MEMBER: b"repository signature",
+            })
+            with self.assertRaises(rc.ContractError):
+                rc.compare_nuget_package_content(candidate, published)
+
+    def test_repository_signature_transcript_requires_every_expected_package(self) -> None:
+        version = "2.0.0"
+        package_ids = ["Hexalith.FrontComposer.Contracts", "Hexalith.FrontComposer.Schema"]
+        transcript = "\n".join(
+            line
+            for package_id in package_ids
+            for line in (
+                f"Verifying {package_id}.{version}",
+                "Signature type: Repository",
+                "Service index: https://api.nuget.org/v3/index.json",
+                f"Successfully verified package '{package_id}.{version}'.",
+            )
+        )
+        result = rc.validate_repository_signature_transcript(transcript, package_ids, version)
+        self.assertEqual(2, result["package_count"])
+
+        for changed in (
+            transcript.replace("Signature type: Repository", "Signature type: Author", 1),
+            transcript.replace("Service index: https://api.nuget.org/v3/index.json", "Service index: https://packages.example.test/v3/index.json", 1),
+            "\n".join(transcript.splitlines()[:4]),
+            transcript + "\nSignature type: Repository\nService index: https://api.nuget.org/v3/index.json\nSuccessfully verified package 'Unexpected.Package.2.0.0'.",
+        ):
+            with self.subTest(transcript=changed):
+                with self.assertRaises(rc.ContractError):
+                    rc.validate_repository_signature_transcript(changed, package_ids, version)
+
+        with self.assertRaises(rc.ContractError):
+            rc.validate_repository_signature_transcript(transcript, [package_ids[0], package_ids[0].upper()], version)
+
+    def test_repository_signature_cli_writes_structured_eight_package_result(self) -> None:
+        version = "2.0.0"
+        package_ids = [package_id for package_id, _ in rc.EXPECTED_PACKAGES]
+        transcript = "\n".join(
+            line
+            for package_id in package_ids
+            for line in (
+                f"Verifying {package_id}.{version}",
+                "Signature type: Repository",
+                "Service index: https://api.nuget.org/v3/index.json",
+                f"Successfully verified package '{package_id}.{version}'.",
+            )
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            transcript_path = root / "verify.txt"
+            output = root / "verify.json"
+            transcript_path.write_text(transcript, encoding="utf-8")
+            arguments = [
+                "repository-signatures",
+                "--transcript", str(transcript_path),
+                "--version", version,
+                "--output", str(output),
+            ]
+            for package_id in package_ids:
+                arguments.extend(["--package-id", package_id])
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = rc.main(arguments)
+            self.assertEqual(0, result)
+            payload = json.loads(output.read_text(encoding="utf-8"))
+            self.assertTrue(payload["ok"])
+            self.assertEqual(8, payload["package_count"])
+            self.assertEqual(package_ids, payload["packages"])
+
+    @staticmethod
+    def _write_package(path: pathlib.Path, members: dict[str, bytes]) -> None:
+        with zipfile.ZipFile(path, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            for name, content in members.items():
+                archive.writestr(name, content)
 
 
 if __name__ == "__main__":

@@ -10,7 +10,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 // These pins reverse the G1 "record-and-proceed" posture: the pre-publication
 // orchestrator (eng/release_prepublish.py) must fail closed on every evidence
 // gap BEFORE any publication side effect, the publisher must be unable to
-// repack/substitute/push unsigned paths, post-publication evidence must never
+// repack or substitute unsealed paths, post-publication evidence must never
 // authorize a release retroactively, and the approval mechanism must be the
 // exact-source operator dispatch + protected production approval everywhere.
 //
@@ -21,22 +21,27 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 [Trait("Category", "Governance")]
 public sealed class ReleaseModelGovernanceTests {
     [Fact]
-    public void PrepublishOrchestrator_MissingSigningCredentials_FailPreparationClosed() {
-        // AC5/AC10 (T5 "missing signing credentials stop preparation"): under G1 an absent
-        // certificate wrote a blocking signing-readiness record and the run PROCEEDED to
-        // publish unsigned bytes (v3.2.1/v3.2.2). The orchestrator must abort instead.
-        // Static pin — reaching the signing phase at runtime requires the full build/pack/
-        // test chain, far too heavy for a governance test.
+    public void PrepublishOrchestrator_AuthorSigningRequirements_AreAbsent() {
         string root = CiGovernanceTests.RepositoryRoot();
         string orchestrator = File.ReadAllText(Path.Combine(root, "eng/release_prepublish.py"));
+        string releaseWorkflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
 
-        orchestrator.ShouldContain(
-            "signing certificate secret is not provisioned; preparation fails closed",
-            customMessage: "AC5: absent signing credentials must raise a fail-closed phase failure, not a recorded readiness gap.");
-        orchestrator.ShouldContain(
-            "signature/timestamp verification failed for signed candidates",
-            customMessage: "AC5: a failed `dotnet nuget verify --all` over the signed candidates must abort preparation.");
-        // G1 markers that allowed an unsigned release to continue must not reappear.
+        foreach (string retiredRequirement in new[] {
+            "NUGET_SIGNING_CERTIFICATE_BASE64",
+            "NUGET_SIGNING_CERTIFICATE_PASSWORD",
+            "NUGET_SIGNING_TIMESTAMPER",
+            "dotnet\", \"nuget\", \"sign",
+            "codesignctl.pem",
+            "nupkgs-signed",
+            "signing-verification.txt",
+        }) {
+            orchestrator.ShouldNotContain(
+                retiredRequirement,
+                customMessage: $"author-signing requirement `{retiredRequirement}` must be retired.");
+            releaseWorkflow.ShouldNotContain(
+                retiredRequirement,
+                customMessage: $"Release must not require `{retiredRequirement}`.");
+        }
         orchestrator.ShouldNotContain(
             "require_or_record",
             customMessage: "AC10: the G1 record-and-proceed helper must not exist in the pre-publication orchestrator.");
@@ -85,10 +90,9 @@ public sealed class ReleaseModelGovernanceTests {
     }
 
     [Fact]
-    public void PrepublishPublisher_PushPlan_ConsumesOnlyManifestAuthorizedSignedPaths() {
-        // AC11 (T5 "publisher cannot repack/substitute/consume unsigned paths"): the publish
-        // subcommand must audit every manifest row (signed path shape + exact sha256) and
-        // never rebuild, repack, or push an unsigned candidate.
+    public void PrepublishPublisher_PushPlan_ConsumesOnlyManifestAuthorizedSealedPaths() {
+        // AC11: the publish subcommand audits every manifest row (candidate path shape +
+        // exact sha256) and never rebuilds, repacks, signs, or substitutes a candidate.
         string root = CiGovernanceTests.RepositoryRoot();
         string orchestrator = File.ReadAllText(Path.Combine(root, "eng/release_prepublish.py"))
             .Replace("\r\n", "\n", StringComparison.Ordinal);
@@ -109,11 +113,11 @@ public sealed class ReleaseModelGovernanceTests {
             "\"dotnet\", \"pack\"",
             customMessage: "AC11: the publisher must not produce new artifacts.");
         publishSection.ShouldContain(
-            "startswith(\"nupkgs-signed/\")",
-            customMessage: "AC11: only signed candidate paths from the sealed manifest may be pushed.");
+            "artifact_parts != (\"nupkgs\", f\"{package_id}.{expected_version}.nupkg\")",
+            customMessage: "AC11: only an exact root-level sealed candidate path may be pushed.");
         publishSection.ShouldContain(
-            "artifact path is not a signed candidate path",
-            customMessage: "AC11: a manifest row pointing outside nupkgs-signed/ must fail the publish.");
+            "artifact path is not a sealed candidate path",
+            customMessage: "AC11: a manifest row pointing outside nupkgs/ must fail the publish.");
         publishSection.ShouldContain(
             "endswith(\".snupkg\")",
             customMessage: "AC11: symbol pushes must be matched from the sealed manifest rows.");
@@ -135,10 +139,10 @@ public sealed class ReleaseModelGovernanceTests {
         int githubPlugin = releaseConfig.IndexOf("@semantic-release/github", StringComparison.Ordinal);
         githubPlugin.ShouldBeGreaterThanOrEqualTo(0, ".releaserc.json must configure @semantic-release/github.");
         string githubSection = releaseConfig[githubPlugin..];
-        githubSection.ShouldContain("nupkgs-signed/*.nupkg", customMessage: "AC12: signed packages must be release assets.");
+        githubSection.ShouldContain("nupkgs/*.nupkg", customMessage: "AC12: sealed packages must be release assets.");
         githubSection.ShouldContain("nupkgs/*.snupkg", customMessage: "AC12: symbol packages must be release assets.");
         githubSection.ShouldContain("release-evidence/*.json", customMessage: "AC12: the JSON evidence chain must be release assets.");
-        githubSection.ShouldContain("release-evidence/*.txt", customMessage: "AC12: the signing transcript must be a release asset.");
+        githubSection.ShouldContain("release-evidence/*.txt", customMessage: "AC12: any text evidence must be a release asset.");
     }
 
     [Fact]
@@ -163,6 +167,29 @@ public sealed class ReleaseModelGovernanceTests {
         executable.ShouldContain(
             "partial-publish-incident",
             customMessage: "AC14/AC19: observed divergence must produce a typed incident record.");
+    }
+
+    [Fact]
+    public void VerificationWorkflow_NugetRepositorySignatureAndPayloadEquivalence_AreRequired() {
+        string root = CiGovernanceTests.RepositoryRoot();
+        string workflow = CiGovernanceTests.StripYamlComments(
+            File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml")));
+        string contract = File.ReadAllText(Path.Combine(root, "eng/release_contract.py"));
+
+        workflow.ShouldContain(
+            "release_contract.py\", \"package-content",
+            customMessage: "NuGet.org downloads must be compared to the sealed candidate excluding only repository metadata.");
+        workflow.ShouldContain(
+            "release_contract.py repository-signatures",
+            customMessage: "every downloaded package must have an independently verified NuGet.org repository signature.");
+        workflow.ShouldContain("dotnet nuget verify downloaded/nuget/*.nupkg --all");
+        contract.ShouldContain("NUGET_SIGNATURE_MEMBER = \".signature.p7s\"");
+        contract.ShouldContain("require_repository_signature=False");
+        contract.ShouldContain("require_repository_signature=True");
+        contract.ShouldContain("successful verification is not a repository signature");
+        contract.ShouldContain("https://api\\.nuget\\.org/v3/index\\.json");
+        workflow.ShouldContain("repository_signatures_verified:$signatures");
+        workflow.ShouldContain("$manifest and $bytes and $signatures");
     }
 
     [Fact]

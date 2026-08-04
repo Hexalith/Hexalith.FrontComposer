@@ -190,18 +190,16 @@ Release authorization is an exact-artifact pipeline:
 Pack once
   → validate inventory, tests, and package consumers
   → generate SBOM and symbol evidence
-  → sign and timestamp the exact .nupkg files
-  → verify signatures and timestamps
-  → checksum packages, symbols, and evidence
+  → checksum the exact unsigned packages, symbols, and evidence
   → seal and verify the release manifest
   → classify-release --require-publishable
   → publish those same authorized bytes
-  → verify published NuGet and GitHub assets
+  → verify exact GitHub assets plus NuGet.org repository signatures and package content
 ```
 
 Pre-publication authorization and post-publication verification are separate phases. Only the former
-may authorize publication. Rebuilding, repacking, or signing reconstructed packages after publication
-does not prove what NuGet received.
+may authorize publication. Rebuilding or repacking reconstructed packages after publication does not
+prove what NuGet received.
 
 The sealed manifest identifies every immutable release candidate by normalized path and SHA-256 hash
 and binds the complete defined v1 graph: root gitlinks plus direct gitlinks from exact root-selected
@@ -234,30 +232,33 @@ must remain identical literal 40-hex coordinates.
 The pack-once prepared candidate is sealed to the Release run ID/attempt and uploaded only after
 production approval. The pinned reusable publisher restores and authenticates those exact bytes inside
 Semantic Release, re-verifies the sealed manifest/readiness, and publishes only manifest-authorized
-signed packages and symbols. The release configuration does not create a changelog commit, so a
+unsigned candidate packages and symbols. The release configuration does not create a changelog commit, so a
 successful non-draft GitHub Release tag must resolve to the dispatched SHA itself.
 
 Release Evidence authenticates the completed operator run topology. It reports no-releasable and
 rejected-before-publication dispositions without claiming publication. Once the reusable protected
 publisher starts, a missing GitHub Release, missing asset, mutable release, tag/SHA mismatch, package
-count drift, NuGet/GitHub byte mismatch, invalid signature, or checksum/SBOM/manifest divergence is a
+count drift, NuGet payload mismatch, invalid repository signature, or checksum/SBOM/manifest divergence is a
 partial-publication incident and fails closed with retained evidence.
 
-After publication, that independent verifier downloads NuGet and GitHub assets, verifies package
-signatures, and compares their hashes with the sealed manifest. A mismatch, missing asset, or partial
-publication fails the release and creates an incident record; post-publication evidence cannot
-authorize a release retroactively. Durable evidence attached during initial GitHub Release creation is
-the public evidence chain. Short-retention workflow artifacts are supplemental.
+After publication, that independent verifier downloads NuGet and GitHub assets. GitHub package bytes
+must exactly match the sealed checksums. Because NuGet.org repository-signs an unsigned submission by
+adding the root `.signature.p7s` entry, its raw archive hash is expected to differ; the verifier requires
+a valid repository signature for every package and byte-equivalence for every other normalized ZIP
+member. A mismatch, missing asset, or partial publication fails the release and creates an incident
+record; post-publication evidence cannot authorize a release retroactively. Durable evidence attached
+during initial GitHub Release creation is the public evidence chain. Short-retention workflow artifacts
+are supplemental.
 
 Ownership boundaries:
 
-- **Hexalith.Builds** owns the reusable workflow contract, signing-secret declaration/forwarding,
-  minimum permissions, and the upstream semantic catalog-contract version/canonicalization contract.
-- **FrontComposer** owns artifact creation, inventory/consumer/test validation, signing, evidence
+- **Hexalith.Builds** owns the reusable workflow contract, minimum permissions, and the upstream
+  semantic catalog-contract version/canonicalization contract.
+- **FrontComposer** owns artifact creation, inventory/consumer/test validation, evidence
   generation, dependency-graph collection/verification, readiness classification, publication of
   authorized bytes, and downloaded-artifact verification.
-- **Release Owner** owns signing identity, timestamp authority, secret provisioning/rotation,
-  production environment approval, exceptions, and partial-publication incident response.
+- **Release Owner** owns production environment approval, NuGet publishing credentials, exceptions,
+  and partial-publication incident response.
 
 This delivery architecture does not alter FrontComposer runtime, public product behavior, or UX.
 

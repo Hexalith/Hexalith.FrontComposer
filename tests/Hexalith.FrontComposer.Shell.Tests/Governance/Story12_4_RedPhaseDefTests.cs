@@ -15,7 +15,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 //   Def14  -> REVERSED by REL-3 (2026-07-18): attestation over RECONSTRUCTED artifacts
 //             in the supplemental evidence workflow could never establish identity with
 //             the published bytes. AC18 moves provenance attestation in front of
-//             classification over the EXACT signed candidates inside the upstream
+//             classification over the EXACT sealed candidates inside the upstream
 //             governed release workflow (BUILD-REL-1); the pre-publication orchestrator
 //             binds the bundle into the sealed manifest, and the independent verifier
 //             must not attest (see the two Def14 pins below).
@@ -40,7 +40,7 @@ public sealed class Story12_4_RedPhaseDefTests {
         // Def14 REVERSED by REL-3 (2026-07-18, AC18): under G1 the supplemental
         // release-evidence.yml attested RECONSTRUCTED artifacts — provenance that could
         // never establish identity with the published bytes. Attestation now happens over
-        // the EXACT signed candidates before manifest sealing/classification inside the
+        // the EXACT sealed candidates before manifest sealing/classification inside the
         // upstream governed release workflow (BUILD-REL-1); the pre-publication
         // orchestrator binds RELEASE_ATTESTATION_STATUS/RELEASE_ATTESTATION_BUNDLE into
         // the sealed manifest, and the sealed owner-approved `approved-unsupported`
@@ -173,8 +173,8 @@ public sealed class Story12_4_RedPhaseDefTests {
         //
         // F5 (Story 12.4 test review): the unsealed manifest below passes EVERY OTHER
         // manifest-diagnostics axis under --no-root — all top-level fields are concrete,
-        // the single package row has all REQUIRED_ROW_FIELDS with signing/timestamp/
-        // attestation statuses set to `verified`/`attested`, and the seal is computed by
+        // the single package row has all current REQUIRED_ROW_FIELDS with attestation
+        // set to `attested`, and the seal is computed by
         // the helper itself via `seal-manifest`. The ONLY failing axis is
         // `release_definition_fingerprints: {}`. Today the fingerprints check is gated by
         // `root is not None`, so `verify-manifest --no-root` exits 0 → the first assertion
@@ -259,13 +259,11 @@ public sealed class Story12_4_RedPhaseDefTests {
                       "package_id": "Hexalith.FrontComposer.Cli",
                       "version": "1.2.3",
                       "commit_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                      "artifact_path": "release-evidence/packages/Hexalith.FrontComposer.Cli.1.2.3.nupkg",
+                      "artifact_path": "nupkgs/Hexalith.FrontComposer.Cli.1.2.3.nupkg",
                       "checksum": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-                      "symbol_artifact": "release-evidence/packages/Hexalith.FrontComposer.Cli.1.2.3.snupkg",
+                      "symbol_artifact": "nupkgs/Hexalith.FrontComposer.Cli.1.2.3.snupkg",
                       "symbol_checksum": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
                       "sbom_component": "Hexalith.FrontComposer.Cli@1.2.3",
-                      "signing_status": "verified",
-                      "timestamp_status": "verified",
                       "attestation_status": "attested",
                       "publish_status": "pending"
                     }

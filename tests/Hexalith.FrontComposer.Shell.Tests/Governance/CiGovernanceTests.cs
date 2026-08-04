@@ -593,13 +593,13 @@ public sealed class CiGovernanceTests {
         // REL-3 (2026-07-18): semantic-release delegates prepare/publish to the repository-owned
         // exact-artifact orchestrator (eng/release_prepublish.py) — pack-once, fail-closed FR24
         // gate before any side effect, and a publisher that pushes only the manifest-authorized
-        // signed bytes. Raw pack/push commands and inlined evidence commands stay out of the JSON.
+        // sealed bytes. Raw pack/push commands and inlined evidence commands stay out of the JSON.
         releaseConfig.ShouldContain("@semantic-release/commit-analyzer");
         releaseConfig.ShouldContain("@semantic-release/release-notes-generator");
         releaseConfig.ShouldContain("python3 eng/release_prepublish.py restore --version ${nextRelease.version}");
         releaseConfig.ShouldContain("python3 eng/release_prepublish.py verify-prepared --version ${nextRelease.version}");
         releaseConfig.ShouldContain("python3 eng/release_prepublish.py publish --version ${nextRelease.version}");
-        releaseConfig.ShouldContain("nupkgs-signed/*.nupkg");
+        releaseConfig.ShouldContain("nupkgs/*.nupkg");
         releaseConfig.ShouldContain("nupkgs/*.snupkg");
         releaseConfig.ShouldContain("release-evidence/*.json");
         releaseConfig.ShouldContain("release-evidence/*.txt");
@@ -899,11 +899,10 @@ public sealed class CiGovernanceTests {
                   "package_id": "Hexalith.FrontComposer.Contracts",
                   "version": "1.2.3",
                   "commit_sha": "abc123",
-                  "artifact_path": "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+                  "artifact_path": "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
                   "checksum": "pending-checksum",
                   "symbol_artifact": "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.snupkg",
                   "sbom_component": "Hexalith.FrontComposer.Contracts",
-                  "signing_status": "verified",
                   "attestation_status": "approved-unsupported",
                   "publish_status": "pending"
                 }
@@ -1051,8 +1050,8 @@ public sealed class CiGovernanceTests {
             "missing-inventory-package",
             "skipped-tests",
             "zero-tests",
-            "unsigned-package",
-            "stale-missing-timestamp",
+            "legacy-v2-unsigned-package",
+            "legacy-v2-missing-timestamp",
             "missing-sbom",
             "checksum-mismatch",
             "unsealed-manifest",
@@ -1248,14 +1247,14 @@ public sealed class CiGovernanceTests {
     public void ReleaseEvidenceWorkflow_IndependentlyVerifiesPublishedArtifacts() {
         // REL-3 (2026-07-18): the FR24 evidence chain moved into the pre-publication
         // orchestrator (eng/release_prepublish.py, via .releaserc.json), which packs once,
-        // signs, seals, and classifies with --require-publishable BEFORE any publication
+        // seals, and classifies with --require-publishable BEFORE any publication
         // side effect and attaches the durable evidence at initial GitHub Release creation
         // (AC12). The supplemental workflow is now the INDEPENDENT verifier: it downloads
         // the published GitHub Release assets and the published NuGet bytes, verifies
-        // package signatures over the downloaded bytes, and compares every hash against
-        // the sealed manifest (AC13). It runs on Release completion regardless of
+        // NuGet.org repository signatures, and compares the package payload with the
+        // sealed candidate (AC13). It runs on Release completion regardless of
         // conclusion (AC19) and records partial-publication incidents (AC14). It must not
-        // rebuild, repack, re-sign, classify, or attest — reconstructed evidence can never
+        // rebuild, repack, sign, classify, or attest — reconstructed evidence can never
         // establish the identity of published bytes (the v3.2.1/v3.2.2 lesson).
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
@@ -1285,7 +1284,8 @@ public sealed class CiGovernanceTests {
         // a short-retention Actions artifact alone fails the criterion.
         workflow.ShouldContain("sealed-manifest.json");
         workflow.ShouldContain("release-readiness.json");
-        workflow.ShouldContain("signing-verification.txt");
+        workflow.ShouldContain("published-repository-signatures.txt");
+        workflow.ShouldContain("published-repository-signatures.json");
 
         // No reconstruction: the verifier must not re-run any part of the evidence
         // production chain the pre-publication orchestrator owns.
@@ -1383,8 +1383,7 @@ public sealed class CiGovernanceTests {
             "post_seal_artifact_mutation": false, "recursive_submodule_command": false,
             "redaction_status": "passed", "release_definition_drift": false,
             "sbom_status": "present", "semantic_release_state": "matches",
-            "signing_status": "verified", "test_count": 42, "test_status": "passed",
-            "timestamp_status": "verified", "trx_present": true
+            "test_count": 42, "test_status": "passed", "trx_present": true
           },
           "context": {
             "dry_run": false, "event_name": "workflow_dispatch", "from_fork": false,
@@ -1681,10 +1680,8 @@ public sealed class CiGovernanceTests {
             "release_definition_drift": false,
             "sbom_status": "present",
             "semantic_release_state": "matches",
-            "signing_status": "verified",
             "test_count": "unknown",
             "test_status": "passed",
-            "timestamp_status": "verified",
             "trx_present": true
           },
           "context": {
@@ -2249,46 +2246,26 @@ public sealed class CiGovernanceTests {
         return workflow[start..cursor];
     }
 
-    // REL-2/FR24 (2026-07-13): parse_signing_verification must accept the REAL
-    // `dotnet nuget verify --all -v normal` transcript emitted by the .NET SDK, where the
-    // `Timestamp: <datetime>` line carries no status keyword and precedes the trailing
-    // `Successfully verified package '<id>'` confirmation. This locks the fixed parser so a
-    // regression to the old keyword/forward-block model (which scored every real RFC 3161
-    // timestamp `missing`) cannot silently return.
     [Fact]
-    public void PrepareManifest_ScoresSigningAndTimestampVerifiedFromRealDotnetVerifyOutput() {
-        string tempRoot = Path.Combine(Path.GetTempPath(), $"fc-signing-verify-{Guid.NewGuid():N}");
+    public void PrepareManifest_UnsignedCandidate_HasNoAuthorSigningContract() {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"fc-unsigned-candidate-{Guid.NewGuid():N}");
         try {
             const string version = "1.2.3";
-            const string pkg = "Hexalith.FrontComposer.Contracts";
-            string transcript = string.Join('\n', [
-                $"Verifying {pkg}.{version}",
-                "Content hash: abc==",
-                "<path>",
-                "Signature type: Author",
-                "  Subject Name: CN=FC Release Evidence",
-                "  Issued by: CN=FC Release Evidence Root",
-                "Timestamp: 07/13/2026 17:16:10",
-                "Verifying author primary signature's timestamp with timestamping service certificate:",
-                $"Successfully verified package '{pkg}.{version}'.",
-                string.Empty,
-            ]);
+            const string packageId = "Hexalith.FrontComposer.Contracts";
+            (ProcessResult result, string preManifest, string diagnostics) =
+                PrepareManifestWithoutAuthorSigning(tempRoot, packageId, version);
 
-            (ProcessResult result, string preManifest, string diagnostics) = PrepareManifestWithSigningTranscript(tempRoot, pkg, version, transcript);
-
-            // Historical manifest-v2 validation deliberately refuses a publishable prepare without the
-            // authenticated CI handoff, exact candidate, and authorized Release evaluator.
-            // This fixture remains focused on the signing parser: the row must be
-            // verified and the only preparation blockers must be provenance inputs.
-            result.ExitCode.ShouldBe(1);
+            result.ExitCode.ShouldBe(1, "missing exact-source provenance must remain fail-closed.");
             string preparationDiagnostics = File.ReadAllText(diagnostics);
             preparationDiagnostics.ShouldContain("CI handoff");
-            preparationDiagnostics.ShouldNotContain("signing not verified");
-            preparationDiagnostics.ShouldNotContain("timestamp not verified");
+            preparationDiagnostics.ToLowerInvariant().ShouldNotContain("signing");
+            preparationDiagnostics.ToLowerInvariant().ShouldNotContain("timestamp");
             using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(preManifest));
+            doc.RootElement.GetProperty("manifest_schema").GetString().ShouldBe("hexalith.release-evidence.v3");
             JsonElement row = doc.RootElement.GetProperty("packages")[0];
-            row.GetProperty("signing_status").GetString().ShouldBe("verified");
-            row.GetProperty("timestamp_status").GetString().ShouldBe("verified");
+            row.GetProperty("artifact_path").GetString().ShouldBe($"nupkgs/{packageId}.{version}.nupkg");
+            row.TryGetProperty("signing_status", out _).ShouldBeFalse();
+            row.TryGetProperty("timestamp_status", out _).ShouldBeFalse();
         }
         finally {
             if (Directory.Exists(tempRoot)) {
@@ -2297,45 +2274,16 @@ public sealed class CiGovernanceTests {
         }
     }
 
-    // A `Timestamp:` line carrying an explicit failure marker must NOT count as evidence
-    // (CR-12-4-P146 intent), so the manifest fails closed with a per-package diagnostic.
-    [Fact]
-    public void PrepareManifest_RejectsTimestampLineWithFailureMarker() {
-        string tempRoot = Path.Combine(Path.GetTempPath(), $"fc-signing-verify-neg-{Guid.NewGuid():N}");
-        try {
-            const string version = "1.2.3";
-            const string pkg = "Hexalith.FrontComposer.Contracts";
-            string transcript = string.Join('\n', [
-                $"Verifying {pkg}.{version}",
-                "Signature type: Author",
-                "Timestamp: invalid certificate",
-                $"Successfully verified package '{pkg}.{version}'.",
-                string.Empty,
-            ]);
-
-            (ProcessResult result, _, string diagnostics) = PrepareManifestWithSigningTranscript(tempRoot, pkg, version, transcript);
-
-            result.ExitCode.ShouldBe(1);
-            File.ReadAllText(diagnostics).ShouldContain("timestamp not verified");
-        }
-        finally {
-            if (Directory.Exists(tempRoot)) {
-                Directory.Delete(tempRoot, recursive: true);
-            }
-        }
-    }
-
-    private static (ProcessResult Result, string PreManifest, string Diagnostics) PrepareManifestWithSigningTranscript(
-        string tempRoot, string packageId, string version, string transcript) {
+    private static (ProcessResult Result, string PreManifest, string Diagnostics) PrepareManifestWithoutAuthorSigning(
+        string tempRoot, string packageId, string version) {
         string root = RepositoryRoot();
-        Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
         Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs"));
         Directory.CreateDirectory(Path.Combine(tempRoot, "release-evidence"));
 
-        string signedNupkg = Path.Combine(tempRoot, "nupkgs-signed", $"{packageId}.{version}.nupkg");
+        string nupkg = Path.Combine(tempRoot, "nupkgs", $"{packageId}.{version}.nupkg");
         string snupkg = Path.Combine(tempRoot, "nupkgs", $"{packageId}.{version}.snupkg");
         string sbom = Path.Combine(tempRoot, "release-evidence", "sbom.json");
-        File.WriteAllText(signedNupkg, "signed package bytes");
+        File.WriteAllText(nupkg, "unsigned sealed package bytes");
         File.WriteAllText(snupkg, "symbol package bytes");
         File.WriteAllText(sbom, "{\"bomFormat\":\"CycloneDX\"}");
 
@@ -2354,16 +2302,11 @@ public sealed class CiGovernanceTests {
         string checksums = Path.Combine(tempRoot, "release-evidence", "checksums.json");
         File.WriteAllText(checksums, JsonSerializer.Serialize(new Dictionary<string, object?> {
             ["files"] = new[] {
-                new Dictionary<string, object?> { ["path"] = $"nupkgs-signed/{packageId}.{version}.nupkg", ["sha256"] = Sha256File(signedNupkg) },
+                new Dictionary<string, object?> { ["path"] = $"nupkgs/{packageId}.{version}.nupkg", ["sha256"] = Sha256File(nupkg) },
                 new Dictionary<string, object?> { ["path"] = $"nupkgs/{packageId}.{version}.snupkg", ["sha256"] = Sha256File(snupkg) },
                 new Dictionary<string, object?> { ["path"] = "release-evidence/sbom.json", ["sha256"] = Sha256File(sbom) },
             },
         }));
-
-        // --signing-verification is normalized under --root, so it must be relative (the
-        // workflow passes the same `release-evidence/signing-verification.txt`).
-        const string signingVerificationRelative = "release-evidence/signing-verification.txt";
-        File.WriteAllText(Path.Combine(tempRoot, "release-evidence", "signing-verification.txt"), transcript);
 
         string preManifest = Path.Combine(tempRoot, "release-evidence", "pre-manifest.json");
         string diagnostics = Path.Combine(tempRoot, "release-evidence", "prep-diagnostics.json");
@@ -2376,7 +2319,6 @@ public sealed class CiGovernanceTests {
             "--tag", $"v{version}",
             "--sbom-hash", Sha256File(sbom),
             "--root", tempRoot,
-            "--signing-verification", signingVerificationRelative,
             "--diagnostics-output", diagnostics,
             "--output", preManifest,
         ]);

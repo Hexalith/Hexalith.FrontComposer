@@ -50,8 +50,9 @@ identity. Mutable workflow references are not accepted at the release boundary.
 4. If a release is required, approve the pending `production` environment job according to the
    repository's environment protection policy.
 5. Wait for the protected reusable release and `verify-publication` jobs to finish.
-6. Wait for Release Evidence to verify the immutable release, NuGet-served bytes, signatures, checksums,
-   SBOM, and sealed manifest. Retain any incident artifact for reconciliation.
+6. Wait for Release Evidence to verify the immutable release, exact GitHub checksums, NuGet.org
+   repository signatures and package content, symbols, SBOM, and sealed manifest. Retain any incident
+   artifact for reconciliation.
 
 If Semantic Release finds no releasable commits, Release reports that fact explicitly, skips preparation
 and publication, and does not claim a release was published.
@@ -60,12 +61,12 @@ and publication, and does not claim a release was published.
 
 The protected preparation job runs `eng/release_prepublish.py prepare` once. It validates the declared
 eight-package boundary, builds, packs, inventories, tests, validates consumers, produces symbols and an
-SBOM, signs and RFC 3161 timestamps the exact candidates, verifies signatures, records benchmark and
-checksum evidence, seals/verifies the manifest, and requires a publish-authorized readiness result.
+SBOM, records benchmark and checksum evidence over the exact unsigned candidates, seals/verifies the
+manifest, and requires a publish-authorized readiness result.
 
 The resulting bytes and evidence are sealed into a run/attempt-bound prepared-candidate artifact. Inside
 the pinned reusable publisher, Semantic Release restores and authenticates that exact artifact, verifies
-it again, and publishes only manifest-authorized signed `.nupkg` and matching `.snupkg` bytes. It does not
+it again, and publishes only manifest-authorized `.nupkg` and matching `.snupkg` bytes. It does not
 repack. `--skip-duplicate` is prohibited because it can hide partial publication.
 
 The release configuration intentionally has no changelog/git commit plugin. Therefore the Semantic
@@ -74,9 +75,10 @@ GitHub Release whose tag resolves, through any annotated tag objects, to the exa
 
 The independent Release Evidence workflow is read-only. For governed attempts it requires an immutable,
 non-draft GitHub Release, downloads its durable assets, verifies the sealed manifest against the exact
-checked-out source/dependency graph, downloads each of the eight packages from nuget.org, compares NuGet
-bytes with GitHub assets and sealed hashes, verifies symbols/SBOM/checksum evidence, and independently
-runs `dotnet nuget verify --all`. Missing or inconsistent publication writes a typed
+checked-out source/dependency graph, downloads each of the eight packages from nuget.org, exact-hashes
+the GitHub candidate against the seal, compares every non-signature ZIP member with the NuGet.org copy,
+verifies the NuGet.org repository signature with `dotnet nuget verify --all`, and verifies
+symbols/SBOM/checksum evidence. Missing or inconsistent publication writes a typed
 `partial-publish-incident.json` and fails. Post-publication evidence can never authorize a release
 retroactively.
 
@@ -98,18 +100,15 @@ controls before a real dispatch:
 |---|---|---|
 | `production` | GitHub environment | required reviewers/protection policy; secrets are unavailable before approval |
 | `NUGET_API_KEY` | production/repository secret | forwarded only to the protected shared publisher |
-| `NUGET_SIGNING_CERTIFICATE_BASE64` | production secret | publicly trusted NuGet code-signing PFX, base64 encoded |
-| `NUGET_SIGNING_CERTIFICATE_PASSWORD` | production secret | password for the signing PFX |
-| `NUGET_SIGNING_TIMESTAMPER` | production/repository variable | approved RFC 3161 timestamp URL; the helper default remains fail-safe but explicit configuration is preferred |
 | `RELEASE_ATTESTATION_STATUS` | production/repository variable | `attested` or the approved `approved-unsupported` contingency |
 | `RELEASE_ATTESTATION_FALLBACK_APPROVER` | production/repository variable | required for the bounded unsupported-attestation contingency |
 | `RELEASE_ATTESTATION_FALLBACK_APPROVED_AT` | production/repository variable | UTC approval timestamp |
 | `RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT` | production/repository variable | UTC expiry timestamp |
 | `RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256` | production/repository variable | exact current fallback digest |
 
-Immutable GitHub Releases must be enabled for the repository. The signing certificate must chain to a
-publicly trusted NuGet code-signing root; Release Evidence intentionally verifies downloaded packages
-with the stock public trust bundle.
+Immutable GitHub Releases must be enabled for the repository. FrontComposer does not require or consume
+an author-signing certificate, certificate password, or timestamp service. NuGet.org adds its repository
+signature after upload; Release Evidence verifies downloaded packages with the stock public trust bundle.
 
 No assistant or implementation task should alter these settings or perform a real dispatch. A real
 release requires a separate, explicit operator decision and production approval.

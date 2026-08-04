@@ -2,8 +2,9 @@
 title: 'Remove author signing from the production package contract'
 type: 'refactor'
 created: '2026-08-04'
-status: 'draft'
+status: 'done'
 review_loop_iteration: 0
+baseline_commit: 'bb9c41f2590251b2faa806a6e98ab6446b5a4e63'
 context:
   - '_bmad-output/implementation-artifacts/spec-align-production-release-with-tenants.md'
   - '_bmad-output/planning-artifacts/architecture.md'
@@ -48,9 +49,9 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Update workflow, Semantic Release, prepublish, manifest, and evidence paths to consume only the sealed unsigned `nupkgs` candidates and remove signing credentials/readiness artifacts.
-- [ ] Add fail-closed comparison of canonical non-signature package contents plus independent per-package NuGet.org repository-signature verification.
-- [ ] Preserve legacy signed-v2 audit behavior and update Python/C# governance tests, fixtures, documentation, and release-definition fingerprints for the current contract.
+- [x] Update workflow, Semantic Release, prepublish, manifest, and evidence paths to consume only the sealed unsigned `nupkgs` candidates and remove signing credentials/readiness artifacts.
+- [x] Add fail-closed comparison of canonical non-signature package contents plus independent per-package NuGet.org repository-signature verification.
+- [x] Preserve legacy signed-v2 audit behavior and update Python/C# governance tests, fixtures, documentation, and release-definition fingerprints for the current contract.
 
 **Acceptance Criteria:**
 - Given exact green main and production approval, when a release is required, then all eight unsigned sealed candidates can publish without any author-signing secret or timestamp variable.
@@ -69,3 +70,55 @@ NuGet.org repository-signs new submissions and adds `.signature.p7s` to an unsig
 - `actionlint` for changed workflows; focused Python release/evidence/contract suites including archive/signature mutation cases.
 - Release-build affected governance test projects with zero warnings/errors, then invoke built xUnit v3 assemblies directly with focused filters.
 - Validate the eight-package manifest against the pinned Builds contract; run `git diff --check` and recursive-submodule/reference scans.
+
+## Suggested Review Order
+
+**Production boundary**
+
+- Release preparation now seals the pack-once candidates without signing credentials.
+  [`release.yml:246`](../../.github/workflows/release.yml#L246)
+
+- Candidate preparation, transfer, and publication reject signed or unsafe NuGet archives.
+  [`release_prepublish.py:168`](../../eng/release_prepublish.py#L168)
+
+- Explicit package pushes suppress NuGet's automatic duplicate symbol upload.
+  [`release_prepublish.py:789`](../../eng/release_prepublish.py#L789)
+
+**Evidence contract**
+
+- Current manifests use unsigned rows while signed v2 evidence remains strictly legacy-only.
+  [`release_evidence.py:1406`](../../eng/release_evidence.py#L1406)
+
+- NuGet reconciliation permits only the root repository-signature member as a difference.
+  [`release_contract.py:132`](../../eng/release_contract.py#L132)
+
+- Repository verification requires all coordinates and NuGet.org's exact service index.
+  [`release_contract.py:150`](../../eng/release_contract.py#L150)
+
+- Compliance now requires structured repository-signature evidence alongside payload equality.
+  [`release-evidence.yml:448`](../../.github/workflows/release-evidence.yml#L448)
+
+**Verification and guidance**
+
+- Runtime tests prove unsigned candidate bundling, restoration, and duplicate-symbol prevention.
+  [`test_release_prepublish.py:45`](../../tests/eng/test_release_prepublish.py#L45)
+
+- Exact-source v3 preparation now completes a successful seal and live verification round trip.
+  [`test_release_evidence_v2.py:339`](../../tests/eng/test_release_evidence_v2.py#L339)
+
+- Archive and signature mutations exercise every new fail-closed comparison boundary.
+  [`test_release_contract.py:113`](../../tests/eng/test_release_contract.py#L113)
+
+- Architecture documents raw GitHub identity versus NuGet.org repository-signed content identity.
+  [`architecture.md:232`](../planning-artifacts/architecture.md#L232)
+
+- Operator guidance no longer requests author-signing certificate configuration.
+  [`deployment-guide.md:54`](../project-docs/deployment-guide.md#L54)
+
+- The active REL-5 owner story now requires NuGet.org signer-policy confirmation and a bounded
+  operator dispatch, not certificate procurement.
+  [`rel-5-provision-signing-identity-and-first-governed-release.md:15`](rel-5-provision-signing-identity-and-first-governed-release.md#L15)
+
+- The compliance ledger retains historical signature facts while defining the current unsigned
+  production prerequisites and repository-signature evidence.
+  [`rel-ai-1-release-evidence-ledger.md:49`](rel-ai-1-release-evidence-ledger.md#L49)

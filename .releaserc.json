@@ -26,7 +26,7 @@
       "@semantic-release/github",
       {
         "assets": [
-          "nupkgs-signed/*.nupkg",
+          "nupkgs/*.nupkg",
           "nupkgs/*.snupkg",
           "release-evidence/*.json",
           "release-evidence/*.txt"

@@ -2,7 +2,7 @@
 title: REL-AI-1 Release Evidence Compliance Ledger
 project: frontcomposer
 created: 2026-07-15
-updated: 2026-08-03
+updated: 2026-08-04
 owner: Release Owner
 decisionContract: frontcomposer.release-compliance-ledger.v1
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md
@@ -16,9 +16,8 @@ This controlled ledger records whether released FrontComposer package bytes sati
 success is not a compliance disposition. A release is compliant only when it was authorized before
 publication and independently verified afterward against the same sealed manifest.
 
-Historical records are not REL-AI-1 closure evidence. They document affected releases and the
-reason the next publish-capable release is frozen until the REL-3/REL-5 governed chain is
-operational.
+Historical records are not REL-AI-1 closure evidence. They document affected releases and why the
+next compliant disposition requires a real operator-dispatched production release.
 
 Status note (2026-07-18): REL-4's fail-closed freeze gate and REL-3's exact-artifact pre-publication
 enforcement (pack-once orchestration in `eng/release_prepublish.py`, authorized-bytes publish,
@@ -47,6 +46,14 @@ certificate or password was supplied and the repository secret-name list remains
 the production signing identity is not approved, AC1/AC2 remain open, and publication remains
 unauthorized.
 
+Status note (2026-08-04 supersession): author signing, a production certificate, and an author
+timestamp are no longer FrontComposer release requirements. The current manual production flow
+uses exact unsigned GitHub candidates and requires NuGet.org repository-signature verification plus
+normalized package-content equality after excluding only the root `.signature.p7s` added by the
+repository. The certificate-oriented 2026-08-03 note and prerequisite table remain historical
+audit evidence only. REL-AI-1 remains open pending confirmation that the NuGet.org owner signer
+policy permits unsigned uploads and the first real operator-approved release evidence.
+
 ## Required Fields
 
 Each release record carries:
@@ -54,7 +61,7 @@ Each release record carries:
 - release tag/URL and CI, Release, and Release Evidence run URLs;
 - expected/observed package inventory;
 - NuGet and GitHub asset identity/hashes;
-- package signing and timestamp verification;
+- NuGet.org repository-signature verification and normalized package-content equality;
 - manifest verification, readiness classification, and `publish_authorized`;
 - package-consumer validation;
 - durable evidence paths;
@@ -328,19 +335,22 @@ The nuget.org registration records contained no publication in the audit interva
 package ID gained a version during the enabled interval. REL-5 T0 is complete; REL-AI-1 remains
 open and a future release still requires the complete FR24 prepublication and published-byte chain.
 
-## REL-5 T1/T2 Production-Signing Prerequisites
+## REL-5 Current Production Prerequisites
 
 | Field | Recorded evidence |
 | --- | --- |
-| Production identity | **Not approved / blocked.** No production certificate was supplied, so CA, subject, issuer, SHA-256 thumbprint, validity, full-chain contents, code-signing EKU, and NuGet.org certificate registration cannot be verified or recorded. Self-signed/internal-only identities are prohibited. |
-| Official NuGet requirement | Microsoft NuGet guidance checked 2026-08-03 requires a public-CA code-signing certificate for NuGet.org, rejects self-issued production signatures, recommends timestamping, and requires certificate registration with the publishing NuGet.org account or organization. |
-| Timestamp authority | **Approved 2026-08-03:** DigiCert RFC 3161 at `http://timestamp.digicert.com`; this exact URL is the existing `eng/release_prepublish.py` default. DigiCert's current Public Trust CP/CPS states that its TSA complies with RFC 3161, is recommended for signed code, and synchronizes to UTC(k). The health endpoint returned HTTP 204; a live SHA-256 request returned `Granted`, policy `2.16.840.1.114412.7.1`, and verified against the .NET 10.0.302 stock `timestampctl.pem` bundle. |
-| Secret scope and custody | Repository-scoped Actions secrets in `Hexalith/Hexalith.FrontComposer`, Release Owner custody; do not rely on organization-secret inheritance. The current token cannot audit organization secrets/variables (HTTP 403), so no claim about their absence is made. |
-| Repository secret presence | `NUGET_SIGNING_CERTIFICATE_BASE64`: absent; `NUGET_SIGNING_CERTIFICATE_PASSWORD`: absent. Verified by secret names only; values were not requested or exposed. |
-| Secure-input presence | Both approved environment variables, recognized external certificate/password file variables, and `/run/secrets` were unavailable. No secret was printed, decoded, persisted, or placed in a command argument. |
-| Rotation procedure | Start planned rotation at least 60 days before expiry. Acquire and validate a successor public-CA code-signing identity, register it with the NuGet.org owner, update both repository secrets via stdin, verify names only, and complete non-publishing governed validation. Retire the predecessor only after successor-signed downloaded-byte verification passes. On compromise/revocation: keep publication frozen, rotate immediately, revoke/remove the predecessor at the CA and NuGet.org, audit release attempts, and record the incident and new metadata here. |
-| Coarse publication control | Repository variable `HEXALITH_RELEASE_PUBLISH_ENABLED=false`, independently verified at `updated_at=2026-08-03T06:24:13Z`; no release was triggered or authorized. |
-| Required owner action | Supply the approved production PFX/base64 and password outside the repository as `NUGET_SIGNING_CERTIFICATE_BASE64` and `NUGET_SIGNING_CERTIFICATE_PASSWORD` (or separately identified secure files), with the full issuing chain embedded, plus non-secret CA/subject/issuer/SHA-256-thumbprint/validity and NuGet.org registration evidence; then rerun REL-5 T1/T2. |
+| Author-signing policy | **Retired 2026-08-04.** A production certificate, password, author signature, and RFC 3161 author timestamp are not FrontComposer release prerequisites. |
+| Protected boundary | GitHub `production` environment configured with required review, administrator bypass disabled, and `main` branch restriction. |
+| Publishing credential | The workflow exposes `NUGET_API_KEY` only to the protected release job under Release Owner custody. The secret may be organization-scoped; its value is never recorded here. |
+| Immutable workflow identity | FrontComposer pins the selected reusable `domain-release.yml` and passes the identical approved 40-character commit as `builds-execution-sha`. |
+| Entry point | Manual `workflow_dispatch` from the exact current `main` SHA, gated by a successful completed push CI run for that SHA before the protected job starts. |
+| Package inventory | `tools/release-packages.json` declares exactly eight NuGet packages and no containers. |
+| Post-publication trust | Exact GitHub candidate checksums plus `dotnet nuget verify --all`, a NuGet.org Repository-signature transcript bound to `https://api.nuget.org/v3/index.json`, and normalized package-content equality excluding only root `.signature.p7s`. |
+| Required owner action | Confirm that the NuGet.org package-owner signer policy for all eight package IDs permits unsigned uploads; then explicitly dispatch and approve one bounded production release. |
+
+The certificate, timestamp-authority, secret-presence, and rotation observations previously recorded
+in this section are superseded requirements. Their source evidence remains in the dated historical
+record in the REL-5 story and does not block the current release contract.
 
 ## Next Compliant Release Record
 
@@ -348,7 +358,8 @@ Do not populate a passing disposition from a dry run or reconstructed evidence. 
 marked compliant only after all of the following are durable:
 
 - valid expected inventory, tests, and package-consumer validation against the release candidates;
-- verified author signatures and RFC 3161 timestamps on every published `.nupkg`;
+- verified NuGet.org repository signatures on every downloaded `.nupkg` and normalized content
+  equality with each exact unsigned GitHub candidate;
 - required symbols and SBOM bound by complete checksums;
 - valid sealed manifest over the exact candidate paths;
 - `classify-release --require-publishable` with `classification=ready` and

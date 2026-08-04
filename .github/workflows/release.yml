@@ -243,13 +243,10 @@ jobs:
             echo "main advanced or returned an ambiguous source identity; redispatch after exact-source CI succeeds." >&2
             exit 1
           fi
-      - name: Prepare, sign, and seal the pack-once candidate
+      - name: Prepare and seal the pack-once candidate
         env:
           DEPENDENCY_RELEASE_SOURCE_PROOF: artifacts/release-source/dependency-release-source.json
           HEXALITH_BUILDS_EXECUTION_SHA: a53166539bf4441d5e33d04281b14c2d59e950c3
-          NUGET_SIGNING_CERTIFICATE_BASE64: ${{ secrets.NUGET_SIGNING_CERTIFICATE_BASE64 }}
-          NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
-          NUGET_SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER }}
           RELEASE_ATTESTATION_STATUS: ${{ vars.RELEASE_ATTESTATION_STATUS || 'approved-unsupported' }}
           RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER }}
           RELEASE_ATTESTATION_FALLBACK_APPROVED_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVED_AT }}
@@ -266,7 +263,6 @@ jobs:
           path: |
             nupkgs/**/*.nupkg
             nupkgs/**/*.snupkg
-            nupkgs-signed/**/*.nupkg
             release-evidence/**
           if-no-files-found: error
           include-hidden-files: true

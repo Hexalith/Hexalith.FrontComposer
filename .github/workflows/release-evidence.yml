@@ -298,13 +298,13 @@ jobs:
           RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
         run: |
           set -euo pipefail
-          mkdir -p downloaded/github nupkgs-signed nupkgs release-evidence
+          mkdir -p downloaded/github nupkgs release-evidence
           gh release download "$RELEASE_TAG" --dir downloaded/github
           shopt -s nullglob
-          for file in downloaded/github/*.nupkg; do cp "$file" "nupkgs-signed/$(basename "$file")"; done
+          for file in downloaded/github/*.nupkg; do cp "$file" "nupkgs/$(basename "$file")"; done
           for file in downloaded/github/*.snupkg; do cp "$file" "nupkgs/$(basename "$file")"; done
           for file in downloaded/github/*.json downloaded/github/*.txt downloaded/github/*.md; do cp "$file" "release-evidence/$(basename "$file")"; done
-          for required in sealed-manifest.json release-readiness.json checksums.json package-inventory.json dependency-release-source.json release-verification.json signing-verification.txt; do
+          for required in sealed-manifest.json release-readiness.json checksums.json package-inventory.json dependency-release-source.json release-verification.json; do
             if [ ! -f "release-evidence/$required" ]; then
               python3 eng/release_evidence.py partial-publish-incident \
                 --manifest "${PWD}/release-evidence/sealed-manifest.json" \
@@ -377,7 +377,7 @@ jobs:
                   fail(f"{package_id}: version differs from release plan")
               package_name = pathlib.PurePosixPath(str(row.get("artifact_path", ""))).name
               expected_assets.add(package_name)
-              github_path = pathlib.Path("nupkgs-signed") / package_name
+              github_path = pathlib.Path("nupkgs") / package_name
               if not github_path.is_file() or digest(github_path) != row.get("checksum"):
                   fail(f"{package_id}: GitHub package asset is missing or divergent")
                   continue
@@ -399,15 +399,27 @@ jobs:
                           fail(f"{package_id}: NuGet package unavailable ({type(error).__name__})")
                           break
                       time.sleep(30)
-              if target.is_file() and digest(target) != row.get("checksum"):
-                  fail(f"{package_id}: NuGet bytes differ from the sealed/GitHub bytes")
+              if target.is_file():
+                  content_check = subprocess.run(
+                      [
+                          "python3", "eng/release_contract.py", "package-content",
+                          "--candidate", str(github_path),
+                          "--published", str(target),
+                      ],
+                      capture_output=True,
+                      text=True,
+                      check=False,
+                  )
+                  if content_check.returncode != 0:
+                      fail(f"{package_id}: NuGet content differs beyond the repository signature")
+                  else:
+                      comparison.append({"package_id": package_id, **json.loads(content_check.stdout)})
               symbol_name = pathlib.PurePosixPath(str(row.get("symbol_artifact", ""))).name
               if symbol_name.endswith(".snupkg"):
                   expected_assets.add(symbol_name)
                   symbol = pathlib.Path("nupkgs") / symbol_name
                   if not symbol.is_file() or digest(symbol) != row.get("symbol_checksum"):
                       fail(f"{package_id}: symbol asset is missing or divergent")
-              comparison.append({"package_id": package_id, "checksum": row.get("checksum")})
           actual_assets = {path.name for path in pathlib.Path("downloaded/github").iterdir() if path.suffix in {".nupkg", ".snupkg"}}
           if actual_assets != expected_assets:
               fail("GitHub package assets differ from the sealed package/symbol inventory")
@@ -420,8 +432,6 @@ jobs:
                   fail("downloaded checksum evidence contains a malformed row")
                   continue
               path = str(sealed.get("path", "")).replace("\\", "/")
-              if path.startswith("nupkgs/") and path.endswith(".nupkg"):
-                  continue
               local = pathlib.Path(path)
               if not local.is_file() or digest(local) != sealed.get("sha256"):
                   fail(f"published asset/evidence bytes differ from checksums.json: {path}")
@@ -435,23 +445,36 @@ jobs:
               sys.exit(1)
           PY
 
-      - name: Verify signatures of NuGet-served bytes
+      - name: Verify NuGet.org repository signatures of served bytes
         if: steps.disposition.outputs.governed-attempt == 'true'
         shell: bash
         env:
           RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
         run: |
           set -euo pipefail
           status=0
           dotnet nuget verify downloaded/nuget/*.nupkg --all -v normal \
-            > verification-evidence/published-signing-verification.txt 2>&1 || status=$?
+            > verification-evidence/published-repository-signatures.txt 2>&1 || status=$?
+          mapfile -t package_ids < <(jq -er '.packages | if type == "array" and length == 8 then . else error("expected eight package rows") end | .[].package_id' release-evidence/sealed-manifest.json)
+          signature_args=()
+          for package_id in "${package_ids[@]}"; do
+            signature_args+=(--package-id "$package_id")
+          done
+          if [ "$status" -eq 0 ]; then
+            python3 eng/release_contract.py repository-signatures \
+              --transcript verification-evidence/published-repository-signatures.txt \
+              --version "$RELEASE_VERSION" \
+              "${signature_args[@]}" \
+              --output verification-evidence/published-repository-signatures.json || status=$?
+          fi
           if [ "$status" -ne 0 ]; then
             python3 eng/release_evidence.py partial-publish-incident \
               --manifest release-evidence/sealed-manifest.json \
               --output verification-evidence/partial-publish-incident.json \
               --phase post-seal-verification \
               --tag "$RELEASE_TAG"
-            echo "NuGet-served bytes failed independent signature verification." >&2
+            echo "NuGet-served bytes failed independent NuGet.org repository-signature verification." >&2
             exit 1
           fi
 
@@ -469,7 +492,8 @@ jobs:
             --argjson incident "$([ -f verification-evidence/partial-publish-incident.json ] && echo true || echo false)" \
             --argjson manifest "$([ "$(jq -r '.status // ""' verification-evidence/manifest-verification.json 2>/dev/null)" = valid ] && echo true || echo false)" \
             --argjson bytes "$([ "$(jq -r '.status // ""' verification-evidence/published-byte-comparison.json 2>/dev/null)" = verified ] && echo true || echo false)" \
-            '{decision_contract:"frontcomposer.release-ledger-record.v2",tag:$tag,release_run_id:$run,release_run_conclusion:$conclusion,manifest_verified:$manifest,published_bytes_verified:$bytes,partial_publish_incident:$incident,disposition:(if ($manifest and $bytes and ($incident|not)) then "compliant-candidate" else "non-compliant" end)}' \
+            --argjson signatures "$(jq -e '.ok == true and .package_count == 8' verification-evidence/published-repository-signatures.json >/dev/null 2>&1 && echo true || echo false)" \
+            '{decision_contract:"frontcomposer.release-ledger-record.v2",tag:$tag,release_run_id:$run,release_run_conclusion:$conclusion,manifest_verified:$manifest,published_bytes_verified:$bytes,repository_signatures_verified:$signatures,partial_publish_incident:$incident,disposition:(if ($manifest and $bytes and $signatures and ($incident|not)) then "compliant-candidate" else "non-compliant" end)}' \
             > verification-evidence/ledger-record.json
 
       - name: Upload verification evidence artifact

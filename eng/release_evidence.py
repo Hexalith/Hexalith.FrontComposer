@@ -26,8 +26,8 @@ from typing import Any
 # sha256 is computed at prepare-manifest time and embedded in the sealed manifest;
 # `manifest_diagnostics` compares both at verify time so a helper-bytes change without
 # a `__version__` bump produces a `release-definition drift` signal.
-# 3.0.0: operator-dispatch, exact-source CI, and protected-production authorization.
-__version__ = "3.0.0"
+# 4.0.0: unsigned-author candidates with post-publication NuGet.org repository verification.
+__version__ = "4.0.0"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -74,10 +74,11 @@ REQUIRED_ROW_FIELDS = [
     "checksum",
     "symbol_artifact",
     "sbom_component",
-    "signing_status",
     "attestation_status",
     "publish_status",
 ]
+CURRENT_PACKAGE_MEMBERS = set(REQUIRED_ROW_FIELDS) | {"symbol_checksum"}
+LEGACY_SIGNED_PACKAGE_MEMBERS = CURRENT_PACKAGE_MEMBERS | {"signing_status", "timestamp_status"}
 # CR-12-4-P124 (round-6): split release-definition surface from fallback-invalidation
 # surface to close A8/D15. The root `Directory.Packages.props` import shim and the
 # authoritative `references/Hexalith.Builds/Props/Directory.Packages.props` catalog
@@ -88,7 +89,7 @@ REQUIRED_ROW_FIELDS = [
 # in BOTH surfaces and continues to invalidate fallbacks per AC34.
 # CR-12-4-P103 (round-5): added `Directory.Build.targets` and `Directory.Build.props`
 # because they encode symbol-package format, trim/IsTrimmable, and other release-relevant
-# pack/sign policy. Files that are listed but missing on disk are simply skipped by
+# package policy. Files that are listed but missing on disk are simply skipped by
 # `release_definition_fingerprints`.
 # Correct-course 2026-06-29: `deps.nuget.props` is release-definition input because Release
 # builds must consume published Hexalith packages rather than local submodule projects.
@@ -269,9 +270,7 @@ BLOCKING_CHECKS = {
     "redaction_status": {"passed", "sanitized"},
     "sbom_status": "present",
     "semantic_release_state": "matches",
-    "signing_status": "verified",
     "test_status": "passed",
-    "timestamp_status": "verified",
 }
 DANGEROUS_EVIDENCE_PATTERNS = [
     re.compile(r"(?i)bearer\s+[A-Za-z0-9._~+/=-]+"),
@@ -318,7 +317,6 @@ USER_FACING_EVIDENCE_FILES = {
 # relative to the evidence root. Each file is still subject to the per-file size cap
 # in `read_bounded_evidence` and the aggregate cap in CR-12-4-P95.
 USER_FACING_EVIDENCE_GLOBS = (
-    "signing-verification.txt",
     "attestation-unavailable.md",
     "attestations/*.json",
     "sbom/**/*.json",
@@ -1062,7 +1060,6 @@ _INVENTORY_FIRST_COMPONENT_DENYLIST = {
     "artifacts",    # generated docs snippets etc.
     "release-evidence",
     "nupkgs",
-    "nupkgs-signed",
 }
 _INVENTORY_ANY_COMPONENT_DENYLIST = {
     "bin",
@@ -1276,87 +1273,6 @@ def fingerprint_diff(current: dict[str, str], baseline: dict[str, str]) -> list[
     return diagnostics
 
 
-# CR-12-4-P98 (round-5): bound the per-package timestamp region to at most 80 lines
-# (covers worst-case multi-line cert-chain output) so evidence from one package can never
-# bleed into another's status.
-#
-# REL-2/FR24 (2026-07-13): the block model was INVERTED to match the real
-# `dotnet nuget verify --all -v normal` output emitted by the .NET SDK. That output orders
-# each package as:
-#     Verifying <Id>.<Ver>
-#     ... Signature type: Author ...
-#     Timestamp: <mm/dd/yyyy hh:mm:ss>            # present, but carries NO status keyword
-#     Verifying author primary signature's timestamp with timestamping service certificate:
-#     ...
-#     Successfully verified package '<Id>.<Ver>'. # the confirmation comes LAST
-# The prior parser anchored each per-package block at the trailing "Successfully verified"
-# line and scanned FORWARD, so the `Timestamp:` line (which precedes it) fell outside the
-# block and every real, valid RFC 3161 timestamp was scored `missing`. It also required a
-# `verified|valid|trusted|RFC 3161` keyword the SDK never prints on the `Timestamp:` line.
-# The region for a package therefore runs from the previous confirmation (or start of text)
-# up to and including its own confirmation line, and a bare `Timestamp: <value>` line is
-# accepted as evidence unless it carries an explicit failure marker (below).
-_TIMESTAMP_BLOCK_MAX_LINES = 80
-
-# A per-line Timestamp evidence line: real `Timestamp: <datetime>` output, or the older
-# keyworded `Timestamp signature: verified` / `... RFC 3161` forms. `rest` captures the
-# trailing value so a failure timestamp line can be rejected.
-_TIMESTAMP_LINE = re.compile(
-    r"^[ \t]*Timestamp(?:[ \t]+(?:signature|signing[ \t]+certificate))?[: \t]+(?P<rest>\S[^\n]*)",
-    re.IGNORECASE | re.MULTILINE,
-)
-# CR-12-4-P146 (round-7) intent preserved: a `dotnet nuget verify` line such as
-# "Timestamp: invalid certificate" / "Timestamp: untrusted authority" / "Timestamp:
-# unverified" must NOT count as evidence. Because a bare `Timestamp: <value>` is now
-# accepted, the failure words are matched explicitly and reject the line instead.
-_TIMESTAMP_NEGATIVE = re.compile(
-    r"\b(?:invalid|untrusted|unverified|not[ \t]+trusted|expired|revoked|"
-    r"fail(?:ed|ure)?|error|missing|unknown|no[ \t]+timestamp)\b",
-    re.IGNORECASE,
-)
-_SUCCESS_LINE = re.compile(r"Successfully verified package '(.+?)\.(\d+(?:\.[0-9A-Za-z.+\-]+)*)'")
-
-
-def _timestamp_verified_in_region(region: str) -> bool:
-    """Return True when this package's evidence region carries a non-failing Timestamp line.
-
-    The region is truncated to the last _TIMESTAMP_BLOCK_MAX_LINES so unbounded header text
-    preceding the first package cannot be scanned, and cross-package bleed stays contained.
-    """
-    bounded = "\n".join(region.splitlines()[-_TIMESTAMP_BLOCK_MAX_LINES:])
-    for match in _TIMESTAMP_LINE.finditer(bounded):
-        if not _TIMESTAMP_NEGATIVE.search(match.group("rest")):
-            return True
-    return False
-
-
-def parse_signing_verification(text: str, package_ids: list[str] | None = None) -> dict[str, dict[str, str]]:
-    """Parse `dotnet nuget verify --all -v normal` output for per-package status.
-
-    Each `Successfully verified package '<Id>.<Ver>'` confirmation proves the author
-    signature is valid; the RFC 3161 timestamp is scored `verified` only when a non-failing
-    `Timestamp:` line is present in that package's region (a package signed without a
-    timestamp stays `timestamp_status="missing"`). When `package_ids` is supplied only those
-    packable ids are reported. The lazy `(.+?)\\.(\\d+...)` split (CR-12-4-P142/P153) keeps
-    digit-containing ids like `Foo.NET6.1.0.0` attributed correctly, and matching a longer id
-    (`Alpha.Pkg`) is unambiguous because the version anchor forces the boundary.
-    """
-    statuses: dict[str, dict[str, str]] = {}
-    allowed = {p.lower() for p in package_ids} if package_ids else None
-    prev_end = 0
-    for match in _SUCCESS_LINE.finditer(text):
-        region = text[prev_end:match.end()]
-        prev_end = match.end()
-        key = match.group(1).lower()
-        if allowed is not None and key not in allowed:
-            continue
-        statuses[key] = {
-            "signing_status": "verified",
-            "timestamp_status": "verified" if _timestamp_verified_in_region(region) else "missing",
-        }
-    return statuses
-
-
 def deep_merge(base: Any, override: Any) -> Any:
     if isinstance(base, dict) and isinstance(override, dict):
         merged = {k: deep_merge(v, {}) for k, v in base.items()}
@@ -1484,22 +1400,13 @@ def _manifest_v2_diagnostics(
         diagnostics.append("manifest package_set_fingerprint must be a lowercase 64-hex SHA-256")
     packages = manifest.get("packages")
     if isinstance(packages, list):
-        package_members = {
-            "package_id",
-            "version",
-            "commit_sha",
-            "artifact_path",
-            "checksum",
-            "symbol_artifact",
-            "symbol_checksum",
-            "sbom_component",
-            "signing_status",
-            "timestamp_status",
-            "attestation_status",
-            "publish_status",
-        }
         package_ids: set[str] = set()
         for index, row in enumerate(packages):
+            package_members = (
+                LEGACY_SIGNED_PACKAGE_MEMBERS
+                if manifest.get("manifest_schema") == MANIFEST_SCHEMA
+                else CURRENT_PACKAGE_MEMBERS
+            )
             package = _exact_members(row, package_members, f"packages[{index}]", diagnostics)
             if package is None:
                 continue
@@ -1637,33 +1544,28 @@ def manifest_diagnostics(
         for field in REQUIRED_ROW_FIELDS:
             if not row.get(field):
                 diagnostics.append(f"{row.get('package_id', '<unknown>')}: missing {field}")
-        if row.get("signing_status") != "verified":
-            diagnostics.append(f"{row.get('package_id')}: signing not verified")
-        if row.get("timestamp_status") != "verified":
-            diagnostics.append(f"{row.get('package_id')}: timestamp not verified")
+        legacy_signed_row = manifest.get("manifest_schema") == MANIFEST_SCHEMA
+        if legacy_signed_row:
+            if row.get("signing_status") != "verified":
+                diagnostics.append(f"{row.get('package_id')}: legacy author signing not verified")
+            if row.get("timestamp_status") != "verified":
+                diagnostics.append(f"{row.get('package_id')}: legacy author timestamp not verified")
         if row.get("attestation_status") not in {"attested", "approved-unsupported"}:
             diagnostics.append(f"{row.get('package_id')}: attestation state invalid")
         if str(row.get("checksum", "")).startswith("pending-") or not looks_like_sha256(row.get("checksum")):
             diagnostics.append(f"{row.get('package_id')}: checksum must be a concrete sha256")
-        # CR-12-4-P159 (round-7): normalize the artifact path before the unsigned-tree
-        # prefix check. A producer writing `./nupkgs/Foo.nupkg` (leading `./`) does not
-        # start with `nupkgs/` and bypassed the guard; the manifest could then reference
-        # the unsigned-tree directory while still claiming `signing_status=verified`.
-        # CR-12-4-P200 (round-8): the prior `lstrip("./")` treats `.` and `/` as a
-        # CHARACTER set, so `"..//nupkgs/Foo"` collapses to `"nupkgs/Foo"` and a leading
-        # `..` traversal silently bypasses the guard. Separately, the `startswith` was
-        # case-sensitive: `"Nupkgs/Foo.nupkg"` evaded the unsigned-tree check on
-        # case-insensitive filesystems. Strip explicit relative prefixes safely and
-        # lowercase the prefix compare.
         normalized_artifact_path = str(row.get("artifact_path", "")).replace("\\", "/")
-        while normalized_artifact_path.startswith(("./", "../")):
-            normalized_artifact_path = (
-                normalized_artifact_path.split("/", 1)[1]
-                if "/" in normalized_artifact_path
-                else ""
+        artifact_parts = pathlib.PurePosixPath(normalized_artifact_path).parts
+        expected_directory = "nupkgs-signed" if legacy_signed_row else "nupkgs"
+        if (
+            not _valid_path(normalized_artifact_path)
+            or not normalized_artifact_path.endswith(".nupkg")
+            or len(artifact_parts) != 2
+            or artifact_parts[0] != expected_directory
+        ):
+            diagnostics.append(
+                f"{row.get('package_id')}: manifest artifact must be a normalized {expected_directory}/*.nupkg path"
             )
-        if normalized_artifact_path.lower().startswith("nupkgs/"):
-            diagnostics.append(f"{row.get('package_id')}: manifest must reference signed nupkg artifacts")
         if root is not None and root_exists:
             artifact_path = str(row.get("artifact_path", ""))
             # CR-12-4-P93 (round-5): the symlink-rejection check MUST happen on the
@@ -1850,9 +1752,9 @@ def _file_matches_evidence_glob(rel_path: pathlib.PurePosixPath) -> bool:
 
     CR-12-4-P151 (round-7): the basename allowlist branch is now also anchored to
     depth-1 (`rel_path.parent == PurePosixPath("")`). Previously any file whose
-    BASENAME matched `signing-verification.txt`/`partial-publish-incident.json`/etc.
+    BASENAME matched `partial-publish-incident.json` and other evidence names.
     was scanned regardless of depth, so an SBOM tool writing
-    `release-evidence/sbom/signing-verification.txt` would be folded into the
+    `release-evidence/sbom/partial-publish-incident.json` would be folded into the
     aggregate evidence and produce spurious blocked classifications.
     """
     name = rel_path.name
@@ -1893,8 +1795,8 @@ def _file_matches_evidence_glob(rel_path: pathlib.PurePosixPath) -> bool:
 def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
     """Scan evidence files for redaction. Per-file cap + aggregate cap fail closed.
 
-    CR-12-4-P94 (round-5): the allowlist now covers `signing-verification.txt`,
-    `attestation-unavailable.md`, attestation bundle JSON, and SBOM CycloneDX JSON in
+    CR-12-4-P94 (round-5): the allowlist covers `attestation-unavailable.md`,
+    attestation bundle JSON, and SBOM CycloneDX JSON in
     addition to the user-facing helper outputs.
     CR-12-4-P95 (round-5): an aggregate cap (`EVIDENCE_AGGREGATE_BYTES`) caps the total
     text scanned, so a pathological evidence directory cannot blow up the canonical hash
@@ -1928,7 +1830,7 @@ def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
             # CR-12-4-P125 (round-6): compute the relative path WITHOUT `.resolve()` so
             # the glob decision is made on the symlink's own name, not the target it
             # may point to. Combined with the `is_symlink()` rejection below, this
-            # prevents a symlink at e.g. `signing-verification.txt` pointing to
+            # prevents a symlink at e.g. `partial-publish-incident.json` pointing to
             # `junk.bin` from bypassing the redaction scan (target name `junk.bin`
             # would not match the allowlist glob).
             try:
@@ -2030,11 +1932,6 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
         diagnostics.extend(helper_diagnostics)
 
     manifest_rows = manifest.get("packages", []) if isinstance(manifest, dict) else []
-    signing_status = args.signing_status
-    timestamp_status = args.timestamp_status
-    if isinstance(manifest_rows, list) and manifest_rows:
-        signing_status = "verified" if all(row.get("signing_status") == "verified" for row in manifest_rows if isinstance(row, dict)) else "missing"
-        timestamp_status = "verified" if all(row.get("timestamp_status") == "verified" for row in manifest_rows if isinstance(row, dict)) else "missing"
 
     sbom_hash = manifest.get("sbom_hash") if isinstance(manifest, dict) else None
     sbom_status = args.sbom_status
@@ -2106,10 +2003,8 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
         "release_definition_drift": release_definition_drift,
         "sbom_status": sbom_status,
         "semantic_release_state": args.semantic_release_state,
-        "signing_status": signing_status,
         "test_count": coerced_test_count,
         "test_status": "passed" if test_payload.get("status", args.test_status) == "valid" else test_payload.get("status", args.test_status),
-        "timestamp_status": timestamp_status,
         "trx_present": trx_present_parsed,
     }, diagnostics
 
@@ -2354,8 +2249,7 @@ def fallback_complete(
     # `approved_at` values (>5 min in future) but the original code accepted any past
     # value — `0001-01-01T00:00:00Z` would satisfy structural completeness. Document
     # WHEN the owner accepted the risk requires the timestamp to be (a) before
-    # `expires_at`, and (b) within the last 365 days (operationally a 1-year approval
-    # window matches the typical signing-cert lifetime).
+    # `expires_at`, and (b) within the last 365 days (a bounded one-year approval window).
     # CR-12-4-Def102: the approved_at < expires_at ordering invariant is checked BEFORE
     # the expiry-in-the-past check so the precise "approved_at must be before expires_at"
     # diagnostic fires on an `approved_at == expires_at` operator footgun even when both
@@ -3307,36 +3201,10 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         sbom_hash = next((v for k, v in checksums_by_path.items() if k.startswith("release-evidence/sbom/")), "")
     if not looks_like_sha256(sbom_hash):
         diagnostics.append("sbom checksum evidence is required before sealing the manifest")
-    # Parse per-package signing/timestamp evidence from `dotnet nuget verify --all` output.
-    # A package is marked verified only when the verification text names it as successful.
-    verification_statuses: dict[str, dict[str, str]] = {}
-    packable_package_ids = [
-        str(row.get("package_id", ""))
-        for row in inventory_payload.get("rows", [])
-        if isinstance(row, dict) and row.get("packable") and row.get("package_id")
-    ]
-    # CR-12-4-P107 (round-5): route both `--signing-verification` and
-    # `--attestation-bundle` through `normalize_under_root` so an attacker (or a
-    # misconfigured operator) cannot point them at any readable file outside the
-    # release-evidence root.
+    # Route the optional attestation bundle through `normalize_under_root` so an
+    # attacker (or a misconfigured operator) cannot point it at a readable file
+    # outside the release-evidence root.
     prepare_root = pathlib.Path(args.root) if getattr(args, "root", None) else pathlib.Path(".")
-    if args.signing_verification:
-        try:
-            verification_path = normalize_under_root(prepare_root, args.signing_verification)
-        except SystemExit as exc:
-            diagnostics.append(f"signing verification path invalid: {sanitize(exc)}")
-            verification_path = None
-        if verification_path is None:
-            pass  # diagnostic already appended
-        elif not verification_path.exists():
-            diagnostics.append(f"signing verification evidence is missing: {sanitize(str(verification_path))}")
-        else:
-            verification_text = verification_path.read_text(encoding="utf-8", errors="replace")
-            verification_statuses = parse_signing_verification(verification_text, packable_package_ids)
-            if not verification_statuses:
-                diagnostics.append("signing verification evidence did not name any verified package")
-    else:
-        diagnostics.append("signing verification evidence is required before sealing the manifest")
     attestation_bundle: dict[str, str] | None = None
     if args.attestation_status == "attested":
         if not args.attestation_bundle:
@@ -3374,11 +3242,11 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         if not row.get("packable"):
             continue
         package_id = row["package_id"]
-        nupkg = f"nupkgs-signed/{package_id}.{args.version}.nupkg"
+        nupkg = f"nupkgs/{package_id}.{args.version}.nupkg"
         snupkg = f"nupkgs/{package_id}.{args.version}.snupkg"
         checksum = checksums_by_path.get(nupkg, "")
         if not looks_like_sha256(checksum):
-            diagnostics.append(f"{package_id}: signed package checksum is missing")
+            diagnostics.append(f"{package_id}: sealed package checksum is missing")
         # REL-3 review BH-1/VG-3 (2026-07-18): the symbol hash is SEALED into the
         # manifest row. Publishers and verifiers previously compared .snupkg bytes
         # against checksums.json, a side file the seal never covered — a post-seal
@@ -3387,13 +3255,6 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         symbol_checksum = checksums_by_path.get(snupkg, "") if row.get("symbol_required") else "not-required"
         if row.get("symbol_required") and not looks_like_sha256(symbol_checksum):
             diagnostics.append(f"{package_id}: symbol package checksum is missing")
-        verification = verification_statuses.get(package_id.lower(), {})
-        signing_status = verification.get("signing_status", "missing")
-        timestamp_status = verification.get("timestamp_status", "missing")
-        if signing_status != "verified":
-            diagnostics.append(f"{package_id}: signing not verified in signing-verification evidence")
-        if timestamp_status != "verified":
-            diagnostics.append(f"{package_id}: timestamp not verified in signing-verification evidence")
         packages.append({
             "package_id": package_id,
             "version": args.version,
@@ -3403,13 +3264,11 @@ def prepare_manifest(args: argparse.Namespace) -> int:
             "symbol_artifact": snupkg if row.get("symbol_required") else row.get("exception", "not-required"),
             "symbol_checksum": symbol_checksum,
             "sbom_component": package_id,
-            "signing_status": signing_status,
-            "timestamp_status": timestamp_status,
             "attestation_status": args.attestation_status,
             "publish_status": "pending",
         })
     manifest = {
-        "manifest_schema": CURRENT_MANIFEST_SCHEMA if args.source_proof else MANIFEST_SCHEMA,
+        "manifest_schema": CURRENT_MANIFEST_SCHEMA,
         "commit_sha": commit_sha,
         "tag": args.tag,
         "run_id": args.run_id,
@@ -4015,7 +3874,6 @@ def main() -> int:
     prep.add_argument("--benchmark-summary-hash", default="")
     prep.add_argument("--attestation-status", default=os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported"))
     prep.add_argument("--attestation-bundle", default="")
-    prep.add_argument("--signing-verification", default="")
     prep.add_argument("--diagnostics-output")
     prep.set_defaults(func=prepare_manifest)
 
@@ -4094,7 +3952,7 @@ def main() -> int:
     classify.add_argument("--fallback-evidence", default="attestation-unavailable.md")
     classify.add_argument("--fallback-expires-at", default=os.environ.get("RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT", ""))
     classify.add_argument("--fallback-reason", default="GitHub artifact attestations unavailable in this repository context")
-    classify.add_argument("--fallback-release-note-impact", default="Release notes must mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.")
+    classify.add_argument("--fallback-release-note-impact", default="Release notes must mention checksum, SBOM, commit, tag, run, workflow provenance, and post-publication NuGet.org repository-signature verification without GitHub attestation.")
     classify.add_argument("--fallback-reopen-event", default="GitHub artifact attestations become available or release evidence contract changes")
     classify.add_argument("--fallback-scope", default="current release attempt")
     classify.add_argument("--fallback-approved-against-fingerprints-sha256", default=os.environ.get("RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256", ""))
@@ -4111,10 +3969,8 @@ def main() -> int:
     classify.add_argument("--release-definition-drift", default="false")
     classify.add_argument("--sbom-status", default="missing")
     classify.add_argument("--semantic-release-state", default="missing")
-    classify.add_argument("--signing-status", default="missing")
     classify.add_argument("--test-count", type=int, default=0)
     classify.add_argument("--test-status", default="missing")
-    classify.add_argument("--timestamp-status", default="missing")
     classify.add_argument("--trx-present", default="false")
     classify.set_defaults(func=classify_release)
 

@@ -12,6 +12,7 @@ import pathlib
 import subprocess
 import tempfile
 import unittest
+import zipfile
 
 
 REPOSITORY_ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -98,7 +99,7 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
             "builds_identity": "github.com/hexalith/hexalith.builds",
             "trusted_identities": [
                 {"identity": ROOT_IDENTITY, "local_path": "."},
-                {"identity": "github.com/hexalith/hexalith.builds", "local_path": "builds"},
+                {"identity": "github.com/hexalith/hexalith.builds", "local_path": "references/Hexalith.Builds"},
             ],
             "semantic_profiles": {
                 ROOT_IDENTITY: "fixture-profile",
@@ -153,6 +154,26 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
             if not path.exists():
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(f"fixture for {relative}\n", encoding="utf-8")
+        self.builds_root = self.root / "references/Hexalith.Builds"
+        builds_workflow = self.builds_root / ".github/workflows/domain-release.yml"
+        builds_workflow.parent.mkdir(parents=True, exist_ok=True)
+        builds_workflow.write_text("name: fixture domain release\n", encoding="utf-8")
+        for command in (
+            ("init", "-q"),
+            ("config", "user.email", "manifest-v3-builds@example.test"),
+            ("config", "user.name", "Manifest V3 Builds Fixture"),
+            ("add", "."),
+            ("commit", "-q", "-m", "test: seed Builds release workflow"),
+        ):
+            result = _run("git", *command, cwd=self.builds_root)
+            self.assertEqual(0, result.returncode, result.stderr)
+        self.builds_commit = _run("git", "rev-parse", "HEAD", cwd=self.builds_root).stdout.strip()
+        (self.root / ".gitmodules").write_text(
+            '[submodule "references/Hexalith.Builds"]\n'
+            "\tpath = references/Hexalith.Builds\n"
+            "\turl = https://github.com/Hexalith/Hexalith.Builds.git\n",
+            encoding="utf-8",
+        )
         self._git("add", ".")
         self._git("commit", "-q", "-m", "test: stage exact manifest candidate")
         self.commit = self._git("rev-parse", "HEAD").stdout.strip()
@@ -203,7 +224,6 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         signed = self.root / f"nupkgs-signed/{package_id}.{version}.nupkg"
         symbol = self.root / f"nupkgs/{package_id}.{version}.snupkg"
         sbom = self.root / "release-evidence/sbom.json"
-        signing = self.root / "release-evidence/signing-verification.txt"
         for path, data in (
             (signed, b"signed package"),
             (symbol, b"symbol package"),
@@ -211,86 +231,48 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         ):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(data)
-        signing.write_text(
-            "\n".join(
-                (
-                    f"Verifying {package_id}.{version}",
-                    "Timestamp: 08/02/2026 12:00:00",
-                    f"Successfully verified package '{package_id}.{version}'.",
-                )
-            ),
-            encoding="utf-8",
-        )
-        inventory = self.root / "release-evidence/package-inventory.json"
-        checksums = self.root / "release-evidence/checksums.json"
+        handoff = self.root / "release-evidence/dependency-release-handoff.json"
+        _write_json(handoff, self.handoff)
+        pre_manifest = self.root / "release-evidence/pre-manifest.json"
+        handoff_hash = hashlib.sha256(handoff.read_bytes()).hexdigest()
         _write_json(
-            inventory,
+            pre_manifest,
             {
-                "rows": [
+                "manifest_schema": HELPER.MANIFEST_SCHEMA,
+                "commit_sha": self.commit,
+                "tag": f"v{version}",
+                "run_id": "42",
+                "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/heads/main",
+                "sbom_hash": hashlib.sha256(sbom.read_bytes()).hexdigest(),
+                "benchmark_summary_hash": "f" * 64,
+                "packages": [
                     {
                         "package_id": package_id,
-                        "packable": True,
-                        "symbol_required": True,
-                        "exception": "not-required",
+                        "version": version,
+                        "commit_sha": self.commit,
+                        "artifact_path": str(signed.relative_to(self.root)),
+                        "checksum": hashlib.sha256(signed.read_bytes()).hexdigest(),
+                        "symbol_artifact": str(symbol.relative_to(self.root)),
+                        "symbol_checksum": hashlib.sha256(symbol.read_bytes()).hexdigest(),
+                        "sbom_component": package_id,
+                        "signing_status": "verified",
+                        "timestamp_status": "verified",
+                        "attestation_status": "approved-unsupported",
+                        "publish_status": "pending",
                     }
-                ]
+                ],
+                "release_definition_fingerprints": HELPER.release_definition_fingerprints(self.root),
+                "package_set_fingerprint": HELPER.package_set_fingerprint(self.root),
+                "helper_version": HELPER.helper_version_record(),
+                "dependency_graph": self.graph,
+                "dependency_policy": self.policy_projection,
+                "workflow_provenance": HELPER._workflow_provenance(
+                    self.handoff,
+                    handoff_hash,
+                    RELEASE_EVALUATOR,
+                ),
             },
         )
-        _write_json(
-            checksums,
-            {
-                "files": [
-                    {"path": str(signed.relative_to(self.root)), "sha256": hashlib.sha256(signed.read_bytes()).hexdigest()},
-                    {"path": str(symbol.relative_to(self.root)), "sha256": hashlib.sha256(symbol.read_bytes()).hexdigest()},
-                    {"path": str(sbom.relative_to(self.root)), "sha256": hashlib.sha256(sbom.read_bytes()).hexdigest()},
-                ]
-            },
-        )
-        handoff = self.root / "release-evidence/dependency-release-handoff.json"
-        release_evaluator = self.root / "release-evidence/release-evaluator.json"
-        _write_json(handoff, self.handoff)
-        _write_json(release_evaluator, RELEASE_EVALUATOR)
-        pre_manifest = self.root / "release-evidence/pre-manifest.json"
-        diagnostics = self.root / "release-evidence/manifest-diagnostics.json"
-        result = _run(
-            "python3",
-            str(REPOSITORY_ROOT / "eng/release_evidence.py"),
-            "prepare-manifest",
-            "--inventory",
-            str(inventory),
-            "--checksums",
-            str(checksums),
-            "--output",
-            str(pre_manifest),
-            "--diagnostics-output",
-            str(diagnostics),
-            "--version",
-            version,
-            "--root",
-            str(self.root),
-            "--graph-root",
-            str(self.root),
-            "--commit-sha",
-            self.commit,
-            "--tag",
-            f"v{version}",
-            "--run-id",
-            "42",
-            "--workflow-ref",
-            "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/heads/main",
-            "--sbom-hash",
-            hashlib.sha256(sbom.read_bytes()).hexdigest(),
-            "--benchmark-summary-hash",
-            "f" * 64,
-            "--signing-verification",
-            str(signing.relative_to(self.root)),
-            "--ci-handoff",
-            str(handoff),
-            "--release-evaluator",
-            str(release_evaluator),
-            cwd=REPOSITORY_ROOT,
-        )
-        self.assertEqual(0, result.returncode, diagnostics.read_text(encoding="utf-8") if diagnostics.exists() else result.stderr)
         sealed_manifest = self.root / "release-evidence/sealed-manifest.json"
         seal = _run(
             "python3",
@@ -327,6 +309,129 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
                 cwd=REPOSITORY_ROOT,
             )
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+
+    def test_historical_v2_cannot_be_reinterpreted_as_unsigned_current_evidence(self) -> None:
+        _, sealed = self._prepare()
+        payload = json.loads(sealed.read_text(encoding="utf-8"))
+        payload.pop("seal")
+        row = payload["packages"][0]
+        row["artifact_path"] = row["artifact_path"].replace("nupkgs-signed/", "nupkgs/")
+        row.pop("signing_status")
+        row.pop("timestamp_status")
+        payload["seal"] = {
+            "algorithm": "sha256",
+            "hash": HELPER.canonical_sha256(payload),
+            "sealed_at": "2026-08-04T00:00:00+00:00",
+        }
+        malformed = self.root / "release-evidence/malformed-legacy-v2.json"
+        _write_json(malformed, payload)
+        result = _run(
+            "python3",
+            str(REPOSITORY_ROOT / "eng/release_evidence.py"),
+            "verify-manifest",
+            "--manifest", str(malformed),
+            "--no-root",
+            cwd=REPOSITORY_ROOT,
+        )
+        self.assertEqual(1, result.returncode)
+        self.assertIn("signing_status", result.stdout)
+
+    def test_current_prepare_uses_unsigned_candidate_without_author_signing_input(self) -> None:
+        package_id = "Hexalith.FrontComposer.Contracts"
+        version = "2.0.0"
+        package = self.root / f"nupkgs/{package_id}.{version}.nupkg"
+        symbol = self.root / f"nupkgs/{package_id}.{version}.snupkg"
+        sbom = self.root / "release-evidence/sbom.json"
+        package.parent.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr(f"{package_id}.nuspec", b"<package />")
+            archive.writestr(f"lib/net10.0/{package_id}.dll", b"unsigned candidate")
+        for path, content in ((symbol, b"symbols"), (sbom, b"{}")):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(content)
+        inventory = self.root / "release-evidence/package-inventory.json"
+        checksums = self.root / "release-evidence/checksums.json"
+        output = self.root / "release-evidence/current-pre-manifest.json"
+        diagnostics = self.root / "release-evidence/current-diagnostics.json"
+        _write_json(inventory, {"rows": [{
+            "package_id": package_id,
+            "packable": True,
+            "symbol_required": True,
+            "exception": "not-required",
+        }]})
+        _write_json(checksums, {"files": [
+            {"path": str(package.relative_to(self.root)), "sha256": hashlib.sha256(package.read_bytes()).hexdigest()},
+            {"path": str(symbol.relative_to(self.root)), "sha256": hashlib.sha256(symbol.read_bytes()).hexdigest()},
+            {"path": str(sbom.relative_to(self.root)), "sha256": hashlib.sha256(sbom.read_bytes()).hexdigest()},
+        ]})
+        source_proof = self.root / "release-evidence/dependency-release-source.json"
+        _write_json(source_proof, {
+            "schema": HELPER._load_dependency_handoff_engine().SOURCE_PROOF_SCHEMA,
+            "run": {
+                "repository": ROOT_IDENTITY,
+                "workflow_path": HELPER.CI_WORKFLOW_PATH,
+                "run_id": 42,
+                "run_attempt": 1,
+                "event": "push",
+                "branch": "main",
+                "candidate": self.commit,
+            },
+            "revisions": {"base": self.base, "candidate": self.commit},
+            "dependency_policy": self.policy_projection,
+            "dependency_graph": self.graph,
+        })
+
+        result = _run(
+            "python3",
+            str(REPOSITORY_ROOT / "eng/release_evidence.py"),
+            "prepare-manifest",
+            "--inventory", str(inventory),
+            "--checksums", str(checksums),
+            "--output", str(output),
+            "--diagnostics-output", str(diagnostics),
+            "--version", version,
+            "--root", str(self.root),
+            "--graph-root", str(self.root),
+            "--commit-sha", self.commit,
+            "--source-proof", str(source_proof),
+            "--builds-execution-sha", self.builds_commit,
+            "--tag", f"v{version}",
+            "--run-id", "42",
+            "--workflow-ref", "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/heads/main",
+            "--sbom-hash", hashlib.sha256(sbom.read_bytes()).hexdigest(),
+            "--benchmark-summary-hash", "f" * 64,
+            cwd=REPOSITORY_ROOT,
+        )
+
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        payload = json.loads(output.read_text(encoding="utf-8"))
+        self.assertEqual(HELPER.CURRENT_MANIFEST_SCHEMA, payload["manifest_schema"])
+        self.assertEqual(f"nupkgs/{package_id}.{version}.nupkg", payload["packages"][0]["artifact_path"])
+        self.assertNotIn("signing_status", payload["packages"][0])
+        self.assertNotIn("timestamp_status", payload["packages"][0])
+        self.assertEqual(hashlib.sha256(package.read_bytes()).hexdigest(), payload["packages"][0]["checksum"])
+        self.assertFalse(diagnostics.exists())
+
+        sealed = self.root / "release-evidence/current-sealed-manifest.json"
+        seal = _run(
+            "python3",
+            str(REPOSITORY_ROOT / "eng/release_evidence.py"),
+            "seal-manifest",
+            "--manifest", str(output),
+            "--output", str(sealed),
+            cwd=REPOSITORY_ROOT,
+        )
+        self.assertEqual(0, seal.returncode, seal.stdout + seal.stderr)
+        for mode in (("--no-root",), ("--root", str(self.root), "--graph-root", str(self.root))):
+            verified = _run(
+                "python3",
+                str(REPOSITORY_ROOT / "eng/release_evidence.py"),
+                "verify-manifest",
+                "--manifest", str(sealed),
+                *mode,
+                cwd=REPOSITORY_ROOT,
+            )
+            self.assertEqual(0, verified.returncode, verified.stdout + verified.stderr)
 
     def test_offline_accepts_structural_graph_but_live_rejects_exact_graph_drift(self) -> None:
         _, sealed = self._prepare()
@@ -418,12 +523,22 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
             "builds_execution_sha": builds_sha,
         }
         payload["manifest_schema"] = HELPER.CURRENT_MANIFEST_SCHEMA
+        for package in payload["packages"]:
+            package["artifact_path"] = package["artifact_path"].replace("nupkgs-signed/", "nupkgs/")
+            package.pop("signing_status")
+            package.pop("timestamp_status")
         payload["workflow_provenance"] = {
             "ci": ci,
             "release": release,
             "definition_digest": HELPER.canonical_sha256({"ci": ci, "release": release}),
         }
         self.assertEqual([], HELPER._manifest_v2_diagnostics(payload, require_seal=False))
+        nested = copy.deepcopy(payload)
+        nested["packages"][0]["artifact_path"] = nested["packages"][0]["artifact_path"].replace(
+            "nupkgs/", "nupkgs/nested/",
+        )
+        nested_diagnostics = HELPER.manifest_diagnostics(nested, enforce_v2=True)
+        self.assertTrue(any("normalized nupkgs/*.nupkg" in item for item in nested_diagnostics), nested_diagnostics)
         drifted = copy.deepcopy(payload)
         drifted["workflow_provenance"]["release"]["builds_execution_sha"] = "f" * 40
         diagnostics = HELPER._manifest_v2_diagnostics(drifted, require_seal=False)

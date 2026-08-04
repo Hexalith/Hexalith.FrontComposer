@@ -304,9 +304,10 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **CI** (`ci.yml`, push/PR to `main`): commitlint · Gate 1 (Contracts on netstandard2.0) · Gate 2
   (full solution Release) · CLI pack+smoke · Governance & Contract tests · docs validation · unit+bUnit
   coverage · a11y/visual. Verify locally before pushing: `dotnet build -c Release` clean + default lane green
-- **Release** (`release.yml`, merge to `main`): semantic-release → build/pack/**sign**/SBOM/evidence
-  → publish signed `.nupkg`+`.snupkg` to nuget.org + GitHub Release. `RELEASE_DRY_RUN` defaults
-  **true** (rehearsal); `eng/release-package-inventory.json` pins the exact expected package set
+- **Release** (`release.yml`, operator dispatch from exact green `main`): semantic-release →
+  build/pack/SBOM/evidence → publish the sealed unsigned `.nupkg`+`.snupkg` candidate to nuget.org +
+  GitHub Release → verify NuGet.org repository signatures and non-signature package-content equality.
+  `eng/release-package-inventory.json` pins the exact expected package set
 
 ### Critical Don't-Miss Rules
 
