@@ -173,8 +173,8 @@ public sealed class Story12_4_RedPhaseDefTests {
         //
         // F5 (Story 12.4 test review): the unsealed manifest below passes EVERY OTHER
         // manifest-diagnostics axis under --no-root — all top-level fields are concrete,
-        // the single package row has all current REQUIRED_ROW_FIELDS with attestation
-        // set to `attested`, and the seal is computed by
+        // the single legacy-v2 package row has its required author-signing, timestamp,
+        // and attestation states, and the seal is computed by
         // the helper itself via `seal-manifest`. The ONLY failing axis is
         // `release_definition_fingerprints: {}`. Today the fingerprints check is gated by
         // `root is not None`, so `verify-manifest --no-root` exits 0 → the first assertion
@@ -264,6 +264,8 @@ public sealed class Story12_4_RedPhaseDefTests {
                       "symbol_artifact": "nupkgs/Hexalith.FrontComposer.Cli.1.2.3.snupkg",
                       "symbol_checksum": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
                       "sbom_component": "Hexalith.FrontComposer.Cli@1.2.3",
+                      "signing_status": "verified",
+                      "timestamp_status": "verified",
                       "attestation_status": "attested",
                       "publish_status": "pending"
                     }
