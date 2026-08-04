@@ -162,14 +162,12 @@ jobs:
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '24'
-      - name: Install and authenticate release tooling
+      - name: Install release tooling
         run: |
           npm ci
           npm audit signatures
       - name: Compute release decision without publication side effects
         id: plan
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           node eng/semantic-release-plan.mjs > release-plan.json

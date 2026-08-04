@@ -7,7 +7,11 @@ import copy
 import contextlib
 import io
 import json
+import os
 import pathlib
+import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -17,6 +21,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "eng"))
 
 import release_contract as rc  # noqa: E402
+
+PLANNER = ROOT / "eng" / "semantic-release-plan.mjs"
+WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
 
 
 class ReleaseContractTests(unittest.TestCase):
@@ -225,6 +232,270 @@ class ReleaseContractTests(unittest.TestCase):
             self.assertTrue(payload["ok"])
             self.assertEqual(8, payload["package_count"])
             self.assertEqual(package_ids, payload["packages"])
+
+    def test_release_planner_computes_releasable_version_without_external_origin(self) -> None:
+        result, temporary_entries, trace = self._run_planner_fixture("fix: correct behavior")
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('{"release_required":true,"version":"1.0.1"}\n', result.stdout)
+        self.assertEqual([], temporary_entries)
+        self.assertNotIn("forbidden-external-origin.git", json.dumps(trace, sort_keys=True))
+
+    def test_release_planner_reports_no_release_without_external_origin(self) -> None:
+        result, temporary_entries, trace = self._run_planner_fixture("docs: explain behavior")
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual('{"release_required":false,"version":null}\n', result.stdout)
+        self.assertEqual([], temporary_entries)
+        self.assertNotIn("forbidden-external-origin.git", json.dumps(trace, sort_keys=True))
+
+    def test_release_planner_preserves_minor_and_major_version_rules(self) -> None:
+        cases = (
+            ("feat: add behavior", "1.1.0"),
+            ("feat!: replace behavior\n\nBREAKING CHANGE: replace the contract", "2.0.0"),
+        )
+        for message, version in cases:
+            with self.subTest(message=message):
+                result, temporary_entries, trace = self._run_planner_fixture(message)
+
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertEqual(
+                    f'{{"release_required":true,"version":"{version}"}}\n',
+                    result.stdout,
+                )
+                self.assertEqual([], temporary_entries)
+                self.assertNotIn(
+                    "forbidden-external-origin.git",
+                    json.dumps(trace, sort_keys=True),
+                )
+
+    def test_release_planner_rejects_shallow_history_and_cleans_temporary_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            source, _ = self._create_planner_repository(root, "fix: correct behavior")
+            shallow = root / "shallow"
+            planner_temporary = root / "planner-temporary"
+            trace_path = root / "git-trace.json"
+            planner_temporary.mkdir()
+            self._run_git(
+                root,
+                "clone",
+                "--quiet",
+                "--depth",
+                "1",
+                "--branch",
+                "main",
+                source.as_uri(),
+                str(shallow),
+            )
+            candidate = self._git_output(shallow, "rev-parse", "HEAD")
+
+            result = subprocess.run(
+                ["node", str(PLANNER)],
+                cwd=shallow,
+                check=False,
+                capture_output=True,
+                text=True,
+                env=self._planner_environment(planner_temporary, trace_path, candidate),
+            )
+
+            self.assertNotEqual(0, result.returncode)
+            self.assertEqual("", result.stdout)
+            self.assertIn("complete non-shallow Git history and tags", result.stderr)
+            self.assertEqual([], list(planner_temporary.iterdir()))
+            self._read_trace(trace_path)
+
+    def test_release_planner_setup_failure_emits_no_plan_and_cleans_temporary_mirror(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            working = root / "not-a-repository"
+            planner_temporary = root / "planner-temporary"
+            working.mkdir()
+            planner_temporary.mkdir()
+            env = self._planner_environment(planner_temporary, root / "git-trace.json")
+
+            result = subprocess.run(
+                ["node", str(PLANNER)],
+                cwd=working,
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertNotEqual(0, result.returncode)
+            self.assertEqual("", result.stdout)
+            self.assertNotEqual("", result.stderr)
+            self.assertEqual([], list(planner_temporary.iterdir()))
+
+    def test_release_planner_post_clone_failure_cleans_populated_mirror(self) -> None:
+        if os.name == "nt":
+            self.skipTest("the injected Git executable is a POSIX test fixture")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            repository, candidate = self._create_planner_repository(root, "fix: correct behavior")
+            planner_temporary = root / "planner-temporary"
+            trace_path = root / "git-trace.json"
+            wrapper_directory = root / "git-wrapper"
+            planner_temporary.mkdir()
+            wrapper_directory.mkdir()
+            real_git = shutil.which("git")
+            self.assertIsNotNone(real_git)
+            wrapper = wrapper_directory / "git"
+            wrapper.write_text(
+                "#!/usr/bin/env python3\n"
+                "import os\n"
+                "import sys\n"
+                f"real_git = {real_git!r}\n"
+                "if 'update-ref' in sys.argv[1:]:\n"
+                "    raise SystemExit(42)\n"
+                "os.execv(real_git, [real_git, *sys.argv[1:]])\n",
+                encoding="utf-8",
+            )
+            wrapper.chmod(0o755)
+            env = self._planner_environment(planner_temporary, trace_path, candidate)
+            env["PATH"] = f"{wrapper_directory}{os.pathsep}{env['PATH']}"
+
+            result = subprocess.run(
+                ["node", str(PLANNER)],
+                cwd=repository,
+                check=False,
+                capture_output=True,
+                text=True,
+                env=env,
+            )
+
+            self.assertNotEqual(0, result.returncode)
+            self.assertEqual("", result.stdout)
+            self.assertIn("update-ref", result.stderr)
+            self.assertEqual([], list(planner_temporary.iterdir()))
+            self._read_trace(trace_path)
+
+    def test_release_planner_and_workflow_keep_planning_tokenless_and_read_only(self) -> None:
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        workflow_preamble = workflow.split("\njobs:\n", 1)[0]
+        plan_job = workflow.split("\n  plan-release:\n", 1)[1].split(
+            "\n  prepare-candidate:\n", 1
+        )[0]
+        planner = PLANNER.read_text(encoding="utf-8")
+
+        self.assertNotIn("GITHUB_TOKEN", workflow_preamble)
+        self.assertNotIn("GH_TOKEN", workflow_preamble)
+        self.assertIn("permissions:\n      contents: read", plan_job)
+        self.assertIn("fetch-depth: 0", plan_job)
+        self.assertIn("persist-credentials: false", plan_job)
+        self.assertIn("- name: Install release tooling", plan_job)
+        self.assertNotIn("authenticate", plan_job.lower())
+        self.assertNotIn("GITHUB_TOKEN", plan_job)
+        self.assertNotIn("GH_TOKEN", plan_job)
+        self.assertNotIn("${{ github.token }}", plan_job)
+        self.assertIn("delete plannerEnvironment.GITHUB_TOKEN", planner)
+        self.assertIn("delete plannerEnvironment.GH_TOKEN", planner)
+        self.assertIn("repositoryUrl: pathToFileURL(mirrorPath).href", planner)
+        self.assertEqual(
+            {
+                "@semantic-release/commit-analyzer",
+                "@semantic-release/release-notes-generator",
+            },
+            set(re.findall(r'"(@semantic-release/[^"]+)"', planner)),
+        )
+
+    def _run_planner_fixture(
+        self,
+        change_message: str,
+    ) -> tuple[subprocess.CompletedProcess[str], list[pathlib.Path], list[dict[str, object]]]:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            repository, candidate = self._create_planner_repository(root, change_message)
+            planner_temporary = root / "planner-temporary"
+            trace_path = root / "git-trace.json"
+            planner_temporary.mkdir()
+            self._git(repository, "checkout", "--quiet", "--detach", candidate)
+            self._git(repository, "branch", "--force", "main", "v1.0.0")
+            self._git(repository, "remote", "add", "origin", "file:///forbidden-external-origin.git")
+
+            result = subprocess.run(
+                ["node", str(PLANNER)],
+                cwd=repository,
+                check=False,
+                capture_output=True,
+                text=True,
+                env=self._planner_environment(planner_temporary, trace_path, candidate),
+            )
+            temporary_entries = list(planner_temporary.iterdir())
+            trace = self._read_trace(trace_path)
+            return result, temporary_entries, trace
+
+    @staticmethod
+    def _planner_environment(
+        temporary: pathlib.Path,
+        trace_path: pathlib.Path,
+        candidate: str | None = None,
+    ) -> dict[str, str]:
+        env = os.environ.copy()
+        env["GH_TOKEN"] = "forbidden-gh-token"
+        env["GITHUB_TOKEN"] = "forbidden-github-token"
+        env["GITHUB_ACTION"] = "release-plan-test"
+        env["GITHUB_ACTIONS"] = "true"
+        env["GITHUB_EVENT_NAME"] = "workflow_dispatch"
+        env["GITHUB_REF"] = "refs/heads/main"
+        env["GITHUB_REF_NAME"] = "main"
+        if candidate is not None:
+            env["GITHUB_SHA"] = candidate
+        env["TMPDIR"] = str(temporary)
+        env["GIT_TRACE2_EVENT"] = str(trace_path)
+        return env
+
+    @classmethod
+    def _create_planner_repository(
+        cls,
+        root: pathlib.Path,
+        change_message: str,
+    ) -> tuple[pathlib.Path, str]:
+        repository = root / "repository"
+        repository.mkdir()
+        cls._git(repository, "init", "--quiet", "-b", "main")
+        cls._git(repository, "config", "user.email", "test@example.com")
+        cls._git(repository, "config", "user.name", "Test")
+        (repository / "fixture.txt").write_text("initial\n", encoding="utf-8")
+        cls._git(repository, "add", "fixture.txt")
+        cls._git(repository, "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", "feat: initial")
+        cls._git(repository, "tag", "v1.0.0")
+        (repository / "fixture.txt").write_text("changed\n", encoding="utf-8")
+        cls._git(repository, "add", "fixture.txt")
+        cls._git(repository, "-c", "commit.gpgsign=false", "commit", "--quiet", "-m", change_message)
+        return repository, cls._git_output(repository, "rev-parse", "HEAD")
+
+    @staticmethod
+    def _read_trace(trace_path: pathlib.Path) -> list[dict[str, object]]:
+        if not trace_path.is_file():
+            raise AssertionError("Git Trace2 evidence was not created")
+        events = [json.loads(line) for line in trace_path.read_text(encoding="utf-8").splitlines()]
+        if not events or not all(isinstance(event, dict) for event in events):
+            raise AssertionError("Git Trace2 evidence is empty or malformed")
+        return events
+
+    @classmethod
+    def _git_output(cls, repository: pathlib.Path, *arguments: str) -> str:
+        return cls._run_git(repository, *arguments).stdout.strip()
+
+    @classmethod
+    def _git(cls, repository: pathlib.Path, *arguments: str) -> None:
+        cls._run_git(repository, *arguments)
+
+    @staticmethod
+    def _run_git(repository: pathlib.Path, *arguments: str) -> subprocess.CompletedProcess[str]:
+        result = subprocess.run(
+            ["git", *arguments],
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode != 0:
+            raise RuntimeError(f"git {' '.join(arguments)} failed: {result.stderr}")
+        return result
 
     @staticmethod
     def _write_package(path: pathlib.Path, members: dict[str, bytes]) -> None:
