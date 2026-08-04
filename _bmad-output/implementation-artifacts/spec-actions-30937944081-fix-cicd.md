@@ -57,6 +57,8 @@ context:
 
 ## Spec Change Log
 
+- 2026-08-04: Follow-up runs `30942027011` and `30942016617` confirmed the release planner fix reached `main`, then failed the shared dependency-governance contract because baseline commit `936913b0` advanced `references/Hexalith.Builds` to `824d7ef1` (`HexalithEventStoreVersion=3.91.0`) without synchronizing `frontcomposer-catalog-v1`. Updated the executable compatibility policy from `3.90.0` to the already-selected `3.91.0`; no gitlink or package dependency changed in this follow-up. Per AD-12 delayed activation, the policy-only correction landed separately as `30b4821e`; this graph-neutral evidence commit then exercises the corrected immutable base policy.
+
 ## Design Notes
 
 Semantic Release's core verifies push authorization before commit analysis even in dry-run mode. A local bare mirror preserves its native branch, tag, and commit analysis while converting that mandatory probe into an isolated local no-op; granting remote write permission would violate the approved unprotected/protected release split.
@@ -74,6 +76,13 @@ Semantic Release's core verifies push authorization before commit analysis even 
 - `python3 -m unittest -v tests/eng/test_release_contract.py` -- passed: 16 tests in 3.041s; detached-HEAD patch/minor/major/no-release planning, shallow-history rejection, pre- and post-clone cleanup, structured Trace2 evidence, and the tokenless/read-only boundary each ran and reported `ok`.
 - `node eng/semantic-release-plan.mjs` -- passed (exit 0); stdout plan was `{"release_required":true,"version":"4.1.0"}` and Semantic Release diagnostics remained on stderr.
 - `git diff --check` -- passed (exit 0, no diagnostics).
+
+**Follow-up verification:**
+
+- Run `30942027011`, job `92103414883` artifact `dependency-graph-evidence-30942027011-1` -- identified the stale policy pin: expected EventStore `3.90.0`, selected Builds catalog provided `3.91.0`.
+- Run `30942016617`, job `92102569671` -- both failing infrastructure-governance tests reported the same stale policy pin against tracked Builds commit `824d7ef1`.
+- `python3 -m unittest -v tests.eng.test_dependency_graph` -- passed: 68 tests in 6.533s.
+- Focused `dotnet test` for `CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog` and `PartiesPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` -- passed: 2/2 tests in 4.7082s.
 
 ## Suggested Review Order
 
