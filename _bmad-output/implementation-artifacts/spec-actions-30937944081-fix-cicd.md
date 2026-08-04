@@ -59,6 +59,7 @@ context:
 
 - 2026-08-04: Follow-up runs `30942027011` and `30942016617` confirmed the release planner fix reached `main`, then failed the shared dependency-governance contract because baseline commit `936913b0` advanced `references/Hexalith.Builds` to `824d7ef1` (`HexalithEventStoreVersion=3.91.0`) without synchronizing `frontcomposer-catalog-v1`. Updated the executable compatibility policy from `3.90.0` to the already-selected `3.91.0`; no gitlink or package dependency changed in this follow-up. Per AD-12 delayed activation, the policy-only correction landed separately as `30b4821e`; this graph-neutral evidence commit then exercises the corrected immutable base policy.
 - 2026-08-04: Replacement Quality run `30943480472` passed every governance, contract, docs, and accessibility gate, then exposed a stale Def23 legacy-v2 fixture whose package row omitted the v2-only author-signing and timestamp members. Restored `verified` fixture values so the manifest is otherwise valid and the test isolates empty-fingerprint rejection; current v3 production manifests remain unsigned and do not carry these fields.
+- 2026-08-04: Replacement run `30944713915` confirmed the fixture compiles but correctly rejected the changed C# identifier inventory. Resealed the governed CA1707 test inventory at its independently reported unchanged count `6236` and new line-sensitive SHA-256 `3e5cdc41d245d1f7bea5b2f25a5fe48fdefc1f24ce6728bf33f49f3bf615e990`.
 
 ## Design Notes
 
@@ -87,6 +88,7 @@ Semantic Release's core verifies push authorization before commit analysis even 
 - Exact Def23 test -- passed: 1/1 after rebuilding the Release test assembly.
 - Complete `Story12_4_RedPhaseDefTests` class -- passed: 11/11 in 5.370s.
 - `python3 -m unittest -v tests.eng.test_release_evidence_v2` -- passed: 8/8 tests in 5.094s.
+- Focused analyzer-policy governance plus Def23 fixture run -- passed: 2/2 tests in 17.6445s.
 
 ## Suggested Review Order
 
