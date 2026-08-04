@@ -78,10 +78,9 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
 > numeric ceilings below as Architect and Release Owner. This amendment supersedes the former unbounded
 > complete-reachable interpretation of v1.
 >
-> **Execution correction approved 2026-08-02:** the architecture remains ratified. Hexalith.Builds
-> issue 17 closed without accepting the GOV-1 amendment or recording a qualifying immutable revision.
-> FrontComposer-local controls proceed; only reusable-workflow integration, end-to-end proof, GOV-1
-> completion, release eligibility, and unfreeze remain externally gated.
+> **Release integration update 2026-08-04:** FrontComposer uses its truthful exact-source CI proof and
+> the approved immutable Builds production workflow identity. It does not claim a shared CI evaluator
+> closure that the current mutable CI reference cannot prove.
 
 Dependency governance uses a **bounded committed-object graph** and separates two concerns that must
 not be conflated:
@@ -115,7 +114,7 @@ digest, enforced by the Release Owner-controlled
 `HEXALITH_DEPENDENCY_POLICY_BOOTSTRAP_SHA256` repository variable. Base-policy existence permanently
 disables bootstrap after the initial landing. A zero/unavailable before revision may produce
 diagnostic/full-affected evidence, but the gate fails and is never release-eligible. The policy is
-release-definition and fallback-invalidation material. Handoffs and manifest v2 record its repository,
+release-definition and fallback-invalidation material. Exact-source proofs and manifest v3 record its repository,
 canonical `eng/dependency-graph-policy.json` path, schema, 40-hex revision, and raw-byte SHA-256.
 
 The policy has no implicit semantic or build defaults. Every Builds-selector owner maps to exactly one
@@ -212,53 +211,37 @@ Publication consumes those exact paths without rebuilding or replacing an artifa
 classification, invalid manifest, missing evidence, or `publish_authorized=false` terminates the
 release before NuGet, GitHub Release, tag/changelog, or other external publication side effects.
 
-The active immutable base/before policy independently authorizes exact CI, Release, and post-release
-evaluator closures. It pre-authorizes local caller blob hashes and literal-40-hex reusable/action
-coordinates; runtime sources must project exactly one authorized closure. Candidate workflow/policy
-changes cannot authorize themselves and activate through the same delayed two-change rule.
+Push CI emits a closed `hexalith.dependency-release-source.v1` proof for facts FrontComposer can
+authenticate without inventing an upstream guarantee: the successful push-CI run/attempt, exact
+candidate, active base policy, and candidate dependency graph. This deliberately replaces the pending
+AD-16 evaluator handoff. It does not claim an immutable closure for the shared CI workflow while that
+workflow remains selected through a mutable reference.
 
-The release caller passes the triggering CI run ID and the event's 40-hex head only as run-authentication
-coordinates. Its single versioned `dependency-release-handoff.json` artifact is fetched through the
-read-only GitHub Actions run/artifact APIs only after repository, workflow, event, branch, conclusion,
-run ID/attempt, and head SHA match the triggering CI run. The handoff's authenticated candidate is the
-sole release-candidate authority and must equal the authenticated run head before use; Release passes,
-checks out, and propagates that handoff candidate everywhere. No tag, ambient/default branch, caller
-checkout, or later `workflow_run.head_sha` may select or replace it. The reusable workflow is referenced
-by an active-policy-authorized immutable Hexalith.Builds commit, whose identity is sealed with the caller
-workflow hash and the CI-selected policy coordinates. Actual caller/reusable workflow refs and SHAs are
-checked against sealed coordinates. The exact policy blob is
-then reloaded from its recorded FrontComposer commit and its raw hash/schema revalidated. A deterministic
-static source closure includes every conditional or unconditional `uses:` plus recursively resolved local
-composite metadata, independent of the runtime path; every transitive non-local `uses:` is a literal
-40-hex commit. Action metadata blob hashes are sealed; mutable/dynamic refs, Docker actions, cycles,
-unsupported YAML forms, and bounded depth/source/blob limits fail closed. Builds local actions
-come from an exact `job.workflow_sha` checkout, never `@main`. Primary CI's reusable workflow and
-transitive actions follow the same closure and are carried in the versioned handoff. The current mutable
-CI/release `@main` calls and reusable release contract without an exact release-commit input are
-non-conforming; the REL-4 publication freeze remains mandatory until that upstream seam and its
-FrontComposer tests exist.
+Release is operator-controlled through `workflow_dispatch`. Its unprotected gate requires the dispatch
+ref to be exactly `refs/heads/main`, requires the dispatched value to be a lowercase 40-hex commit,
+re-reads the live main ref, and selects exactly one completed successful push CI run for that same SHA.
+It fetches only the run/attempt-named source proof through read-only Actions APIs. Missing, failed,
+truncated, paginated, duplicated, or malformed responses fail before the protected job. No tag,
+ambient checkout, default-branch value, or later workflow-run head may replace the dispatched candidate.
 
-Hexalith.Builds issue 17 / BUILD-REL-1 closed on 2026-07-20 without accepting the GOV-1 amendment or
-recording a qualifying immutable revision. The Release Owner must reopen it with the complete amendment
-or create a successor request. FrontComposer-local graph diff, bounded affected-module proof,
-policy-authorized evaluator closure, handoff schemas/consumers, manifest v2, and hostile fixtures proceed.
-Only reusable CI/release integration, end-to-end exact-candidate evidence proof, GOV-1 completion,
-release eligibility, and any unfreeze remain blocked until the replacement request records an
-owner-accepted 40-hex revision and the active policy authorizes its exact workflow/action closure.
+The production preparation job recomputes the live graph, requires the candidate Builds gitlink to equal
+the approved Builds execution commit, and emits `hexalith.release-evidence.v3`. V3 provenance binds the
+raw CI source-proof hash, exact Release caller workflow bytes at the candidate, exact reusable
+`domain-release.yml` bytes at the Builds commit, and the identical `builds-execution-sha`. The approved
+Builds identity is `a53166539bf4441d5e33d04281b14c2d59e950c3`; the reusable workflow call and input
+must remain identical literal 40-hex coordinates.
 
-The handoff's CI evaluator digest is canonical SHA-256 over its exact caller/reusable/action sources.
-Manifest CI provenance must copy those sources exactly, project the authenticated run identity, and bind
-the raw handoff JSON SHA-256. Offline verification recomputes the CI-only digest and the combined
-CI/release workflow-definition digest and rejects any unequal projection.
+The pack-once prepared candidate is sealed to the Release run ID/attempt and uploaded only after
+production approval. The pinned reusable publisher restores and authenticates those exact bytes inside
+Semantic Release, re-verifies the sealed manifest/readiness, and publishes only manifest-authorized
+signed packages and symbols. The release configuration does not create a changelog commit, so a
+successful non-draft GitHub Release tag must resolve to the dispatched SHA itself.
 
-Release emits an `if: always()` versioned verification handoff for every attempt, authenticated by the
-Release run ID/attempt. It carries the original authenticated CI run ID/attempt/raw handoff hash,
-exact active-policy projection, candidate, version/tag/release identity, sealed manifest identity,
-exact assets, and authorized Release evaluator. The post-release verifier re-downloads both handoffs,
-requires their candidate/policy projection to agree even on pre-manifest failure, and derives
-its live root from that handoff and manifest, never the second `workflow_run` hop's head/default-branch
-SHA, and its own static closure must match the active policy. It cannot green-no-op a failed or partial
-attempt; a default-branch-advance race is a required fixture.
+Release Evidence authenticates the completed operator run topology. It reports no-releasable and
+rejected-before-publication dispositions without claiming publication. Once the reusable protected
+publisher starts, a missing GitHub Release, missing asset, mutable release, tag/SHA mismatch, package
+count drift, NuGet/GitHub byte mismatch, invalid signature, or checksum/SBOM/manifest divergence is a
+partial-publication incident and fails closed with retained evidence.
 
 After publication, that independent verifier downloads NuGet and GitHub assets, verifies package
 signatures, and compares their hashes with the sealed manifest. A mismatch, missing asset, or partial
@@ -273,8 +256,8 @@ Ownership boundaries:
 - **FrontComposer** owns artifact creation, inventory/consumer/test validation, signing, evidence
   generation, dependency-graph collection/verification, readiness classification, publication of
   authorized bytes, and downloaded-artifact verification.
-- **Release Owner** owns signing identity, timestamp authority, secret provisioning/rotation, the
-  release freeze, exceptions, and partial-publication incident response.
+- **Release Owner** owns signing identity, timestamp authority, secret provisioning/rotation,
+  production environment approval, exceptions, and partial-publication incident response.
 
 This delivery architecture does not alter FrontComposer runtime, public product behavior, or UX.
 

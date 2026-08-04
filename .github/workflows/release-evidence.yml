@@ -1,29 +1,8 @@
 name: Release Evidence
 
-# REL-3 (2026-07-18): independent post-publication verification lane (AC13/AC19).
-#
-# The FR24 evidence chain is no longer produced here. The pre-publication orchestrator
-# (eng/release_prepublish.py, driven by .releaserc.json prepareCmd/publishCmd inside the
-# reusable domain-release.yml) packs once, validates inventory/tests/consumers, generates
-# the SBOM, signs and timestamps the exact candidates, checksums, seals + verifies the
-# release manifest, and classifies with --require-publishable BEFORE any publication side
-# effect; @semantic-release/github attaches the packages, symbols, and the full evidence
-# chain to the GitHub Release at creation (durable initial-release assets, AC12).
-#
-# This workflow is the INDEPENDENT verifier: it downloads the published GitHub Release
-# assets and the published NuGet bytes, verifies package signatures over the downloaded
-# bytes, and compares every hash against the sealed manifest (AC13). It runs on Release
-# workflow COMPLETION REGARDLESS OF CONCLUSION (AC19) so failed or cancelled publish runs
-# are still reconciled. It authenticates the exact Release run/attempt topology first: a
-# proven frozen or caller-ineligible run records a no-attempt disposition without demanding
-# handoffs from a producer that never ran. Once `release / release` starts, both authenticated
-# handoffs retain the failed/unpublished attempt and original CI candidate; missing evidence
-# is never a green no-op. It never repacks, rebuilds, re-signs, or attests — provenance attestation
-# over the exact candidates belongs to the upstream governed release contract (AC18),
-# with the sealed owner-approved fallback record as the only alternative. Divergent or
-# partial publication state writes a partial-publish incident record and fails until
-# owner-led reconciliation (AC14). The markdown compliance ledger stays owner-updated;
-# this run emits a machine-readable ledger record artifact for the Release Owner.
+# Independent, read-only reconciliation of every completed operator Release run.
+# No-releasable and rejected runs are recorded explicitly; once the protected
+# reusable publisher starts, missing or inconsistent publication is a failure.
 on:
   workflow_run:
     workflows: [Release]
@@ -31,557 +10,50 @@ on:
     branches: [main]
 
 concurrency:
-  group: release-evidence-${{ github.ref }}
+  group: release-evidence-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}
   cancel-in-progress: false
 
-# Read-only: this lane must not be able to mutate releases, attestations, or contents.
 permissions:
   actions: read
   contents: read
 
 jobs:
   verify-published-release:
-    # AC19: no conclusion gate — verification runs for success, failure, AND cancellation
-    # of the upstream Release run. Authenticated topology decides no-attempt vs governed verify.
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
-      # This must remain the first step: API/authentication failures still need a
-      # nonempty forensic artifact that identifies the observed Release run.
-      - name: Seed release disposition evidence
+      - name: Seed forensic evidence
         if: always()
-        shell: bash
         env:
-          RUN_META_EVENT_NAME: ${{ github.event_name }}
-          RUN_META_UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
-          RUN_META_UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-          RUN_META_UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          RUN_META_UPSTREAM_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          RUN_META_REF: ${{ github.ref }}
-          RUN_META_RUN_ID: ${{ github.run_id }}
-          RUN_META_RUN_ATTEMPT: ${{ github.run_attempt }}
+          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+          UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          UPSTREAM_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          set -euo pipefail
           mkdir -p verification-evidence
-          python3 - <<'PYEOF'
-          import json
-          import os
-          from pathlib import Path
+          jq -n \
+            --arg run_id "$UPSTREAM_RUN_ID" \
+            --arg run_attempt "$UPSTREAM_RUN_ATTEMPT" \
+            --arg conclusion "$UPSTREAM_CONCLUSION" \
+            --arg head_sha "$UPSTREAM_HEAD_SHA" \
+            '{decision_contract:"frontcomposer.release-run-disposition.v2",status:"unclassified",governed_attempt:null,run_id:$run_id,run_attempt:$run_attempt,conclusion:$conclusion,head_sha:$head_sha}' \
+            > verification-evidence/release-disposition.json
 
-          evidence = Path("verification-evidence")
-          metadata = {
-              "decision_contract": "frontcomposer.release-verification-metadata.v2",
-              "event_name": os.environ.get("RUN_META_EVENT_NAME", ""),
-              "upstream_run_id": os.environ.get("RUN_META_UPSTREAM_RUN_ID", ""),
-              "upstream_run_attempt": os.environ.get("RUN_META_UPSTREAM_RUN_ATTEMPT", ""),
-              "upstream_conclusion": os.environ.get("RUN_META_UPSTREAM_CONCLUSION", ""),
-              "upstream_workflow_run_head_sha": os.environ.get("RUN_META_UPSTREAM_HEAD_SHA", ""),
-              "ref": os.environ.get("RUN_META_REF", ""),
-              "run_id": os.environ.get("RUN_META_RUN_ID", ""),
-              "run_attempt": os.environ.get("RUN_META_RUN_ATTEMPT", ""),
-          }
-          disposition = {
-              "decision_contract": "frontcomposer.release-run-disposition.v1",
-              "disposition": "unclassified",
-              "governed_attempt": None,
-              "reason": "Release run authentication and topology classification have not completed.",
-              "status": "pending",
-              "trigger": metadata,
-          }
-          for name, value in (
-              ("run-metadata.json", metadata),
-              ("release-disposition.json", disposition),
-          ):
-              with (evidence / name).open("w", encoding="utf-8", newline="\n") as stream:
-                  json.dump(value, stream, indent=2, sort_keys=True)
-                  stream.write("\n")
-          PYEOF
-
-      # Classify only from the completed Release run's immutable run/attempt job
-      # records. The current repository freeze variable is mutable and is never
-      # consulted when deciding what this historical run did.
-      - name: Classify authenticated Release run disposition
-        id: release-disposition
+      - name: Authenticate and classify the operator Release run
+        id: disposition
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
-          RELEASE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-          RELEASE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+          UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          UPSTREAM_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           set -euo pipefail
-
-          record_api_failure() {
-            local stage="$1"
-            FAILURE_STAGE="$stage" python3 - <<'PYEOF'
-          import json
-          import os
-          from pathlib import Path
-
-          path = Path("verification-evidence/release-disposition.json")
-          value = json.loads(path.read_text(encoding="utf-8"))
-          stage = os.environ["FAILURE_STAGE"]
-          value.update({
-              "disposition": "api-failure",
-              "governed_attempt": None,
-              "reason": f"GitHub Actions API authentication failed while reading {stage}.",
-              "status": "blocked",
-          })
-          with path.open("w", encoding="utf-8", newline="\n") as stream:
-              json.dump(value, stream, indent=2, sort_keys=True)
-              stream.write("\n")
-          PYEOF
-          }
-
-          if ! run_json="$(timeout 60s gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}")"; then
-            record_api_failure "Release run metadata"
-            echo "::error::unable to authenticate Release run ${RELEASE_RUN_ID}."
-            exit 1
-          fi
-          printf '%s\n' "$run_json" > verification-evidence/upstream-release-run.json
-
-          jobs_url="repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}/attempts/${RELEASE_RUN_ATTEMPT}/jobs?per_page=100"
-          if ! jobs_json="$(timeout 60s gh api "$jobs_url")"; then
-            record_api_failure "Release run attempt job topology"
-            echo "::error::unable to authenticate jobs for Release run ${RELEASE_RUN_ID} attempt ${RELEASE_RUN_ATTEMPT}."
-            exit 1
-          fi
-          printf '%s\n' "$jobs_json" > verification-evidence/upstream-release-jobs.json
-
-          python3 - <<'PYEOF' >> "$GITHUB_OUTPUT"
-          import json
-          import os
-          import re
-          from pathlib import Path
-
-          evidence = Path("verification-evidence")
-
-          def closed(pairs):
-              value = {}
-              for key, item in pairs:
-                  if key in value:
-                      raise ValueError(f"duplicate API response member: {key}")
-                  value[key] = item
-              return value
-
-          def load(name):
-              return json.loads((evidence / name).read_text(encoding="utf-8"), object_pairs_hook=closed)
-
-          def require(condition, message):
-              if not condition:
-                  raise ValueError(message)
-
-          def write_disposition(disposition, governed_attempt, reason, status, run=None, jobs=None):
-              value = {
-                  "decision_contract": "frontcomposer.release-run-disposition.v1",
-                  "disposition": disposition,
-                  "governed_attempt": governed_attempt,
-                  "reason": reason,
-                  "status": status,
-                  "trigger": load("run-metadata.json"),
-              }
-              if isinstance(run, dict):
-                  value["release_run"] = {
-                      key: run.get(key)
-                      for key in (
-                          "id", "run_attempt", "event", "status", "conclusion",
-                          "head_branch", "head_sha", "path",
-                      )
-                  }
-              if isinstance(jobs, list):
-                  value["jobs"] = [
-                      {
-                          "conclusion": job.get("conclusion"),
-                          "id": job.get("id"),
-                          "name": job.get("name"),
-                          "status": job.get("status"),
-                          "steps": [
-                              {
-                                  "conclusion": step.get("conclusion"),
-                                  "name": step.get("name"),
-                                  "status": step.get("status"),
-                              }
-                              for step in (job.get("steps") if isinstance(job.get("steps"), list) else [])
-                              if isinstance(step, dict)
-                          ],
-                      }
-                      for job in jobs
-                      if isinstance(job, dict)
-                  ]
-              with (evidence / "release-disposition.json").open("w", encoding="utf-8", newline="\n") as stream:
-                  json.dump(value, stream, indent=2, sort_keys=True)
-                  stream.write("\n")
-
-          run = None
-          jobs = None
-          try:
-              run = load("upstream-release-run.json")
-              envelope = load("upstream-release-jobs.json")
-              require(isinstance(run, dict), "Release run response must be an object")
-              require(isinstance(envelope, dict), "Release jobs response must be an object")
-              jobs = envelope.get("jobs")
-              require(isinstance(jobs, list), "Release jobs response must contain a jobs array")
-              require(envelope.get("total_count") == len(jobs), "Release jobs response was truncated or inconsistent")
-              require(len(jobs) == 2, f"expected exactly two Release jobs, found {len(jobs)}")
-
-              require(str(run.get("id")) == os.environ["RELEASE_RUN_ID"], "Release run ID mismatch")
-              require(str(run.get("run_attempt")) == os.environ["RELEASE_RUN_ATTEMPT"], "Release run attempt mismatch")
-              require(run.get("event") == "workflow_run", "Release run event mismatch")
-              require(run.get("status") == "completed", "Release run is not completed")
-              require(run.get("conclusion") == os.environ["RELEASE_CONCLUSION"], "Release run conclusion mismatch")
-              require(run.get("head_branch") == "main", "Release run branch mismatch")
-              require(run.get("path") == ".github/workflows/release.yml", "Release workflow path mismatch")
-              require(
-                  isinstance(run.get("head_sha"), str)
-                  and re.fullmatch(r"[0-9a-f]{40}", run["head_sha"]) is not None,
-                  "Release run head SHA is malformed",
-              )
-              require(all(isinstance(job, dict) for job in jobs), "Release job rows must be objects")
-              require(all(job.get("status") == "completed" for job in jobs), "every Release job must be completed")
-
-              freeze_jobs = [job for job in jobs if job.get("name") == "freeze-guard"]
-              caller_jobs = [job for job in jobs if job.get("name") == "release"]
-              governed_jobs = [job for job in jobs if job.get("name") == "release / release"]
-              require(len(freeze_jobs) == 1, f"expected exactly one freeze-guard job, found {len(freeze_jobs)}")
-              freeze = freeze_jobs[0]
-
-              if freeze.get("conclusion") == "success" and len(caller_jobs) == 1 and not governed_jobs:
-                  caller = caller_jobs[0]
-                  evaluation = [
-                      step for step in freeze.get("steps", [])
-                      if isinstance(step, dict) and step.get("name") == "Evaluate release publication freeze"
-                  ]
-                  require(len(evaluation) == 1, "frozen topology is missing the unique freeze evaluation step")
-                  require(evaluation[0].get("conclusion") == "success", "freeze evaluation did not succeed")
-                  require(
-                      [step.get("name") for step in freeze.get("steps", [])]
-                      == ["Set up job", "Evaluate release publication freeze", "Complete job"],
-                      "frozen freeze-guard contains an unexpected or reordered step",
-                  )
-                  require(
-                      all(step.get("status") == "completed" and step.get("conclusion") == "success" for step in freeze["steps"]),
-                      "frozen freeze-guard contains an incomplete or unsuccessful step",
-                  )
-                  require(caller.get("conclusion") == "skipped", "frozen caller release job was not skipped")
-                  require(caller.get("steps") == [], "frozen caller release job unexpectedly contains steps")
-                  require(run.get("conclusion") == "success", "frozen Release run did not conclude successfully")
-                  disposition = "frozen"
-                  governed_attempt = False
-                  reason = "The freeze guard succeeded and the reusable release job did not start."
-                  status = "no-attempt"
-              elif freeze.get("conclusion") == "skipped" and len(caller_jobs) == 1 and not governed_jobs:
-                  caller = caller_jobs[0]
-                  require(freeze.get("steps") == [], "ineligible freeze-guard job unexpectedly contains steps")
-                  require(caller.get("conclusion") == "skipped", "ineligible caller release job was not skipped")
-                  require(caller.get("steps") == [], "ineligible caller release job unexpectedly contains steps")
-                  require(run.get("conclusion") == "skipped", "ineligible Release run did not conclude as skipped")
-                  disposition = "ineligible"
-                  governed_attempt = False
-                  reason = "Caller conditions skipped both the freeze guard and reusable release job."
-                  status = "no-attempt"
-              elif freeze.get("conclusion") == "success" and not caller_jobs and len(governed_jobs) == 1:
-                  governed = governed_jobs[0]
-                  require(
-                      isinstance(governed.get("conclusion"), str)
-                      and governed.get("conclusion") not in {"", "skipped"},
-                      "invoked reusable release job has no governed attempt conclusion",
-                  )
-                  disposition = "governed-attempt"
-                  governed_attempt = True
-                  reason = "The reusable release job started; authenticated handoffs and independent verification are mandatory."
-                  status = "governed-attempt"
-              else:
-                  raise ValueError("Release job topology is missing, contradictory, or unsupported")
-
-              known = {"freeze-guard", "release", "release / release"}
-              require(all(job.get("name") in known for job in jobs), "Release job topology contains an unexpected job")
-          except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
-              reason = str(error)
-              write_disposition("unexpected", None, reason, "blocked", run, jobs)
-              print(f"::error::Release run disposition is ambiguous: {reason}")
-              raise SystemExit(1) from error
-
-          write_disposition(disposition, governed_attempt, reason, status, run, jobs)
-          print(f"disposition={disposition}")
-          print(f"diagnostic-head-sha={run['head_sha']}")
-          print(f"governed-attempt={'true' if governed_attempt else 'false'}")
-          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as summary:
-              summary.write("## Release run disposition\n\n")
-              summary.write(f"- disposition: {disposition}\n")
-              summary.write(f"- governed attempt: {str(governed_attempt).lower()}\n")
-              summary.write(f"- reason: {reason}\n")
-          PYEOF
-
-      # A no-attempt disposition means the only repository-owned publication job did
-      # not execute. Confirm through read-only APIs that no tag or GitHub Release still
-      # resolves to the observed Release run head. This SHA is diagnostic only; it is
-      # never exported as, or substituted for, a governed release candidate.
-      - name: Probe no-attempt publication side effects
-        if: steps.release-disposition.outputs.governed-attempt == 'false'
-        shell: bash
-        env:
-          DIAGNOSTIC_RELEASE_HEAD_SHA: ${{ steps.release-disposition.outputs.diagnostic-head-sha }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          python3 - <<'PYEOF'
-          import json
-          import os
-          import re
-          import subprocess
-          import time
-          from pathlib import Path
-
-          evidence = Path("verification-evidence")
-          disposition_path = evidence / "release-disposition.json"
-          probe_path = evidence / "publication-probe.json"
-          repository = os.environ.get("GITHUB_REPOSITORY", "")
-          head_sha = os.environ.get("DIAGNOSTIC_RELEASE_HEAD_SHA", "")
-          sha_pattern = re.compile(r"[0-9a-f]{40}")
-          maximum_rows = 1000
-          maximum_requests = 300
-          maximum_tag_depth = 5
-          probe_deadline = time.monotonic() + (15 * 60)
-          request_count = 0
-
-          class ProbeApiError(RuntimeError):
-              pass
-
-          def closed(pairs):
-              value = {}
-              for key, item in pairs:
-                  if key in value:
-                      raise ValueError(f"duplicate API response member: {key}")
-                  value[key] = item
-              return value
-
-          def write_json(path, value):
-              with path.open("w", encoding="utf-8", newline="\n") as stream:
-                  json.dump(value, stream, indent=2, sort_keys=True)
-                  stream.write("\n")
-
-          def record(status, reason, tag_matches=None, release_matches=None, tag_targets=None):
-              probe = {
-                  "decision_contract": "frontcomposer.no-attempt-publication-probe.v1",
-                  "diagnostic_release_head_sha": head_sha,
-                  "reason": reason,
-                  "release_matches": release_matches or [],
-                  "status": status,
-                  "tag_matches": tag_matches or [],
-                  "tag_targets": tag_targets or [],
-              }
-              write_json(probe_path, probe)
-              disposition = json.loads(disposition_path.read_text(encoding="utf-8"), object_pairs_hook=closed)
-              disposition["publication_probe"] = probe
-              if status != "clean":
-                  disposition["status"] = "blocked"
-                  disposition["reason"] = reason
-                  disposition["disposition"] = {
-                      "api-failure": "publication-probe-api-failure",
-                      "ambiguous": "publication-probe-ambiguous",
-                      "observed": "unexpected-publication-evidence",
-                  }[status]
-              write_json(disposition_path, disposition)
-
-          def run_gh(arguments, stage):
-              global request_count
-              remaining = probe_deadline - time.monotonic()
-              if request_count >= maximum_requests or remaining <= 1:
-                  raise ProbeApiError("no-attempt publication probe exhausted its bounded API budget")
-              request_count += 1
-              try:
-                  result = subprocess.run(
-                      ["gh", "api", *arguments],
-                      check=False,
-                      capture_output=True,
-                      text=True,
-                      timeout=min(60, max(1, int(remaining))),
-                  )
-              except (OSError, subprocess.TimeoutExpired) as error:
-                  raise ProbeApiError(f"GitHub API {stage} failed before completion") from error
-              if result.returncode != 0:
-                  raise ProbeApiError(f"GitHub API {stage} returned exit code {result.returncode}")
-              return result.stdout
-
-          def paginated_rows(endpoint, stage):
-              output = run_gh(["--paginate", endpoint, "--jq", ".[]"], stage)
-              rows = [json.loads(line, object_pairs_hook=closed) for line in output.splitlines() if line.strip()]
-              if len(rows) > maximum_rows:
-                  raise ValueError(f"GitHub API {stage} exceeded the {maximum_rows}-row evidence ceiling")
-              if not all(isinstance(row, dict) for row in rows):
-                  raise ValueError(f"GitHub API {stage} returned a non-object row")
-              return rows
-
-          def api_object(endpoint, stage):
-              value = json.loads(run_gh([endpoint], stage), object_pairs_hook=closed)
-              if not isinstance(value, dict):
-                  raise ValueError(f"GitHub API {stage} returned a non-object response")
-              return value
-
-          write_json(probe_path, {
-              "decision_contract": "frontcomposer.no-attempt-publication-probe.v1",
-              "diagnostic_release_head_sha": head_sha,
-              "reason": "No-attempt publication probe has not completed.",
-              "release_matches": [],
-              "status": "pending",
-              "tag_matches": [],
-              "tag_targets": [],
-          })
-          try:
-              if re.fullmatch(r"[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+", repository) is None:
-                  raise ValueError("repository identity is malformed")
-              if sha_pattern.fullmatch(head_sha) is None:
-                  raise ValueError("diagnostic Release run head SHA is malformed")
-
-              tags = paginated_rows(
-                  f"repos/{repository}/git/matching-refs/tags/v?per_page=100",
-                  "tag enumeration",
-              )
-              write_json(evidence / "no-attempt-tags.json", tags)
-              releases = paginated_rows(
-                  f"repos/{repository}/releases?per_page=100",
-                  "GitHub Release enumeration",
-              )
-              write_json(evidence / "no-attempt-releases.json", releases)
-
-              tag_targets = []
-              targets_by_name = {}
-              commit_cache = {}
-              for row in tags:
-                  ref = row.get("ref")
-                  target = row.get("object")
-                  if not isinstance(ref, str) or not ref.startswith("refs/tags/") or len(ref) <= len("refs/tags/"):
-                      raise ValueError("tag enumeration contains an invalid ref")
-                  name = ref[len("refs/tags/"):]
-                  if name in targets_by_name:
-                      raise ValueError(f"tag enumeration contains duplicate ref {name!r}")
-                  if not isinstance(target, dict):
-                      raise ValueError(f"tag {name!r} has no target object")
-
-                  seen = set()
-                  for _ in range(maximum_tag_depth + 1):
-                      object_type = target.get("type")
-                      object_sha = target.get("sha")
-                      if object_type not in {"commit", "tag"} or not isinstance(object_sha, str) or sha_pattern.fullmatch(object_sha) is None:
-                          raise ValueError(f"tag {name!r} has an unsupported or malformed target")
-                      if object_sha in seen:
-                          raise ValueError(f"tag {name!r} contains an annotated-tag cycle")
-                      seen.add(object_sha)
-                      if object_type == "commit":
-                          commit_sha = object_sha
-                          break
-                      annotated = api_object(
-                          f"repos/{repository}/git/tags/{object_sha}",
-                          f"annotated tag resolution for {name}",
-                      )
-                      target = annotated.get("object")
-                      if not isinstance(target, dict):
-                          raise ValueError(f"annotated tag {name!r} has no target object")
-                  else:
-                      raise ValueError(f"tag {name!r} exceeded the annotated-tag depth ceiling")
-
-                  if commit_sha not in commit_cache:
-                      commit = api_object(
-                          f"repos/{repository}/git/commits/{commit_sha}",
-                          f"tag commit resolution for {name}",
-                      )
-                      if commit.get("sha") != commit_sha or not isinstance(commit.get("parents"), list):
-                          raise ValueError(f"tag {name!r} commit response is inconsistent")
-                      parents = []
-                      for parent in commit["parents"]:
-                          if not isinstance(parent, dict) or not isinstance(parent.get("sha"), str) or sha_pattern.fullmatch(parent["sha"]) is None:
-                              raise ValueError(f"tag {name!r} commit contains a malformed parent")
-                          parents.append(parent["sha"])
-                      commit_cache[commit_sha] = parents
-                  parents = commit_cache[commit_sha]
-                  matches_head = commit_sha == head_sha or (bool(parents) and parents[0] == head_sha)
-                  target_row = {
-                      "commit_sha": commit_sha,
-                      "matches_diagnostic_head": matches_head,
-                      "name": name,
-                      "parents": parents,
-                  }
-                  targets_by_name[name] = target_row
-                  tag_targets.append(target_row)
-
-              tag_targets.sort(key=lambda row: row["name"])
-              write_json(evidence / "no-attempt-tag-targets.json", tag_targets)
-              tag_matches = [row for row in tag_targets if row["matches_diagnostic_head"]]
-
-              release_matches = []
-              for release in releases:
-                  tag_name = release.get("tag_name")
-                  target_commitish = release.get("target_commitish")
-                  draft = release.get("draft")
-                  if not isinstance(tag_name, str) or not tag_name:
-                      raise ValueError("GitHub Release enumeration contains an invalid tag name")
-                  if not isinstance(target_commitish, str) or not isinstance(draft, bool):
-                      raise ValueError(f"GitHub Release {tag_name!r} has malformed target/draft metadata")
-                  resolved = targets_by_name.get(tag_name)
-                  if resolved is None and target_commitish != head_sha and not draft:
-                      raise ValueError(f"published GitHub Release {tag_name!r} has no resolvable tag ref")
-                  if target_commitish == head_sha or (resolved is not None and resolved["matches_diagnostic_head"]):
-                      release_matches.append({
-                          "draft": draft,
-                          "id": release.get("id"),
-                          "tag_name": tag_name,
-                          "target_commitish": target_commitish,
-                      })
-
-              if tag_matches or release_matches:
-                  reason = (
-                      "A frozen/ineligible Release run has tag or GitHub Release evidence "
-                      "matching its diagnostic head SHA."
-                  )
-                  record("observed", reason, tag_matches, release_matches, tag_targets)
-                  print(f"::error::{reason}")
-                  raise SystemExit(1)
-
-              reason = "No tag or published GitHub Release resolves to the diagnostic Release run head SHA."
-              record("clean", reason, tag_targets=tag_targets)
-              with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a", encoding="utf-8") as summary:
-                  summary.write(f"- no-attempt publication probe: clean ({reason})\n")
-          except ProbeApiError as error:
-              reason = str(error)
-              record("api-failure", reason)
-              print(f"::error::{reason}")
-              raise SystemExit(1) from error
-          except (KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
-              reason = f"No-attempt publication probe is ambiguous: {error}"
-              record("ambiguous", reason)
-              print(f"::error::{reason}")
-              raise SystemExit(1) from error
-          PYEOF
-
-      - name: Authenticate mandatory Release verification handoff
-        id: release-handoff
-        if: steps.release-disposition.outputs.governed-attempt == 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_RUN_ID: ${{ github.event.workflow_run.id }}
-          RELEASE_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
-          RELEASE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-        run: |
-          set -euo pipefail
-          mkdir -p authenticated-handoffs/release
-          run_json="$(timeout 60s gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}")"
-          test "$(jq -r '.id' <<<"$run_json")" = "$RELEASE_RUN_ID"
-          test "$(jq -r '.run_attempt' <<<"$run_json")" = "$RELEASE_RUN_ATTEMPT"
-          test "$(jq -r '.event' <<<"$run_json")" = "workflow_run"
-          test "$(jq -r '.conclusion' <<<"$run_json")" = "$RELEASE_CONCLUSION"
-          test "$(jq -r '.head_branch' <<<"$run_json")" = "main"
-
-          artifact_pages="$(timeout 60s gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${RELEASE_RUN_ID}/artifacts?per_page=100" --jq '{total_count, artifacts}')"
-          artifacts="$(jq -sc 'if length == 0 then error("artifact API returned no pages") else {total_count: (.[0].total_count // 0), artifacts: [.[].artifacts[]]} end' <<<"$artifact_pages")"
-          test "$(jq -r '.total_count' <<<"$artifacts")" = "$(jq -r '.artifacts | length' <<<"$artifacts")"
-          count="$(jq '[.artifacts[] | select(.name == "release-verification-handoff" and (.expired | not))] | length' <<<"$artifacts")"
-          test "$count" = "1" || { echo "::error::expected exactly one non-expired release-verification-handoff artifact, found $count"; exit 1; }
-          artifact_id="$(jq -r '.artifacts[] | select(.name == "release-verification-handoff" and (.expired | not)) | .id' <<<"$artifacts")"
-          timeout 60s gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > authenticated-handoffs/release.zip
-          test "$(unzip -Z1 authenticated-handoffs/release.zip | sort -u)" = "release-verification-handoff.json"
-          unzip -q authenticated-handoffs/release.zip -d authenticated-handoffs/release
-
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${UPSTREAM_RUN_ID}" \
+            > verification-evidence/upstream-run.json
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${UPSTREAM_RUN_ID}/attempts/${UPSTREAM_RUN_ATTEMPT}/jobs?per_page=100" \
+            > verification-evidence/upstream-jobs.json
           python3 - <<'PY' >> "$GITHUB_OUTPUT"
           import json
           import os
@@ -592,269 +64,278 @@ jobs:
               value = {}
               for key, item in pairs:
                   if key in value:
-                      raise SystemExit(f"duplicate handoff member: {key}")
+                      raise ValueError(f"duplicate API member: {key}")
                   value[key] = item
               return value
 
-          value = json.loads(
-              Path("authenticated-handoffs/release/release-verification-handoff.json").read_text(),
-              object_pairs_hook=closed,
-          )
-          expected = {"schema", "release_run", "ci_handoff", "candidate", "dependency_policy", "release", "manifest", "assets", "evaluator"}
-          if set(value) != expected or value.get("schema") != "hexalith.release-verification-handoff.v1":
-              raise SystemExit("invalid release-verification handoff envelope")
-          release_run = value.get("release_run")
-          release_run_members = {"repository", "workflow_path", "run_id", "run_attempt", "conclusion"}
-          if not isinstance(release_run, dict) or set(release_run) != release_run_members:
-              raise SystemExit("invalid release-verification handoff Release run coordinate")
-          if (
-              str(release_run.get("run_id")) != os.environ["RELEASE_RUN_ID"]
-              or str(release_run.get("run_attempt")) != os.environ["RELEASE_RUN_ATTEMPT"]
-              or release_run.get("conclusion") != os.environ["RELEASE_CONCLUSION"]
-          ):
-              raise SystemExit("release-verification handoff does not bind the authenticated Release run attempt")
-          candidate = value.get("candidate")
-          if not isinstance(candidate, str) or re.fullmatch(r"[0-9a-f]{40}", candidate) is None:
-              raise SystemExit("invalid original CI candidate")
-          ci = value.get("ci_handoff", {})
-          print(f"candidate={candidate}")
-          print(f"ci-run-id={ci.get('run_id', '')}")
-          print(f"ci-run-attempt={ci.get('run_attempt', '')}")
+          def load(name):
+              return json.loads(Path(name).read_text(), object_pairs_hook=closed)
+
+          run = load("verification-evidence/upstream-run.json")
+          envelope = load("verification-evidence/upstream-jobs.json")
+          jobs = envelope.get("jobs") if isinstance(envelope, dict) else None
+          if not isinstance(run, dict) or not isinstance(jobs, list):
+              raise SystemExit("malformed Release run/jobs API response")
+          if envelope.get("total_count") != len(jobs):
+              raise SystemExit("ambiguous or paginated Release jobs API response")
+          expected = {
+              "id": int(os.environ["UPSTREAM_RUN_ID"]),
+              "run_attempt": int(os.environ["UPSTREAM_RUN_ATTEMPT"]),
+              "event": "workflow_dispatch",
+              "status": "completed",
+              "conclusion": os.environ["UPSTREAM_CONCLUSION"],
+              "head_branch": "main",
+              "head_sha": os.environ["UPSTREAM_HEAD_SHA"],
+              "path": ".github/workflows/release.yml",
+          }
+          if any(run.get(key) != value for key, value in expected.items()):
+              raise SystemExit("Release run coordinate does not match the authenticated operator dispatch")
+          if re.fullmatch(r"[0-9a-f]{40}", run["head_sha"]) is None:
+              raise SystemExit("Release run head SHA is malformed")
+          if any(not isinstance(job, dict) or job.get("status") != "completed" for job in jobs):
+              raise SystemExit("Release job topology is malformed or incomplete")
+          known = {"verify-source", "plan-release", "prepare-candidate", "release", "release / release", "verify-publication"}
+          names = [job.get("name") for job in jobs]
+          if any(name not in known for name in names) or len(names) != len(set(names)):
+              raise SystemExit(f"Release job topology is unknown or ambiguous: {names}")
+          by_name = {job["name"]: job for job in jobs}
+          for required in ("verify-source", "plan-release"):
+              if required not in by_name:
+                  raise SystemExit(f"Release job topology lacks {required}")
+          governed = by_name.get("release / release")
+          if governed is not None and governed.get("conclusion") not in {"skipped", None}:
+              disposition = "governed-publication-attempt"
+              governed_attempt = True
+          elif run.get("conclusion") == "success" and by_name["verify-source"].get("conclusion") == "success" and by_name["plan-release"].get("conclusion") == "success":
+              for publication_job in ("prepare-candidate", "release", "verify-publication"):
+                  if publication_job in by_name and by_name[publication_job].get("conclusion") != "skipped":
+                      raise SystemExit(f"successful no-release topology unexpectedly ran {publication_job}")
+              disposition = "no-releasable-commits"
+              governed_attempt = False
+          else:
+              disposition = "rejected-before-publication"
+              governed_attempt = False
+          result = {
+              "decision_contract": "frontcomposer.release-run-disposition.v2",
+              "status": disposition,
+              "governed_attempt": governed_attempt,
+              "run_id": run["id"],
+              "run_attempt": run["run_attempt"],
+              "conclusion": run["conclusion"],
+              "head_sha": run["head_sha"],
+              "jobs": [{"name": job["name"], "conclusion": job.get("conclusion")} for job in jobs],
+          }
+          Path("verification-evidence/release-disposition.json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
+          print(f"governed-attempt={'true' if governed_attempt else 'false'}")
+          print(f"disposition={disposition}")
+          print(f"candidate={run['head_sha']}")
           PY
-          cp authenticated-handoffs/release/release-verification-handoff.json verification-evidence/
 
-      - name: Checkout repository
-        if: steps.release-disposition.outputs.governed-attempt == 'true'
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          # The authenticated handoff's original CI candidate is the sole authority.
-          ref: ${{ steps.release-handoff.outputs.candidate }}
-          fetch-depth: 0
-          # Root-declared references submodules only; no recursive nested submodule checkout.
-          submodules: false
+      - name: Record explicit non-publication disposition
+        if: steps.disposition.outputs.governed-attempt == 'false'
+        env:
+          DISPOSITION: ${{ steps.disposition.outputs.disposition }}
+        run: |
+          echo "Release disposition: ${DISPOSITION}. This run did not publish a release." >> "$GITHUB_STEP_SUMMARY"
+          jq -n \
+            --arg disposition "$DISPOSITION" \
+            '{decision_contract:"frontcomposer.release-ledger-record.v2",published:false,disposition:$disposition,status:"recorded"}' \
+            > verification-evidence/ledger-record.json
 
-      - name: Authenticate CI handoff and exact-candidate chain
-        if: steps.release-disposition.outputs.governed-attempt == 'true'
+      - name: Authenticate prepared-candidate coordinate
+        id: candidate
+        if: steps.disposition.outputs.governed-attempt == 'true'
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CI_RUN_ID: ${{ steps.release-handoff.outputs.ci-run-id }}
-          CI_RUN_ATTEMPT: ${{ steps.release-handoff.outputs.ci-run-attempt }}
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+          UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          EXPECTED_SHA: ${{ steps.disposition.outputs.candidate }}
         run: |
           set -euo pipefail
-          mkdir -p authenticated-handoffs/ci
-          run_json="$(timeout 60s gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}")"
-          test "$(jq -r '.id' <<<"$run_json")" = "$CI_RUN_ID"
-          test "$(jq -r '.run_attempt' <<<"$run_json")" = "$CI_RUN_ATTEMPT"
-          test "$(jq -r '.event' <<<"$run_json")" = "push"
-          test "$(jq -r '.head_branch' <<<"$run_json")" = "main"
-          test "$(jq -r '.conclusion' <<<"$run_json")" = "success"
-          test "$(jq -r '.head_sha' <<<"$run_json")" = "${{ steps.release-handoff.outputs.candidate }}"
-          artifact_pages="$(timeout 60s gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs/${CI_RUN_ID}/artifacts?per_page=100" --jq '{total_count, artifacts}')"
-          artifacts="$(jq -sc 'if length == 0 then error("artifact API returned no pages") else {total_count: (.[0].total_count // 0), artifacts: [.[].artifacts[]]} end' <<<"$artifact_pages")"
-          test "$(jq -r '.total_count' <<<"$artifacts")" = "$(jq -r '.artifacts | length' <<<"$artifacts")"
-          count="$(jq '[.artifacts[] | select(.name == "dependency-release-handoff" and (.expired | not))] | length' <<<"$artifacts")"
-          test "$count" = "1" || { echo "::error::expected exactly one non-expired dependency-release-handoff artifact, found $count"; exit 1; }
-          artifact_id="$(jq -r '.artifacts[] | select(.name == "dependency-release-handoff" and (.expired | not)) | .id' <<<"$artifacts")"
-          timeout 60s gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > authenticated-handoffs/ci.zip
-          test "$(unzip -Z1 authenticated-handoffs/ci.zip | sort -u)" = "dependency-release-handoff.json"
-          unzip -q authenticated-handoffs/ci.zip -d authenticated-handoffs/ci
-          python3 eng/dependency_handoff.py --root . verify-release \
-            --handoff authenticated-handoffs/release/release-verification-handoff.json \
-            --ci-handoff authenticated-handoffs/ci/dependency-release-handoff.json \
-            --live
-          cp authenticated-handoffs/ci/dependency-release-handoff.json verification-evidence/
+          artifact_name="release-candidate-${UPSTREAM_RUN_ID}-${UPSTREAM_RUN_ATTEMPT}"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${UPSTREAM_RUN_ID}/artifacts?per_page=100" \
+            > verification-evidence/upstream-artifacts.json
+          python3 - "$artifact_name" <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          import re
+          import sys
+          import zipfile
+          from pathlib import Path, PurePosixPath
 
-      # verify-manifest recomputes release-definition fingerprints, which include
-      # references/Hexalith.Builds/Props/Directory.Packages.props — the root submodule
-      # must be present for the sealed baseline comparison.
-      - name: Initialize build submodules
-        if: steps.release-disposition.outputs.governed-attempt == 'true'
-        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+          payload = json.loads(Path("verification-evidence/upstream-artifacts.json").read_text())
+          artifacts = payload.get("artifacts") if isinstance(payload, dict) else None
+          if not isinstance(artifacts, list) or payload.get("total_count") != len(artifacts):
+              raise SystemExit("malformed or ambiguous Release artifact API response")
+          matches = [row for row in artifacts if isinstance(row, dict) and row.get("name") == sys.argv[1] and row.get("expired") is False]
+          if len(matches) != 1 or not isinstance(matches[0].get("id"), int):
+              raise SystemExit(f"expected exactly one prepared-candidate artifact; found {len(matches)}")
+          print(f"artifact-id={matches[0]['id']}")
+          PY
+          artifact_id="$(python3 -c 'import json; p=json.load(open("verification-evidence/upstream-artifacts.json")); print(next(a["id"] for a in p["artifacts"] if a.get("name")=="'"$artifact_name"'" and a.get("expired") is False))')"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" > verification-evidence/prepared-candidate.zip
+          python3 - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          import os
+          import re
+          import zipfile
+          from pathlib import Path, PurePosixPath
 
-      # dotnet CLI is required for `dotnet nuget verify` over the downloaded bytes.
+          archive = Path("verification-evidence/prepared-candidate.zip")
+          with zipfile.ZipFile(archive) as source:
+              names = source.namelist()
+              if any(PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts for name in names):
+                  raise SystemExit("prepared-candidate archive contains an unsafe path")
+              descriptor_names = [name for name in names if name == "release-evidence/prepared-candidate.json"]
+              if len(descriptor_names) != 1:
+                  raise SystemExit("prepared-candidate archive lacks its unique descriptor")
+              descriptor = json.loads(source.read(descriptor_names[0]))
+          required = {"schema", "source_sha", "version", "run_id", "run_attempt", "files"}
+          if not isinstance(descriptor, dict) or set(descriptor) != required:
+              raise SystemExit("prepared-candidate descriptor is malformed")
+          if descriptor["schema"] != "hexalith.frontcomposer.prepared-candidate.v1":
+              raise SystemExit("prepared-candidate descriptor schema mismatch")
+          if descriptor["source_sha"] != os.environ["EXPECTED_SHA"]:
+              raise SystemExit("prepared-candidate source SHA mismatch")
+          if descriptor["run_id"] != int(os.environ["UPSTREAM_RUN_ID"]) or descriptor["run_attempt"] != int(os.environ["UPSTREAM_RUN_ATTEMPT"]):
+              raise SystemExit("prepared-candidate run identity mismatch")
+          if not isinstance(descriptor["version"], str) or re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+(?:[+-][0-9A-Za-z.-]+)?", descriptor["version"]) is None:
+              raise SystemExit("prepared-candidate version is malformed")
+          print(f"version={descriptor['version']}")
+          print(f"tag=v{descriptor['version']}")
+          PY
+
+      - name: Checkout exact released source
+        if: steps.disposition.outputs.governed-attempt == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ steps.disposition.outputs.candidate }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+
+      - name: Checkout approved Builds actions
+        if: steps.disposition.outputs.governed-attempt == 'true'
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: Hexalith/Hexalith.Builds
+          ref: a53166539bf4441d5e33d04281b14c2d59e950c3
+          path: .hexalith/builds-execution
+          persist-credentials: false
+
+      - name: Initialize exact root-declared dependencies
+        if: steps.disposition.outputs.governed-attempt == 'true'
+        uses: ./.hexalith/builds-execution/Github/initialize-build
+
       - name: Initialize .NET
-        if: steps.release-disposition.outputs.governed-attempt == 'true'
-        uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
+        if: steps.disposition.outputs.governed-attempt == 'true'
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
           global-json-file: global.json
 
-      # Resolve the tag/version the Release run published for this commit WITHOUT
-      # repacking. semantic-release (@semantic-release/git) tags the `chore(release)`
-      # commit whose first PARENT is the released head_sha, so match the tag whose commit
-      # IS head_sha (no git-plugin commit) OR whose first parent IS head_sha. semantic-
-      # release pushes the tag before any publish plugin runs. If NO tag references the
-      # authenticated candidate, the mandatory handoffs still preserve and report the
-      # failed/unpublished attempt; a failed run that DID tag verifies below.
-      - name: Resolve release tag
-        id: tag
-        if: steps.release-disposition.outputs.governed-attempt == 'true'
+      - name: Require exact immutable GitHub Release
+        if: steps.disposition.outputs.governed-attempt == 'true'
         shell: bash
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-        run: |
-          set -uo pipefail
-          if ! git fetch --tags --force origin >/dev/null 2>&1; then
-            echo "::notice::tag fetch skipped (tags already present or origin unreachable)."
-          fi
-          head_sha="${{ steps.release-handoff.outputs.candidate }}"
-          tag=""
-          for candidate in $(git tag --list 'v*' --sort=-v:refname); do
-            target="$(git rev-list -n1 "$candidate" 2>/dev/null)" || continue
-            if [ "$target" = "$head_sha" ]; then tag="$candidate"; break; fi
-            parents="$(git rev-list --parents -n1 "$target" 2>/dev/null | cut -d' ' -f2-)"
-            case " $parents " in *" $head_sha "*) tag="$candidate"; break ;; esac
-          done
-          if [ -z "$tag" ]; then
-            # Deleted-tag mitigation (review BH-5): tags are not unimpeachable ground
-            # truth. When the upstream run did NOT succeed, probe for a GitHub release
-            # that targets this commit despite no tag resolving — a deleted tag after a
-            # partial publish would otherwise make live packages invisible to
-            # verification forever. (A no-version nuget.org probe remains a documented
-            # residual: without a tag there is no version to query.)
-            if [ "${UPSTREAM_CONCLUSION}" != "success" ]; then
-              if ! orphaned="$(
-                gh api "repos/${GITHUB_REPOSITORY}/releases?per_page=50" \
-                  --jq "[.[] | select(.target_commitish == \"$head_sha\")] | length" \
-                  2>/dev/null
-              )"; then
-                echo "::error::unable to inspect GitHub release targets while no release tag resolved; cannot rule out partial publication."
-                exit 1
-              fi
-              if [ "${orphaned:-0}" -gt 0 ] 2>/dev/null; then
-                echo "::error::a GitHub release targets ${head_sha} but no tag resolves to it — deleted-tag partial publication state."
-                mkdir -p verification-evidence
-                python3 eng/release_evidence.py partial-publish-incident \
-                  --manifest "" \
-                  --output verification-evidence/partial-publish-incident.json \
-                  --phase tag-push \
-                  --tag "unresolved-${head_sha}"
-                exit 1
-              fi
-            fi
-            {
-              echo "No release tag references this commit: no publication side effect occurred."
-              echo "Upstream Release run conclusion: ${UPSTREAM_CONCLUSION} (governed attempt produced no tag or failed before tagging)."
-            } >> "$GITHUB_STEP_SUMMARY"
-          fi
-          echo "tag=$tag" >> "$GITHUB_OUTPUT"
-          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
-
-      # AC12 negative: the durable evidence chain must live on the immutable initial
-      # GitHub Release itself. Missing release or missing evidence assets fails closed —
-      # a short-retention Actions artifact alone is not compliant.
-      - name: Download published GitHub Release assets and evidence
-        if: ${{ steps.tag.outputs.tag != '' }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+          EXPECTED_SHA: ${{ steps.disposition.outputs.candidate }}
         run: |
           set -euo pipefail
-          mkdir -p verification-evidence
-          # Distinguish a genuinely missing release (HTTP 404 → typed incident) from a
-          # transient API failure (fail WITHOUT minting a false incident — review EC-1).
-          gh_error="$(mktemp)"
-          if ! release_json="$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" 2>"$gh_error")"; then
-            if grep -q "HTTP 404" "$gh_error"; then
-              echo "::error::tag ${RELEASE_TAG} exists but no GitHub Release does — partial publication state."
+          incident() {
+            jq -n --arg phase "$1" --arg tag "$RELEASE_TAG" --arg sha "$EXPECTED_SHA" \
+              '{decision_contract:"frontcomposer.partial-publish-incident.v2",classification:"partial-publish-incident",failed_phase:$phase,tag:$tag,source_sha:$sha}' \
+              > verification-evidence/partial-publish-incident.json
+          }
+          if ! gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}" > verification-evidence/github-release.json; then
+            incident github-release
+            echo "A governed publication attempt produced no GitHub Release." >&2
+            exit 1
+          fi
+          if ! jq -e --arg tag "$RELEASE_TAG" '
+            type == "object" and .tag_name == $tag and .draft == false and .immutable == true and
+            (.id | type == "number") and (.assets | type == "array") and (.assets | length > 0)
+          ' verification-evidence/github-release.json > /dev/null; then
+            incident github-release
+            echo "GitHub Release metadata is mutable, draft, empty, or malformed." >&2
+            exit 1
+          fi
+          gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${RELEASE_TAG}" > verification-evidence/tag-ref.json
+          echo '[]' > verification-evidence/tag-objects.json
+          object_type="$(jq -er '.object.type' verification-evidence/tag-ref.json)"
+          object_sha="$(jq -er '.object.sha' verification-evidence/tag-ref.json)"
+          for _ in 1 2 3 4 5; do
+            [ "$object_type" = "commit" ] && break
+            if [ "$object_type" != "tag" ] || [[ ! "$object_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              incident tag-push
+              exit 1
+            fi
+            gh api "repos/${GITHUB_REPOSITORY}/git/tags/${object_sha}" > verification-evidence/tag-object.json
+            jq --slurpfile item verification-evidence/tag-object.json '. + $item' \
+              verification-evidence/tag-objects.json > verification-evidence/tag-objects.next.json
+            mv verification-evidence/tag-objects.next.json verification-evidence/tag-objects.json
+            object_type="$(jq -er '.object.type' verification-evidence/tag-object.json)"
+            object_sha="$(jq -er '.object.sha' verification-evidence/tag-object.json)"
+          done
+          if [ "$object_type" != "commit" ] || [ "$object_sha" != "$EXPECTED_SHA" ]; then
+            incident tag-push
+            echo "GitHub Release tag does not resolve to the dispatched source SHA." >&2
+            exit 1
+          fi
+          python3 eng/release_contract.py publication \
+            --expected-sha "$EXPECTED_SHA" \
+            --expected-tag "$RELEASE_TAG" \
+            --release verification-evidence/github-release.json \
+            --tag-ref verification-evidence/tag-ref.json \
+            --tag-objects verification-evidence/tag-objects.json \
+            --require-immutable
+
+      - name: Download durable release assets
+        if: steps.disposition.outputs.governed-attempt == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p downloaded/github nupkgs-signed nupkgs release-evidence
+          gh release download "$RELEASE_TAG" --dir downloaded/github
+          shopt -s nullglob
+          for file in downloaded/github/*.nupkg; do cp "$file" "nupkgs-signed/$(basename "$file")"; done
+          for file in downloaded/github/*.snupkg; do cp "$file" "nupkgs/$(basename "$file")"; done
+          for file in downloaded/github/*.json downloaded/github/*.txt downloaded/github/*.md; do cp "$file" "release-evidence/$(basename "$file")"; done
+          for required in sealed-manifest.json release-readiness.json checksums.json package-inventory.json dependency-release-source.json release-verification.json signing-verification.txt; do
+            if [ ! -f "release-evidence/$required" ]; then
               python3 eng/release_evidence.py partial-publish-incident \
-                --manifest "" \
+                --manifest "${PWD}/release-evidence/sealed-manifest.json" \
                 --output verification-evidence/partial-publish-incident.json \
                 --phase github-release \
                 --tag "$RELEASE_TAG"
-            else
-              echo "::error::transient GitHub API failure while resolving release ${RELEASE_TAG}; re-run this workflow (no incident minted)."
+              echo "GitHub Release lacks durable evidence asset $required." >&2
+              exit 1
             fi
-            rm -f "$gh_error"
-            exit 1
-          fi
-          rm -f "$gh_error"
-          # Durable-evidence guarantee (review BH-3): the AC12/AC16 argument leans on the
-          # release being immutable — on a mutable release the readiness/checksum assets
-          # could be swapped post-hoc and verification would bless the result. Record the
-          # observed immutability and fail closed when it is not true (the Release Owner
-          # enables immutable releases as part of REL-5 enablement).
-          immutable="$(jq -r '.immutable' <<<"$release_json")"
-          asset_count="$(jq -r '.assets | length' <<<"$release_json")"
-          jq -n --arg immutable "$immutable" --arg tag "$RELEASE_TAG" \
-            '{decision_contract: "frontcomposer.release-immutability.v1", tag: $tag, immutable: ($immutable == "true")}' \
-            > verification-evidence/immutability.json
-          if [ "$immutable" != "true" ]; then
-            echo "::error::GitHub Release ${RELEASE_TAG} is not immutable (immutable=${immutable}); durable evidence cannot be trusted on a mutable release."
-            python3 eng/release_evidence.py partial-publish-incident \
-              --manifest "" \
-              --output verification-evidence/partial-publish-incident.json \
-              --phase post-seal-verification \
-              --tag "$RELEASE_TAG"
-            exit 1
-          fi
-          if [ "${asset_count:-0}" -eq 0 ]; then
-            echo "::error::GitHub Release ${RELEASE_TAG} has no assets — packages and evidence were never attached (review EC-2)."
-            python3 eng/release_evidence.py partial-publish-incident \
-              --manifest "" \
-              --output verification-evidence/partial-publish-incident.json \
-              --phase github-release \
-              --tag "$RELEASE_TAG"
-            exit 1
-          fi
-          mkdir -p downloaded/github
-          if ! gh release download "$RELEASE_TAG" --dir downloaded/github; then
-            echo "::error::downloading assets of GitHub Release ${RELEASE_TAG} failed."
-            python3 eng/release_evidence.py partial-publish-incident \
-              --manifest "" \
-              --output verification-evidence/partial-publish-incident.json \
-              --phase github-release \
-              --tag "$RELEASE_TAG"
-            exit 1
-          fi
-          # Arrange the downloaded bytes into the sealed-manifest layout so verify-manifest
-          # checks the PUBLISHED artifacts (this is a copy of published bytes, not a rebuild).
-          mkdir -p nupkgs-signed nupkgs release-evidence
-          shopt -s nullglob
-          for f in downloaded/github/*.nupkg; do cp "$f" "nupkgs-signed/$(basename "$f")"; done
-          for f in downloaded/github/*.snupkg; do cp "$f" "nupkgs/$(basename "$f")"; done
-          for f in downloaded/github/*.json downloaded/github/*.txt; do cp "$f" "release-evidence/$(basename "$f")"; done
-          missing=""
-          for required in sealed-manifest.json release-readiness.json checksums.json package-inventory.json release-verification.json signing-verification.txt; do
-            [ -f "release-evidence/$required" ] || missing="$missing $required"
           done
-          if [ -n "$missing" ]; then
-            echo "::error::GitHub Release ${RELEASE_TAG} lacks durable evidence assets:${missing}. A short-retention Actions artifact alone fails FR24 (AC12)."
-            python3 eng/release_evidence.py partial-publish-incident \
-              --manifest "" \
-              --output verification-evidence/partial-publish-incident.json \
-              --phase github-release \
-              --tag "$RELEASE_TAG"
-            exit 1
-          fi
 
-      # The sealed manifest is verified over the DOWNLOADED bytes plus the checked-out
-      # release-definition files, proving the published artifacts are the sealed ones.
       - name: Verify sealed manifest over downloaded bytes
-        if: ${{ steps.tag.outputs.tag != '' }}
+        if: steps.disposition.outputs.governed-attempt == 'true'
         run: |
           python3 eng/release_evidence.py verify-manifest \
             --manifest release-evidence/sealed-manifest.json \
             --root . \
+            --graph-root . \
             --output verification-evidence/manifest-verification.json
 
-      # Independent signature verification of the bytes NuGet actually serves. Runs with
-      # the SDK's public code-signing trust bundle only — no private trust bootstrap, so
-      # unsigned packages (NU3004) or untrusted/invalid chains fail closed here even if a
-      # compromised pre-publication step claimed otherwise.
-      - name: Download published NuGet bytes and compare hashes
-        if: ${{ steps.tag.outputs.tag != '' }}
+      - name: Download NuGet bytes and verify exact publication
+        if: steps.disposition.outputs.governed-attempt == 'true'
         shell: bash
         env:
-          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
-          RELEASE_VERSION: ${{ steps.tag.outputs.version }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+          RELEASE_VERSION: ${{ steps.candidate.outputs.version }}
+          EXPECTED_SHA: ${{ steps.disposition.outputs.candidate }}
         run: |
           set -euo pipefail
-          python3 - <<'PYEOF'
+          python3 - <<'PY'
           import hashlib
-          import http.client
           import json
           import os
           import pathlib
@@ -864,298 +345,132 @@ jobs:
           import urllib.error
           import urllib.request
 
-          tag = os.environ["RELEASE_TAG"]
+          manifest = json.loads(pathlib.Path("release-evidence/sealed-manifest.json").read_text())
+          checksums = json.loads(pathlib.Path("release-evidence/checksums.json").read_text())
+          readiness = json.loads(pathlib.Path("release-evidence/release-readiness.json").read_text())
           version = os.environ["RELEASE_VERSION"]
-          out_dir = pathlib.Path("verification-evidence")
-          out_dir.mkdir(exist_ok=True)
-          nuget_dir = pathlib.Path("downloaded/nuget")
-          nuget_dir.mkdir(parents=True, exist_ok=True)
+          tag = os.environ["RELEASE_TAG"]
+          failures = []
+          comparison = []
+          destination = pathlib.Path("downloaded/nuget")
+          destination.mkdir(parents=True, exist_ok=True)
 
-          def sha256_file(path: pathlib.Path) -> str:
-              digest = hashlib.sha256()
-              with path.open("rb") as fh:
-                  for chunk in iter(lambda: fh.read(1024 * 1024), b""):
-                      digest.update(chunk)
-              return digest.hexdigest()
+          def digest(path):
+              return hashlib.sha256(path.read_bytes()).hexdigest()
 
-          failures: list[str] = []
-          incident_phase = ""
+          def fail(message):
+              failures.append(message)
+              print(f"::error::{message}")
 
-          def record(problem: str, phase: str) -> None:
-              global incident_phase
-              failures.append(problem)
-              if not incident_phase:
-                  incident_phase = phase
-              print(f"::error::{problem}")
-
-          def load_json(path: str):
-              # Corrupt downloaded evidence is a typed divergence, never a traceback
-              # (review EC-4).
-              try:
-                  return json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
-              except (OSError, json.JSONDecodeError):
-                  record(f"downloaded evidence file {path} is unreadable or not valid JSON", "post-seal-verification")
-                  return None
-
-          def finish() -> None:
-              payload = {
-                  "decision_contract": "frontcomposer.published-byte-comparison.v1",
-                  "tag": tag,
-                  "version": version,
-                  "packages": comparison,
-                  "failures": failures,
-                  "status": "verified" if not failures else "divergent",
-              }
-              with (out_dir / "published-byte-comparison.json").open("w", encoding="utf-8", newline="\n") as fh:
-                  json.dump(payload, fh, indent=2, sort_keys=True)
-                  fh.write("\n")
-              if failures:
-                  subprocess.run(
-                      [
-                          "python3", "eng/release_evidence.py", "partial-publish-incident",
-                          "--manifest", "release-evidence/sealed-manifest.json",
-                          "--output", "verification-evidence/partial-publish-incident.json",
-                          "--phase", incident_phase or "post-seal-verification",
-                          "--tag", tag,
-                      ],
-                      check=False,
-                  )
-                  print(f"::error::published-byte verification failed with {len(failures)} finding(s); owner-led reconciliation is required before any compliant disposition.")
-                  sys.exit(1)
-
-          comparison: dict[str, dict[str, str]] = {}
-          manifest = load_json("release-evidence/sealed-manifest.json")
-          checksum_rows = load_json("release-evidence/checksums.json")
-          readiness = load_json("release-evidence/release-readiness.json")
-          if manifest is None or not isinstance(manifest, dict):
-              if manifest is not None:
-                  record("sealed manifest is not an object", "post-seal-verification")
-              finish()
-              sys.exit(1)
-          if manifest.get("tag") != tag:
-              record(f"sealed manifest tag {manifest.get('tag')!r} does not match released tag {tag!r}", "post-seal-verification")
-          sealed_hashes = {
-              row["path"].replace("\\", "/"): row["sha256"]
-              for row in (checksum_rows or {}).get("files", [])
-              if isinstance(row, dict) and row.get("path") and row.get("sha256")
-          } if isinstance(checksum_rows, dict) else {}
-
-          # Retroactive-authorization ban: the release is compliant only if it was
-          # authorized BEFORE publication by the sealed readiness classification.
-          if not isinstance(readiness, dict):
-              if readiness is not None:
-                  record("downloaded release-readiness.json is not an object", "post-seal-verification")
-              readiness = {}
-          classification = readiness.get("classification")
-          if classification not in {"ready", "fallback-approved"} or readiness.get("publish_authorized") is not True:
-              record(
-                  f"published release {tag} was not pre-authorized: classification={classification!r}, "
-                  f"publish_authorized={readiness.get('publish_authorized')!r}",
-                  "post-seal-verification",
-              )
-
-          packages = manifest.get("packages", [])
-          package_rows = [row for row in packages if isinstance(row, dict)] if isinstance(packages, list) else []
-
-          # Surplus-asset detection (review BH-6): every package-shaped asset on the
-          # release must be accounted for by the sealed manifest — an extra .nupkg or
-          # .snupkg attached to the release is the obvious substitution channel.
-          expected_names = set()
-          for row in package_rows:
-              expected_names.add(str(row.get("artifact_path", "")).replace("\\", "/").rsplit("/", 1)[-1])
-              symbol_value = str(row.get("symbol_artifact", "")).replace("\\", "/")
-              if symbol_value.endswith(".snupkg"):
-                  expected_names.add(symbol_value.rsplit("/", 1)[-1])
-          for asset in sorted(pathlib.Path("downloaded/github").iterdir()):
-              if asset.suffix in {".nupkg", ".snupkg"} and asset.name not in expected_names:
-                  record(f"release asset {asset.name} is not part of the sealed manifest (surplus artifact)", "post-seal-verification")
-
-          for row in package_rows:
+          if manifest.get("tag") != tag or manifest.get("commit_sha") != os.environ["EXPECTED_SHA"]:
+              fail("sealed manifest tag/source does not match the authenticated release")
+          if readiness.get("publish_authorized") is not True or readiness.get("classification") not in {"ready", "fallback-approved"}:
+              fail("published release was not authorized by its sealed readiness evidence")
+          rows = manifest.get("packages")
+          if not isinstance(rows, list) or len(rows) != 8:
+              fail("sealed package count is not exactly eight")
+              rows = []
+          expected_assets = set()
+          for row in rows:
               package_id = str(row.get("package_id", ""))
-              row_version = str(row.get("version", ""))
-              artifact_path = str(row.get("artifact_path", "")).replace("\\", "/")
-              name = artifact_path.rsplit("/", 1)[-1]
-              entry: dict[str, str] = {"package_id": package_id, "version": row_version}
-              comparison[package_id] = entry
-              github_copy = pathlib.Path("nupkgs-signed") / name
-              if not github_copy.is_file():
-                  record(f"{package_id}: package asset {name} missing from the GitHub Release", "package-push")
-                  entry["github_asset"] = "missing"
+              if row.get("version") != version:
+                  fail(f"{package_id}: version differs from release plan")
+              package_name = pathlib.PurePosixPath(str(row.get("artifact_path", ""))).name
+              expected_assets.add(package_name)
+              github_path = pathlib.Path("nupkgs-signed") / package_name
+              if not github_path.is_file() or digest(github_path) != row.get("checksum"):
+                  fail(f"{package_id}: GitHub package asset is missing or divergent")
                   continue
-              github_hash = sha256_file(github_copy)
-              entry["github_sha256"] = github_hash
-              if github_hash != row.get("checksum"):
-                  record(f"{package_id}: GitHub asset bytes do not match the sealed manifest checksum", "post-seal-verification")
-              lower_id = package_id.lower()
-              url = f"https://api.nuget.org/v3-flatcontainer/{lower_id}/{row_version}/{lower_id}.{row_version}.nupkg"
-              target = nuget_dir / name
-              downloaded = False
-              last_error = ""
-              # Per-package budget (review EC-8/BH-7): one slow package must not consume
-              # the retry window of the remaining seven. 404 means not-yet-indexed and is
-              # retryable; 403/other HTTP statuses fail fast with the observed detail.
+              url = f"https://api.nuget.org/v3-flatcontainer/{package_id.lower()}/{version}/{package_id.lower()}.{version}.nupkg"
+              target = destination / package_name
               deadline = time.monotonic() + 12 * 60
               while True:
                   try:
                       with urllib.request.urlopen(url, timeout=60) as response:
                           target.write_bytes(response.read())
-                      downloaded = True
                       break
                   except urllib.error.HTTPError as error:
-                      last_error = f"HTTP {error.code}"
-                      if error.code != 404:
-                          break
-                      if time.monotonic() >= deadline:
+                      if error.code != 404 or time.monotonic() >= deadline:
+                          fail(f"{package_id}: NuGet package unavailable (HTTP {error.code})")
                           break
                       time.sleep(30)
-                  except (urllib.error.URLError, TimeoutError, OSError, http.client.HTTPException) as error:
-                      last_error = type(error).__name__
+                  except (OSError, TimeoutError, urllib.error.URLError) as error:
                       if time.monotonic() >= deadline:
+                          fail(f"{package_id}: NuGet package unavailable ({type(error).__name__})")
                           break
                       time.sleep(30)
-              if not downloaded:
-                  record(f"{package_id}: version {row_version} is not downloadable from nuget.org ({last_error or 'no attempt succeeded'})", "package-push")
-                  entry["nuget"] = "missing"
+              if target.is_file() and digest(target) != row.get("checksum"):
+                  fail(f"{package_id}: NuGet bytes differ from the sealed/GitHub bytes")
+              symbol_name = pathlib.PurePosixPath(str(row.get("symbol_artifact", ""))).name
+              if symbol_name.endswith(".snupkg"):
+                  expected_assets.add(symbol_name)
+                  symbol = pathlib.Path("nupkgs") / symbol_name
+                  if not symbol.is_file() or digest(symbol) != row.get("symbol_checksum"):
+                      fail(f"{package_id}: symbol asset is missing or divergent")
+              comparison.append({"package_id": package_id, "checksum": row.get("checksum")})
+          actual_assets = {path.name for path in pathlib.Path("downloaded/github").iterdir() if path.suffix in {".nupkg", ".snupkg"}}
+          if actual_assets != expected_assets:
+              fail("GitHub package assets differ from the sealed package/symbol inventory")
+          checksum_rows = checksums.get("files") if isinstance(checksums, dict) else None
+          if not isinstance(checksum_rows, list):
+              fail("downloaded checksum evidence is malformed")
+              checksum_rows = []
+          for sealed in checksum_rows:
+              if not isinstance(sealed, dict):
+                  fail("downloaded checksum evidence contains a malformed row")
                   continue
-              nuget_hash = sha256_file(target)
-              entry["nuget_sha256"] = nuget_hash
-              if nuget_hash != row.get("checksum"):
-                  record(f"{package_id}: published NuGet bytes do not match the sealed manifest checksum", "post-seal-verification")
-              # Symbol audit against the SEALED row hash (review BH-1/VG-3/EC-5/EC-6):
-              # `not-required` is the explicit exception sentinel; a path-shaped symbol
-              # with no sealed symbol_checksum is a hard failure, never "verified" with
-              # no comparison performed. nuget.org does not serve raw .snupkg bytes, so
-              # the GitHub symbol asset is what the sealed hash is compared against.
-              symbol_path = str(row.get("symbol_artifact", "")).replace("\\", "/")
-              sealed_symbol = str(row.get("symbol_checksum", ""))
-              if symbol_path.endswith(".snupkg"):
-                  symbol_name = symbol_path.rsplit("/", 1)[-1]
-                  symbol_copy = pathlib.Path("nupkgs") / symbol_name
-                  if len(sealed_symbol) != 64:
-                      record(f"{package_id}: symbol has no sealed checksum in the manifest row", "post-seal-verification")
-                      entry["symbol"] = "unsealed"
-                  elif not symbol_copy.is_file():
-                      record(f"{package_id}: symbol asset {symbol_name} missing from the GitHub Release", "symbol-push")
-                      entry["symbol"] = "missing"
-                  elif sha256_file(symbol_copy) != sealed_symbol:
-                      record(f"{package_id}: symbol asset bytes do not match the sealed manifest symbol checksum", "post-seal-verification")
-                      entry["symbol"] = "divergent"
-                  else:
-                      entry["symbol"] = "verified-against-sealed-manifest"
-              elif sealed_symbol == "not-required":
-                  entry["symbol"] = "not-required"
-              else:
-                  record(f"{package_id}: symbol reference {symbol_path!r} is neither a sealed .snupkg path nor the not-required sentinel", "post-seal-verification")
-
-          # Every sealed PUBLISHED file must round-trip: recompute the sealed checksums over
-          # the downloaded copies (signed packages, symbols, and the evidence chain). The
-          # unsigned nupkgs/*.nupkg intermediates are sealed for pack-once provenance but
-          # are deliberately never published, so they cannot be re-verified here.
-          for path, sealed_hash in sealed_hashes.items():
+              path = str(sealed.get("path", "")).replace("\\", "/")
               if path.startswith("nupkgs/") and path.endswith(".nupkg"):
                   continue
               local = pathlib.Path(path)
-              if not local.is_file():
-                  record(f"sealed evidence file {path} is absent from the downloaded release assets", "post-seal-verification")
-              elif sha256_file(local) != sealed_hash:
-                  record(f"downloaded copy of {path} does not match its sealed checksum", "post-seal-verification")
+              if not local.is_file() or digest(local) != sealed.get("sha256"):
+                  fail(f"published asset/evidence bytes differ from checksums.json: {path}")
+          sbom = pathlib.Path("release-evidence/sbom.json")
+          if not sbom.is_file() or digest(sbom) != manifest.get("sbom_hash"):
+              fail("published SBOM bytes differ from the sealed manifest")
+          payload = {"decision_contract":"frontcomposer.published-byte-comparison.v2","tag":tag,"packages":comparison,"failures":failures,"status":"verified" if not failures else "divergent"}
+          pathlib.Path("verification-evidence/published-byte-comparison.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+          if failures:
+              subprocess.run(["python3", "eng/release_evidence.py", "partial-publish-incident", "--manifest", "release-evidence/sealed-manifest.json", "--output", "verification-evidence/partial-publish-incident.json", "--phase", "post-seal-verification", "--tag", tag], check=False)
+              sys.exit(1)
+          PY
 
-          finish()
-          PYEOF
-
-      - name: Verify signatures of published NuGet bytes
-        if: ${{ steps.tag.outputs.tag != '' }}
+      - name: Verify signatures of NuGet-served bytes
+        if: steps.disposition.outputs.governed-attempt == 'true'
         shell: bash
         env:
-          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
         run: |
           set -euo pipefail
-          raw_verify="$(mktemp)"
-          verify_status=0
-          dotnet nuget verify downloaded/nuget/*.nupkg --all -v normal > "$raw_verify" 2>&1 || verify_status=$?
-          cat "$raw_verify"
-          sed -E "s#/(home|Users|tmp|var)/[^[:space:]'\"]*#<path>#g" "$raw_verify" > verification-evidence/published-signing-verification.txt
-          rm -f "$raw_verify"
-          if [ "$verify_status" -ne 0 ]; then
-            # Unsigned published bytes (NU3004) or an untrusted chain is a divergence,
-            # recorded through the same typed incident path as hash mismatches (review EC-7).
+          status=0
+          dotnet nuget verify downloaded/nuget/*.nupkg --all -v normal \
+            > verification-evidence/published-signing-verification.txt 2>&1 || status=$?
+          if [ "$status" -ne 0 ]; then
             python3 eng/release_evidence.py partial-publish-incident \
               --manifest release-evidence/sealed-manifest.json \
               --output verification-evidence/partial-publish-incident.json \
               --phase post-seal-verification \
               --tag "$RELEASE_TAG"
-            echo "::error::published NuGet bytes failed signature verification (unsigned or untrusted chain)."
+            echo "NuGet-served bytes failed independent signature verification." >&2
             exit 1
           fi
 
-      # Machine-readable record for the Release Owner's compliance ledger
-      # (_bmad-output/implementation-artifacts/rel-ai-1-release-evidence-ledger.md).
-      # The markdown ledger is owner-updated; this workflow never commits.
       - name: Compose verification ledger record
-        if: ${{ always() && steps.tag.outputs.tag != '' }}
+        if: always() && steps.disposition.outputs.governed-attempt == 'true'
         env:
-          RELEASE_TAG: ${{ steps.tag.outputs.tag }}
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
           UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
           UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
-          python3 - <<'PYEOF'
-          import json
-          import os
-          import pathlib
-
-          out_dir = pathlib.Path("verification-evidence")
-          out_dir.mkdir(exist_ok=True)
-
-          def load(path: str):
-              candidate = pathlib.Path(path)
-              if not candidate.is_file():
-                  return None
-              try:
-                  return json.loads(candidate.read_text(encoding="utf-8"))
-              except json.JSONDecodeError:
-                  return {"unreadable": True}
-
-          repository = os.environ.get("GITHUB_REPOSITORY", "")
-          server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
-          comparison = load("verification-evidence/published-byte-comparison.json")
-          manifest_verification = load("verification-evidence/manifest-verification.json")
-          readiness = load("release-evidence/release-readiness.json")
-          incident = load("verification-evidence/partial-publish-incident.json")
-          immutability = load("verification-evidence/immutability.json")
-          release_immutable = bool(immutability) and immutability.get("immutable") is True
-          signing_transcript = pathlib.Path("verification-evidence/published-signing-verification.txt").is_file()
-          verified = (
-              comparison is not None and comparison.get("status") == "verified"
-              and manifest_verification is not None and manifest_verification.get("status") == "valid"
-              and signing_transcript
-              and incident is None
-              and release_immutable
-          )
-          record = {
-              "decision_contract": "frontcomposer.release-ledger-record.v1",
-              "release_immutable": release_immutable,
-              "tag": os.environ.get("RELEASE_TAG", ""),
-              "release_url": f"{server}/{repository}/releases/tag/{os.environ.get('RELEASE_TAG', '')}",
-              "release_run_url": f"{server}/{repository}/actions/runs/{os.environ.get('UPSTREAM_RUN_ID', '')}",
-              "release_run_conclusion": os.environ.get("UPSTREAM_CONCLUSION", ""),
-              "verification_run_url": f"{server}/{repository}/actions/runs/{os.environ.get('GITHUB_RUN_ID', '')}",
-              "manifest_verification": (manifest_verification or {}).get("status", "missing"),
-              "readiness_classification": (readiness or {}).get("classification", "missing"),
-              "publish_authorized": (readiness or {}).get("publish_authorized", "missing"),
-              "published_byte_comparison": (comparison or {}).get("status", "missing"),
-              "published_signing_transcript": signing_transcript,
-              "partial_publish_incident": incident is not None,
-              "disposition_proposal": "compliant-candidate" if verified else "non-compliant",
-          }
-          with (out_dir / "ledger-record.json").open("w", encoding="utf-8", newline="\n") as fh:
-              json.dump(record, fh, indent=2, sort_keys=True)
-              fh.write("\n")
-          summary = pathlib.Path(os.environ["GITHUB_STEP_SUMMARY"])
-          with summary.open("a", encoding="utf-8") as fh:
-              fh.write("## Independent release verification (REL-3)\n\n")
-              for key, value in sorted(record.items()):
-                  fh.write(f"- {key}: {value}\n")
-          PYEOF
+          jq -n \
+            --arg tag "$RELEASE_TAG" \
+            --arg run "$UPSTREAM_RUN_ID" \
+            --arg conclusion "$UPSTREAM_CONCLUSION" \
+            --argjson incident "$([ -f verification-evidence/partial-publish-incident.json ] && echo true || echo false)" \
+            --argjson manifest "$([ "$(jq -r '.status // ""' verification-evidence/manifest-verification.json 2>/dev/null)" = valid ] && echo true || echo false)" \
+            --argjson bytes "$([ "$(jq -r '.status // ""' verification-evidence/published-byte-comparison.json 2>/dev/null)" = verified ] && echo true || echo false)" \
+            '{decision_contract:"frontcomposer.release-ledger-record.v2",tag:$tag,release_run_id:$run,release_run_conclusion:$conclusion,manifest_verified:$manifest,published_bytes_verified:$bytes,partial_publish_incident:$incident,disposition:(if ($manifest and $bytes and ($incident|not)) then "compliant-candidate" else "non-compliant" end)}' \
+            > verification-evidence/ledger-record.json
 
       - name: Upload verification evidence artifact
         if: always()

@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -1434,6 +1435,18 @@ class PolicyShapeTests(unittest.TestCase):
                 "dotnet", "build", target, "--configuration", "Release", "--no-restore",
                 "-p:UseNuGetDeps=true",
             ])
+
+    def test_all_governed_selected_catalog_properties_match_and_mutations_fail(self) -> None:
+        policy = dg.load_policy(ROOT / "eng/dependency-graph-policy.json")
+        expected = policy["profiles"]["frontcomposer-catalog-v1"]["selected_catalog_required_properties"]
+        catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
+        catalog = ET.fromstring(catalog_path.read_bytes())
+        self.assertEqual(len(expected), 6, "the full governed catalog property set must remain explicit")
+        for name, version in expected.items():
+            with self.subTest(name=name):
+                dg.assert_selected_catalog_property(catalog, name, version, "selected Builds catalog")
+                with self.assertRaises(dg.GraphError):
+                    dg.assert_selected_catalog_property(catalog, name, f"{version}-mutated", "mutation")
 
 
 if __name__ == "__main__":

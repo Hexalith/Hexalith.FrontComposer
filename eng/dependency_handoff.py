@@ -20,6 +20,7 @@ import dependency_graph as dg
 
 CI_HANDOFF_SCHEMA = "hexalith.dependency-release-handoff.v1"
 RELEASE_HANDOFF_SCHEMA = "hexalith.release-verification-handoff.v1"
+SOURCE_PROOF_SCHEMA = "hexalith.dependency-release-source.v1"
 ROOT_REPOSITORY = "github.com/hexalith/hexalith.frontcomposer"
 CI_WORKFLOW_PATH = ".github/workflows/ci.yml"
 RELEASE_WORKFLOW_PATH = ".github/workflows/release.yml"
@@ -199,6 +200,78 @@ def create_ci_handoff(
     return validate_ci_handoff(handoff)
 
 
+def validate_source_proof(value: Any, *, root: Path | None = None) -> dict[str, Any]:
+    """Validate the operator-release source proof produced by the local CI governance job.
+
+    This contract deliberately does not claim an immutable closure for the shared CI
+    reusable workflow. It proves only facts FrontComposer owns and can authenticate:
+    the successful push-CI coordinate, active base policy, and exact candidate graph.
+    """
+    proof = _closed(
+        value,
+        {"schema", "run", "revisions", "dependency_policy", "dependency_graph"},
+        "release source proof",
+    )
+    if proof["schema"] != SOURCE_PROOF_SCHEMA:
+        raise HandoffError(f"release source proof schema must be {SOURCE_PROOF_SCHEMA!r}")
+    run = _closed(
+        proof["run"],
+        {"repository", "workflow_path", "run_id", "run_attempt", "event", "branch", "candidate"},
+        "release source proof run",
+    )
+    if run["repository"] != ROOT_REPOSITORY or run["workflow_path"] != CI_WORKFLOW_PATH:
+        raise HandoffError("release source proof repository/workflow_path mismatch")
+    if run["event"] != "push" or run["branch"] != "main":
+        raise HandoffError("release source proof must come from push CI on main")
+    _positive_integer(run["run_id"], "release source proof run_id")
+    _positive_integer(run["run_attempt"], "release source proof run_attempt")
+    candidate = dg.require_commit(run["candidate"], "release source proof candidate")
+    revisions = _closed(proof["revisions"], {"base", "candidate"}, "release source proof revisions")
+    dg.require_commit(revisions["base"], "release source proof base")
+    dg.require_commit(revisions["candidate"], "release source proof revisions candidate")
+    graph = dg.validate_graph_envelope(proof["dependency_graph"])
+    projection = validate_policy_projection(proof["dependency_policy"])
+    if candidate != revisions["candidate"] or candidate != graph["root"]["commit"]:
+        raise HandoffError("release source proof candidate and graph root must be identical")
+    if projection["commit"] != revisions["base"]:
+        raise HandoffError("release source proof policy commit must equal the push base")
+    if root is not None:
+        policy = _load_active_policy(root, projection)
+        live = dg.collect_graph(root, graph["root"]["repository"], candidate, policy)
+        if live != graph:
+            raise HandoffError("release source proof graph differs from the live exact candidate")
+    return proof
+
+
+def create_source_proof(
+    *, run_id: int, run_attempt: int, evidence: dict[str, Any]
+) -> dict[str, Any]:
+    revisions = evidence.get("revisions")
+    if not isinstance(revisions, dict) or revisions.get("event") != "push":
+        raise HandoffError("release source proof requires push dependency evidence")
+    if revisions.get("release_eligible") is not True:
+        raise HandoffError("dependency evidence is not release eligible")
+    proof = {
+        "schema": SOURCE_PROOF_SCHEMA,
+        "run": {
+            "repository": ROOT_REPOSITORY,
+            "workflow_path": CI_WORKFLOW_PATH,
+            "run_id": run_id,
+            "run_attempt": run_attempt,
+            "event": "push",
+            "branch": "main",
+            "candidate": revisions.get("candidate"),
+        },
+        "revisions": {
+            "base": revisions.get("event_base"),
+            "candidate": revisions.get("candidate"),
+        },
+        "dependency_policy": evidence.get("dependency_policy"),
+        "dependency_graph": evidence.get("candidate_graph"),
+    }
+    return validate_source_proof(proof)
+
+
 def validate_release_handoff(
     value: Any,
     *,
@@ -344,20 +417,47 @@ def build_parser() -> argparse.ArgumentParser:
     verify_release.add_argument("--handoff", required=True)
     verify_release.add_argument("--ci-handoff", required=True)
     verify_release.add_argument("--live", action="store_true")
+    create_source = sub.add_parser("create-source")
+    create_source.add_argument("--evidence", required=True)
+    create_source.add_argument("--run-id", required=True, type=int)
+    create_source.add_argument("--run-attempt", required=True, type=int)
+    create_source.add_argument("--output", required=True)
+    verify_source = sub.add_parser("verify-source")
+    verify_source.add_argument("--proof", required=True)
+    verify_source.add_argument("--live", action="store_true")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    root = Path(args.root).resolve() if args.live else None
+    root = Path(args.root).resolve() if getattr(args, "live", False) else None
     try:
-        value, raw = _load(args.handoff)
+        if args.command == "create-source":
+            evidence_value, _evidence_raw = _load(args.evidence)
+            evidence = evidence_value.get("evidence", evidence_value) if isinstance(evidence_value, dict) else evidence_value
+            if not isinstance(evidence, dict):
+                raise HandoffError("dependency evidence must be a JSON object")
+            proof = create_source_proof(
+                run_id=args.run_id,
+                run_attempt=args.run_attempt,
+                evidence=evidence,
+            )
+            Path(args.output).write_text(
+                json.dumps(proof, indent=2, sort_keys=True) + "\n",
+                encoding="utf-8",
+            )
+            raw = Path(args.output).read_bytes()
+        elif args.command == "verify-source":
+            value, raw = _load(args.proof)
+            validate_source_proof(value, root=root)
+        else:
+            value, raw = _load(args.handoff)
         if args.command == "verify-ci":
             validate_ci_handoff(value, root=root)
         elif args.command == "verify-release":
             _ci_value, ci_raw = _load(args.ci_handoff)
             validate_release_handoff(value, ci_handoff_raw=ci_raw, root=root)
-        else:
+        elif args.command not in {"create-source", "verify-source"}:
             raise HandoffError(f"unsupported command {args.command!r}")
         print(json.dumps({"ok": True, "sha256": hashlib.sha256(raw).hexdigest()}, sort_keys=True))
         return 0

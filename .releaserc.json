@@ -14,11 +14,11 @@
         "preset": "conventionalcommits"
       }
     ],
-    "@semantic-release/changelog",
     [
       "@semantic-release/exec",
       {
-        "prepareCmd": "python3 eng/release_prepublish.py prepare --version ${nextRelease.version}",
+        "verifyReleaseCmd": "python3 eng/release_prepublish.py restore --version ${nextRelease.version}",
+        "prepareCmd": "python3 eng/release_prepublish.py verify-prepared --version ${nextRelease.version}",
         "publishCmd": "python3 eng/release_prepublish.py publish --version ${nextRelease.version}"
       }
     ],
@@ -31,13 +31,6 @@
           "release-evidence/*.json",
           "release-evidence/*.txt"
         ]
-      }
-    ],
-    [
-      "@semantic-release/git",
-      {
-        "assets": ["CHANGELOG.md"],
-        "message": "chore(release): ${nextRelease.version} [skip ci]"
       }
     ]
   ]

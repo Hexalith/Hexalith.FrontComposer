@@ -1,101 +1,355 @@
 name: Release
 
-# REL-2 (2026-07-13): FrontComposer release now delegates to the shared reusable
-# Hexalith.Builds `domain-release.yml`, matching Hexalith.Tenants. It runs after CI
-# succeeds on main (workflow_run) so the release never duplicates the CI gate and can
-# never publish from a commit whose CI failed. The `event == 'push'` guard keeps any
-# scheduled/PR CI runs from starting a release. semantic-release still decides from the
-# commit history whether a release is warranted, driven by this repo's `.releaserc.json`
-# (REL-3: `eng/release_prepublish.py prepare` runs the fail-closed FR24 exact-artifact
-# gate as prepareCmd; `publish` pushes only the manifest-authorized signed bytes).
-#
-# REL-3 (2026-07-18): FR24 authorization happens INSIDE semantic-release, before any
-# publication side effect — pack once, validate, sign/timestamp, seal + verify the
-# manifest, then `classify-release --require-publishable`. The supplemental
-# `release-evidence.yml` is the independent post-publication verifier (downloads the
-# published NuGet/GitHub bytes and compares them against the sealed manifest); it can
-# never authorize a release. The upstream BUILD-REL-1 governed contract (secrets,
-# timestamp input, attestation candidate phase) remains an owner-filed Hexalith.Builds
-# dependency.
-#
-# REL-4 (2026-07-15): publication is additionally frozen by default behind the
-# fail-closed `freeze-guard` job below. Ordinary fix:/feat: merges to main can no
-# longer publish while the REL-3 exact-artifact gate is being built.
+# Operator-controlled production release. The unprotected jobs authenticate the
+# exact current main commit and its successful push CI before any production job
+# can start. Semantic Release decides whether that exact source is releasable.
 on:
-  workflow_run:
-    workflows: [CI]
-    types: [completed]
-    branches: [main]
+  workflow_dispatch:
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-production
   cancel-in-progress: false
 
 permissions:
   contents: read
 
+env:
+  BUILDS_EXECUTION_SHA: a53166539bf4441d5e33d04281b14c2d59e950c3
+  EXPECTED_PACKAGE_COUNT: '8'
+
 jobs:
-  # REL-4 (2026-07-15): temporary technical release freeze (REL-3 / REL-AI-1).
-  # Publication is DISABLED BY DEFAULT. It is enabled only when the Release
-  # Owner-controlled repository variable HEXALITH_RELEASE_PUBLISH_ENABLED is
-  # exactly the string 'true'. The comparison is an exact POSIX match in bash
-  # because GitHub expression '==' is case-insensitive; missing or malformed
-  # values keep the freeze. Frozen runs conclude green with a freeze notice.
-  # REMOVAL/REPLACEMENT is permitted only when the permanent REL-3
-  # exact-artifact gate is operational and REL-AI-1 records passing
-  # real-release evidence; the variable then becomes the standing Release
-  # Owner freeze switch (see architecture.md, FR24 Release Evidence
-  # Architecture). Pinned by CiGovernanceTests.
-  freeze-guard:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'
+  verify-source:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
     outputs:
-      publish-enabled: ${{ steps.evaluate.outputs.publish-enabled }}
+      ci-run-id: ${{ steps.ci.outputs.run-id }}
+      ci-run-attempt: ${{ steps.ci.outputs.run-attempt }}
     steps:
-      - name: Evaluate release publication freeze
-        id: evaluate
+      - name: Checkout exact dispatched source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+
+      - name: Authenticate current main and successful exact-source CI
+        id: ci
+        shell: bash
         env:
-          PUBLISH_ENABLED: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DISPATCH_SHA: ${{ github.sha }}
+          DISPATCH_REF: ${{ github.ref }}
         run: |
           set -euo pipefail
-          if [ "${PUBLISH_ENABLED}" = "true" ]; then
-            echo "publish-enabled=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Release publication ENABLED: HEXALITH_RELEASE_PUBLISH_ENABLED is exactly 'true' (Release Owner-controlled)."
+          if [ "$DISPATCH_REF" != "refs/heads/main" ]; then
+            echo "Release must be dispatched from refs/heads/main." >&2
+            exit 1
+          fi
+          if [[ ! "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "The dispatched source SHA is malformed." >&2
+            exit 1
+          fi
+          if [ "$(git rev-parse HEAD)" != "$DISPATCH_SHA" ]; then
+            echo "The checkout does not match the dispatched source SHA." >&2
+            exit 1
+          fi
+          mkdir -p artifacts/release-source
+          gh api "repos/${REPOSITORY}/git/ref/heads/main" > artifacts/release-source/main-ref.json
+          gh api "repos/${REPOSITORY}/actions/workflows/ci.yml/runs?branch=main&event=push&status=completed&head_sha=${DISPATCH_SHA}&per_page=100" \
+            > artifacts/release-source/ci-runs.json
+          python3 eng/release_contract.py select-ci \
+            --dispatch-sha "$DISPATCH_SHA" \
+            --main-ref artifacts/release-source/main-ref.json \
+            --runs artifacts/release-source/ci-runs.json \
+            --output artifacts/release-source/selected-ci.json
+          run_id="$(jq -er '.run_id' artifacts/release-source/selected-ci.json)"
+          run_attempt="$(jq -er '.run_attempt' artifacts/release-source/selected-ci.json)"
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "run-attempt=$run_attempt" >> "$GITHUB_OUTPUT"
+
+      - name: Download and validate the exact CI source proof
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DISPATCH_SHA: ${{ github.sha }}
+          CI_RUN_ID: ${{ steps.ci.outputs.run-id }}
+          CI_RUN_ATTEMPT: ${{ steps.ci.outputs.run-attempt }}
+        run: |
+          set -euo pipefail
+          artifact_name="dependency-release-source-${CI_RUN_ID}-${CI_RUN_ATTEMPT}"
+          gh api "repos/${REPOSITORY}/actions/runs/${CI_RUN_ID}/artifacts?per_page=100" \
+            > artifacts/release-source/ci-artifacts.json
+          python3 - "$artifact_name" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          payload = json.loads(Path("artifacts/release-source/ci-artifacts.json").read_text())
+          if not isinstance(payload, dict) or not isinstance(payload.get("total_count"), int) or not isinstance(payload.get("artifacts"), list):
+              raise SystemExit("malformed CI artifact API response")
+          if payload["total_count"] != len(payload["artifacts"]):
+              raise SystemExit("ambiguous or paginated CI artifact API response")
+          matches = [row for row in payload["artifacts"] if isinstance(row, dict) and row.get("name") == sys.argv[1] and row.get("expired") is False]
+          if len(matches) != 1 or not isinstance(matches[0].get("id"), int) or matches[0]["id"] < 1:
+              raise SystemExit(f"expected exactly one non-expired exact-attempt source artifact; found {len(matches)}")
+          Path("artifacts/release-source/artifact-id.txt").write_text(str(matches[0]["id"]) + "\n")
+          PY
+          artifact_id="$(tr -d '\r\n' < artifacts/release-source/artifact-id.txt)"
+          gh api "repos/${REPOSITORY}/actions/artifacts/${artifact_id}/zip" > artifacts/release-source/source.zip
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path, PurePosixPath
+
+          archive = Path("artifacts/release-source/source.zip")
+          with zipfile.ZipFile(archive) as source:
+              names = source.namelist()
+              if names != ["dependency-release-source.json"] or any(PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts for name in names):
+                  raise SystemExit("source artifact archive has an unexpected shape")
+              source.extractall("artifacts/release-source/ci-proof")
+          PY
+          proof="artifacts/release-source/ci-proof/dependency-release-source.json"
+          python3 eng/dependency_handoff.py verify-source --proof "$proof"
+          jq -e \
+            --arg sha "$DISPATCH_SHA" \
+            --argjson run "$CI_RUN_ID" \
+            --argjson attempt "$CI_RUN_ATTEMPT" \
+            '.run.candidate == $sha and .revisions.candidate == $sha and .run.run_id == $run and .run.run_attempt == $attempt' \
+            "$proof" > /dev/null
+
+      - name: Validate approved package boundary
+        run: |
+          python3 eng/release_contract.py builds \
+            --root . \
+            --commit "${{ github.sha }}" \
+            --approved "$BUILDS_EXECUTION_SHA"
+          python3 eng/release_contract.py manifest \
+            --root . \
+            --manifest tools/release-packages.json \
+            --expected-count 8
+
+      - name: Carry authenticated source proof into this release run
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-source-proof-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/release-source/ci-proof/dependency-release-source.json
+          if-no-files-found: error
+          retention-days: 30
+
+  plan-release:
+    needs: verify-source
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      release-required: ${{ steps.plan.outputs.release-required }}
+      version: ${{ steps.plan.outputs.version }}
+    steps:
+      - name: Checkout exact dispatched source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+      - name: Initialize Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+      - name: Install and authenticate release tooling
+        run: |
+          npm ci
+          npm audit signatures
+      - name: Compute release decision without publication side effects
+        id: plan
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node eng/semantic-release-plan.mjs > release-plan.json
+          required="$(jq -er '.release_required | if . then "true" else "false" end' release-plan.json)"
+          version="$(jq -r '.version // ""' release-plan.json)"
+          if [ "$required" = "true" ] && [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Semantic Release returned a malformed version." >&2
+            exit 1
+          fi
+          echo "release-required=$required" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [ "$required" = "true" ]; then
+            echo "Release v${version} is required for exact source $GITHUB_SHA." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "publish-enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Release publication FROZEN (REL-3 / REL-AI-1): HEXALITH_RELEASE_PUBLISH_ENABLED is not exactly 'true'. No package will be published."
-            echo "Release publication is frozen until the REL-3 exact-artifact gate is operational." >> "$GITHUB_STEP_SUMMARY"
+            echo "No releasable commits were found for exact source $GITHUB_SHA; no publication was attempted." >> "$GITHUB_STEP_SUMMARY"
           fi
 
+  prepare-candidate:
+    needs: [verify-source, plan-release]
+    if: needs.plan-release.outputs.release-required == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: production
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout exact dispatched source
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+      - name: Checkout approved Builds actions
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: Hexalith/Hexalith.Builds
+          ref: a53166539bf4441d5e33d04281b14c2d59e950c3
+          path: .hexalith/builds-execution
+          persist-credentials: false
+      - name: Initialize root-declared dependencies
+        uses: ./.hexalith/builds-execution/Github/initialize-build
+      - name: Initialize .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+      - name: Restore authenticated exact-source proof
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/release-source
+          gh run download "${{ github.run_id }}" \
+            --repo "${{ github.repository }}" \
+            --name "release-source-proof-${{ github.run_id }}-${{ github.run_attempt }}" \
+            --dir artifacts/release-source
+          test -f artifacts/release-source/dependency-release-source.json
+          python3 eng/dependency_handoff.py verify-source \
+            --proof artifacts/release-source/dependency-release-source.json \
+            --live
+      - name: Revalidate current main before using protected credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DISPATCH_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          live="$(gh api "repos/${REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
+          if [[ ! "$live" =~ ^[0-9a-f]{40}$ ]] || [ "$live" != "$DISPATCH_SHA" ]; then
+            echo "main advanced or returned an ambiguous source identity; redispatch after exact-source CI succeeds." >&2
+            exit 1
+          fi
+      - name: Prepare, sign, and seal the pack-once candidate
+        env:
+          DEPENDENCY_RELEASE_SOURCE_PROOF: artifacts/release-source/dependency-release-source.json
+          HEXALITH_BUILDS_EXECUTION_SHA: a53166539bf4441d5e33d04281b14c2d59e950c3
+          NUGET_SIGNING_CERTIFICATE_BASE64: ${{ secrets.NUGET_SIGNING_CERTIFICATE_BASE64 }}
+          NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
+          NUGET_SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER }}
+          RELEASE_ATTESTATION_STATUS: ${{ vars.RELEASE_ATTESTATION_STATUS || 'approved-unsupported' }}
+          RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER }}
+          RELEASE_ATTESTATION_FALLBACK_APPROVED_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVED_AT }}
+          RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT }}
+          RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256: ${{ vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256 }}
+        run: |
+          python3 eng/release_prepublish.py prepare --version "${{ needs.plan-release.outputs.version }}"
+          python3 eng/release_prepublish.py bundle --version "${{ needs.plan-release.outputs.version }}"
+      - name: Upload run-bound prepared candidate
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            nupkgs/**/*.nupkg
+            nupkgs/**/*.snupkg
+            nupkgs-signed/**/*.nupkg
+            release-evidence/**
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 30
+
   release:
-    needs: freeze-guard
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      needs.freeze-guard.outputs.publish-enabled == 'true'
+    needs: [plan-release, prepare-candidate]
+    if: needs.plan-release.outputs.release-required == 'true' && needs.prepare-candidate.result == 'success'
     permissions:
       actions: read
       contents: write
       issues: write
       pull-requests: write
-    # REL-6 (2026-07-21): domain-release.yml enforces a supply-chain identity check —
-    # the reusable workflow must be pinned to an exact 40-hex Builds commit SHA and the
-    # caller must pass builds-execution-sha equal to that same SHA (the reusable job
-    # validates job.workflow_sha == builds-execution-sha). A missing input causes workflow
-    # startup_failure; a mismatch fails the identity-validation step. Keep these two execution
-    # literals equal. The independent references/Hexalith.Builds submodule gitlink selects
-    # release-build/catalog content and need not equal the approved release-tool SHA. @main cannot
-    # be used: main advances, so
-    # job.workflow_sha would drift out of match.
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@79f82acc9cb9259ddcb90217c89bc72024ab7f72
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@a53166539bf4441d5e33d04281b14c2d59e950c3
     with:
       solution: Hexalith.FrontComposer.slnx
-      builds-execution-sha: 79f82acc9cb9259ddcb90217c89bc72024ab7f72
-      # CI (the upstream workflow_run gate) already tested this exact head; leave
-      # test-projects empty so the release path does not duplicate the test compute.
       test-projects: ''
-      # FrontComposer ships NuGet packages only — no container images to publish.
+      timeout-minutes: 60
+      environment-name: production
+      publish-containers: false
+      container-projects: ''
+      builds-execution-sha: a53166539bf4441d5e33d04281b14c2d59e950c3
+      source-branch: main
+      source-ci-workflow: ci.yml
+      package-manifest: tools/release-packages.json
+      expected-package-count: 8
     secrets:
       NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+
+  verify-publication:
+    needs: [plan-release, release]
+    if: always() && needs.plan-release.outputs.release-required == 'true' && needs.release.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Require a non-draft release tag resolving to the dispatched SHA
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          DISPATCH_SHA: ${{ github.sha }}
+          VERSION: ${{ needs.plan-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          tag="v${VERSION}"
+          mkdir -p release-verification
+          if ! gh api "repos/${REPOSITORY}/releases/tags/${tag}" > release-verification/github-release.json; then
+            echo "Semantic Release completed without the required GitHub Release; publication is inconsistent." >&2
+            exit 1
+          fi
+          jq -e --arg tag "$tag" '
+            type == "object" and .tag_name == $tag and .draft == false and
+            (.id | type == "number") and (.assets | type == "array")
+          ' release-verification/github-release.json > /dev/null
+          gh api "repos/${REPOSITORY}/git/ref/tags/${tag}" > release-verification/tag-ref.json
+          echo '[]' > release-verification/tag-objects.json
+          object_type="$(jq -er '.object.type' release-verification/tag-ref.json)"
+          object_sha="$(jq -er '.object.sha' release-verification/tag-ref.json)"
+          for _ in 1 2 3 4 5; do
+            if [ "$object_type" = "commit" ]; then
+              break
+            fi
+            if [ "$object_type" != "tag" ] || [[ ! "$object_sha" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "Release tag API response is malformed or ambiguous." >&2
+              exit 1
+            fi
+            gh api "repos/${REPOSITORY}/git/tags/${object_sha}" > release-verification/tag-object.json
+            jq --slurpfile item release-verification/tag-object.json '. + $item' \
+              release-verification/tag-objects.json > release-verification/tag-objects.next.json
+            mv release-verification/tag-objects.next.json release-verification/tag-objects.json
+            object_type="$(jq -er '.object.type' release-verification/tag-object.json)"
+            object_sha="$(jq -er '.object.sha' release-verification/tag-object.json)"
+          done
+          if [ "$object_type" != "commit" ] || [[ ! "$object_sha" =~ ^[0-9a-f]{40}$ ]] || [ "$object_sha" != "$DISPATCH_SHA" ]; then
+            echo "The GitHub Release tag does not resolve to the exact dispatched SHA." >&2
+            exit 1
+          fi
+          python3 eng/release_contract.py publication \
+            --expected-sha "$DISPATCH_SHA" \
+            --expected-tag "$tag" \
+            --release release-verification/github-release.json \
+            --tag-ref release-verification/tag-ref.json \
+            --tag-objects release-verification/tag-objects.json
+          echo "Published ${tag} from exact source ${DISPATCH_SHA}." >> "$GITHUB_STEP_SUMMARY"

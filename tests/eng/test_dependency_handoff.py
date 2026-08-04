@@ -170,6 +170,37 @@ class HandoffTests(unittest.TestCase):
         with self.assertRaises(dh.HandoffError):
             dh.validate_release_handoff(handoff)
 
+    def _source_proof(self) -> dict:
+        evidence = {
+            "revisions": {
+                "event": "push",
+                "event_base": self.base,
+                "candidate": self.candidate,
+                "release_eligible": True,
+            },
+            "dependency_policy": self._policy_projection(),
+            "candidate_graph": self._graph(self.candidate),
+        }
+        return dh.create_source_proof(run_id=70, run_attempt=3, evidence=evidence)
+
+    def test_exact_source_proof_binds_push_ci_policy_and_candidate(self) -> None:
+        proof = self._source_proof()
+        self.assertEqual(proof["schema"], dh.SOURCE_PROOF_SCHEMA)
+        self.assertEqual(proof["run"]["candidate"], self.candidate)
+        self.assertEqual(proof["run"]["run_attempt"], 3)
+        dh.validate_source_proof(proof)
+
+    def test_exact_source_proof_rejects_candidate_or_run_substitution(self) -> None:
+        for mutation in ("candidate", "run"):
+            with self.subTest(mutation=mutation):
+                proof = copy.deepcopy(self._source_proof())
+                if mutation == "candidate":
+                    proof["revisions"]["candidate"] = "f" * 40
+                else:
+                    proof["run"]["run_id"] = 0
+                with self.assertRaises(dh.HandoffError):
+                    dh.validate_source_proof(proof)
+
 
 if __name__ == "__main__":
     unittest.main()
