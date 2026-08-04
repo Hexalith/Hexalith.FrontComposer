@@ -26,9 +26,8 @@ from typing import Any
 # sha256 is computed at prepare-manifest time and embedded in the sealed manifest;
 # `manifest_diagnostics` compares both at verify time so a helper-bytes change without
 # a `__version__` bump produces a `release-definition drift` signal.
-# 1.2.0 (REL-3, 2026-07-18): APPROVAL_MATRIX rewritten to the REL-3/REL-4 authorization
-# model (freeze variable + publishable readiness evidence; no dispatch/approver inputs).
-__version__ = "2.0.0"
+# 3.0.0: operator-dispatch, exact-source CI, and protected-production authorization.
+__version__ = "3.0.0"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -58,6 +57,7 @@ COMMIT_RE = re.compile(r"^[a-f0-9]{40}$")
 MARKER_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 REPOSITORY_RE = re.compile(r"^[a-z0-9.-]+/[a-z0-9._-]+/[a-z0-9._-]+$")
 MANIFEST_SCHEMA = "hexalith.release-evidence.v2"
+CURRENT_MANIFEST_SCHEMA = "hexalith.release-evidence.v3"
 GRAPH_SCHEMA = "hexalith.dependency-graph.v1"
 POLICY_SCHEMA = "hexalith.dependency-graph-policy.v1"
 CI_HANDOFF_SCHEMA = "hexalith.dependency-release-handoff.v1"
@@ -99,7 +99,7 @@ REQUIRED_ROW_FIELDS = [
 # change without an intentional `__version__` bump still surfaces as drift, but
 # refactors that bump `__version__` are recognized as deliberate and do not invalidate
 # unrelated fallback approvals.
-RELEASE_DEFINITION_FILES = [
+LEGACY_MANIFEST_RELEASE_DEFINITION_FILES = [
     ".github/workflows/ci.yml",
     ".github/workflows/release.yml",
     ".releaserc.json",
@@ -108,6 +108,27 @@ RELEASE_DEFINITION_FILES = [
     "eng/dependency_handoff.py",
     "eng/workflow_source_closure.py",
     "eng/release-package-inventory.json",
+    "Directory.Build.props",
+    "Directory.Build.targets",
+    "Directory.Packages.props",
+    "references/Hexalith.Builds/Props/Directory.Packages.props",
+    "deps.nuget.props",
+]
+RELEASE_DEFINITION_FILES = [
+    ".github/workflows/ci.yml",
+    ".github/workflows/release.yml",
+    ".releaserc.json",
+    "eng/dependency-graph-policy.json",
+    "eng/dependency_graph.py",
+    "eng/dependency_handoff.py",
+    "eng/release_contract.py",
+    "eng/release_prepublish.py",
+    "eng/semantic-release-plan.mjs",
+    "eng/workflow_source_closure.py",
+    "eng/release-package-inventory.json",
+    "tools/release-packages.json",
+    "package.json",
+    "package-lock.json",
     "Directory.Build.props",
     "Directory.Build.targets",
     "Directory.Packages.props",
@@ -127,8 +148,14 @@ FALLBACK_INVALIDATION_FILES = [
     "eng/dependency-graph-policy.json",
     "eng/dependency_graph.py",
     "eng/dependency_handoff.py",
+    "eng/release_contract.py",
+    "eng/release_prepublish.py",
+    "eng/semantic-release-plan.mjs",
     "eng/workflow_source_closure.py",
     "eng/release-package-inventory.json",
+    "tools/release-packages.json",
+    "package.json",
+    "package-lock.json",
     "Directory.Build.props",
     "Directory.Build.targets",
     "deps.nuget.props",
@@ -137,7 +164,7 @@ FALLBACK_INVALIDATION_FILES = [
 # CR-12-4-D7 (round-5): the AC26 approval matrix is now a machine-readable constant
 # emitted in `classify_release_payload` so consumers can enumerate the seven approval-
 # dependent action types without parsing prose. Each entry binds: the action, the
-# required approver, the mechanism (REL-4 freeze variable / readiness evidence vs
+# required approver, the mechanism (exact-source dispatch / protected environment vs
 # sealed fallback record), the evidence that must be present, and whether the action
 # is `blocking` (no fallback) or has an `approved-unsupported` style fallback.
 # CR-12-4-P131/P136/P140 (round-6): normalized vocabulary, removed env-var-style
@@ -149,30 +176,26 @@ FALLBACK_INVALIDATION_FILES = [
 # names a consumer must match to evaluate the gate, separate from the prose `mechanism`
 # description. Machine consumers can dispatch on the input names without parsing English.
 # REL-3 AC20 (2026-07-18): the matrix records the ACTUAL approved authorization
-# mechanisms — the Release Owner-controlled REL-4 freeze variable
-# HEXALITH_RELEASE_PUBLISH_ENABLED (exact-string 'true' bash gate in release.yml),
-# publishable readiness evidence produced by `classify-release --require-publishable`,
-# and the upstream BUILD-REL-1 protected release environment once it lands. The
-# forbidden dispatch/approver input names that release.yml pins against must not
-# appear anywhere in this matrix.
+# mechanisms: operator workflow_dispatch, exact-source CI proof, publishable readiness
+# evidence, and the protected production environment.
 APPROVAL_MATRIX = [
     {
         "action": "nuget-publish",
         "gate_id": "semantic-release-publish",
         "owner": "release-owner",
-        "mechanism": "REL-4 freeze variable exactly 'true' (Release Owner-controlled) + publishable readiness evidence from classify-release --require-publishable; upstream BUILD-REL-1 protected release environment when available",
-        "mechanism_inputs": ["vars.HEXALITH_RELEASE_PUBLISH_ENABLED", "release-readiness.classification", "release-readiness.publish_authorized"],
+        "mechanism": "operator workflow_dispatch from the exact current main SHA + protected production environment approval + publishable readiness evidence",
+        "mechanism_inputs": ["github.event_name", "exact_source_ci", "environment:production", "release-readiness.publish_authorized"],
         "evidence": "release-readiness.json: classification=ready or fallback-approved, publish_authorized=true",
         "effect": "blocking",
         "fallback_action": None,
     },
     {
-        "action": "tag-and-changelog-push",
+        "action": "exact-source-tag-push",
         "gate_id": "semantic-release-publish",
         "owner": "release-owner",
-        "mechanism": "REL-4 freeze variable exactly 'true' (Release Owner-controlled) + publishable readiness evidence from classify-release --require-publishable",
-        "mechanism_inputs": ["vars.HEXALITH_RELEASE_PUBLISH_ENABLED", "release-readiness.publish_authorized"],
-        "evidence": "release-readiness.json: publish_authorized=true; semantic-release @semantic-release/git",
+        "mechanism": "operator workflow_dispatch exact-source authorization + protected production environment approval",
+        "mechanism_inputs": ["github.event_name", "exact_source_ci", "environment:production", "release-readiness.publish_authorized"],
+        "evidence": "release-readiness.json: publish_authorized=true; GitHub Release tag resolves to dispatched SHA",
         "effect": "blocking",
         "fallback_action": None,
     },
@@ -180,8 +203,8 @@ APPROVAL_MATRIX = [
         "action": "github-release-create",
         "gate_id": "semantic-release-publish",
         "owner": "release-owner",
-        "mechanism": "REL-4 freeze variable exactly 'true' (Release Owner-controlled) + publishable readiness evidence from classify-release --require-publishable",
-        "mechanism_inputs": ["vars.HEXALITH_RELEASE_PUBLISH_ENABLED", "release-readiness.publish_authorized"],
+        "mechanism": "operator workflow_dispatch exact-source authorization + protected production environment approval",
+        "mechanism_inputs": ["github.event_name", "exact_source_ci", "environment:production", "release-readiness.publish_authorized"],
         "evidence": "release-readiness.json: publish_authorized=true; semantic-release @semantic-release/github",
         "effect": "blocking",
         "fallback_action": None,
@@ -221,8 +244,8 @@ APPROVAL_MATRIX = [
         "action": "partial-publish-recovery",
         "gate_id": "partial-publish-recovery",
         "owner": "release-owner",
-        "mechanism": "manual owner review of partial-publish-incident.json plus an owner-authorized fresh release (new tag) under the freeze variable",
-        "mechanism_inputs": ["partial_publish_incident_review", "vars.HEXALITH_RELEASE_PUBLISH_ENABLED"],
+        "mechanism": "manual owner review of partial-publish-incident.json plus a fresh exact-source dispatch and production approval",
+        "mechanism_inputs": ["partial_publish_incident_review", "new workflow_dispatch", "environment:production"],
         "evidence": "partial-publish-incident.json (failed_phase != none) plus reconciled NuGet/symbol state",
         "effect": "blocking",
         "fallback_action": None,
@@ -231,8 +254,8 @@ APPROVAL_MATRIX = [
         "action": "rerun-after-failed-or-partial-release",
         "gate_id": "rerun",
         "owner": "release-owner",
-        "mechanism": "owner-authorized fresh release run (run_attempt resets) or new tag under the freeze variable",
-        "mechanism_inputs": ["vars.HEXALITH_RELEASE_PUBLISH_ENABLED", "release-readiness.publish_authorized"],
+        "mechanism": "owner-authorized fresh exact-source dispatch (new run identity) and production approval",
+        "mechanism_inputs": ["new workflow_dispatch", "environment:production", "release-readiness.publish_authorized"],
         "evidence": "release-readiness.json: classification != rerun-review with explicit owner approval",
         "effect": "blocking",
         "fallback_action": None,
@@ -752,6 +775,123 @@ def _workflow_provenance(
         "release": release,
     }
     return {"ci": ci, "release": release, "definition_digest": canonical_sha256(definition_material)}
+
+
+def _exact_workflow_bytes(repository: pathlib.Path, commit: str, workflow_path: str) -> bytes:
+    result = subprocess.run(
+        ["git", "-C", str(repository), "show", f"{commit}:{workflow_path}"],
+        capture_output=True,
+        check=False,
+    )
+    if result.returncode != 0:
+        raise ValueError(f"cannot resolve exact workflow source {commit}:{workflow_path}")
+    return result.stdout
+
+
+def _source_workflow_provenance(
+    proof: dict[str, Any],
+    proof_sha256: str,
+    graph_root: pathlib.Path,
+    builds_execution_sha: str,
+) -> dict[str, Any]:
+    if not _valid_commit(builds_execution_sha):
+        raise ValueError("builds-execution-sha must be an exact lowercase 40-hex commit")
+    run = proof["run"]
+    candidate = run["candidate"]
+    gitlink = subprocess.run(
+        ["git", "-C", str(graph_root), "ls-tree", candidate, "references/Hexalith.Builds"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    fields = gitlink.stdout.strip().split()
+    if gitlink.returncode != 0 or len(fields) < 3 or fields[0] != "160000" or fields[2] != builds_execution_sha:
+        raise ValueError("exact candidate Builds gitlink does not match builds-execution-sha")
+    caller_bytes = _exact_workflow_bytes(graph_root, candidate, ".github/workflows/release.yml")
+    builds_root = graph_root / "references/Hexalith.Builds"
+    reusable_bytes = _exact_workflow_bytes(
+        builds_root,
+        builds_execution_sha,
+        ".github/workflows/domain-release.yml",
+    )
+    ci = {
+        "run": {
+            "repository": run["repository"],
+            "workflow_path": run["workflow_path"],
+            "run_id": run["run_id"],
+            "run_attempt": run["run_attempt"],
+            "event": run["event"],
+            "branch": run["branch"],
+            "head_sha": candidate,
+        },
+        "evidence_sha256": proof_sha256,
+    }
+    release = {
+        "caller": {
+            "repository": "github.com/hexalith/hexalith.frontcomposer",
+            "workflow_path": ".github/workflows/release.yml",
+            "commit": candidate,
+            "blob_sha256": hashlib.sha256(caller_bytes).hexdigest(),
+        },
+        "reusable": {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "workflow_path": ".github/workflows/domain-release.yml",
+            "commit": builds_execution_sha,
+            "blob_sha256": hashlib.sha256(reusable_bytes).hexdigest(),
+        },
+        "builds_execution_sha": builds_execution_sha,
+    }
+    return {"ci": ci, "release": release, "definition_digest": canonical_sha256({"ci": ci, "release": release})}
+
+
+def _validate_source_workflow_provenance(value: Any, diagnostics: list[str]) -> dict[str, Any] | None:
+    provenance = _exact_members(value, {"ci", "release", "definition_digest"}, "workflow_provenance", diagnostics)
+    if provenance is None:
+        return None
+    ci = _exact_members(provenance.get("ci"), {"run", "evidence_sha256"}, "workflow_provenance.ci", diagnostics)
+    release = _exact_members(
+        provenance.get("release"),
+        {"caller", "reusable", "builds_execution_sha"},
+        "workflow_provenance.release",
+        diagnostics,
+    )
+    if ci is not None:
+        run = _exact_members(
+            ci.get("run"),
+            {"repository", "workflow_path", "run_id", "run_attempt", "event", "branch", "head_sha"},
+            "workflow_provenance.ci.run",
+            diagnostics,
+        )
+        if run is not None:
+            if run.get("repository") != "github.com/hexalith/hexalith.frontcomposer" or run.get("workflow_path") != CI_WORKFLOW_PATH:
+                diagnostics.append("workflow_provenance.ci.run repository/workflow_path mismatch")
+            if run.get("event") != "push" or run.get("branch") != "main":
+                diagnostics.append("workflow_provenance.ci.run must identify push CI on main")
+            if not _positive_integer(run.get("run_id")) or not _positive_integer(run.get("run_attempt")):
+                diagnostics.append("workflow_provenance.ci.run identity must contain positive integers")
+            if not _valid_commit(run.get("head_sha")):
+                diagnostics.append("workflow_provenance.ci.run.head_sha must be lowercase 40-hex")
+        if not _valid_sha256(ci.get("evidence_sha256")):
+            diagnostics.append("workflow_provenance.ci.evidence_sha256 must be lowercase SHA-256")
+    if release is not None:
+        caller = _validate_workflow_source(release.get("caller"), diagnostics, "workflow_provenance.release.caller")
+        reusable = _validate_workflow_source(release.get("reusable"), diagnostics, "workflow_provenance.release.reusable")
+        builds_sha = release.get("builds_execution_sha")
+        if not _valid_commit(builds_sha):
+            diagnostics.append("workflow_provenance.release.builds_execution_sha must be lowercase 40-hex")
+        if caller is not None and caller.get("repository") != "github.com/hexalith/hexalith.frontcomposer":
+            diagnostics.append("workflow_provenance.release.caller repository mismatch")
+        if reusable is not None and (
+            reusable.get("repository") != "github.com/hexalith/hexalith.builds"
+            or reusable.get("workflow_path") != ".github/workflows/domain-release.yml"
+            or reusable.get("commit") != builds_sha
+        ):
+            diagnostics.append("workflow_provenance.release reusable Builds identity mismatch")
+    if ci is not None and release is not None:
+        expected = canonical_sha256({"ci": ci, "release": release})
+        if provenance.get("definition_digest") != expected:
+            diagnostics.append("workflow_provenance.definition_digest mismatch")
+    return provenance
 
 
 def _validate_workflow_provenance(
@@ -1281,13 +1421,17 @@ def _manifest_v2_diagnostics(
         diagnostics.append(f"manifest missing required v2 member(s): {', '.join(missing_required)}")
     if unknown:
         diagnostics.append(f"manifest has unknown v2 member(s): {', '.join(unknown)}")
-    if manifest.get("manifest_schema") != MANIFEST_SCHEMA:
-        diagnostics.append(f"manifest_schema must be {MANIFEST_SCHEMA!r}")
+    if manifest.get("manifest_schema") not in {MANIFEST_SCHEMA, CURRENT_MANIFEST_SCHEMA}:
+        diagnostics.append(f"manifest_schema must be {MANIFEST_SCHEMA!r} or {CURRENT_MANIFEST_SCHEMA!r}")
     if not _valid_commit(manifest.get("commit_sha")):
         diagnostics.append("manifest commit_sha must be a lowercase 40-hex Git SHA-1 and cannot be 'local'")
     graph = _validate_graph(manifest.get("dependency_graph"), diagnostics)
     policy = _validate_policy_projection(manifest.get("dependency_policy"), diagnostics)
-    provenance = _validate_workflow_provenance(manifest.get("workflow_provenance"), diagnostics)
+    provenance = (
+        _validate_source_workflow_provenance(manifest.get("workflow_provenance"), diagnostics)
+        if manifest.get("manifest_schema") == CURRENT_MANIFEST_SCHEMA
+        else _validate_workflow_provenance(manifest.get("workflow_provenance"), diagnostics)
+    )
     if graph is not None:
         root = graph.get("root") if isinstance(graph.get("root"), dict) else {}
         if root.get("commit") != manifest.get("commit_sha"):
@@ -1315,8 +1459,14 @@ def _manifest_v2_diagnostics(
             diagnostics.append("helper_version.content_sha256 must be a lowercase 64-hex SHA-256")
     fingerprints = manifest.get("release_definition_fingerprints")
     if isinstance(fingerprints, dict):
-        missing_fingerprints = sorted(set(RELEASE_DEFINITION_FILES) - set(fingerprints))
-        unknown_fingerprints = sorted(set(fingerprints) - set(RELEASE_DEFINITION_FILES))
+        definition_files = RELEASE_DEFINITION_FILES
+        if (
+            manifest.get("manifest_schema") == MANIFEST_SCHEMA
+            and set(fingerprints) == set(LEGACY_MANIFEST_RELEASE_DEFINITION_FILES)
+        ):
+            definition_files = LEGACY_MANIFEST_RELEASE_DEFINITION_FILES
+        missing_fingerprints = sorted(set(definition_files) - set(fingerprints))
+        unknown_fingerprints = sorted(set(fingerprints) - set(definition_files))
         if missing_fingerprints:
             diagnostics.append(
                 "manifest release_definition_fingerprints missing required path(s): "
@@ -1406,9 +1556,50 @@ def _live_manifest_v2_diagnostics(
         recomputed = engine.collect_graph(graph_root, root["repository"], manifest["commit_sha"], policy)
         if recomputed != graph:
             diagnostics.append("dependency-graph drift: live exact-commit graph/catalog evidence differs from the sealed graph")
-        ci_evaluator, release_evaluator = _provenance_evaluators(provenance)
-        diagnostics.extend(_evaluator_authorization_diagnostics(policy, ci_evaluator, "ci"))
-        diagnostics.extend(_evaluator_authorization_diagnostics(policy, release_evaluator, "release"))
+        if manifest.get("manifest_schema") == CURRENT_MANIFEST_SCHEMA:
+            ci = provenance["ci"]
+            release = provenance["release"]
+            if ci["run"]["head_sha"] != manifest["commit_sha"]:
+                diagnostics.append("exact-source CI head does not match manifest commit")
+            proof_path = graph_root / "release-evidence/dependency-release-source.json"
+            proof_raw, proof_value = _read_bounded_strict_json(
+                proof_path,
+                "exact-source CI proof",
+                max_bytes=MAX_HANDOFF_BYTES,
+            )
+            if hashlib.sha256(proof_raw).hexdigest() != ci["evidence_sha256"]:
+                diagnostics.append("exact-source CI proof bytes differ from sealed provenance")
+            handoff_engine = _load_dependency_handoff_engine()
+            proof = handoff_engine.validate_source_proof(proof_value, root=graph_root)
+            if proof["run"]["candidate"] != manifest["commit_sha"] or proof["dependency_graph"] != graph or proof["dependency_policy"] != projection:
+                diagnostics.append("exact-source CI proof projection differs from the sealed manifest")
+            caller_bytes = _exact_workflow_bytes(
+                graph_root, manifest["commit_sha"], release["caller"]["workflow_path"]
+            )
+            if hashlib.sha256(caller_bytes).hexdigest() != release["caller"]["blob_sha256"]:
+                diagnostics.append("exact release caller workflow bytes differ from sealed provenance")
+            gitlink = subprocess.run(
+                ["git", "-C", str(graph_root), "ls-tree", manifest["commit_sha"], "references/Hexalith.Builds"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            fields = gitlink.stdout.strip().split()
+            builds_sha = release["builds_execution_sha"]
+            if gitlink.returncode != 0 or len(fields) < 3 or fields[2] != builds_sha:
+                diagnostics.append("exact candidate Builds gitlink differs from sealed Builds identity")
+            else:
+                reusable_bytes = _exact_workflow_bytes(
+                    graph_root / "references/Hexalith.Builds",
+                    builds_sha,
+                    release["reusable"]["workflow_path"],
+                )
+                if hashlib.sha256(reusable_bytes).hexdigest() != release["reusable"]["blob_sha256"]:
+                    diagnostics.append("exact Builds reusable workflow bytes differ from sealed provenance")
+        else:
+            ci_evaluator, release_evaluator = _provenance_evaluators(provenance)
+            diagnostics.extend(_evaluator_authorization_diagnostics(policy, ci_evaluator, "ci"))
+            diagnostics.extend(_evaluator_authorization_diagnostics(policy, release_evaluator, "release"))
     except (KeyError, TypeError, ValueError, OSError, subprocess.SubprocessError) as exc:
         diagnostics.append(f"live dependency provenance verification failed: {sanitize(exc)}")
     except Exception as exc:
@@ -2926,7 +3117,7 @@ def verify_manifest(args: argparse.Namespace) -> int:
             for diagnostic in diagnostics:
                 print(diagnostic)
         return 1
-    if manifest.get("manifest_schema") != MANIFEST_SCHEMA and args.audit_legacy:
+    if manifest.get("manifest_schema") not in {MANIFEST_SCHEMA, CURRENT_MANIFEST_SCHEMA} and args.audit_legacy:
         audit_diagnostics = manifest_diagnostics(manifest, None, enforce_v2=False)
         audit_diagnostics.append(
             "legacy manifest is audit-only, non-publishable, non-fallback-eligible, and cannot be upgraded or resealed"
@@ -2976,7 +3167,7 @@ def seal_manifest(args: argparse.Namespace) -> int:
     if not isinstance(manifest, dict):
         print("unsealed manifest must be an object")
         return 1
-    if manifest.get("manifest_schema") != MANIFEST_SCHEMA:
+    if manifest.get("manifest_schema") not in {MANIFEST_SCHEMA, CURRENT_MANIFEST_SCHEMA}:
         print("legacy manifests are audit-only and cannot be sealed, resealed, or upgraded in place")
         return 1
     if "seal" in manifest:
@@ -3025,10 +3216,36 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         diagnostics.append("commit_sha must be an explicit lowercase 40-hex Git SHA-1; the local sentinel is forbidden")
     elif not graph_root.is_dir():
         diagnostics.append("--graph-root must be an existing directory")
-    if not args.ci_handoff:
+    if not args.source_proof and not args.ci_handoff:
         diagnostics.append("authenticated dependency-release CI handoff evidence is required")
-    if not args.release_evaluator:
+    if not args.source_proof and not args.release_evaluator:
         diagnostics.append("active-policy-authorized Release evaluator evidence is required")
+    if args.source_proof and _valid_commit(commit_sha) and graph_root.is_dir():
+        try:
+            proof_raw, proof_value = _read_bounded_strict_json(
+                args.source_proof,
+                "exact-source CI proof",
+                max_bytes=MAX_HANDOFF_BYTES,
+            )
+            handoff_engine = _load_dependency_handoff_engine()
+            proof = handoff_engine.validate_source_proof(proof_value, root=graph_root)
+            if proof["run"]["candidate"] != commit_sha:
+                diagnostics.append("prepare-manifest commit_sha does not match the exact-source CI proof")
+            elif not args.builds_execution_sha:
+                diagnostics.append("builds-execution-sha is required with exact-source CI proof")
+            else:
+                dependency_graph = proof["dependency_graph"]
+                dependency_policy = proof["dependency_policy"]
+                workflow_provenance = _source_workflow_provenance(
+                    proof,
+                    hashlib.sha256(proof_raw).hexdigest(),
+                    graph_root,
+                    args.builds_execution_sha,
+                )
+        except (KeyError, TypeError, ValueError, OSError, subprocess.SubprocessError) as exc:
+            diagnostics.append(f"exact-source provenance preparation failed: {sanitize(exc)}")
+        except Exception as exc:
+            diagnostics.append(f"exact-source provenance preparation failed: {sanitize(exc)}")
     if args.ci_handoff and args.release_evaluator and _valid_commit(commit_sha) and graph_root.is_dir():
         try:
             handoff_raw, handoff_value = _read_bounded_strict_json(
@@ -3192,7 +3409,7 @@ def prepare_manifest(args: argparse.Namespace) -> int:
             "publish_status": "pending",
         })
     manifest = {
-        "manifest_schema": MANIFEST_SCHEMA,
+        "manifest_schema": CURRENT_MANIFEST_SCHEMA if args.source_proof else MANIFEST_SCHEMA,
         "commit_sha": commit_sha,
         "tag": args.tag,
         "run_id": args.run_id,
@@ -3464,8 +3681,8 @@ def fallback_digest(args: argparse.Namespace) -> int:
         )
     except ValueError as exc:
         raise SystemExit(str(exc)) from exc
-    if not isinstance(manifest, dict) or manifest.get("manifest_schema") != MANIFEST_SCHEMA:
-        raise SystemExit("fallback digest requires a sealed hexalith.release-evidence.v2 manifest")
+    if not isinstance(manifest, dict) or manifest.get("manifest_schema") not in {MANIFEST_SCHEMA, CURRENT_MANIFEST_SCHEMA}:
+        raise SystemExit("fallback digest requires a sealed current release-evidence manifest")
     structure = _manifest_v2_diagnostics(manifest, require_seal=True)
     if structure:
         raise SystemExit("fallback digest manifest is invalid: " + "; ".join(structure))
@@ -3789,6 +4006,8 @@ def main() -> int:
     prep.add_argument("--commit-sha", default=os.environ.get("GITHUB_SHA", "local"))
     prep.add_argument("--ci-handoff", default=os.environ.get("DEPENDENCY_RELEASE_HANDOFF", ""))
     prep.add_argument("--release-evaluator", default=os.environ.get("RELEASE_EVALUATOR", ""))
+    prep.add_argument("--source-proof", default=os.environ.get("DEPENDENCY_RELEASE_SOURCE_PROOF", ""))
+    prep.add_argument("--builds-execution-sha", default=os.environ.get("HEXALITH_BUILDS_EXECUTION_SHA", ""))
     prep.add_argument("--tag", required=True)
     prep.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", "local"))
     prep.add_argument("--workflow-ref", default=os.environ.get("GITHUB_WORKFLOW_REF", "local"))

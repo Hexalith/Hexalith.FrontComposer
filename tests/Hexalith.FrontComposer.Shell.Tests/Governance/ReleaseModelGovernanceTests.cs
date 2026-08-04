@@ -12,7 +12,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 // gap BEFORE any publication side effect, the publisher must be unable to
 // repack/substitute/push unsigned paths, post-publication evidence must never
 // authorize a release retroactively, and the approval mechanism must be the
-// REL-4 freeze variable + publishable readiness evidence everywhere.
+// exact-source operator dispatch + protected production approval everywhere.
 //
 // Reaches into CiGovernanceTests for the shared internal helpers
 // (RepositoryRoot / RunPython / StripYamlComments / ProcessResult), same as
@@ -54,9 +54,16 @@ public sealed class ReleaseModelGovernanceTests {
         string orchestrator = File.ReadAllText(Path.Combine(root, "eng/release_prepublish.py"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
 
+        string releaseWorkflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        releaseWorkflow.ShouldContain(
+            "eng/release_prepublish.py prepare --version",
+            customMessage: "AC10: the protected preparation job must run the fail-closed pre-publication gate.");
         releaseConfig.ShouldContain(
-            "eng/release_prepublish.py prepare --version ${nextRelease.version}",
-            customMessage: "AC10: prepareCmd must run the fail-closed pre-publication gate.");
+            "eng/release_prepublish.py restore --version ${nextRelease.version}",
+            customMessage: "AC10: verifyReleaseCmd must restore the run-bound pack-once candidate.");
+        releaseConfig.ShouldContain(
+            "eng/release_prepublish.py verify-prepared --version ${nextRelease.version}",
+            customMessage: "AC10: prepareCmd must reverify restored bytes before publication.");
         releaseConfig.ShouldContain(
             "eng/release_prepublish.py publish --version ${nextRelease.version}",
             customMessage: "AC11: publishCmd must run the manifest-authorized publisher.");
@@ -148,7 +155,7 @@ public sealed class ReleaseModelGovernanceTests {
             "classify-release",
             customMessage: "AC16: the post-publication verifier must never run classification.");
         executable.ShouldContain(
-            "was not pre-authorized",
+            "was not authorized by its sealed readiness evidence",
             customMessage: "AC16: the verifier must fail when the published release lacked prior authorization.");
         executable.ShouldContain(
             "publish_authorized",
@@ -216,12 +223,7 @@ public sealed class ReleaseModelGovernanceTests {
     }
 
     [Fact]
-    public void ApprovalMatrix_FreezeGateVariable_IsConsistentAcrossReleaseGovernance() {
-        // AC20 (T5 "APPROVAL_MATRIX <-> release.yml <-> REL-4 <-> REL-5 consistency"): the
-        // machine-readable matrix must describe the ACTUAL approved mechanisms (the REL-4
-        // Release Owner variable + publishable readiness evidence) and must not name the
-        // forbidden dispatch/approver inputs release.yml bans. The classifier's legacy CLI
-        // env surface is out of scope — the ban targets the matrix constant block only.
+    public void ApprovalMatrix_OperatorProductionBoundary_IsConsistentAcrossGovernance() {
         string root = CiGovernanceTests.RepositoryRoot();
         string helper = File.ReadAllText(Path.Combine(root, "eng/release_evidence.py"))
             .Replace("\r\n", "\n", StringComparison.Ordinal);
@@ -233,35 +235,22 @@ public sealed class ReleaseModelGovernanceTests {
         string matrix = helper[matrixStart..matrixEnd];
 
         matrix.ShouldContain(
-            "vars.HEXALITH_RELEASE_PUBLISH_ENABLED",
-            customMessage: "AC20: the matrix must name the REL-4 Release Owner freeze variable as the publish mechanism input.");
-        matrix.ShouldContain(
-            "publish_authorized=true",
-            customMessage: "AC20: the matrix must bind publishable readiness evidence to the publish gates.");
-        matrix.ShouldNotContain(
             "workflow_dispatch",
-            customMessage: "AC20: release.yml forbids manual dispatch; the matrix must not describe it.");
+            customMessage: "AC20: the matrix must name the operator-controlled release entry point.");
+        matrix.ShouldContain(
+            "environment:production",
+            customMessage: "AC20: the matrix must bind protected production approval to publication.");
+        matrix.ShouldContain("release-readiness.publish_authorized");
         matrix.ShouldNotContain(
-            "release_owner_approved",
-            customMessage: "AC20: the retired dispatch approval input must not reappear in the matrix.");
-        matrix.ShouldNotContain(
-            "release_approver",
-            customMessage: "AC20: the retired approver input must not reappear in the matrix.");
+            "HEXALITH_RELEASE_PUBLISH_ENABLED",
+            customMessage: "AC20: the retired freeze variable must not remain in the resulting architecture.");
 
-        // The caller-side gate binds exactly that variable (executable content), and the
-        // owner-facing stories + the upstream request name the same control.
         string releaseWorkflow = CiGovernanceTests.StripYamlComments(
             File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml")));
-        releaseWorkflow.ShouldContain("vars.HEXALITH_RELEASE_PUBLISH_ENABLED");
-        foreach (string document in (string[])[
-            "_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md",
-            "_bmad-output/implementation-artifacts/rel-5-provision-signing-identity-and-first-governed-release.md",
-            "_bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md",
-        ]) {
-            File.ReadAllText(Path.Combine(root, document)).ShouldContain(
-                "HEXALITH_RELEASE_PUBLISH_ENABLED",
-                customMessage: $"AC20: {document} must reference the common freeze-gate variable.");
-        }
+        releaseWorkflow.ShouldContain("workflow_dispatch:");
+        releaseWorkflow.ShouldContain("environment: production");
+        releaseWorkflow.ShouldContain("environment-name: production");
+        releaseWorkflow.ShouldNotContain("HEXALITH_RELEASE_PUBLISH_ENABLED");
     }
 
     [Fact]

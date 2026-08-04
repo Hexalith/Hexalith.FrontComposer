@@ -54,6 +54,8 @@ NUPKGS_DIR = pathlib.Path("nupkgs")
 SIGNED_DIR = pathlib.Path("nupkgs-signed")
 TEST_RESULTS_DIR = pathlib.Path("TestResults")
 INVENTORY_FILE = pathlib.Path("eng/release-package-inventory.json")
+PACKAGE_MANIFEST = pathlib.Path("tools/release-packages.json")
+EXPECTED_PACKAGE_COUNT = 8
 SOLUTION = "Hexalith.FrontComposer.slnx"
 DEFAULT_TIMESTAMPER = "http://timestamp.digicert.com"
 
@@ -445,6 +447,7 @@ def phase_checksums() -> None:
         "release-evidence/sbom.json",
         "release-evidence/test-results.json",
         "release-evidence/package-inventory.json",
+        "release-evidence/dependency-release-source.json",
         "release-evidence/consumer-validation.json",
         "release-evidence/benchmark-summary.json",
         "release-evidence/signing-verification.txt",
@@ -473,6 +476,12 @@ def phase_manifest(version: str, tag: str) -> None:
         "--diagnostics-output", str(EVIDENCE_DIR / "manifest-diagnostics.json"),
         "--output", str(EVIDENCE_DIR / "pre-manifest.json"),
     ]
+    source_proof = os.environ.get("DEPENDENCY_RELEASE_SOURCE_PROOF", "")
+    builds_sha = os.environ.get("HEXALITH_BUILDS_EXECUTION_SHA", "")
+    if source_proof:
+        prepare_cmd.extend(["--source-proof", source_proof])
+    if builds_sha:
+        prepare_cmd.extend(["--builds-execution-sha", builds_sha])
     if attestation_bundle:
         prepare_cmd.extend(["--attestation-bundle", attestation_bundle])
     run("manifest", prepare_cmd)
@@ -558,7 +567,7 @@ def phase_classify(non_publishing: bool) -> None:
         "--semantic-release-state", "matches",
         # Same-version concurrency is controlled upstream of this command: release.yml
         # serializes Release runs (concurrency group, cancel-in-progress false), the
-        # workflow_run trigger is single-flight per CI success, and semantic-release
+        # operator dispatch is bound to one exact-source CI success, and semantic-release
         # itself fails before publishCmd when the computed tag already exists. There is
         # no in-process probe to consume here; every other blocking check (manifest,
         # signing, attestation, context, inventory) remains evidence-derived.
@@ -581,13 +590,9 @@ def phase_classify(non_publishing: bool) -> None:
         if os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported") != "attested":
             cmd.extend(_validation_fallback_args())
     else:
-        # REL-3 AC20 approval mechanism: the Release Owner's authorization is the REL-4
-        # freeze gate — the gated release.yml freeze-guard (vars.HEXALITH_RELEASE_PUBLISH_ENABLED
-        # exactly 'true') is the ONLY path into domain-release.yml's semantic-release step, so
-        # reaching this publish-capable prepareCmd proves the owner-controlled variable enabled
-        # the run. Outside that context the classifier still fails closed on the
-        # non-trusted context blocker regardless of these values.
-        mechanism = "vars.HEXALITH_RELEASE_PUBLISH_ENABLED exactly 'true' via the REL-4 freeze-guard gate in release.yml"
+        # The publish-capable candidate can only be prepared after workflow_dispatch
+        # exact-source validation reaches the protected production environment.
+        mechanism = "workflow_dispatch exact-source gate plus protected production environment approval"
         run_id = os.environ.get("GITHUB_RUN_ID", "")
         if run_id:
             # Bind the asserting run's identity into the recorded mechanism so the
@@ -595,13 +600,19 @@ def phase_classify(non_publishing: bool) -> None:
             mechanism += f" (asserted by run {run_id})"
         cmd.extend([
             "--owner-approved", "true",
-            "--approver", "release-owner (HEXALITH_RELEASE_PUBLISH_ENABLED custody)",
+            "--approver", "production environment reviewer",
             "--approval-mechanism", mechanism,
         ])
     run("classify", cmd)
 
 
 def cmd_prepare(args: argparse.Namespace) -> int:
+    run("manifest-contract", [
+        "python3", "eng/release_contract.py", "manifest",
+        "--root", ".",
+        "--manifest", str(PACKAGE_MANIFEST),
+        "--expected-count", str(EXPECTED_PACKAGE_COUNT),
+    ])
     # Stale-evidence guard (review EC-9): a leftover release-evidence/ (or benchmark
     # artifact) from a prior run must never satisfy a later existence guard and get
     # sealed into a fresh manifest. Every prepare starts from empty evidence, exactly
@@ -611,6 +622,23 @@ def cmd_prepare(args: argparse.Namespace) -> int:
         if target.exists():
             shutil.rmtree(target)
     (REPO_ROOT / EVIDENCE_DIR).mkdir(parents=True, exist_ok=True)
+    source_proof = os.environ.get("DEPENDENCY_RELEASE_SOURCE_PROOF", "")
+    if source_proof:
+        proof_path = pathlib.Path(source_proof)
+        if not proof_path.is_absolute():
+            proof_path = REPO_ROOT / proof_path
+        if not proof_path.is_file():
+            raise PhaseFailure("source-proof", "authenticated dependency release source proof is missing")
+        shutil.copyfile(proof_path, REPO_ROOT / EVIDENCE_DIR / "dependency-release-source.json")
+    if os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported") == "approved-unsupported":
+        (REPO_ROOT / EVIDENCE_DIR / "attestation-unavailable.md").write_text(
+            "# Attestation unavailable\n\n"
+            "The current NuGet release path does not emit a supported platform attestation bundle.\n"
+            "Publication therefore requires the separately sealed, time-limited Release Owner fallback\n"
+            "record validated by the release evidence classifier. This document is not approval.\n",
+            encoding="utf-8",
+            newline="\n",
+        )
     tag = f"v{args.version}"
     phase_build()
     phase_pack(args.version)
@@ -624,6 +652,133 @@ def cmd_prepare(args: argparse.Namespace) -> int:
     phase_manifest(args.version, tag)
     phase_classify(args.non_publishing)
     log("prepare", f"pre-publication gate complete for {tag}")
+    return 0
+
+
+def _candidate_files(base: pathlib.Path) -> list[pathlib.Path]:
+    files: list[pathlib.Path] = []
+    for directory in (NUPKGS_DIR, SIGNED_DIR, EVIDENCE_DIR):
+        candidate = base / directory
+        if candidate.is_dir():
+            files.extend(path for path in candidate.rglob("*") if path.is_file())
+    return sorted(files)
+
+
+def cmd_bundle(args: argparse.Namespace) -> int:
+    """Bind the pack-once candidate to this run/attempt before artifact upload."""
+    source_sha = os.environ.get("GITHUB_SHA", "")
+    run_id = os.environ.get("GITHUB_RUN_ID", "")
+    run_attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "")
+    if re.fullmatch(r"[0-9a-f]{40}", source_sha) is None:
+        raise PhaseFailure("bundle", "GITHUB_SHA must be an exact lowercase commit SHA")
+    if not run_id.isdigit() or int(run_id) < 1 or not run_attempt.isdigit() or int(run_attempt) < 1:
+        raise PhaseFailure("bundle", "run identity must contain positive integers")
+    descriptor_path = REPO_ROOT / EVIDENCE_DIR / "prepared-candidate.json"
+    files = [path for path in _candidate_files(REPO_ROOT) if path != descriptor_path]
+    if not files:
+        raise PhaseFailure("bundle", "prepared candidate contains no files")
+    descriptor = {
+        "schema": "hexalith.frontcomposer.prepared-candidate.v1",
+        "source_sha": source_sha,
+        "version": args.version,
+        "run_id": int(run_id),
+        "run_attempt": int(run_attempt),
+        "files": [
+            {
+                "path": path.relative_to(REPO_ROOT).as_posix(),
+                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            }
+            for path in files
+        ],
+    }
+    write_json(EVIDENCE_DIR / "prepared-candidate.json", descriptor)
+    log("bundle", f"sealed {len(files)} prepared-candidate files for run {run_id}/{run_attempt}")
+    return 0
+
+
+def _validate_candidate_descriptor(base: pathlib.Path, version: str) -> dict:
+    descriptor_path = base / EVIDENCE_DIR / "prepared-candidate.json"
+    try:
+        descriptor = json.loads(descriptor_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise PhaseFailure("restore", "prepared-candidate descriptor is missing or malformed") from exc
+    if not isinstance(descriptor, dict) or set(descriptor) != {
+        "schema", "source_sha", "version", "run_id", "run_attempt", "files"
+    }:
+        raise PhaseFailure("restore", "prepared-candidate descriptor has an invalid shape")
+    expected = {
+        "schema": "hexalith.frontcomposer.prepared-candidate.v1",
+        "source_sha": os.environ.get("GITHUB_SHA", ""),
+        "version": version,
+        "run_id": int(os.environ.get("GITHUB_RUN_ID", "0")),
+        "run_attempt": int(os.environ.get("GITHUB_RUN_ATTEMPT", "0")),
+    }
+    for field, value in expected.items():
+        if descriptor.get(field) != value:
+            raise PhaseFailure("restore", f"prepared-candidate {field} mismatch")
+    rows = descriptor["files"]
+    if not isinstance(rows, list) or not rows:
+        raise PhaseFailure("restore", "prepared-candidate file inventory is empty")
+    seen: set[str] = set()
+    for row in rows:
+        if not isinstance(row, dict) or set(row) != {"path", "sha256"}:
+            raise PhaseFailure("restore", "prepared-candidate file row is malformed")
+        relative = pathlib.PurePosixPath(str(row["path"]))
+        if relative.is_absolute() or ".." in relative.parts or str(relative) in seen:
+            raise PhaseFailure("restore", "prepared-candidate contains an unsafe or duplicate path")
+        seen.add(str(relative))
+        path = base.joinpath(*relative.parts)
+        if not path.is_file() or hashlib.sha256(path.read_bytes()).hexdigest() != row["sha256"]:
+            raise PhaseFailure("restore", f"prepared-candidate byte mismatch: {relative}")
+    actual = {
+        path.relative_to(base).as_posix()
+        for path in _candidate_files(base)
+        if path != descriptor_path
+    }
+    if actual != seen:
+        raise PhaseFailure("restore", "prepared-candidate archive files differ from its sealed inventory")
+    return descriptor
+
+
+def cmd_restore(args: argparse.Namespace) -> int:
+    run_id = os.environ.get("GITHUB_RUN_ID", "")
+    run_attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "")
+    if not run_id.isdigit() or not run_attempt.isdigit():
+        raise PhaseFailure("restore", "current release run identity is malformed")
+    artifact_name = f"release-candidate-{run_id}-{run_attempt}"
+    with tempfile.TemporaryDirectory(prefix="frontcomposer-candidate-") as temporary:
+        staging = pathlib.Path(temporary)
+        run("restore", [
+            "gh", "run", "download", run_id,
+            "--repo", os.environ.get("GITHUB_REPOSITORY", ""),
+            "--name", artifact_name,
+            "--dir", str(staging),
+        ], redact_command=True)
+        _validate_candidate_descriptor(staging, args.version)
+        for directory in (NUPKGS_DIR, SIGNED_DIR, EVIDENCE_DIR):
+            target = REPO_ROOT / directory
+            if target.exists():
+                shutil.rmtree(target)
+            shutil.copytree(staging / directory, target)
+    _validate_candidate_descriptor(REPO_ROOT, args.version)
+    log("restore", f"restored exact prepared candidate {artifact_name}")
+    return 0
+
+
+def cmd_verify_prepared(args: argparse.Namespace) -> int:
+    _validate_candidate_descriptor(REPO_ROOT, args.version)
+    result = run("prepared-verify", [
+        "python3", "eng/release_evidence.py", "verify-manifest",
+        "--manifest", str(EVIDENCE_DIR / "sealed-manifest.json"),
+        "--root", ".", "--graph-root", ".",
+        "--output", str(EVIDENCE_DIR / "release-verification.json"),
+    ], tolerate_failure=True)
+    if result.returncode != 0:
+        _record_incident("post-restore-verification")
+        raise PhaseFailure("prepared-verify", "restored sealed manifest failed live verification")
+    readiness = read_json(EVIDENCE_DIR / "release-readiness.json")
+    if readiness.get("publish_authorized") is not True or readiness.get("classification") not in {"ready", "fallback-approved"}:
+        raise PhaseFailure("prepared-verify", "restored release readiness is not publish-authorized")
     return 0
 
 
@@ -783,6 +938,18 @@ def main() -> int:
         help="Local validation mode: full chain, classification tolerates ONLY the local-candidate context blocker.",
     )
     prepare.set_defaults(func=cmd_prepare)
+
+    bundle = sub.add_parser("bundle", help="Seal the prepared candidate for run-bound artifact transfer.")
+    bundle.add_argument("--version", required=True)
+    bundle.set_defaults(func=cmd_bundle)
+
+    restore = sub.add_parser("restore", help="Restore and authenticate this run's prepared candidate.")
+    restore.add_argument("--version", required=True)
+    restore.set_defaults(func=cmd_restore)
+
+    verify_prepared = sub.add_parser("verify-prepared", help="Reverify restored bytes before publication.")
+    verify_prepared.add_argument("--version", required=True)
+    verify_prepared.set_defaults(func=cmd_verify_prepared)
 
     publish = sub.add_parser("publish", help="Push the manifest-authorized signed artifacts only.")
     publish.add_argument("--version", required=True)

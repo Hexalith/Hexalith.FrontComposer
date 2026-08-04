@@ -38,9 +38,9 @@ jobs:
         tests/Hexalith.FrontComposer.Contracts.UI.Tests
         tests/Hexalith.FrontComposer.Testing.Tests
 
-  # GOV-1 local gate. The shared domain-ci reference remains mutable until the external
-  # AD-16 delivery exists, so this job cannot emit a release-eligible handoff yet. It does
-  # prove the exact event-base/candidate graph diff and policy-owned affected modules.
+  # GOV-1 local gate. The exact-source proof deliberately covers only facts this
+  # repository owns: the push-CI coordinate, active base policy, and candidate graph.
+  # It does not fabricate an immutable closure for the shared domain-ci implementation.
   dependency-governance:
     needs: ci
     runs-on: ubuntu-latest
@@ -126,20 +126,25 @@ jobs:
             --output-root "$RUNNER_TEMP/hexalith-affected-modules" \
             > artifacts/dependency-governance/affected-module-results.json
 
-      - name: Record release-handoff eligibility
+      - name: Create exact-source release proof
         if: github.event_name == 'push' && steps.dependency-diff.outputs.exit-code == '0'
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
+          python3 eng/dependency_handoff.py create-source \
+            --evidence artifacts/dependency-governance/dependency-graph-diff.json \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --output artifacts/dependency-governance/dependency-release-source.json
 
-          policy = json.loads(Path("eng/dependency-graph-policy.json").read_text(encoding="utf-8-sig"))
-          if policy["evaluator_authorizations"]["ci"]:
-              raise SystemExit("CI evaluator authorization exists but the external AD-16 reusable-workflow integration is not yet enabled")
-          print("::notice::GOV-1 AD-16 external workflow revision is pending; no dependency-release-handoff was emitted.")
-          PY
+      - name: Upload exact-source release proof
+        if: github.event_name == 'push' && steps.dependency-diff.outputs.exit-code == '0'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependency-release-source-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 30
+          if-no-files-found: error
+          path: artifacts/dependency-governance/dependency-release-source.json
 
       - name: Upload deterministic dependency evidence
         if: always()

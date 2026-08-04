@@ -120,6 +120,9 @@ public sealed class CiGovernanceTests {
             stripped,
             "Gate 2b: Dependency graph semantic policy tests");
         dependencyGraphStep.ShouldContain("python3 -m unittest tests/eng/test_dependency_graph.py");
+        dependencyGraphStep.ShouldContain("python3 -m unittest tests/eng/test_dependency_handoff.py");
+        dependencyGraphStep.ShouldContain("python3 -m unittest tests/eng/test_release_contract.py");
+        dependencyGraphStep.ShouldContain("python3 -m unittest tests/eng/test_release_evidence_v2.py");
         dependencyGraphStep.ShouldNotContain("continue-on-error: true");
     }
 
@@ -551,34 +554,20 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate() {
-        // REL-2 (2026-07-13): release.yml no longer runs an inline per-project test loop, package
-        // inventory attestation, or attest-build-provenance steps. It delegates to the shared
-        // reusable Hexalith.Builds domain-release.yml (Tenants parity); CI (the upstream
-        // workflow_run gate) already tested the same head, so the release path does not duplicate
-        // test compute. semantic-release still packs+publishes via this repo's .releaserc.json.
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
-
-        // REL-6 (2026-07-21): domain-release.yml enforces a supply-chain identity check — the
-        // reusable workflow must be pinned to an exact 40-hex Builds commit SHA and the caller
-        // must pass builds-execution-sha equal to that same SHA (the reusable job validates
-        // job.workflow_sha == builds-execution-sha). A missing input causes startup_failure;
-        // a mismatch fails the identity-validation step, so guard the identical full SHA (not
-        // @main or a tag, which would drift out of match as Builds main advances).
         Match domainReleasePin = Regex.Match(
             workflow,
             @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})\b");
         domainReleasePin.Success.ShouldBeTrue(
             "release.yml must pin domain-release.yml to an exact 40-hex lowercase Builds commit SHA (not @main or a tag).");
-        Match buildsExecutionSha = Regex.Match(
+        MatchCollection buildsExecutionShas = Regex.Matches(
             workflow,
             @"builds-execution-sha: (?<sha>[0-9a-f]{40})\b");
-        buildsExecutionSha.Success.ShouldBeTrue(
-            "release.yml must pass builds-execution-sha as an exact 40-hex lowercase Builds commit SHA.");
-        buildsExecutionSha.Groups["sha"].Value.ShouldBe(
-            domainReleasePin.Groups["sha"].Value,
-            "builds-execution-sha must equal the domain-release.yml @sha pin so job.workflow_sha == builds-execution-sha.");
+        buildsExecutionShas.Count.ShouldBeGreaterThanOrEqualTo(1);
+        buildsExecutionShas.Cast<Match>().ShouldAllBe(match =>
+            match.Groups["sha"].Value == domainReleasePin.Groups["sha"].Value);
 
         // The reusable workflow requires actions: read to validate the successful exact-source CI
         // run. Assert it on the release job itself: a workflow-level or sibling-job occurrence
@@ -587,19 +576,19 @@ public sealed class CiGovernanceTests {
         releasePermissions.ShouldMatch(@"(?m)^      actions: read\r?$");
         workflow.ShouldContain("solution: Hexalith.FrontComposer.slnx");
         workflow.ShouldContain("test-projects: ''");
+        workflow.ShouldContain("environment-name: production");
+        workflow.ShouldContain("package-manifest: tools/release-packages.json");
+        workflow.ShouldContain("expected-package-count: 8");
+        workflow.ShouldContain("publish-containers: false");
+        workflow.ShouldContain("container-projects: ''");
         workflow.ShouldContain("NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}");
         releasePermissions.ShouldMatch(@"(?m)^      contents: write\r?$");
         releasePermissions.ShouldMatch(@"(?m)^      issues: write\r?$");
         releasePermissions.ShouldMatch(@"(?m)^      pull-requests: write\r?$");
         workflow.ShouldNotContain("submodules: recursive");
 
-        // The bespoke inline release job is gone: no duplicated test loop, no inline attestation,
-        // no container publishing (FrontComposer ships NuGet packages only).
-        workflow.ShouldNotContain("Run release tests");
-        workflow.ShouldNotContain("Run semantic-release");
         workflow.ShouldNotContain("attest-build-provenance");
-        workflow.ShouldNotContain("publish-containers");
-        workflow.ShouldNotContain("workflow_dispatch:");
+        workflow.ShouldContain("workflow_dispatch:");
 
         // REL-3 (2026-07-18): semantic-release delegates prepare/publish to the repository-owned
         // exact-artifact orchestrator (eng/release_prepublish.py) — pack-once, fail-closed FR24
@@ -607,15 +596,16 @@ public sealed class CiGovernanceTests {
         // signed bytes. Raw pack/push commands and inlined evidence commands stay out of the JSON.
         releaseConfig.ShouldContain("@semantic-release/commit-analyzer");
         releaseConfig.ShouldContain("@semantic-release/release-notes-generator");
-        releaseConfig.ShouldContain("@semantic-release/changelog");
-        releaseConfig.ShouldContain("python3 eng/release_prepublish.py prepare --version ${nextRelease.version}");
+        releaseConfig.ShouldContain("python3 eng/release_prepublish.py restore --version ${nextRelease.version}");
+        releaseConfig.ShouldContain("python3 eng/release_prepublish.py verify-prepared --version ${nextRelease.version}");
         releaseConfig.ShouldContain("python3 eng/release_prepublish.py publish --version ${nextRelease.version}");
         releaseConfig.ShouldContain("nupkgs-signed/*.nupkg");
         releaseConfig.ShouldContain("nupkgs/*.snupkg");
         releaseConfig.ShouldContain("release-evidence/*.json");
         releaseConfig.ShouldContain("release-evidence/*.txt");
         releaseConfig.ShouldContain("@semantic-release/github");
-        releaseConfig.ShouldContain("@semantic-release/git");
+        releaseConfig.ShouldNotContain("\"@semantic-release/git\"");
+        releaseConfig.ShouldNotContain("\"@semantic-release/changelog\"");
         releaseConfig.ShouldNotContain("pack_release_packages.py");
         releaseConfig.ShouldNotContain("dotnet nuget push");
         releaseConfig.ShouldNotContain("--skip-duplicate");
@@ -1156,91 +1146,56 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void ReleaseWorkflow_RunsViaWorkflowRunAfterCiSuccess() {
-        // REL-2 (2026-07-13): Tenants-aligned model — release runs from workflow_run after a
-        // successful CI push (not directly on push). The conclusion=='success' + event=='push'
-        // guard stops failed or non-push (PR/scheduled) CI runs from releasing. No manual
-        // dispatch / approval / dry-run gating is reintroduced; the REL-4 freeze gate
-        // (freeze-guard job + HEXALITH_RELEASE_PUBLISH_ENABLED variable) is a deliberate,
-        // separately-pinned exception (see ReleaseWorkflow_PublishFreezeGate_IsFailClosedByDefault)
-        // and none of its token names collide with the forbidden approval tokens below.
-        // semantic-release decides from the commit history whether to publish, via this repo's
-        // .releaserc.json.
+    public void ReleaseWorkflow_RequiresManualExactSourceCiBeforeProduction() {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
 
-        workflow.ShouldContain("workflow_run:");
-        workflow.ShouldContain("workflows: [CI]");
-        workflow.ShouldContain("github.event.workflow_run.conclusion == 'success'");
-        workflow.ShouldContain("github.event.workflow_run.event == 'push'");
-        // The bespoke on: push[main] trigger is gone; the on: block is workflow_run only.
+        workflow.ShouldContain("workflow_dispatch:");
+        workflow.ShouldContain("DISPATCH_REF");
+        workflow.ShouldContain("refs/heads/main");
+        workflow.ShouldContain("release_contract.py select-ci");
+        workflow.ShouldContain("dependency_handoff.py verify-source");
+        workflow.ShouldContain("status=completed");
+        File.ReadAllText(Path.Combine(root, "eng/release_contract.py")).ShouldContain("conclusion");
+        workflow.ShouldContain("environment: production");
+        workflow.ShouldContain("group: release-production");
+        workflow.ShouldContain("cancel-in-progress: false");
         ExtractOnBlock(workflow).ShouldNotContain("push:");
-        workflow.ShouldNotContain("workflow_dispatch:");
-        workflow.ShouldNotContain("release_owner_approved");
-        workflow.ShouldNotContain("release_approver");
-        workflow.ShouldNotContain("RELEASE_OWNER_APPROVED");
-        workflow.ShouldNotContain("RELEASE_APPROVER");
-        workflow.ShouldNotContain("RELEASE_DRY_RUN");
-        workflow.ShouldNotContain("RELEASE_CONCURRENT_SAME_VERSION");
+        ExtractOnBlock(workflow).ShouldNotContain("workflow_run:");
+        workflow.ShouldNotContain("HEXALITH_RELEASE_PUBLISH_ENABLED");
 
-        // REL-3 (2026-07-18): prepareCmd runs the fail-closed exact-artifact gate
-        // (pack once → … → classify-release --require-publishable, inside the
-        // orchestrator) and publishCmd re-verifies the sealed manifest before pushing
-        // only manifest-authorized signed bytes. The JSON stays free of raw pack/push
-        // commands and dry-run gating.
         releaseConfig.ShouldContain("\"branches\": [\"main\"]");
         releaseConfig.ShouldContain("\"tagFormat\": \"v${version}\"");
-        releaseConfig.ShouldContain("python3 eng/release_prepublish.py prepare --version ${nextRelease.version}");
+        releaseConfig.ShouldContain("python3 eng/release_prepublish.py restore --version ${nextRelease.version}");
+        releaseConfig.ShouldContain("python3 eng/release_prepublish.py verify-prepared --version ${nextRelease.version}");
         releaseConfig.ShouldContain("python3 eng/release_prepublish.py publish --version ${nextRelease.version}");
         releaseConfig.ShouldContain("@semantic-release/github");
-        releaseConfig.ShouldContain("@semantic-release/git");
+        releaseConfig.ShouldNotContain("\"@semantic-release/git\"");
+        releaseConfig.ShouldNotContain("\"@semantic-release/changelog\"");
         releaseConfig.ShouldNotContain("pack_release_packages.py");
         releaseConfig.ShouldNotContain("dotnet nuget push");
         releaseConfig.ShouldNotContain("--skip-duplicate");
         releaseConfig.ShouldNotContain("RELEASE_DRY_RUN");
         releaseConfig.ShouldNotContain("gh attestation");
-        releaseConfig.IndexOf("release_prepublish.py prepare", StringComparison.Ordinal).ShouldBeLessThan(
+        releaseConfig.IndexOf("release_prepublish.py restore", StringComparison.Ordinal).ShouldBeLessThan(
             releaseConfig.IndexOf("release_prepublish.py publish", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void ReleaseWorkflow_PublishFreezeGate_IsFailClosedByDefault() {
-        // REL-4 (2026-07-15): temporary technical release freeze. Publication is disabled by
-        // default; it is enabled only when the Release Owner-controlled repository variable
-        // HEXALITH_RELEASE_PUBLISH_ENABLED is exactly the string 'true'. The exact match MUST
-        // live in bash ([ "${PUBLISH_ENABLED}" = "true" ]) because GitHub expression '==' is
-        // case-insensitive ('True' == 'true'), which would let a malformed value publish. The
-        // release job is fail-closed via needs: freeze-guard — a failed or skipped guard skips
-        // the release. Removal/re-scope only on REL-3 real-release evidence (comment marker).
+    public void ReleaseWorkflow_RetiresFreezeOnlyThroughOperatorProductionMigration() {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
         string normalized = workflow.Replace("\r\n", "\n", StringComparison.Ordinal);
 
-        // The guard job and its Release Owner-controlled variable binding.
-        normalized.ShouldContain("freeze-guard:");
-        normalized.ShouldContain("PUBLISH_ENABLED: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}");
-        // Exact POSIX bash comparison — not a case-insensitive GitHub expression.
-        normalized.ShouldContain("if [ \"${PUBLISH_ENABLED}\" = \"true\" ]; then");
-        normalized.ShouldContain("publish-enabled: ${{ steps.evaluate.outputs.publish-enabled }}");
-
-        // The release job is gated fail-closed on the guard output alongside the retained
-        // CI-success + push-event conjuncts.
-        normalized.ShouldContain("needs: freeze-guard");
-        normalized.ShouldContain("needs.freeze-guard.outputs.publish-enabled == 'true'");
-        string releaseJobCondition = ExtractReleaseJobCondition(normalized);
-        releaseJobCondition.ShouldContain("github.event.workflow_run.conclusion == 'success'");
-        releaseJobCondition.ShouldContain("github.event.workflow_run.event == 'push'");
-        releaseJobCondition.ShouldContain("needs.freeze-guard.outputs.publish-enabled == 'true'");
-
-        // Frozen runs conclude green with an explicit notice + step summary.
-        normalized.ShouldContain("Release publication FROZEN (REL-3 / REL-AI-1)");
-        normalized.ShouldContain("Release publication is frozen until the REL-3 exact-artifact gate is operational.\" >> \"$GITHUB_STEP_SUMMARY\"");
-
-        // REL-3 removal-condition marker: the gate may be removed/replaced only when the
-        // permanent exact-artifact gate is operational and REL-AI-1 records passing evidence.
-        normalized.ShouldContain("REMOVAL/REPLACEMENT is permitted only when the permanent REL-3");
-        normalized.ShouldContain("real-release evidence");
+        normalized.ShouldNotContain("freeze-guard:");
+        normalized.ShouldNotContain("HEXALITH_RELEASE_PUBLISH_ENABLED");
+        normalized.ShouldContain("workflow_dispatch:");
+        normalized.ShouldContain("environment: production");
+        normalized.ShouldContain("environment-name: production");
+        normalized.ShouldContain("Revalidate current main before using protected credentials");
+        normalized.ShouldContain("No releasable commits were found");
+        normalized.ShouldContain("Require a non-draft release tag resolving to the dispatched SHA");
     }
 
     [Fact]
@@ -1307,18 +1262,14 @@ public sealed class CiGovernanceTests {
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
         string executable = StripYamlComments(workflow);
 
-        // AC19: verification triggers on Release COMPLETION with no success-only gate, so
-        // failed and cancelled publish runs are still reconciled. The tag resolver decides
-        // no-op vs verify by detecting publication side effects.
         workflow.ShouldContain("workflow_run:");
         workflow.ShouldContain("workflows: [Release]");
         workflow.ShouldContain("types: [completed]");
         executable.ShouldNotContain("github.event.workflow_run.conclusion == 'success'");
-        workflow.ShouldContain("no publication side effect");
-        workflow.ShouldContain("release-verification-handoff");
-        workflow.ShouldContain("dependency-release-handoff");
-        workflow.ShouldContain("eng/dependency_handoff.py --root . verify-release");
-        workflow.ShouldContain("ref: ${{ steps.release-handoff.outputs.candidate }}");
+        workflow.ShouldContain("no-releasable-commits");
+        workflow.ShouldContain("rejected-before-publication");
+        workflow.ShouldContain("governed-publication-attempt");
+        workflow.ShouldContain("ref: ${{ steps.disposition.outputs.candidate }}");
         workflow.ShouldNotContain("ref: ${{ github.event.workflow_run.head_sha }}");
 
         // AC13: independent download + verification of the published bytes.
@@ -1369,127 +1320,36 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("verification-evidence/**");
         workflow.ShouldContain("if-no-files-found: error");
         workflow.ShouldContain("submodules: false");
-        workflow.ShouldContain("Initialize build submodules");
+        workflow.ShouldContain("Initialize exact root-declared dependencies");
 
-        VerifyReleaseDispositionWorkflow(workflow, executable);
+        workflow.ShouldContain("frontcomposer.release-run-disposition.v2");
+        workflow.ShouldContain("prepared-candidate.json");
+        workflow.ShouldContain("GitHub Release tag does not resolve to the dispatched source SHA");
         releaseConfig.ShouldNotContain("classify-release");
         releaseConfig.ShouldNotContain("CycloneDX");
     }
 
     [Fact]
-    public void ReleaseEvidenceWorkflow_NoTagProbe_UsesSupportedGithubApiAndFailsClosed() {
-        // Regression for Release Evidence run 29703578735: `gh release list --json`
-        // does not expose `targetCommitish`, so the governed no-publication path failed
-        // before it could prove that no publication side effect existed. Use the REST field
-        // `target_commitish` and keep an API outage fail-closed.
+    public void ReleaseEvidenceWorkflow_MissingPublicationFailsGovernedAttemptClosed() {
         string root = RepositoryRoot();
         string workflow = StripYamlComments(
             File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml")));
 
-        workflow.ShouldContain(
-            "gh api \"repos/${GITHUB_REPOSITORY}/releases?per_page=50\"",
-            customMessage: "The no-tag probe must use the supported GitHub Releases API.");
-        workflow.ShouldContain(
-            ".target_commitish == \\\"$head_sha\\\"",
-            customMessage: "The REST release object field must be used for the orphaned-release probe.");
-        workflow.ShouldContain(
-            "if ! orphaned=\"$(",
-            customMessage: "The API probe must explicitly handle command failure instead of relying on set -e.");
-        workflow.ShouldContain(
-            "cannot rule out partial publication",
-            customMessage: "An API outage must fail closed rather than claim a clean no-op.");
-        workflow.ShouldNotContain(
-            "gh release list --limit 50 --json tagName,targetCommitish",
-            customMessage: "The unsupported gh release list field must not return.");
+        workflow.ShouldContain("if ! gh api \"repos/${GITHUB_REPOSITORY}/releases/tags/${RELEASE_TAG}\"");
+        workflow.ShouldContain("A governed publication attempt produced no GitHub Release");
+        workflow.ShouldContain("partial-publish-incident.json");
+        workflow.ShouldContain("exit 1");
     }
 
-    [Theory]
-    [InlineData("clean", 0, false, true)]
-    [InlineData("failure", 1, false, false)]
-    [InlineData("orphaned", 1, true, false)]
-    [InlineData("published", 0, false, false)]
-    public void ReleaseEvidenceWorkflow_TagResolver_CoversNoOpAndPublicationMatrix(
-        string scenario,
-        int expectedExitCode,
-        bool expectsIncident,
-        bool expectsNoPublicationSummary) {
-        if (OperatingSystem.IsWindows()) {
-            return;
-        }
-
+    [Fact]
+    public void ReleaseEvidenceWorkflow_TagResolverRequiresExactDispatchedSha() {
         string root = RepositoryRoot();
-        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
-        string resolver = ExtractRunScript(workflow, "Resolve release tag")
-            .Replace(
-                "head_sha=\"${{ steps.release-handoff.outputs.candidate }}\"",
-                "head_sha=\"${TEST_HEAD_SHA}\"",
-                StringComparison.Ordinal);
-
-        string workRoot = Path.Combine(Path.GetTempPath(), $"fc-release-tag-resolver-{Guid.NewGuid():N}");
-        string binRoot = Path.Combine(workRoot, "bin");
-        string summary = Path.Combine(workRoot, "summary.txt");
-        string output = Path.Combine(workRoot, "output.txt");
-        string probeLog = Path.Combine(workRoot, "python.log");
-        Directory.CreateDirectory(binRoot);
-        try {
-            string fakeGh = Path.Combine(binRoot, "gh");
-            File.WriteAllText(fakeGh, "#!/usr/bin/env bash\nset -euo pipefail\ncase \"${PROBE_MODE}\" in\n  clean|published) printf '0\\n' ;;\n  orphaned) printf '1\\n' ;;\n  failure) exit 42 ;;\n  *) exit 43 ;;\nesac\n");
-            File.SetUnixFileMode(fakeGh, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-
-            string fakePython = Path.Combine(binRoot, "python3");
-            File.WriteAllText(fakePython, "#!/usr/bin/env bash\nprintf '%s\\n' \"$*\" >> \"${PROBE_LOG}\"\n");
-            File.SetUnixFileMode(fakePython, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-
-            string headSha = "b0254994e279a21d0496d6b3286d6524eebb14b4";
-            if (scenario == "published") {
-                ProcessResult init = RunProcess(workRoot, "git", ["init", "-q"]);
-                init.ExitCode.ShouldBe(0, init.Error);
-                ProcessResult configName = RunProcess(workRoot, "git", ["config", "user.name", "Governance Test"]);
-                configName.ExitCode.ShouldBe(0, configName.Error);
-                ProcessResult configEmail = RunProcess(workRoot, "git", ["config", "user.email", "governance@example.invalid"]);
-                configEmail.ExitCode.ShouldBe(0, configEmail.Error);
-                File.WriteAllText(Path.Combine(workRoot, "commit.txt"), "published");
-                RunProcess(workRoot, "git", ["add", "commit.txt"]).ExitCode.ShouldBe(0);
-                RunProcess(workRoot, "git", ["commit", "-qm", "fixture"]).ExitCode.ShouldBe(0);
-                headSha = RunProcess(workRoot, "git", ["rev-parse", "HEAD"]).Output.Trim();
-                RunProcess(workRoot, "git", ["tag", "v9.9.9"]).ExitCode.ShouldBe(0);
-            }
-
-            ProcessResult result = RunProcess(
-                workRoot,
-                "bash",
-                ["-e", "-o", "pipefail", "-c", resolver],
-                new Dictionary<string, string> {
-                    ["PATH"] = $"{binRoot}{Path.PathSeparator}{Environment.GetEnvironmentVariable("PATH")}",
-                    ["PROBE_MODE"] = scenario,
-                    ["PROBE_LOG"] = probeLog,
-                    ["TEST_HEAD_SHA"] = headSha,
-                    ["UPSTREAM_CONCLUSION"] = "skipped",
-                    ["GITHUB_REPOSITORY"] = "Hexalith/Hexalith.FrontComposer",
-                    ["GITHUB_STEP_SUMMARY"] = summary,
-                    ["GITHUB_OUTPUT"] = output,
-                });
-
-            result.ExitCode.ShouldBe(expectedExitCode, result.Error);
-            if (expectsIncident) {
-                File.ReadAllText(probeLog).ShouldContain("partial-publish-incident");
-            }
-
-            if (expectsNoPublicationSummary) {
-                File.ReadAllText(summary).ShouldContain("no publication side effect");
-                File.ReadAllText(output).ShouldContain("tag=");
-            }
-
-            if (scenario == "published") {
-                File.ReadAllText(output).ShouldContain("tag=v9.9.9");
-                File.Exists(probeLog).ShouldBeFalse();
-            }
-        }
-        finally {
-            if (Directory.Exists(workRoot)) {
-                Directory.Delete(workRoot, recursive: true);
-            }
-        }
+        string workflow = StripYamlComments(File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml")));
+        workflow.ShouldContain("git/ref/tags/${RELEASE_TAG}");
+        workflow.ShouldContain("object_type");
+        workflow.ShouldContain("object_sha");
+        workflow.ShouldContain("[ \"$object_sha\" != \"$EXPECTED_SHA\" ]");
+        workflow.ShouldContain("failed_phase:$phase");
     }
 
     [Fact]
@@ -2416,7 +2276,7 @@ public sealed class CiGovernanceTests {
 
             (ProcessResult result, string preManifest, string diagnostics) = PrepareManifestWithSigningTranscript(tempRoot, pkg, version, transcript);
 
-            // GOV-1 manifest v2 deliberately refuses a publishable prepare without the
+            // Historical manifest-v2 validation deliberately refuses a publishable prepare without the
             // authenticated CI handoff, exact candidate, and authorized Release evaluator.
             // This fixture remains focused on the signing parser: the row must be
             // verified and the only preparation blockers must be provenance inputs.
@@ -2461,300 +2321,6 @@ public sealed class CiGovernanceTests {
         finally {
             if (Directory.Exists(tempRoot)) {
                 Directory.Delete(tempRoot, recursive: true);
-            }
-        }
-    }
-
-    private static void VerifyReleaseDispositionWorkflow(string workflow, string executable) {
-        // Regression for Release Evidence run 30825852424: a proven frozen or caller-
-        // ineligible Release run is a non-attempt, so it retains disposition evidence
-        // without demanding a handoff that no release job could produce. Any invoked
-        // `release / release` job remains a governed attempt regardless of conclusion.
-        int seed = workflow.IndexOf("- name: Seed release disposition evidence", StringComparison.Ordinal);
-        int classifier = workflow.IndexOf("- name: Classify authenticated Release run disposition", StringComparison.Ordinal);
-        int publicationProbe = workflow.IndexOf("- name: Probe no-attempt publication side effects", StringComparison.Ordinal);
-        int handoff = workflow.IndexOf("- name: Authenticate mandatory Release verification handoff", StringComparison.Ordinal);
-        int checkout = workflow.IndexOf("- name: Checkout repository", StringComparison.Ordinal);
-        int upload = workflow.IndexOf("- name: Upload verification evidence artifact", StringComparison.Ordinal);
-        seed.ShouldBeGreaterThanOrEqualTo(0);
-        seed.ShouldBeLessThan(classifier);
-        classifier.ShouldBeLessThan(publicationProbe);
-        publicationProbe.ShouldBeLessThan(handoff);
-        handoff.ShouldBeLessThan(checkout);
-        checkout.ShouldBeLessThan(upload);
-
-        ExtractNamedStep(executable, "Seed release disposition evidence").ShouldContain("if: always()");
-        string classifierStep = ExtractNamedStep(executable, "Classify authenticated Release run disposition");
-        classifierStep.ShouldContain("actions/runs/${RELEASE_RUN_ID}/attempts/${RELEASE_RUN_ATTEMPT}/jobs?per_page=100");
-        classifierStep.ShouldContain("freeze-guard");
-        classifierStep.ShouldContain("release / release");
-        classifierStep.ShouldContain("disposition = \"frozen\"");
-        classifierStep.ShouldContain("disposition = \"ineligible\"");
-        classifierStep.ShouldContain("disposition = \"governed-attempt\"");
-        classifierStep.ShouldContain("diagnostic-head-sha={run['head_sha']}");
-        classifierStep.ShouldContain("timeout 60s gh api");
-        classifierStep.ShouldNotContain("HEXALITH_RELEASE_PUBLISH_ENABLED");
-
-        string probeStep = ExtractNamedStep(executable, "Probe no-attempt publication side effects");
-        probeStep.ShouldContain("if: steps.release-disposition.outputs.governed-attempt == 'false'");
-        probeStep.ShouldContain("DIAGNOSTIC_RELEASE_HEAD_SHA: ${{ steps.release-disposition.outputs.diagnostic-head-sha }}");
-        probeStep.ShouldContain("git/matching-refs/tags/v?per_page=100");
-        probeStep.ShouldContain("releases?per_page=100");
-        probeStep.ShouldContain("maximum_requests = 300");
-        probeStep.ShouldContain("probe_deadline = time.monotonic() + (15 * 60)");
-        probeStep.ShouldContain("parents[0] == head_sha");
-        probeStep.ShouldContain("\"draft\": draft");
-        probeStep.ShouldContain("publication-probe-api-failure");
-        probeStep.ShouldContain("publication-probe-ambiguous");
-        probeStep.ShouldContain("unexpected-publication-evidence");
-        probeStep.ShouldNotContain("steps.release-handoff.outputs.candidate");
-
-        foreach (string governedStepName in new[] {
-                     "Authenticate mandatory Release verification handoff",
-                     "Checkout repository",
-                     "Authenticate CI handoff and exact-candidate chain",
-                     "Initialize build submodules",
-                     "Initialize .NET",
-                     "Resolve release tag",
-                 }) {
-            ExtractNamedStep(executable, governedStepName).ShouldContain(
-                "if: steps.release-disposition.outputs.governed-attempt == 'true'",
-                customMessage: $"{governedStepName} must not run for an authenticated no-attempt disposition.");
-        }
-
-        string releaseHandoffStep = ExtractNamedStep(executable, "Authenticate mandatory Release verification handoff");
-        releaseHandoffStep.ShouldContain("release-verification handoff does not bind the authenticated Release run attempt");
-        releaseHandoffStep.ShouldContain("gh api --paginate");
-        releaseHandoffStep.ShouldContain("cp authenticated-handoffs/release/release-verification-handoff.json verification-evidence/");
-        string ciHandoffStep = ExtractNamedStep(executable, "Authenticate CI handoff and exact-candidate chain");
-        ciHandoffStep.ShouldContain("gh api --paginate");
-        ciHandoffStep.ShouldContain("cp authenticated-handoffs/ci/dependency-release-handoff.json verification-evidence/");
-
-        string uploadStep = ExtractNamedStep(executable, "Upload verification evidence artifact");
-        uploadStep.ShouldContain("if: always()");
-        uploadStep.ShouldContain("if-no-files-found: error");
-        VerifyReleaseDispositionClassifier(workflow);
-    }
-
-    private static void VerifyReleaseDispositionClassifier(string workflow) {
-        if (OperatingSystem.IsWindows()) {
-            return;
-        }
-
-        (string Scenario, string RunConclusion, string JobConclusion, string ProbeMode, int ClassifierExitCode, int ProbeExitCode, string Disposition, bool? Governed)[] cases = [
-            ("frozen", "success", "", "clean", 0, 0, "frozen", false),
-            ("ineligible", "skipped", "", "clean", 0, 0, "ineligible", false),
-            ("frozen", "success", "", "observed-tag", 0, 1, "unexpected-publication-evidence", false),
-            ("frozen", "success", "", "observed-release", 0, 1, "unexpected-publication-evidence", false),
-            ("frozen", "success", "", "observed-draft", 0, 1, "unexpected-publication-evidence", false),
-            ("frozen", "success", "", "observed-parent-tag", 0, 1, "unexpected-publication-evidence", false),
-            ("frozen", "success", "", "api-failure", 0, 1, "publication-probe-api-failure", false),
-            ("frozen", "success", "", "ambiguous", 0, 1, "publication-probe-ambiguous", false),
-            ("started-success", "success", "success", "skipped", 0, 0, "governed-attempt", true),
-            ("started-failure", "failure", "failure", "skipped", 0, 0, "governed-attempt", true),
-            ("started-cancelled", "cancelled", "cancelled", "skipped", 0, 0, "governed-attempt", true),
-            ("malformed", "success", "", "skipped", 1, 0, "unexpected", null),
-            ("freeze-extra-step", "success", "", "skipped", 1, 0, "unexpected", null),
-            ("run-id-mismatch", "success", "", "skipped", 1, 0, "unexpected", null),
-            ("attempt-mismatch", "success", "", "skipped", 1, 0, "unexpected", null),
-            ("jobs-api-failure", "success", "", "skipped", 1, 0, "api-failure", null),
-            ("api-failure", "success", "", "skipped", 1, 0, "api-failure", null),
-        ];
-        string seed = ExtractRunScript(workflow, "Seed release disposition evidence");
-        string classifier = ExtractRunScript(workflow, "Classify authenticated Release run disposition");
-        string publicationProbe = ExtractRunScript(workflow, "Probe no-attempt publication side effects");
-
-        foreach ((string scenario, string runConclusion, string jobConclusion, string probeMode, int classifierExitCode, int probeExitCode, string expectedDisposition, bool? governed) in cases) {
-            string workRoot = Path.Combine(Path.GetTempPath(), $"fc-release-disposition-{Guid.NewGuid():N}");
-            string binRoot = Path.Combine(workRoot, "bin");
-            string summary = Path.Combine(workRoot, "summary.txt");
-            string output = Path.Combine(workRoot, "output.txt");
-            Directory.CreateDirectory(binRoot);
-            try {
-                string fakeGh = Path.Combine(binRoot, "gh");
-                File.WriteAllText(fakeGh, """
-                    #!/usr/bin/env bash
-                    set -euo pipefail
-                    if [ "${TOPOLOGY_SCENARIO}" = "api-failure" ]; then
-                      exit 42
-                    fi
-                    if [[ "$*" == *"/jobs?per_page=100"* ]]; then
-                      case "${TOPOLOGY_SCENARIO}" in
-                        frozen|run-id-mismatch|attempt-mismatch)
-                          printf '%s\n' '{"total_count":2,"jobs":[{"id":1,"name":"freeze-guard","status":"completed","conclusion":"success","steps":[{"name":"Set up job","status":"completed","conclusion":"success"},{"name":"Evaluate release publication freeze","status":"completed","conclusion":"success"},{"name":"Complete job","status":"completed","conclusion":"success"}]},{"id":2,"name":"release","status":"completed","conclusion":"skipped","steps":[]}]}'
-                          ;;
-                        ineligible)
-                          printf '%s\n' '{"total_count":2,"jobs":[{"id":1,"name":"freeze-guard","status":"completed","conclusion":"skipped","steps":[]},{"id":2,"name":"release","status":"completed","conclusion":"skipped","steps":[]}]}'
-                          ;;
-                        started-*)
-                          printf '{"total_count":2,"jobs":[{"id":1,"name":"freeze-guard","status":"completed","conclusion":"success","steps":[{"name":"Set up job","status":"completed","conclusion":"success"},{"name":"Evaluate release publication freeze","status":"completed","conclusion":"success"},{"name":"Complete job","status":"completed","conclusion":"success"}]},{"id":2,"name":"release / release","status":"completed","conclusion":"%s","steps":[]}]}\n' "${RELEASE_JOB_CONCLUSION}"
-                          ;;
-                        freeze-extra-step)
-                          printf '%s\n' '{"total_count":2,"jobs":[{"id":1,"name":"freeze-guard","status":"completed","conclusion":"success","steps":[{"name":"Set up job","status":"completed","conclusion":"success"},{"name":"Evaluate release publication freeze","status":"completed","conclusion":"success"},{"name":"Publish something","status":"completed","conclusion":"success"},{"name":"Complete job","status":"completed","conclusion":"success"}]},{"id":2,"name":"release","status":"completed","conclusion":"skipped","steps":[]}]}'
-                          ;;
-                        jobs-api-failure)
-                          exit 46
-                          ;;
-                        malformed)
-                          printf '%s\n' '{"total_count":3,"jobs":[{"id":1,"name":"freeze-guard","status":"completed","conclusion":"success","steps":[]},{"id":2,"name":"freeze-guard","status":"completed","conclusion":"success","steps":[]},{"id":3,"name":"release","status":"completed","conclusion":"skipped","steps":[]}]}'
-                          ;;
-                        *)
-                          exit 43
-                          ;;
-                      esac
-                      exit 0
-                    fi
-                    if [[ "$*" == *"git/matching-refs/tags/v?per_page=100"* ]]; then
-                      case "${PROBE_MODE}" in
-                        clean)
-                          printf '%s\n' '{"ref":"refs/tags/v1.0.0","object":{"type":"commit","sha":"cccccccccccccccccccccccccccccccccccccccc"}}'
-                          exit 0
-                          ;;
-                        observed-tag)
-                          printf '%s\n' '{"ref":"refs/tags/v9.9.9","object":{"type":"commit","sha":"b0254994e279a21d0496d6b3286d6524eebb14b4"}}'
-                          exit 0
-                          ;;
-                        observed-parent-tag)
-                          printf '%s\n' '{"ref":"refs/tags/v9.9.9","object":{"type":"commit","sha":"dddddddddddddddddddddddddddddddddddddddd"}}'
-                          exit 0
-                          ;;
-                        observed-release|observed-draft) exit 0 ;;
-                        api-failure) exit 44 ;;
-                        ambiguous)
-                          printf '%s\n' '{"ref":"invalid-tag-ref","object":{}}'
-                          exit 0
-                          ;;
-                        *) exit 45 ;;
-                      esac
-                    fi
-                    if [[ "$*" == *"/releases?per_page=100"* ]]; then
-                      if [ "${PROBE_MODE}" = "observed-release" ]; then
-                        printf '%s\n' '{"id":999,"tag_name":"v9.9.9","target_commitish":"b0254994e279a21d0496d6b3286d6524eebb14b4","draft":false}'
-                      elif [ "${PROBE_MODE}" = "observed-draft" ]; then
-                        printf '%s\n' '{"id":998,"tag_name":"v9.9.8-draft","target_commitish":"b0254994e279a21d0496d6b3286d6524eebb14b4","draft":true}'
-                      elif [ "${PROBE_MODE}" = "clean" ]; then
-                        printf '%s\n' '{"id":100,"tag_name":"v1.0.0","target_commitish":"main","draft":false}'
-                      fi
-                      exit 0
-                    fi
-                    if [[ "$*" == *"/git/commits/"* ]]; then
-                      if [ "${PROBE_MODE}" = "observed-parent-tag" ]; then
-                        printf '%s\n' '{"sha":"dddddddddddddddddddddddddddddddddddddddd","parents":[{"sha":"b0254994e279a21d0496d6b3286d6524eebb14b4"}]}'
-                      elif [ "${PROBE_MODE}" = "clean" ]; then
-                        printf '%s\n' '{"sha":"cccccccccccccccccccccccccccccccccccccccc","parents":[{"sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}]}'
-                      else
-                        printf '%s\n' '{"sha":"b0254994e279a21d0496d6b3286d6524eebb14b4","parents":[]}'
-                      fi
-                      exit 0
-                    fi
-                    run_id="${RELEASE_RUN_ID}"
-                    run_attempt="${RELEASE_RUN_ATTEMPT}"
-                    if [ "${TOPOLOGY_SCENARIO}" = "run-id-mismatch" ]; then run_id=4321; fi
-                    if [ "${TOPOLOGY_SCENARIO}" = "attempt-mismatch" ]; then run_attempt=2; fi
-                    printf '{"id":%s,"run_attempt":%s,"event":"workflow_run","status":"completed","conclusion":"%s","head_branch":"main","head_sha":"b0254994e279a21d0496d6b3286d6524eebb14b4","path":".github/workflows/release.yml"}\n' \
-                      "$run_id" "$run_attempt" "${RUN_CONCLUSION}"
-                    """.ReplaceLineEndings("\n"));
-                File.SetUnixFileMode(fakeGh, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
-
-                Dictionary<string, string> environment = new() {
-                    ["PATH"] = $"{binRoot}{Path.PathSeparator}{Environment.GetEnvironmentVariable("PATH")}",
-                    ["DIAGNOSTIC_RELEASE_HEAD_SHA"] = "b0254994e279a21d0496d6b3286d6524eebb14b4",
-                    ["GH_TOKEN"] = "test-token",
-                    ["GITHUB_REPOSITORY"] = "Hexalith/Hexalith.FrontComposer",
-                    ["GITHUB_OUTPUT"] = output,
-                    ["GITHUB_REF"] = "refs/heads/main",
-                    ["GITHUB_RUN_ATTEMPT"] = "1",
-                    ["GITHUB_RUN_ID"] = "5678",
-                    ["GITHUB_STEP_SUMMARY"] = summary,
-                    ["RELEASE_CONCLUSION"] = runConclusion,
-                    ["RELEASE_JOB_CONCLUSION"] = jobConclusion,
-                    ["RELEASE_RUN_ATTEMPT"] = "1",
-                    ["RELEASE_RUN_ID"] = "1234",
-                    ["PROBE_MODE"] = probeMode,
-                    ["RUN_CONCLUSION"] = runConclusion,
-                    ["RUN_META_EVENT_NAME"] = "workflow_run",
-                    ["RUN_META_REF"] = "refs/heads/main",
-                    ["RUN_META_RUN_ATTEMPT"] = "1",
-                    ["RUN_META_RUN_ID"] = "5678",
-                    ["RUN_META_UPSTREAM_CONCLUSION"] = runConclusion,
-                    ["RUN_META_UPSTREAM_HEAD_SHA"] = "b0254994e279a21d0496d6b3286d6524eebb14b4",
-                    ["RUN_META_UPSTREAM_RUN_ATTEMPT"] = "1",
-                    ["RUN_META_UPSTREAM_RUN_ID"] = "1234",
-                    ["TOPOLOGY_SCENARIO"] = scenario,
-                };
-
-                ProcessResult seedResult = RunProcess(workRoot, "bash", ["-e", "-o", "pipefail", "-c", seed], environment);
-                seedResult.ExitCode.ShouldBe(0, seedResult.Error);
-                ProcessResult classifierResult = RunProcess(workRoot, "bash", ["-e", "-o", "pipefail", "-c", classifier], environment);
-                classifierResult.ExitCode.ShouldBe(classifierExitCode, $"{scenario}/{probeMode}: {classifierResult.Error}");
-                if (classifierExitCode == 0 && governed is false) {
-                    ProcessResult probeResult = RunProcess(workRoot, "bash", ["-e", "-o", "pipefail", "-c", publicationProbe], environment);
-                    probeResult.ExitCode.ShouldBe(probeExitCode, $"{scenario}/{probeMode}: {probeResult.Error}");
-                    string probePath = Path.Combine(workRoot, "verification-evidence", "publication-probe.json");
-                    new FileInfo(probePath).Length.ShouldBeGreaterThan(0);
-                    using JsonDocument probe = JsonDocument.Parse(File.ReadAllText(probePath));
-                    JsonElement probeDocument = probe.RootElement;
-                    probeDocument.GetProperty("decision_contract").GetString().ShouldBe("frontcomposer.no-attempt-publication-probe.v1");
-                    probeDocument.GetProperty("diagnostic_release_head_sha").GetString().ShouldBe("b0254994e279a21d0496d6b3286d6524eebb14b4");
-                    if (probeMode == "clean") {
-                        probeDocument.GetProperty("status").GetString().ShouldBe("clean");
-                        probeDocument.GetProperty("tag_matches").GetArrayLength().ShouldBe(0);
-                        probeDocument.GetProperty("release_matches").GetArrayLength().ShouldBe(0);
-                        probeDocument.GetProperty("tag_targets").GetArrayLength().ShouldBe(1);
-                    }
-                    else if (probeMode == "observed-release") {
-                        probeDocument.GetProperty("tag_matches").GetArrayLength().ShouldBe(0);
-                        probeDocument.GetProperty("release_matches").GetArrayLength().ShouldBe(1);
-                    }
-                    else if (probeMode == "observed-draft") {
-                        probeDocument.GetProperty("tag_matches").GetArrayLength().ShouldBe(0);
-                        JsonElement releaseMatch = probeDocument.GetProperty("release_matches")[0];
-                        releaseMatch.GetProperty("draft").GetBoolean().ShouldBeTrue();
-                    }
-                    else if (probeMode == "observed-parent-tag") {
-                        JsonElement tagMatch = probeDocument.GetProperty("tag_matches")[0];
-                        tagMatch.GetProperty("commit_sha").GetString().ShouldBe("dddddddddddddddddddddddddddddddddddddddd");
-                    }
-                }
-
-                string metadataPath = Path.Combine(workRoot, "verification-evidence", "run-metadata.json");
-                string dispositionPath = Path.Combine(workRoot, "verification-evidence", "release-disposition.json");
-                new FileInfo(metadataPath).Length.ShouldBeGreaterThan(0);
-                new FileInfo(dispositionPath).Length.ShouldBeGreaterThan(0);
-                using JsonDocument metadata = JsonDocument.Parse(File.ReadAllText(metadataPath));
-                JsonElement metadataDocument = metadata.RootElement;
-                metadataDocument.GetProperty("decision_contract").GetString().ShouldBe("frontcomposer.release-verification-metadata.v2");
-                metadataDocument.GetProperty("event_name").GetString().ShouldBe("workflow_run");
-                metadataDocument.GetProperty("upstream_run_id").GetString().ShouldBe("1234");
-                metadataDocument.GetProperty("upstream_run_attempt").GetString().ShouldBe("1");
-                metadataDocument.GetProperty("upstream_conclusion").GetString().ShouldBe(runConclusion);
-                metadataDocument.GetProperty("upstream_workflow_run_head_sha").GetString().ShouldBe("b0254994e279a21d0496d6b3286d6524eebb14b4");
-                metadataDocument.GetProperty("ref").GetString().ShouldBe("refs/heads/main");
-                metadataDocument.GetProperty("run_id").GetString().ShouldBe("5678");
-                metadataDocument.GetProperty("run_attempt").GetString().ShouldBe("1");
-                using JsonDocument disposition = JsonDocument.Parse(File.ReadAllText(dispositionPath));
-                JsonElement document = disposition.RootElement;
-                document.GetProperty("decision_contract").GetString().ShouldBe("frontcomposer.release-run-disposition.v1");
-                document.GetProperty("disposition").GetString().ShouldBe(expectedDisposition, scenario);
-                document.GetProperty("reason").GetString().ShouldNotBeNullOrWhiteSpace();
-                JsonElement trigger = document.GetProperty("trigger");
-                trigger.GetProperty("upstream_run_id").GetString().ShouldBe("1234");
-                trigger.GetProperty("upstream_run_attempt").GetString().ShouldBe("1");
-                if (scenario == "jobs-api-failure") {
-                    new FileInfo(Path.Combine(workRoot, "verification-evidence", "upstream-release-run.json")).Length.ShouldBeGreaterThan(0);
-                }
-                if (governed.HasValue) {
-                    document.GetProperty("governed_attempt").GetBoolean().ShouldBe(governed.Value, scenario);
-                    File.ReadAllText(output).ShouldContain($"governed-attempt={governed.Value.ToString().ToLowerInvariant()}");
-                }
-                else {
-                    document.GetProperty("governed_attempt").ValueKind.ShouldBe(JsonValueKind.Null, scenario);
-                }
-            }
-            finally {
-                if (Directory.Exists(workRoot)) {
-                    Directory.Delete(workRoot, recursive: true);
-                }
             }
         }
     }

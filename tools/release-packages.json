@@ -1,0 +1,36 @@
+{
+  "packages": [
+    {
+      "id": "Hexalith.FrontComposer.Cli",
+      "project": "src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj"
+    },
+    {
+      "id": "Hexalith.FrontComposer.Contracts",
+      "project": "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj"
+    },
+    {
+      "id": "Hexalith.FrontComposer.Contracts.UI",
+      "project": "src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj"
+    },
+    {
+      "id": "Hexalith.FrontComposer.Mcp",
+      "project": "src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj"
+    },
+    {
+      "id": "Hexalith.FrontComposer.Schema",
+      "project": "src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj"
+    },
+    {
+      "id": "Hexalith.FrontComposer.Shell",
+      "project": "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj"
+    },
+    {
+      "id": "Hexalith.FrontComposer.SourceTools",
+      "project": "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj"
+    },
+    {
+      "id": "Hexalith.FrontComposer.Testing",
+      "project": "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj"
+    }
+  ]
+}

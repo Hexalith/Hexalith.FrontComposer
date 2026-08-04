@@ -385,6 +385,50 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         self.assertEqual(1, live.returncode)
         self.assertIn("dependency-graph drift", live.stdout)
 
+    def test_v3_source_provenance_binds_exact_ci_and_builds_identity(self) -> None:
+        _, sealed = self._prepare()
+        payload = json.loads(sealed.read_text(encoding="utf-8"))
+        payload.pop("seal")
+        builds_sha = "d" * 40
+        ci = {
+            "run": {
+                "repository": ROOT_IDENTITY,
+                "workflow_path": ".github/workflows/ci.yml",
+                "run_id": 42,
+                "run_attempt": 1,
+                "event": "push",
+                "branch": "main",
+                "head_sha": self.commit,
+            },
+            "evidence_sha256": "e" * 64,
+        }
+        release = {
+            "caller": {
+                "repository": ROOT_IDENTITY,
+                "workflow_path": ".github/workflows/release.yml",
+                "commit": self.commit,
+                "blob_sha256": "1" * 64,
+            },
+            "reusable": {
+                "repository": "github.com/hexalith/hexalith.builds",
+                "workflow_path": ".github/workflows/domain-release.yml",
+                "commit": builds_sha,
+                "blob_sha256": "2" * 64,
+            },
+            "builds_execution_sha": builds_sha,
+        }
+        payload["manifest_schema"] = HELPER.CURRENT_MANIFEST_SCHEMA
+        payload["workflow_provenance"] = {
+            "ci": ci,
+            "release": release,
+            "definition_digest": HELPER.canonical_sha256({"ci": ci, "release": release}),
+        }
+        self.assertEqual([], HELPER._manifest_v2_diagnostics(payload, require_seal=False))
+        drifted = copy.deepcopy(payload)
+        drifted["workflow_provenance"]["release"]["builds_execution_sha"] = "f" * 40
+        diagnostics = HELPER._manifest_v2_diagnostics(drifted, require_seal=False)
+        self.assertTrue(any("Builds identity mismatch" in item for item in diagnostics), diagnostics)
+
     def test_sealed_but_unapproved_release_evaluator_fails_preparation(self) -> None:
         unauthorized = copy.deepcopy(RELEASE_EVALUATOR)
         unauthorized["caller"]["blob_sha256"] = "8" * 64
