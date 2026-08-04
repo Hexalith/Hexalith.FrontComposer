@@ -1277,6 +1277,55 @@ class DiffAndMaterializationTests(unittest.TestCase):
 
         self.assertIn("duplicate logical edge", str(ctx.exception))
 
+    def test_zero_push_base_forces_full_affected_and_is_never_release_eligible(self) -> None:
+        # Reproduces, at the function level, the CLI `diff` zero/unavailable-push-base
+        # branch (main(), "diff" command, lines ~1724-1751): the candidate graph stands
+        # in for both base and candidate, release_eligible is forced False, and
+        # full_affected marks every module rather than computing a real (unavailable)
+        # diff. This does not invoke main()/argv parsing itself.
+        fx, _base_graph, candidate_graph = self._pointer_advance()
+        root_identity = fx.identity("Root")
+        next(entry for entry in fx.policy["trusted_identities"] if entry["identity"] == root_identity)["local_path"] = "."
+        zero_base = "0" * 40
+        candidate = candidate_graph["root"]["commit"]
+
+        evidence = dg.diff_graphs(
+            candidate_graph,
+            candidate_graph,
+            fx.policy,
+            event="push",
+            event_base=candidate,
+            candidate=candidate,
+            merge_base=None,
+            release_eligible=False,
+            full_affected=True,
+        )
+        evidence["revisions"]["event_base"] = zero_base
+        evidence["diagnostic"] = "zero/unavailable push base: full-affected diagnostics only; not release-eligible"
+
+        self.assertFalse(evidence["revisions"]["release_eligible"])
+        self.assertEqual(evidence["changes"], [])
+        self.assertEqual(
+            sorted(row["repository"] for row in evidence["affected_modules"]),
+            sorted(fx.identity(name) for name in ("Root", "Owner")),
+        )
+        self.assertTrue(
+            all("fail-closed full-affected diagnostic" in row["reasons"] for row in evidence["affected_modules"])
+        )
+
+        coordinate = {
+            "schema": dg.POLICY_SCHEMA,
+            "repository": root_identity,
+            "path": dg.POLICY_PATH,
+            "commit": candidate,
+            "sha256": "a" * 64,
+        }
+        evidence["dependency_policy"] = coordinate
+        self._reseal_evidence(evidence)
+
+        with mock.patch.object(dg, "load_policy_at_commit", return_value=(fx.policy, b"", coordinate)):
+            dg.validate_diff_evidence(self.tmp_path, evidence)
+
 
 class CanonicalDigestTests(unittest.TestCase):
     def test_canonical_bytes_are_compact_sorted_ascii(self) -> None:
