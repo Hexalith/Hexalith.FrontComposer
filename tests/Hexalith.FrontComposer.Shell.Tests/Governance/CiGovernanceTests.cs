@@ -198,6 +198,8 @@ public sealed class CiGovernanceTests {
         // accessibility + visual-regression gate) relocated from ci.yml into quality.yml. Pin the job
         // and its non-advisory test step so it cannot be silently dropped or made advisory (AC8 / PRD
         // NFR-11 requires e2e a11y/visual for the changed surface).
+        // Windows MAX_PATH (2026-08-05): accessibility-visual must initialize only
+        // references/Hexalith.Builds — never EventStore evidence trees or a bare/full submodule init.
         string root = RepositoryRoot();
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         int a11yJobStart = quality.LastIndexOf("  accessibility-visual:", StringComparison.Ordinal);
@@ -214,6 +216,14 @@ public sealed class CiGovernanceTests {
 
         string initializeBuildSubmodules = ExtractNamedStep(a11yJob, "Initialize build submodules");
         a11yJob.ShouldContain("fetch-depth: 0");
+        initializeBuildSubmodules.ShouldContain("shell: bash");
+        initializeBuildSubmodules.ShouldContain(
+            "git -c submodule.recurse=false submodule update --init references/Hexalith.Builds");
+        initializeBuildSubmodules.ShouldNotContain("initialize-build");
+        initializeBuildSubmodules.ShouldNotContain("references/Hexalith.EventStore");
+        initializeBuildSubmodules
+            .Replace("submodule update --init references/Hexalith.Builds", string.Empty, StringComparison.Ordinal)
+            .ShouldNotContain("submodule update --init");
         initializeBuildSubmodules.ShouldContain("GIT_CONFIG_COUNT: 1");
         initializeBuildSubmodules.ShouldContain("GIT_CONFIG_KEY_0: core.symlinks");
         initializeBuildSubmodules.ShouldContain("GIT_CONFIG_VALUE_0: 'false'");

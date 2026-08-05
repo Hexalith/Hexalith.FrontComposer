@@ -2071,3 +2071,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-build-rel-1-governed-nuget-release-contract.md`
   summary: After BUILD-REL-1 merges, bump domain-ci.yml self-pins of Builds composites from baseline 824d7ef to the merged commit that contains the changed dapr-init/governed-provenance bytes.
   evidence: Pins necessarily target the pre-change commit while this PR modifies those composites; consumers otherwise execute pre-change action bytes until a follow-up pin bump.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-30999257504-fix-cicd.md`
+  summary: EventStore `_bmad-output` evidence trees still contain paths longer than Windows MAX_PATH, so any full Windows submodule checkout of the pinned EventStore revision remains unsafe.
+  evidence: Quality run 30999257333 failed checking out Hexalith.EventStore at bb94d93e with Filename too long under evidence/story-3-13 nested SHA directories; FrontComposer only scoped the a11y job away from those paths.

@@ -426,12 +426,14 @@ jobs:
           submodules: false
 
       - name: Initialize build submodules
-        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
+        shell: bash
         env:
-          # Override only this action's Git processes so the runner's global setting is untouched.
+          # Override only this step's Git processes so the runner's global setting is untouched.
           GIT_CONFIG_COUNT: 1
           GIT_CONFIG_KEY_0: core.symlinks
           GIT_CONFIG_VALUE_0: 'false'
+        # Builds-only: avoid checking out EventStore evidence paths that exceed Windows MAX_PATH.
+        run: git -c submodule.recurse=false submodule update --init references/Hexalith.Builds
 
       - uses: Hexalith/Hexalith.Builds/Github/initialize-dotnet@main
         with:
