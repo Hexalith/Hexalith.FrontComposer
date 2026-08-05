@@ -42,7 +42,7 @@ Release concurrency is the repository-wide `release-production` group with cance
 protected jobs use the `production` environment. The reusable publisher is selected at the exact
 Hexalith.Builds commit `3ac633386faa2dc4c785bc1ffa06487974906d79`; the identical value is passed as
 `builds-execution-sha`. The candidate's `references/Hexalith.Builds` gitlink must also resolve to that
-identity. Mutable workflow references are not accepted at the release boundary.
+identity. Mutable workflow references are not accepted at the release boundary. Catalog `HexalithTenantsVersion` is `5.4.1` at this Builds identity.
 
 ## Operator procedure
 
