@@ -155,8 +155,16 @@ def phase_build() -> None:
     On the domain-release runner the solution is already built; this is an incremental
     no-op there. It is a BUILD prerequisite, not a repack: candidate packages are packed
     exactly once in phase_pack.
+
+    Restore opts into package validation so the published PackageValidationBaselineVersion
+    packages (currently 3.0.0) are cached before Contract package-boundary tests run.
+    Quality uses the same switch; omitting it leaves prepare-candidate unable to find the
+    MCP baseline under NUGET_PACKAGES.
     """
-    run("build", ["dotnet", "restore", SOLUTION, "-p:Configuration=Release"])
+    run("build", [
+        "dotnet", "restore", SOLUTION, "-p:Configuration=Release",
+        "-p:EnableFrontComposerPackageValidation=true",
+    ])
     run("build", [
         "dotnet", "build",
         "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",

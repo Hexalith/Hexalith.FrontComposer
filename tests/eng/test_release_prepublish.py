@@ -96,6 +96,17 @@ class ReleasePrepublishTests(unittest.TestCase):
         self.assertIn("--no-symbols", package_command)
         self.assertNotIn("--no-symbols", symbol_command)
 
+    def test_phase_build_restore_enables_package_validation_baseline_cache(self) -> None:
+        # prepare-candidate runs Contract package-boundary tests that require the
+        # published PackageValidationBaselineVersion packages in NUGET_PACKAGES.
+        source = (ROOT / "eng" / "release_prepublish.py").read_text(encoding="utf-8")
+        restore_idx = source.index('dotnet", "restore"')
+        validation_idx = source.index(
+            "-p:EnableFrontComposerPackageValidation=true",
+            restore_idx,
+        )
+        self.assertLess(restore_idx, validation_idx)
+
 
 if __name__ == "__main__":
     unittest.main()
