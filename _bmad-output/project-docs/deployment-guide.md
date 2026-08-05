@@ -1,9 +1,9 @@
 # Hexalith.FrontComposer — Deployment / Release Guide
 
-> Updated 2026-08-05 for the operator-controlled, exact-source production release model.
+> Updated 2026-08-06 for the operator-controlled, exact-source production release model.
 > FrontComposer ships NuGet packages, not a deployed service or container image.
 > Approved Builds execution identity is the current `references/Hexalith.Builds` gitlink
-> (`bd94f7fe7471ec73974e9629a70a4a731f7d1540`, BUILD-REL-1).
+> (`ce0d55c6b36aabf9edf2ac756cd350b8d47a9974`, BUILD-REL-1 + Memories catalog 2.20.3).
 
 ## Published package set
 
@@ -40,7 +40,7 @@ advances, the operator must wait for successful push CI on the new tip and dispa
 
 Release concurrency is the repository-wide `release-production` group with cancellation disabled. The
 protected jobs use the `production` environment. The reusable publisher is selected at the exact
-Hexalith.Builds commit `bd94f7fe7471ec73974e9629a70a4a731f7d1540`; the identical value is passed as
+Hexalith.Builds commit `ce0d55c6b36aabf9edf2ac756cd350b8d47a9974`; the identical value is passed as
 `builds-execution-sha`. The candidate's `references/Hexalith.Builds` gitlink must also resolve to that
 identity. Mutable workflow references are not accepted at the release boundary.
 

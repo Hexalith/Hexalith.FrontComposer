@@ -32,7 +32,7 @@
       "selected_catalog_required_properties": {
         "HexalithCommonsVersion": "2.30.0",
         "HexalithEventStoreVersion": "3.91.1",
-        "HexalithMemoriesVersion": "2.19.9",
+        "HexalithMemoriesVersion": "2.20.3",
         "HexalithPartiesVersion": "1.0.0",
         "HexalithPolymorphicSerializationsVersion": "1.19.2",
         "HexalithTenantsVersion": "5.4.0"
