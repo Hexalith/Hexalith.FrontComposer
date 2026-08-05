@@ -2061,3 +2061,13 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-30978026706-fix-source-tools-mutation.md`
   summary: Mutation nightly still runs `dotnet restore Hexalith.FrontComposer.slnx` before project-scoped Stryker, leaving a residual full-umbrella restore in the same job
   evidence: Edge/verification review of actions-30978026706; restore step is unchanged and outside this story AC (Stryker initial build was the file-lock failure), but remains a broader project-scope residual
+
+## BUILD-REL-1 review deferrals (2026-08-05)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-build-rel-1-governed-nuget-release-contract.md`
+  summary: Governed CI identity/closure proof covers build-and-test only; aspire-tests and performance-tests still use legacy pins without governed provenance.
+  evidence: Blind-hunter review of feat/build-rel-1-governed-release-contract; domain-ci.yml governed path is limited to build-and-test while sibling jobs remain on Hexalith/Hexalith.Builds/Github/*@40-hex without workflow identity or closure evaluation.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-build-rel-1-governed-nuget-release-contract.md`
+  summary: After BUILD-REL-1 merges, bump domain-ci.yml self-pins of Builds composites from baseline 824d7ef to the merged commit that contains the changed dapr-init/governed-provenance bytes.
+  evidence: Pins necessarily target the pre-change commit while this PR modifies those composites; consumers otherwise execute pre-change action bytes until a follow-up pin bump.
