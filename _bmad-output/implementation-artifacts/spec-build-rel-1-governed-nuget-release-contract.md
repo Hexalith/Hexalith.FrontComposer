@@ -2,7 +2,7 @@
 title: 'BUILD-REL-1: Opt-in governed NuGet release contract for Hexalith.Builds'
 type: 'feature'
 created: '2026-08-05'
-status: 'done'
+status: 'in-review'
 review_loop_iteration: 0
 baseline_commit: '824d7ef100455423aabbcd399c8364074000b2e0'
 context:
@@ -122,49 +122,3 @@ context:
 **Manual checks:**
 - Issue filing deferred this run — skip issue-body check; Release Owner handles later
 - Confirm no FrontComposer submodule or caller workflow files changed in the Builds PR
-
-## Suggested Review Order
-
-**Governed release job**
-
-- Opt-in input and dual-job split so legacy callers never request attestation permissions
-  [`domain-release.yml:95`](../../../builds/.github/workflows/domain-release.yml#L95)
-
-- Governed job permissions: `id-token` / `attestations` only on this path
-  [`domain-release.yml:471`](../../../builds/.github/workflows/domain-release.yml#L471)
-
-- Freeze gate first: exact `"true"` compare; frozen skips build/candidate/attest/publish green
-  [`domain-release.yml:489`](../../../builds/.github/workflows/domain-release.yml#L489)
-
-- Candidate pack/sign, then attest before any publish side effect
-  [`domain-release.yml:813`](../../../builds/.github/workflows/domain-release.yml#L813)
-
-- Attest exact candidate packages
-  [`domain-release.yml:947`](../../../builds/.github/workflows/domain-release.yml#L947)
-
-- Semantic Release gated on freeze **and** `release-required` (no unattested publish)
-  [`domain-release.yml:965`](../../../builds/.github/workflows/domain-release.yml#L965)
-
-**Governed CI provenance**
-
-- Opt-in governed CI inputs and caller-facing provenance outputs
-  [`domain-ci.yml:121`](../../../builds/.github/workflows/domain-ci.yml#L121)
-
-- Contract validates workflow identity and exact candidate checkout
-  [`domain-ci.yml:221`](../../../builds/.github/workflows/domain-ci.yml#L221)
-
-- Closure evaluation via local composite from approved Builds commit
-  [`domain-ci.yml:296`](../../../builds/.github/workflows/domain-ci.yml#L296)
-
-**Closure evaluator**
-
-- Fail closed when computed closure digest ≠ expected evaluator digest
-  [`governed_provenance.py:497`](../../../builds/Github/governed-provenance/governed_provenance.py#L497)
-
-- Helpers count toward source ceiling; nested composite bytes hashed
-  [`governed_provenance.py:248`](../../../builds/Github/governed-provenance/governed_provenance.py#L248)
-
-**Tests**
-
-- Executed freeze, candidate, digest, symlink, and identity coverage
-  [`test_governed_release_workflow.py:1`](../../../builds/Github/publish-containers/tests/test_governed_release_workflow.py#L1)

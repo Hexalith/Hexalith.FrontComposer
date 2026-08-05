@@ -1,0 +1,3705 @@
+=== git status ===
+ M .github/actionlint.yaml
+ M .github/workflows/build-release.yml
+ M .github/workflows/ci-cd-standards.md
+ M .github/workflows/ci.yml
+ M .github/workflows/domain-ci.md
+ M .github/workflows/domain-ci.yml
+ M .github/workflows/domain-release.md
+ M .github/workflows/domain-release.yml
+ M Github/dapr-init/action.yml
+ M README.md
+ M changes-plan.md
+?? Github/governed-provenance/
+?? Github/publish-containers/tests/test_governed_release_workflow.py
+?? Tools/test-governed-provenance.ps1
+
+=== diff vs baseline 824d7ef100455423aabbcd399c8364074000b2e0 (tracked) ===
+diff --git a/.github/actionlint.yaml b/.github/actionlint.yaml
+index 1ea9b5c..9464b32 100644
+--- a/.github/actionlint.yaml
++++ b/.github/actionlint.yaml
+@@ -4,4 +4,9 @@ paths:
+     # GitHub exposes these reusable-workflow identity fields at runtime, but
+     # actionlint 1.7.12 does not yet include them in its job-context schema.
+     ignore:
+-      - 'property "workflow_(repository|sha)" is not defined in object type'
++      - 'property "workflow_(repository|sha|ref|file_path)" is not defined in object type'
++  .github/workflows/domain-ci.yml:
++    # Same actionlint job-context gap: governed CI proves its own reusable-workflow
++    # identity from job.workflow_repository/sha/ref before emitting GOV-1 provenance.
++    ignore:
++      - 'property "workflow_(repository|sha|ref|file_path)" is not defined in object type'
+diff --git a/.github/workflows/build-release.yml b/.github/workflows/build-release.yml
+index 783cb8e..f149897 100644
+--- a/.github/workflows/build-release.yml
++++ b/.github/workflows/build-release.yml
+@@ -144,6 +144,10 @@ jobs:
+       shell: pwsh
+       run: pwsh -NoProfile -File ./Tools/test-publish-containers.ps1
+ 
++    - name: Test governed workflow provenance
++      shell: pwsh
++      run: pwsh -NoProfile -File ./Tools/test-governed-provenance.ps1
++
+     - name: Create Release
+       uses: ./Github/create-release
+       env:
+diff --git a/.github/workflows/ci-cd-standards.md b/.github/workflows/ci-cd-standards.md
+index 288541d..be3dfa6 100644
+--- a/.github/workflows/ci-cd-standards.md
++++ b/.github/workflows/ci-cd-standards.md
+@@ -35,6 +35,37 @@ test project lists, and operational exceptions in their own docs.
+   SHA is independent of the caller's development-time
+   `references/Hexalith.Builds` gitlink.
+ 
++### Governed closure exception
++
++The tag-over-SHA preference above is a readability trade-off, and it stops
++applying wherever a closure has to be *provable*. Inside the governed BUILD-REL-1
++surface — `domain-ci.yml`, `domain-release.yml`, and every composite action
++reachable from them (`Github/initialize-build`, `Github/dapr-init`,
++`Github/publish-containers`, `Github/governed-provenance`) — every `uses:` is
++either a literal lowercase 40-hex commit or a local
++`./.hexalith/builds-execution/...` path. There is no third form:
++
++- A governed run emits a closure digest over the exact bytes that executed. A
++  tag cannot appear in that digest as anything but a promise, so the collector
++  in `Github/governed-provenance` rejects tags, branches, expressions, and
++  `docker://` references outright.
++- Because the ref is no longer self-describing, these references **do** carry a
++  trailing version comment (`# v7.0.1`). This is the inverse of the rule above
++  and is deliberate: the comment is the only remaining human-readable name.
++- Builds-owned composites used by a governed job load from the
++  reusable-workflow commit through the local path, so the composite bytes can
++  never drift from the workflow that invoked them. `domain-ci.yml` keeps a
++  second, 40-hex-pinned form of the same composites for legacy callers, which
++  never check Builds out.
++- `Tools/test-governed-provenance.ps1` evaluates both shipped workflows on every
++  CI run, so a reference that stops being resolvable fails the pull request
++  rather than a release.
++
++Self-pinning has a known consequence: a commit that changes a composite cannot
++also pin itself to its own future SHA. The legacy 40-hex pins in `domain-ci.yml`
++therefore name the previous reviewed commit and must be bumped in a follow-up
++commit after the change that alters those composites merges.
++
+ ## Submodules
+ 
+ - Initialize only root-declared submodules.
+@@ -123,6 +154,44 @@ test project lists, and operational exceptions in their own docs.
+   The reusable publication job still references the protected environment, so
+   those credentials cannot be used until its protection rules pass.
+ 
++### Release publication freeze
++
++- Every module's publication is gated by the caller variable
++  `HEXALITH_RELEASE_PUBLISH_ENABLED`. Semantic Release runs only when it is
++  exactly the four-character string `true`.
++- **Rollout is fail-closed ecosystem-wide.** A module stops publishing as soon
++  as it re-pins to a Builds commit carrying this gate. Set the variable on every
++  module that should keep publishing before re-pinning it.
++- A frozen module **skips and concludes green**. Freezing is a deliberate
++  operational state, so it must not manufacture a red run on every dispatch.
++- The comparison is a case-sensitive, untrimmed shell comparison, not a workflow
++  expression: GitHub's `==` folds case, so `TRUE` would otherwise unfreeze a
++  module nobody unfroze.
++- Set the variable at **repository** scope on every module, including the ones
++  meant to stay frozen. A repository value shadows the organization value, so an
++  organization-wide `true` silently leaks into every repository that never set
++  its own. Reusable workflows resolve `vars` from the caller's repository and
++  organization, which is why the variable belongs on the module.
++
++### Governed release mode (BUILD-REL-1)
++
++- Governed mode is opt-in (`governed-release: true` / `governed-ci: true`) and
++  default-off. A caller that sets nothing keeps the pre-BUILD-REL-1 contract.
++- `id-token: write` and `attestations: write` live only on the governed release
++  job. Job permissions resolve statically, so the governed path is a separate
++  job rather than a conditional permission block.
++- Governed Release consumes only `release-commit` for checkout, prepare, seal,
++  verify, classify, and publish. The event head authenticates the triggering CI
++  run and nothing else.
++- Candidate packages are packed, signed, timestamped, and attested with
++  `actions/attest-build-provenance` **before** the first publication side
++  effect. A missing or empty attestation bundle fails the run closed.
++- Missing signing secrets fail closed at contract validation, before checkout.
++  Signing material is scoped to the candidate phase and never reaches Semantic
++  Release, the container publisher, or an uploaded artifact.
++- Governed runs always upload their verification data, including when frozen or
++  failed. Unavailable values are explicit `null`; the artifact is never omitted.
++
+ ## Artifacts
+ 
+ - Upload TRX and coverage artifacts from every blocking test job with
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index 663a0bc..bfc5e78 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -148,6 +148,10 @@ jobs:
+         shell: pwsh
+         run: pwsh -NoProfile -File ./Tools/test-publish-containers.ps1
+ 
++      - name: Test governed workflow provenance
++        shell: pwsh
++        run: pwsh -NoProfile -File ./Tools/test-governed-provenance.ps1
++
+   python-tests:
+     runs-on: ubuntu-latest
+     name: Python contract tests
+@@ -164,6 +168,10 @@ jobs:
+         working-directory: Github/publish-containers/tests
+         run: python3 -m unittest discover -v
+ 
++      - name: Test governed workflow provenance evaluator
++        working-directory: Github/governed-provenance/tests
++        run: python3 -m unittest discover -v
++
+       # The commitlint helper tests execute the workflow's inline node script,
+       # which imports @commitlint/lint, so the toolchain has to be installed.
+       - name: Setup Node.js
+diff --git a/.github/workflows/domain-ci.md b/.github/workflows/domain-ci.md
+index 2f807cf..0fd709e 100644
+--- a/.github/workflows/domain-ci.md
++++ b/.github/workflows/domain-ci.md
+@@ -85,6 +85,60 @@ strings because `workflow_call` does not support arrays. The workflow splits
+ those strings in bash. Test result folders are derived from each project
+ basename under `TestResults/`.
+ 
++## Governed CI mode (BUILD-REL-1 / GOV-1)
++
++Setting `governed-ci: true` opts the `build-and-test` job into the governed
++contract. Every governed input is optional and defaults to the pre-BUILD-REL-1
++behavior; a caller that leaves them unset gets exactly the previous workflow,
++with `contents: read` as the only permission.
++
++| Input | Required | Default | Description |
++|-------|----------|---------|-------------|
++| `governed-ci` | No | `false` | Opt into governed CI: workflow-identity validation and closure provenance. |
++| `builds-execution-sha` | Governed | `''` | Exact approved Hexalith.Builds commit this reusable workflow was called at. |
++| `candidate-commit` | Governed | `''` | Exact candidate commit the CI run evaluates. Must equal the event head. |
++| `dependency-policy-repository` | Governed | `''` | Normalized `github.com/owner/repository` identity owning the active dependency policy. |
++| `dependency-policy-path` | Governed | `''` | Repository-relative path of the active dependency policy. |
++| `dependency-policy-commit` | Governed | `''` | Exact 40-hex commit of the active dependency policy. |
++| `dependency-policy-sha256` | Governed | `''` | Exact 64-hex SHA-256 of the active dependency-policy bytes. |
++| `expected-ci-evaluator-digest` | Governed | `''` | Expected CI evaluator-authorization digest recorded into the provenance. |
++
++Governed CI adds three conditional steps before the build:
++
++1. **Contract validation.** All governed coordinates are validated, and the
++   run proves its own identity: `job.workflow_repository`, `job.workflow_sha`,
++   and `job.workflow_ref` must resolve to
++   `Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml` at
++   `builds-execution-sha`, and the checked-out `HEAD` must equal
++   `candidate-commit`. Every violation is collected and reported together, so a
++   misconfigured caller sees the whole list rather than one failure per run.
++2. **Approved Builds checkout** at `builds-execution-sha`.
++3. **Closure provenance** through `Github/governed-provenance`, loaded from
++   that checkout.
++
++Because governed mode must load Builds-owned composites from the
++reusable-workflow commit itself, the `build-and-test` job carries **two forms**
++of `initialize-build` and `dapr-init`: a governed form using the local
++`./.hexalith/builds-execution/...` path, and a legacy form pinned to a literal
++40-hex commit for callers that never check Builds out. Exactly one of each pair
++runs. The static closure records both, which is intentional: an
++over-approximated closure is safe, an under-approximated one is not.
++
++### Governed outputs
++
++`build-and-test` exposes the provenance the caller needs to assemble its own
++`hexalith.dependency-release-handoff.v1` artifact: `governed-candidate`,
++`governed-provenance-json`, `governed-provenance-sha256`,
++`governed-closure-digest`, `governed-reusable-repository`,
++`governed-reusable-workflow-path`, `governed-reusable-commit`,
++`governed-reusable-blob-sha256`, `governed-actions-json`, and
++`governed-external-actions-json`.
++
++`governed-actions-json` lists the Builds-owned composite sources with their blob
++SHA-256 values; `governed-external-actions-json` lists every third-party action
++in the closure as a pinned 40-hex coordinate. Builds emits provenance only —
++the caller owns its handoff schema and evidence logic.
++
+ ## Usage
+ 
+ ```yaml
+@@ -112,3 +166,23 @@ Use `Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main` from
+ consuming repositories — Hexalith.Builds references always track `main` (see
+ `ci-cd-standards.md`, "Action References"); third-party actions inside the
+ shared workflows are the ones pinned to commit SHAs.
++
++A **governed** caller cannot use `@main`. Governed mode validates
++`job.workflow_sha` against `builds-execution-sha`, so the `uses:` revision and
++`builds-execution-sha` must be the same literal 40-character commit:
++
++```yaml
++jobs:
++  ci:
++    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@0123456789abcdef0123456789abcdef01234567
++    with:
++      solution: Hexalith.<Module>.slnx
++      governed-ci: true
++      builds-execution-sha: 0123456789abcdef0123456789abcdef01234567
++      candidate-commit: ${{ github.sha }}
++      dependency-policy-repository: github.com/hexalith/hexalith.<module>
++      dependency-policy-path: eng/dependency-graph-policy.json
++      dependency-policy-commit: ${{ needs.policy.outputs.commit }}
++      dependency-policy-sha256: ${{ needs.policy.outputs.sha256 }}
++      expected-ci-evaluator-digest: ${{ vars.HEXALITH_CI_EVALUATOR_DIGEST }}
++```
+diff --git a/.github/workflows/domain-ci.yml b/.github/workflows/domain-ci.yml
+index 182492c..9068240 100644
+--- a/.github/workflows/domain-ci.yml
++++ b/.github/workflows/domain-ci.yml
+@@ -118,6 +118,82 @@ on:
+         required: false
+         type: number
+         default: 60
++      governed-ci:
++        description: >-
++          Opt into the BUILD-REL-1 / GOV-1 governed CI contract: validate the actual
++          reusable-workflow identity, evaluate the bounded static workflow/composite
++          closure, and emit the provenance the caller needs for its
++          hexalith.dependency-release-handoff.v1 artifact. Leave unset to keep the
++          pre-BUILD-REL-1 CI contract exactly.
++        required: false
++        type: boolean
++        default: false
++      builds-execution-sha:
++        description: 'Exact approved Hexalith.Builds commit resolved for this reusable workflow. Required in governed mode.'
++        required: false
++        type: string
++        default: ''
++      candidate-commit:
++        description: 'Exact candidate commit the governed CI run evaluates. Required in governed mode.'
++        required: false
++        type: string
++        default: ''
++      dependency-policy-repository:
++        description: 'Normalized github.com/owner/repository identity owning the active dependency policy.'
++        required: false
++        type: string
++        default: ''
++      dependency-policy-path:
++        description: 'Repository-relative path of the active dependency policy.'
++        required: false
++        type: string
++        default: ''
++      dependency-policy-commit:
++        description: 'Exact commit of the active dependency policy.'
++        required: false
++        type: string
++        default: ''
++      dependency-policy-sha256:
++        description: 'Exact SHA-256 of the active dependency-policy bytes.'
++        required: false
++        type: string
++        default: ''
++      expected-ci-evaluator-digest:
++        description: 'Expected CI evaluator-authorization digest recorded into the governed provenance.'
++        required: false
++        type: string
++        default: ''
++    outputs:
++      governed-candidate:
++        description: 'Exact candidate commit the governed CI run evaluated.'
++        value: ${{ jobs.build-and-test.outputs.governed-candidate }}
++      governed-provenance-json:
++        description: 'Complete governed-provenance document as compact canonical JSON.'
++        value: ${{ jobs.build-and-test.outputs.governed-provenance-json }}
++      governed-provenance-sha256:
++        description: 'SHA-256 of the emitted governed-provenance document bytes.'
++        value: ${{ jobs.build-and-test.outputs.governed-provenance-sha256 }}
++      governed-closure-digest:
++        description: 'Canonical digest of the evaluated governed reusable/composite closure.'
++        value: ${{ jobs.build-and-test.outputs.governed-closure-digest }}
++      governed-reusable-repository:
++        description: 'Normalized identity of the repository owning the governed reusable workflow.'
++        value: ${{ jobs.build-and-test.outputs.governed-reusable-repository }}
++      governed-reusable-workflow-path:
++        description: 'Repository-relative path of the governed reusable workflow.'
++        value: ${{ jobs.build-and-test.outputs.governed-reusable-workflow-path }}
++      governed-reusable-commit:
++        description: 'Exact commit the governed reusable workflow executed from.'
++        value: ${{ jobs.build-and-test.outputs.governed-reusable-commit }}
++      governed-reusable-blob-sha256:
++        description: 'SHA-256 of the governed domain-ci.yml blob that executed.'
++        value: ${{ jobs.build-and-test.outputs.governed-reusable-blob-sha256 }}
++      governed-actions-json:
++        description: 'Canonical JSON array of the local composite-action sources in the governed closure.'
++        value: ${{ jobs.build-and-test.outputs.governed-actions-json }}
++      governed-external-actions-json:
++        description: 'Canonical JSON array of the pinned external action coordinates in the governed closure.'
++        value: ${{ jobs.build-and-test.outputs.governed-external-actions-json }}
+ 
+ permissions:
+   contents: read
+@@ -126,19 +202,126 @@ jobs:
+   build-and-test:
+     runs-on: ubuntu-latest
+     timeout-minutes: ${{ inputs.build-timeout-minutes }}
++    outputs:
++      governed-candidate: ${{ steps.governed-provenance.outputs.candidate }}
++      governed-provenance-json: ${{ steps.governed-provenance.outputs.provenance-json }}
++      governed-provenance-sha256: ${{ steps.governed-provenance.outputs.provenance-sha256 }}
++      governed-closure-digest: ${{ steps.governed-provenance.outputs.closure-digest }}
++      governed-reusable-repository: ${{ steps.governed-provenance.outputs.reusable-repository }}
++      governed-reusable-workflow-path: ${{ steps.governed-provenance.outputs.reusable-workflow-path }}
++      governed-reusable-commit: ${{ steps.governed-provenance.outputs.reusable-commit }}
++      governed-reusable-blob-sha256: ${{ steps.governed-provenance.outputs.reusable-blob-sha256 }}
++      governed-actions-json: ${{ steps.governed-provenance.outputs.actions-json }}
++      governed-external-actions-json: ${{ steps.governed-provenance.outputs.external-actions-json }}
+     steps:
+-      - uses: actions/checkout@v7.0.1
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           fetch-depth: 0
+           submodules: false
++      - name: Validate governed CI contract
++        if: ${{ inputs.governed-ci }}
++        shell: bash
++        env:
++          BUILDS_EXECUTION_SHA: ${{ inputs.builds-execution-sha }}
++          CANDIDATE_COMMIT: ${{ inputs.candidate-commit }}
++          EVENT_HEAD_SHA: ${{ github.sha }}
++          POLICY_REPOSITORY: ${{ inputs.dependency-policy-repository }}
++          POLICY_PATH: ${{ inputs.dependency-policy-path }}
++          POLICY_COMMIT: ${{ inputs.dependency-policy-commit }}
++          POLICY_SHA256: ${{ inputs.dependency-policy-sha256 }}
++          EXPECTED_EVALUATOR_DIGEST: ${{ inputs.expected-ci-evaluator-digest }}
++          RESOLVED_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
++          RESOLVED_WORKFLOW_SHA: ${{ job.workflow_sha }}
++          RESOLVED_WORKFLOW_REF: ${{ job.workflow_ref }}
++        run: |
++          set -euo pipefail
++          failures=0
++          reject() {
++            echo "$1" >&2
++            failures=$((failures + 1))
++          }
++
++          if [[ ! "$BUILDS_EXECUTION_SHA" =~ ^[0-9a-f]{40}$ ]]; then
++            reject "governed CI requires builds-execution-sha to be an exact lowercase 40-character commit SHA."
++          fi
++          if [[ ! "$CANDIDATE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
++            reject "governed CI requires candidate-commit to be an exact lowercase 40-character commit SHA."
++          fi
++          if [[ ! "$POLICY_REPOSITORY" =~ ^github\.com/[a-z0-9._-]+/[a-z0-9._-]+$ ]]; then
++            reject "governed CI requires dependency-policy-repository as a normalized github.com/owner/repository identity."
++          fi
++          if [ -z "${POLICY_PATH//[[:space:]]/}" ] || [[ "$POLICY_PATH" == /* ]]; then
++            reject "governed CI requires dependency-policy-path as a non-empty relative path."
++          fi
++          if [[ ! "$POLICY_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
++            reject "governed CI requires dependency-policy-commit to be an exact lowercase 40-character commit SHA."
++          fi
++          if [[ ! "$POLICY_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
++            reject "governed CI requires dependency-policy-sha256 to be an exact lowercase 64-character SHA-256."
++          fi
++          if [[ ! "$EXPECTED_EVALUATOR_DIGEST" =~ ^[0-9a-f]{64}$ ]]; then
++            reject "governed CI requires expected-ci-evaluator-digest to be an exact lowercase 64-character SHA-256."
++          fi
++          if [ "$RESOLVED_WORKFLOW_REPOSITORY" != "Hexalith/Hexalith.Builds" ]; then
++            reject "The governed CI job is not defined by the approved Hexalith.Builds repository."
++          fi
++          if [ "$RESOLVED_WORKFLOW_SHA" != "$BUILDS_EXECUTION_SHA" ]; then
++            reject "Resolved reusable-workflow SHA does not match the approved builds-execution-sha."
++          fi
++          if [[ "$RESOLVED_WORKFLOW_REF" != Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@* ]]; then
++            reject "Resolved job.workflow_ref does not name Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml."
++          fi
++          if [ "$CANDIDATE_COMMIT" != "$EVENT_HEAD_SHA" ]; then
++            reject "governed CI candidate-commit must be the exact commit this CI run evaluates."
++          fi
++
++          checked_out_sha="$(git rev-parse HEAD)"
++          if [ "$checked_out_sha" != "$CANDIDATE_COMMIT" ]; then
++            reject "The checked-out CI source does not match the declared exact candidate."
++          fi
++
++          if [ "$failures" -ne 0 ]; then
++            echo "Rejected $failures governed CI contract violation(s)." >&2
++            exit 1
++          fi
++      - name: Checkout approved Builds actions
++        if: ${{ inputs.governed-ci }}
++        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          repository: Hexalith/Hexalith.Builds
++          ref: ${{ inputs.builds-execution-sha }}
++          path: .hexalith/builds-execution
++          persist-credentials: false
++      - name: Evaluate governed workflow provenance
++        id: governed-provenance
++        if: ${{ inputs.governed-ci }}
++        uses: ./.hexalith/builds-execution/Github/governed-provenance
++        with:
++          stage: ci
++          builds-execution-sha: ${{ inputs.builds-execution-sha }}
++          workflow-path: .github/workflows/domain-ci.yml
++          candidate: ${{ inputs.candidate-commit }}
++          dependency-policy-repository: ${{ inputs.dependency-policy-repository }}
++          dependency-policy-path: ${{ inputs.dependency-policy-path }}
++          dependency-policy-commit: ${{ inputs.dependency-policy-commit }}
++          dependency-policy-sha256: ${{ inputs.dependency-policy-sha256 }}
++          expected-evaluator-digest: ${{ inputs.expected-ci-evaluator-digest }}
++          output: .hexalith/ci/governed/ci-workflow-provenance.json
++      # Two forms of the same composite. Governed mode must load Builds-owned composites
++      # from the reusable-workflow commit itself, which only the governed checkout above
++      # provides; a legacy caller never checks Builds out, so it consumes the pinned copy.
++      - name: Initialize root-declared submodules (governed)
++        if: ${{ inputs.governed-ci }}
++        uses: ./.hexalith/builds-execution/Github/initialize-build
+       - name: Initialize root-declared submodules
+-        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
++        if: ${{ !inputs.governed-ci }}
++        uses: Hexalith/Hexalith.Builds/Github/initialize-build@824d7ef100455423aabbcd399c8364074000b2e0 # BUILD-REL-1
+       - name: Initialize .NET
+-        uses: actions/setup-dotnet@v6.0.0
++        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+         with:
+           global-json-file: ${{ inputs.dotnet-global-json }}
+       - name: Cache NuGet packages
+-        uses: actions/cache@v6.1.0
++        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+         with:
+           path: ~/.nuget/packages
+           key: nuget-${{ hashFiles(inputs.packages-lock-file) }}
+@@ -204,9 +387,14 @@ jobs:
+               --report-xunit-trx \
+               --report-xunit-trx-filename "${name}.trx"
+           done <<< "$UNIT_TEST_PROJECTS"
++      - name: Install and initialize Dapr (governed)
++        if: ${{ inputs.integration-test-projects != '' && inputs.governed-ci }}
++        uses: ./.hexalith/builds-execution/Github/dapr-init
++        with:
++          version: ${{ inputs.dapr-version }}
+       - name: Install and initialize Dapr
+-        if: ${{ inputs.integration-test-projects != '' }}
+-        uses: Hexalith/Hexalith.Builds/Github/dapr-init@main
++        if: ${{ inputs.integration-test-projects != '' && !inputs.governed-ci }}
++        uses: Hexalith/Hexalith.Builds/Github/dapr-init@824d7ef100455423aabbcd399c8364074000b2e0 # BUILD-REL-1
+         with:
+           version: ${{ inputs.dapr-version }}
+       - name: Integration tests (Tier 2, VSTest)
+@@ -263,7 +451,7 @@ jobs:
+           python3 scripts/validate-coverage.py "${args[@]}" --summary-file "$GITHUB_STEP_SUMMARY"
+       - name: Upload test and coverage evidence
+         if: always()
+-        uses: actions/upload-artifact@v7.0.1
++        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+         with:
+           name: blocking-test-results
+           path: |
+@@ -278,18 +466,18 @@ jobs:
+     needs: build-and-test
+     continue-on-error: ${{ inputs.aspire-continue-on-error }}
+     steps:
+-      - uses: actions/checkout@v7.0.1
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           fetch-depth: 0
+           submodules: false
+       - name: Initialize root-declared submodules
+-        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
++        uses: Hexalith/Hexalith.Builds/Github/initialize-build@824d7ef100455423aabbcd399c8364074000b2e0 # BUILD-REL-1
+       - name: Initialize .NET
+-        uses: actions/setup-dotnet@v6.0.0
++        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+         with:
+           global-json-file: ${{ inputs.dotnet-global-json }}
+       - name: Cache NuGet packages
+-        uses: actions/cache@v6.1.0
++        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+         with:
+           path: ~/.nuget/packages
+           key: nuget-${{ hashFiles(inputs.packages-lock-file) }}
+@@ -301,7 +489,7 @@ jobs:
+           dotnet restore "$SOLUTION"
+           dotnet build "$SOLUTION" --no-restore --configuration Release -warnaserror
+       - name: Install and initialize Dapr
+-        uses: Hexalith/Hexalith.Builds/Github/dapr-init@main
++        uses: Hexalith/Hexalith.Builds/Github/dapr-init@824d7ef100455423aabbcd399c8364074000b2e0 # BUILD-REL-1
+         with:
+           version: ${{ inputs.dapr-version }}
+       # Coverage is not collected here: this tier is advisory (non-blocking by
+@@ -340,7 +528,7 @@ jobs:
+           echo "Status: $JOB_STATUS" >> "$GITHUB_STEP_SUMMARY"
+       - name: Upload test results
+         if: always()
+-        uses: actions/upload-artifact@v7.0.1
++        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+         with:
+           name: aspire-test-results
+           path: "TestResults/**/*.trx"
+@@ -352,18 +540,18 @@ jobs:
+     timeout-minutes: ${{ inputs.performance-timeout-minutes }}
+     needs: build-and-test
+     steps:
+-      - uses: actions/checkout@v7.0.1
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           fetch-depth: 0
+           submodules: false
+       - name: Initialize root-declared submodules
+-        uses: Hexalith/Hexalith.Builds/Github/initialize-build@main
++        uses: Hexalith/Hexalith.Builds/Github/initialize-build@824d7ef100455423aabbcd399c8364074000b2e0 # BUILD-REL-1
+       - name: Initialize .NET
+-        uses: actions/setup-dotnet@v6.0.0
++        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+         with:
+           global-json-file: ${{ inputs.dotnet-global-json }}
+       - name: Cache NuGet packages
+-        uses: actions/cache@v6.1.0
++        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+         with:
+           path: ~/.nuget/packages
+           key: nuget-${{ hashFiles(inputs.packages-lock-file) }}
+@@ -375,7 +563,7 @@ jobs:
+           dotnet restore "$SOLUTION"
+           dotnet build "$SOLUTION" --no-restore --configuration Release -warnaserror
+       - name: Install and initialize Dapr
+-        uses: Hexalith/Hexalith.Builds/Github/dapr-init@main
++        uses: Hexalith/Hexalith.Builds/Github/dapr-init@824d7ef100455423aabbcd399c8364074000b2e0 # BUILD-REL-1
+         with:
+           version: ${{ inputs.dapr-version }}
+       - name: Performance tests (Tier 3, nightly only, VSTest)
+@@ -560,7 +748,7 @@ jobs:
+           PY
+       - name: Upload performance test results
+         if: always()
+-        uses: actions/upload-artifact@v7.0.1
++        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+         with:
+           name: performance-test-results
+           path: TestResults/performance
+diff --git a/.github/workflows/domain-release.md b/.github/workflows/domain-release.md
+index a2d8aab..93a58ec 100644
+--- a/.github/workflows/domain-release.md
++++ b/.github/workflows/domain-release.md
+@@ -26,6 +26,27 @@ Dapr-backed tests, and then runs semantic-release.
+ | `package-manifest` | No | `tools/release-packages.json` | Caller package manifest frozen into publication identity. |
+ | `expected-package-count` | No\* | `0` | Number of NuGet package IDs the caller publishes. \*Effectively required when `publish-containers` is `true`: a dedicated workflow step rejects the default `0` and any non-positive-integer value immediately after checkout, before `npm ci` or any publication step. Declared by the caller rather than derived from the manifest, so an accidental inventory change fails closed. |
+ 
++### Governed mode inputs (BUILD-REL-1)
++
++Every input below is optional and defaults to the pre-BUILD-REL-1 behavior. They
++are read only when `governed-release` is `true`; see
++[Governed release mode](#governed-release-mode-build-rel-1).
++
++| Input | Required | Default | Description |
++|-------|----------|---------|-------------|
++| `governed-release` | No | `false` | Opt into the governed contract: signing, a pre-publication candidate phase, build-provenance attestation over those exact packages, and GOV-1 handoff I/O. |
++| `release-commit` | Governed | `''` | Exact authenticated CI-handoff candidate. In governed mode every checkout, prepare, seal, verify, classify, and publish operation consumes this commit. |
++| `candidate-command` | Governed | `''` | Caller-owned command that packs, signs, and timestamps the candidate packages. |
++| `candidate-directory` | No | `.hexalith/release/candidate` | Relative workspace directory the candidate `.nupkg` files are produced in. |
++| `nuget-signing-timestamper` | No | `http://timestamp.digicert.com` | Absolute RFC 3161 timestamp-authority URL the candidate phase signs against. |
++| `ci-run-id` / `ci-run-attempt` | Governed | `''` | Run identity of the authenticated CI run that produced the candidate handoff. |
++| `ci-handoff-artifact` | No | `dependency-release-handoff` | Artifact name carrying the authenticated `hexalith.dependency-release-handoff.v1` evidence. |
++| `dependency-policy-repository` | Governed | `''` | Normalized `github.com/owner/repository` identity owning the active dependency policy. |
++| `dependency-policy-path` | Governed | `''` | Repository-relative path of the active dependency policy. |
++| `dependency-policy-commit` | Governed | `''` | Exact 40-hex commit of the active dependency policy. |
++| `dependency-policy-sha256` | Governed | `''` | Exact 64-hex SHA-256 of the active dependency-policy bytes. |
++| `expected-release-evaluator-digest` | Governed | `''` | Expected Release evaluator-authorization digest recorded into the governed provenance. |
++
+ ## Protected environment and caller secrets
+ 
+ | Caller secret | Required | Description |
+@@ -33,6 +54,8 @@ Dapr-backed tests, and then runs semantic-release.
+ | `NUGET_API_KEY` | Yes | API key used by semantic-release package publishing. |
+ | `HEXALITH_ZOT_USERNAME` | No | Hexalith Zot username used when `publish-containers` is `true`. |
+ | `HEXALITH_ZOT_API_KEY` | No | Hexalith Zot API key used when `publish-containers` is `true`. |
++| `NUGET_SIGNING_CERTIFICATE_BASE64` | Governed | Base64 PKCS#12 signing certificate. Read only by the governed candidate phase. |
++| `NUGET_SIGNING_CERTIFICATE_PASSWORD` | Governed | Password of that certificate. Read only by the governed candidate phase. |
+ 
+ Store these credentials at caller repository or organization scope and map only
+ the three declared names explicitly. Do not use `secrets: inherit`. The reusable
+@@ -46,6 +69,115 @@ GitHub operations. Container publishing uses the organization variable
+ `HEXALITH_ZOT_REGISTRY`; when it is not set, the workflow defaults to
+ `registry.hexalith.com`.
+ 
++## Release publication freeze
++
++> **Rollout is fail-closed for every module.** This gate is common to all
++> Hexalith modules, governed or not. The moment a caller re-pins to a Builds
++> commit containing it, that module stops publishing until its owner sets
++> `HEXALITH_RELEASE_PUBLISH_ENABLED` to `true` at repository scope. Set the
++> variable on every module that should keep publishing **before** re-pinning it.
++> A module that is silently frozen still concludes green, so the omission shows
++> up as a release that produced nothing rather than as a failed run.
++
++Both the legacy and the governed job evaluate one common gate immediately before
++the source revalidation, and skip Semantic Release unless the caller variable
++`HEXALITH_RELEASE_PUBLISH_ENABLED` is set. A frozen module concludes **green**
++with an explicit notice: freezing publication is a deliberate state, not a
++failure, so a frozen module must not produce a red run every time someone
++dispatches Release.
++
++```text
++vars.HEXALITH_RELEASE_PUBLISH_ENABLED = true
++```
++
++Two properties of this gate are easy to get wrong:
++
++- **The comparison is an exact, case-sensitive, untrimmed shell string.** Only
++  the four characters `true` authorize publication. `TRUE`, `True`, and `" true"`
++  all leave the module frozen. This is why the gate is a shell step and not a
++  workflow expression: GitHub's `==` folds case, so `TRUE` would silently
++  unfreeze a module whose owner never unfroze it.
++- **A repository value shadows the organization value.** If your organization
++  sets `HEXALITH_RELEASE_PUBLISH_ENABLED = true`, every repository that never
++  set its own value inherits `true`. Set the variable explicitly at repository
++  scope on every module, including the ones you intend to keep frozen.
++
++Reusable workflows resolve `vars` from the **caller's** repository and
++organization, not from Hexalith.Builds, so the variable belongs on the module
++repository. This was verified against GitHub's documented behavior; no
++`publish-enabled` input fallback is required.
++
++When the gate is frozen the governed job still runs its candidate-free evidence
++collection, so `release-verification-data.json` is uploaded with closed null
++fields rather than omitted.
++
++## Governed release mode (BUILD-REL-1)
++
++Setting `governed-release: true` selects a second job, `governed-release`, and
++disables the legacy `release` job. The two jobs are mutually exclusive by
++design: GitHub resolves job permissions statically, so `id-token: write` and
++`attestations: write` cannot be granted conditionally inside a single job
++without demanding them from every legacy caller. Only the governed job carries
++them.
++
++The governed job mirrors the legacy step sequence and adds:
++
++1. **Contract validation.** Every governed coordinate is checked before
++   anything is checked out. Missing signing secrets are rejected here with an
++   explicit diagnostic rather than discovered mid-publication.
++2. **Exact-candidate checkout.** The workspace is checked out at
++   `release-commit`. The event head only authenticates the triggering CI run;
++   it is never used as the release source.
++3. **Workflow provenance.** The `Github/governed-provenance` composite, loaded
++   from the approved Builds checkout, validates `job.workflow_ref` /
++   `job.workflow_sha` and evaluates the bounded static `uses:` closure of
++   `domain-release.yml`, hashing every Builds-owned source and recording every
++   external action as a pinned 40-hex coordinate.
++4. **Candidate phase.** `semantic-release --dry-run` resolves the next version
++   with no publication side effect; the caller's `candidate-command` then packs,
++   signs, and timestamps exactly that version into `candidate-directory`. The
++   command receives `HEXALITH_RELEASE_CANDIDATE_VERSION`,
++   `HEXALITH_RELEASE_CANDIDATE_DIRECTORY`,
++   `HEXALITH_NUGET_SIGNING_TIMESTAMPER`, and the two signing secrets. When the
++   dry run resolves no version, the job records that no release was warranted
++   and produces no candidate.
++5. **Attestation.** `actions/attest-build-provenance` runs over those exact
++   `.nupkg` bytes, and a following step fails closed if the bundle is missing or
++   empty. Attestation therefore always precedes the first publication side
++   effect.
++6. **Publication.** `npx semantic-release` runs with the candidate version,
++   inventory, attestation bundle/id/url, provenance path, and the GOV-1
++   coordinates exported as `HEXALITH_RELEASE_*` environment variables, so the
++   caller's `prepareCmd` / `verifyReleaseCmd` can build its own evidence.
++7. **Verification data.** Under `if: always()`, the job writes
++   `.hexalith/release/governed/release-verification-data.json`
++   (`hexalith.builds-release-verification-data.v1`) and uploads the governed
++   evidence directory with `if-no-files-found: error`. Unavailable release data
++   is represented as explicit `null`, never by omitting a field or the artifact.
++
++Signing secrets are referenced in exactly two places: the presence probes in the
++contract gate (which compare without exposing the value) and the candidate
++phase. They are never passed to Semantic Release, the container publisher, or an
++uploaded artifact.
++
++### Governed outputs
++
++| Output | Description |
++|--------|-------------|
++| `governed-candidate` | Exact candidate commit every governed phase consumed. |
++| `governed-release-version` | Version semantic-release resolved, when a release was warranted. |
++| `governed-publish-enabled` | Whether the freeze gate authorized Semantic Release. |
++| `governed-attestation-bundle` | Path of the attestation bundle minted over the candidate packages. |
++| `governed-verification-data-path` | Path of the durable release-verification handoff data. |
++| `governed-provenance-path` / `governed-provenance-sha256` | Governed provenance document and the SHA-256 of its bytes. |
++| `governed-closure-digest` | Canonical digest of the evaluated reusable/composite closure. |
++| `governed-reusable-blob-sha256` | SHA-256 of the `domain-release.yml` blob that executed. |
++| `governed-actions-json` | Canonical JSON array of the Builds-owned composite sources in the closure. |
++
++The caller composes these into its own
++`hexalith.release-verification-handoff.v1` artifact. Builds provides the
++governed execution context; callers still own their evidence logic.
++
+ ## Steps
+ 
+ 1. Wait for required protection on the configured environment, check out the
+@@ -67,12 +199,15 @@ GitHub operations. Container publishing uses the organization variable
+    install the publisher, immutable OCI validator, publication preflight,
+    and child-digest smoke helpers. The action also compares its action/helper
+    bytes with the same approved Builds commit.
+-10. Resolve the actual checked-out `HEAD`, require it to equal the exact
++10. Evaluate the `HEXALITH_RELEASE_PUBLISH_ENABLED` freeze gate. When the module
++    is frozen, the remaining publication steps are skipped and the job concludes
++    green.
++11. Resolve the actual checked-out `HEAD`, require it to equal the exact
+     lowercase caller SHA, then re-resolve live `main` and require the same
+     identity immediately before Semantic Release. This late gate catches a
+     mismatched or stale source while the protected job is setting up or building,
+     before any Semantic Release lifecycle or publication effect can run.
+-11. Run `npx semantic-release`, passing the approved Builds identity, source
++12. Run `npx semantic-release`, passing the approved Builds identity, source
+     proof inputs, package manifest, and protected environment name to the
+     caller's publication preflight; always
+     upload the complete hidden release-evidence directory afterward.
+@@ -172,3 +307,45 @@ The SHA above is a placeholder: replace both occurrences with the same reviewed
+ repository variable. The caller's `references/Hexalith.Builds` gitlink remains
+ an independent development dependency and need not equal the executed release
+ tool SHA. See `ci-cd-standards.md` for shared CI/CD policy.
++
++### Governed usage
++
++A governed caller adds the governed inputs, the two signing secrets, and the
++`attestations` / `id-token` permissions. The candidate commit comes from the
++authenticated CI handoff, not from `github.sha`:
++
++```yaml
++  release:
++    needs: verify-source
++    permissions:
++      actions: read
++      attestations: write
++      contents: write
++      id-token: write
++      issues: write
++      pull-requests: write
++    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@0123456789abcdef0123456789abcdef01234567
++    with:
++      solution: Hexalith.<Module>.slnx
++      environment-name: production
++      builds-execution-sha: 0123456789abcdef0123456789abcdef01234567
++      expected-package-count: 5
++      governed-release: true
++      release-commit: ${{ needs.verify-source.outputs.candidate }}
++      candidate-command: bash scripts/pack-governed-candidate.sh
++      ci-run-id: ${{ needs.verify-source.outputs.ci-run-id }}
++      ci-run-attempt: ${{ needs.verify-source.outputs.ci-run-attempt }}
++      dependency-policy-repository: github.com/hexalith/hexalith.<module>
++      dependency-policy-path: eng/dependency-graph-policy.json
++      dependency-policy-commit: ${{ needs.verify-source.outputs.policy-commit }}
++      dependency-policy-sha256: ${{ needs.verify-source.outputs.policy-sha256 }}
++      expected-release-evaluator-digest: ${{ vars.HEXALITH_RELEASE_EVALUATOR_DIGEST }}
++    secrets:
++      NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
++      NUGET_SIGNING_CERTIFICATE_BASE64: ${{ secrets.NUGET_SIGNING_CERTIFICATE_BASE64 }}
++      NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
++```
++
++The caller's permissions block must include everything the governed job
++requests: GitHub rejects a called workflow that asks for more than its caller
++was granted.
+diff --git a/.github/workflows/domain-release.yml b/.github/workflows/domain-release.yml
+index eac2a19..b160331 100644
+--- a/.github/workflows/domain-release.yml
++++ b/.github/workflows/domain-release.yml
+@@ -48,7 +48,9 @@ on:
+         type: number
+         default: 20
+       environment-name:
+-        description: 'Protected GitHub environment that authorizes the release job.'
++        description: >-
++          Protected GitHub environment that authorizes the release job. Governed mode
++          reuses this input rather than declaring a second environment alias.
+         required: false
+         type: string
+         default: 'production'
+@@ -90,6 +92,82 @@ on:
+         required: false
+         type: number
+         default: 0
++      governed-release:
++        description: >-
++          Opt into the BUILD-REL-1 governed release contract: signing secrets, a
++          pre-publication candidate phase, build provenance attestation over those exact
++          candidate packages, and GOV-1 exact-candidate handoff I/O. Leave unset to keep
++          the pre-BUILD-REL-1 release contract exactly.
++        required: false
++        type: boolean
++        default: false
++      nuget-signing-timestamper:
++        description: 'RFC 3161 timestamp authority the governed candidate phase signs against.'
++        required: false
++        type: string
++        default: 'http://timestamp.digicert.com'
++      candidate-command:
++        description: >-
++          Caller-owned command the governed candidate phase runs to pack, sign, and
++          timestamp the exact candidate packages. It receives
++          HEXALITH_RELEASE_CANDIDATE_VERSION, HEXALITH_RELEASE_CANDIDATE_DIRECTORY, the
++          timestamp authority, and the signing secrets. Required in governed mode.
++        required: false
++        type: string
++        default: ''
++      candidate-directory:
++        description: 'Workspace directory the governed candidate packages are produced in.'
++        required: false
++        type: string
++        default: '.hexalith/release/candidate'
++      release-commit:
++        description: >-
++          Exact authenticated CI-handoff candidate. In governed mode every checkout,
++          prepare, seal, verify, classify, and publish operation consumes this commit;
++          the event head only authenticates the triggering CI run.
++        required: false
++        type: string
++        default: ''
++      ci-run-id:
++        description: 'Run ID of the authenticated CI run that produced the candidate handoff.'
++        required: false
++        type: string
++        default: ''
++      ci-run-attempt:
++        description: 'Run attempt of the authenticated CI run that produced the candidate handoff.'
++        required: false
++        type: string
++        default: ''
++      ci-handoff-artifact:
++        description: 'Artifact name carrying the authenticated hexalith.dependency-release-handoff.v1 evidence.'
++        required: false
++        type: string
++        default: 'dependency-release-handoff'
++      dependency-policy-repository:
++        description: 'Normalized github.com/owner/repository identity owning the active dependency policy.'
++        required: false
++        type: string
++        default: ''
++      dependency-policy-path:
++        description: 'Repository-relative path of the active dependency policy.'
++        required: false
++        type: string
++        default: ''
++      dependency-policy-commit:
++        description: 'Exact commit of the active dependency policy.'
++        required: false
++        type: string
++        default: ''
++      dependency-policy-sha256:
++        description: 'Exact SHA-256 of the active dependency-policy bytes.'
++        required: false
++        type: string
++        default: ''
++      expected-release-evaluator-digest:
++        description: 'Expected Release evaluator-authorization digest recorded into the governed provenance.'
++        required: false
++        type: string
++        default: ''
+     secrets:
+       NUGET_API_KEY:
+         description: 'NuGet.org API key supplied explicitly by the caller.'
+@@ -100,6 +178,43 @@ on:
+       HEXALITH_ZOT_API_KEY:
+         description: 'Zot API key supplied explicitly by the caller when publishing containers.'
+         required: false
++      NUGET_SIGNING_CERTIFICATE_BASE64:
++        description: 'Base64 PKCS#12 signing certificate used only by the governed candidate phase.'
++        required: false
++      NUGET_SIGNING_CERTIFICATE_PASSWORD:
++        description: 'Password of the governed signing certificate, used only by the governed candidate phase.'
++        required: false
++    outputs:
++      governed-candidate:
++        description: 'Exact candidate commit every governed release phase consumed.'
++        value: ${{ jobs.governed-release.outputs.candidate }}
++      governed-provenance-path:
++        description: 'Path of the governed workflow/composite provenance document.'
++        value: ${{ jobs.governed-release.outputs.provenance-path }}
++      governed-provenance-sha256:
++        description: 'SHA-256 of the governed workflow/composite provenance document bytes.'
++        value: ${{ jobs.governed-release.outputs.provenance-sha256 }}
++      governed-closure-digest:
++        description: 'Canonical digest of the evaluated governed reusable/composite closure.'
++        value: ${{ jobs.governed-release.outputs.closure-digest }}
++      governed-reusable-blob-sha256:
++        description: 'SHA-256 of the governed domain-release.yml blob that executed.'
++        value: ${{ jobs.governed-release.outputs.reusable-blob-sha256 }}
++      governed-actions-json:
++        description: 'Canonical JSON array of the local composite-action sources in the governed closure.'
++        value: ${{ jobs.governed-release.outputs.actions-json }}
++      governed-attestation-bundle:
++        description: 'Path of the attestation bundle minted over the exact candidate packages.'
++        value: ${{ jobs.governed-release.outputs.attestation-bundle }}
++      governed-release-version:
++        description: 'Version semantic-release resolved for the governed candidate, when a release was warranted.'
++        value: ${{ jobs.governed-release.outputs.release-version }}
++      governed-verification-data-path:
++        description: 'Path of the durable release-verification handoff data the caller uploads.'
++        value: ${{ jobs.governed-release.outputs.verification-data-path }}
++      governed-publish-enabled:
++        description: 'Whether the common release-freeze gate authorized Semantic Release.'
++        value: ${{ jobs.governed-release.outputs.publish-enabled }}
+ permissions:
+   actions: read
+   contents: write
+@@ -108,11 +223,15 @@ permissions:
+ 
+ jobs:
+   release:
++    # Legacy contract. Governed callers run the governed-release job instead, because
++    # GitHub resolves job permissions statically: id-token/attestations cannot be granted
++    # conditionally inside one job without also demanding them from every legacy caller.
++    if: ${{ !inputs.governed-release }}
+     runs-on: ubuntu-latest
+     timeout-minutes: ${{ inputs.timeout-minutes }}
+     environment: ${{ inputs.environment-name }}
+     steps:
+-      - uses: actions/checkout@v7.0.1
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           fetch-depth: 0
+           submodules: false
+@@ -138,7 +257,7 @@ jobs:
+             exit 1
+           fi
+       - name: Checkout approved Builds actions
+-        uses: actions/checkout@v7.0.1
++        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         with:
+           repository: Hexalith/Hexalith.Builds
+           ref: ${{ inputs.builds-execution-sha }}
+@@ -147,14 +266,14 @@ jobs:
+       - name: Initialize root-declared submodules
+         uses: ./.hexalith/builds-execution/Github/initialize-build
+       - name: Initialize .NET
+-        uses: actions/setup-dotnet@v6.0.0
++        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+         with:
+           global-json-file: ${{ inputs.dotnet-global-json }}
+-      - uses: actions/setup-node@v7.0.0
++      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+         with:
+           node-version: ${{ inputs.node-version }}
+       - name: Cache NuGet packages
+-        uses: actions/cache@v6.1.0
++        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+         with:
+           path: ~/.nuget/packages
+           key: nuget-${{ hashFiles(inputs.packages-lock-file) }}
+@@ -230,7 +349,7 @@ jobs:
+           done <<< "$TEST_PROJECTS"
+       - name: Upload release test evidence
+         if: ${{ always() && inputs.test-projects != '' }}
+-        uses: actions/upload-artifact@v7.0.1
++        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+         with:
+           name: release-test-results
+           path: |
+@@ -248,6 +367,22 @@ jobs:
+         with:
+           container-projects: ${{ inputs.container-projects }}
+           builds-execution-sha: ${{ inputs.builds-execution-sha }}
++      - name: Resolve release publication freeze
++        id: publish-gate
++        shell: bash
++        env:
++          HEXALITH_RELEASE_PUBLISH_ENABLED: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}
++        run: |
++          set -euo pipefail
++          # Exact, case-sensitive, untrimmed comparison. A GitHub-expression `==` folds case,
++          # so `TRUE` or `True` would silently unfreeze a module its owner never unfroze.
++          if [ "${HEXALITH_RELEASE_PUBLISH_ENABLED-}" = "true" ]; then
++            echo "publish-enabled=true" >> "$GITHUB_OUTPUT"
++            echo "Release publication is enabled for this repository."
++            exit 0
++          fi
++          echo "publish-enabled=false" >> "$GITHUB_OUTPUT"
++          echo "::notice title=Release publication frozen::The calling repository variable HEXALITH_RELEASE_PUBLISH_ENABLED is not exactly the string 'true', so Semantic Release is skipped and this run concludes successfully. Set a repository-level value even when an organization-level value exists: a repository value shadows the organization value, and an organization 'true' otherwise leaks into repositories that never set one."
+       - name: Revalidate current source before Semantic Release
+         shell: bash
+         env:
+@@ -255,8 +390,19 @@ jobs:
+           REPOSITORY: ${{ github.repository }}
+           DISPATCH_SHA: ${{ github.sha }}
+           SOURCE_BRANCH: ${{ inputs.source-branch }}
++          PUBLISH_ENABLED: ${{ steps.publish-gate.outputs.publish-enabled }}
+         run: |
+           set -euo pipefail
++          # Only an explicit frozen verdict skips this gate; an unset or empty value keeps the
++          # guard running so a broken gate cannot quietly disable the staleness proof.
++          publish_enabled="${PUBLISH_ENABLED-true}"
++          if [ -z "$publish_enabled" ]; then
++            publish_enabled="true"
++          fi
++          if [ "$publish_enabled" != "true" ]; then
++            echo "::notice title=Source revalidation skipped::Release publication is frozen, so no publication boundary is reached."
++            exit 0
++          fi
+           if [[ ! "$DISPATCH_SHA" =~ ^[0-9a-f]{40}$ ]]; then
+             echo "The dispatched release source must be an exact lowercase commit SHA." >&2
+             exit 1
+@@ -286,6 +432,7 @@ jobs:
+             exit 1
+           fi
+       - name: Semantic Release
++        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
+         env:
+           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+@@ -302,7 +449,588 @@ jobs:
+         run: npx semantic-release
+       - name: Upload complete release evidence
+         if: ${{ always() && inputs.publish-containers }}
+-        uses: actions/upload-artifact@v7.0.1
++        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
++        with:
++          name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
++          path: .hexalith/release-evidence/**
++          if-no-files-found: warn
++          include-hidden-files: true
++          retention-days: 30
++
++  governed-release:
++    # BUILD-REL-1 governed contract. Only this job carries id-token/attestations, and it
++    # never starts for a caller that leaves governed-release unset.
++    if: ${{ inputs.governed-release }}
++    runs-on: ubuntu-latest
++    timeout-minutes: ${{ inputs.timeout-minutes }}
++    environment: ${{ inputs.environment-name }}
++    permissions:
++      actions: read
++      attestations: write
++      contents: write
++      id-token: write
++      issues: write
++      pull-requests: write
++    outputs:
++      candidate: ${{ steps.governed-provenance.outputs.candidate }}
++      provenance-path: ${{ steps.governed-provenance.outputs.provenance-path }}
++      provenance-sha256: ${{ steps.governed-provenance.outputs.provenance-sha256 }}
++      closure-digest: ${{ steps.governed-provenance.outputs.closure-digest }}
++      reusable-blob-sha256: ${{ steps.governed-provenance.outputs.reusable-blob-sha256 }}
++      actions-json: ${{ steps.governed-provenance.outputs.actions-json }}
++      attestation-bundle: ${{ steps.candidate-attestation.outputs.bundle-path }}
++      release-version: ${{ steps.governed-candidate.outputs.version }}
++      verification-data-path: ${{ steps.governed-verification-data.outputs.path }}
++      publish-enabled: ${{ steps.publish-gate.outputs.publish-enabled }}
++    steps:
++      - name: Validate governed release contract
++        shell: bash
++        env:
++          RELEASE_COMMIT: ${{ inputs.release-commit }}
++          CI_RUN_ID: ${{ inputs.ci-run-id }}
++          CI_RUN_ATTEMPT: ${{ inputs.ci-run-attempt }}
++          CI_HANDOFF_ARTIFACT: ${{ inputs.ci-handoff-artifact }}
++          POLICY_REPOSITORY: ${{ inputs.dependency-policy-repository }}
++          POLICY_PATH: ${{ inputs.dependency-policy-path }}
++          POLICY_COMMIT: ${{ inputs.dependency-policy-commit }}
++          POLICY_SHA256: ${{ inputs.dependency-policy-sha256 }}
++          EXPECTED_EVALUATOR_DIGEST: ${{ inputs.expected-release-evaluator-digest }}
++          CANDIDATE_COMMAND: ${{ inputs.candidate-command }}
++          CANDIDATE_DIRECTORY: ${{ inputs.candidate-directory }}
++          SIGNING_TIMESTAMPER: ${{ inputs.nuget-signing-timestamper }}
++          # Presence probes only: the expression compares the secret without exposing it.
++          SIGNING_CERTIFICATE_PRESENT: ${{ secrets.NUGET_SIGNING_CERTIFICATE_BASE64 != '' }}
++          SIGNING_PASSWORD_PRESENT: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD != '' }}
++        run: |
++          set -euo pipefail
++          failures=0
++          reject() {
++            echo "$1" >&2
++            failures=$((failures + 1))
++          }
++
++          if [[ ! "$RELEASE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
++            reject "governed mode requires release-commit to be an exact lowercase 40-character commit SHA."
++          fi
++          if [[ ! "$CI_RUN_ID" =~ ^[1-9][0-9]*$ ]]; then
++            reject "governed mode requires ci-run-id to be a positive integer."
++          fi
++          if [[ ! "$CI_RUN_ATTEMPT" =~ ^[1-9][0-9]*$ ]]; then
++            reject "governed mode requires ci-run-attempt to be a positive integer."
++          fi
++          if [ -z "${CI_HANDOFF_ARTIFACT//[[:space:]]/}" ]; then
++            reject "governed mode requires a non-empty ci-handoff-artifact name."
++          fi
++          if [[ ! "$POLICY_REPOSITORY" =~ ^github\.com/[a-z0-9._-]+/[a-z0-9._-]+$ ]]; then
++            reject "governed mode requires dependency-policy-repository as a normalized github.com/owner/repository identity."
++          fi
++          if [ -z "${POLICY_PATH//[[:space:]]/}" ] || [[ "$POLICY_PATH" == /* ]]; then
++            reject "governed mode requires dependency-policy-path as a non-empty relative path."
++          fi
++          if [[ ! "$POLICY_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
++            reject "governed mode requires dependency-policy-commit to be an exact lowercase 40-character commit SHA."
++          fi
++          if [[ ! "$POLICY_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
++            reject "governed mode requires dependency-policy-sha256 to be an exact lowercase 64-character SHA-256."
++          fi
++          if [[ ! "$EXPECTED_EVALUATOR_DIGEST" =~ ^[0-9a-f]{64}$ ]]; then
++            reject "governed mode requires expected-release-evaluator-digest to be an exact lowercase 64-character SHA-256."
++          fi
++          if [ -z "${CANDIDATE_COMMAND//[[:space:]]/}" ]; then
++            reject "governed mode requires candidate-command so the exact candidate packages exist before any publication side effect."
++          fi
++          if [ -z "${CANDIDATE_DIRECTORY//[[:space:]]/}" ] || [[ "$CANDIDATE_DIRECTORY" == /* ]]; then
++            reject "governed mode requires candidate-directory as a non-empty relative workspace path."
++          fi
++          if [[ ! "$SIGNING_TIMESTAMPER" =~ ^https?://[^[:space:]]+$ ]]; then
++            reject "governed mode requires nuget-signing-timestamper to be an absolute RFC 3161 timestamp-authority URL."
++          fi
++          if [ "$SIGNING_CERTIFICATE_PRESENT" != "true" ]; then
++            reject "governed mode requires the NUGET_SIGNING_CERTIFICATE_BASE64 secret; refusing to publish unsigned packages."
++          fi
++          if [ "$SIGNING_PASSWORD_PRESENT" != "true" ]; then
++            reject "governed mode requires the NUGET_SIGNING_CERTIFICATE_PASSWORD secret; refusing to publish unsigned packages."
++          fi
++
++          if [ "$failures" -ne 0 ]; then
++            echo "Rejected $failures governed release contract violation(s)." >&2
++            exit 1
++          fi
++      - name: Checkout exact governed release candidate
++        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          ref: ${{ inputs.release-commit }}
++          fetch-depth: 0
++          submodules: false
++          persist-credentials: false
++      - name: Validate approved Builds execution identity
++        shell: bash
++        env:
++          BUILD_EXECUTION_SHA: ${{ inputs.builds-execution-sha }}
++          RESOLVED_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
++          RESOLVED_WORKFLOW_SHA: ${{ job.workflow_sha }}
++        run: |
++          set -euo pipefail
++          if [[ ! "$BUILD_EXECUTION_SHA" =~ ^[0-9a-f]{40}$ ]]; then
++            echo "builds-execution-sha must be an exact lowercase 40-character commit SHA." >&2
++            exit 1
++          fi
++          if [ "$RESOLVED_WORKFLOW_REPOSITORY" != "Hexalith/Hexalith.Builds" ]; then
++            echo "The release job is not defined by the approved Hexalith.Builds repository." >&2
++            exit 1
++          fi
++          if [ "$RESOLVED_WORKFLOW_SHA" != "$BUILD_EXECUTION_SHA" ]; then
++            echo "Resolved reusable-workflow SHA does not match the approved Builds identity." >&2
++            exit 1
++          fi
++      - name: Checkout approved Builds actions
++        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++        with:
++          repository: Hexalith/Hexalith.Builds
++          ref: ${{ inputs.builds-execution-sha }}
++          path: .hexalith/builds-execution
++          persist-credentials: false
++      - name: Initialize root-declared submodules
++        uses: ./.hexalith/builds-execution/Github/initialize-build
++      - name: Evaluate governed workflow provenance
++        id: governed-provenance
++        uses: ./.hexalith/builds-execution/Github/governed-provenance
++        with:
++          stage: release
++          builds-execution-sha: ${{ inputs.builds-execution-sha }}
++          workflow-path: .github/workflows/domain-release.yml
++          candidate: ${{ inputs.release-commit }}
++          dependency-policy-repository: ${{ inputs.dependency-policy-repository }}
++          dependency-policy-path: ${{ inputs.dependency-policy-path }}
++          dependency-policy-commit: ${{ inputs.dependency-policy-commit }}
++          dependency-policy-sha256: ${{ inputs.dependency-policy-sha256 }}
++          expected-evaluator-digest: ${{ inputs.expected-release-evaluator-digest }}
++          output: .hexalith/release/governed/release-workflow-provenance.json
++      - name: Initialize .NET
++        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
++        with:
++          global-json-file: ${{ inputs.dotnet-global-json }}
++      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
++        with:
++          node-version: ${{ inputs.node-version }}
++      - name: Cache NuGet packages
++        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
++        with:
++          path: ~/.nuget/packages
++          key: nuget-${{ hashFiles(inputs.packages-lock-file) }}
++          restore-keys: nuget-
++      - name: Validate declared package count
++        if: ${{ inputs.publish-containers }}
++        shell: bash
++        env:
++          EXPECTED_PACKAGE_COUNT: ${{ inputs.expected-package-count }}
++        run: |
++          set -euo pipefail
++          if [[ ! "$EXPECTED_PACKAGE_COUNT" =~ ^[1-9][0-9]*$ ]]; then
++            echo "expected-package-count must declare the caller's package count as a positive integer." >&2
++            exit 1
++          fi
++      - name: Validate test platform input
++        if: ${{ inputs.test-platform != 'vstest' && inputs.test-platform != 'microsoft-testing-platform' }}
++        shell: bash
++        env:
++          TEST_PLATFORM: ${{ inputs.test-platform }}
++        run: |
++          echo "Unsupported test-platform '$TEST_PLATFORM'. Expected vstest or microsoft-testing-platform." >&2
++          exit 1
++      - name: Install npm dependencies
++        run: npm ci
++      - name: Verify npm dependency provenance and signatures
++        run: npm audit signatures
++      - name: Restore
++        env:
++          SOLUTION: ${{ inputs.solution }}
++        run: dotnet restore "$SOLUTION"
++      - name: Build
++        env:
++          SOLUTION: ${{ inputs.solution }}
++        run: dotnet build "$SOLUTION" --no-restore --configuration Release -warnaserror
++      - name: Install and initialize Dapr
++        if: ${{ inputs.test-projects != '' }}
++        uses: ./.hexalith/builds-execution/Github/dapr-init
++        with:
++          version: ${{ inputs.dapr-version }}
++      - name: Run tests (Tier 1 + 2, VSTest)
++        if: ${{ inputs.test-projects != '' && inputs.test-platform == 'vstest' }}
++        shell: bash
++        env:
++          TEST_PROJECTS: ${{ inputs.test-projects }}
++        run: |
++          set -euo pipefail
++          while IFS= read -r proj; do
++            [ -z "$proj" ] && continue
++            name=$(basename "$proj")
++            dotnet test "$proj" --no-build --configuration Release \
++              --logger "trx;LogFileName=${name}.trx" \
++              --results-directory "TestResults/${name}" \
++              --collect:"XPlat Code Coverage"
++          done <<< "$TEST_PROJECTS"
++      - name: Run tests (Tier 1 + 2, Microsoft.Testing.Platform)
++        if: ${{ inputs.test-projects != '' && inputs.test-platform == 'microsoft-testing-platform' }}
++        shell: bash
++        env:
++          TEST_PROJECTS: ${{ inputs.test-projects }}
++        run: |
++          set -euo pipefail
++          while IFS= read -r proj; do
++            [ -z "$proj" ] && continue
++            name=$(basename "$proj")
++            dotnet test "$proj" --no-build --configuration Release \
++              --results-directory "TestResults/${name}" \
++              --report-xunit-trx \
++              --report-xunit-trx-filename "${name}.trx"
++          done <<< "$TEST_PROJECTS"
++      - name: Upload release test evidence
++        if: ${{ always() && inputs.test-projects != '' }}
++        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
++        with:
++          name: release-test-results
++          path: |
++            TestResults/**/*.trx
++            TestResults/**/coverage.cobertura.xml
++          retention-days: 7
++      - name: Set up arm64 emulation
++        if: ${{ inputs.publish-containers }}
++        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
++        with:
++          platforms: arm64
++      - name: Prepare release container publisher
++        if: ${{ inputs.publish-containers }}
++        uses: ./.hexalith/builds-execution/Github/publish-containers
++        with:
++          container-projects: ${{ inputs.container-projects }}
++          builds-execution-sha: ${{ inputs.builds-execution-sha }}
++      - name: Resolve release publication freeze
++        id: publish-gate
++        shell: bash
++        env:
++          HEXALITH_RELEASE_PUBLISH_ENABLED: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}
++        run: |
++          set -euo pipefail
++          if [ "${HEXALITH_RELEASE_PUBLISH_ENABLED-}" = "true" ]; then
++            echo "publish-enabled=true" >> "$GITHUB_OUTPUT"
++            echo "Release publication is enabled for this repository."
++            exit 0
++          fi
++          echo "publish-enabled=false" >> "$GITHUB_OUTPUT"
++          echo "::notice title=Release publication frozen::The calling repository variable HEXALITH_RELEASE_PUBLISH_ENABLED is not exactly the string 'true', so the governed candidate phase, attestation, and Semantic Release are skipped and this run concludes successfully. Set a repository-level value even when an organization-level value exists: a repository value shadows the organization value, and an organization 'true' otherwise leaks into repositories that never set one."
++      - name: Revalidate governed release source before Semantic Release
++        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
++        shell: bash
++        env:
++          GH_TOKEN: ${{ github.token }}
++          REPOSITORY: ${{ github.repository }}
++          RELEASE_COMMIT: ${{ inputs.release-commit }}
++          SOURCE_BRANCH: ${{ inputs.source-branch }}
++        run: |
++          set -euo pipefail
++          # Governed mode authenticates the CI run from the event head but consumes only
++          # release-commit, so the checked-out tree and live branch are both proved against it.
++          if [ "$SOURCE_BRANCH" != "main" ]; then
++            echo "The release source branch must be exactly main." >&2
++            exit 1
++          fi
++
++          checked_out_sha="$(git rev-parse HEAD)"
++          if [ "$checked_out_sha" != "$RELEASE_COMMIT" ]; then
++            echo "The checked-out governed release source does not match release-commit." >&2
++            exit 1
++          fi
++
++          live_source_sha="$(gh api "repos/${REPOSITORY}/git/ref/heads/${SOURCE_BRANCH}" --jq '.object.sha')"
++          if [[ ! "$live_source_sha" =~ ^[0-9a-f]{40}$ ]]; then
++            echo "The live ${SOURCE_BRANCH} SHA could not be resolved as an exact lowercase commit SHA." >&2
++            exit 1
++          fi
++          if [ "$RELEASE_COMMIT" != "$live_source_sha" ]; then
++            echo "The governed release candidate became stale during setup. Redispatch Release from the new ${SOURCE_BRANCH} tip after exact-candidate CI succeeds." >&2
++            exit 1
++          fi
++      - name: Prepare governed release candidate
++        id: governed-candidate
++        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
++        shell: bash
++        env:
++          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          CANDIDATE_COMMAND: ${{ inputs.candidate-command }}
++          HEXALITH_RELEASE_CANDIDATE_DIRECTORY: ${{ inputs.candidate-directory }}
++          HEXALITH_RELEASE_GOVERNED: 'true'
++          HEXALITH_RELEASE_COMMIT: ${{ inputs.release-commit }}
++          HEXALITH_RELEASE_ENVIRONMENT: ${{ inputs.environment-name }}
++          HEXALITH_RELEASE_PACKAGE_MANIFEST: ${{ inputs.package-manifest }}
++          HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: ${{ inputs.expected-package-count }}
++          HEXALITH_NUGET_SIGNING_TIMESTAMPER: ${{ inputs.nuget-signing-timestamper }}
++          NUGET_SIGNING_CERTIFICATE_BASE64: ${{ secrets.NUGET_SIGNING_CERTIFICATE_BASE64 }}
++          NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
++        run: |
++          set -euo pipefail
++          rm -rf "$HEXALITH_RELEASE_CANDIDATE_DIRECTORY"
++          mkdir -p "$HEXALITH_RELEASE_CANDIDATE_DIRECTORY" .hexalith/release/governed
++
++          # Resolve the exact version semantic-release will publish before any publication
++          # side effect exists, so the attested bytes are the bytes NuGet later receives.
++          dry_run_log="$(mktemp)"
++          if ! HEXALITH_RELEASE_PHASE=candidate npx semantic-release --dry-run >"$dry_run_log" 2>&1; then
++            cat "$dry_run_log" >&2
++            echo "The governed candidate phase could not resolve the next release version." >&2
++            exit 1
++          fi
++          cat "$dry_run_log"
++          version="$(sed -n 's/.*The next release version is \([0-9][0-9A-Za-z.+-]*\).*/\1/p' "$dry_run_log" | tail -n 1)"
++          if [ -z "$version" ]; then
++            echo "release-required=false" >> "$GITHUB_OUTPUT"
++            echo "::notice title=No governed candidate::semantic-release resolved no publishable version, so no candidate packages are produced or attested."
++            exit 0
++          fi
++
++          HEXALITH_RELEASE_CANDIDATE_VERSION="$version" \
++          HEXALITH_RELEASE_PHASE=candidate \
++            bash -c "$CANDIDATE_COMMAND"
++
++          shopt -s nullglob
++          packages=("$HEXALITH_RELEASE_CANDIDATE_DIRECTORY"/*.nupkg)
++          if [ "${#packages[@]}" -eq 0 ]; then
++            echo "The governed candidate command produced no .nupkg packages in $HEXALITH_RELEASE_CANDIDATE_DIRECTORY." >&2
++            exit 1
++          fi
++
++          inventory=.hexalith/release/governed/candidate-inventory.json
++          CANDIDATE_VERSION="$version" python3 - "$inventory" "${packages[@]}" <<'PY'
++          import hashlib
++          import json
++          import os
++          import sys
++          from pathlib import Path
++
++          destination = Path(sys.argv[1])
++          rows = []
++          for argument in sys.argv[2:]:
++              package = Path(argument)
++              payload = package.read_bytes()
++              rows.append(
++                  {
++                      "name": package.name,
++                      "sha256": hashlib.sha256(payload).hexdigest(),
++                      "size": len(payload),
++                  }
++              )
++          rows.sort(key=lambda row: (row["name"], row["sha256"], row["size"]))
++          destination.write_text(
++              json.dumps(
++                  {
++                      "schema": "hexalith.builds-release-candidate.v1",
++                      "version": os.environ["CANDIDATE_VERSION"],
++                      "directory": os.environ["HEXALITH_RELEASE_CANDIDATE_DIRECTORY"],
++                      "packages": rows,
++                  },
++                  indent=2,
++                  sort_keys=True,
++              )
++              + "\n",
++              encoding="utf-8",
++          )
++          PY
++
++          {
++            echo "release-required=true"
++            echo "version=$version"
++            echo "package-count=${#packages[@]}"
++            echo "inventory-path=$inventory"
++          } >> "$GITHUB_OUTPUT"
++      - name: Attest governed release candidate
++        id: candidate-attestation
++        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' && steps.governed-candidate.outputs.release-required == 'true' }}
++        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
++        with:
++          subject-path: ${{ inputs.candidate-directory }}/*.nupkg
++      - name: Verify governed candidate attestation
++        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' && steps.governed-candidate.outputs.release-required == 'true' }}
++        shell: bash
++        env:
++          ATTESTATION_BUNDLE: ${{ steps.candidate-attestation.outputs.bundle-path }}
++        run: |
++          set -euo pipefail
++          if [ -z "${ATTESTATION_BUNDLE-}" ] || [ ! -s "$ATTESTATION_BUNDLE" ]; then
++            echo "The governed candidate attestation bundle is missing or empty; refusing to publish." >&2
++            exit 1
++          fi
++          cp "$ATTESTATION_BUNDLE" .hexalith/release/governed/candidate-attestation.jsonl
++      - name: Semantic Release
++        if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}
++        env:
++          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
++          HEXALITH_CONTAINER_PROJECTS: ${{ inputs.container-projects }}
++          HEXALITH_ZOT_REGISTRY: ${{ vars.HEXALITH_ZOT_REGISTRY || 'registry.hexalith.com' }}
++          HEXALITH_ZOT_USERNAME: ${{ secrets.HEXALITH_ZOT_USERNAME }}
++          HEXALITH_ZOT_API_KEY: ${{ secrets.HEXALITH_ZOT_API_KEY }}
++          HEXALITH_BUILDS_EXECUTION_SHA: ${{ inputs.builds-execution-sha }}
++          HEXALITH_RELEASE_ENVIRONMENT: ${{ inputs.environment-name }}
++          HEXALITH_RELEASE_SOURCE_BRANCH: ${{ inputs.source-branch }}
++          HEXALITH_RELEASE_SOURCE_CI_WORKFLOW: ${{ inputs.source-ci-workflow }}
++          HEXALITH_RELEASE_PACKAGE_MANIFEST: ${{ inputs.package-manifest }}
++          HEXALITH_RELEASE_EXPECTED_PACKAGE_COUNT: ${{ inputs.expected-package-count }}
++          HEXALITH_RELEASE_GOVERNED: 'true'
++          HEXALITH_RELEASE_PHASE: 'publish'
++          HEXALITH_RELEASE_COMMIT: ${{ inputs.release-commit }}
++          HEXALITH_RELEASE_CANDIDATE_DIRECTORY: ${{ inputs.candidate-directory }}
++          HEXALITH_RELEASE_CANDIDATE_VERSION: ${{ steps.governed-candidate.outputs.version }}
++          HEXALITH_RELEASE_CANDIDATE_INVENTORY: ${{ steps.governed-candidate.outputs.inventory-path }}
++          HEXALITH_RELEASE_ATTESTATION_BUNDLE: ${{ steps.candidate-attestation.outputs.bundle-path }}
++          HEXALITH_RELEASE_ATTESTATION_ID: ${{ steps.candidate-attestation.outputs.attestation-id }}
++          HEXALITH_RELEASE_ATTESTATION_URL: ${{ steps.candidate-attestation.outputs.attestation-url }}
++          HEXALITH_RELEASE_WORKFLOW_PROVENANCE: ${{ steps.governed-provenance.outputs.provenance-path }}
++          HEXALITH_RELEASE_CI_HANDOFF_ARTIFACT: ${{ inputs.ci-handoff-artifact }}
++          HEXALITH_RELEASE_CI_RUN_ID: ${{ inputs.ci-run-id }}
++          HEXALITH_RELEASE_CI_RUN_ATTEMPT: ${{ inputs.ci-run-attempt }}
++          HEXALITH_RELEASE_POLICY_REPOSITORY: ${{ inputs.dependency-policy-repository }}
++          HEXALITH_RELEASE_POLICY_PATH: ${{ inputs.dependency-policy-path }}
++          HEXALITH_RELEASE_POLICY_COMMIT: ${{ inputs.dependency-policy-commit }}
++          HEXALITH_RELEASE_POLICY_SHA256: ${{ inputs.dependency-policy-sha256 }}
++          HEXALITH_RELEASE_EVALUATOR_DIGEST: ${{ inputs.expected-release-evaluator-digest }}
++        run: npx semantic-release
++      - name: Collect governed release verification data
++        id: governed-verification-data
++        if: ${{ always() }}
++        shell: bash
++        env:
++          RELEASE_REPOSITORY: ${{ github.repository }}
++          RELEASE_WORKFLOW_REF: ${{ github.workflow_ref }}
++          RELEASE_RUN_ID: ${{ github.run_id }}
++          RELEASE_RUN_ATTEMPT: ${{ github.run_attempt }}
++          RELEASE_CONCLUSION: ${{ job.status }}
++          RELEASE_COMMIT: ${{ inputs.release-commit }}
++          CI_HANDOFF_ARTIFACT: ${{ inputs.ci-handoff-artifact }}
++          CI_RUN_ID: ${{ inputs.ci-run-id }}
++          CI_RUN_ATTEMPT: ${{ inputs.ci-run-attempt }}
++          POLICY_REPOSITORY: ${{ inputs.dependency-policy-repository }}
++          POLICY_PATH: ${{ inputs.dependency-policy-path }}
++          POLICY_COMMIT: ${{ inputs.dependency-policy-commit }}
++          POLICY_SHA256: ${{ inputs.dependency-policy-sha256 }}
++          EXPECTED_EVALUATOR_DIGEST: ${{ inputs.expected-release-evaluator-digest }}
++          PUBLISH_ENABLED: ${{ steps.publish-gate.outputs.publish-enabled }}
++          RELEASE_REQUIRED: ${{ steps.governed-candidate.outputs.release-required }}
++          RELEASE_VERSION: ${{ steps.governed-candidate.outputs.version }}
++          CANDIDATE_INVENTORY: ${{ steps.governed-candidate.outputs.inventory-path }}
++          ATTESTATION_BUNDLE: ${{ steps.candidate-attestation.outputs.bundle-path }}
++          ATTESTATION_ID: ${{ steps.candidate-attestation.outputs.attestation-id }}
++          WORKFLOW_PROVENANCE: ${{ steps.governed-provenance.outputs.provenance-path }}
++          CLOSURE_DIGEST: ${{ steps.governed-provenance.outputs.closure-digest }}
++        run: |
++          set -euo pipefail
++          # Never omit this evidence. A frozen, failed, or partial governed run still records
++          # the CI/policy projection and uses the closed null representation for whatever the
++          # release never produced.
++          mkdir -p .hexalith/release/governed
++          destination=.hexalith/release/governed/release-verification-data.json
++          python3 - "$destination" <<'PY'
++          import hashlib
++          import json
++          import os
++          import sys
++          from pathlib import Path
++
++
++          def text(name):
++              value = os.environ.get(name, "")
++              return value if value else None
++
++
++          def digest_of(path):
++              if not path:
++                  return None
++              candidate = Path(path)
++              if not candidate.is_file():
++                  return None
++              return hashlib.sha256(candidate.read_bytes()).hexdigest()
++
++
++          def load_json(path):
++              if not path:
++                  return None
++              candidate = Path(path)
++              if not candidate.is_file():
++                  return None
++              try:
++                  return json.loads(candidate.read_text(encoding="utf-8"))
++              except (OSError, ValueError):
++                  return None
++
++
++          inventory = load_json(os.environ.get("CANDIDATE_INVENTORY", ""))
++          assets = sorted(
++              (inventory or {}).get("packages", []),
++              key=lambda row: (row.get("name", ""), row.get("sha256", ""), row.get("size", 0)),
++          )
++          attestation_bundle = os.environ.get("ATTESTATION_BUNDLE", "")
++          published = (
++              os.environ.get("PUBLISH_ENABLED", "") == "true"
++              and os.environ.get("RELEASE_REQUIRED", "") == "true"
++              and os.environ.get("RELEASE_CONCLUSION", "") == "success"
++          )
++          document = {
++              "schema": "hexalith.builds-release-verification-data.v1",
++              "release_run": {
++                  "repository": os.environ.get("RELEASE_REPOSITORY", ""),
++                  "workflow_ref": os.environ.get("RELEASE_WORKFLOW_REF", ""),
++                  "run_id": os.environ.get("RELEASE_RUN_ID", ""),
++                  "run_attempt": os.environ.get("RELEASE_RUN_ATTEMPT", ""),
++                  "conclusion": os.environ.get("RELEASE_CONCLUSION", ""),
++              },
++              "ci_handoff": {
++                  "artifact": text("CI_HANDOFF_ARTIFACT"),
++                  "run_id": text("CI_RUN_ID"),
++                  "run_attempt": text("CI_RUN_ATTEMPT"),
++              },
++              "candidate": text("RELEASE_COMMIT"),
++              "dependency_policy": {
++                  "repository": text("POLICY_REPOSITORY"),
++                  "path": text("POLICY_PATH"),
++                  "commit": text("POLICY_COMMIT"),
++                  "sha256": text("POLICY_SHA256"),
++              },
++              "publication": {
++                  "publish_enabled": os.environ.get("PUBLISH_ENABLED", "") == "true",
++                  "release_required": os.environ.get("RELEASE_REQUIRED", "") == "true",
++                  "published": published,
++                  "version": text("RELEASE_VERSION"),
++              },
++              "attestation": {
++                  "bundle_path": text("ATTESTATION_BUNDLE"),
++                  "bundle_sha256": digest_of(attestation_bundle),
++                  "attestation_id": text("ATTESTATION_ID"),
++              },
++              "assets": assets,
++              "evaluator": {
++                  "expected_definition_digest": text("EXPECTED_EVALUATOR_DIGEST"),
++                  "closure_digest": text("CLOSURE_DIGEST"),
++                  "provenance_path": text("WORKFLOW_PROVENANCE"),
++                  "provenance_sha256": digest_of(os.environ.get("WORKFLOW_PROVENANCE", "")),
++              },
++          }
++          Path(sys.argv[1]).write_text(
++              json.dumps(document, indent=2, sort_keys=True) + "\n",
++              encoding="utf-8",
++          )
++          PY
++          echo "path=$destination" >> "$GITHUB_OUTPUT"
++      - name: Upload governed release evidence
++        if: ${{ always() }}
++        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
++        with:
++          name: governed-release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
++          path: .hexalith/release/governed/**
++          if-no-files-found: error
++          include-hidden-files: true
++          retention-days: 30
++      - name: Upload complete release evidence
++        if: ${{ always() && inputs.publish-containers }}
++        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+         with:
+           name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+           path: .hexalith/release-evidence/**
+diff --git a/Github/dapr-init/action.yml b/Github/dapr-init/action.yml
+index 28a16b2..eee49e6 100644
+--- a/Github/dapr-init/action.yml
++++ b/Github/dapr-init/action.yml
+@@ -11,14 +11,15 @@ runs:
+   using: "composite"
+   steps:
+     - name: Install Dapr CLI
+-      # v2 is the exact upstream release tag, not a floating major: dapr/setup-dapr
+-      # publishes only major-line tags (v1, v2), so there is no vX.Y.Z to pin to.
+-      uses: dapr/setup-dapr@v2
++      # Commit-pinned rather than tag-pinned: this action is part of the governed
++      # BUILD-REL-1 closure, which only accepts literal 40-hex references. dapr/setup-dapr
++      # publishes only major-line tags (v1, v2), so v2 is the narrowest tag available.
++      uses: dapr/setup-dapr@8d980918fd43a2765c143ce7f687665b2d46a6b9 # v2
+       with:
+         version: ${{ inputs.version }}
+ 
+     - name: Initialize Dapr
+-      uses: nick-fields/retry@v4.0.0
++      uses: nick-fields/retry@ad984534de44a9489a53aefd81eb77f87c70dc60 # v4.0.0
+       env:
+         DAPR_DEFAULT_IMAGE_REGISTRY: ghcr
+         DAPR_VERSION: ${{ inputs.version }}
+diff --git a/README.md b/README.md
+index 034626d..90b245e 100644
+--- a/README.md
++++ b/README.md
+@@ -81,6 +81,10 @@ This repository:
+   `domain-release.yml`).
+ - [`Github/dapr-init/`](Github/dapr-init/README.md): Install the Dapr CLI and
+   run `dapr init` with retry.
++- [`Github/governed-provenance/`](Github/governed-provenance/README.md):
++  Validate the running job's reusable-workflow identity and emit the bounded
++  static `uses:`-closure provenance the governed BUILD-REL-1 paths in
++  `domain-ci.yml` and `domain-release.yml` hand to their callers.
+ - [`Github/initialize-build/`](Github/initialize-build/README.md): Initialize
+   root-declared submodules without recursive or remote updates.
+ - [`Github/initialize-dotnet/`](Github/initialize-dotnet/README.md): Install
+diff --git a/changes-plan.md b/changes-plan.md
+index 9588e18..4824904 100644
+--- a/changes-plan.md
++++ b/changes-plan.md
+@@ -358,6 +358,15 @@ Apply B01–B10 in order. B11–B12 are opportunity-level and may be deferred, b
+ 
+ ### CHG-B12 — Provenance/attestations and OIDC publishing *(audit opportunities, design task — defer unless prioritized)*
+ 
++> **Superseded in part by BUILD-REL-1.** Track 1 (artifact attestations) is
++> implemented as the opt-in governed release mode: `domain-release.yml` gained a
++> `governed-release` job that signs a candidate, runs
++> `actions/attest-build-provenance` over those exact `.nupkg` bytes before any
++> publication side effect, and carries `id-token: write` /
++> `attestations: write` on that job alone. Track 2 (NuGet.org Trusted Publishing
++> via OIDC) remains open and still requires its own design pass; governed mode
++> continues to publish with `NUGET_API_KEY`.
++
+ **Objective.** Move toward SLSA Build L3 provenance and eliminate long-lived publishing credentials.
+ 
+ **Scope.** This is a larger design change, not a mechanical edit. Two independent tracks:
+
+=== untracked files (full contents) ===
+----- BEGIN UNTRACKED: Github/governed-provenance/README.md -----
+# Governed Workflow Provenance GitHub Action
+
+## Overview
+
+This composite action proves what a governed Hexalith CI or Release run actually
+executed. It validates the running job against the approved Hexalith.Builds
+reusable-workflow identity, walks the bounded static `uses:` closure of that
+workflow inside an immutable Builds checkout, hashes every Builds-owned source,
+and records every third-party action as a pinned 40-hex coordinate.
+
+It is used by the BUILD-REL-1 / GOV-1 governed paths in `domain-ci.yml` and
+`domain-release.yml`. The action reads no secret, contacts no network service,
+and never decides whether a release may publish. Callers own their evidence
+logic; this action only supplies provenance.
+
+## Functionality
+
+1. **Identity validation.** `job.workflow_repository`, `job.workflow_sha`,
+   `job.workflow_ref`, and (when the runner provides it) `job.workflow_file_path`
+   must all resolve to the declared governed workflow at `builds-execution-sha`.
+2. **Closure collection.** Starting from that workflow, every `uses:` edge is
+   followed through composite actions. Builds-owned sources are read from the
+   approved checkout and hashed, together with their sibling helper files.
+3. **Projection.** The result is serialized canonically and reduced to a single
+   `closure_digest`, so any change to any byte in the closure changes the digest
+   a consumer previously accepted.
+
+The collector fails closed rather than guessing. It rejects tags, branches,
+expressions, `docker://` references, Docker actions, sources outside the
+approved checkout, cycles, and anything that exceeds the AD-13 depth, source
+count, or byte ceilings.
+
+It implements a deliberately closed YAML subset instead of importing a YAML
+package: GitHub-hosted runners carry no guaranteed YAML dependency, and an
+ambiguous parse must fail rather than silently drop a `uses:` edge.
+
+## Usage Example
+
+```yaml
+      - name: Checkout approved Builds actions
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Hexalith/Hexalith.Builds
+          ref: ${{ inputs.builds-execution-sha }}
+          path: .hexalith/builds-execution
+          persist-credentials: false
+
+      - name: Evaluate governed workflow provenance
+        id: governed-provenance
+        uses: ./.hexalith/builds-execution/Github/governed-provenance
+        with:
+          stage: ci
+          builds-execution-sha: ${{ inputs.builds-execution-sha }}
+          workflow-path: .github/workflows/domain-ci.yml
+          candidate: ${{ inputs.candidate-commit }}
+          output: .hexalith/ci/governed/ci-workflow-provenance.json
+```
+
+## Inputs
+
+| Input | Required | Default | Description |
+|-------|----------|---------|-------------|
+| `stage` | Yes | - | Governed stage the provenance is produced for: `ci` or `release`. |
+| `builds-root` | No | `.hexalith/builds-execution` | Path of the approved Hexalith.Builds checkout that defines this job. |
+| `builds-execution-sha` | Yes | - | Exact approved Hexalith.Builds commit resolved for the reusable workflow. |
+| `workflow-path` | Yes | - | Repository-relative path of the governed reusable workflow. |
+| `candidate` | Yes | - | Exact candidate commit every governed phase consumes. |
+| `dependency-policy-repository` | No | `''` | Normalized `github.com/owner/repository` identity owning the active dependency policy. |
+| `dependency-policy-path` | No | `''` | Repository-relative path of the active dependency policy. |
+| `dependency-policy-commit` | No | `''` | Exact 40-hex commit of the active dependency policy. |
+| `dependency-policy-sha256` | No | `''` | Exact 64-hex SHA-256 of the active dependency-policy bytes. |
+| `expected-evaluator-digest` | No | `''` | Caller-declared evaluator-authorization digest recorded into the provenance. |
+| `output` | No | `.hexalith/release/governed/workflow-provenance.json` | Path the provenance document is written to. |
+
+The four dependency-policy coordinates are all-or-nothing: declare all of them
+or none. A partial coordinate is rejected so an incomplete claim cannot look
+complete.
+
+## Outputs
+
+| Output | Description |
+|--------|-------------|
+| `provenance-path` / `provenance-sha256` | The emitted document and the SHA-256 of its exact bytes. |
+| `provenance-json` | The complete document as compact canonical JSON. |
+| `candidate` | Exact candidate commit recorded in the provenance. |
+| `closure-digest` | Canonical digest of the whole evaluated closure. |
+| `reusable-repository` / `reusable-workflow-path` / `reusable-commit` / `reusable-blob-sha256` | Identity and blob hash of the reusable workflow that executed. |
+| `actions-json` | Canonical JSON array of the Builds-owned composite sources. |
+| `external-actions-json` | Canonical JSON array of the pinned external action coordinates. |
+
+## Emitted Document
+
+The document uses the `hexalith.builds-governed-provenance.v1` schema and
+contains the stage, generation timestamp, candidate commit, caller run identity,
+the closure (reusable workflow, local composite actions, composite helper files,
+external action coordinates, and the closure digest), the dependency-policy
+projection, and the expected evaluator digest.
+
+Everything except `generated_at_utc` is deterministic: the same closure always
+produces the same canonical bytes and the same digest.
+
+## Prerequisites
+
+- The job must have checked out the approved Hexalith.Builds commit at
+  `builds-root` before this action runs.
+- Every `uses:` reference reachable from the governed workflow must be a literal
+  lowercase 40-hex commit or a local `./.hexalith/builds-execution/...` path.
+  See `ci-cd-standards.md`, "Governed closure exception".
+- Python 3 must be available on the runner. `ubuntu-latest` provides it.
+
+## Tests
+
+`Github/governed-provenance/tests/test_governed_provenance.py`, run by
+`Tools/test-governed-provenance.ps1` and by this repository's own CI. The suite
+evaluates both shipped governed workflows end to end, so a reference that stops
+being resolvable fails the pull request rather than a release.
+----- END UNTRACKED: Github/governed-provenance/README.md -----
+----- BEGIN UNTRACKED: Github/governed-provenance/action.yml -----
+name: 'Governed Workflow Provenance'
+description: >-
+  Validates the running job against the approved Hexalith.Builds reusable-workflow
+  identity, evaluates the bounded static uses: closure of that workflow from the exact
+  approved checkout, and emits the workflow/composite provenance a governed caller needs
+  to build its own release handoffs. The action reads no secret and contacts no network
+  service.
+
+inputs:
+  stage:
+    description: 'Governed stage the provenance is produced for: ci or release.'
+    required: true
+  builds-root:
+    description: 'Path of the approved Hexalith.Builds checkout that defines this job.'
+    required: false
+    default: '.hexalith/builds-execution'
+  builds-execution-sha:
+    description: 'Exact approved Hexalith.Builds commit resolved for the reusable workflow.'
+    required: true
+  workflow-path:
+    description: 'Repository-relative path of the governed reusable workflow.'
+    required: true
+  candidate:
+    description: 'Exact candidate commit every governed phase consumes.'
+    required: true
+  dependency-policy-repository:
+    description: 'Normalized github.com/owner/repository identity owning the active dependency policy.'
+    required: false
+    default: ''
+  dependency-policy-path:
+    description: 'Repository-relative path of the active dependency policy.'
+    required: false
+    default: ''
+  dependency-policy-commit:
+    description: 'Exact commit of the active dependency policy.'
+    required: false
+    default: ''
+  dependency-policy-sha256:
+    description: 'Exact SHA-256 of the active dependency-policy bytes.'
+    required: false
+    default: ''
+  expected-evaluator-digest:
+    description: 'Caller-declared evaluator-authorization digest recorded into the provenance.'
+    required: false
+    default: ''
+  output:
+    description: 'Path the provenance document is written to.'
+    required: false
+    default: '.hexalith/release/governed/workflow-provenance.json'
+
+outputs:
+  provenance-path:
+    description: 'Path of the emitted governed-provenance document.'
+    value: ${{ steps.provenance.outputs.provenance-path }}
+  provenance-sha256:
+    description: 'SHA-256 of the emitted governed-provenance document bytes.'
+    value: ${{ steps.provenance.outputs.provenance-sha256 }}
+  candidate:
+    description: 'Exact candidate commit recorded in the provenance.'
+    value: ${{ steps.provenance.outputs.candidate }}
+  closure-digest:
+    description: 'Canonical digest of the evaluated reusable/composite closure.'
+    value: ${{ steps.provenance.outputs.closure-digest }}
+  reusable-repository:
+    description: 'Normalized identity of the repository owning the governed reusable workflow.'
+    value: ${{ steps.provenance.outputs.reusable-repository }}
+  reusable-workflow-path:
+    description: 'Repository-relative path of the governed reusable workflow.'
+    value: ${{ steps.provenance.outputs.reusable-workflow-path }}
+  reusable-commit:
+    description: 'Exact commit the governed reusable workflow executed from.'
+    value: ${{ steps.provenance.outputs.reusable-commit }}
+  reusable-blob-sha256:
+    description: 'SHA-256 of the governed reusable-workflow blob.'
+    value: ${{ steps.provenance.outputs.reusable-blob-sha256 }}
+  actions-json:
+    description: 'Canonical JSON array of the local composite-action sources in the closure.'
+    value: ${{ steps.provenance.outputs.actions-json }}
+  external-actions-json:
+    description: 'Canonical JSON array of the pinned external action coordinates in the closure.'
+    value: ${{ steps.provenance.outputs.external-actions-json }}
+  provenance-json:
+    description: 'Complete governed-provenance document as compact canonical JSON.'
+    value: ${{ steps.provenance.outputs.provenance-json }}
+
+runs:
+  using: composite
+  steps:
+    - name: Evaluate governed workflow closure
+      id: provenance
+      shell: bash
+      env:
+        GOVERNED_STAGE: ${{ inputs.stage }}
+        GOVERNED_BUILDS_ROOT: ${{ inputs.builds-root }}
+        GOVERNED_BUILDS_EXECUTION_SHA: ${{ inputs.builds-execution-sha }}
+        GOVERNED_WORKFLOW_PATH: ${{ inputs.workflow-path }}
+        GOVERNED_CANDIDATE: ${{ inputs.candidate }}
+        GOVERNED_POLICY_REPOSITORY: ${{ inputs.dependency-policy-repository }}
+        GOVERNED_POLICY_PATH: ${{ inputs.dependency-policy-path }}
+        GOVERNED_POLICY_COMMIT: ${{ inputs.dependency-policy-commit }}
+        GOVERNED_POLICY_SHA256: ${{ inputs.dependency-policy-sha256 }}
+        GOVERNED_EXPECTED_EVALUATOR_DIGEST: ${{ inputs.expected-evaluator-digest }}
+        GOVERNED_OUTPUT: ${{ inputs.output }}
+        RESOLVED_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}
+        RESOLVED_WORKFLOW_SHA: ${{ job.workflow_sha }}
+        RESOLVED_WORKFLOW_REF: ${{ job.workflow_ref }}
+        RESOLVED_WORKFLOW_FILE_PATH: ${{ job.workflow_file_path }}
+        CALLER_REPOSITORY: ${{ github.repository }}
+        CALLER_WORKFLOW_REF: ${{ github.workflow_ref }}
+        CALLER_RUN_ID: ${{ github.run_id }}
+        CALLER_RUN_ATTEMPT: ${{ github.run_attempt }}
+        CALLER_EVENT: ${{ github.event_name }}
+      run: |
+        set -euo pipefail
+        python3 "${GITHUB_ACTION_PATH}/governed_provenance.py" \
+          --stage "$GOVERNED_STAGE" \
+          --builds-root "$GOVERNED_BUILDS_ROOT" \
+          --builds-execution-sha "$GOVERNED_BUILDS_EXECUTION_SHA" \
+          --workflow-path "$GOVERNED_WORKFLOW_PATH" \
+          --workflow-repository "$RESOLVED_WORKFLOW_REPOSITORY" \
+          --workflow-sha "$RESOLVED_WORKFLOW_SHA" \
+          --workflow-ref "$RESOLVED_WORKFLOW_REF" \
+          --workflow-file-path "$RESOLVED_WORKFLOW_FILE_PATH" \
+          --caller-repository "$CALLER_REPOSITORY" \
+          --caller-workflow-ref "$CALLER_WORKFLOW_REF" \
+          --run-id "$CALLER_RUN_ID" \
+          --run-attempt "$CALLER_RUN_ATTEMPT" \
+          --event "$CALLER_EVENT" \
+          --candidate "$GOVERNED_CANDIDATE" \
+          --policy-repository "$GOVERNED_POLICY_REPOSITORY" \
+          --policy-path "$GOVERNED_POLICY_PATH" \
+          --policy-commit "$GOVERNED_POLICY_COMMIT" \
+          --policy-sha256 "$GOVERNED_POLICY_SHA256" \
+          --expected-evaluator-digest "$GOVERNED_EXPECTED_EVALUATOR_DIGEST" \
+          --output "$GOVERNED_OUTPUT"
+----- END UNTRACKED: Github/governed-provenance/action.yml -----
+----- BEGIN UNTRACKED: Github/governed-provenance/governed_provenance.py -----
+#!/usr/bin/env python3
+"""Evaluate the bounded static closure of a governed Hexalith.Builds reusable workflow.
+
+BUILD-REL-1 / GOV-1. The governed CI and Release paths must be able to prove, from the
+exact reusable-workflow commit, which workflow and composite-action bytes actually
+executed. This helper walks the literal ``uses:`` closure of one reusable workflow inside
+an immutable Hexalith.Builds checkout, hashes every source it owns, and rejects any
+reference that a later push could redefine.
+
+The collector deliberately implements a closed YAML subset rather than importing a YAML
+package: GitHub-hosted runners carry no guaranteed YAML dependency, and an ambiguous
+parse must fail closed rather than silently drop a ``uses:`` edge.
+
+Callers own their evidence logic. This helper emits provenance only; it never contacts a
+network service, reads a secret, or decides whether a release may publish.
+"""
+
+import argparse
+import hashlib
+import json
+import os
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+PROVENANCE_SCHEMA = "hexalith.builds-governed-provenance.v1"
+BUILDS_REPOSITORY = "Hexalith/Hexalith.Builds"
+BUILDS_IDENTITY = "github.com/hexalith/hexalith.builds"
+LOCAL_EXECUTION_PREFIX = "./.hexalith/builds-execution/"
+
+# AD-13 ceilings, mirrored from the FrontComposer closure collector so a closure Builds
+# reports can never exceed the bound the consumer is willing to validate.
+MAX_CLOSURE_DEPTH = 16
+MAX_CLOSURE_SOURCES = 256
+MAX_SOURCE_BLOB_BYTES = 1_048_576
+MAX_SOURCE_TOTAL_BYTES = 16_777_216
+
+COMMIT_PATTERN = re.compile(r"^[0-9a-f]{40}$", re.ASCII)
+SHA256_PATTERN = re.compile(r"^[0-9a-f]{64}$", re.ASCII)
+IDENTITY_PATTERN = re.compile(r"^github\.com/[a-z0-9._-]+/[a-z0-9._-]+$", re.ASCII)
+OWNER_REPOSITORY_PATTERN = re.compile(r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+$", re.ASCII)
+WORKFLOW_REF_PATTERN = re.compile(
+    r"^(?P<owner>[A-Za-z0-9._-]+)/(?P<repository>[A-Za-z0-9._-]+)"
+    r"/(?P<path>\.github/workflows/[A-Za-z0-9._/-]+\.ya?ml)@(?P<ref>\S+)$",
+    re.ASCII,
+)
+EXTERNAL_USES_PATTERN = re.compile(
+    r"^(?P<owner>[A-Za-z0-9._-]+)/(?P<repository>[A-Za-z0-9._-]+)"
+    r"(?P<path>/[^@\s]+)?@(?P<commit>[0-9a-f]{40})$",
+    re.ASCII,
+)
+USES_LINE_PATTERN = re.compile(r"^\s*(?:-\s+)?uses\s*:(?P<value>.*)$", re.ASCII)
+QUOTED_USES_LINE_PATTERN = re.compile(r"^\s*(?:-\s+)?['\"]uses['\"]\s*:", re.ASCII)
+STAGES = ("ci", "release")
+
+
+class ProvenanceError(Exception):
+    """A deterministic, fail-closed governed-provenance failure."""
+
+
+def canonical_bytes(value):
+    """Serialize a value with the canonical form shared with the consuming contracts."""
+    return json.dumps(
+        value,
+        ensure_ascii=True,
+        allow_nan=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def canonical_digest(value):
+    """Return the SHA-256 of the canonical serialization of a value."""
+    return hashlib.sha256(canonical_bytes(value)).hexdigest()
+
+
+def require_commit(value, context):
+    """Require a strict lowercase 40-hex commit."""
+    if not isinstance(value, str) or COMMIT_PATTERN.fullmatch(value) is None:
+        raise ProvenanceError(f"{context} must be an exact lowercase 40-character commit SHA")
+    return value
+
+
+def require_sha256(value, context):
+    """Require a strict lowercase 64-hex SHA-256."""
+    if not isinstance(value, str) or SHA256_PATTERN.fullmatch(value) is None:
+        raise ProvenanceError(f"{context} must be an exact lowercase 64-character SHA-256")
+    return value
+
+
+def require_identity(value, context):
+    """Require a normalized lowercase ``github.com/owner/repository`` identity."""
+    if not isinstance(value, str) or IDENTITY_PATTERN.fullmatch(value) is None:
+        raise ProvenanceError(f"{context} must be a normalized github.com/owner/repository identity")
+    return value
+
+
+def normalize_identity(owner_repository, context):
+    """Normalize an ``owner/repository`` pair to the canonical lowercase identity."""
+    if not isinstance(owner_repository, str) or OWNER_REPOSITORY_PATTERN.fullmatch(owner_repository) is None:
+        raise ProvenanceError(f"{context} must be an owner/repository pair")
+    return require_identity(f"github.com/{owner_repository.lower()}", context)
+
+
+def normalize_path(value, context):
+    """Require a safe relative POSIX path."""
+    if not isinstance(value, str) or not value or not value.isascii():
+        raise ProvenanceError(f"{context} must be a non-empty ASCII relative path")
+    if value.startswith("/") or "\\" in value:
+        raise ProvenanceError(f"{context} must be a relative POSIX path: {value!r}")
+    if any(ord(character) < 0x20 or ord(character) == 0x7F for character in value):
+        raise ProvenanceError(f"{context} contains a control character: {value!r}")
+    if any(segment in ("", ".", "..") for segment in value.split("/")):
+        raise ProvenanceError(f"{context} contains an unsafe path segment: {value!r}")
+    return value
+
+
+def strip_yaml_comment(value):
+    """Remove a trailing YAML comment from one scalar line, honoring quoting."""
+    single = False
+    double = False
+    index = 0
+    while index < len(value):
+        character = value[index]
+        if single:
+            if character == "'":
+                if index + 1 < len(value) and value[index + 1] == "'":
+                    index += 2
+                    continue
+                single = False
+        elif double:
+            if character == "\\":
+                index += 2
+                continue
+            if character == '"':
+                double = False
+        elif character == "'":
+            single = True
+        elif character == '"':
+            double = True
+        elif character == "#" and (index == 0 or value[index - 1].isspace()):
+            return value[:index].rstrip()
+        index += 1
+    if single or double:
+        raise ProvenanceError("unterminated quoted YAML scalar in a uses: entry")
+    return value.rstrip()
+
+
+def parse_uses_scalar(value, context):
+    """Parse the scalar value of one ``uses:`` mapping entry."""
+    scalar = strip_yaml_comment(value).strip()
+    if not scalar:
+        raise ProvenanceError(f"{context}: uses must carry a scalar value on the same line")
+    if scalar.startswith("'"):
+        if len(scalar) < 2 or not scalar.endswith("'"):
+            raise ProvenanceError(f"{context}: malformed single-quoted uses scalar")
+        return scalar[1:-1].replace("''", "'")
+    if scalar.startswith('"'):
+        try:
+            parsed = json.loads(scalar)
+        except json.JSONDecodeError as error:
+            raise ProvenanceError(f"{context}: unsupported double-quoted uses scalar ({error.msg})") from error
+        if not isinstance(parsed, str):
+            raise ProvenanceError(f"{context}: uses value must be a string")
+        return parsed
+    if scalar[0] in "[{&*!|>" or any(character.isspace() for character in scalar):
+        raise ProvenanceError(f"{context}: unsupported plain uses scalar {scalar!r}")
+    return scalar
+
+
+def scan_uses(text, context):
+    """Return every literal ``uses:`` value in a workflow or action-metadata source."""
+    literals = []
+    for line_number, line in enumerate(text.splitlines(), 1):
+        if QUOTED_USES_LINE_PATTERN.match(line):
+            raise ProvenanceError(f"{context}:{line_number}: quoted uses keys are unsupported")
+        match = USES_LINE_PATTERN.match(line)
+        if match is None:
+            continue
+        literals.append((line_number, parse_uses_scalar(match.group("value"), f"{context}:{line_number}")))
+    return literals
+
+
+def action_using(text, context):
+    """Return the ``runs.using`` value of a composite or JavaScript action."""
+    values = [
+        strip_yaml_comment(line.split(":", 1)[1]).strip().strip("'\"").lower()
+        for line in text.splitlines()
+        if re.match(r"^\s{2,}using\s*:", line, re.ASCII)
+    ]
+    if len(values) != 1:
+        raise ProvenanceError(
+            f"{context}: action metadata must declare exactly one runs.using value (found {len(values)})"
+        )
+    return values[0]
+
+
+class ClosureCollector:
+    """Collect the bounded static ``uses:`` closure of one reusable workflow."""
+
+    def __init__(self, builds_root, commit):
+        """Bind the collector to an immutable Hexalith.Builds checkout."""
+        self.root = Path(builds_root).resolve()
+        if not self.root.is_dir():
+            raise ProvenanceError(f"Builds checkout {self.root} does not exist")
+        self.commit = require_commit(commit, "builds-execution-sha")
+        self.workflows = {}
+        self.actions = {}
+        self.external = {}
+        self.helpers = {}
+        self.total_bytes = 0
+        self._active = []
+        self._visited = set()
+
+    def _resolve_inside_root(self, relative_path, context):
+        candidate = (self.root / relative_path).resolve()
+        if candidate != self.root and self.root not in candidate.parents:
+            raise ProvenanceError(f"{context} escapes the approved Builds checkout: {relative_path!r}")
+        return candidate
+
+    def _read_source(self, relative_path, context):
+        normalize_path(relative_path, context)
+        path = self._resolve_inside_root(relative_path, context)
+        if not path.is_file() or path.is_symlink():
+            raise ProvenanceError(f"{context}: {relative_path} is not a regular file in the approved checkout")
+        payload = path.read_bytes()
+        if len(payload) > MAX_SOURCE_BLOB_BYTES:
+            raise ProvenanceError(
+                f"{context}: {relative_path} is {len(payload)} bytes, exceeding the "
+                f"{MAX_SOURCE_BLOB_BYTES}-byte source ceiling"
+            )
+        self.total_bytes += len(payload)
+        if self.total_bytes > MAX_SOURCE_TOTAL_BYTES:
+            raise ProvenanceError(
+                f"closure sources total {self.total_bytes} bytes, exceeding the "
+                f"{MAX_SOURCE_TOTAL_BYTES}-byte closure ceiling"
+            )
+        if len(self.workflows) + len(self.actions) >= MAX_CLOSURE_SOURCES:
+            raise ProvenanceError(f"closure exceeds the {MAX_CLOSURE_SOURCES}-source ceiling")
+        return payload
+
+    def _decode(self, payload, context):
+        try:
+            return payload.decode("utf-8-sig", "strict")
+        except UnicodeDecodeError as error:
+            raise ProvenanceError(f"{context}: source is not valid UTF-8 ({error})") from error
+
+    def _record_helpers(self, directory, context):
+        path = self._resolve_inside_root(directory, context)
+        for entry in sorted(path.iterdir(), key=lambda item: item.name):
+            if not entry.is_file() or entry.is_symlink() or entry.name == "action.yml":
+                continue
+            relative = f"{directory}/{entry.name}"
+            if relative in self.helpers:
+                continue
+            payload = self._read_source(relative, f"{context} helper {entry.name}")
+            self.helpers[relative] = {
+                "repository": BUILDS_IDENTITY,
+                "path": relative,
+                "commit": self.commit,
+                "blob_sha256": hashlib.sha256(payload).hexdigest(),
+            }
+
+    def _resolve_literal(self, literal, context):
+        if "${{" in literal or "}}" in literal:
+            raise ProvenanceError(f"{context}: a governed uses: reference must not be an expression: {literal!r}")
+        if literal.lower().startswith("docker://"):
+            raise ProvenanceError(f"{context}: Docker action references are not governable: {literal!r}")
+        if literal.startswith("./"):
+            if not literal.startswith(LOCAL_EXECUTION_PREFIX):
+                raise ProvenanceError(
+                    f"{context}: a governed local uses: reference must load from "
+                    f"{LOCAL_EXECUTION_PREFIX}: {literal!r}"
+                )
+            directory = normalize_path(literal[len(LOCAL_EXECUTION_PREFIX):], f"{context} local uses path")
+            return ("local", directory)
+        match = EXTERNAL_USES_PATTERN.fullmatch(literal)
+        if match is None:
+            raise ProvenanceError(
+                f"{context}: a governed uses: reference must be pinned to a literal lowercase "
+                f"40-hex commit: {literal!r}"
+            )
+        raw_path = match.group("path")
+        path = raw_path[1:] if raw_path else ""
+        commit = match.group("commit")
+        identity = normalize_identity(
+            f"{match.group('owner')}/{match.group('repository')}",
+            f"{context} external repository",
+        )
+        if path:
+            normalize_path(path, f"{context} external path")
+        # A Builds-owned action already pinned to the executing commit is the same bytes the
+        # approved checkout holds, so record it as an exactly hashed local source instead of
+        # an opaque coordinate.
+        if identity == BUILDS_IDENTITY and commit == self.commit and path:
+            return ("local", path)
+        return ("external", (identity, path, commit))
+
+    def _enter(self, key, depth):
+        if depth > MAX_CLOSURE_DEPTH:
+            raise ProvenanceError(f"closure depth {depth} exceeds the {MAX_CLOSURE_DEPTH}-level ceiling at {key}")
+        if key in self._active:
+            rendered = " -> ".join(self._active + [key])
+            raise ProvenanceError(f"workflow/composite source cycle: {rendered}")
+        if key in self._visited:
+            return False
+        self._active.append(key)
+        return True
+
+    def _leave(self, key):
+        self._active.pop()
+        self._visited.add(key)
+
+    def _visit(self, literal, depth, context):
+        kind, target = self._resolve_literal(literal, context)
+        if kind == "external":
+            identity, path, commit = target
+            self.external[(identity, path, commit)] = {
+                "repository": identity,
+                "path": path,
+                "commit": commit,
+            }
+            return
+        self.visit_action(target, depth)
+
+    def visit_workflow(self, workflow_path, depth=0):
+        """Record one reusable workflow blob and recurse through its ``uses:`` closure."""
+        normalize_path(workflow_path, "workflow path")
+        if not workflow_path.startswith(".github/workflows/") or not workflow_path.endswith((".yml", ".yaml")):
+            raise ProvenanceError(f"{workflow_path} is not a .github/workflows/*.yml reusable workflow")
+        if not self._enter(workflow_path, depth):
+            return
+        try:
+            payload = self._read_source(workflow_path, "reusable workflow")
+            self.workflows[workflow_path] = {
+                "repository": BUILDS_IDENTITY,
+                "workflow_path": workflow_path,
+                "commit": self.commit,
+                "blob_sha256": hashlib.sha256(payload).hexdigest(),
+            }
+            text = self._decode(payload, workflow_path)
+            for line_number, literal in scan_uses(text, workflow_path):
+                self._visit(literal, depth + 1, f"{workflow_path}:{line_number}")
+        finally:
+            self._leave(workflow_path)
+
+    def visit_action(self, directory, depth):
+        """Record one local composite-action metadata blob and recurse through it."""
+        metadata_path = f"{directory}/action.yml"
+        if not self._enter(metadata_path, depth):
+            return
+        try:
+            payload = self._read_source(metadata_path, "composite action")
+            self.actions[metadata_path] = {
+                "repository": BUILDS_IDENTITY,
+                "path": metadata_path,
+                "commit": self.commit,
+                "blob_sha256": hashlib.sha256(payload).hexdigest(),
+            }
+            self._record_helpers(directory, metadata_path)
+            text = self._decode(payload, metadata_path)
+            using = action_using(text, metadata_path)
+            literals = scan_uses(text, metadata_path)
+            if using == "docker":
+                raise ProvenanceError(f"{metadata_path}: Docker actions are not governable")
+            if using == "composite":
+                for line_number, literal in literals:
+                    self._visit(literal, depth + 1, f"{metadata_path}:{line_number}")
+            elif re.fullmatch(r"node[0-9]+", using, re.ASCII) is not None:
+                if literals:
+                    raise ProvenanceError(f"{metadata_path}: JavaScript action metadata declares uses: entries")
+            else:
+                raise ProvenanceError(f"{metadata_path}: unsupported runs.using value {using!r}")
+        finally:
+            self._leave(metadata_path)
+
+    def projection(self, workflow_path):
+        """Project the collected closure into its canonical, digest-bearing form."""
+        reusable = self.workflows[workflow_path]
+        actions = sorted(
+            self.actions.values(),
+            key=lambda source: (source["repository"], source["path"], source["commit"], source["blob_sha256"]),
+        )
+        helpers = sorted(
+            self.helpers.values(),
+            key=lambda source: (source["repository"], source["path"], source["commit"], source["blob_sha256"]),
+        )
+        external = sorted(
+            self.external.values(),
+            key=lambda source: (source["repository"], source["path"], source["commit"]),
+        )
+        material = {
+            "reusable": reusable,
+            "actions": actions,
+            "helpers": helpers,
+            "external_actions": external,
+        }
+        material["closure_digest"] = canonical_digest(material)
+        return material
+
+
+def validate_workflow_identity(arguments):
+    """Prove the running job is defined by the exact approved Builds reusable workflow."""
+    commit = require_commit(arguments.builds_execution_sha, "builds-execution-sha")
+    if arguments.workflow_repository != BUILDS_REPOSITORY:
+        raise ProvenanceError(
+            f"job.workflow_repository is {arguments.workflow_repository!r}; the governed path "
+            f"must be defined by {BUILDS_REPOSITORY}"
+        )
+    if arguments.workflow_sha != commit:
+        raise ProvenanceError("job.workflow_sha does not match the approved builds-execution-sha")
+    match = WORKFLOW_REF_PATTERN.fullmatch(arguments.workflow_ref)
+    if match is None:
+        raise ProvenanceError("job.workflow_ref is not an owner/repository/.github/workflows/<file>@<ref> value")
+    resolved_repository = f"{match.group('owner')}/{match.group('repository')}"
+    if resolved_repository != BUILDS_REPOSITORY:
+        raise ProvenanceError("job.workflow_ref does not name the approved Hexalith.Builds repository")
+    if match.group("path") != arguments.workflow_path:
+        raise ProvenanceError(
+            f"job.workflow_ref path {match.group('path')!r} does not match the declared governed "
+            f"workflow {arguments.workflow_path!r}"
+        )
+    if arguments.workflow_file_path and arguments.workflow_file_path != arguments.workflow_path:
+        raise ProvenanceError(
+            f"job.workflow_file_path {arguments.workflow_file_path!r} does not match the declared "
+            f"governed workflow {arguments.workflow_path!r}"
+        )
+    return commit
+
+
+def dependency_policy_projection(arguments):
+    """Validate and project the caller-declared active dependency-policy coordinate."""
+    fields = (
+        arguments.policy_repository,
+        arguments.policy_path,
+        arguments.policy_commit,
+        arguments.policy_sha256,
+    )
+    if not any(fields):
+        return None
+    if not all(fields):
+        raise ProvenanceError(
+            "dependency-policy repository, path, commit, and sha256 must be declared together"
+        )
+    return {
+        "repository": require_identity(arguments.policy_repository, "dependency-policy-repository"),
+        "path": normalize_path(arguments.policy_path, "dependency-policy-path"),
+        "commit": require_commit(arguments.policy_commit, "dependency-policy-commit"),
+        "sha256": require_sha256(arguments.policy_sha256, "dependency-policy-sha256"),
+    }
+
+
+def build_provenance(arguments):
+    """Build the complete governed-provenance document for one reusable-workflow run."""
+    if arguments.stage not in STAGES:
+        raise ProvenanceError(f"stage must be one of {list(STAGES)}, got {arguments.stage!r}")
+    commit = validate_workflow_identity(arguments)
+    candidate = require_commit(arguments.candidate, "candidate commit")
+    expected_digest = None
+    if arguments.expected_evaluator_digest:
+        expected_digest = require_sha256(
+            arguments.expected_evaluator_digest,
+            "expected evaluator-authorization digest",
+        )
+
+    collector = ClosureCollector(arguments.builds_root, commit)
+    collector.visit_workflow(arguments.workflow_path)
+    closure = collector.projection(arguments.workflow_path)
+
+    provenance = {
+        "schema": PROVENANCE_SCHEMA,
+        "stage": arguments.stage,
+        "generated_at_utc": datetime.now(timezone.utc).isoformat(),
+        "candidate": candidate,
+        "caller": {
+            "repository": normalize_identity(arguments.caller_repository, "caller repository"),
+            "workflow_ref": arguments.caller_workflow_ref,
+            "run_id": arguments.run_id,
+            "run_attempt": arguments.run_attempt,
+            "event": arguments.event,
+        },
+        "closure": closure,
+        "dependency_policy": dependency_policy_projection(arguments),
+        "expected_evaluator_digest": expected_digest,
+    }
+    return provenance
+
+
+def write_outputs(provenance, output_path):
+    """Persist the provenance document and publish the caller-facing step outputs."""
+    destination = Path(output_path)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps(provenance, indent=2, sort_keys=True) + "\n"
+    destination.write_text(payload, encoding="utf-8")
+
+    closure = provenance["closure"]
+    outputs = {
+        "provenance-path": str(destination),
+        "provenance-sha256": hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+        "candidate": provenance["candidate"],
+        "closure-digest": closure["closure_digest"],
+        "reusable-repository": closure["reusable"]["repository"],
+        "reusable-workflow-path": closure["reusable"]["workflow_path"],
+        "reusable-commit": closure["reusable"]["commit"],
+        "reusable-blob-sha256": closure["reusable"]["blob_sha256"],
+        "actions-json": json.dumps(closure["actions"], sort_keys=True, separators=(",", ":")),
+        "external-actions-json": json.dumps(
+            closure["external_actions"], sort_keys=True, separators=(",", ":")
+        ),
+        "provenance-json": json.dumps(provenance, sort_keys=True, separators=(",", ":")),
+    }
+    github_output = os.environ.get("GITHUB_OUTPUT")
+    if github_output:
+        with Path(github_output).open("a", encoding="utf-8") as stream:
+            for name, value in outputs.items():
+                stream.write(f"{name}={value}\n")
+    return outputs
+
+
+def build_parser():
+    """Build the governed-provenance command-line parser."""
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--stage", required=True)
+    parser.add_argument("--builds-root", required=True)
+    parser.add_argument("--builds-execution-sha", required=True)
+    parser.add_argument("--workflow-path", required=True)
+    parser.add_argument("--workflow-repository", required=True)
+    parser.add_argument("--workflow-sha", required=True)
+    parser.add_argument("--workflow-ref", required=True)
+    parser.add_argument("--workflow-file-path", default="")
+    parser.add_argument("--caller-repository", required=True)
+    parser.add_argument("--caller-workflow-ref", default="")
+    parser.add_argument("--run-id", default="")
+    parser.add_argument("--run-attempt", default="")
+    parser.add_argument("--event", default="")
+    parser.add_argument("--candidate", required=True)
+    parser.add_argument("--policy-repository", default="")
+    parser.add_argument("--policy-path", default="")
+    parser.add_argument("--policy-commit", default="")
+    parser.add_argument("--policy-sha256", default="")
+    parser.add_argument("--expected-evaluator-digest", default="")
+    parser.add_argument("--output", required=True)
+    return parser
+
+
+def main(argv=None):
+    """Emit governed provenance, or fail closed with a support-safe diagnostic."""
+    arguments = build_parser().parse_args(argv)
+    try:
+        provenance = build_provenance(arguments)
+        outputs = write_outputs(provenance, arguments.output)
+    except ProvenanceError as error:
+        print(f"::error title=Governed provenance rejected::{error}", file=sys.stderr)
+        return 1
+    print(
+        json.dumps(
+            {
+                "ok": True,
+                "closure_digest": outputs["closure-digest"],
+                "provenance_sha256": outputs["provenance-sha256"],
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+----- END UNTRACKED: Github/governed-provenance/governed_provenance.py -----
+----- BEGIN UNTRACKED: Github/governed-provenance/tests/test_governed_provenance.py -----
+"""Unit tests for the BUILD-REL-1 governed workflow-provenance evaluator.
+
+The evaluator is the only thing standing between a governed caller and a closure it
+cannot actually verify, so these tests concentrate on the ways a closure can silently
+stop being provable: a mutable reference, an expression, a source outside the approved
+checkout, a cycle, and an identity that does not match the approved reusable workflow.
+"""
+
+import hashlib
+import json
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+MODULE_ROOT = Path(__file__).resolve().parents[1]
+REPOSITORY_ROOT = MODULE_ROOT.parents[1]
+sys.path.insert(0, str(MODULE_ROOT))
+
+import governed_provenance as evaluator  # noqa: E402  # path is prepared above.
+
+
+COMMIT = "0123456789abcdef0123456789abcdef01234567"
+OTHER_COMMIT = "89abcdef0123456789abcdef0123456789abcdef"
+CANDIDATE = "fedcba9876543210fedcba9876543210fedcba98"
+POLICY_SHA256 = "a" * 64
+EVALUATOR_DIGEST = "b" * 64
+WORKFLOW_PATH = ".github/workflows/domain-ci.yml"
+PINNED_CHECKOUT = "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+
+
+class Arguments:
+    """Mutable stand-in for the parsed command line the evaluator consumes."""
+
+    def __init__(self, builds_root, **overrides):
+        """Build a complete, valid governed-provenance request."""
+        self.stage = "ci"
+        self.builds_root = str(builds_root)
+        self.builds_execution_sha = COMMIT
+        self.workflow_path = WORKFLOW_PATH
+        self.workflow_repository = evaluator.BUILDS_REPOSITORY
+        self.workflow_sha = COMMIT
+        self.workflow_ref = f"{evaluator.BUILDS_REPOSITORY}/{WORKFLOW_PATH}@refs/heads/main"
+        self.workflow_file_path = WORKFLOW_PATH
+        self.caller_repository = "Hexalith/Hexalith.FrontComposer"
+        self.caller_workflow_ref = "Hexalith/Hexalith.FrontComposer/.github/workflows/ci.yml@refs/heads/main"
+        self.run_id = "42"
+        self.run_attempt = "1"
+        self.event = "push"
+        self.candidate = CANDIDATE
+        self.policy_repository = "github.com/hexalith/hexalith.frontcomposer"
+        self.policy_path = "eng/dependency-graph-policy.json"
+        self.policy_commit = OTHER_COMMIT
+        self.policy_sha256 = POLICY_SHA256
+        self.expected_evaluator_digest = EVALUATOR_DIGEST
+        self.output = str(Path(builds_root) / "provenance.json")
+        for name, value in overrides.items():
+            setattr(self, name, value)
+
+
+class CheckoutBuilder:
+    """Build a synthetic Hexalith.Builds checkout for one closure scenario."""
+
+    def __init__(self, root):
+        """Bind the builder to an empty directory."""
+        self.root = Path(root)
+
+    def workflow(self, body, path=WORKFLOW_PATH):
+        """Write one reusable workflow source."""
+        return self.write(path, body)
+
+    def composite(self, directory, steps, using="composite"):
+        """Write one composite action's metadata."""
+        return self.write(
+            f"{directory}/action.yml",
+            f"name: 'Test'\ndescription: 'Test'\nruns:\n  using: {using}\n  steps:\n{steps}",
+        )
+
+    def write(self, relative_path, body):
+        """Write one arbitrary source into the checkout."""
+        destination = self.root / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(body, encoding="utf-8")
+        return destination
+
+
+class ScalarParsingTests(unittest.TestCase):
+    """The closed YAML subset must never silently drop or mis-read a uses: edge."""
+
+    def test_plain_quoted_and_commented_scalars_are_read_identically(self):
+        source = "\n".join(
+            (
+                "jobs:",
+                "  a:",
+                "    steps:",
+                f"      - uses: {PINNED_CHECKOUT} # v7.0.1",
+                f"      - uses: '{PINNED_CHECKOUT}'",
+                f'      - uses: "{PINNED_CHECKOUT}"',
+                f"        uses:   {PINNED_CHECKOUT}",
+            )
+        )
+
+        literals = [literal for _line, literal in evaluator.scan_uses(source, "source")]
+
+        self.assertEqual([PINNED_CHECKOUT] * 4, literals)
+
+    def test_a_hash_inside_a_quoted_scalar_is_not_a_comment(self):
+        self.assertEqual("a#b", evaluator.strip_yaml_comment("'a#b'").strip("'"))
+        self.assertEqual("value", evaluator.strip_yaml_comment("value # trailing"))
+        self.assertEqual("a#b", evaluator.strip_yaml_comment("a#b"))
+
+    def test_prose_that_merely_mentions_uses_is_not_an_edge(self):
+        source = "description: >-\n  Evaluates the bounded static uses: closure of that workflow.\n"
+
+        self.assertEqual([], evaluator.scan_uses(source, "source"))
+
+    def test_ambiguous_or_unsupported_scalars_fail_closed(self):
+        unsupported = (
+            "      - uses:\n",
+            "      - uses: [a, b]\n",
+            "      - uses: *anchor\n",
+            "      - uses: 'unterminated\n",
+            "      - 'uses': actions/checkout@v7\n",
+        )
+
+        for source in unsupported:
+            with self.subTest(source=source):
+                with self.assertRaises(evaluator.ProvenanceError):
+                    evaluator.scan_uses(source, "source")
+
+
+class ClosureResolutionTests(unittest.TestCase):
+    """Only immutable, in-checkout sources may enter a governed closure."""
+
+    def setUp(self):
+        """Create an isolated synthetic checkout for each scenario."""
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.temporary = directory.name
+        self.builder = CheckoutBuilder(self.temporary)
+        self.collector = evaluator.ClosureCollector(self.temporary, COMMIT)
+
+    def test_a_mutable_reference_is_rejected(self):
+        for literal in (
+            "actions/checkout@v7.0.1",
+            "actions/checkout@main",
+            "Hexalith/Hexalith.Builds/Github/dapr-init@main",
+            "actions/checkout@3D3C42E5AAC5BA805825DA76410C181273BA90B1",
+            "actions/checkout@3d3c42e5",
+        ):
+            with self.subTest(literal=literal):
+                with self.assertRaises(evaluator.ProvenanceError) as raised:
+                    self.collector._resolve_literal(literal, "source:1")
+
+                self.assertIn("40-hex", str(raised.exception))
+
+    def test_an_expression_or_docker_reference_is_rejected(self):
+        for literal, expected in (
+            ("actions/checkout@${{ env.SHA }}", "must not be an expression"),
+            ("docker://alpine:3.20", "not governable"),
+        ):
+            with self.subTest(literal=literal):
+                with self.assertRaises(evaluator.ProvenanceError) as raised:
+                    self.collector._resolve_literal(literal, "source:1")
+
+                self.assertIn(expected, str(raised.exception))
+
+    def test_a_local_reference_must_load_from_the_approved_checkout(self):
+        self.assertEqual(
+            ("local", "Github/dapr-init"),
+            self.collector._resolve_literal("./.hexalith/builds-execution/Github/dapr-init", "source:1"),
+        )
+
+        for literal in ("./Github/dapr-init", "./.github/actions/x", "./.hexalith/builds-execution/../evil"):
+            with self.subTest(literal=literal):
+                with self.assertRaises(evaluator.ProvenanceError):
+                    self.collector._resolve_literal(literal, "source:1")
+
+    def test_a_builds_action_pinned_to_the_executing_commit_is_hashed_locally(self):
+        self.assertEqual(
+            ("local", "Github/dapr-init"),
+            self.collector._resolve_literal(
+                f"Hexalith/Hexalith.Builds/Github/dapr-init@{COMMIT}", "source:1"
+            ),
+        )
+
+    def test_a_builds_action_pinned_to_another_commit_stays_an_external_coordinate(self):
+        kind, target = self.collector._resolve_literal(
+            f"Hexalith/Hexalith.Builds/Github/dapr-init@{OTHER_COMMIT}", "source:1"
+        )
+
+        self.assertEqual("external", kind)
+        self.assertEqual(("github.com/hexalith/hexalith.builds", "Github/dapr-init", OTHER_COMMIT), target)
+
+    def test_a_source_outside_the_checkout_is_refused(self):
+        with self.assertRaises(evaluator.ProvenanceError):
+            self.collector._read_source("../escape.yml", "reusable workflow")
+
+    def test_a_composite_cycle_is_refused(self):
+        self.builder.workflow(
+            "jobs:\n  a:\n    steps:\n      - uses: ./.hexalith/builds-execution/Github/first\n"
+        )
+        self.builder.composite("Github/first", "    - uses: ./.hexalith/builds-execution/Github/second\n")
+        self.builder.composite("Github/second", "    - uses: ./.hexalith/builds-execution/Github/first\n")
+
+        with self.assertRaises(evaluator.ProvenanceError) as raised:
+            self.collector.visit_workflow(WORKFLOW_PATH)
+
+        self.assertIn("cycle", str(raised.exception))
+
+    def test_a_diamond_is_visited_once_and_projected_once(self):
+        self.builder.workflow(
+            "jobs:\n"
+            "  a:\n"
+            "    steps:\n"
+            "      - uses: ./.hexalith/builds-execution/Github/left\n"
+            "      - uses: ./.hexalith/builds-execution/Github/right\n"
+        )
+        for side in ("left", "right"):
+            self.builder.composite(
+                f"Github/{side}", "    - uses: ./.hexalith/builds-execution/Github/shared\n"
+            )
+        self.builder.composite("Github/shared", f"    - uses: {PINNED_CHECKOUT}\n")
+
+        self.collector.visit_workflow(WORKFLOW_PATH)
+        closure = self.collector.projection(WORKFLOW_PATH)
+
+        self.assertEqual(
+            ["Github/left/action.yml", "Github/right/action.yml", "Github/shared/action.yml"],
+            [action["path"] for action in closure["actions"]],
+        )
+        self.assertEqual(1, len(closure["external_actions"]))
+
+    def test_a_docker_action_in_the_closure_is_refused(self):
+        self.builder.workflow(
+            "jobs:\n  a:\n    steps:\n      - uses: ./.hexalith/builds-execution/Github/docker\n"
+        )
+        self.builder.composite("Github/docker", "    - run: true\n", using="docker")
+
+        with self.assertRaises(evaluator.ProvenanceError) as raised:
+            self.collector.visit_workflow(WORKFLOW_PATH)
+
+        self.assertIn("Docker actions are not governable", str(raised.exception))
+
+    def test_composite_helper_files_are_hashed_alongside_the_metadata(self):
+        self.builder.workflow(
+            "jobs:\n  a:\n    steps:\n      - uses: ./.hexalith/builds-execution/Github/helper\n"
+        )
+        self.builder.composite("Github/helper", "    - run: python3 helper.py\n")
+        payload = "print('helper')\n"
+        self.builder.write("Github/helper/helper.py", payload)
+        self.builder.write("Github/helper/tests/test_helper.py", "# not a sibling of action.yml\n")
+
+        self.collector.visit_workflow(WORKFLOW_PATH)
+        closure = self.collector.projection(WORKFLOW_PATH)
+
+        self.assertEqual(
+            ["Github/helper/helper.py"], [helper["path"] for helper in closure["helpers"]]
+        )
+        self.assertEqual(
+            hashlib.sha256(payload.encode("utf-8")).hexdigest(),
+            closure["helpers"][0]["blob_sha256"],
+        )
+
+    def test_the_closure_digest_covers_every_recorded_source(self):
+        self.builder.workflow("jobs:\n  a:\n    steps:\n      - run: true\n")
+        self.collector.visit_workflow(WORKFLOW_PATH)
+        closure = self.collector.projection(WORKFLOW_PATH)
+        recomputed = dict(closure)
+        digest = recomputed.pop("closure_digest")
+
+        self.assertEqual(digest, evaluator.canonical_digest(recomputed))
+
+        self.builder.workflow("jobs:\n  a:\n    steps:\n      - run: false\n")
+        changed = evaluator.ClosureCollector(self.temporary, COMMIT)
+        changed.visit_workflow(WORKFLOW_PATH)
+
+        self.assertNotEqual(digest, changed.projection(WORKFLOW_PATH)["closure_digest"])
+
+    def test_only_reusable_workflow_paths_may_be_the_closure_root(self):
+        for path in ("Github/dapr-init/action.yml", ".github/workflows/notes.md", "domain-ci.yml"):
+            with self.subTest(path=path):
+                with self.assertRaises(evaluator.ProvenanceError):
+                    self.collector.visit_workflow(path)
+
+
+class WorkflowIdentityTests(unittest.TestCase):
+    """A governed run must prove it is the approved reusable workflow, not a look-alike."""
+
+    def test_a_matching_identity_is_accepted(self):
+        self.assertEqual(COMMIT, evaluator.validate_workflow_identity(Arguments("/tmp")))
+
+    def test_a_mismatched_identity_is_rejected(self):
+        scenarios = (
+            ({"workflow_repository": "attacker/Hexalith.Builds"}, "must be defined by"),
+            ({"workflow_sha": OTHER_COMMIT}, "does not match the approved builds-execution-sha"),
+            ({"builds_execution_sha": "main"}, "40-character commit SHA"),
+            ({"workflow_ref": "refs/heads/main"}, "is not an owner/repository"),
+            (
+                {"workflow_ref": f"attacker/Hexalith.Builds/{WORKFLOW_PATH}@refs/heads/main"},
+                "does not name the approved",
+            ),
+            (
+                {
+                    "workflow_ref": (
+                        f"{evaluator.BUILDS_REPOSITORY}/.github/workflows/other.yml@refs/heads/main"
+                    )
+                },
+                "does not match the declared governed workflow",
+            ),
+            (
+                {"workflow_file_path": ".github/workflows/other.yml"},
+                "does not match the declared",
+            ),
+        )
+
+        for override, expected in scenarios:
+            with self.subTest(expected=expected):
+                with self.assertRaises(evaluator.ProvenanceError) as raised:
+                    evaluator.validate_workflow_identity(Arguments("/tmp", **override))
+
+                self.assertIn(expected, str(raised.exception))
+
+    def test_an_absent_workflow_file_path_is_tolerated(self):
+        # job.workflow_file_path is newer than the other job identity fields; treating an
+        # empty value as a mismatch would break the contract on runners that omit it.
+        self.assertEqual(
+            COMMIT, evaluator.validate_workflow_identity(Arguments("/tmp", workflow_file_path=""))
+        )
+
+
+class DependencyPolicyProjectionTests(unittest.TestCase):
+    """Policy coordinates are all-or-nothing so a partial claim cannot look complete."""
+
+    def test_a_complete_coordinate_is_normalized(self):
+        projection = evaluator.dependency_policy_projection(Arguments("/tmp"))
+
+        self.assertEqual(
+            {
+                "repository": "github.com/hexalith/hexalith.frontcomposer",
+                "path": "eng/dependency-graph-policy.json",
+                "commit": OTHER_COMMIT,
+                "sha256": POLICY_SHA256,
+            },
+            projection,
+        )
+
+    def test_an_absent_coordinate_projects_to_the_closed_null(self):
+        arguments = Arguments(
+            "/tmp", policy_repository="", policy_path="", policy_commit="", policy_sha256=""
+        )
+
+        self.assertIsNone(evaluator.dependency_policy_projection(arguments))
+
+    def test_a_partial_coordinate_is_rejected(self):
+        for absent in ("policy_repository", "policy_path", "policy_commit", "policy_sha256"):
+            with self.subTest(absent=absent):
+                with self.assertRaises(evaluator.ProvenanceError) as raised:
+                    evaluator.dependency_policy_projection(Arguments("/tmp", **{absent: ""}))
+
+                self.assertIn("must be declared together", str(raised.exception))
+
+    def test_an_unnormalized_coordinate_is_rejected(self):
+        for override in (
+            {"policy_repository": "Hexalith/Hexalith.FrontComposer"},
+            {"policy_path": "/etc/policy.json"},
+            {"policy_path": "eng/../../policy.json"},
+            {"policy_commit": "main"},
+            {"policy_sha256": "a" * 63},
+        ):
+            with self.subTest(override=override):
+                with self.assertRaises(evaluator.ProvenanceError):
+                    evaluator.dependency_policy_projection(Arguments("/tmp", **override))
+
+
+class EndToEndTests(unittest.TestCase):
+    """The evaluator must produce a stable document for the real shipped workflows."""
+
+    def setUp(self):
+        """Point each scenario at this repository as its approved checkout."""
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.temporary = directory.name
+        self.output = Path(self.temporary) / "provenance.json"
+
+    def arguments(self, stage, workflow_path, **overrides):
+        """Build a request that evaluates one of this repository's shipped workflows."""
+        commit = overrides.pop("commit", COMMIT)
+        return Arguments(
+            REPOSITORY_ROOT,
+            stage=stage,
+            workflow_path=workflow_path,
+            builds_execution_sha=commit,
+            workflow_sha=commit,
+            workflow_ref=f"{evaluator.BUILDS_REPOSITORY}/{workflow_path}@refs/heads/main",
+            workflow_file_path=workflow_path,
+            output=str(self.output),
+            **overrides,
+        )
+
+    def test_both_shipped_governed_workflows_evaluate_to_a_complete_closure(self):
+        for stage, workflow_path in (
+            ("ci", ".github/workflows/domain-ci.yml"),
+            ("release", ".github/workflows/domain-release.yml"),
+        ):
+            with self.subTest(stage=stage):
+                provenance = evaluator.build_provenance(self.arguments(stage, workflow_path))
+                closure = provenance["closure"]
+                local = {action["path"] for action in closure["actions"]}
+
+                self.assertEqual(evaluator.PROVENANCE_SCHEMA, provenance["schema"])
+                self.assertEqual(CANDIDATE, provenance["candidate"])
+                self.assertEqual(workflow_path, closure["reusable"]["workflow_path"])
+                self.assertEqual("github.com/hexalith/hexalith.builds", closure["reusable"]["repository"])
+                # The evaluator hashes itself: a change to the collector changes the digest
+                # the consumer accepted, which is the whole point of the closure.
+                self.assertIn("Github/governed-provenance/action.yml", local)
+                self.assertIn(
+                    "Github/governed-provenance/governed_provenance.py",
+                    {helper["path"] for helper in closure["helpers"]},
+                )
+                self.assertIn("Github/initialize-build/action.yml", local)
+                for external in closure["external_actions"]:
+                    self.assertRegex(external["commit"], r"^[0-9a-f]{40}$")
+
+    def test_governed_ci_loads_builds_composites_from_the_reusable_workflow_commit(self):
+        # domain-ci.yml carries two forms of each Builds-owned composite. The governed form
+        # must resolve against the executing commit; the legacy 40-hex pin may name another
+        # commit and is therefore only ever an external coordinate.
+        provenance = evaluator.build_provenance(self.arguments("ci", ".github/workflows/domain-ci.yml"))
+        closure = provenance["closure"]
+        local = {action["path"] for action in closure["actions"]}
+        builds_pins = {
+            source["path"]
+            for source in closure["external_actions"]
+            if source["repository"] == "github.com/hexalith/hexalith.builds"
+        }
+
+        self.assertEqual(
+            {
+                "Github/dapr-init/action.yml",
+                "Github/governed-provenance/action.yml",
+                "Github/initialize-build/action.yml",
+            },
+            local,
+        )
+        self.assertEqual({"Github/dapr-init", "Github/initialize-build"}, builds_pins)
+        for action in closure["actions"]:
+            self.assertEqual(COMMIT, action["commit"])
+
+    def test_the_release_closure_includes_the_container_publisher(self):
+        provenance = evaluator.build_provenance(
+            self.arguments("release", ".github/workflows/domain-release.yml")
+        )
+        local = {action["path"] for action in provenance["closure"]["actions"]}
+        external = {source["repository"] for source in provenance["closure"]["external_actions"]}
+
+        self.assertIn("Github/publish-containers/action.yml", local)
+        self.assertIn("github.com/actions/attest-build-provenance", external)
+
+    def test_the_document_is_deterministic_apart_from_its_timestamp(self):
+        first = evaluator.build_provenance(self.arguments("ci", ".github/workflows/domain-ci.yml"))
+        second = evaluator.build_provenance(self.arguments("ci", ".github/workflows/domain-ci.yml"))
+        for document in (first, second):
+            document.pop("generated_at_utc")
+
+        self.assertEqual(evaluator.canonical_bytes(first), evaluator.canonical_bytes(second))
+
+    def test_the_emitted_outputs_describe_the_written_document(self):
+        provenance = evaluator.build_provenance(self.arguments("ci", ".github/workflows/domain-ci.yml"))
+        github_output = Path(self.temporary) / "github-output"
+        github_output.touch()
+        with mock.patch.dict("os.environ", {"GITHUB_OUTPUT": str(github_output)}):
+            outputs = evaluator.write_outputs(provenance, str(self.output))
+
+        payload = self.output.read_bytes()
+        emitted = dict(
+            line.split("=", 1) for line in github_output.read_text(encoding="utf-8").splitlines()
+        )
+
+        self.assertEqual(hashlib.sha256(payload).hexdigest(), outputs["provenance-sha256"])
+        self.assertEqual(json.loads(payload), provenance)
+        self.assertEqual(outputs["closure-digest"], emitted["closure-digest"])
+        self.assertEqual(provenance["closure"]["actions"], json.loads(emitted["actions-json"]))
+        self.assertEqual(provenance, json.loads(emitted["provenance-json"]))
+        self.assertNotIn("\n", emitted["provenance-json"])
+
+    def test_the_command_line_fails_closed_with_a_support_safe_diagnostic(self):
+        arguments = self.arguments("ci", ".github/workflows/domain-ci.yml", commit=OTHER_COMMIT)
+        argv = [
+            "--stage", arguments.stage,
+            "--builds-root", arguments.builds_root,
+            "--builds-execution-sha", COMMIT,
+            "--workflow-path", arguments.workflow_path,
+            "--workflow-repository", arguments.workflow_repository,
+            "--workflow-sha", OTHER_COMMIT,
+            "--workflow-ref", arguments.workflow_ref,
+            "--caller-repository", arguments.caller_repository,
+            "--candidate", arguments.candidate,
+            "--output", str(self.output),
+        ]
+
+        self.assertEqual(1, evaluator.main(argv))
+        self.assertFalse(self.output.exists())
+
+    def test_an_unknown_stage_is_rejected(self):
+        with self.assertRaises(evaluator.ProvenanceError):
+            evaluator.build_provenance(self.arguments("publish", ".github/workflows/domain-ci.yml"))
+
+
+if __name__ == "__main__":
+    unittest.main()
+----- END UNTRACKED: Github/governed-provenance/tests/test_governed_provenance.py -----
+----- BEGIN UNTRACKED: Github/publish-containers/tests/test_governed_release_workflow.py -----
+"""BUILD-REL-1 contract tests for the opt-in governed NuGet release mode.
+
+The suite covers the four properties the governed contract must never lose: the common
+release-freeze gate skips instead of failing, a caller that leaves the governed inputs
+unset keeps the pre-BUILD-REL-1 contract, governed mode fails closed without its signing
+secrets, and every governed path proves its workflow identity from immutable references.
+"""
+
+import json
+import os
+import re
+import subprocess  # nosec B404 -- tests execute only repository-owned workflow fixtures.
+import tempfile
+import unittest
+from pathlib import Path
+
+
+REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+WORKFLOWS = REPOSITORY_ROOT / ".github" / "workflows"
+DOMAIN_RELEASE = WORKFLOWS / "domain-release.yml"
+DOMAIN_CI = WORKFLOWS / "domain-ci.yml"
+DAPR_INIT = REPOSITORY_ROOT / "Github" / "dapr-init" / "action.yml"
+
+FREEZE_VARIABLE = "HEXALITH_RELEASE_PUBLISH_ENABLED"
+USES_PATTERN = re.compile(r"^\s*(?:-\s+)?uses:\s*(?P<value>\S+)", re.MULTILINE)
+PINNED_USES_PATTERN = re.compile(r"^[A-Za-z0-9._-]+/[A-Za-z0-9._-]+(?:/[^@\s]+)?@[0-9a-f]{40}$")
+GOVERNED_CANDIDATE = "0123456789abcdef0123456789abcdef01234567"
+GOVERNED_POLICY_COMMIT = "1123456789abcdef0123456789abcdef01234567"
+GOVERNED_SHA256 = "a" * 64
+
+
+def read(path):
+    """Read one workflow or action source as text."""
+    return path.read_text(encoding="utf-8")
+
+
+def step_indices(workflow, step_name):
+    """Return every start offset of a named step in a workflow source."""
+    marker = f"- name: {step_name}\n"
+    offsets = []
+    start = workflow.find(marker)
+    while start != -1:
+        offsets.append(start)
+        start = workflow.find(marker, start + 1)
+    return offsets
+
+
+def extract_run_block(path, step_name, occurrence=0):
+    """Extract the shell body of one named step, selecting the nth identical step name."""
+    lines = read(path).splitlines()
+    matches = [index for index, line in enumerate(lines) if line.strip() == f"- name: {step_name}"]
+    if len(matches) <= occurrence:
+        raise AssertionError(f"{path.name} has no step {step_name!r} at occurrence {occurrence}")
+    step_index = matches[occurrence]
+    run_index = next(
+        index for index in range(step_index + 1, len(lines)) if lines[index].strip() == "run: |"
+    )
+    run_indent = len(lines[run_index]) - len(lines[run_index].lstrip())
+    block = []
+    for line in lines[run_index + 1:]:
+        indent = len(line) - len(line.lstrip())
+        if line.strip() and indent <= run_indent:
+            break
+        block.append(line[run_indent + 2:] if line.strip() else "")
+    return "\n".join(block) + "\n"
+
+
+def job_slice(workflow, job_name):
+    """Return the source of one top-level job."""
+    start = workflow.index(f"\n  {job_name}:\n")
+    remainder = workflow[start + 1:]
+    next_job = re.search(r"\n  [a-z][a-z0-9-]*:\n", remainder)
+    return remainder if next_job is None else remainder[: next_job.start()]
+
+
+def run_block(script, environment, cwd=None):
+    """Execute one extracted workflow shell body with a controlled environment."""
+    merged = os.environ.copy()
+    merged.update(environment)
+    return subprocess.run(  # nosec B603  # NOSONAR -- repository-owned workflow script.
+        ["bash", "-c", script],
+        env=merged,
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def run_freeze_gate(value, occurrence=0):
+    """Run the release-freeze gate with one caller variable value and return its verdict."""
+    script = extract_run_block(DOMAIN_RELEASE, "Resolve release publication freeze", occurrence)
+    with tempfile.TemporaryDirectory() as temporary_directory:
+        output_path = Path(temporary_directory) / "github-output"
+        output_path.touch()
+        environment = {"GITHUB_OUTPUT": str(output_path)}
+        if value is None:
+            environment["__UNSET_FREEZE_VARIABLE__"] = "1"
+        else:
+            environment[FREEZE_VARIABLE] = value
+        merged = os.environ.copy()
+        merged.update(environment)
+        if value is None:
+            merged.pop(FREEZE_VARIABLE, None)
+        result = subprocess.run(  # nosec B603  # NOSONAR -- repository-owned workflow script.
+            ["bash", "-c", script],
+            env=merged,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result, output_path.read_text(encoding="utf-8")
+
+
+def governed_contract_environment(**overrides):
+    """Build a complete, valid governed release-contract environment."""
+    environment = {
+        "RELEASE_COMMIT": GOVERNED_CANDIDATE,
+        "CI_RUN_ID": "42",
+        "CI_RUN_ATTEMPT": "1",
+        "CI_HANDOFF_ARTIFACT": "dependency-release-handoff",
+        "POLICY_REPOSITORY": "github.com/hexalith/hexalith.frontcomposer",
+        "POLICY_PATH": "eng/dependency-graph-policy.json",
+        "POLICY_COMMIT": GOVERNED_POLICY_COMMIT,
+        "POLICY_SHA256": GOVERNED_SHA256,
+        "EXPECTED_EVALUATOR_DIGEST": "b" * 64,
+        "CANDIDATE_COMMAND": "bash scripts/pack-governed-candidate.sh",
+        "CANDIDATE_DIRECTORY": ".hexalith/release/candidate",
+        "SIGNING_TIMESTAMPER": "http://timestamp.example.test",
+        "SIGNING_CERTIFICATE_PRESENT": "true",
+        "SIGNING_PASSWORD_PRESENT": "true",
+    }
+    environment.update(overrides)
+    return environment
+
+
+class ReleaseFreezeGateTests(unittest.TestCase):
+    """The common REL-4 freeze gate must skip publication instead of failing the run."""
+
+    def test_exact_true_is_the_only_value_that_authorizes_publication(self):
+        result, output = run_freeze_gate("true")
+
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertIn("publish-enabled=true", output)
+
+    def test_missing_or_malformed_values_skip_without_failing(self):
+        for value in (None, "", "TRUE", "True", "tRue", " true", "true ", "1", "yes", "false"):
+            with self.subTest(value=value):
+                result, output = run_freeze_gate(value)
+
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn("publish-enabled=false", output)
+                self.assertNotIn("publish-enabled=true", output)
+                self.assertIn("::notice title=Release publication frozen::", result.stdout)
+
+    def test_the_notice_documents_the_repository_over_organization_shadowing_hazard(self):
+        result, _output = run_freeze_gate("")
+
+        self.assertIn("shadows the organization value", result.stdout)
+
+    def test_both_release_jobs_evaluate_the_same_gate(self):
+        workflow = read(DOMAIN_RELEASE)
+
+        self.assertEqual(2, len(step_indices(workflow, "Resolve release publication freeze")))
+        for occurrence in (0, 1):
+            with self.subTest(occurrence=occurrence):
+                result, output = run_freeze_gate("true", occurrence)
+
+                self.assertEqual(0, result.returncode, result.stderr)
+                self.assertIn("publish-enabled=true", output)
+
+    def test_the_gate_precedes_and_conditions_semantic_release(self):
+        workflow = read(DOMAIN_RELEASE)
+        condition = "if: ${{ steps.publish-gate.outputs.publish-enabled == 'true' }}"
+
+        for job_name in ("release", "governed-release"):
+            with self.subTest(job=job_name):
+                source = job_slice(workflow, job_name)
+                gate_index = source.index("- name: Resolve release publication freeze")
+                semantic_index = source.index("- name: Semantic Release")
+                self.assertLess(gate_index, semantic_index)
+                semantic_step = source[semantic_index:]
+                self.assertIn(condition, semantic_step[: semantic_step.index("run: npx semantic-release")])
+
+    def test_the_source_guard_skips_only_on_an_explicit_frozen_verdict(self):
+        script = extract_run_block(DOMAIN_RELEASE, "Revalidate current source before Semantic Release")
+
+        frozen = run_block(
+            script,
+            {
+                "PUBLISH_ENABLED": "false",
+                "DISPATCH_SHA": "not-a-sha",
+                "SOURCE_BRANCH": "main",
+                "REPOSITORY": "Hexalith/Hexalith.EventStore",
+            },
+        )
+
+        self.assertEqual(0, frozen.returncode, frozen.stderr)
+        self.assertIn("Source revalidation skipped", frozen.stdout)
+
+    def test_an_absent_or_empty_gate_verdict_still_runs_the_source_guard(self):
+        script = extract_run_block(DOMAIN_RELEASE, "Revalidate current source before Semantic Release")
+
+        for verdict in (None, ""):
+            with self.subTest(verdict=verdict):
+                environment = {
+                    "DISPATCH_SHA": "not-a-sha",
+                    "SOURCE_BRANCH": "main",
+                    "REPOSITORY": "Hexalith/Hexalith.EventStore",
+                }
+                if verdict is not None:
+                    environment["PUBLISH_ENABLED"] = verdict
+                merged = os.environ.copy()
+                merged.update(environment)
+                merged.pop("PUBLISH_ENABLED", None) if verdict is None else None
+                result = subprocess.run(  # nosec B603  # NOSONAR -- repository-owned script.
+                    ["bash", "-c", script],
+                    env=merged,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("dispatched release source", result.stderr)
+
+
+class GovernedReleaseContractTests(unittest.TestCase):
+    """Governed mode must fail closed on any incomplete governed request."""
+
+    def test_a_complete_governed_request_is_accepted(self):
+        script = extract_run_block(DOMAIN_RELEASE, "Validate governed release contract")
+
+        result = run_block(script, governed_contract_environment())
+
+        self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_missing_signing_secrets_fail_closed_with_an_explicit_diagnostic(self):
+        script = extract_run_block(DOMAIN_RELEASE, "Validate governed release contract")
+
+        for absent in ("SIGNING_CERTIFICATE_PRESENT", "SIGNING_PASSWORD_PRESENT"):
+            with self.subTest(absent=absent):
+                result = run_block(script, governed_contract_environment(**{absent: "false"}))
+
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn("refusing to publish unsigned packages", result.stderr)
+
+        both_absent = run_block(
+            script,
+            governed_contract_environment(
+                SIGNING_CERTIFICATE_PRESENT="false",
+                SIGNING_PASSWORD_PRESENT="false",
+            ),
+        )
+
+        self.assertNotEqual(0, both_absent.returncode)
+        self.assertIn("NUGET_SIGNING_CERTIFICATE_BASE64", both_absent.stderr)
+        self.assertIn("NUGET_SIGNING_CERTIFICATE_PASSWORD", both_absent.stderr)
+
+    def test_malformed_governed_coordinates_are_rejected(self):
+        script = extract_run_block(DOMAIN_RELEASE, "Validate governed release contract")
+        scenarios = (
+            ({"RELEASE_COMMIT": ""}, "release-commit"),
+            ({"RELEASE_COMMIT": GOVERNED_CANDIDATE.upper()}, "release-commit"),
+            ({"CI_RUN_ID": "0"}, "ci-run-id"),
+            ({"CI_RUN_ATTEMPT": "one"}, "ci-run-attempt"),
+            ({"CI_HANDOFF_ARTIFACT": "   "}, "ci-handoff-artifact"),
+            ({"POLICY_REPOSITORY": "Hexalith/Hexalith.FrontComposer"}, "dependency-policy-repository"),
+            ({"POLICY_PATH": "/etc/policy.json"}, "dependency-policy-path"),
+            ({"POLICY_COMMIT": "abc"}, "dependency-policy-commit"),
+            ({"POLICY_SHA256": "a" * 63}, "dependency-policy-sha256"),
+            ({"EXPECTED_EVALUATOR_DIGEST": ""}, "expected-release-evaluator-digest"),
+            ({"CANDIDATE_COMMAND": ""}, "candidate-command"),
+            ({"CANDIDATE_DIRECTORY": "/tmp/candidate"}, "candidate-directory"),
+            ({"SIGNING_TIMESTAMPER": "timestamp.example.test"}, "nuget-signing-timestamper"),
+        )
+
+        for override, expected in scenarios:
+            with self.subTest(expected=expected):
+                result = run_block(script, governed_contract_environment(**override))
+
+                self.assertNotEqual(0, result.returncode)
+                self.assertIn(expected, result.stderr)
+
+    def test_governed_mode_consumes_only_the_release_commit(self):
+        source = job_slice(read(DOMAIN_RELEASE), "governed-release")
+
+        self.assertIn("ref: ${{ inputs.release-commit }}", source)
+        self.assertIn("HEXALITH_RELEASE_COMMIT: ${{ inputs.release-commit }}", source)
+        self.assertIn("candidate: ${{ inputs.release-commit }}", source)
+        self.assertNotIn("DISPATCH_SHA", source)
+
+        guard = extract_run_block(DOMAIN_RELEASE, "Revalidate governed release source before Semantic Release")
+        self.assertIn('"$checked_out_sha" != "$RELEASE_COMMIT"', guard)
+        self.assertIn('"$RELEASE_COMMIT" != "$live_source_sha"', guard)
+
+    def test_the_candidate_is_attested_before_any_publication_side_effect(self):
+        source = job_slice(read(DOMAIN_RELEASE), "governed-release")
+        candidate_index = source.index("- name: Prepare governed release candidate")
+        attest_index = source.index("- name: Attest governed release candidate")
+        verify_index = source.index("- name: Verify governed candidate attestation")
+        semantic_index = source.index("- name: Semantic Release")
+
+        self.assertLess(candidate_index, attest_index)
+        self.assertLess(attest_index, verify_index)
+        self.assertLess(verify_index, semantic_index)
+        self.assertIn("subject-path: ${{ inputs.candidate-directory }}/*.nupkg", source)
+        self.assertIn(
+            "HEXALITH_RELEASE_ATTESTATION_BUNDLE: ${{ steps.candidate-attestation.outputs.bundle-path }}",
+            source,
+        )
+
+    def test_a_missing_attestation_bundle_blocks_publication(self):
+        script = extract_run_block(DOMAIN_RELEASE, "Verify governed candidate attestation")
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            empty_bundle = Path(temporary_directory) / "empty.jsonl"
+            empty_bundle.touch()
+            for bundle in ("", str(empty_bundle)):
+                with self.subTest(bundle=bundle):
+                    result = run_block(script, {"ATTESTATION_BUNDLE": bundle}, cwd=temporary_directory)
+
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertIn("refusing to publish", result.stderr)
+
+    def test_verification_data_is_always_collected_with_closed_null_fields(self):
+        workflow = read(DOMAIN_RELEASE)
+        source = job_slice(workflow, "governed-release")
+        collect_index = source.index("- name: Collect governed release verification data")
+        self.assertIn("if: ${{ always() }}", source[collect_index: collect_index + 400])
+
+        script = extract_run_block(DOMAIN_RELEASE, "Collect governed release verification data")
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output_path = Path(temporary_directory) / "github-output"
+            output_path.touch()
+            result = run_block(
+                script,
+                {
+                    "GITHUB_OUTPUT": str(output_path),
+                    "RELEASE_REPOSITORY": "Hexalith/Hexalith.FrontComposer",
+                    "RELEASE_WORKFLOW_REF": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/heads/main",
+                    "RELEASE_RUN_ID": "77",
+                    "RELEASE_RUN_ATTEMPT": "1",
+                    "RELEASE_CONCLUSION": "failure",
+                    "RELEASE_COMMIT": GOVERNED_CANDIDATE,
+                    "CI_HANDOFF_ARTIFACT": "dependency-release-handoff",
+                    "CI_RUN_ID": "42",
+                    "CI_RUN_ATTEMPT": "1",
+                    "POLICY_REPOSITORY": "github.com/hexalith/hexalith.frontcomposer",
+                    "POLICY_PATH": "eng/dependency-graph-policy.json",
+                    "POLICY_COMMIT": GOVERNED_POLICY_COMMIT,
+                    "POLICY_SHA256": GOVERNED_SHA256,
+                    "EXPECTED_EVALUATOR_DIGEST": "b" * 64,
+                    "PUBLISH_ENABLED": "false",
+                    "RELEASE_REQUIRED": "",
+                    "RELEASE_VERSION": "",
+                    "CANDIDATE_INVENTORY": "",
+                    "ATTESTATION_BUNDLE": "",
+                    "ATTESTATION_ID": "",
+                    "WORKFLOW_PROVENANCE": "",
+                    "CLOSURE_DIGEST": "",
+                },
+                cwd=temporary_directory,
+            )
+
+            self.assertEqual(0, result.returncode, result.stderr)
+            document = json.loads(
+                (Path(temporary_directory) / ".hexalith/release/governed/release-verification-data.json")
+                .read_text(encoding="utf-8")
+            )
+
+        self.assertEqual("hexalith.builds-release-verification-data.v1", document["schema"])
+        self.assertEqual(GOVERNED_CANDIDATE, document["candidate"])
+        self.assertEqual(GOVERNED_POLICY_COMMIT, document["dependency_policy"]["commit"])
+        self.assertFalse(document["publication"]["published"])
+        self.assertIsNone(document["publication"]["version"])
+        self.assertIsNone(document["attestation"]["bundle_path"])
+        self.assertEqual([], document["assets"])
+        self.assertEqual("failure", document["release_run"]["conclusion"])
+
+    def test_governed_evidence_upload_never_omits_the_artifact(self):
+        source = job_slice(read(DOMAIN_RELEASE), "governed-release")
+        upload_index = source.index("- name: Upload governed release evidence")
+        upload_step = source[upload_index: upload_index + 600]
+
+        self.assertIn("if: ${{ always() }}", upload_step)
+        self.assertIn("if-no-files-found: error", upload_step)
+
+
+class GovernedOffParityTests(unittest.TestCase):
+    """A caller that leaves the governed inputs unset keeps the pre-BUILD-REL-1 contract."""
+
+    def test_the_two_release_jobs_are_mutually_exclusive(self):
+        workflow = read(DOMAIN_RELEASE)
+
+        self.assertIn("  release:\n", workflow)
+        self.assertIn("if: ${{ !inputs.governed-release }}", job_slice(workflow, "release"))
+        self.assertIn("if: ${{ inputs.governed-release }}", job_slice(workflow, "governed-release"))
+
+    def test_every_governed_input_defaults_to_the_legacy_behavior(self):
+        workflow = read(DOMAIN_RELEASE)
+        declarations = (
+            ("governed-release", "type: boolean", "default: false"),
+            ("candidate-command", "type: string", "default: ''"),
+            ("release-commit", "type: string", "default: ''"),
+            ("ci-run-id", "type: string", "default: ''"),
+            ("ci-run-attempt", "type: string", "default: ''"),
+            ("dependency-policy-repository", "type: string", "default: ''"),
+            ("dependency-policy-path", "type: string", "default: ''"),
+            ("dependency-policy-commit", "type: string", "default: ''"),
+            ("dependency-policy-sha256", "type: string", "default: ''"),
+            ("expected-release-evaluator-digest", "type: string", "default: ''"),
+        )
+
+        for name, declared_type, default in declarations:
+            with self.subTest(input=name):
+                start = workflow.index(f"\n      {name}:\n")
+                block = workflow[start: start + 700]
+                self.assertIn("required: false", block)
+                self.assertIn(declared_type, block)
+                self.assertIn(default, block)
+
+    def test_the_signing_secrets_are_optional_and_scoped_to_governed_steps(self):
+        workflow = read(DOMAIN_RELEASE)
+        legacy = job_slice(workflow, "release")
+        governed = job_slice(workflow, "governed-release")
+
+        self.assertIn(
+            "NUGET_SIGNING_CERTIFICATE_BASE64:\n"
+            "        description: 'Base64 PKCS#12 signing certificate used only by the governed candidate phase.'\n"
+            "        required: false",
+            workflow,
+        )
+        self.assertIn("NUGET_SIGNING_CERTIFICATE_PASSWORD:\n        description:", workflow)
+        self.assertNotIn("NUGET_SIGNING_CERTIFICATE", legacy)
+        self.assertIn(
+            "NUGET_SIGNING_CERTIFICATE_BASE64: ${{ secrets.NUGET_SIGNING_CERTIFICATE_BASE64 }}",
+            governed,
+        )
+        candidate_index = governed.index("- name: Prepare governed release candidate")
+        attest_index = governed.index("- name: Attest governed release candidate")
+        secret_uses = [
+            index
+            for index in range(len(governed))
+            if governed.startswith("secrets.NUGET_SIGNING_CERTIFICATE", index)
+        ]
+        # Presence probes in the contract gate plus the candidate phase only: no signing
+        # material reaches Semantic Release, the container publisher, or an artifact.
+        for index in secret_uses:
+            self.assertTrue(
+                index < governed.index("- name: Checkout exact governed release candidate")
+                or candidate_index < index < attest_index,
+                f"signing secret referenced outside the governed candidate phase at offset {index}",
+            )
+
+    def test_the_governed_job_mirrors_the_legacy_step_sequence(self):
+        workflow = read(DOMAIN_RELEASE)
+        pattern = re.compile(r"^      - name: (?P<name>.+)$", re.MULTILINE)
+        legacy = [match.group("name") for match in pattern.finditer(job_slice(workflow, "release"))]
+        governed = [match.group("name") for match in pattern.finditer(job_slice(workflow, "governed-release"))]
+        renamed = {
+            "Revalidate current source before Semantic Release":
+                "Revalidate governed release source before Semantic Release",
+        }
+        expected = [renamed.get(name, name) for name in legacy]
+
+        position = 0
+        for name in expected:
+            self.assertIn(name, governed[position:], f"governed job dropped the legacy step {name!r}")
+            position = governed.index(name, position) + 1
+
+    def test_only_the_governed_job_requests_attestation_permissions(self):
+        workflow = read(DOMAIN_RELEASE)
+        governed = job_slice(workflow, "governed-release")
+
+        self.assertEqual(1, workflow.count("id-token: write"))
+        self.assertEqual(1, workflow.count("attestations: write"))
+        self.assertIn("id-token: write", governed)
+        self.assertIn("attestations: write", governed)
+        self.assertNotIn("permissions:", job_slice(workflow, "release"))
+        workflow_permissions = workflow[workflow.index("\npermissions:\n"): workflow.index("\njobs:\n")]
+        self.assertNotIn("id-token", workflow_permissions)
+        self.assertNotIn("attestations", workflow_permissions)
+
+    def test_the_legacy_job_carries_no_governed_step(self):
+        legacy = job_slice(read(DOMAIN_RELEASE), "release")
+
+        for marker in (
+            "attest-build-provenance",
+            "governed-provenance",
+            "Prepare governed release candidate",
+            "release-commit",
+        ):
+            with self.subTest(marker=marker):
+                self.assertNotIn(marker, legacy)
+
+    def test_governed_ci_inputs_default_off_and_add_no_permission(self):
+        workflow = read(DOMAIN_CI)
+
+        self.assertIn("governed-ci:", workflow)
+        governed_ci = workflow[workflow.index("\n      governed-ci:\n"):]
+        self.assertIn("default: false", governed_ci[: governed_ci.index("\n      builds-execution-sha:")])
+        self.assertIn("permissions:\n  contents: read\n", workflow)
+        self.assertNotIn("id-token", workflow)
+        self.assertNotIn("attestations", workflow)
+        for step in (
+            "Validate governed CI contract",
+            "Checkout approved Builds actions",
+            "Evaluate governed workflow provenance",
+        ):
+            with self.subTest(step=step):
+                index = workflow.index(f"- name: {step}")
+                self.assertIn("if: ${{ inputs.governed-ci }}", workflow[index: index + 400])
+
+
+class ShellBlockSyntaxTests(unittest.TestCase):
+    """Every inline shell body must parse, including the ones a test cannot execute."""
+
+    def test_every_run_block_in_the_governed_workflows_parses(self):
+        pattern = re.compile(r"^      - name: (?P<name>.+)$", re.MULTILINE)
+        for path in (DOMAIN_RELEASE, DOMAIN_CI):
+            workflow = read(path)
+            seen = {}
+            for match in pattern.finditer(workflow):
+                name = match.group("name")
+                occurrence = seen.get(name, 0)
+                seen[name] = occurrence + 1
+                try:
+                    script = extract_run_block(path, name, occurrence)
+                except (AssertionError, StopIteration):
+                    continue
+                with self.subTest(workflow=path.name, step=name, occurrence=occurrence):
+                    result = subprocess.run(  # nosec B603  # NOSONAR -- repository-owned script.
+                        ["bash", "-n"],
+                        input=script,
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+
+                    self.assertEqual(0, result.returncode, result.stderr)
+
+    def test_the_candidate_phase_heredoc_terminates_at_column_zero(self):
+        # A YAML block scalar strips the common indent, so an indented heredoc terminator
+        # would leave the whole Python program inside the heredoc and silently do nothing.
+        for step in ("Prepare governed release candidate", "Collect governed release verification data"):
+            with self.subTest(step=step):
+                script = extract_run_block(DOMAIN_RELEASE, step)
+
+                self.assertIn("<<'PY'\n", script)
+                self.assertIn("\nPY\n", script)
+                self.assertNotIn("\n          PY\n", script)
+
+
+class GovernedIdentityAndPinningTests(unittest.TestCase):
+    """Governed paths must resolve only immutable, identity-proven sources."""
+
+    def test_every_governed_workflow_reference_is_literal_40_hex_or_local(self):
+        for path in (DOMAIN_RELEASE, DOMAIN_CI, DAPR_INIT):
+            for match in USES_PATTERN.finditer(read(path)):
+                value = match.group("value")
+                with self.subTest(path=path.name, uses=value):
+                    if value.startswith("./"):
+                        self.assertTrue(value.startswith("./.hexalith/builds-execution/"))
+                        continue
+                    self.assertRegex(value, PINNED_USES_PATTERN)
+
+    def test_domain_ci_no_longer_resolves_builds_composites_from_a_branch(self):
+        workflow = read(DOMAIN_CI)
+
+        self.assertNotIn("@main", workflow)
+        self.assertIn("Hexalith/Hexalith.Builds/Github/initialize-build@", workflow)
+        self.assertIn("Hexalith/Hexalith.Builds/Github/dapr-init@", workflow)
+
+    def test_governed_ci_proves_its_reusable_workflow_identity(self):
+        script = extract_run_block(DOMAIN_CI, "Validate governed CI contract")
+        builds_sha = "c" * 40
+        base = {
+            "BUILDS_EXECUTION_SHA": builds_sha,
+            "CANDIDATE_COMMIT": GOVERNED_CANDIDATE,
+            "EVENT_HEAD_SHA": GOVERNED_CANDIDATE,
+            "POLICY_REPOSITORY": "github.com/hexalith/hexalith.frontcomposer",
+            "POLICY_PATH": "eng/dependency-graph-policy.json",
+            "POLICY_COMMIT": GOVERNED_POLICY_COMMIT,
+            "POLICY_SHA256": GOVERNED_SHA256,
+            "EXPECTED_EVALUATOR_DIGEST": "b" * 64,
+            "RESOLVED_WORKFLOW_REPOSITORY": "Hexalith/Hexalith.Builds",
+            "RESOLVED_WORKFLOW_SHA": builds_sha,
+            "RESOLVED_WORKFLOW_REF":
+                "Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@refs/heads/main",
+        }
+
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            fake_bin = Path(temporary_directory) / "bin"
+            fake_bin.mkdir()
+            git = fake_bin / "git"
+            git.write_text(
+                "#!/usr/bin/env bash\nset -euo pipefail\nprintf '%s\\n' \"$FAKE_HEAD\"\n",
+                encoding="utf-8",
+            )
+            git.chmod(0o755)
+            path_prefix = {"PATH": f"{fake_bin}:{os.environ['PATH']}", "FAKE_HEAD": GOVERNED_CANDIDATE}
+
+            accepted = run_block(script, {**base, **path_prefix})
+            self.assertEqual(0, accepted.returncode, accepted.stderr)
+
+            scenarios = (
+                ({"RESOLVED_WORKFLOW_SHA": "d" * 40}, "does not match the approved builds-execution-sha"),
+                ({"RESOLVED_WORKFLOW_REPOSITORY": "attacker/Hexalith.Builds"}, "approved Hexalith.Builds repository"),
+                (
+                    {"RESOLVED_WORKFLOW_REF": "Hexalith/Hexalith.Builds/.github/workflows/other.yml@refs/heads/main"},
+                    "does not name Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml",
+                ),
+                ({"EVENT_HEAD_SHA": "e" * 40}, "must be the exact commit this CI run evaluates"),
+                ({"CANDIDATE_COMMIT": "not-a-sha"}, "candidate-commit"),
+                ({"BUILDS_EXECUTION_SHA": ""}, "builds-execution-sha"),
+            )
+            for override, expected in scenarios:
+                with self.subTest(expected=expected):
+                    rejected = run_block(script, {**base, **path_prefix, **override})
+
+                    self.assertNotEqual(0, rejected.returncode)
+                    self.assertIn(expected, rejected.stderr)
+
+    def test_governed_release_reuses_the_existing_builds_identity_gate(self):
+        governed = job_slice(read(DOMAIN_RELEASE), "governed-release")
+
+        self.assertIn("- name: Validate approved Builds execution identity", governed)
+        self.assertIn("RESOLVED_WORKFLOW_SHA: ${{ job.workflow_sha }}", governed)
+        self.assertIn("RESOLVED_WORKFLOW_REPOSITORY: ${{ job.workflow_repository }}", governed)
+        self.assertIn("uses: ./.hexalith/builds-execution/Github/governed-provenance", governed)
+        self.assertIn("workflow-path: .github/workflows/domain-release.yml", governed)
+
+    def test_governed_provenance_is_exposed_to_callers_as_workflow_outputs(self):
+        release = read(DOMAIN_RELEASE)
+        ci = read(DOMAIN_CI)
+
+        for name in (
+            "governed-candidate",
+            "governed-provenance-sha256",
+            "governed-closure-digest",
+            "governed-reusable-blob-sha256",
+        ):
+            with self.subTest(output=name):
+                self.assertIn(f"      {name}:\n", release)
+                self.assertIn(f"      {name}:\n", ci)
+        self.assertIn("governed-attestation-bundle:", release)
+        self.assertIn("governed-verification-data-path:", release)
+        self.assertIn("governed-provenance-json:", ci)
+
+
+if __name__ == "__main__":
+    unittest.main()
+----- END UNTRACKED: Github/publish-containers/tests/test_governed_release_workflow.py -----
+----- BEGIN UNTRACKED: Tools/test-governed-provenance.ps1 -----
+[CmdletBinding()]
+param()
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = 'Stop'
+
+$testDirectory = Join-Path $PSScriptRoot '../Github/governed-provenance/tests'
+& python3 -m unittest discover -s $testDirectory -p 'test_*.py' -v
+if ($LASTEXITCODE -ne 0) {
+    throw "Governed workflow provenance tests failed with exit code $LASTEXITCODE."
+}
+
+[Console]::Out.WriteLine('Governed workflow provenance tests passed.')
+----- END UNTRACKED: Tools/test-governed-provenance.ps1 -----
