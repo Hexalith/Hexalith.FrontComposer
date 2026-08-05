@@ -221,6 +221,21 @@ def phase_tests() -> None:
     results_root = REPO_ROOT / TEST_RESULTS_DIR
     if results_root.exists():
         shutil.rmtree(results_root)
+    # Prepare-candidate sets exact-source provenance in the job env. Governance tests that
+    # assert fail-closed prepare-manifest behavior must not inherit those values, or the
+    # unsigned-candidate contract exits 0 under Release while Quality (no provenance env) stays green.
+    test_env = {
+        "DiffEngine_Disabled": "true",
+        "DEPENDENCY_RELEASE_SOURCE_PROOF": "",
+        "DEPENDENCY_RELEASE_HANDOFF": "",
+        "RELEASE_EVALUATOR": "",
+        "HEXALITH_BUILDS_EXECUTION_SHA": "",
+        "RELEASE_ATTESTATION_STATUS": "",
+        "RELEASE_ATTESTATION_FALLBACK_APPROVER": "",
+        "RELEASE_ATTESTATION_FALLBACK_APPROVED_AT": "",
+        "RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT": "",
+        "RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256": "",
+    }
     for project in TEST_PROJECTS:
         name = pathlib.Path(project).stem
         run("tests", [
@@ -229,12 +244,12 @@ def phase_tests() -> None:
             "--filter", "Category!=Quarantined",
             "--results-directory", str(TEST_RESULTS_DIR / name),
             "--logger", f"trx;LogFileName={name}.trx",
-        ], env={"DiffEngine_Disabled": "true"})
+        ], env=test_env)
     run("tests", [
         "python3", "eng/release_evidence.py", "test-results",
         "--results-dir", str(TEST_RESULTS_DIR),
         "--output", str(EVIDENCE_DIR / "test-results.json"),
-    ])
+    ], env=test_env)
 
 
 def phase_consumer_validation() -> None:
