@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  BUILDS_EXECUTION_SHA: a53166539bf4441d5e33d04281b14c2d59e950c3
+  BUILDS_EXECUTION_SHA: bd94f7fe7471ec73974e9629a70a4a731f7d1540
   EXPECTED_PACKAGE_COUNT: '8'
 
 jobs:
@@ -206,7 +206,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: Hexalith/Hexalith.Builds
-          ref: a53166539bf4441d5e33d04281b14c2d59e950c3
+          ref: bd94f7fe7471ec73974e9629a70a4a731f7d1540
           path: .hexalith/builds-execution
           persist-credentials: false
       - name: Initialize root-declared dependencies
@@ -244,7 +244,7 @@ jobs:
       - name: Prepare and seal the pack-once candidate
         env:
           DEPENDENCY_RELEASE_SOURCE_PROOF: artifacts/release-source/dependency-release-source.json
-          HEXALITH_BUILDS_EXECUTION_SHA: a53166539bf4441d5e33d04281b14c2d59e950c3
+          HEXALITH_BUILDS_EXECUTION_SHA: bd94f7fe7471ec73974e9629a70a4a731f7d1540
           RELEASE_ATTESTATION_STATUS: ${{ vars.RELEASE_ATTESTATION_STATUS || 'approved-unsupported' }}
           RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER }}
           RELEASE_ATTESTATION_FALLBACK_APPROVED_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVED_AT }}
@@ -274,7 +274,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@a53166539bf4441d5e33d04281b14c2d59e950c3
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@bd94f7fe7471ec73974e9629a70a4a731f7d1540
     with:
       solution: Hexalith.FrontComposer.slnx
       test-projects: ''
@@ -282,7 +282,7 @@ jobs:
       environment-name: production
       publish-containers: false
       container-projects: ''
-      builds-execution-sha: a53166539bf4441d5e33d04281b14c2d59e950c3
+      builds-execution-sha: bd94f7fe7471ec73974e9629a70a4a731f7d1540
       source-branch: main
       source-ci-workflow: ci.yml
       package-manifest: tools/release-packages.json

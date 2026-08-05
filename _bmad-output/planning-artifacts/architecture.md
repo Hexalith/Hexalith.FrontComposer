@@ -226,7 +226,7 @@ The production preparation job recomputes the live graph, requires the candidate
 the approved Builds execution commit, and emits `hexalith.release-evidence.v3`. V3 provenance binds the
 raw CI source-proof hash, exact Release caller workflow bytes at the candidate, exact reusable
 `domain-release.yml` bytes at the Builds commit, and the identical `builds-execution-sha`. The approved
-Builds identity is `a53166539bf4441d5e33d04281b14c2d59e950c3`; the reusable workflow call and input
+Builds identity is `bd94f7fe7471ec73974e9629a70a4a731f7d1540`; the reusable workflow call and input
 must remain identical literal 40-hex coordinates.
 
 The pack-once prepared candidate is sealed to the Release run ID/attempt and uploaded only after

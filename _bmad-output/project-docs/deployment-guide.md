@@ -1,7 +1,9 @@
 # Hexalith.FrontComposer — Deployment / Release Guide
 
-> Updated 2026-08-04 for the operator-controlled, exact-source production release model.
+> Updated 2026-08-05 for the operator-controlled, exact-source production release model.
 > FrontComposer ships NuGet packages, not a deployed service or container image.
+> Approved Builds execution identity is the current `references/Hexalith.Builds` gitlink
+> (`bd94f7fe7471ec73974e9629a70a4a731f7d1540`, BUILD-REL-1).
 
 ## Published package set
 
@@ -38,7 +40,7 @@ advances, the operator must wait for successful push CI on the new tip and dispa
 
 Release concurrency is the repository-wide `release-production` group with cancellation disabled. The
 protected jobs use the `production` environment. The reusable publisher is selected at the exact
-Hexalith.Builds commit `a53166539bf4441d5e33d04281b14c2d59e950c3`; the identical value is passed as
+Hexalith.Builds commit `bd94f7fe7471ec73974e9629a70a4a731f7d1540`; the identical value is passed as
 `builds-execution-sha`. The candidate's `references/Hexalith.Builds` gitlink must also resolve to that
 identity. Mutable workflow references are not accepted at the release boundary.
 
@@ -99,6 +101,7 @@ controls before a real dispatch:
 | Name | Kind | Requirement |
 |---|---|---|
 | `production` | GitHub environment | required reviewers/protection policy; secrets are unavailable before approval |
+| `HEXALITH_RELEASE_PUBLISH_ENABLED` | repository variable | must be exactly `true` or the pinned Builds publisher freezes Semantic Release and concludes successfully without packages |
 | `NUGET_API_KEY` | production/repository secret | forwarded only to the protected shared publisher |
 | `RELEASE_ATTESTATION_STATUS` | production/repository variable | `attested` or the approved `approved-unsupported` contingency |
 | `RELEASE_ATTESTATION_FALLBACK_APPROVER` | production/repository variable | required for the bounded unsupported-attestation contingency |

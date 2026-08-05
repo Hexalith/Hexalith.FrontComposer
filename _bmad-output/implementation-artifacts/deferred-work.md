@@ -2075,3 +2075,13 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-30999257504-fix-cicd.md`
   summary: EventStore `_bmad-output` evidence trees still contain paths longer than Windows MAX_PATH, so any full Windows submodule checkout of the pinned EventStore revision remains unsafe.
   evidence: Quality run 30999257333 failed checking out Hexalith.EventStore at bb94d93e with Filename too long under evidence/story-3-13 nested SHA directories; FrontComposer only scoped the a11y job away from those paths.
+
+## Deferred from: approve Builds execution SHA to current gitlink (2026-08-05)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-approve-builds-execution-sha-to-gitlink.md`
+  summary: Release contract and CiGovernanceTests still omit prepare-candidate checkout/env pins and the release-evidence Builds checkout from the equality gate, so those sites can drift after a re-pin.
+  evidence: Blind-hunter review of this one-shot; `eng/release_contract.py validate_builds_identity` only checks `uses:@`, `builds-execution-sha`, and gitlink; `CiGovernanceTests.ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` still lacks the gitlink third leg (also noted in earlier deferred-work).
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-approve-builds-execution-sha-to-gitlink.md`
+  summary: Historical done specs still cite the superseded Builds pin `a5316653…` and are not rewritten when the approved execution SHA advances.
+  evidence: Blind-hunter review; `spec-align-production-release-with-tenants.md` Always rules and `spec-build-rel-1-governed-nuget-release-contract.md` still mention `a5316653…`. Reopen only if those become active operator instructions again.
