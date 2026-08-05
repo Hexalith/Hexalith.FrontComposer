@@ -581,9 +581,13 @@ public sealed class CiGovernanceTests {
 
         // The reusable workflow requires actions: read to validate the successful exact-source CI
         // run. Assert it on the release job itself: a workflow-level or sibling-job occurrence
-        // cannot satisfy reusable-workflow permission validation.
+        // cannot satisfy reusable-workflow permission validation. BUILD-REL-1 also declares a
+        // governed-release job with id-token/attestations; GitHub checks those scopes statically
+        // against the caller even when FrontComposer leaves governed-release unset.
         string releasePermissions = ExtractJobPermissionsBlock(workflow, "release");
         releasePermissions.ShouldMatch(@"(?m)^      actions: read\r?$");
+        releasePermissions.ShouldMatch(@"(?m)^      attestations: write\r?$");
+        releasePermissions.ShouldMatch(@"(?m)^      id-token: write\r?$");
         workflow.ShouldContain("solution: Hexalith.FrontComposer.slnx");
         workflow.ShouldContain("test-projects: ''");
         workflow.ShouldContain("environment-name: production");

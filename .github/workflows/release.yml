@@ -269,9 +269,15 @@ jobs:
   release:
     needs: [plan-release, prepare-candidate]
     if: needs.plan-release.outputs.release-required == 'true' && needs.prepare-candidate.result == 'success'
+    # BUILD-REL-1 domain-release.yml declares a sibling governed-release job with
+    # id-token/attestations. GitHub validates reusable-workflow permissions against
+    # every callee job statically, so the caller must grant those scopes even while
+    # FrontComposer stays on the legacy path (governed-release left unset/false).
     permissions:
       actions: read
+      attestations: write
       contents: write
+      id-token: write
       issues: write
       pull-requests: write
     uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@bd94f7fe7471ec73974e9629a70a4a731f7d1540
