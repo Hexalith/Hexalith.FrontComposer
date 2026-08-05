@@ -247,9 +247,12 @@ _This file contains critical rules and patterns that AI agents must follow when 
   enters the protected production environment, and invokes `domain-release.yml` at the approved literal
   Builds commit `ce0d55c6b36aabf9edf2ac756cd350b8d47a9974` with the identical execution input.
   Every Builds re-pin must move in lockstep: `references/Hexalith.Builds` gitlink,
+  `eng/dependency-graph-policy.json` selected-catalog properties for that Builds catalog,
   `release.yml` `env.BUILDS_EXECUTION_SHA` / prepare-candidate checkout `ref` /
   `HEXALITH_BUILDS_EXECUTION_SHA` / `uses:@` / `builds-execution-sha`, and the
-  `release-evidence.yml` Builds checkout `ref`.
+  `release-evidence.yml` Builds checkout `ref`. Push CI loads the active graph policy from
+  the previous tip (`event-base`); a gitlink-only bump leaves that base fail-closed until a
+  successor tip can use the repaired policy as event-base.
 - **Benchmarks** live ONLY in the separate `Shell.Tests.Bench` exe under
   `[Trait("Category","Performance")]`; use `FakeTimeProvider` for deterministic timer-driven tests
 - **e2e (a11y/visual):** Playwright workspace in `tests/e2e` (`nvm use` or Node `>=24` →
