@@ -683,5 +683,51 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         self.assertIn("cannot be sealed", reseal.stdout)
 
 
+class BuildsExecutionInventoryExclusionTests(unittest.TestCase):
+    """Release prepare-candidate checks Builds out under `.hexalith/builds-execution`."""
+
+    def test_hexalith_builds_checkout_packable_tools_are_not_unexpected(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            project = (
+                root
+                / ".hexalith"
+                / "builds-execution"
+                / "src"
+                / "libraries"
+                / "Hexalith.Builds.Evidence.Cli"
+                / "Hexalith.Builds.Evidence.Cli.csproj"
+            )
+            project.parent.mkdir(parents=True)
+            project.write_text(
+                "<Project Sdk=\"Microsoft.NET.Sdk\">\n"
+                "  <PropertyGroup>\n"
+                "    <IsPackable>true</IsPackable>\n"
+                "    <PackageId>Hexalith.Builds.Evidence.Cli</PackageId>\n"
+                "  </PropertyGroup>\n"
+                "</Project>\n",
+                encoding="utf-8",
+            )
+            unexpected = HELPER.discover_unexpected_packable_outside_src(root)
+            self.assertEqual([], unexpected)
+
+    def test_sibling_packable_outside_src_still_fails_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            project = root / "extras" / "Rogue.csproj"
+            project.parent.mkdir(parents=True)
+            project.write_text(
+                "<Project Sdk=\"Microsoft.NET.Sdk\">\n"
+                "  <PropertyGroup>\n"
+                "    <IsPackable>true</IsPackable>\n"
+                "    <PackageId>Rogue</PackageId>\n"
+                "  </PropertyGroup>\n"
+                "</Project>\n",
+                encoding="utf-8",
+            )
+            unexpected = HELPER.discover_unexpected_packable_outside_src(root)
+            self.assertEqual([project.resolve()], [path.resolve() for path in unexpected])
+
+
 if __name__ == "__main__":
     unittest.main()

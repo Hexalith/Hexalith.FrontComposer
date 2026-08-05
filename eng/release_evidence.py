@@ -1060,6 +1060,11 @@ _INVENTORY_FIRST_COMPONENT_DENYLIST = {
     "artifacts",    # generated docs snippets etc.
     "release-evidence",
     "nupkgs",
+    # Ephemeral Hexalith.Builds checkout used by Release prepare-candidate /
+    # domain-release (`.hexalith/builds-execution`). Not a FrontComposer package
+    # surface; Builds ships its own packable tool projects (Evidence.Cli /
+    # Module.Cli). Submodule roots under references/ are excluded separately.
+    ".hexalith",
 }
 _INVENTORY_ANY_COMPONENT_DENYLIST = {
     "bin",
