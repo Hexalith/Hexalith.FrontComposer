@@ -30,7 +30,7 @@ pwsh ./eng/run-lifecycle-property-suite.ps1 -MaxTest 1000 -Replay "15485863,3245
 
 Omit `-Replay` for a random nightly-style seed. The script writes the actual seed and replay command to `artifacts/property/property-seed-summary.md`, plus structured max-size, sequence-count, operation-distribution, shrink-policy, and replay-command evidence to `artifacts/property/property-run-evidence.json`.
 
-Run Stryker segments from the SourceTools test project:
+Both segment configs are project-scoped: they pin `project`/`test-projects` to the SourceTools graph and build under `Release`, with no umbrella `Hexalith.FrontComposer.slnx` Stryker build (so Stryker's initial build never touches submodule UI projects such as `references/Hexalith.Tenants`). Run Stryker segments from the SourceTools test project:
 
 ```bash no-compile reason="mutation run is long-running and environment-specific"
 dotnet tool run dotnet-stryker --config-file tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json --output artifacts/mutation/happy-path

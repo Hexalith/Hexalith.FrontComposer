@@ -1972,6 +1972,147 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void SourceToolsMutationConfigs_AreProjectScopedAndReleaseBuilt() {
+        // spec-actions-30978026706-fix-source-tools-mutation: Stryker's initial build must
+        // target the SourceTools project graph only (Release), never the umbrella .slnx, so
+        // it cannot hit submodule UI project file locks (e.g. references/Hexalith.Tenants).
+        string root = RepositoryRoot();
+        foreach (string configPath in new[] {
+            "tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json",
+            "tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-error-handling.json",
+        }) {
+            using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(Path.Combine(root, configPath)));
+            JsonElement strykerConfig = doc.RootElement.GetProperty("stryker-config");
+            strykerConfig.TryGetProperty("solution", out _).ShouldBeFalse(
+                $"{configPath} must stay project-scoped (no umbrella '.slnx' Stryker build).");
+            strykerConfig.GetProperty("configuration").GetString().ShouldBe("Release");
+            strykerConfig.GetProperty("project").GetString().ShouldBe(
+                "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj");
+            JsonElement testProjects = strykerConfig.GetProperty("test-projects");
+            testProjects.EnumerateArray().Select(element => element.GetString()).ShouldContain(
+                "tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj");
+        }
+    }
+
+    [Fact]
+    public void ValidateStrykerReportsScript_RejectsReintroducedSolutionAndMissingConfiguration() {
+        // Behavioral replacement for a brittle `ShouldNotContain("\"solution\"")` script-text
+        // check: the script legitimately contains the word "solution" now (in the forbid-solution
+        // Add-Failure message), so assert the actual validation outcome instead of raw script text.
+        string root = RepositoryRoot();
+        string workDir = Path.Combine(root, $"artifacts/mutation-governance-config-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(workDir);
+
+        try {
+            string mutatedConfigPath = Path.Combine(workDir, "stryker-happy-path-regressed.json");
+            using (JsonDocument original = JsonDocument.Parse(File.ReadAllText(
+                Path.Combine(root, "tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json")))) {
+                Dictionary<string, object?> strykerConfig = original.RootElement.GetProperty("stryker-config")
+                    .EnumerateObject()
+                    .Where(property => property.Name != "configuration")
+                    .ToDictionary(property => property.Name, property => (object?) JsonSerializer.Deserialize<JsonElement>(property.Value.GetRawText()));
+                strykerConfig["solution"] = "Hexalith.FrontComposer.slnx";
+                File.WriteAllText(mutatedConfigPath, JsonSerializer.Serialize(new Dictionary<string, object?> {
+                    ["stryker-config"] = strykerConfig,
+                }));
+            }
+
+            string manifestPath = Path.Combine(workDir, "manifest.json");
+            File.WriteAllText(manifestPath, JsonSerializer.Serialize(new Dictionary<string, object?> {
+                ["schemaVersion"] = "1.0",
+                ["ownerStory"] = "governance-fixture",
+                ["approvedTargetRoots"] = new[] {
+                    "src/Hexalith.FrontComposer.SourceTools/Parsing",
+                    "src/Hexalith.FrontComposer.SourceTools/Transforms",
+                },
+                ["segments"] = new[] {
+                    new Dictionary<string, object?> {
+                        ["name"] = "happy-path",
+                        ["config"] = Path.GetRelativePath(root, mutatedConfigPath).Replace('\\', '/'),
+                        ["threshold"] = 80,
+                        ["artifactPrefix"] = "source-tools-happy-path",
+                        ["minimumMutantCount"] = 1,
+                    },
+                },
+                ["explicitExclusions"] = Array.Empty<object>(),
+                ["triageActions"] = new[] { "kill-test-added", "equivalent-accepted", "deferred-with-owner", "blocking" },
+                ["problemMutantTriage"] = Array.Empty<object>(),
+            }));
+
+            ProcessResult result = RunPwsh(root, [
+                "-NoProfile",
+                "-NonInteractive",
+                "-File", "eng/validate-stryker-reports.ps1",
+                "-ManifestPath", Path.GetRelativePath(root, manifestPath).Replace('\\', '/'),
+                "-ReportRoot", Path.GetRelativePath(root, workDir).Replace('\\', '/') + "/reports",
+                "-OutputPath", Path.GetRelativePath(root, workDir).Replace('\\', '/') + "/job-summary.md",
+                "-AllowMissingReports",
+            ]);
+
+            result.ExitCode.ShouldNotBe(0);
+            string combined = Regex.Replace(result.Output + result.Error, @"\s+", " ");
+            combined.ShouldContain("is missing 'configuration'");
+            combined.ShouldContain("must not set 'solution'");
+        }
+        finally {
+            if (Directory.Exists(workDir)) {
+                Directory.Delete(workDir, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public void ValidateStrykerReportsScript_SkipsTargetDriftWhenAReportIsMissing() {
+        string root = RepositoryRoot();
+        string reportRoot = $"artifacts/mutation-governance-{Guid.NewGuid():N}";
+        string reportRootFullPath = Path.Combine(root, reportRoot);
+        Directory.CreateDirectory(Path.Combine(reportRootFullPath, "happy-path"));
+
+        // Only the happy-path segment report is present; error-handling is deliberately missing
+        // so validation must fail on the missing report without fabricating target drift for
+        // every approved Parsing/Transforms file.
+        File.WriteAllText(
+            Path.Combine(reportRootFullPath, "happy-path", "source-tools-happy-path.json"),
+            """
+            {
+              "schemaVersion": "1.0",
+              "thresholds": { "high": 80, "low": 80 },
+              "files": {
+                "src/Hexalith.FrontComposer.SourceTools/Parsing/GovernanceFixture.cs": {
+                  "language": "cs",
+                  "mutants": [
+                    { "id": "1", "mutatorName": "EqualityMutator", "status": "Killed", "location": {} }
+                  ]
+                }
+              }
+            }
+            """);
+
+        try {
+            ProcessResult result = RunPwsh(root, [
+                "-NoProfile",
+                "-NonInteractive",
+                "-File", "eng/validate-stryker-reports.ps1",
+                "-ReportRoot", reportRoot,
+                "-OutputPath", $"{reportRoot}/job-summary.md",
+            ]);
+
+            result.ExitCode.ShouldNotBe(0);
+            // PowerShell wraps long error lines to the host width, so match the message in
+            // pieces rather than as one contiguous substring.
+            string combined = Regex.Replace(result.Output + result.Error, @"\s+", " ");
+            combined.ShouldContain("Missing JSON mutation report for segment");
+            combined.ShouldContain("'error-handling'");
+            combined.ShouldNotContain("Target drift:");
+        }
+        finally {
+            if (Directory.Exists(reportRootFullPath)) {
+                Directory.Delete(reportRootFullPath, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
     public void GovernanceScript_ClassifiesFlakeEvidenceFromFixtures() {
         string root = RepositoryRoot();
         string output = Path.Combine(Path.GetTempPath(), $"fc-flake-{Guid.NewGuid():N}.json");
@@ -2347,6 +2488,9 @@ public sealed class CiGovernanceTests {
         string executable = OperatingSystem.IsWindows() ? "python" : "python3";
         return RunProcess(root, executable, arguments, environment);
     }
+
+    private static ProcessResult RunPwsh(string root, IReadOnlyList<string> arguments, IReadOnlyDictionary<string, string>? environment = null) =>
+        RunProcess(root, "pwsh", arguments, environment);
 
     private static ProcessResult RunProcess(string root, string executable, IReadOnlyList<string> arguments, IReadOnlyDictionary<string, string>? environment = null) {
         ProcessStartInfo startInfo = new(executable) {

@@ -12,6 +12,19 @@ $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $ManifestFullPath = Join-Path $RepoRoot $ManifestPath
 $ReportRootFullPath = Join-Path $RepoRoot $ReportRoot
 $OutputFullPath = Join-Path $RepoRoot $OutputPath
+$DotnetToolsManifestPath = Join-Path $RepoRoot ".config/dotnet-tools.json"
+$StrykerToolVersion = "unknown"
+if (Test-Path -LiteralPath $DotnetToolsManifestPath) {
+  try {
+    $resolvedVersion = (Get-Content -LiteralPath $DotnetToolsManifestPath -Raw | ConvertFrom-Json -Depth 100).tools.'dotnet-stryker'.version
+    if (![string]::IsNullOrWhiteSpace([string] $resolvedVersion)) {
+      $StrykerToolVersion = [string] $resolvedVersion
+    }
+  }
+  catch {
+    $StrykerToolVersion = "unknown"
+  }
+}
 $errors = New-Object System.Collections.Generic.List[string]
 $summaryLines = New-Object System.Collections.Generic.List[string]
 
@@ -31,6 +44,17 @@ function ConvertTo-RepoPath([string] $Path) {
 
 function Read-Json([string] $Path) {
   Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json -Depth 100
+}
+
+function Get-PSObjectPropertyValue($Object, [string] $Name) {
+  # Set-StrictMode -Version Latest throws on direct dot-access to a property that
+  # does not exist on a PSCustomObject; this looks the property up defensively so a
+  # genuinely missing/malformed JSON field is reported as a validation failure
+  # instead of crashing the script.
+  if ($null -eq $Object) { return $null }
+  $property = $Object.PSObject.Properties[$Name]
+  if ($null -eq $property) { return $null }
+  return $property.Value
 }
 
 function Normalize-ArtifactText([string] $Text) {
@@ -167,25 +191,33 @@ foreach ($segment in $segments) {
   $configPath = Join-Path $RepoRoot ([string] $segment.config)
   if (!(Test-Path -LiteralPath $configPath)) {
     Add-Failure "Missing Stryker config for segment '$($segment.name)': $($segment.config)"
+    $hasAllRequiredReports = $false
     continue
   }
 
   $combinedConfigText += "`n" + (Get-Content -LiteralPath $configPath -Raw)
   $config = Read-Json $configPath
-  $projectDirectory = (Split-Path -Parent ([string] $config."stryker-config".project)).Replace('\', '/')
-  foreach ($field in @("solution", "project", "reporters", "coverage-analysis", "thresholds", "mutate")) {
-    if ($null -eq $config."stryker-config".$field) {
+  $strykerConfigSection = Get-PSObjectPropertyValue $config "stryker-config"
+  $projectDirectory = (Split-Path -Parent ([string] (Get-PSObjectPropertyValue $strykerConfigSection "project"))).Replace('\', '/')
+  foreach ($field in @("project", "configuration", "reporters", "coverage-analysis", "thresholds", "mutate")) {
+    if ($null -eq (Get-PSObjectPropertyValue $strykerConfigSection $field)) {
       Add-Failure "Stryker config '$($segment.config)' is missing '$field'."
     }
   }
 
+  if ($null -ne (Get-PSObjectPropertyValue $strykerConfigSection "solution")) {
+    Add-Failure "Stryker config '$($segment.config)' must not set 'solution' — mutation is project-scoped and must not build the umbrella .slnx."
+  }
+
+  $configuredReporters = @(Get-PSObjectPropertyValue $strykerConfigSection "reporters")
   foreach ($reporter in @("progress", "html", "json")) {
-    if (@($config."stryker-config".reporters) -notcontains $reporter) {
+    if ($configuredReporters -notcontains $reporter) {
       Add-Failure "Stryker segment '$($segment.name)' does not include reporter '$reporter'."
     }
   }
 
-  if ([int] $config."stryker-config".thresholds.break -lt [int] $segment.threshold) {
+  $breakThreshold = Get-PSObjectPropertyValue (Get-PSObjectPropertyValue $strykerConfigSection "thresholds") "break"
+  if ($null -eq $breakThreshold -or [int] $breakThreshold -lt [int] $segment.threshold) {
     Add-Failure "Stryker segment '$($segment.name)' break threshold is below manifest threshold $($segment.threshold)."
   }
 
@@ -202,6 +234,7 @@ foreach ($segment in $segments) {
     }
 
     Add-Failure "Missing JSON mutation report for segment '$($segment.name)' under $ReportRoot."
+    $hasAllRequiredReports = $false
     continue
   }
 
@@ -217,6 +250,7 @@ foreach ($segment in $segments) {
   }
   catch {
     Add-Failure "Mutation report '$($jsonReport.Name)' is malformed JSON: $($_.Exception.Message)"
+    $hasAllRequiredReports = $false
     continue
   }
 
@@ -310,7 +344,7 @@ if ($hasAllRequiredReports) {
 $summary = @(
   "## Mutation Evidence",
   "",
-  "- Stryker tool: dotnet-stryker 4.14.1 via .config/dotnet-tools.json",
+  "- Stryker tool: dotnet-stryker $StrykerToolVersion via .config/dotnet-tools.json",
   "- Target manifest: $ManifestPath",
   "- Approved roots: $($approvedRoots -join ', ')",
   "- Target file count: $($allTargetFiles.Count)",
