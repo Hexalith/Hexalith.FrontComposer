@@ -245,7 +245,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
   the run/attempt, active base policy, and candidate graph; it does not fabricate an immutable closure
   for the shared CI workflow. Operator Release authenticates that proof for the exact current main SHA,
   enters the protected production environment, and invokes `domain-release.yml` at the approved literal
-  Builds commit `ce0d55c6b36aabf9edf2ac756cd350b8d47a9974` with the identical execution input.
+  Builds commit `3ac633386faa2dc4c785bc1ffa06487974906d79` with the identical execution input.
   Every Builds re-pin must move in lockstep: `references/Hexalith.Builds` gitlink,
   `eng/dependency-graph-policy.json` selected-catalog properties for that Builds catalog,
   `release.yml` `env.BUILDS_EXECUTION_SHA` / prepare-candidate checkout `ref` /
