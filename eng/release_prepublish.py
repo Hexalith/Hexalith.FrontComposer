@@ -224,13 +224,15 @@ def phase_tests() -> None:
     # Prepare-candidate sets exact-source provenance in the job env. Governance tests that
     # assert fail-closed prepare-manifest behavior must not inherit those values, or the
     # unsigned-candidate contract exits 0 under Release while Quality (no provenance env) stays green.
+    # Keep RELEASE_ATTESTATION_STATUS at the Quality/default value: scrubbing it to "" makes
+    # classify-release skip the approved-unsupported fallback branch and hides AC18 reasons.
     test_env = {
         "DiffEngine_Disabled": "true",
         "DEPENDENCY_RELEASE_SOURCE_PROOF": "",
         "DEPENDENCY_RELEASE_HANDOFF": "",
         "RELEASE_EVALUATOR": "",
         "HEXALITH_BUILDS_EXECUTION_SHA": "",
-        "RELEASE_ATTESTATION_STATUS": "",
+        "RELEASE_ATTESTATION_STATUS": "approved-unsupported",
         "RELEASE_ATTESTATION_FALLBACK_APPROVER": "",
         "RELEASE_ATTESTATION_FALLBACK_APPROVED_AT": "",
         "RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT": "",
