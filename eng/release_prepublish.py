@@ -236,7 +236,6 @@ def phase_tests() -> None:
         "RELEASE_ATTESTATION_FALLBACK_APPROVER": "",
         "RELEASE_ATTESTATION_FALLBACK_APPROVED_AT": "",
         "RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT": "",
-        "RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256": "",
     }
     for project in TEST_PROJECTS:
         name = pathlib.Path(project).stem

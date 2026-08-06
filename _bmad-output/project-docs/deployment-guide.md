@@ -107,7 +107,6 @@ controls before a real dispatch:
 | `RELEASE_ATTESTATION_FALLBACK_APPROVER` | production/repository variable | required for the bounded unsupported-attestation contingency |
 | `RELEASE_ATTESTATION_FALLBACK_APPROVED_AT` | production/repository variable | UTC approval timestamp |
 | `RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT` | production/repository variable | UTC expiry timestamp |
-| `RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256` | production/repository variable | exact current fallback digest |
 
 Immutable GitHub Releases must be enabled for the repository. FrontComposer does not require or consume
 an author-signing certificate, certificate password, or timestamp service. NuGet.org adds its repository

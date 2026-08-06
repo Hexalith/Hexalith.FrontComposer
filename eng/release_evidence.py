@@ -27,7 +27,10 @@ from typing import Any
 # `manifest_diagnostics` compares both at verify time so a helper-bytes change without
 # a `__version__` bump produces a `release-definition drift` signal.
 # 4.0.0: unsigned-author candidates with post-publication NuGet.org repository verification.
-__version__ = "4.0.0"
+# 4.1.0: unsupported-attestation fallback binds the live definition digest at classify time
+# so operators are not forced to re-paste RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256
+# after every release-definition edit; protected production approval remains the gate.
+__version__ = "4.1.0"
 
 # CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
 # non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
@@ -237,7 +240,7 @@ APPROVAL_MATRIX = [
             "vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256",
             "fallback_record",
         ],
-        "evidence": "attestation-unavailable.md plus sealed fallback_record (affected_artifact, approved_at, approver, evidence, expires_at, reason, release_note_impact, reopen_event, scope, approved_against_fingerprints_sha256)",
+        "evidence": "attestation-unavailable.md plus sealed fallback_record (affected_artifact, approved_at, approver, evidence, expires_at, reason, release_note_impact, reopen_event, scope, live approved_against_fingerprints_sha256)",
         "effect": "fallback",
         "fallback_action": None,
     },
@@ -2198,6 +2201,26 @@ def fallback_invalidation_fingerprints(root: pathlib.Path) -> dict[str, str]:
     return fingerprints
 
 
+def fallback_v2_digest(
+    fingerprints: dict[str, str],
+    *,
+    package_set: str,
+    dependency_graph_digest: str,
+    dependency_policy_sha256: str,
+    workflow_definition_digest: str,
+) -> str:
+    """Canonical digest recorded for an unsupported-attestation fallback approval."""
+    return canonical_sha256(
+        {
+            "definition": fingerprints,
+            "package_set": package_set,
+            "dependency_graph": dependency_graph_digest,
+            "dependency_policy": dependency_policy_sha256,
+            "workflow_definition": workflow_definition_digest,
+        }
+    )
+
+
 def fallback_complete(
     fallback: dict[str, Any],
     fingerprints: dict[str, str] | None = None,
@@ -2371,7 +2394,14 @@ def evidence_section(evidence: dict[str, Any], name: str, diagnostics: list[str]
     return {}
 
 
-def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, verify_drift: bool = True, evidence_root: pathlib.Path | None = None) -> dict[str, Any]:
+def classify_release_payload(
+    evidence: dict[str, Any],
+    root: pathlib.Path,
+    *,
+    verify_drift: bool = True,
+    evidence_root: pathlib.Path | None = None,
+    bind_live_fallback_digest: bool = False,
+) -> dict[str, Any]:
     section_diagnostics: list[str] = []
     # CR-12-4-P235 (round-10, EC-2): guard against non-dict top-level evidence. P223
     # guarded only the `manifest` sub-section; an evidence file with `[]`, `null`, or
@@ -2606,6 +2636,42 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
             # CR-12-4-P120 (round-6): bind the current package-set fingerprint so the
             # fallback is invalidated by inventory drift per AC34/D19.
             current_package_set = manifest.get("package_set_fingerprint") if isinstance(manifest, dict) else None
+            dependency_graph_digest = (
+                manifest.get("dependency_graph", {}).get("graph_digest")
+                if isinstance(manifest.get("dependency_graph"), dict)
+                else None
+            )
+            dependency_policy_sha256 = (
+                manifest.get("dependency_policy", {}).get("sha256")
+                if isinstance(manifest.get("dependency_policy"), dict)
+                else None
+            )
+            workflow_definition_digest = (
+                manifest.get("workflow_provenance", {}).get("definition_digest")
+                if isinstance(manifest.get("workflow_provenance"), dict)
+                else None
+            )
+            # Production classify binds the live digest so a protected-environment
+            # contingency approval (approver + expiry) is not invalidated by every
+            # release-definition file edit. Fixture classification keeps the stored
+            # digest so malformed/drift cases stay fail-closed in tests.
+            if (
+                bind_live_fallback_digest
+                and isinstance(fingerprints_for_drift, dict)
+                and isinstance(current_package_set, str)
+                and _valid_sha256(current_package_set)
+                and _valid_sha256(dependency_graph_digest)
+                and _valid_sha256(dependency_policy_sha256)
+                and _valid_sha256(workflow_definition_digest)
+            ):
+                fallback = dict(fallback)
+                fallback["approved_against_fingerprints_sha256"] = fallback_v2_digest(
+                    fingerprints_for_drift,
+                    package_set=current_package_set,
+                    dependency_graph_digest=dependency_graph_digest,
+                    dependency_policy_sha256=dependency_policy_sha256,
+                    workflow_definition_digest=workflow_definition_digest,
+                )
             # CR-12-4-P109 (round-5): pass the evidence root so `fallback_complete`
             # can path-check the `evidence` pointer. A fallback that references a
             # missing or empty `attestation-unavailable.md` is treated as incomplete.
@@ -2614,21 +2680,9 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
                 fingerprints_for_drift,
                 evidence_root=evidence_root,
                 package_set=current_package_set if isinstance(current_package_set, str) else None,
-                dependency_graph_digest=(
-                    manifest.get("dependency_graph", {}).get("graph_digest")
-                    if isinstance(manifest.get("dependency_graph"), dict)
-                    else None
-                ),
-                dependency_policy_sha256=(
-                    manifest.get("dependency_policy", {}).get("sha256")
-                    if isinstance(manifest.get("dependency_policy"), dict)
-                    else None
-                ),
-                workflow_definition_digest=(
-                    manifest.get("workflow_provenance", {}).get("definition_digest")
-                    if isinstance(manifest.get("workflow_provenance"), dict)
-                    else None
-                ),
+                dependency_graph_digest=dependency_graph_digest,
+                dependency_policy_sha256=dependency_policy_sha256,
+                workflow_definition_digest=workflow_definition_digest,
             )
             if complete:
                 fallback_reasons.append("GitHub artifact attestation unavailable; approved unsupported-attestation fallback is in force")
@@ -3553,14 +3607,12 @@ def fallback_digest(args: argparse.Namespace) -> int:
     graph_digest = manifest["dependency_graph"]["graph_digest"]
     policy_sha256 = manifest["dependency_policy"]["sha256"]
     workflow_digest = manifest["workflow_provenance"]["definition_digest"]
-    digest = canonical_sha256(
-        {
-            "definition": fingerprints,
-            "package_set": package_set,
-            "dependency_graph": graph_digest,
-            "dependency_policy": policy_sha256,
-            "workflow_definition": workflow_digest,
-        }
+    digest = fallback_v2_digest(
+        fingerprints,
+        package_set=package_set,
+        dependency_graph_digest=graph_digest,
+        dependency_policy_sha256=policy_sha256,
+        workflow_definition_digest=workflow_digest,
     )
     payload = {
         "decision_contract": "frontcomposer.fallback-digest.v2",
@@ -3702,7 +3754,12 @@ def classify_release(args: argparse.Namespace) -> int:
         evidence_for_classify = {**evidence, "checks": augmented_checks} if isinstance(evidence, dict) else {"checks": augmented_checks}
     else:
         evidence_for_classify = evidence
-    decision = classify_release_payload(evidence_for_classify, pathlib.Path(args.root), evidence_root=evidence_root_arg)
+    decision = classify_release_payload(
+        evidence_for_classify,
+        pathlib.Path(args.root),
+        evidence_root=evidence_root_arg,
+        bind_live_fallback_digest=True,
+    )
     # CR-12-4-P209 (round-8): release owners reading only `grouped_reasons.blocking`
     # need to distinguish PROBE-DEGRADED (infrastructure issue → retry) from a REAL
     # concurrent run (operational issue → wait). The headline reason emitted by

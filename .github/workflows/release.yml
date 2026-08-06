@@ -255,7 +255,6 @@ jobs:
           RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER }}
           RELEASE_ATTESTATION_FALLBACK_APPROVED_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVED_AT }}
           RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT }}
-          RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256: ${{ vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256 }}
         run: |
           python3 eng/release_prepublish.py prepare --version "${{ needs.plan-release.outputs.version }}"
           python3 eng/release_prepublish.py bundle --version "${{ needs.plan-release.outputs.version }}"
