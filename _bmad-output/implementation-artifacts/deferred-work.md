@@ -2095,3 +2095,65 @@ status: open
 
 - Fixed plural wording for AggregateCount == 1 in `HomeCardPendingAriaLabelTemplate` (EN/FR) — same known singular/plural gap as sibling home resources; ICU deferred historically (e.g. Story 9-5 note on `HomeActionQueueSubtitleTemplate`).
 - No governance against new production call sites reintroducing obsolete `HFC2106_ThemeHydrationEmpty` (warnings-only obsolete alias) — hardening beyond AC4/AC5; compatibility tests only assert the alias still exists.
+
+## Deferred from: build review of 11-20-recommended-analyzer-policy-and-exception-ledger.md (2026-08-07)
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: `HasSuppressMessage` inspects only the property symbol, so type-level and assembly-level `[SuppressMessage]` for HFC1002 — including the `GlobalSuppressions.cs` form the IDE's "Suppress in Suppression File" action generates — is silently ignored.
+  evidence: `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:1073` reads attributes from the property symbol only. Load-bearing now that project-wide HFC1002 `NoWarn` was removed from both Counter samples. Changing it alters shipped generator behavior, so it needs a product decision rather than a review patch.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: HFC1002 property-level suppression accepts any category and an empty `Justification`, although `docs/diagnostics/diagnostic-registry.json` declares the rule `suppressionPolicy: allowed-with-rationale`.
+  evidence: `AttributeParser.cs:1073-1088` matches on `ConstructorArguments[1]` only; `[SuppressMessage("Anything", "HFC1002")]` with no rationale is accepted. Enforcing the declared policy is a behavior change.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: `docs/diagnostics/HFC1002.md` still tells readers to prefer `.editorconfig` or a pragma and does not document the property-level `[SuppressMessage]` mechanism the samples now depend on.
+  evidence: HFC1002 is generator-reported, so `.editorconfig` severity does not apply to it. `docs/` is the published CI-gated DocFX site (Gate 2d), so the edit belongs in a story that owns a docs change.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: Ledger `exactScope` accepts free prose, which makes the path-safety and wildcard-production-scope checks vacuous for those rows.
+  evidence: Values such as `"three unsupported sample fixture properties"`, `"listed packable project files"` and `"repository"` contain no `*`, `..`, `\` or rooted prefix, so `ValidateSafePath` passes while conveying no verifiable scope. Fixing it is a ledger schema change.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: Ledger `diagnosticIds` is overloaded to carry MSBuild property values, so the root-CA guard runs over a field with two incompatible meanings.
+  evidence: `analyzer-policy-exception-ledger-v1.json` encodes `"property": "TreatWarningsAsErrors", "diagnosticIds": ["true"]`. Splitting into `diagnosticIds` and `propertyValue` is a schema change requiring a coordinated reseal.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: Approved census counts 4,070 / 2,958 / 2,959 are hardcoded in the governance test, duplicating the ledger the test is meant to treat as authoritative.
+  evidence: The count-drift negative case mutates only the ledger and never the repository, so it proves internal self-consistency rather than drift against a real analyzer census.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: No `eng/` tooling regenerates the identifier seal; the reseal procedure exists only as prose in a story change log.
+  evidence: `eng/` contains no script or MSBuild target emitting `testUnderscoreIdentifierTokens`/`testInventorySha256`. Any contributor adding an underscore-named test hits a red blocking Governance lane with no discoverable remedy.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: The three compile specimens omit `--no-restore`, carry no timeouts, and use inconsistent flag sets, although Gate 2b runs them inside a `--no-build` test job.
+  evidence: `quality.yml` Gate 2b runs `dotnet test … --no-build --filter "Category=Governance"`; the first synthetic build needs NuGet feed access from the test process, so an offline agent reports a network failure as an analyzer-policy failure.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: `RunDotnetAsync` concatenates stdout and stderr before `JsonNode.Parse`, so any MSBuild banner or NuGet line turns the effective-build-graph check into an opaque JSON parse exception.
+  evidence: Reviewed at the `-getProperty` call site; parse the captured stdout alone and report non-JSON output explicitly.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: The effective Contracts `NoWarn` assertion pins exact membership and order, which is brittle against SDK- and package-inherited entries.
+  evidence: `ShouldBe([...], ignoreOrder: false)` on an *effective* imported property, while the story's own Dev Notes acknowledge inherited entries such as 1701/1702 and CA2255 exist.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: The governance fact re-spawns `git ls-files` and re-reads/re-parses every tracked file several times per run, and builds `Regex` instances per invocation.
+  evidence: `TrackedFiles` is called at least five times; `CanonicalSourceSummary` makes three full passes over tracked `.cs` files and `IdentifierInventory` a fourth. Cache the file list, contents and parsed documents; use `[GeneratedRegex]`.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: Ledger review dates (2027-01-17 and 2027-07-17) turn the blocking Governance lane red on a calendar date with no advance-warning signal or owner notification path.
+  evidence: Expiry is the intended fail-closed design, but there is no warn-before-expire step, so the first signal is a repository-wide red. A scheduled pre-expiry reminder or a warning window would preserve the intent without the cliff.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: The `[tests/**.cs]` CA1707 scope silences the rule for every identifier in every test file, which is broader than the three-part-test-method-naming rationale recorded for it.
+  evidence: Spec-mandated, so not a deviation — but narrower options such as `dotnet_code_quality.CA1707.api_surface` were never evaluated or recorded as rejected, and the scope covers fields, parameters, types and any public surface in test-support libraries.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: HFC1002 checkId matching recognizes only the `HFC1002` and `HFC1002:` forms, and property-level suppression is honored for HFC1002 alone among the HFC diagnostics.
+  evidence: `AttributeParser.cs:1081-1083`. A checkId written `"HFC1002 - unsupported type"` is not matched, and no other HFC diagnostic honors the mechanism, which is an undocumented inconsistency for adopters.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
+  summary: `RepositoryRoot()` is duplicated a fifth time instead of reusing the `internal static` helper deliberately exposed on `CiGovernanceTests`.
+  evidence: `CiGovernanceTests.RepositoryRoot()` is `internal static`; `AppHostNuGetAuditPolicyTests`, `FluentConformanceTests`, `InfrastructureGovernanceTests` and now `AnalyzerPolicyGovernanceTests` each carry a private copy of the same slnx walk.

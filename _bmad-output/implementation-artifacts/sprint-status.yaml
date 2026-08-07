@@ -510,7 +510,9 @@ development_status:
   11-19-analyzer-elevation-decision: done
   # Stories 11.20-11.23 materialized as separately approval-gated backlog phases on 2026-07-16 by the 11.19d staged-activation decision; target due dates are 2026-07-24, 2026-08-14, 2026-09-04, and 2026-09-11.
   # 11.20 moved backlog -> ready-for-dev on 2026-07-17 (create-story; Administrator explicitly satisfied the separate Architecture/Product approval gate; comprehensive policy/ledger context, refreshed 2,959-Naming census, narrow CA1707 scopes, CA1711 fixes, warning-control dispositions, Governance coverage, and scoped validation lanes recorded.)
-  11-20-recommended-analyzer-policy-and-exception-ledger: ready-for-dev
+  # 11.20 moved ready-for-dev -> in-progress on 2026-08-07 (bmad-build; resuming the story after the 2026-07-17 auto-run recorded status blocked on the NU1506 duplicate SignalR.Client central declaration and the Localization.Abstractions 10.0.9 package-boundary expectation, both of which no longer reproduce at HEAD.)
+  # 11.20 moved in-progress -> review on 2026-08-07 (completion pass at HEAD 05481771; both former package blockers cleared empirically with no package-policy change; the landed CA1707 scopes, ledger, CA1711 test-group renames, HFC1002 narrowing, and Governance coverage re-verified; analyzer identifier inventory resealed to 6,242 tokens for unrelated post-reseal test-identifier drift; Release 0W/0E, strict AnalysisModeNaming=Recommended 0W/0E, full Recommended census 1,122 warnings with zero Naming, default matrix 4,217/4,217.)
+  11-20-recommended-analyzer-policy-and-exception-ledger: review
   # 11.21 moved backlog -> ready-for-dev on 2026-07-17 (create-story; Administrator supplied separate phase approval; comprehensive product/generator census, hidden ASP0006 emitter debt, exact 11.18 logging handoff, hard 11.20 ledger entry gate, and scoped validation recorded.)
   11-21-recommended-analyzer-product-and-generator-burndown: ready-for-dev
   11-22-recommended-analyzer-test-and-sample-burndown: backlog

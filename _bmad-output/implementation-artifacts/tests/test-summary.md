@@ -25,24 +25,37 @@ when CI remains authoritative.
 - Naming dispositions: approved baseline 2,958; source-HEAD refresh 2,959; implementation pre-policy inventory 2,961 after two new three-part test names; strict post-policy candidate 0.
 - Warning-control parity: all root-owned MSBuild, EditorConfig, pragma, suppression-attribute, and emitter-pragma groups are ledgered bidirectionally with exact counts and source paths.
 - Synthetic fail-closed cases: unledgered control, stale row, root CA `NoWarn`, category disable, wildcard production scope, missing owner, expired review date, and count drift.
-- Full Recommended instrumentation after policy: 1,123 later-story findings only - Performance 780, Globalization 231, Usage 49, Maintainability 46, Reliability 12, Design 5; Naming 0.
+- Full Recommended instrumentation after policy: later-story findings only, Naming 0. The 2026-07-17 run recorded 1,123 (Performance 780, Globalization 231, Usage 49, Maintainability 46, Reliability 12, Design 5); the 2026-08-07 re-verification at commit `05481771` recorded 1,122 with Naming still 0. The one-item delta is unrelated repository evolution owned by Stories 11.21/11.22, not a Naming regression.
 
 ### Validation
-- [ ] Required restore was blocked before compilation by pre-existing NU1506: `Microsoft.AspNetCore.SignalR.Client` 10.0.10 is declared in both root `Directory.Packages.props` and imported `references/Hexalith.Builds/Props/Directory.Packages.props`; Story 11.20 forbids package/baseline changes.
+- [x] Required restore passed on the 2026-08-07 re-verification. The previously recorded NU1506 duplicate central `Microsoft.AspNetCore.SignalR.Client` declaration no longer reproduces: package versions now come from the imported `references/Hexalith.Builds` catalog, so no story-forbidden package-policy change was needed.
 - [x] Normal forced Release `--no-restore --no-incremental -m:1` build passed with 0 warnings and 0 errors.
 - [x] Strict `AnalysisModeNaming=Recommended` forced Release build with canonical TWAE passed with 0 warnings and 0 errors.
-- [x] Full `AnalysisMode=Recommended` census with TWAE disabled only for enumeration completed with 1,123 warnings, 0 errors, and no Naming diagnostic.
+- [x] Full `AnalysisMode=Recommended` census with TWAE disabled only for enumeration completed with 1,122 warnings, 0 errors, and no Naming diagnostic.
 - [x] Focused Shell analyzer-policy Governance passed 1/1; focused SourceTools DiagnosticRegistry/culture lane passed 103/103; focused HFC1002 suppression regression passed 1/1.
-- [x] Per-assembly default lane passed: Contracts 211/211, Contracts.UI 10/10, MCP 365/365, Shell Bench 1/1, SourceTools 1,091/1,091, and Shell 2,344/2,344.
-- [ ] CLI ran 73 tests with 72 passing; its packaging smoke test was blocked inside a fresh restore by the same pre-existing NU1506 duplicate central package entry.
-- [ ] Testing ran 57 tests with 56 passing; its existing package-boundary assertion expects `Microsoft.Extensions.Localization.Abstractions` 10.0.9 while the imported Hexalith.Builds central package state is already 10.0.10. The story forbids opportunistic package-baseline edits.
+- [x] Per-assembly default lane passed on 2026-08-07 with `DiffEngine_Disabled=true` and the standard trait exclusions: Cli 73/73, Contracts 211/211, Contracts.UI 10/10, Mcp 367/367, SourceTools 1,091/1,091, Testing 59/59, and Shell 2,406/2,406 - 4,217 tests, 0 failures.
+- [x] The Testing package-boundary assertion now expects `Microsoft.Extensions.Localization.Abstractions` 10.0.10, matching the imported Hexalith.Builds catalog; `10.0.9` survives only as the deliberate mismatch input of the negative theory case. No package-baseline edit was made by this story.
 - [x] Story-artifact validation passed after the parent workflow reconciled the implementation File List.
+- [x] The analyzer identifier inventory was resealed to `testUnderscoreIdentifierTokens` 6,247 / sha256 `ae482232...` - absorbing both underscore-named test identifiers added by unrelated commits after the previous reseal and the identifiers added by this pass's own adversarial-review hardening. Story 11.20 owns this ledger, so the reseal is in scope here rather than a concurrent blocker.
+
+### Adversarial review hardening (2026-08-07)
+- [x] `AnalyzerPolicyGovernanceTests` split into four independent facts so identifier-seal drift can no longer skip the effective-build-graph and compile-specimen proofs; the contract fact now accumulates all positive lanes and asserts once. Verified by observing 4 tests run with only the seal fact red.
+- [x] `TrackedFiles` now passes `--cached` only. Confirmed inert at seal time: `git ls-files --others --exclude-standard` returned 0 files and the `--cached` / `--cached --others` sets were byte-identical.
+- [x] `TrackedFiles` drains stdout and stderr concurrently with a 60 s bounded wait, removing the sequential-`ReadToEnd` deadlock shape.
+- [x] Root `WarningsNotAsErrors` and `WarningsAsErrors` carrying CA identifiers are now policed exactly as root `NoWarn`, closing a TreatWarningsAsErrors bypass. Two synthetic negative cases added.
+- [x] Category-disable guard broadened to the `[*]` section, the bulk `dotnet_analyzer_diagnostic.severity` property, and the `suggestion`/`hidden` severities. Seven synthetic negative cases added.
+- [x] Analyzer-configuration closed world is now enforced: tracked `.editorconfig`/`.globalconfig`/`.ruleset` files outside `references/**` beyond the root `.editorconfig` fail closed. `references/Hexalith.Builds/Hexalith.globalconfig` remains excluded per the story's explicit disposition.
+- [x] Root `TreatWarningsAsErrors` lookup no longer throws on 0 or 2+ declarations; it reports a named error.
+- [x] `reviewDate` is parsed with `TryParseExact` against `yyyy-MM-dd` under `InvariantCulture` and fails closed on unparseable values. Two synthetic negative cases added, including a locale-ambiguous `17/07/2027`.
+- [x] `EditorConfigSection` now returns every matching section, line-anchored, so a duplicate appended section cannot evade the repository-scope CA1707 check.
+- [x] Dead `allowTestWildcard` parameter removed; the wildcard rule is unchanged (wildcards allowed only under `tests/`).
+- [x] `AttributeParserTests.Parse_PropertySuppressMessageForOtherCheckId_StillReportsHFC1002` pins the HFC1002 checkId-discrimination branch. Mutation-verified: making `HasSuppressMessage` return true for any `SuppressMessageAttribute` fails exactly this test (1 failed / 25) and nothing else; the mutation was reverted and the file confirmed byte-identical to HEAD.
 
 ### Checklist
 - [x] Policy tests use xUnit v3 and Shouldly, run in the blocking Governance category, and include positive plus adversarial negative cases.
 - [x] No PublicAPI, schema, generated-output, Verify snapshot, pact, package, solution, or submodule baseline was changed.
 - [x] No central `AnalysisMode` was added and no repository/category-wide CA suppression was introduced.
-- [x] Test summary records the exact local package-state blockers separately from focused and broad passing evidence.
+- [x] Test summary records the resolution of the previously recorded package-state blockers separately from focused and broad passing evidence.
 
 ## Story 10.5 - Testing evidence redaction default-lane guard
 

@@ -100,6 +100,38 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    public void Parse_PropertySuppressMessageForOtherCheckId_StillReportsHFC1002() {
+        // Pins the checkId comparison in HasSuppressMessage. Without a property that carries a
+        // real [SuppressMessage] for a *different* rule, deleting that comparison so any
+        // SuppressMessageAttribute suppresses HFC1002 would leave every other test green.
+        const string source = """
+            using System.Collections.Generic;
+            using System.Diagnostics.CodeAnalysis;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [Projection]
+            public partial class OtherCheckIdFixtureProjection
+            {
+                [SuppressMessage(
+                    "Style",
+                    "IDE0057:Use range operator",
+                    Justification = "Unrelated rule; must not suppress HFC1002.")]
+                public Dictionary<string, string> OtherRuleSuppressed { get; set; } = new();
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+
+        driver = driver.RunGenerators(compilation, TestContext.Current.CancellationToken);
+        Diagnostic[] diagnostics = driver.GetRunResult().Diagnostics.Where(diagnostic => diagnostic.Id == "HFC1002").ToArray();
+
+        diagnostics.Length.ShouldBe(1);
+        diagnostics[0].GetMessage().ShouldContain("OtherRuleSuppressed");
+    }
+
+    [Fact]
     public void Parse_NonPartialProjection_EmitsHFC1003() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NonPartialProjection);

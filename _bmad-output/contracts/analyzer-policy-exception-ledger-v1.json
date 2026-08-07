@@ -46,7 +46,10 @@
       "CA1711": 2
     },
     "policyOutcomeNamingFindings": 0,
-    "note": "The implementation adds two three-part test names before policy is applied (Governance plus the HFC1002 suppression regression); they are reconciled rather than hidden."
+    "note": "The implementation adds two three-part test names before policy is applied (Governance plus the HFC1002 suppression regression); they are reconciled rather than hidden.",
+    "sourceCommitNote": "sourceCommit is the commit the working tree was measured against, not where the work landed. The implementation landed as 67154049 and was re-verified at 054817718c6157ea6d92cc6a06f5de30b8178ab1 on 2026-08-07 with Naming still 0. The stamped measurement coordinates are kept intact rather than rewritten.",
+    "landedCommit": "67154049",
+    "reVerifiedCommit": "054817718c6157ea6d92cc6a06f5de30b8178ab1"
   },
   "postPolicyCensus": {
     "utcDate": "2026-07-17T10:24:07Z",
@@ -61,7 +64,8 @@
       "Reliability": 12,
       "Design": 5
     },
-    "ownership": "Stories 11.21 and 11.22; this instrumentation is evidence only and does not activate Recommended repository-wide."
+    "ownership": "Stories 11.21 and 11.22; this instrumentation is evidence only and does not activate Recommended repository-wide.",
+    "reconciliation": "This block is a dated historical snapshot and is deliberately not rewritten. Three non-Naming totals exist across this story's artifacts and all are correct at their own commit: 1112 is the pre-policy count at create-story HEAD 6861ca1b (4071 total minus 2959 Naming); 1123 is this post-policy snapshot; 1122 is the 2026-08-07 completion-pass re-verification at 054817718c6157ea6d92cc6a06f5de30b8178ab1. The 1123 -> 1122 delta is one finding removed by unrelated work landing after the implementation commit. All of these findings belong to Stories 11.21 and 11.22; none gates Story 11.20, whose criterion is Naming = 0, satisfied at every post-policy measurement."
   },
   "toolchain": {
     "sdk": "10.0.302",
@@ -71,8 +75,8 @@
   },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, one-based line, and C# identifier token containing an underscore",
-    "testUnderscoreIdentifierTokens": 6240,
-    "testInventorySha256": "e5f8c497ece7f29c72af7f291f27d8dfc478e69882e376d9acd044f705c9eeed",
+    "testUnderscoreIdentifierTokens": 6247,
+    "testInventorySha256": "ae48223236e200b57f2669ade7475dbb0041499214166ad880e44b4828f03e1a",
     "contractsUnderscoreIdentifierTokens": 90,
     "contractsInventorySha256": "a06a2c10b7bcc9e2abd18b585af55e93d70bd3ad85a20519791590313ffcb3b7"
   },

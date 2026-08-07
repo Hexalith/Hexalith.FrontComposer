@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json.Nodes;
@@ -18,6 +19,7 @@ public sealed class AnalyzerPolicyGovernanceTests
 {
     private const string LedgerPath = "_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json";
     private const string ContractsProject = "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj";
+    private const int GitTimeoutMilliseconds = 60_000;
 
     private static readonly string[] _requiredDispositionFields =
     [
@@ -35,15 +37,22 @@ public sealed class AnalyzerPolicyGovernanceTests
     ];
 
     [Fact]
-    public async Task AnalyzerPolicy_GovernanceContract_FailsClosed()
+    public void AnalyzerPolicy_GovernanceContract_FailsClosed()
     {
         string root = RepositoryRoot();
         JsonObject ledger = LoadLedger(root);
 
-        ValidateDocument(ledger).ShouldBeEmpty();
-        ValidateControlParity(root, ledger).ShouldBeEmpty();
-        ValidateRepositoryPolicy(root, ledger).ShouldBeEmpty();
-        ValidateIdentifierInventory(root, ledger).ShouldBeEmpty();
+        // Accumulate every positive lane before asserting so a single failing lane cannot
+        // mask the others. The identifier seal and the executable proofs are separate facts
+        // so that seal drift - historically the common failure - never skips them.
+        List<string> errors =
+        [
+            .. ValidateDocument(ledger),
+            .. ValidateControlParity(root, ledger),
+            .. ValidateRepositoryPolicy(root, ledger),
+            .. ValidateConfigurationClosure(root),
+        ];
+        errors.ShouldBeEmpty();
 
         JsonObject missingOwner = Clone(ledger);
         RequiredArray(missingOwner, "dispositions")[0]!["owner"] = string.Empty;
@@ -52,6 +61,19 @@ public sealed class AnalyzerPolicyGovernanceTests
         JsonObject expiredReview = Clone(ledger);
         RequiredArray(expiredReview, "dispositions")[0]!["reviewDate"] = "2026-01-01";
         ValidateDocument(expiredReview).ShouldContain(static error => error.Contains("expired", StringComparison.Ordinal));
+
+        // A malformed review date must fail closed rather than silently skipping the expiry check.
+        JsonObject unparseableReview = Clone(ledger);
+        RequiredArray(unparseableReview, "dispositions")[0]!["reviewDate"] = "not-a-date";
+        ValidateDocument(unparseableReview)
+            .ShouldContain(static error => error.Contains("unparseable review date", StringComparison.Ordinal));
+
+        // A culture-dependent parse would accept this on some machines; the invariant
+        // yyyy-MM-dd contract must reject it everywhere.
+        JsonObject localisedReview = Clone(ledger);
+        RequiredArray(localisedReview, "dispositions")[0]!["reviewDate"] = "17/07/2027";
+        ValidateDocument(localisedReview)
+            .ShouldContain(static error => error.Contains("unparseable review date", StringComparison.Ordinal));
 
         string[] configuredKeys = ConfiguredControlKeys(root);
         ValidateParity(configuredKeys.Skip(1), configuredKeys)
@@ -73,21 +95,55 @@ public sealed class AnalyzerPolicyGovernanceTests
         });
         ValidateDocument(rootNoWarn).ShouldContain(static error => error.Contains("root NoWarn", StringComparison.Ordinal));
 
-        JsonObject categoryDisable = Clone(ledger);
-        RequiredArray(categoryDisable, "warningControls").Add(new JsonObject
+        // WarningsNotAsErrors neutralises TreatWarningsAsErrors=true for a named CA rule, so a
+        // root-scoped entry is a policy bypass even though the diagnostic still reports.
+        foreach (string bypassProperty in new[] { "WarningsNotAsErrors", "WarningsAsErrors" })
         {
-            ["key"] = "invalid-category-disable",
-            ["sourceKind"] = "editorconfig",
-            ["path"] = ".editorconfig",
-            ["section"] = "[*.cs]",
-            ["property"] = "dotnet_analyzer_diagnostic.category-Naming.severity",
-            ["value"] = "none",
-            ["diagnosticIds"] = new JsonArray("category-Naming"),
-            ["exactScope"] = "repository",
-            ["mechanism"] = "EditorConfig severity",
-            ["dispositionKey"] = "policy-root-twae",
-        });
-        ValidateDocument(categoryDisable).ShouldContain(static error => error.Contains("category disable", StringComparison.Ordinal));
+            JsonObject rootBypass = Clone(ledger);
+            RequiredArray(rootBypass, "warningControls").Add(new JsonObject
+            {
+                ["key"] = "invalid-root-ca-" + bypassProperty,
+                ["sourceKind"] = "msbuild",
+                ["path"] = "Directory.Build.props",
+                ["property"] = bypassProperty,
+                ["diagnosticIds"] = new JsonArray("CA1707"),
+                ["exactScope"] = "repository",
+                ["mechanism"] = bypassProperty,
+                ["dispositionKey"] = "policy-root-twae",
+            });
+            ValidateDocument(rootBypass)
+                .ShouldContain(error => error.Contains("root " + bypassProperty, StringComparison.Ordinal));
+        }
+
+        (string Section, string Property, string Value)[] categoryDisables =
+        [
+            ("[*.cs]", "dotnet_analyzer_diagnostic.category-Naming.severity", "none"),
+            ("[**.cs]", "dotnet_analyzer_diagnostic.category-Naming.severity", "silent"),
+            ("[*]", "dotnet_analyzer_diagnostic.category-Naming.severity", "none"),
+            ("[*.cs]", "dotnet_analyzer_diagnostic.category-Naming.severity", "suggestion"),
+            ("[*.cs]", "dotnet_analyzer_diagnostic.category-Naming.severity", "hidden"),
+            ("[*.cs]", "dotnet_analyzer_diagnostic.severity", "none"),
+            ("[*]", "dotnet_analyzer_diagnostic.severity", "suggestion"),
+        ];
+        foreach ((string disableSection, string disableProperty, string disableValue) in categoryDisables)
+        {
+            JsonObject categoryDisable = Clone(ledger);
+            RequiredArray(categoryDisable, "warningControls").Add(new JsonObject
+            {
+                ["key"] = $"invalid-category-disable|{disableSection}|{disableProperty}|{disableValue}",
+                ["sourceKind"] = "editorconfig",
+                ["path"] = ".editorconfig",
+                ["section"] = disableSection,
+                ["property"] = disableProperty,
+                ["value"] = disableValue,
+                ["diagnosticIds"] = new JsonArray("category-Naming"),
+                ["exactScope"] = "repository",
+                ["mechanism"] = "EditorConfig severity",
+                ["dispositionKey"] = "policy-root-twae",
+            });
+            ValidateDocument(categoryDisable)
+                .ShouldContain(static error => error.Contains("category disable", StringComparison.Ordinal));
+        }
 
         JsonObject wildcardProduction = Clone(ledger);
         JsonObject productionDisposition = RequiredObject(RequiredArray(wildcardProduction, "dispositions")[1], "disposition");
@@ -97,10 +153,27 @@ public sealed class AnalyzerPolicyGovernanceTests
         JsonObject countDrift = Clone(ledger);
         RequiredObject(countDrift, "implementationSnapshot")["namingFindings"] = 42;
         ValidateDocument(countDrift).ShouldContain(static error => error.Contains("count drift", StringComparison.Ordinal));
-
-        await ValidateEffectiveBuildGraphsAsync(root).ConfigureAwait(true);
-        await ValidateCompileSpecimensAsync(root).ConfigureAwait(true);
     }
+
+    /// <summary>
+    /// The sealed identifier inventory drifts whenever ordinary repository evolution adds an
+    /// underscore-named test identifier, so it is asserted on its own. Keeping it out of the
+    /// contract fact stops a routine reseal from skipping the executable proofs below.
+    /// </summary>
+    [Fact]
+    public void AnalyzerPolicy_IdentifierInventory_MatchesSeal()
+    {
+        string root = RepositoryRoot();
+        ValidateIdentifierInventory(root, LoadLedger(root)).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task AnalyzerPolicy_EffectiveBuildGraphs_MatchCanonicalPolicy()
+        => await ValidateEffectiveBuildGraphsAsync(RepositoryRoot()).ConfigureAwait(true);
+
+    [Fact]
+    public async Task AnalyzerPolicy_CompileSpecimens_ProveExactCa1707Scopes()
+        => await ValidateCompileSpecimensAsync(RepositoryRoot()).ConfigureAwait(true);
 
     private static string[] ValidateDocument(JsonObject ledger)
     {
@@ -153,8 +226,19 @@ public sealed class AnalyzerPolicyGovernanceTests
                 errors.Add($"invalid decision for {key}");
             }
 
-            if (DateOnly.TryParse(StringValue(disposition, "reviewDate"), out DateOnly reviewDate)
-                && reviewDate < today)
+            // Parse exactly, invariantly, and fail closed: an ambient-culture TryParse guarded by
+            // `&&` would let a malformed or localised value skip the expiry check entirely.
+            string reviewDateText = StringValue(disposition, "reviewDate");
+            if (!DateOnly.TryParseExact(
+                    reviewDateText,
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out DateOnly reviewDate))
+            {
+                errors.Add($"unparseable review date for {key}: {reviewDateText}");
+            }
+            else if (reviewDate < today)
             {
                 errors.Add($"expired review date for {key}");
             }
@@ -166,7 +250,7 @@ public sealed class AnalyzerPolicyGovernanceTests
                 errors.Add($"wildcard production scope for {key}");
             }
 
-            ValidateSafePath(exactScope, $"disposition {key}", errors, allowTestWildcard: true);
+            ValidateSafePath(exactScope, $"disposition {key}", errors);
 
             if (decision == "move" && string.IsNullOrWhiteSpace(StringValue(disposition, "followUpStory")))
             {
@@ -205,7 +289,7 @@ public sealed class AnalyzerPolicyGovernanceTests
                 errors.Add($"unmatched finding disposition {dispositionKey}");
             }
 
-            ValidateSafePath(StringValue(finding, "path"), $"finding {key}", errors, allowTestWildcard: true);
+            ValidateSafePath(StringValue(finding, "path"), $"finding {key}", errors);
             baselineCount += IntValue(finding, "baselineCount");
             refreshedCount += IntValue(finding, "refreshedCount");
             implementationCount += IntValue(finding, "implementationCount");
@@ -257,18 +341,26 @@ public sealed class AnalyzerPolicyGovernanceTests
             string section = StringValue(control, "section");
             string value = StringValue(control, "value");
             string[] diagnosticIds = StringArray(control, "diagnosticIds");
+            // NoWarn silences a CA rule; WarningsNotAsErrors demotes it back to a warning and so
+            // neutralises the canonical TreatWarningsAsErrors=true; WarningsAsErrors re-manages
+            // severity per rule at root scope. All three belong in EditorConfig at an exact scope,
+            // never in root MSBuild policy, so all three are policed identically.
             if (sourceKind == "msbuild"
-                && property == "NoWarn"
+                && property is "NoWarn" or "WarningsNotAsErrors" or "WarningsAsErrors"
                 && IsRootPolicyPath(path)
                 && diagnosticIds.Any(static id => id.StartsWith("CA", StringComparison.OrdinalIgnoreCase)))
             {
-                errors.Add($"root NoWarn contains a CA entry in {key}");
+                errors.Add($"root {property} contains a CA entry in {key}");
             }
 
+            // Catch every shape of bulk/category disable: the repository-wide `[*]` section, the
+            // bulk `dotnet_analyzer_diagnostic.severity` property, and every severity that stops a
+            // rule failing the build under TreatWarningsAsErrors.
             if (sourceKind == "editorconfig"
-                && (section is "[*.cs]" or "[**.cs]")
-                && property.StartsWith("dotnet_analyzer_diagnostic.category-", StringComparison.Ordinal)
-                && value is "none" or "silent")
+                && (section is "[*.cs]" or "[**.cs]" or "[*]")
+                && (property.StartsWith("dotnet_analyzer_diagnostic.category-", StringComparison.Ordinal)
+                    || property == "dotnet_analyzer_diagnostic.severity")
+                && value is "none" or "silent" or "suggestion" or "hidden")
             {
                 errors.Add($"root/category CA category disable in {key}");
             }
@@ -495,7 +587,19 @@ public sealed class AnalyzerPolicyGovernanceTests
         }
 
         XDocument rootProps = XDocument.Load(Path.Combine(root, "Directory.Build.props"));
-        if (rootProps.Descendants().Single(static element => element.Name.LocalName == "TreatWarningsAsErrors").Value != "true")
+        XElement[] rootTreatWarningsAsErrors = rootProps
+            .Descendants()
+            .Where(static element => element.Name.LocalName == "TreatWarningsAsErrors")
+            .ToArray();
+        if (rootTreatWarningsAsErrors.Length != 1)
+        {
+            // Report rather than throw: 0 or 2+ declarations is itself a policy failure and must
+            // surface as a named error alongside the other findings.
+            errors.Add(
+                "expected exactly one root TreatWarningsAsErrors declaration, found "
+                + rootTreatWarningsAsErrors.Length.ToString(CultureInfo.InvariantCulture));
+        }
+        else if (rootTreatWarningsAsErrors[0].Value.Trim() != "true")
         {
             errors.Add("TreatWarningsAsErrors is not canonically true");
         }
@@ -546,6 +650,37 @@ public sealed class AnalyzerPolicyGovernanceTests
             errors.Add("the ledger does not require zero post-policy Naming findings");
         }
 
+        return [.. errors];
+    }
+
+    /// <summary>
+    /// The control-parity contract is a closed world over the root <c>.editorconfig</c> alone.
+    /// EditorConfig and globalconfig files layer, so any additional analyzer-configuration file
+    /// outside <c>references/**</c> could re-severity a rule without appearing in the ledger.
+    /// Fail closed on discovery rather than silently reading only the root file.
+    /// <c>references/Hexalith.Builds/Hexalith.globalconfig</c> stays excluded: it is external
+    /// submodule configuration, not root FrontComposer analyzer policy.
+    /// </summary>
+    private static string[] ValidateConfigurationClosure(string root)
+    {
+        string[] configurationFiles = TrackedFiles(root)
+            .Where(static path =>
+                path.EndsWith(".editorconfig", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(".globalconfig", StringComparison.OrdinalIgnoreCase)
+                || path.EndsWith(".ruleset", StringComparison.OrdinalIgnoreCase))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        List<string> errors = [];
+        if (!configurationFiles.Contains(".editorconfig", StringComparer.Ordinal))
+        {
+            errors.Add("the root .editorconfig is missing");
+        }
+
+        errors.AddRange(configurationFiles
+            .Where(static path => !string.Equals(path, ".editorconfig", StringComparison.Ordinal))
+            .Select(static path =>
+                "unledgered analyzer configuration file outside the root .editorconfig closed world: "
+                + path));
         return [.. errors];
     }
 
@@ -773,17 +908,13 @@ public sealed class AnalyzerPolicyGovernanceTests
         }
     }
 
-    private static void ValidateSafePath(
-        string path,
-        string subject,
-        ICollection<string> errors,
-        bool allowTestWildcard)
+    private static void ValidateSafePath(string path, string subject, ICollection<string> errors)
     {
+        // A wildcard is permitted only under tests/; every other scope must be an exact path.
         if (string.IsNullOrWhiteSpace(path)
             || Path.IsPathRooted(path)
             || path.Contains("..", StringComparison.Ordinal)
             || path.Contains('\\', StringComparison.Ordinal)
-            || (!allowTestWildcard && path.Contains('*', StringComparison.Ordinal))
             || (path.Contains('*', StringComparison.Ordinal) && !path.StartsWith("tests/", StringComparison.Ordinal)))
         {
             errors.Add($"unsafe path for {subject}: {path}");
@@ -803,15 +934,36 @@ public sealed class AnalyzerPolicyGovernanceTests
                 UseShellExecute = false,
             },
         };
+        // Tracked files only. `--others` would make an untracked scratch .cs file under tests/
+        // indistinguishable from genuine sealed-inventory drift.
         process.StartInfo.ArgumentList.Add("ls-files");
         process.StartInfo.ArgumentList.Add("-z");
         process.StartInfo.ArgumentList.Add("--cached");
-        process.StartInfo.ArgumentList.Add("--others");
-        process.StartInfo.ArgumentList.Add("--exclude-standard");
         process.Start().ShouldBeTrue();
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
+
+        // Drain both pipes concurrently and bound the wait: sequential ReadToEnd calls with both
+        // streams redirected deadlock if git fills the stderr buffer.
+        Task<string> standardOutput = process.StandardOutput.ReadToEndAsync(TestContext.Current.CancellationToken);
+        Task<string> standardError = process.StandardError.ReadToEndAsync(TestContext.Current.CancellationToken);
+        if (!process.WaitForExit(GitTimeoutMilliseconds))
+        {
+            try
+            {
+                process.Kill(entireProcessTree: true);
+            }
+            catch (InvalidOperationException)
+            {
+                // The process exited between the timeout and the kill; nothing to terminate.
+            }
+
+            throw new InvalidOperationException(
+                $"git ls-files did not complete within {GitTimeoutMilliseconds} ms.");
+        }
+
+        // The int overload can return before the redirected streams are flushed.
         process.WaitForExit();
+        string output = standardOutput.GetAwaiter().GetResult();
+        string error = standardError.GetAwaiter().GetResult();
         process.ExitCode.ShouldBe(0, error);
         return output.Split('\0', StringSplitOptions.RemoveEmptyEntries)
             .Select(Normalize)
@@ -837,16 +989,30 @@ public sealed class AnalyzerPolicyGovernanceTests
     private static bool IsRootPolicyPath(string path)
         => path is "Directory.Build.props" or "Directory.Build.targets" or "src/Directory.Build.props";
 
+    /// <summary>
+    /// Returns the concatenation of every section whose header matches exactly. A first-match-only
+    /// lookup would let a second, later section with the same header evade the repository-scope
+    /// CA1707 check. Matching is line-anchored so a header cannot be found inside another header.
+    /// </summary>
     private static string EditorConfigSection(string editorConfig, string header)
     {
-        int start = editorConfig.IndexOf(header, StringComparison.Ordinal);
-        if (start < 0)
+        StringBuilder builder = new();
+        bool inSection = false;
+        foreach (string rawLine in editorConfig.Split('\n'))
         {
-            return string.Empty;
+            string line = rawLine.Trim();
+            if (line.StartsWith("[", StringComparison.Ordinal) && line.EndsWith("]", StringComparison.Ordinal))
+            {
+                inSection = string.Equals(line, header, StringComparison.Ordinal);
+            }
+
+            if (inSection)
+            {
+                _ = builder.Append(line).Append('\n');
+            }
         }
 
-        int next = editorConfig.IndexOf("\n[", start + header.Length, StringComparison.Ordinal);
-        return next < 0 ? editorConfig[start..] : editorConfig[start..next];
+        return builder.ToString();
     }
 
     private static string Normalize(string path)
