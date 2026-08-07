@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-08-03
+# last_updated: 2026-08-07
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: 2026-07-05T17:13:53+02:00
-last_updated: 2026-08-03
+last_updated: 2026-08-07
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -496,15 +496,18 @@ development_status:
   11-19-doc-comment-enforcement-realignment: done
   # 11.19b moved backlog -> ready-for-dev on 2026-07-15 (create-story; per-advisory AppHost NuGet audit suppression).
   # 11.19b moved ready-for-dev -> in-progress -> review on 2026-07-16 (dev-story; online audit, focused Release build, Governance, and baseline regression green).
-  11-19-apphost-nuget-audit-suppression: review
+  # 11.19b moved review -> done on 2026-08-07 (bmad-code-review; seven patches applied — NuGetAuditLevel=low pin, ReviewDate expiry, RunProcess drain/timeout, duplicate-metadata violation, case-insensitive NU190x scan, Dev Notes rewrite, AC6 AppHost-only waiver; AC1 CI pin declined for AC4 scope; online vulnerable audit re-baselined clean; focused Governance 4/4).
+  11-19-apphost-nuget-audit-suppression: done
   # 11.19c moved backlog -> ready-for-dev on 2026-07-15 (create-story; localization and public diagnostic-identifier alignment).
   # 11.19c moved ready-for-dev -> in-progress on 2026-07-16 (dev-story).
   # 11.19c moved in-progress -> review on 2026-07-16 (dev-story; Release build, package compatibility, 4,149 default-lane tests, docs, artifacts, and integrity validation green).
-  11-19-localization-and-identifier-alignment: review
+  # 11.19c moved review -> done on 2026-08-07 (code-review; Memories AC6 waiver recorded; rendered en/fr lang observation added).
+  11-19-localization-and-identifier-alignment: done
   # 11.19d moved backlog -> ready-for-dev on 2026-07-15 (create-story; AnalysisMode elevation decision record only).
   # 11.19d moved ready-for-dev -> in-progress on 2026-07-16 (dev-story; census and staged activation decision recorded in _bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md).
   # 11.19d moved in-progress -> review on 2026-07-16 (dev-story; 4,070-diagnostic census, signed staged decision, four backlog follow-ups, Release/default/Governance/docs/artifact gates green).
-  11-19-analyzer-elevation-decision: review
+  # 11.19d moved review -> done on 2026-08-07 (bmad-code-review; AC6 gitlink waiver/File List honesty, Phase 2 generator-introduced exit, binlog SHA-256s, census commands, Phase 4 Directory.Build.props, 11.22 dependsOn 11.20+11.21, CS-prefixed compiler IDs).
+  11-19-analyzer-elevation-decision: done
   # Stories 11.20-11.23 materialized as separately approval-gated backlog phases on 2026-07-16 by the 11.19d staged-activation decision; target due dates are 2026-07-24, 2026-08-14, 2026-09-04, and 2026-09-11.
   # 11.20 moved backlog -> ready-for-dev on 2026-07-17 (create-story; Administrator explicitly satisfied the separate Architecture/Product approval gate; comprehensive policy/ledger context, refreshed 2,959-Naming census, narrow CA1707 scopes, CA1711 fixes, warning-control dispositions, Governance coverage, and scoped validation lanes recorded.)
   11-20-recommended-analyzer-policy-and-exception-ledger: ready-for-dev

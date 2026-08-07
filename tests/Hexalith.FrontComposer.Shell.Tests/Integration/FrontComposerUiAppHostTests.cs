@@ -10,10 +10,12 @@ public sealed class FrontComposerUiAppHostTests {
     private const string FrontComposerUiClientSecret = "frontcomposer-ui-dev-secret";
 
     [Fact]
-    public void UiAppDocumentLanguage_PrerenderAndInteractiveRender_UseEffectiveUiCulture() {
+    public void UiAppDocumentLanguage_Source_UsesSingleCsharpAuthorityForPrerenderAndInteractive() {
         string root = FindRepoRoot();
         string app = File.ReadAllText(Path.Combine(root, "src", "Hexalith.FrontComposer.UI", "Components", "App.razor"));
 
+        // Prerender and interactive share this C# expression; absence of a JS lang writer is the
+        // agreement contract (see UiAppDocumentLanguageRenderTests for rendered en/fr observation).
         app.ShouldContain("<html lang=\"@System.Globalization.CultureInfo.CurrentUICulture.Name\">");
         app.ShouldNotContain("<html lang=\"en\">");
         app.ShouldNotContain("document.documentElement.lang");

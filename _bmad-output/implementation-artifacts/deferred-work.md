@@ -2085,3 +2085,13 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-approve-builds-execution-sha-to-gitlink.md`
   summary: Historical done specs still cite the superseded Builds pin `a5316653…` and are not rewritten when the approved execution SHA advances.
   evidence: Blind-hunter review; `spec-align-production-release-with-tenants.md` Always rules and `spec-build-rel-1-governed-nuget-release-contract.md` still mention `a5316653…`. Reopen only if those become active operator instructions again.
+
+## Deferred from: code review of 11-19-apphost-nuget-audit-suppression.md (2026-08-07)
+
+- Online audit evidence is dated 2026-07-16 with no fresh re-baseline before done — **discharged 2026-08-07**: `dotnet list src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj package --include-transitive --vulnerable` reported no vulnerable packages against nuget.org at done transition.
+- sprint-status.yaml baseline..HEAD delta includes unrelated story/REL churn — reviewing File List paths against `baseline_commit..HEAD` absorbs later concurrent promotions (11.17*/11.18*/11.19a/c/d, GOV-1, REL-*). Story-owned sprint-status change in `84273bac` is only the 11.19b `ready-for-dev`→`review` transition. Reopen only if an 11.19b-owned tracker edit is proven incorrect.
+
+## Deferred from: code review of 11-19-localization-and-identifier-alignment.md (2026-08-07)
+
+- Fixed plural wording for AggregateCount == 1 in `HomeCardPendingAriaLabelTemplate` (EN/FR) — same known singular/plural gap as sibling home resources; ICU deferred historically (e.g. Story 9-5 note on `HomeActionQueueSubtitleTemplate`).
+- No governance against new production call sites reintroducing obsolete `HFC2106_ThemeHydrationEmpty` (warnings-only obsolete alias) — hardening beyond AC4/AC5; compatibility tests only assert the alias still exists.

@@ -1,12 +1,12 @@
 ---
 created: 2026-07-15
-updated: 2026-07-16
+updated: 2026-08-07
 epic: 11
 childStory: 11.19d
 parentStory: 11.19
 owner: Architect + Product Owner
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
-status: review
+status: done
 storyType: decision-record
 implementationGate: post-correction-readiness-pass
 baseline_commit: d9c19a4fb837357af10f6f1aa630232f670557c4
@@ -14,7 +14,7 @@ baseline_commit: d9c19a4fb837357af10f6f1aa630232f670557c4
 
 # Story 11.19d: Analyzer-Elevation Decision
 
-Status: review.
+Status: done.
 
 ## Story
 
@@ -120,6 +120,9 @@ python3 eng/validate-story-artifacts.py --story \
 
 ### Agent Model Used
 
+Not recorded by the implementing agent (2026-07-16). Review patches sealed with Cursor Grok 4.5
+(2026-08-07).
+
 ### Debug Log References
 
 - 2026-07-16: Captured SDK 10.0.302 / MSBuild 18.6.4 and a clean normal Release solution build (0 warnings, 0 errors) with the story-prescribed non-audit build command.
@@ -142,6 +145,7 @@ python3 eng/validate-story-artifacts.py --story \
 - Follow-up implementation is materialized as four independently approval-gated backlog stories; Story 11.19d introduces no analyzer-policy or product-code change.
 - Sprint traceability, documentation validation, artifact validation, focused Governance coverage, the clean Release build, and the 4,150-test default regression lane are green.
 - Definition of Done is satisfied and the story is ready for independent code review; follow-up phases remain backlog and unimplemented.
+- 2026-08-07 code review: commit `eb0c1b50` also advanced five Hexalith submodule gitlinks that were incidental to this decision story. AC6 is waived for those gitlinks only; they are listed below for File List honesty. Product code, analyzer policy, and build posture remain unchanged by this story.
 
 ### File List
 
@@ -155,8 +159,25 @@ python3 eng/validate-story-artifacts.py --story \
 - `_bmad-output/implementation-artifacts/11-23-recommended-analyzer-repository-activation.md`
 - `_bmad-output/implementation-artifacts/11-19-analyzer-elevation-decision.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `references/Hexalith.Builds` (incidental gitlink in `eb0c1b50`: `7e5c5bcb…` → `87d76ba7…`; AC6 waiver)
+- `references/Hexalith.EventStore` (incidental gitlink in `eb0c1b50`: `b2003059…` → `a48580b1…`; AC6 waiver)
+- `references/Hexalith.Memories` (incidental gitlink in `eb0c1b50`: `673b3e6f…` → `11231dfd…`; AC6 waiver)
+- `references/Hexalith.Parties` (incidental gitlink in `eb0c1b50`: `4378dede…` → `a8428bb3…`; AC6 waiver)
+- `references/Hexalith.Tenants` (incidental gitlink in `eb0c1b50`: `c59a13f6…` → `66f5b2e7…`; AC6 waiver)
+
+### Review Findings
+
+- [x] [Review][Patch] AC6 waiver + File List honesty for five incidental submodule gitlinks in `eb0c1b50` [`references/Hexalith.Builds` / `EventStore` / `Memories` / `Parties` / `Tenants`] — Decision: waive AC6 for those gitlinks; add them to File List and correct Completion Notes that claimed no submodule change.
+- [x] [Review][Patch] Narrow Phase 2 exit to zero generator-introduced findings in sample/test consumers; Phase 3 keeps hand-authored sample debt [`_bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md`] — Decision: align contract with Story 11.21 ownership (emitter proof vs hand-authored remainder, e.g. Counter.Web).
+- [x] [Review][Patch] Record SHA-256 (or equivalent) checksums for the three census `.binlog.gz` evidence files [`_bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md`]
+- [x] [Review][Patch] Name the approved central build location for Phase 4 `AnalysisMode=Recommended` (root `Directory.Build.props`) [`_bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md` / `_bmad-output/implementation-artifacts/11-23-recommended-analyzer-repository-activation.md`]
+- [x] [Review][Patch] Fill empty `Agent Model Used` in Dev Agent Record [`_bmad-output/implementation-artifacts/11-19-analyzer-elevation-decision.md`]
+- [x] [Review][Patch] Copy the story's exact `dotnet build` census/current command lines into the decision contract Evidence boundary [`_bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md`]
+- [x] [Review][Patch] Add explicit `dependsOn` on Story 11.20 for Story 11.22 (ACs cite the 11.20 ledger; today only `dependsOn: 11.21`) [`_bmad-output/implementation-artifacts/11-22-recommended-analyzer-test-and-sample-burndown.md`]
+- [x] [Review][Patch] Prefix bare compiler warning IDs (`0419`, `1570`, …) with `CS` in the preserved-suppression table [`_bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md`]
 
 ## Change Log
 
+- 2026-08-07: Sealed code-review patches — AC6 gitlink waiver/File List honesty; Phase 2 generator-introduced exit; binlog SHA-256s; census commands in contract; Phase 4 `Directory.Build.props`; Agent Model note; 11.22 `dependsOn: 11.20, 11.21`; CS-prefixed compiler IDs.
 - 2026-07-15: Materialized approved 11.19d decision child with a non-mutating Recommended-mode census contract.
 - 2026-07-16: Completed the analyzer census and approved staged-activation decision; added raw binary-log evidence and four separately gated implementation stories without changing analyzer policy or product code.

@@ -51,11 +51,26 @@ The candidate census temporarily lowers warnings-as-errors only on the command l
 enumeration. This is diagnostic instrumentation, not a policy change. The strict candidate binary log
 captures the actual fail-fast behavior under unchanged NFR-1.
 
-Raw machine-readable evidence:
+Census and baseline command lines (Release, non-audit, serialized):
 
-- `_bmad-output/contracts/analyzer-elevation-current-2026-07-16.binlog.gz`
-- `_bmad-output/contracts/analyzer-elevation-recommended-strict-2026-07-16.binlog.gz`
-- `_bmad-output/contracts/analyzer-elevation-recommended-census-2026-07-16.binlog.gz`
+```bash
+dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore -m:1 \
+  -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0
+dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore -m:1 \
+  -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0 -p:AnalysisMode=Recommended
+```
+
+The census enumeration additionally used command-line-only `TreatWarningsAsErrors=false` so the
+candidate mode could report the full 4,070 set; that override is instrumentation only and is not a
+policy change.
+
+Raw machine-readable evidence (SHA-256 of the committed `.binlog.gz` files):
+
+| Evidence file | SHA-256 |
+| --- | --- |
+| `_bmad-output/contracts/analyzer-elevation-current-2026-07-16.binlog.gz` | `0c2c90476c3f05ae50743c006c6c1a8b1be77483c0b184ce5278ad3b5b48299c` |
+| `_bmad-output/contracts/analyzer-elevation-recommended-strict-2026-07-16.binlog.gz` | `bc0dcf1d68e9be3c8d0eb66282ffd8f47bea3d50f185a6d5cfe5585eb5da977b` |
+| `_bmad-output/contracts/analyzer-elevation-recommended-census-2026-07-16.binlog.gz` | `a3bc2d1da395cde8b66e4ef9544cb96e8e1b3ddc81ab7a0b2c3878fe77e23d48` |
 
 To inspect an evidence file, decompress it and open the `.binlog` with an MSBuild binary-log reader.
 
@@ -76,7 +91,7 @@ Effective warning controls include:
 
 | Scope | IDs | Target disposition |
 | --- | --- | --- |
-| All source projects | 0419, 1570, 1572, 1573, 1574, 1734 | Preserve during analyzer burn-down; documentation/compiler policy is owned separately by Story 11.19a. Revisit only through a scoped policy story. |
+| All source projects | CS0419, CS1570, CS1572, CS1573, CS1574, CS1734 | Preserve during analyzer burn-down; documentation/compiler policy is owned separately by Story 11.19a. Revisit only through a scoped policy story. |
 | All projects | NU1605 as warning-as-error; net10.0 also SYSLIB0011 | Preserve. These are dependency/runtime compatibility gates, not Recommended-mode debt. |
 | Contracts.UI and Shell | NU5104 | Preserve pending package-validation policy; not a code-analysis suppression. |
 | Testing | NU5104, NU5128 | Preserve pending package-validation policy; not a code-analysis suppression. |
@@ -88,7 +103,7 @@ Effective warning controls include:
 | Root `.editorconfig` | CA1014 | Preserve as the current explicit assembly-policy decision until a dedicated compatibility review changes it. |
 | Root `.editorconfig` | CS1591 outside API-freeze globs | Preserve the approved Story 11.19a scope. |
 
-SDK-inherited 1701/1702 entries appear in effective sample/test `NoWarn` values; they are not
+SDK-inherited CS1701/CS1702 entries appear in effective sample/test `NoWarn` values; they are not
 repository-authored Recommended-mode suppressions and are not expanded by this decision.
 
 ## Candidate census
@@ -193,9 +208,9 @@ The policy phase must therefore distinguish narrow justified exceptions from gen
 | Phase | Follow-up | Scope and baseline | Exit criterion | Owner | Due date | Release gate |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Story 11.20 | Naming/policy audit: 2,958 Naming findings plus every existing suppression. Freeze an approved per-path/per-symbol exception ledger; no global CA disable. Estimate 3-5 engineer-days. | Every exception is narrow, documented, owner-bound, and test-backed; actionable Naming findings are zero in the scoped candidate lane. | Architect + Framework Maintainer | 2026-07-24 | Blocks later activation phases. |
-| 2 | Story 11.21 | Product and generator-emission defects: 367 product-source findings, generated templates, and the non-test share of logging/performance/globalization/usage debt. Estimate 8-12 engineer-days. | Product projects and generated sample consumers build with Recommended, unchanged TWAE, and zero warnings under the approved Phase-1 ledger. | Framework Maintainer + SourceTools Maintainer | 2026-08-14 | Blocks v1.0 release candidate. |
-| 3 | Story 11.22 | Tests and samples: 3,500 test findings and 203 sample findings, excluding only Phase-1-approved narrow exceptions. Estimate 8-12 engineer-days. | Default/Governance/Contract lanes pass; all test/sample projects have zero actionable Recommended findings. | Test Architect + Framework Maintainer | 2026-09-04 | Blocks v1.0 release candidate. |
-| 4 | Story 11.23 | Repository-wide activation and governance. Estimate 2-3 engineer-days. | Commit `AnalysisMode=Recommended`; full forced Release build is 0 warnings/0 errors with TWAE unchanged; regression, Governance, Contract, docs, and artifact lanes pass. | Architect + Framework Maintainer + Release Owner | 2026-09-11 | Required before v1.0 publication authorization. |
+| 2 | Story 11.21 | Product and generator-emission defects: 367 product-source findings, generated templates, and the non-test share of logging/performance/globalization/usage debt. Estimate 8-12 engineer-days. | Product projects build with Recommended, unchanged TWAE, and zero warnings under the approved Phase-1 ledger; sample/test consumers have zero *generator-introduced* Recommended findings (path/hint is SourceTools-generated output). Hand-authored sample debt stays with Phase 3. | Framework Maintainer + SourceTools Maintainer | 2026-08-14 | Blocks v1.0 release candidate. |
+| 3 | Story 11.22 | Tests and hand-authored samples: 3,500 test findings plus remaining hand-authored sample debt after Phase 2 generator proof (original sample project total was 203, of which ~201 were generated-location). Estimate 8-12 engineer-days. | Default/Governance/Contract lanes pass; all test/sample projects have zero actionable Recommended findings. | Test Architect + Framework Maintainer | 2026-09-04 | Blocks v1.0 release candidate. |
+| 4 | Story 11.23 | Repository-wide activation and governance. Estimate 2-3 engineer-days. | Declare `AnalysisMode=Recommended` in root `Directory.Build.props`; full forced Release build is 0 warnings/0 errors with TWAE unchanged; regression, Governance, Contract, docs, and artifact lanes pass. | Architect + Framework Maintainer + Release Owner | 2026-09-11 | Required before v1.0 publication authorization. |
 
 Total estimated effort is 21-32 engineer-days before contingency. Each follow-up is independently
 reviewed and approved; no phase is an authorization to fix unrelated code.
@@ -251,3 +266,9 @@ warnings” is not an accepted reason to defer the target without a replacement 
 - `_bmad-output/planning-artifacts/prd.md` — NFR-1 and v1.0 release gates.
 - `_bmad-output/project-docs/architecture-quality-review-2026-07-04.md` — finding M17.
 - https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/configuration-options#analysis-mode
+
+## Revision history
+
+- 2026-08-07: Code-review seal — Phase 2 exit narrowed to generator-introduced consumer findings;
+  Phase 4 activation location named as root `Directory.Build.props`; census command lines and
+  `.binlog.gz` SHA-256 digests recorded; compiler suppression IDs prefixed with `CS`.

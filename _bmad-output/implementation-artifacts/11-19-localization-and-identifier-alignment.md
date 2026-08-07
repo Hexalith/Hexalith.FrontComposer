@@ -1,19 +1,19 @@
 ---
 created: 2026-07-15
-updated: 2026-07-16
+updated: 2026-08-07
 epic: 11
 childStory: 11.19c
 parentStory: 11.19
 owner: Developer + Product/UX
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
-status: review
+status: done
 implementationGate: post-correction-readiness-pass
 baseline_commit: 84273bac14c00e0051872d91ee9be8761317b2af
 ---
 
 # Story 11.19c: Localization And Identifier Alignment
 
-Status: review.
+Status: done.
 
 ## Story
 
@@ -146,13 +146,14 @@ GPT-5 Codex
 - Added source governance for the home-card whole-string label and culture-derived root language, plus exact EN/FR placeholder-parity coverage.
 - Added the neutral HFC2106 preferred constant, retained the former public name as a policy-compliant obsolete alias, migrated Theme/Density consumers, and kept active diagnostic allocation uniqueness strict.
 - Re-authored HFC2106 registry/docs copy around Theme/Density preference fallback, preserved runtime-only Information semantics and the canonical help link, and pinned the additive public API through reflection-based compatibility governance (Contracts has no checked-in PublicAPI baseline file).
-- Reconciled every changed source, test, documentation, governance, and tracking artifact in the File List; no generated output, route, schema, package-version policy, analyzer release row, workflow, or submodule pointer changed.
+- Reconciled every changed source, test, documentation, governance, and tracking artifact in the File List; no generated output, route, schema, package-version policy, analyzer release row, or workflow changed. The implementation commit also advanced the `references/Hexalith.Memories` gitlink (`05a38963` → `673b3e6f`); that pointer change is recorded in the File List (AC6 waiver for this commit).
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/11-19-localization-and-identifier-alignment.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `docs/diagnostics/HFC2106.md`
+- `references/Hexalith.Memories`
 - `docs/diagnostics/diagnostic-registry.json`
 - `docs/validation/producer-fingerprints.json`
 - `src/Hexalith.FrontComposer.Shell/Components/Home/FcHomeCard.razor`
@@ -164,6 +165,8 @@ GPT-5 Codex
 - `src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs`
 - `tests/Hexalith.FrontComposer.Contracts.Tests/Diagnostics/FcDiagnosticIdsCompatibilityTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/DocumentLanguage/UiAppDocumentLanguageHarness.razor`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/DocumentLanguage/UiAppDocumentLanguageRenderTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Components/Home/FcHomeDirectoryTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/LocalizationGovernanceTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Resources/FcShellResourcesTests.cs`
@@ -171,7 +174,15 @@ GPT-5 Codex
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticCatalogTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`
 
+### Review Findings
+
+- [x] [Review][Patch] Reconcile Memories submodule with File List and Completion Notes [`references/Hexalith.Memories`] — Decision: keep gitlink `673b3e6f` from `d9c19a4f`; update File List to include `references/Hexalith.Memories` and correct Completion Notes that claimed no submodule pointer changed (AC6 waiver for this commit).
+- [x] [Review][Patch] AC2 document-language tests never observe rendered `lang` [`tests/Hexalith.FrontComposer.Shell.Tests/Integration/FrontComposerUiAppHostTests.cs:13`] — Added `UiAppDocumentLanguageHarness` + render tests asserting `lang` for `en`/`fr`; source governance pins App.razor and the harness to the same binding with no JS second authority.
+- [x] [Review][Defer] Fixed plural wording for AggregateCount == 1 [`src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx`] — deferred, pre-existing
+- [x] [Review][Defer] No governance against reintroducing obsolete `HFC2106_ThemeHydrationEmpty` call sites [`src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs:408`] — deferred, pre-existing
+
 ## Change Log
 
+- 2026-08-07: Sealed code-review patches — recorded Memories gitlink AC6 waiver in File List/Completion Notes; added rendered `lang` observation for en/fr.
 - 2026-07-16: Implemented EN/FR accessible-name localization, culture-derived document language, and HFC2106 neutral identifier/API/docs alignment with focused governance and full validation.
 - 2026-07-15: Materialized approved 11.19c child with exact live copy, culture, and HFC2106 compatibility boundaries.

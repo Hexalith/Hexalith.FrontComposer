@@ -19,8 +19,16 @@ public sealed class LocalizationGovernanceTests
     public void UiHostDocumentLanguage_Source_UsesUiCultureWithoutSecondAuthority()
     {
         string source = ReadRepoFile("src", "Hexalith.FrontComposer.UI", "Components", "App.razor");
+        string harness = ReadRepoFile(
+            "tests",
+            "Hexalith.FrontComposer.Shell.Tests",
+            "Components",
+            "DocumentLanguage",
+            "UiAppDocumentLanguageHarness.razor");
 
-        source.ShouldContain("<html lang=\"@System.Globalization.CultureInfo.CurrentUICulture.Name\">");
+        const string binding = "<html lang=\"@System.Globalization.CultureInfo.CurrentUICulture.Name\">";
+        source.ShouldContain(binding);
+        harness.ShouldContain(binding);
         source.ShouldNotContain("<html lang=\"en\">");
         source.ShouldNotContain("document.documentElement.lang");
     }

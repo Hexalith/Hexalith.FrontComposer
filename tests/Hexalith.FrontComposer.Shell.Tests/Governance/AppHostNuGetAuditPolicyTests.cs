@@ -34,7 +34,7 @@ public sealed class AppHostNuGetAuditPolicyTests {
             "msbuild",
             project,
             "-p:Configuration=Release",
-            "-getProperty:NoWarn,WarningsNotAsErrors,NuGetAudit,NuGetAuditMode,TreatWarningsAsErrors",
+            "-getProperty:NoWarn,WarningsNotAsErrors,NuGetAudit,NuGetAuditMode,NuGetAuditLevel,TreatWarningsAsErrors",
             "-getItem:PackageReference,ProjectReference",
             "-nologo",
         ]);
@@ -46,12 +46,14 @@ public sealed class AppHostNuGetAuditPolicyTests {
             foreach (string forbiddenCode in ForbiddenAuditWarningCodes) {
                 warningCodes.ShouldNotContain(
                     forbiddenCode,
+                    StringComparer.OrdinalIgnoreCase,
                     $"AppHost effective {propertyName} must not hide the {forbiddenCode} vulnerability family.");
             }
         }
 
         properties.GetProperty("NuGetAudit").GetString().ShouldBe("true");
         properties.GetProperty("NuGetAuditMode").GetString().ShouldBe("all");
+        properties.GetProperty("NuGetAuditLevel").GetString().ShouldBe("low");
         properties.GetProperty("TreatWarningsAsErrors").GetString().ShouldBe("true");
 
         JsonElement items = evaluated.RootElement.GetProperty("Items");
@@ -72,6 +74,7 @@ public sealed class AppHostNuGetAuditPolicyTests {
                 foreach (string forbiddenCode in ForbiddenAuditWarningCodes) {
                     warningCodes.ShouldNotContain(
                         forbiddenCode,
+                        StringComparer.OrdinalIgnoreCase,
                         $"AppHost or an imported props/targets file must not declare {forbiddenCode} in {property.Name.LocalName}.");
                 }
             }
@@ -112,6 +115,10 @@ public sealed class AppHostNuGetAuditPolicyTests {
 
     [Fact]
     public void AppHostAuditPolicy_SyntheticInvalidSuppressions_FailClosed() {
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
+        string expiredReviewDate = today.AddDays(-1).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+        string decisionDate = today.AddDays(-30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+
         (string Xml, string ExpectedFailure)[] invalidCases = [
             (
                 ReviewedSuppressionXml("https://example.test/GHSA-2345-6789-cfgh"),
@@ -127,6 +134,19 @@ public sealed class AppHostNuGetAuditPolicyTests {
                 ReviewedSuppressionXml("https://github.com/advisories/GHSA-2345-6789-cfgh")
                     .Replace("<ReviewDate>2026-08-16</ReviewDate>", "<ReviewDate>2026-06-16</ReviewDate>", StringComparison.Ordinal),
                 "before its decision date"),
+            (
+                ReviewedSuppressionXml(
+                        "https://github.com/advisories/GHSA-2345-6789-cfgh",
+                        decisionDate: decisionDate,
+                        reviewDate: expiredReviewDate),
+                "expired"),
+            (
+                ReviewedSuppressionXml("https://github.com/advisories/GHSA-2345-6789-cfgh")
+                    .Replace(
+                        "<Owner>Security/Release Owner</Owner>",
+                        "<Owner>Security/Release Owner</Owner><Owner>Duplicate Owner</Owner>",
+                        StringComparison.Ordinal),
+                "exactly one Owner"),
             (
                 ReviewedSuppressionXml("https://github.com/advisories/GHSA-2345-6789-cfgh")
                     .Replace("https://github.com/example/remediation/issues/42", "not-a-link", StringComparison.Ordinal),
@@ -144,8 +164,12 @@ public sealed class AppHostNuGetAuditPolicyTests {
 
     [Fact]
     public void AppHostAuditPolicy_SyntheticReviewedAdvisory_Passes() {
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
         XDocument document = XDocument.Parse(
-            ReviewedSuppressionXml("https://github.com/advisories/GHSA-2345-6789-cfgh"));
+            ReviewedSuppressionXml(
+                "https://github.com/advisories/GHSA-2345-6789-cfgh",
+                decisionDate: today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                reviewDate: today.AddDays(30).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)));
 
         ValidateSuppressionPolicy(
             document.Descendants().Where(static element => element.Name.LocalName == "NuGetAuditSuppress"))
@@ -177,6 +201,7 @@ public sealed class AppHostNuGetAuditPolicyTests {
         XElement[] suppressions = suppressionItems.ToArray();
         List<string> violations = [];
         HashSet<string> advisoryUrls = new(StringComparer.OrdinalIgnoreCase);
+        DateOnly today = DateOnly.FromDateTime(DateTime.UtcNow);
 
         foreach (XElement suppression in suppressions) {
             string advisoryUrl = suppression.Attribute("Include")?.Value.Trim() ?? string.Empty;
@@ -189,11 +214,17 @@ public sealed class AppHostNuGetAuditPolicyTests {
             }
 
             foreach (string metadataName in RequiredRationaleMetadata) {
-                string value = suppression
+                XElement[] matches = suppression
                     .Elements()
-                    .SingleOrDefault(element => element.Name.LocalName == metadataName)
-                    ?.Value.Trim() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(value)) {
+                    .Where(element => element.Name.LocalName == metadataName)
+                    .ToArray();
+                if (matches.Length != 1) {
+                    violations.Add(
+                        $"NuGetAuditSuppress '{advisoryUrl}' requires exactly one {metadataName} rationale metadata.");
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(matches[0].Value.Trim())) {
                     violations.Add($"NuGetAuditSuppress '{advisoryUrl}' requires {metadataName} rationale metadata.");
                 }
             }
@@ -222,6 +253,9 @@ public sealed class AppHostNuGetAuditPolicyTests {
             else if (hasDecisionDate && reviewDate < decisionDate) {
                 violations.Add($"NuGetAuditSuppress '{advisoryUrl}' ReviewDate is before its decision date.");
             }
+            else if (reviewDate < today) {
+                violations.Add($"NuGetAuditSuppress '{advisoryUrl}' ReviewDate is expired.");
+            }
 
             string remediationUrl = Metadata(suppression, "RemediationUrl");
             if (!Uri.TryCreate(remediationUrl, UriKind.Absolute, out Uri? remediation)
@@ -233,25 +267,34 @@ public sealed class AppHostNuGetAuditPolicyTests {
         return [.. violations];
     }
 
-    private static string Metadata(XElement suppression, string metadataName) => suppression
-        .Elements()
-        .SingleOrDefault(element => element.Name.LocalName == metadataName)
-        ?.Value.Trim() ?? string.Empty;
+    private static string Metadata(XElement suppression, string metadataName) {
+        XElement[] matches = suppression
+            .Elements()
+            .Where(element => element.Name.LocalName == metadataName)
+            .ToArray();
+        return matches.Length == 1 ? matches[0].Value.Trim() : string.Empty;
+    }
 
     private static IReadOnlyCollection<string> SplitWarningCodes(string? value) => (value ?? string.Empty)
         .Split([';', ',', ' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
-    private static string ReviewedSuppressionXml(string advisoryUrl) => $$"""
-        <NuGetAuditSuppress Include="{{advisoryUrl}}">
-          <AffectedPackage>Example.Package</AffectedPackage>
-          <AffectedVersion>1.2.3</AffectedVersion>
-          <Applicability>Reviewed and temporarily applicable to the AppHost dependency graph.</Applicability>
-          <Owner>Security/Release Owner</Owner>
-          <DecisionDate>2026-07-16</DecisionDate>
-          <ReviewDate>2026-08-16</ReviewDate>
-          <RemediationUrl>https://github.com/example/remediation/issues/42</RemediationUrl>
-        </NuGetAuditSuppress>
-        """;
+    private static string ReviewedSuppressionXml(
+        string advisoryUrl,
+        string decisionDate = "2026-07-16",
+        string? reviewDate = null) {
+        reviewDate ??= "2026-08-16";
+        return $$"""
+            <NuGetAuditSuppress Include="{{advisoryUrl}}">
+              <AffectedPackage>Example.Package</AffectedPackage>
+              <AffectedVersion>1.2.3</AffectedVersion>
+              <Applicability>Reviewed and temporarily applicable to the AppHost dependency graph.</Applicability>
+              <Owner>Security/Release Owner</Owner>
+              <DecisionDate>{{decisionDate}}</DecisionDate>
+              <ReviewDate>{{reviewDate}}</ReviewDate>
+              <RemediationUrl>https://github.com/example/remediation/issues/42</RemediationUrl>
+            </NuGetAuditSuppress>
+            """;
+    }
 
     private static string RunProcess(string workingDirectory, string fileName, IReadOnlyList<string> arguments) {
         using Process process = new() {
@@ -268,9 +311,17 @@ public sealed class AppHostNuGetAuditPolicyTests {
         }
 
         process.Start().ShouldBeTrue($"failed to start {fileName}.");
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
+        Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> errorTask = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(120_000)) {
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit();
+            throw new TimeoutException(
+                $"{fileName} {string.Join(' ', arguments)} timed out after 120s. stdout={outputTask.GetAwaiter().GetResult()} stderr={errorTask.GetAwaiter().GetResult()}");
+        }
+
+        string output = outputTask.GetAwaiter().GetResult();
+        string error = errorTask.GetAwaiter().GetResult();
         process.ExitCode.ShouldBe(0, $"{fileName} {string.Join(' ', arguments)} failed. stdout={output} stderr={error}");
         return output;
     }

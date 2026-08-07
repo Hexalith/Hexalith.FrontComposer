@@ -1,19 +1,19 @@
 ---
 created: 2026-07-15
-updated: 2026-07-16
+updated: 2026-08-07
 epic: 11
 childStory: 11.19b
 parentStory: 11.19
 owner: Developer + Security/Release Owner
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15.md
-status: review
+status: done
 implementationGate: post-correction-readiness-pass
 baseline_commit: c410e4d109ca266b65c5525afd3960af68e488e8
 ---
 
 # Story 11.19b: AppHost NuGet Audit Suppression
 
-Status: review.
+Status: done.
 
 ## Story
 
@@ -58,18 +58,28 @@ so that new high/critical vulnerabilities cannot be hidden by a permanent warnin
 - [x] Add non-vacuous governance for warning-family and per-advisory policy.
 - [x] Run online restore/audit, Release build, Governance, artifact, and file-integrity validation.
 
+### Review Findings
+
+- [x] [Review][Decision] AC1 command-line / CI family suppression is unpinned — resolved 2026-08-07: Administrator accepts AC4-scoped AppHost + imports Governance for this story; no CiGovernance workflow/script pin required now.
+- [x] [Review][Patch] Document Administrator AC6 waiver for AppHost-only Release compile (`BuildProjectReferences=false`) [_bmad-output/implementation-artifacts/11-19-apphost-nuget-audit-suppression.md] — applied: Completion Notes record the 2026-08-07 waiver.
+- [x] [Review][Patch] Pin effective AppHost `NuGetAuditLevel` to `low` [tests/Hexalith.FrontComposer.Shell.Tests/Governance/AppHostNuGetAuditPolicyTests.cs:37] — applied: `-getProperty` includes `NuGetAuditLevel` and asserts `low`.
+- [x] [Review][Patch] Fail closed when `ReviewDate` is past (review/expiry) [tests/Hexalith.FrontComposer.Shell.Tests/Governance/AppHostNuGetAuditPolicyTests.cs:201] — applied: expiry check + synthetic past-`ReviewDate` case; pass fixture uses today/+30d.
+- [x] [Review][Patch] Harden `RunProcess` against pipe deadlock and hang [tests/Hexalith.FrontComposer.Shell.Tests/Governance/AppHostNuGetAuditPolicyTests.cs:256] — applied: async stdout/stderr drain + 120s timeout with `Kill(entireProcessTree: true)`.
+- [x] [Review][Patch] Duplicate rationale metadata must record a violation, not throw [tests/Hexalith.FrontComposer.Shell.Tests/Governance/AppHostNuGetAuditPolicyTests.cs:191] — applied: exact-one element check + synthetic duplicate-Owner case.
+- [x] [Review][Patch] Compare forbidden audit warning codes case-insensitively [tests/Hexalith.FrontComposer.Shell.Tests/Governance/AppHostNuGetAuditPolicyTests.cs:241] — applied: `StringComparer.OrdinalIgnoreCase` on effective and imported scans.
+- [x] [Review][Patch] Update Dev Notes Current State after NoWarn removal [_bmad-output/implementation-artifacts/11-19-apphost-nuget-audit-suppression.md:65] — applied: Current State describes post-removal posture.
+- [x] [Review][Defer] Online audit evidence is dated 2026-07-16 with no fresh re-baseline before done [_bmad-output/implementation-artifacts/11-19-apphost-nuget-audit-suppression.md:127] — discharged 2026-08-07 at done: `dotnet list ... --vulnerable` reported no vulnerable packages against nuget.org.
+- [x] [Review][Defer] sprint-status.yaml baseline..HEAD delta includes unrelated story/REL churn [_bmad-output/implementation-artifacts/sprint-status.yaml] — deferred, pre-existing concurrent-work absorption (story commit `84273bac` only moved 11.19b to review); not an AppHost audit-policy defect
+
 ## Dev Notes
 
 ### Current State
 
-`src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj` currently contains:
-
-```xml
-<NoWarn>$(NoWarn);NU1902;NU1903;NU1904</NoWarn>
-```
-
-That suppresses every moderate/high/critical audit warning in the project, including future unrelated
-advisories. The replacement is advisory-specific, not warning-code-specific.
+`src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj` no longer contains a
+`NU1902;NU1903;NU1904` `NoWarn` family suppression. Effective Release audit posture is
+`NuGetAudit=true`, `NuGetAuditMode=all`, `NuGetAuditLevel=low`, and `TreatWarningsAsErrors=true`.
+There are currently no accepted `NuGetAuditSuppress` items; future exceptions must be
+advisory-specific with complete rationale metadata (including review/expiry date).
 
 ### Files To Read Before Editing
 
@@ -139,11 +149,14 @@ GPT-5 Codex
 - Added non-vacuous Governance coverage for effective/imported warning policy, non-empty project graph, exact unique advisory URLs, complete rationale metadata, dates, remediation links, and synthetic fail-closed cases.
 - Verified the online Release audit, focused AppHost Release compile, full configured regression lane, and Governance lane. The existing combined-UI Release graph blocker is documented separately and is outside this story's changed files.
 - Confirmed file-list integrity against baseline commit `c410e4d109ca266b65c5525afd3960af68e488e8`; Story 11.19b is ready for review.
+- 2026-08-07 (bmad-code-review): Administrator accepted AC6 evidence as AppHost-only Release compile with `BuildProjectReferences=false` while the pre-existing combined-UI Release graph remains blocked by unpublished UI module packages / Parties HFC0001; this is an explicit AC6 waiver for those out-of-scope blockers, not a weakened AppHost audit policy.
+- 2026-08-07 (bmad-code-review): Applied seven patches — `NuGetAuditLevel=low` pin, `ReviewDate` expiry fail-closed, `RunProcess` async drain/timeout, duplicate-metadata violation recording, case-insensitive NU190x scan, Dev Notes Current State rewrite, and the AC6 waiver note. Focused Governance class passed 4/4. Online vulnerable-package audit re-baselined clean against nuget.org.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/11-19-apphost-nuget-audit-suppression.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
 - `src/Hexalith.FrontComposer.AppHost/Hexalith.FrontComposer.AppHost.csproj`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/AppHostNuGetAuditPolicyTests.cs`
 
@@ -156,3 +169,4 @@ GPT-5 Codex
 
 - 2026-07-15: Materialized approved 11.19b child from the live AppHost blanket audit suppression.
 - 2026-07-16: Removed the audit warning-family suppression, added fail-closed AppHost audit governance, captured online audit/build evidence, and promoted the story to review.
+- 2026-08-07: bmad-code-review; seven patches applied, two decisions resolved (AC6 AppHost-only waiver accepted; AC1 CI pin declined in favour of AC4 scope), two deferrals retained/discharged, story moved to done.

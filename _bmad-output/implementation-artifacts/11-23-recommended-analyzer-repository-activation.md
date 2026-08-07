@@ -26,9 +26,9 @@ so that analyzer strictness becomes a durable v1.0 build invariant.
 ## Acceptance Criteria
 
 1. Given Stories 11.20-11.22 are done and their current census contains zero actionable findings,
-   when activation begins, then `AnalysisMode=Recommended` is declared in the approved central build
-   location without adding analyzer packages, changing `TreatWarningsAsErrors=true`, or introducing a
-   global/category CA suppression.
+   when activation begins, then `AnalysisMode=Recommended` is declared in root
+   `Directory.Build.props` without adding analyzer packages, changing `TreatWarningsAsErrors=true`,
+   or introducing a global/category CA suppression.
 
 2. Given netstandard2.0 compiler-host compatibility is explicit, when the property is evaluated across
    Contracts, Schema, and SourceTools, then their intended analyzer/TFM boundaries are preserved and
@@ -53,7 +53,7 @@ so that analyzer strictness becomes a durable v1.0 build invariant.
 ## Tasks / Subtasks
 
 - [ ] Verify Stories 11.20-11.22 are done and regenerate a zero-actionable-finding census.
-- [ ] Add the central `AnalysisMode=Recommended` setting with approved TFM boundaries.
+- [ ] Add `AnalysisMode=Recommended` to root `Directory.Build.props` with approved TFM boundaries.
 - [ ] Reconcile the benchmark warning-policy exception with the zero-warning Release gate.
 - [ ] Add durable analyzer-policy Governance tests.
 - [ ] Run the full forced Release, test, compatibility, docs, and artifact gates.
@@ -69,7 +69,7 @@ ledger fields, or a forced command-line Recommended build reports an actionable 
 ### Rollback
 
 An emergency rollback after activation is a separately approved build-policy change. It may revert the
-central `AnalysisMode` declaration while remediation proceeds, but may not lower
+root `Directory.Build.props` `AnalysisMode` declaration while remediation proceeds, but may not lower
 `TreatWarningsAsErrors`, add a third-party analyzer, or add a blanket `NoWarn`/category suppression.
 
 ### Required validation
@@ -98,4 +98,5 @@ artifact validation.
 
 ## Change Log
 
+- 2026-08-07: Named root `Directory.Build.props` as the Phase 4 `AnalysisMode=Recommended` activation location (11.19d code-review patch).
 - 2026-07-16: Materialized approved staged-activation Phase 4 from Story 11.19d.

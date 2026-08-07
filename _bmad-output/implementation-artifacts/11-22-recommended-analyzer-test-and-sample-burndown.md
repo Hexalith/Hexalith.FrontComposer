@@ -4,7 +4,7 @@ updated: 2026-07-16
 epic: 11
 sourceDecision: _bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md
 parentDecisionStory: 11.19d
-dependsOn: 11.21
+dependsOn: 11.20, 11.21
 owner: Test Architect + Framework Maintainer
 due: 2026-09-04
 status: backlog
@@ -96,4 +96,5 @@ silently ignored.
 
 ## Change Log
 
+- 2026-08-07: Recorded explicit `dependsOn: 11.20, 11.21` so CA1707/ledger ACs name both predecessors (11.19d code-review patch).
 - 2026-07-16: Materialized approved staged-activation Phase 3 from Story 11.19d.
