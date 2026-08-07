@@ -174,7 +174,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            _ = InvokeAsync(async () =>");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                try { await RefreshPresentationAuthorizationAsync().ConfigureAwait(false); }");
-            _ = sb.AppendLine("                catch (Exception ex) when (ex is not OperationCanceledException) { Logger?.LogWarning(ex, \"Refresh after auth-state-changed failed.\"); }");
+            _ = sb.AppendLine("                catch (Exception ex) when (ex is not OperationCanceledException) { if (Logger is not null) { LogAuthStateRefreshFailed(Logger, ex); } }");
             _ = sb.AppendLine("            });");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        catch (ObjectDisposedException) { /* Renderer torn down between dispose and event firing; safe to ignore. */ }");
@@ -202,7 +202,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        if (!authorization.IsAllowed && !isPending)");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            SetAuthorizationWarning(authorization.Reason);");
-            _ = sb.AppendLine("            Logger?.LogWarning(\"Command authorization blocked. CorrelationId={CorrelationId} Reason={Reason}\", authorization.CorrelationId, authorization.Reason);");
+            _ = sb.AppendLine("            if (Logger is not null) { LogAuthorizationBlocked(Logger, authorization.CorrelationId, authorization.Reason); }");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        else if (isPending)");
             _ = sb.AppendLine("        {");
@@ -408,12 +408,159 @@ public static class CommandFormEmitter {
         EmitBuildRenderTree(sb, form, fluxor, escapedButtonLabel);
         EmitRejectionCopyHelpers(sb, escapedButtonLabel);
         EmitNumericConverters(sb, form);
+        _ = sb.AppendLine();
+        EmitLogMethods(sb, hasAuthorizationPolicy);
 
         _ = sb.AppendLine("}");
         _ = sb.AppendLine();
         _ = sb.AppendLine("#pragma warning restore ASP0006");
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Story 11.21 — emits the form's cached <c>LoggerMessage</c> delegates and their private static
+    /// wrappers. Levels, templates, placeholder sets, and argument order are unchanged from the direct
+    /// <c>ILogger</c> calls they replace; only the logging mechanism differs (CA1848/CA1873).
+    /// </summary>
+    /// <remarks>
+    /// Event ids use the generated-code <c>5900</c>-<c>5919</c> band, which is disjoint from the Shell's
+    /// Security <c>5660</c>-<c>5691</c>, HotPath <c>5700</c>-<c>5780</c>, and Warning <c>5800</c>-<c>5853</c>
+    /// families. A helper is emitted only when its call site is emitted, so no unused private member is
+    /// generated.
+    /// </remarks>
+    /// <param name="sb">Target buffer, positioned inside the generated class body.</param>
+    /// <param name="hasAuthorizationPolicy">Whether the authorization-gated call sites were emitted.</param>
+    private static void EmitLogMethods(StringBuilder sb, bool hasAuthorizationPolicy) {
+        const string authorizationReasonType = "global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason";
+        const string admissionDenialReasonType = "global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason";
+        const string registrationStatusType = "global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus";
+        const string warningKindType = "global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind";
+
+        _ = sb.AppendLine("    // Story 11.21 — cached LoggerMessage delegates (CA1848/CA1873). Generated code cannot use");
+        _ = sb.AppendLine("    // [LoggerMessage]: Roslyn does not run the compile-time logging generator over generator output.");
+
+        if (hasAuthorizationPolicy) {
+            GeneratedLogMethodEmitter.Emit(
+                sb,
+                "LogAuthStateRefreshFailed",
+                5900,
+                "CommandFormAuthStateRefreshFailed",
+                "Warning",
+                "Refresh after auth-state-changed failed.",
+                hasException: true);
+            GeneratedLogMethodEmitter.Emit(
+                sb,
+                "LogAuthorizationBlocked",
+                5901,
+                "CommandFormAuthorizationBlocked",
+                "Warning",
+                "Command authorization blocked. CorrelationId={CorrelationId} Reason={Reason}",
+                hasException: false,
+                ("string", "correlationId"),
+                (authorizationReasonType, "reason"));
+            GeneratedLogMethodEmitter.Emit(
+                sb,
+                "LogAuthorizationBlockedAfterBeforeSubmit",
+                5902,
+                "CommandFormAuthorizationBlockedAfterBeforeSubmit",
+                "Warning",
+                "Command authorization blocked after BeforeSubmit. CorrelationId={CorrelationId} Reason={Reason}",
+                hasException: false,
+                ("string", "correlationId"),
+                (authorizationReasonType, "reason"));
+        }
+
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogSubmitBlockedByConcurrency",
+            5903,
+            "CommandFormSubmitBlocked",
+            "Warning",
+            "Command submit blocked by FC-CNC. Reason={Reason} BlockingMessageId={BlockingMessageId}",
+            hasException: false,
+            (admissionDenialReasonType, "reason"),
+            ("string?", "blockingMessageId"));
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogCommandSubmitted",
+            5904,
+            "CommandFormSubmitted",
+            "Information",
+            "Command submitted. CorrelationId={CorrelationId}",
+            hasException: false,
+            ("string", "correlationId"));
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogPendingRegistrationSkipped",
+            5905,
+            "CommandFormPendingRegistrationSkipped",
+            "Warning",
+            "Pending command registration skipped. CorrelationId={CorrelationId} Status={Status}",
+            hasException: false,
+            ("string", "correlationId"),
+            (registrationStatusType, "status"));
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogCommandAcknowledged",
+            5906,
+            "CommandFormAcknowledged",
+            "Information",
+            "Command acknowledged. CorrelationId={CorrelationId} MessageId={MessageId}",
+            hasException: false,
+            ("string", "correlationId"),
+            ("string", "messageId"));
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogCommandAcknowledgedDispatchSkipped",
+            5907,
+            "CommandFormAcknowledgedDispatchSkipped",
+            "Information",
+            "Command acknowledged dispatch skipped (pending status: {Status}). CorrelationId={CorrelationId}",
+            hasException: false,
+            (registrationStatusType + "?", "status"),
+            ("string", "correlationId"));
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogCommandValidationFailed",
+            5908,
+            "CommandFormValidationFailed",
+            "Information",
+            "Command validation failed. CorrelationId={CorrelationId} Title={Title}",
+            hasException: false,
+            ("string", "correlationId"),
+            ("string?", "title"));
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogCommandWarning",
+            5909,
+            "CommandFormWarning",
+            "Warning",
+            "Command warning ({WarningKind}). CorrelationId={CorrelationId} Title={Title}",
+            hasException: false,
+            (warningKindType, "warningKind"),
+            ("string", "correlationId"),
+            ("string?", "title"));
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogAuthRedirectRequired",
+            5910,
+            "CommandFormAuthRedirectRequired",
+            "Information",
+            "Command requires authentication redirect. CorrelationId={CorrelationId} Reason={Reason}",
+            hasException: false,
+            ("string", "correlationId"),
+            ("string", "reason"));
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogCommandRejected",
+            5911,
+            "CommandFormRejected",
+            "Warning",
+            "Command rejected. CorrelationId={CorrelationId} Reason={Reason}",
+            hasException: false,
+            ("string", "correlationId"),
+            ("string", "reason"));
     }
 
     private static void EmitFieldBackingFields(StringBuilder sb, CommandFormModel form) {
@@ -511,7 +658,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
-            _ = sb.AppendLine("            Logger?.LogWarning(\"Command authorization blocked. CorrelationId={CorrelationId} Reason={Reason}\", authorization.CorrelationId, authorization.Reason);");
+            _ = sb.AppendLine("            if (Logger is not null) { LogAuthorizationBlocked(Logger, authorization.CorrelationId, authorization.Reason); }");
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine();
@@ -551,7 +698,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
-            _ = sb.AppendLine("            Logger?.LogWarning(\"Command authorization blocked after BeforeSubmit. CorrelationId={CorrelationId} Reason={Reason}\", authorizationPostBeforeSubmit.CorrelationId, authorizationPostBeforeSubmit.Reason);");
+            _ = sb.AppendLine("            if (Logger is not null) { LogAuthorizationBlockedAfterBeforeSubmit(Logger, authorizationPostBeforeSubmit.CorrelationId, authorizationPostBeforeSubmit.Reason); }");
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine();
@@ -568,7 +715,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
-        _ = sb.AppendLine("            Logger?.LogWarning(\"Command submit blocked by FC-CNC. Reason={Reason} BlockingMessageId={BlockingMessageId}\", admission.DenialReason, admission.BlockingMessageId);");
+        _ = sb.AppendLine("            if (Logger is not null) { LogSubmitBlockedByConcurrency(Logger, admission.DenialReason, admission.BlockingMessageId); }");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
@@ -584,7 +731,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("        Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SubmittedAction(correlationId, _model));");
         _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
-        _ = sb.AppendLine("        Logger?.LogInformation(\"Command submitted. CorrelationId={CorrelationId}\", correlationId);");
+        _ = sb.AppendLine("        if (Logger is not null) { LogCommandSubmitted(Logger, correlationId); }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
@@ -634,7 +781,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidCorrelationId");
         _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata)");
         _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    Logger?.LogWarning(\"Pending command registration skipped. CorrelationId={CorrelationId} Status={Status}\", correlationId, pendingRegistration.Status);");
+        _ = sb.AppendLine("                    if (Logger is not null) { LogPendingRegistrationSkipped(Logger, correlationId, pendingRegistration.Status); }");
         _ = sb.AppendLine("                }");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine();
@@ -654,11 +801,11 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            if (!skipAcknowledged)");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".AcknowledgedAction(correlationId, result.MessageId));");
-        _ = sb.AppendLine("                Logger?.LogInformation(\"Command acknowledged. CorrelationId={CorrelationId} MessageId={MessageId}\", correlationId, result.MessageId);");
+        _ = sb.AppendLine("                if (Logger is not null) { LogCommandAcknowledged(Logger, correlationId, result.MessageId); }");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            else");
         _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                Logger?.LogInformation(\"Command acknowledged dispatch skipped (pending status: {Status}). CorrelationId={CorrelationId}\", pendingRegistration?.Status, correlationId);");
+        _ = sb.AppendLine("                if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration?.Status, correlationId); }");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (CommandValidationException ex)");
@@ -671,7 +818,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                _editContext.NotifyValidationStateChanged();");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
-        _ = sb.AppendLine("            Logger?.LogInformation(\"Command validation failed. CorrelationId={CorrelationId} Title={Title}\", correlationId, ex.Problem.Title);");
+        _ = sb.AppendLine("            if (Logger is not null) { LogCommandValidationFailed(Logger, correlationId, ex.Problem.Title); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (CommandWarningException ex)");
         _ = sb.AppendLine("        {");
@@ -686,7 +833,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            CommandFeedbackPublisher.PublishWarning(_serverWarning);");
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
         _ = sb.AppendLine("            await InvokeAsync(StateHasChanged);");
-        _ = sb.AppendLine("            Logger?.LogWarning(\"Command warning ({WarningKind}). CorrelationId={CorrelationId} Title={Title}\", ex.Kind, correlationId, ex.Problem.Title);");
+        _ = sb.AppendLine("            if (Logger is not null) { LogCommandWarning(Logger, ex.Kind, correlationId, ex.Problem.Title); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (AuthRedirectRequiredException ex)");
         _ = sb.AppendLine("        {");
@@ -694,7 +841,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            // lifecycle rejection, no validation pollution. Lifecycle is reset to Idle so");
         _ = sb.AppendLine("            // the form does not stay locked while the host handles the redirect.");
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
-        _ = sb.AppendLine("            Logger?.LogInformation(\"Command requires authentication redirect. CorrelationId={CorrelationId} Reason={Reason}\", correlationId, ex.Message);");
+        _ = sb.AppendLine("            if (Logger is not null) { LogAuthRedirectRequired(Logger, correlationId, ex.Message); }");
         _ = sb.AppendLine("            await AuthRedirector.RedirectAsync(returnUrl: null, cancellationToken: cts.Token).ConfigureAwait(false);");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (CommandRejectedException ex)");
@@ -702,7 +849,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode));");
         _ = sb.AppendLine("            // Notify validation pipeline so any stale error state redraws (patch P16).");
         _ = sb.AppendLine("            _editContext?.NotifyValidationStateChanged();");
-        _ = sb.AppendLine("            Logger?.LogWarning(\"Command rejected. CorrelationId={CorrelationId} Reason={Reason}\", correlationId, ex.Message);");
+        _ = sb.AppendLine("            if (Logger is not null) { LogCommandRejected(Logger, correlationId, ex.Message); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (OperationCanceledException)");
         _ = sb.AppendLine("        {");

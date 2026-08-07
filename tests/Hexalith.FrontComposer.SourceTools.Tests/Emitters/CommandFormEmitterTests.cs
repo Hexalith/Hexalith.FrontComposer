@@ -347,7 +347,12 @@ public class CommandFormEmitterTests {
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        int tryIndex = source.IndexOf("try", source.IndexOf("Command submitted.", StringComparison.Ordinal), StringComparison.Ordinal);
+        // Story 11.21: anchor on the submitted-log CALL SITE, not on the message template. The
+        // template now lives in the cached LoggerMessage delegate emitted at the end of the class.
+        int submittedLogIndex = source.IndexOf("LogCommandSubmitted(Logger, correlationId);", StringComparison.Ordinal);
+        submittedLogIndex.ShouldBeGreaterThan(0);
+
+        int tryIndex = source.IndexOf("try", submittedLogIndex, StringComparison.Ordinal);
         int finallyIndex = source.IndexOf("finally", tryIndex, StringComparison.Ordinal);
         int disposeIndex = source.IndexOf("admission.Dispose();", finallyIndex, StringComparison.Ordinal);
 
@@ -400,10 +405,16 @@ public class CommandFormEmitterTests {
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
         // Decision D15: never log _model. Passing the command to CommandService is allowed.
-        source.Split('\n')
-            .Where(line => line.Contains("Logger?", StringComparison.Ordinal))
-            .ShouldAllBe(line => !line.Contains("_model", StringComparison.Ordinal));
-        source.ShouldNotContain("LogInformation(\"Submitted command {Model}\"");
+        // Story 11.21: logging goes through cached LoggerMessage delegates, so the guard matches the
+        // "(Logger, ...)" call sites instead of the old null-conditional "Logger?" shape. The message
+        // templates are emitter-authored constants, so the command instance can only leak through an
+        // argument at one of these call sites.
+        string[] loggingLines = [.. source.Split('\n')
+            .Where(line => line.Contains("(Logger,", StringComparison.Ordinal))];
+
+        loggingLines.ShouldNotBeEmpty();
+        loggingLines.ShouldAllBe(line => !line.Contains("_model", StringComparison.Ordinal));
+        source.ShouldNotContain("{Model}");
     }
 
     [Fact]

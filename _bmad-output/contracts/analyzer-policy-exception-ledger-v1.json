@@ -322,6 +322,21 @@
       "reviewDate": "2027-07-17",
       "trigger": "Revalidate if any removed diagnostic reappears rather than restoring a blanket control.",
       "evidence": "Normal and Naming forced Release builds after removal."
+    },
+    {
+      "key": "design-ca1000-generic-static-compatibility",
+      "sourceKind": "suppression attribute",
+      "exactScope": "three exact public members: QueryResult<T>.NotModified, QueryResult<T>.NotModifiedFromCache, ProjectionTestDataBuilder<TProjection>.BuildMany",
+      "mechanism": "member-level SuppressMessage with justification",
+      "decision": "remain",
+      "rationale": "CA1000's prescribed correction is relocating each static factory off its generic type, which deletes a shipped public member from the 2.x Contracts and Testing surfaces. The three members are published factory entry points with owned PublicAPI baselines; the exception preserves binary and source compatibility. Suppression is applied per member rather than per file so any newly added generic static member still reports. The ledger's findings array is the Naming-census reconciliation set whose counts must sum to the sealed Naming totals, so this Design-category exception is recorded as a disposition plus its source-control inventory entry rather than a findings row.",
+      "owner": "Architect + Framework Maintainer",
+      "decisionDate": "2026-08-07",
+      "reviewDate": "2027-01-17",
+      "trigger": "Revalidate at the approved 3.0 public compatibility boundary, where the statics may move to non-generic companion types.",
+      "evidence": "Story 11.21 refreshed census at commit 4a8cfa4926b8fc52850da70f811103a91df22dfc reported exactly these three CA1000 sites and no others.",
+      "approval": "Administrator approved this scoped ledger amendment on 2026-08-07 after Story 11.21's entry gate found no pre-existing CA1000 disposition; Story 11.20's scope covered Naming findings and warning controls only.",
+      "followUpStory": "11.21"
     }
   ],
   "warningControls": [
@@ -330,7 +345,9 @@
       "sourceKind": "msbuild",
       "path": "Directory.Build.props",
       "property": "TreatWarningsAsErrors",
-      "diagnosticIds": ["true"],
+      "diagnosticIds": [
+        "true"
+      ],
       "exactScope": "repository",
       "mechanism": "TreatWarningsAsErrors",
       "dispositionKey": "policy-root-twae"
@@ -340,7 +357,14 @@
       "sourceKind": "msbuild",
       "path": "src/Directory.Build.props",
       "property": "NoWarn",
-      "diagnosticIds": ["0419", "1570", "1572", "1573", "1574", "1734"],
+      "diagnosticIds": [
+        "0419",
+        "1570",
+        "1572",
+        "1573",
+        "1574",
+        "1734"
+      ],
       "exactScope": "src projects",
       "mechanism": "NoWarn",
       "dispositionKey": "source-documentation-compiler-policy"
@@ -350,7 +374,10 @@
       "sourceKind": "msbuild",
       "path": "tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj",
       "property": "NoWarn",
-      "diagnosticIds": ["ASP0006", "CA2007"],
+      "diagnosticIds": [
+        "ASP0006",
+        "CA2007"
+      ],
       "exactScope": "Testing.Tests project",
       "mechanism": "NoWarn",
       "dispositionKey": "testing-ca2007-audit"
@@ -360,7 +387,9 @@
       "sourceKind": "msbuild",
       "path": "samples/Counter/Counter.Specimens.Domain/Counter.Specimens.Domain.csproj",
       "property": "NoWarn",
-      "diagnosticIds": ["ASP0006"],
+      "diagnosticIds": [
+        "ASP0006"
+      ],
       "exactScope": "Counter.Specimens.Domain project",
       "mechanism": "NoWarn",
       "dispositionKey": "asp0006-generator-debt"
@@ -370,7 +399,9 @@
       "sourceKind": "msbuild",
       "path": "samples/Counter/Counter.Specimens/Counter.Specimens.csproj",
       "property": "NoWarn",
-      "diagnosticIds": ["ASP0006"],
+      "diagnosticIds": [
+        "ASP0006"
+      ],
       "exactScope": "Counter.Specimens project",
       "mechanism": "NoWarn",
       "dispositionKey": "asp0006-generator-debt"
@@ -380,7 +411,9 @@
       "sourceKind": "msbuild",
       "path": "samples/IdeParityCounter/IdeParityCounter.csproj",
       "property": "NoWarn",
-      "diagnosticIds": ["ASP0006"],
+      "diagnosticIds": [
+        "ASP0006"
+      ],
       "exactScope": "IdeParityCounter project",
       "mechanism": "NoWarn",
       "dispositionKey": "asp0006-generator-debt"
@@ -390,7 +423,10 @@
       "sourceKind": "msbuild",
       "path": "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj",
       "property": "NoWarn",
-      "diagnosticIds": ["NU5104", "NU5128"],
+      "diagnosticIds": [
+        "NU5104",
+        "NU5128"
+      ],
       "exactScope": "Testing package",
       "mechanism": "NoWarn",
       "dispositionKey": "package-warning-policy"
@@ -400,7 +436,9 @@
       "sourceKind": "msbuild",
       "path": "samples/Counter/Counter.Web/Counter.Web.csproj",
       "property": "NoWarn",
-      "diagnosticIds": ["ASP0006"],
+      "diagnosticIds": [
+        "ASP0006"
+      ],
       "exactScope": "Counter.Web project",
       "mechanism": "NoWarn",
       "dispositionKey": "asp0006-generator-debt"
@@ -410,7 +448,9 @@
       "sourceKind": "msbuild",
       "path": "samples/Counter/Counter.Domain/Counter.Domain.csproj",
       "property": "NoWarn",
-      "diagnosticIds": ["ASP0006"],
+      "diagnosticIds": [
+        "ASP0006"
+      ],
       "exactScope": "Counter.Domain project",
       "mechanism": "NoWarn",
       "dispositionKey": "asp0006-generator-debt"
@@ -420,7 +460,9 @@
       "sourceKind": "msbuild",
       "path": "tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj",
       "property": "TreatWarningsAsErrors",
-      "diagnosticIds": ["false"],
+      "diagnosticIds": [
+        "false"
+      ],
       "exactScope": "benchmark executable",
       "mechanism": "TreatWarningsAsErrors",
       "dispositionKey": "benchmark-twae-exception"
@@ -430,7 +472,9 @@
       "sourceKind": "msbuild",
       "path": "src/Hexalith.FrontComposer.Contracts.UI/Hexalith.FrontComposer.Contracts.UI.csproj",
       "property": "NoWarn",
-      "diagnosticIds": ["NU5104"],
+      "diagnosticIds": [
+        "NU5104"
+      ],
       "exactScope": "Contracts.UI package",
       "mechanism": "NoWarn",
       "dispositionKey": "package-warning-policy"
@@ -440,7 +484,9 @@
       "sourceKind": "msbuild",
       "path": "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
       "property": "NoWarn",
-      "diagnosticIds": ["ASP0006"],
+      "diagnosticIds": [
+        "ASP0006"
+      ],
       "exactScope": "Shell.Tests project",
       "mechanism": "NoWarn",
       "dispositionKey": "asp0006-generator-debt"
@@ -450,7 +496,9 @@
       "sourceKind": "msbuild",
       "path": "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
       "property": "NoWarn",
-      "diagnosticIds": ["NU5104"],
+      "diagnosticIds": [
+        "NU5104"
+      ],
       "exactScope": "Shell package",
       "mechanism": "NoWarn",
       "dispositionKey": "package-warning-policy"
@@ -462,7 +510,9 @@
       "section": "[*.cs]",
       "property": "dotnet_diagnostic.CA1062.severity",
       "value": "warning",
-      "diagnosticIds": ["CA1062"],
+      "diagnosticIds": [
+        "CA1062"
+      ],
       "exactScope": "repository C# sources",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "analyzer-explicit-severity-policy"
@@ -474,7 +524,9 @@
       "section": "[*.cs]",
       "property": "dotnet_diagnostic.CA1822.severity",
       "value": "warning",
-      "diagnosticIds": ["CA1822"],
+      "diagnosticIds": [
+        "CA1822"
+      ],
       "exactScope": "repository C# sources",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "analyzer-explicit-severity-policy"
@@ -486,7 +538,9 @@
       "section": "[*.cs]",
       "property": "dotnet_diagnostic.CA2007.severity",
       "value": "warning",
-      "diagnosticIds": ["CA2007"],
+      "diagnosticIds": [
+        "CA2007"
+      ],
       "exactScope": "repository C# sources",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "analyzer-explicit-severity-policy"
@@ -498,7 +552,9 @@
       "section": "[*.cs]",
       "property": "dotnet_diagnostic.CA1014.severity",
       "value": "none",
-      "diagnosticIds": ["CA1014"],
+      "diagnosticIds": [
+        "CA1014"
+      ],
       "exactScope": "repository C# sources",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "analyzer-explicit-severity-policy"
@@ -510,7 +566,9 @@
       "section": "[*.cs]",
       "property": "dotnet_diagnostic.CS1591.severity",
       "value": "none",
-      "diagnosticIds": ["CS1591"],
+      "diagnosticIds": [
+        "CS1591"
+      ],
       "exactScope": "repository C# sources",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "source-documentation-compiler-policy"
@@ -522,7 +580,9 @@
       "section": "[src/Hexalith.FrontComposer.Contracts/Attributes/**.cs]",
       "property": "dotnet_diagnostic.CS1591.severity",
       "value": "warning",
-      "diagnosticIds": ["CS1591"],
+      "diagnosticIds": [
+        "CS1591"
+      ],
       "exactScope": "Contracts Attributes sources",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "source-documentation-compiler-policy"
@@ -534,7 +594,9 @@
       "section": "[src/Hexalith.FrontComposer.Contracts/Rendering/**.cs]",
       "property": "dotnet_diagnostic.CS1591.severity",
       "value": "warning",
-      "diagnosticIds": ["CS1591"],
+      "diagnosticIds": [
+        "CS1591"
+      ],
       "exactScope": "Contracts Rendering sources",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "source-documentation-compiler-policy"
@@ -546,7 +608,9 @@
       "section": "[src/Hexalith.FrontComposer.Contracts/Mcp/**.cs]",
       "property": "dotnet_diagnostic.CS1591.severity",
       "value": "warning",
-      "diagnosticIds": ["CS1591"],
+      "diagnosticIds": [
+        "CS1591"
+      ],
       "exactScope": "Contracts Mcp sources",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "source-documentation-compiler-policy"
@@ -558,7 +622,9 @@
       "section": "[src/Hexalith.FrontComposer.Contracts/Conformance/**.cs]",
       "property": "dotnet_diagnostic.CS1591.severity",
       "value": "warning",
-      "diagnosticIds": ["CS1591"],
+      "diagnosticIds": [
+        "CS1591"
+      ],
       "exactScope": "Contracts Conformance sources",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "source-documentation-compiler-policy"
@@ -570,7 +636,9 @@
       "section": "[tests/**.cs]",
       "property": "dotnet_diagnostic.CA1707.severity",
       "value": "none",
-      "diagnosticIds": ["CA1707"],
+      "diagnosticIds": [
+        "CA1707"
+      ],
       "exactScope": "tracked test C# sources",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "naming-ca1707-test-convention"
@@ -582,7 +650,9 @@
       "section": "[src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs]",
       "property": "dotnet_diagnostic.CA1707.severity",
       "value": "none",
-      "diagnosticIds": ["CA1707"],
+      "diagnosticIds": [
+        "CA1707"
+      ],
       "exactScope": "FcDiagnosticIds.cs",
       "mechanism": "EditorConfig severity",
       "dispositionKey": "naming-ca1707-diagnostic-id-compatibility"
@@ -637,7 +707,19 @@
         "tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinatorTests.cs"
       ],
       "entryCount": 62,
-      "diagnosticIds": ["BL0001", "CA1062", "CA1822", "CA2007", "CS0067", "CS0618", "CS8625", "HFC0001", "IDE0056", "RS2008", "xUnit1051"],
+      "diagnosticIds": [
+        "BL0001",
+        "CA1062",
+        "CA1822",
+        "CA2007",
+        "CS0067",
+        "CS0618",
+        "CS8625",
+        "HFC0001",
+        "IDE0056",
+        "RS2008",
+        "xUnit1051"
+      ],
       "exactScope": "listed root-owned source paths",
       "mechanism": "pragma warning disable",
       "dispositionKey": "source-local-compatibility-controls"
@@ -649,6 +731,7 @@
         "samples/Counter/Counter.Domain/CounterProjection.cs",
         "samples/Counter/Counter.Specimens.Domain/SpecimenFormattingProjection.cs",
         "src/Hexalith.FrontComposer.Contracts.UI/Shortcuts/ShortcutBinding.cs",
+        "src/Hexalith.FrontComposer.Contracts/Communication/QueryResult.cs",
         "src/Hexalith.FrontComposer.Contracts/Conformance/GeneratedOutputPathContract.cs",
         "src/Hexalith.FrontComposer.Contracts/Schema/SchemaFingerprintContracts.cs",
         "src/Hexalith.FrontComposer.Schema/Diagnostics/SchemaMigrationDeltaAnalyzer.cs",
@@ -673,10 +756,25 @@
         "src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideRegistry.cs",
         "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs",
         "src/Hexalith.FrontComposer.Shell/State/CommandPalette/ProjectionTypeResolver.cs",
-        "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs"
+        "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs",
+        "src/Hexalith.FrontComposer.Testing/ProjectionTestDataBuilder.cs"
       ],
-      "entryCount": 40,
-      "diagnosticIds": ["CA1822", "CA2007", "HFC1002", "IDE0057", "IL2026", "IL2057", "IL2067", "IL2070", "IL2075", "IL2080", "IL2090", "IL2091"],
+      "entryCount": 43,
+      "diagnosticIds": [
+        "CA1000",
+        "CA1822",
+        "CA2007",
+        "HFC1002",
+        "IDE0057",
+        "IL2026",
+        "IL2057",
+        "IL2067",
+        "IL2070",
+        "IL2075",
+        "IL2080",
+        "IL2090",
+        "IL2091"
+      ],
       "exactScope": "listed root-owned source paths",
       "mechanism": "SuppressMessage or UnconditionalSuppressMessage",
       "dispositionKey": "source-local-compatibility-controls"
@@ -689,10 +787,55 @@
         "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs"
       ],
       "entryCount": 2,
-      "diagnosticIds": ["ASP0006"],
+      "diagnosticIds": [
+        "ASP0006"
+      ],
       "exactScope": "listed SourceTools emitter paths",
       "mechanism": "emitted pragma warning disable",
       "dispositionKey": "asp0006-generator-debt"
     }
-  ]
+  ],
+  "story1121Census": {
+    "commit": "4a8cfa4926b8fc52850da70f811103a91df22dfc",
+    "sdk": "10.0.302",
+    "msbuild": "18.6.11.33009",
+    "roslyn": "5.6.0",
+    "utcDate": "2026-08-07T17:50:01Z",
+    "restoreMode": "dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0",
+    "command": "dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0 -p:AnalysisMode=Recommended -p:TreatWarningsAsErrors=false",
+    "generatedCodeTreatment": "SDK default; generated trees are analyzed and their diagnostics are counted at their obj/ generated paths rather than reclassified",
+    "totalWarnings": 1125,
+    "locatedDiagnostics": 1120,
+    "ownedProductFindings": 275,
+    "ownedGeneratedFindings": 503,
+    "ownedTotal": 778,
+    "deferredToStory1122": 342,
+    "productByProject": {
+      "Hexalith.FrontComposer.Shell": 214,
+      "Hexalith.FrontComposer.Contracts (net10.0)": 30,
+      "Hexalith.FrontComposer.Mcp": 24,
+      "Hexalith.FrontComposer.Schema (net10.0)": 3,
+      "Hexalith.FrontComposer.Contracts.UI": 2,
+      "Hexalith.FrontComposer.Cli": 1,
+      "Hexalith.FrontComposer.Testing": 1
+    },
+    "generatedByConsumer": {
+      "Hexalith.FrontComposer.Shell.Tests": 302,
+      "Counter.Specimens.Domain": 94,
+      "Counter.Domain": 79,
+      "IdeParityCounter": 28
+    },
+    "generatedByDiagnostic": {
+      "CA1848": 279,
+      "CA1873": 126,
+      "CA1816": 30,
+      "CA1822": 24,
+      "CA1861": 17,
+      "CA1507": 12,
+      "CA1859": 8,
+      "CA1845": 7
+    },
+    "driftFromCreateStoryBaseline": "Generated findings reconcile exactly at 503 with an identical per-diagnostic distribution. Product findings moved from 278 actionable to 275: Contracts fell 119 -> 30 because Story 11.20's exact-file CA1707 scope now suppresses its 89 compatibility findings as designed, and Shell CA1873 fell 83 -> 80 through unrelated repository evolution. The -3 product drift is -1.1%, below the 5% escalation threshold in Story 11.21 Task 1.",
+    "note": "Census instrumentation only. TreatWarningsAsErrors is relaxed solely to enumerate; it is not a green gate and does not activate Recommended repository-wide."
+  }
 }

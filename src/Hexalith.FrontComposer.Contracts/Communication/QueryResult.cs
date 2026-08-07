@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Hexalith.FrontComposer.Contracts.Communication;
 
 /// <summary>
@@ -18,6 +20,10 @@ public record QueryResult<T>(
     /// </summary>
     /// <param name="etag">The validator returned by the server, when present.</param>
     /// <returns>A not-modified result with no payload items.</returns>
+    [SuppressMessage(
+        "Design",
+        "CA1000:Do not declare static members on generic types",
+        Justification = "Shipped 2.x public factory. Relocating it to a non-generic companion type would delete a published member; approved as design-ca1000-generic-static-compatibility in the analyzer-policy exception ledger and revisited at the 3.0 compatibility boundary.")]
     public static QueryResult<T> NotModified(string? etag = null) => new([], 0, etag, true);
 
     /// <summary>
@@ -29,6 +35,10 @@ public record QueryResult<T>(
     /// <param name="items">The cached payload items.</param>
     /// <param name="totalCount">The cached total count.</param>
     /// <param name="etag">The cached validator.</param>
+    [SuppressMessage(
+        "Design",
+        "CA1000:Do not declare static members on generic types",
+        Justification = "Shipped 2.x public factory. Relocating it to a non-generic companion type would delete a published member; approved as design-ca1000-generic-static-compatibility in the analyzer-policy exception ledger and revisited at the 3.0 compatibility boundary.")]
     public static QueryResult<T> NotModifiedFromCache(IReadOnlyList<T> items, int totalCount, string? etag)
         => new(items, totalCount, etag, true);
 }

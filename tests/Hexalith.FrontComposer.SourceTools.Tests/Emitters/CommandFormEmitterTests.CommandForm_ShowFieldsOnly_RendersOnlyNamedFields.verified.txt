@@ -260,7 +260,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 CommandFeedbackPublisher.PublishWarning(_serverWarning);
             }
             await InvokeAsync(StateHasChanged);
-            Logger?.LogWarning("Command submit blocked by FC-CNC. Reason={Reason} BlockingMessageId={BlockingMessageId}", admission.DenialReason, admission.BlockingMessageId);
+            if (Logger is not null) { LogSubmitBlockedByConcurrency(Logger, admission.DenialReason, admission.BlockingMessageId); }
             return;
         }
 
@@ -276,7 +276,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
         Dispatcher.Dispatch(new IncrementCommandActions.SubmittedAction(correlationId, _model));
         await InvokeAsync(StateHasChanged);
-        Logger?.LogInformation("Command submitted. CorrelationId={CorrelationId}", correlationId);
+        if (Logger is not null) { LogCommandSubmitted(Logger, correlationId); }
 
         try
         {
@@ -326,7 +326,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                     or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidCorrelationId
                     or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata)
                 {
-                    Logger?.LogWarning("Pending command registration skipped. CorrelationId={CorrelationId} Status={Status}", correlationId, pendingRegistration.Status);
+                    if (Logger is not null) { LogPendingRegistrationSkipped(Logger, correlationId, pendingRegistration.Status); }
                 }
             }
 
@@ -346,11 +346,11 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             if (!skipAcknowledged)
             {
                 Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId));
-                Logger?.LogInformation("Command acknowledged. CorrelationId={CorrelationId} MessageId={MessageId}", correlationId, result.MessageId);
+                if (Logger is not null) { LogCommandAcknowledged(Logger, correlationId, result.MessageId); }
             }
             else
             {
-                Logger?.LogInformation("Command acknowledged dispatch skipped (pending status: {Status}). CorrelationId={CorrelationId}", pendingRegistration?.Status, correlationId);
+                if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration?.Status, correlationId); }
             }
         }
         catch (CommandValidationException ex)
@@ -363,7 +363,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 _editContext.NotifyValidationStateChanged();
             }
             Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
-            Logger?.LogInformation("Command validation failed. CorrelationId={CorrelationId} Title={Title}", correlationId, ex.Problem.Title);
+            if (Logger is not null) { LogCommandValidationFailed(Logger, correlationId, ex.Problem.Title); }
         }
         catch (CommandWarningException ex)
         {
@@ -378,7 +378,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             CommandFeedbackPublisher.PublishWarning(_serverWarning);
             Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
             await InvokeAsync(StateHasChanged);
-            Logger?.LogWarning("Command warning ({WarningKind}). CorrelationId={CorrelationId} Title={Title}", ex.Kind, correlationId, ex.Problem.Title);
+            if (Logger is not null) { LogCommandWarning(Logger, ex.Kind, correlationId, ex.Problem.Title); }
         }
         catch (AuthRedirectRequiredException ex)
         {
@@ -386,7 +386,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             // lifecycle rejection, no validation pollution. Lifecycle is reset to Idle so
             // the form does not stay locked while the host handles the redirect.
             Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
-            Logger?.LogInformation("Command requires authentication redirect. CorrelationId={CorrelationId} Reason={Reason}", correlationId, ex.Message);
+            if (Logger is not null) { LogAuthRedirectRequired(Logger, correlationId, ex.Message); }
             await AuthRedirector.RedirectAsync(returnUrl: null, cancellationToken: cts.Token).ConfigureAwait(false);
         }
         catch (CommandRejectedException ex)
@@ -394,7 +394,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode));
             // Notify validation pipeline so any stale error state redraws (patch P16).
             _editContext?.NotifyValidationStateChanged();
-            Logger?.LogWarning("Command rejected. CorrelationId={CorrelationId} Reason={Reason}", correlationId, ex.Message);
+            if (Logger is not null) { LogCommandRejected(Logger, correlationId, ex.Message); }
         }
         catch (OperationCanceledException)
         {
@@ -640,6 +640,90 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         }
         NotifyClientFieldChanged("Amount");
     }
+
+    // Story 11.21 — cached LoggerMessage delegates (CA1848/CA1873). Generated code cannot use
+    // [LoggerMessage]: Roslyn does not run the compile-time logging generator over generator output.
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason, string?, global::System.Exception?> _logSubmitBlockedByConcurrency =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason, string?>(
+            global::Microsoft.Extensions.Logging.LogLevel.Warning,
+            new global::Microsoft.Extensions.Logging.EventId(5903, "CommandFormSubmitBlocked"),
+            "Command submit blocked by FC-CNC. Reason={Reason} BlockingMessageId={BlockingMessageId}");
+
+    private static void LogSubmitBlockedByConcurrency(global::Microsoft.Extensions.Logging.ILogger logger, global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason reason, string? blockingMessageId)
+        => _logSubmitBlockedByConcurrency(logger, reason, blockingMessageId, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string, global::System.Exception?> _logCommandSubmitted =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string>(
+            global::Microsoft.Extensions.Logging.LogLevel.Information,
+            new global::Microsoft.Extensions.Logging.EventId(5904, "CommandFormSubmitted"),
+            "Command submitted. CorrelationId={CorrelationId}");
+
+    private static void LogCommandSubmitted(global::Microsoft.Extensions.Logging.ILogger logger, string correlationId)
+        => _logCommandSubmitted(logger, correlationId, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string, global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus, global::System.Exception?> _logPendingRegistrationSkipped =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string, global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus>(
+            global::Microsoft.Extensions.Logging.LogLevel.Warning,
+            new global::Microsoft.Extensions.Logging.EventId(5905, "CommandFormPendingRegistrationSkipped"),
+            "Pending command registration skipped. CorrelationId={CorrelationId} Status={Status}");
+
+    private static void LogPendingRegistrationSkipped(global::Microsoft.Extensions.Logging.ILogger logger, string correlationId, global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus status)
+        => _logPendingRegistrationSkipped(logger, correlationId, status, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string, string, global::System.Exception?> _logCommandAcknowledged =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string, string>(
+            global::Microsoft.Extensions.Logging.LogLevel.Information,
+            new global::Microsoft.Extensions.Logging.EventId(5906, "CommandFormAcknowledged"),
+            "Command acknowledged. CorrelationId={CorrelationId} MessageId={MessageId}");
+
+    private static void LogCommandAcknowledged(global::Microsoft.Extensions.Logging.ILogger logger, string correlationId, string messageId)
+        => _logCommandAcknowledged(logger, correlationId, messageId, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus?, string, global::System.Exception?> _logCommandAcknowledgedDispatchSkipped =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus?, string>(
+            global::Microsoft.Extensions.Logging.LogLevel.Information,
+            new global::Microsoft.Extensions.Logging.EventId(5907, "CommandFormAcknowledgedDispatchSkipped"),
+            "Command acknowledged dispatch skipped (pending status: {Status}). CorrelationId={CorrelationId}");
+
+    private static void LogCommandAcknowledgedDispatchSkipped(global::Microsoft.Extensions.Logging.ILogger logger, global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus? status, string correlationId)
+        => _logCommandAcknowledgedDispatchSkipped(logger, status, correlationId, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string, string?, global::System.Exception?> _logCommandValidationFailed =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string, string?>(
+            global::Microsoft.Extensions.Logging.LogLevel.Information,
+            new global::Microsoft.Extensions.Logging.EventId(5908, "CommandFormValidationFailed"),
+            "Command validation failed. CorrelationId={CorrelationId} Title={Title}");
+
+    private static void LogCommandValidationFailed(global::Microsoft.Extensions.Logging.ILogger logger, string correlationId, string? title)
+        => _logCommandValidationFailed(logger, correlationId, title, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind, string, string?, global::System.Exception?> _logCommandWarning =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind, string, string?>(
+            global::Microsoft.Extensions.Logging.LogLevel.Warning,
+            new global::Microsoft.Extensions.Logging.EventId(5909, "CommandFormWarning"),
+            "Command warning ({WarningKind}). CorrelationId={CorrelationId} Title={Title}");
+
+    private static void LogCommandWarning(global::Microsoft.Extensions.Logging.ILogger logger, global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind warningKind, string correlationId, string? title)
+        => _logCommandWarning(logger, warningKind, correlationId, title, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string, string, global::System.Exception?> _logAuthRedirectRequired =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string, string>(
+            global::Microsoft.Extensions.Logging.LogLevel.Information,
+            new global::Microsoft.Extensions.Logging.EventId(5910, "CommandFormAuthRedirectRequired"),
+            "Command requires authentication redirect. CorrelationId={CorrelationId} Reason={Reason}");
+
+    private static void LogAuthRedirectRequired(global::Microsoft.Extensions.Logging.ILogger logger, string correlationId, string reason)
+        => _logAuthRedirectRequired(logger, correlationId, reason, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string, string, global::System.Exception?> _logCommandRejected =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string, string>(
+            global::Microsoft.Extensions.Logging.LogLevel.Warning,
+            new global::Microsoft.Extensions.Logging.EventId(5911, "CommandFormRejected"),
+            "Command rejected. CorrelationId={CorrelationId} Reason={Reason}");
+
+    private static void LogCommandRejected(global::Microsoft.Extensions.Logging.ILogger logger, string correlationId, string reason)
+        => _logCommandRejected(logger, correlationId, reason, null);
+
 }
 
 #pragma warning restore ASP0006
