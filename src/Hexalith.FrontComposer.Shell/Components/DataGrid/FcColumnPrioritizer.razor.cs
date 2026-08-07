@@ -91,7 +91,7 @@ public partial class FcColumnPrioritizer : ComponentBase {
             ? Localizer["PrioritizerColumnsAllVisibleAriaLabel"].Value
             : Localizer[
                 "PrioritizerMoreColumnsAriaLabelTemplate",
-                hidden.ToString(CultureInfo.CurrentUICulture)].Value;
+                hidden.ToString(CultureInfo.CurrentCulture)].Value;
     }
 
     private Task OnGearClickedAsync() {

@@ -76,7 +76,8 @@ public class RazorEmitterTests {
 
         string source = RazorEmitter.Emit(model);
 
-        source.ShouldContain("builder.AddAttribute(seq++, \"EntityPluralOverride\", \"Purchase orders\");");
+        GeneratedRenderTreeText.MaskSequenceArguments(source)
+            .ShouldContain("builder.AddAttribute(#, \"EntityPluralOverride\", \"Purchase orders\");");
     }
 
     [Fact]
@@ -89,11 +90,18 @@ public class RazorEmitterTests {
         string source = RazorEmitter.Emit(model);
 
         source.ShouldContain("private global::Hexalith.FrontComposer.Shell.State.PendingCommands.INewItemIndicatorStateService NewItemIndicators { get; set; } = default!;");
-        source.ShouldContain("private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, ref int seq)");
+        source.ShouldContain("private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)");
         source.ShouldContain("foreach (var entry in NewItemIndicators.Snapshot(_viewKey))");
-        source.ShouldContain("builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(seq++);");
         source.ShouldContain("builder.SetKey(entry.EntityKey);");
-        source.ShouldContain("RenderNewItemIndicators(builder, ref seq);");
+
+        // Story 11.21 ASP0006 — the helper no longer borrows the caller's counter by reference; it
+        // renders inside an explicit region so its own literals stay in their own sequence scope.
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        masked.ShouldContain("builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(#);");
+        masked.ShouldContain("builder.OpenRegion(#);");
+        masked.ShouldContain("RenderNewItemIndicators(builder);");
+        masked.ShouldContain("builder.CloseRegion();");
+        source.ShouldNotContain("ref int seq");
     }
 
     [Fact]

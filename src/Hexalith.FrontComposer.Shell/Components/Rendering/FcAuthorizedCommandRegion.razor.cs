@@ -202,5 +202,6 @@ public partial class FcAuthorizedCommandRegion : ComponentBase, IDisposable {
 
         _cts?.Dispose();
         _cts = null;
+        GC.SuppressFinalize(this);
     }
 }

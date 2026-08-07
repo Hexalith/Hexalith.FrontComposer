@@ -71,9 +71,13 @@ public static class CanonicalSchemaMaterial {
         = (System.Text.Json.Serialization.Metadata.JsonTypeInfo<SchemaContractDocument>)_canonicalOptions.GetTypeInfo(typeof(SchemaContractDocument));
 
     public static SchemaCanonicalPayload CreatePayload(SchemaContractDocument document) {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(document);
+#else
         if (document is null) {
             throw new ArgumentNullException(nameof(document));
         }
+#endif
         SchemaMaterialValidationResult validation = ValidateDocument(document);
         if (!validation.IsValid) {
             throw new SchemaMaterialValidationException(validation);
@@ -126,15 +130,23 @@ public static class CanonicalSchemaMaterial {
     }
 
     public static SchemaMaterialValidationResult ValidateDocument(SchemaContractDocument document) {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(document);
+#else
         if (document is null) {
             throw new ArgumentNullException(nameof(document));
         }
+#endif
 
         if (!string.Equals(document.RootDiscriminator, "frontcomposer.schema.contract.v1", StringComparison.Ordinal)) {
             return new(false, SchemaMaterialValidationCategory.UnknownRootDiscriminator, "schema.root.unknown", "$.RootDiscriminator");
         }
 
+#if NET10_0_OR_GREATER
+        if (!Enum.IsDefined(document.Family)) {
+#else
         if (!Enum.IsDefined(typeof(SchemaContractFamily), document.Family)) {
+#endif
             return new(false, SchemaMaterialValidationCategory.UnknownContractFamily, "schema.family.unknown", "$.Family");
         }
 
@@ -176,7 +188,7 @@ public static class CanonicalSchemaMaterial {
             Metadata = NormalizeDictionary(document.Metadata),
         };
 
-    private static IReadOnlyDictionary<string, string> NormalizeDictionary(IReadOnlyDictionary<string, string>? values)
+    private static SortedDictionary<string, string> NormalizeDictionary(IReadOnlyDictionary<string, string>? values)
         => values is null
             ? new SortedDictionary<string, string>(StringComparer.Ordinal)
             : new SortedDictionary<string, string>(
@@ -247,8 +259,14 @@ public static class CanonicalSchemaMaterial {
     }
 
     private static string Sha256Hex(string value) {
+#if NET10_0_OR_GREATER
+        // Byte-identical to SHA256.Create().ComputeHash(...); the static one-shot avoids the
+        // per-call algorithm instance. The canonical fingerprint bytes are unchanged.
+        byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(value));
+#else
         using var sha = SHA256.Create();
         byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(value));
+#endif
         char[] chars = new char[bytes.Length * 2];
         const string Hex = "0123456789abcdef";
         for (int i = 0; i < bytes.Length; i++) {

@@ -18,6 +18,9 @@ public static class FrontComposerStorageKey {
     /// <summary>Key-segment separator. Inside-segment <c>:</c> characters are URL-encoded to <c>%3A</c>.</summary>
     public const string Separator = ":";
 
+    /// <summary>Single-character form of <see cref="Separator"/> used for allocation-free appends.</summary>
+    private const char SeparatorChar = ':';
+
     /// <summary>Feature prefix for LastUsed storage keys.</summary>
     public const string LastUsedPrefix = "frontcomposer:lastused";
 
@@ -53,10 +56,10 @@ public static class FrontComposerStorageKey {
 
         StringBuilder sb = new();
         _ = sb.Append(LastUsedPrefix);
-        _ = sb.Append(Separator).Append(tenantCanon);
-        _ = sb.Append(Separator).Append(userCanon);
-        _ = sb.Append(Separator).Append(commandTypeFqn);
-        _ = sb.Append(Separator).Append(propertyName);
+        _ = sb.Append(SeparatorChar).Append(tenantCanon);
+        _ = sb.Append(SeparatorChar).Append(userCanon);
+        _ = sb.Append(SeparatorChar).Append(commandTypeFqn);
+        _ = sb.Append(SeparatorChar).Append(propertyName);
         return sb.ToString();
     }
 

@@ -379,10 +379,14 @@ public record QueryRequest
     /// <returns><see langword="true"/> because the record has printable members.</returns>
     protected virtual bool PrintMembers(StringBuilder builder)
     {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(builder);
+#else
         if (builder is null)
         {
             throw new ArgumentNullException(nameof(builder));
         }
+#endif
         builder.Append("ProjectionType = ");
         builder.Append(_criteria.ProjectionType);
         builder.Append(", TenantId = ");

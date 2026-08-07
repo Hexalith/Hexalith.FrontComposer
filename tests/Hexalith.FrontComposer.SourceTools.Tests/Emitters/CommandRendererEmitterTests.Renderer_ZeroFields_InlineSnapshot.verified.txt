@@ -2,7 +2,6 @@
 // Do not edit directly
 
 #nullable enable
-#pragma warning disable ASP0006
 
 using System;
 using System.Collections.Generic;
@@ -153,7 +152,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         return true;
     }
 
-    private Icon? ResolveIcon()
+    private static Icon? ResolveIcon()
     {
         return TryResolveIcon("Regular.Size16.Play", out Icon? fallback) ? fallback : null;
     }
@@ -312,54 +311,52 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
-        int seq = 0;
         switch (_effectiveMode)
         {
             case CommandRenderMode.Inline:
             {
-                builder.OpenComponent<FluentButton>(seq++);
-                builder.AddAttribute(seq++, "Id", _triggerButtonId);
-                builder.AddAttribute(seq++, "Type", ButtonType.Button);
-                builder.AddAttribute(seq++, "role", "button");
-                builder.AddAttribute(seq++, "aria-label", "Demo");
-                builder.AddAttribute(seq++, "Appearance", ButtonAppearance.Outline);
-                builder.AddAttribute(seq++, "Disabled", _externalSubmit is null);
-                builder.AddAttribute(seq++, "IconStart", ResolveIcon());
-                builder.AddAttribute(seq++, "Label", "Demo");
-                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => OnZeroFieldClickAsync()));
+                builder.OpenComponent<FluentButton>(0);
+                builder.AddAttribute(1, "Id", _triggerButtonId);
+                builder.AddAttribute(2, "Type", ButtonType.Button);
+                builder.AddAttribute(3, "role", "button");
+                builder.AddAttribute(4, "aria-label", "Demo");
+                builder.AddAttribute(5, "Appearance", ButtonAppearance.Outline);
+                builder.AddAttribute(6, "Disabled", _externalSubmit is null);
+                builder.AddAttribute(7, "IconStart", ResolveIcon());
+                builder.AddAttribute(8, "Label", "Demo");
+                builder.AddAttribute(9, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => OnZeroFieldClickAsync()));
                 builder.CloseComponent();
 
-                builder.OpenElement(seq++, "div");
-                builder.AddAttribute(seq++, "style", "display:none");
-                builder.OpenComponent<Demo.Domain.DemoCommandForm>(seq++);
-                builder.AddAttribute(seq++, "InitialValue", _prefilledModel);
-                builder.AddAttribute(seq++, "RegisterExternalSubmit", (Action<Action>)OnFormRegisteredExternalSubmit);
-                builder.AddAttribute(seq++, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
-                builder.AddAttribute(seq++, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
-                builder.AddAttribute(seq++, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
+                builder.OpenElement(10, "div");
+                builder.AddAttribute(11, "style", "display:none");
+                builder.OpenComponent<Demo.Domain.DemoCommandForm>(12);
+                builder.AddAttribute(13, "InitialValue", _prefilledModel);
+                builder.AddAttribute(14, "RegisterExternalSubmit", (Action<Action>)OnFormRegisteredExternalSubmit);
+                builder.AddAttribute(15, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
+                builder.AddAttribute(16, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                builder.AddAttribute(17, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
                 builder.CloseComponent();
                 builder.CloseElement();
                 break;
             }
             case CommandRenderMode.CompactInline:
             {
-                builder.OpenElement(seq++, "div");
-                builder.AddAttribute(seq++, "class", "fc-expand-in-row");
-                builder.AddAttribute(seq++, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleCompactEscapeAsync));
-                builder.AddAttribute(seq++, "tabindex", "-1");
-                builder.AddElementReferenceCapture(seq++, r => _compactCardRef = r);
-                builder.OpenComponent<FluentCard>(seq++);
-                builder.AddAttribute(seq++, "Appearance", CardAppearance.Outline);
-                builder.AddAttribute(seq++, "Shadow", CardShadow.Small);
-                builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__card =>
+                builder.OpenElement(18, "div");
+                builder.AddAttribute(19, "class", "fc-expand-in-row");
+                builder.AddAttribute(20, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleCompactEscapeAsync));
+                builder.AddAttribute(21, "tabindex", "-1");
+                builder.AddElementReferenceCapture(22, r => _compactCardRef = r);
+                builder.OpenComponent<FluentCard>(23);
+                builder.AddAttribute(24, "Appearance", CardAppearance.Outline);
+                builder.AddAttribute(25, "Shadow", CardShadow.Small);
+                builder.AddAttribute(26, "ChildContent", (RenderFragment)(__card =>
                 {
-                    int cseq = 0;
-                    __card.OpenComponent<Demo.Domain.DemoCommandForm>(cseq++);
-                    __card.AddAttribute(cseq++, "InitialValue", _prefilledModel);
-                    __card.AddAttribute(cseq++, "DerivableFieldsHidden", true);
-                    __card.AddAttribute(cseq++, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
-                    __card.AddAttribute(cseq++, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
-                    __card.AddAttribute(cseq++, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
+                    __card.OpenComponent<Demo.Domain.DemoCommandForm>(0);
+                    __card.AddAttribute(1, "InitialValue", _prefilledModel);
+                    __card.AddAttribute(2, "DerivableFieldsHidden", true);
+                    __card.AddAttribute(3, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
+                    __card.AddAttribute(4, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                    __card.AddAttribute(5, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
                     __card.CloseComponent();
                 }));
                 builder.CloseComponent();
@@ -370,30 +367,29 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
             default:
             {
                 var opts = ShellOptions.Value;
-                builder.OpenElement(seq++, "div");
-                builder.AddAttribute(seq++, "style", $"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;");
+                builder.OpenElement(27, "div");
+                builder.AddAttribute(28, "style", $"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;");
                 if (opts.EmbeddedBreadcrumb)
                 {
-                    builder.OpenElement(seq++, "nav");
-                    builder.AddAttribute(seq++, "aria-label", "breadcrumb");
-                    builder.OpenElement(seq++, "a");
-                    builder.AddAttribute(seq++, "href", GetBreadcrumbReturnPath());
-                    builder.AddContent(seq++, GetBreadcrumbBoundedContext());
+                    builder.OpenElement(29, "nav");
+                    builder.AddAttribute(30, "aria-label", "breadcrumb");
+                    builder.OpenElement(31, "a");
+                    builder.AddAttribute(32, "href", GetBreadcrumbReturnPath());
+                    builder.AddContent(33, GetBreadcrumbBoundedContext());
                     builder.CloseElement();
-                    builder.AddContent(seq++, " > Demo");
+                    builder.AddContent(34, " > Demo");
                     builder.CloseElement();
                 }
-                builder.OpenComponent<FcFormAbandonmentGuard>(seq++);
-                builder.AddAttribute(seq++, "CorrelationId", _lifecycleState.Value.CorrelationId ?? string.Empty);
-                builder.AddAttribute(seq++, "EditContext", _formEditContext);
-                builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__guard =>
+                builder.OpenComponent<FcFormAbandonmentGuard>(35);
+                builder.AddAttribute(36, "CorrelationId", _lifecycleState.Value.CorrelationId ?? string.Empty);
+                builder.AddAttribute(37, "EditContext", _formEditContext);
+                builder.AddAttribute(38, "ChildContent", (RenderFragment)(__guard =>
                 {
-                    int gseq = 0;
-                    __guard.OpenComponent<Demo.Domain.DemoCommandForm>(gseq++);
-                    __guard.AddAttribute(gseq++, "InitialValue", _prefilledModel);
-                    __guard.AddAttribute(gseq++, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
-                    __guard.AddAttribute(gseq++, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
-                    __guard.AddAttribute(gseq++, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
+                    __guard.OpenComponent<Demo.Domain.DemoCommandForm>(0);
+                    __guard.AddAttribute(1, "InitialValue", _prefilledModel);
+                    __guard.AddAttribute(2, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
+                    __guard.AddAttribute(3, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                    __guard.AddAttribute(4, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
                     __guard.CloseComponent();
                 }));
                 builder.CloseComponent();
@@ -451,5 +447,3 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         => _logReturnPathRejected(logger, path, correlationId, null);
 
 }
-
-#pragma warning restore ASP0006

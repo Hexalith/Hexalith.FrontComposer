@@ -74,7 +74,7 @@
     public EventCallback OnRetry { get; set; }
 
     private string AriaLabel => string.Format(
-        System.Globalization.CultureInfo.CurrentUICulture,
+        System.Globalization.CultureInfo.CurrentCulture,
         Localizer["CustomizationDiagnosticPanelAriaLabelTemplate"],
         Diagnostic.Id);
 

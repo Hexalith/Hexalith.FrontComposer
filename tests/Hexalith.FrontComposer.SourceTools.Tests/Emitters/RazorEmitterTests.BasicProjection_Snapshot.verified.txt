@@ -171,7 +171,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         }
     }
 
-    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(OrderProjection row, string columnPropertyName)
+    private static global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(OrderProjection row, string columnPropertyName)
     {
         if (row is null || string.IsNullOrEmpty(columnPropertyName))
         {
@@ -184,29 +184,25 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 return builder =>
                 {
                     if (row is null) { return; }
-                    int fieldSeq = 0;
-                    builder.AddContent(fieldSeq++, row.Name.ToString());
+                    builder.AddContent(0, row.Name.ToString());
                 };
             case "Count":
                 return builder =>
                 {
                     if (row is null) { return; }
-                    int fieldSeq = 0;
-                    builder.AddContent(fieldSeq++, row.Count.ToString("N0", CultureInfo.CurrentCulture));
+                    builder.AddContent(0, row.Count.ToString("N0", CultureInfo.CurrentCulture));
                 };
             case "IsActive":
                 return builder =>
                 {
                     if (row is null) { return; }
-                    int fieldSeq = 0;
-                    builder.AddContent(fieldSeq++, row.IsActive ? "Yes" : "No");
+                    builder.AddContent(0, row.IsActive ? "Yes" : "No");
                 };
             case "CreatedAt":
                 return builder =>
                 {
                     if (row is null) { return; }
-                    int fieldSeq = 0;
-                    builder.AddContent(fieldSeq++, row.CreatedAt.ToString("d", CultureInfo.CurrentCulture));
+                    builder.AddContent(0, row.CreatedAt.ToString("d", CultureInfo.CurrentCulture));
                 };
             default:
                 return static _ => { };
@@ -222,34 +218,33 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
 
         return builder =>
         {
-            int rowSeq = 0;
-            builder.OpenElement(rowSeq++, "div");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-row");
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "fc-template-row");
             {
-            builder.OpenElement(rowSeq++, "span");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
-            builder.AddAttribute(rowSeq++, "data-fc-field", "Name");
+            builder.OpenElement(2, "span");
+            builder.AddAttribute(3, "class", "fc-template-field");
+            builder.AddAttribute(4, "data-fc-field", "Name");
             RenderTemplateField(row, "Name")(builder);
             builder.CloseElement();
             }
             {
-            builder.OpenElement(rowSeq++, "span");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
-            builder.AddAttribute(rowSeq++, "data-fc-field", "Count");
+            builder.OpenElement(5, "span");
+            builder.AddAttribute(6, "class", "fc-template-field");
+            builder.AddAttribute(7, "data-fc-field", "Count");
             RenderTemplateField(row, "Count")(builder);
             builder.CloseElement();
             }
             {
-            builder.OpenElement(rowSeq++, "span");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
-            builder.AddAttribute(rowSeq++, "data-fc-field", "IsActive");
+            builder.OpenElement(8, "span");
+            builder.AddAttribute(9, "class", "fc-template-field");
+            builder.AddAttribute(10, "data-fc-field", "IsActive");
             RenderTemplateField(row, "IsActive")(builder);
             builder.CloseElement();
             }
             {
-            builder.OpenElement(rowSeq++, "span");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
-            builder.AddAttribute(rowSeq++, "data-fc-field", "CreatedAt");
+            builder.OpenElement(11, "span");
+            builder.AddAttribute(12, "class", "fc-template-field");
+            builder.AddAttribute(13, "data-fc-field", "CreatedAt");
             RenderTemplateField(row, "CreatedAt")(builder);
             builder.CloseElement();
             }
@@ -266,7 +261,6 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
 
         return builder =>
         {
-            int seq = 0;
             global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);
             object? _expandedItemKey = _expandedEntry?.ItemKey;
             OrderProjection? _expandedItem = null;
@@ -284,27 +278,25 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedItem is null;
 
         // Story 4-5 — detail panel host; ChildContent is the factored EmitDetailRecordBody output.
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _ephemeralViewKey);
-        builder.AddAttribute(seq++, "PanelId", _expandPanelId);
-        builder.AddAttribute(seq++, "HasExpanded", _expandedItem is not null);
-        builder.AddAttribute(seq++, "DetailPanelAriaLabel", FcShellLocalizer["ExpandInRowDetailPanelAriaLabelTemplate", _expandedItemKey?.ToString() ?? string.Empty].Value);
-        builder.AddAttribute(seq++, "SuppressedAnnouncement", _expandedItemHiddenByFilter ? FcShellLocalizer["ExpandInRowDetailSuppressedByFilterAnnouncement"].Value : null);
-        builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((RenderTreeBuilder builder) =>
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(0);
+        builder.AddAttribute(1, "ViewKey", _ephemeralViewKey);
+        builder.AddAttribute(2, "PanelId", _expandPanelId);
+        builder.AddAttribute(3, "HasExpanded", _expandedItem is not null);
+        builder.AddAttribute(4, "DetailPanelAriaLabel", FcShellLocalizer["ExpandInRowDetailPanelAriaLabelTemplate", _expandedItemKey?.ToString() ?? string.Empty].Value);
+        builder.AddAttribute(5, "SuppressedAnnouncement", _expandedItemHiddenByFilter ? FcShellLocalizer["ExpandInRowDetailSuppressedByFilterAnnouncement"].Value : null);
+        builder.AddAttribute(6, "ChildContent", (RenderFragment)((RenderTreeBuilder builder) =>
         {
             if (_expandedItem is null) { return; }
-            int seq = 800;
         var entity = _expandedItem;
 
-        builder.OpenComponent<FluentCard>(seq++);
-        builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
+        builder.OpenComponent<FluentCard>(800);
+        builder.AddAttribute(801, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
         {
-            int fieldSeq = 800;
 
-            b.OpenElement(fieldSeq++, "div");
-            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
-            b.OpenComponent<FluentLabel>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            b.OpenElement(800, "div");
+            b.AddAttribute(801, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(802);
+            b.AddAttribute(803, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
             {
                 labelBuilder.AddContent(0, "Name");
             }));
@@ -321,9 +313,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     value: entity.Name,
                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    slotBuilder.OpenComponent<FluentText>(0);
+                    slotBuilder.AddAttribute(1, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, entity.Name);
                     }));
@@ -332,18 +323,18 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<FluentText>(fieldSeq++);
-                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                b.OpenComponent<FluentText>(804);
+                b.AddAttribute(805, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Name);
                 }));
                 b.CloseComponent();
             }
             b.CloseElement();
-            b.OpenElement(fieldSeq++, "div");
-            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
-            b.OpenComponent<FluentLabel>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            b.OpenElement(806, "div");
+            b.AddAttribute(807, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(808);
+            b.AddAttribute(809, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
             {
                 labelBuilder.AddContent(0, "Count");
             }));
@@ -360,9 +351,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     value: entity.Count,
                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    slotBuilder.OpenComponent<FluentText>(0);
+                    slotBuilder.AddAttribute(1, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, entity.Count.ToString("N0", CultureInfo.CurrentCulture));
                     }));
@@ -371,18 +361,18 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<FluentText>(fieldSeq++);
-                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                b.OpenComponent<FluentText>(810);
+                b.AddAttribute(811, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Count.ToString("N0", CultureInfo.CurrentCulture));
                 }));
                 b.CloseComponent();
             }
             b.CloseElement();
-            b.OpenElement(fieldSeq++, "div");
-            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
-            b.OpenComponent<FluentLabel>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            b.OpenElement(812, "div");
+            b.AddAttribute(813, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(814);
+            b.AddAttribute(815, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
             {
                 labelBuilder.AddContent(0, "Is Active");
             }));
@@ -399,9 +389,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     value: entity.IsActive,
                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    slotBuilder.OpenComponent<FluentText>(0);
+                    slotBuilder.AddAttribute(1, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, (entity.IsActive ? "Yes" : "No"));
                     }));
@@ -410,18 +399,18 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<FluentText>(fieldSeq++);
-                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                b.OpenComponent<FluentText>(816);
+                b.AddAttribute(817, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, (entity.IsActive ? "Yes" : "No"));
                 }));
                 b.CloseComponent();
             }
             b.CloseElement();
-            b.OpenElement(fieldSeq++, "div");
-            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
-            b.OpenComponent<FluentLabel>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            b.OpenElement(818, "div");
+            b.AddAttribute(819, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(820);
+            b.AddAttribute(821, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
             {
                 labelBuilder.AddContent(0, "Created At");
             }));
@@ -438,9 +427,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     value: entity.CreatedAt,
                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    slotBuilder.OpenComponent<FluentText>(0);
+                    slotBuilder.AddAttribute(1, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, entity.CreatedAt.ToString("d", CultureInfo.CurrentCulture));
                     }));
@@ -449,8 +437,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<FluentText>(fieldSeq++);
-                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                b.OpenComponent<FluentText>(822);
+                b.AddAttribute(823, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.CreatedAt.ToString("d", CultureInfo.CurrentCulture));
                 }));
@@ -630,6 +618,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }
         _dotNetRef?.Dispose();
         _dotNetRef = null;
+        System.GC.SuppressFinalize(this);
     }
 
     private System.Threading.Tasks.Task HandleRowClickAsync(OrderProjection row)
@@ -709,11 +698,11 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         }
     }
 
-    private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, ref int seq)
+    private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
     {
         foreach (var entry in NewItemIndicators.Snapshot(_viewKey))
         {
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(seq++);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(0);
             builder.SetKey(entry.EntityKey);
             builder.CloseComponent();
         }
@@ -778,11 +767,11 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         return false;
     }
 
-    private static System.Collections.Generic.IReadOnlyList<string> ResolveHiddenColumns(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)
+    private static string[] ResolveHiddenColumns(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)
         => System.Array.Empty<string>();
 
     private static string Truncate(string value, int maxLength)
-        => value.Length <= maxLength ? value : value.Substring(0, maxLength - 1) + "\u2026";
+        => value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), "\u2026");
 
     private static string HumanizeEnumLabel(string value)
     {
@@ -860,12 +849,11 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         var state = OrderProjectionState.Value;
-        int seq = 0;
         #if DEBUG
         if (DevModeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)) is global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)
         {
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DevMode.FcDevModeAnnotation>(seq++);
-            builder.AddAttribute(seq++, "Node", new global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode(
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DevMode.FcDevModeAnnotation>(0);
+            builder.AddAttribute(1, "Node", new global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode(
                 AnnotationKey: "OrderProjection-view",
                 Convention: new global::Hexalith.FrontComposer.Contracts.DevMode.ConventionDescriptor("OrderProjection generated projection view", "Generated projection view surface.", "Use a Level 2 template for body changes, Level 4 for full replacement.", global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel.Default),
                 ContractTypeName: "OrderProjection",
@@ -880,7 +868,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 SourceComponentIdentity: "OrderProjection.OrderProjection-view",
                 StaleReasons: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeStaleReason>.Empty,
                 IsUnsupported: false));
-            builder.AddAttribute(seq++, "CssClass", "fc-devmode-annotation");
+            builder.AddAttribute(2, "CssClass", "fc-devmode-annotation");
             builder.CloseComponent();
         }
         #endif
@@ -890,44 +878,42 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         var hiddenColumnSet = new System.Collections.Generic.HashSet<string>(hiddenColumns, StringComparer.Ordinal);
         var anyRealFilterActive = AnyRealFilterActive(gridSnapshot);
 
-        builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionSubtitle>(seq++);
-        builder.AddAttribute(seq++, "ProjectionType", typeof(OrderProjection));
-        builder.AddAttribute(seq++, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
-        builder.AddAttribute(seq++, "WhenState", (string?)null);
-        builder.AddAttribute(seq++, "FallbackCount", state.Items?.Count ?? 0);
-        builder.AddAttribute(seq++, "DistinctStatusCount", (int?)null);
-        builder.AddAttribute(seq++, "EntityLabel", "Order");
-        builder.AddAttribute(seq++, "EntityPluralLabel", "orders");
-        builder.AddAttribute(seq++, "IsLoading", state.IsLoading);
+        builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionSubtitle>(3);
+        builder.AddAttribute(4, "ProjectionType", typeof(OrderProjection));
+        builder.AddAttribute(5, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
+        builder.AddAttribute(6, "WhenState", (string?)null);
+        builder.AddAttribute(7, "FallbackCount", state.Items?.Count ?? 0);
+        builder.AddAttribute(8, "DistinctStatusCount", (int?)null);
+        builder.AddAttribute(9, "EntityLabel", "Order");
+        builder.AddAttribute(10, "EntityPluralLabel", "orders");
+        builder.AddAttribute(11, "IsLoading", state.IsLoading);
         builder.CloseComponent();
 
         if (state.IsLoading)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(seq++);
-            builder.AddAttribute(seq++, "ColumnCount", 4);
-            builder.AddAttribute(seq++, "RowCount", 5);
-            builder.AddAttribute(seq++, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.DataGrid);
-            builder.AddAttribute(seq++, "EntityLabel", "orders");
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(12);
+            builder.AddAttribute(13, "ColumnCount", 4);
+            builder.AddAttribute(14, "RowCount", 5);
+            builder.AddAttribute(15, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.DataGrid);
+            builder.AddAttribute(16, "EntityLabel", "orders");
             builder.CloseComponent();
             return;
         }
 
         if (state.Items is null || state.Items.Count == 0)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(seq++);
-            builder.AddAttribute(seq++, "ProjectionType", typeof(OrderProjection));
-            builder.AddAttribute(seq++, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
-            builder.AddAttribute(seq++, "EntityPluralOverride", "orders");
-            builder.AddAttribute(seq++, "CtaCommandName", (string?)null);
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(17);
+            builder.AddAttribute(18, "ProjectionType", typeof(OrderProjection));
+            builder.AddAttribute(19, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
+            builder.AddAttribute(20, "EntityPluralOverride", "orders");
+            builder.AddAttribute(21, "CtaCommandName", (string?)null);
             builder.CloseComponent();
             return;
         }
 
-        seq = 100;
         global::Microsoft.AspNetCore.Components.RenderFragment defaultBody = (global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __bb) =>
         {
             var builder = __bb;
-            int seq = 100;
         // Story 4-5 — resolve expanded-row state for this render pass.
         global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);
         object? _expandedItemKey = _expandedEntry?.ItemKey;
@@ -945,41 +931,40 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         }
         bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedItem is null;
 
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _viewKey);
-        builder.AddAttribute(seq++, "IsHiddenByFilter", _expandedItemHiddenByFilter);
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner>(100);
+        builder.AddAttribute(101, "ViewKey", _viewKey);
+        builder.AddAttribute(102, "IsHiddenByFilter", _expandedItemHiddenByFilter);
         builder.CloseComponent();
 
-        builder.OpenComponent<FluentDataGrid<OrderProjection>>(seq++);
+        builder.OpenComponent<FluentDataGrid<OrderProjection>>(103);
         builder.SetKey(_density);
         if (state.Items.Count >= ShellOptions.Value.VirtualizationServerSideThreshold)
         {
-            builder.AddAttribute(seq++, "ItemsProvider", (global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProvider<OrderProjection>)LoadPageAsync);
+            builder.AddAttribute(104, "ItemsProvider", (global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProvider<OrderProjection>)LoadPageAsync);
         }
         else
         {
-            builder.AddAttribute(seq++, "Items", state.Items.AsQueryable());
+            builder.AddAttribute(105, "Items", state.Items.AsQueryable());
         }
-        builder.AddAttribute(seq++, "Virtualize", true);
-        builder.AddAttribute(seq++, "DisplayMode", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);
-        builder.AddAttribute(seq++, "Class", "fc-projection-grid");
-        builder.AddAttribute(seq++, "GenerateHeader", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky);
-        builder.AddAttribute(seq++, "ItemSize", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));
-        builder.AddAttribute(seq++, "OverscanCount", 3);
-        builder.AddAttribute(seq++, "ItemKey", (System.Func<OrderProjection, object>)_itemKeyAccessor);
-        builder.AddAttribute(seq++, "RowClass", (System.Func<OrderProjection, string?>)(row => _expandedItemKey is not null && _itemKeyAccessor(row).Equals(_expandedItemKey) ? "fc-row-expanded" : null));
-        builder.AddAttribute(seq++, "OnRowClick", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<FluentDataGridRow<OrderProjection>>(this, row => row?.Item is null ? System.Threading.Tasks.Task.CompletedTask : HandleRowClickAsync(row.Item)));
+        builder.AddAttribute(106, "Virtualize", true);
+        builder.AddAttribute(107, "DisplayMode", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);
+        builder.AddAttribute(108, "Class", "fc-projection-grid");
+        builder.AddAttribute(109, "GenerateHeader", Microsoft.FluentUI.AspNetCore.Components.DataGridGeneratedHeaderType.Sticky);
+        builder.AddAttribute(110, "ItemSize", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));
+        builder.AddAttribute(111, "OverscanCount", 3);
+        builder.AddAttribute(112, "ItemKey", (System.Func<OrderProjection, object>)_itemKeyAccessor);
+        builder.AddAttribute(113, "RowClass", (System.Func<OrderProjection, string?>)(row => _expandedItemKey is not null && _itemKeyAccessor(row).Equals(_expandedItemKey) ? "fc-row-expanded" : null));
+        builder.AddAttribute(114, "OnRowClick", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<FluentDataGridRow<OrderProjection>>(this, row => row?.Item is null ? System.Threading.Tasks.Task.CompletedTask : HandleRowClickAsync(row.Item)));
 
-        builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
+        builder.AddAttribute(115, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
         {
-            int colSeq = 200;
 
             // Text column: Name
             if (HasProjectionSlot("Name"))
             {
-                b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
-                b.AddAttribute(colSeq++, "Title", "Name");
-                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
+                b.OpenComponent<TemplateColumn<OrderProjection>>(200);
+                b.AddAttribute(201, "Title", "Name");
+                b.AddAttribute(202, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
                     fieldName: "Name",
                     displayName: "Name",
                     format: (string?)null,
@@ -992,19 +977,19 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
-                b.AddAttribute(colSeq++, "Title", "Name");
-                b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Name ?? "\u2014"));
+                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(203);
+                b.AddAttribute(204, "Title", "Name");
+                b.AddAttribute(205, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Name ?? "\u2014"));
                 b.CloseComponent();
             }
 
             // Numeric column: Count
             if (HasProjectionSlot("Count"))
             {
-                b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
-                b.AddAttribute(colSeq++, "Title", "Count");
-                b.AddAttribute(colSeq++, "Class", "fc-col-numeric");
-                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
+                b.OpenComponent<TemplateColumn<OrderProjection>>(206);
+                b.AddAttribute(207, "Title", "Count");
+                b.AddAttribute(208, "Class", "fc-col-numeric");
+                b.AddAttribute(209, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
                     fieldName: "Count",
                     displayName: "Count",
                     format: "N0",
@@ -1017,19 +1002,19 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
-                b.AddAttribute(colSeq++, "Title", "Count");
-                b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Count.ToString("N0", CultureInfo.CurrentCulture)));
-                b.AddAttribute(colSeq++, "Class", "fc-col-numeric");
+                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(210);
+                b.AddAttribute(211, "Title", "Count");
+                b.AddAttribute(212, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Count.ToString("N0", CultureInfo.CurrentCulture)));
+                b.AddAttribute(213, "Class", "fc-col-numeric");
                 b.CloseComponent();
             }
 
             // Boolean column: IsActive
             if (HasProjectionSlot("IsActive"))
             {
-                b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
-                b.AddAttribute(colSeq++, "Title", "Is Active");
-                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
+                b.OpenComponent<TemplateColumn<OrderProjection>>(214);
+                b.AddAttribute(215, "Title", "Is Active");
+                b.AddAttribute(216, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
                     fieldName: "IsActive",
                     displayName: "Is Active",
                     format: "Yes/No",
@@ -1042,18 +1027,18 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
-                b.AddAttribute(colSeq++, "Title", "Is Active");
-                b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.IsActive ? "Yes" : "No"));
+                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(217);
+                b.AddAttribute(218, "Title", "Is Active");
+                b.AddAttribute(219, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.IsActive ? "Yes" : "No"));
                 b.CloseComponent();
             }
 
             // DateTime column: CreatedAt
             if (HasProjectionSlot("CreatedAt"))
             {
-                b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
-                b.AddAttribute(colSeq++, "Title", "Created At");
-                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
+                b.OpenComponent<TemplateColumn<OrderProjection>>(220);
+                b.AddAttribute(221, "Title", "Created At");
+                b.AddAttribute(222, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
                     fieldName: "CreatedAt",
                     displayName: "Created At",
                     format: "d",
@@ -1066,18 +1051,18 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
-                b.AddAttribute(colSeq++, "Title", "Created At");
-                b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.CreatedAt.ToString("d", CultureInfo.CurrentCulture)));
+                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(223);
+                b.AddAttribute(224, "Title", "Created At");
+                b.AddAttribute(225, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.CreatedAt.ToString("d", CultureInfo.CurrentCulture)));
                 b.CloseComponent();
             }
 
             // Story 4-5 — trailing row-action column hosting the expand chevron.
-            b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
-            b.AddAttribute(colSeq++, "Title", "");
-            b.AddAttribute(colSeq++, "Class", "fc-row-action-column");
-            b.AddAttribute(colSeq++, "Width", "40px");
-            b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => (RenderTreeBuilder rb) =>
+            b.OpenComponent<TemplateColumn<OrderProjection>>(226);
+            b.AddAttribute(227, "Title", "");
+            b.AddAttribute(228, "Class", "fc-row-action-column");
+            b.AddAttribute(229, "Width", "40px");
+            b.AddAttribute(230, "ChildContent", (RenderFragment<OrderProjection>)(item => (RenderTreeBuilder rb) =>
             {
                 bool _isThisRowExpanded = _expandedItemKey is not null && _itemKeyAccessor(item).Equals(_expandedItemKey) && _expandedItem is not null;
                 string _buttonClass = _isThisRowExpanded ? "fc-expand-button fc-expand-button--open" : "fc-expand-button";
@@ -1100,27 +1085,25 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         builder.CloseComponent();
 
         // Story 4-5 — detail panel host; ChildContent is the factored EmitDetailRecordBody output.
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _ephemeralViewKey);
-        builder.AddAttribute(seq++, "PanelId", _expandPanelId);
-        builder.AddAttribute(seq++, "HasExpanded", _expandedItem is not null);
-        builder.AddAttribute(seq++, "DetailPanelAriaLabel", FcShellLocalizer["ExpandInRowDetailPanelAriaLabelTemplate", _expandedItemKey?.ToString() ?? string.Empty].Value);
-        builder.AddAttribute(seq++, "SuppressedAnnouncement", _expandedItemHiddenByFilter ? FcShellLocalizer["ExpandInRowDetailSuppressedByFilterAnnouncement"].Value : null);
-        builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((RenderTreeBuilder builder) =>
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(116);
+        builder.AddAttribute(117, "ViewKey", _ephemeralViewKey);
+        builder.AddAttribute(118, "PanelId", _expandPanelId);
+        builder.AddAttribute(119, "HasExpanded", _expandedItem is not null);
+        builder.AddAttribute(120, "DetailPanelAriaLabel", FcShellLocalizer["ExpandInRowDetailPanelAriaLabelTemplate", _expandedItemKey?.ToString() ?? string.Empty].Value);
+        builder.AddAttribute(121, "SuppressedAnnouncement", _expandedItemHiddenByFilter ? FcShellLocalizer["ExpandInRowDetailSuppressedByFilterAnnouncement"].Value : null);
+        builder.AddAttribute(122, "ChildContent", (RenderFragment)((RenderTreeBuilder builder) =>
         {
             if (_expandedItem is null) { return; }
-            int seq = 800;
         var entity = _expandedItem;
 
-        builder.OpenComponent<FluentCard>(seq++);
-        builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
+        builder.OpenComponent<FluentCard>(800);
+        builder.AddAttribute(801, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
         {
-            int fieldSeq = 800;
 
-            b.OpenElement(fieldSeq++, "div");
-            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
-            b.OpenComponent<FluentLabel>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            b.OpenElement(800, "div");
+            b.AddAttribute(801, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(802);
+            b.AddAttribute(803, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
             {
                 labelBuilder.AddContent(0, "Name");
             }));
@@ -1137,9 +1120,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     value: entity.Name,
                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    slotBuilder.OpenComponent<FluentText>(0);
+                    slotBuilder.AddAttribute(1, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, entity.Name);
                     }));
@@ -1148,18 +1130,18 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<FluentText>(fieldSeq++);
-                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                b.OpenComponent<FluentText>(804);
+                b.AddAttribute(805, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Name);
                 }));
                 b.CloseComponent();
             }
             b.CloseElement();
-            b.OpenElement(fieldSeq++, "div");
-            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
-            b.OpenComponent<FluentLabel>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            b.OpenElement(806, "div");
+            b.AddAttribute(807, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(808);
+            b.AddAttribute(809, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
             {
                 labelBuilder.AddContent(0, "Count");
             }));
@@ -1176,9 +1158,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     value: entity.Count,
                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    slotBuilder.OpenComponent<FluentText>(0);
+                    slotBuilder.AddAttribute(1, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, entity.Count.ToString("N0", CultureInfo.CurrentCulture));
                     }));
@@ -1187,18 +1168,18 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<FluentText>(fieldSeq++);
-                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                b.OpenComponent<FluentText>(810);
+                b.AddAttribute(811, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Count.ToString("N0", CultureInfo.CurrentCulture));
                 }));
                 b.CloseComponent();
             }
             b.CloseElement();
-            b.OpenElement(fieldSeq++, "div");
-            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
-            b.OpenComponent<FluentLabel>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            b.OpenElement(812, "div");
+            b.AddAttribute(813, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(814);
+            b.AddAttribute(815, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
             {
                 labelBuilder.AddContent(0, "Is Active");
             }));
@@ -1215,9 +1196,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     value: entity.IsActive,
                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    slotBuilder.OpenComponent<FluentText>(0);
+                    slotBuilder.AddAttribute(1, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, (entity.IsActive ? "Yes" : "No"));
                     }));
@@ -1226,18 +1206,18 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<FluentText>(fieldSeq++);
-                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                b.OpenComponent<FluentText>(816);
+                b.AddAttribute(817, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, (entity.IsActive ? "Yes" : "No"));
                 }));
                 b.CloseComponent();
             }
             b.CloseElement();
-            b.OpenElement(fieldSeq++, "div");
-            b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
-            b.OpenComponent<FluentLabel>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
+            b.OpenElement(818, "div");
+            b.AddAttribute(819, "class", "fc-detail-field");
+            b.OpenComponent<FluentLabel>(820);
+            b.AddAttribute(821, "ChildContent", (RenderFragment)((RenderTreeBuilder labelBuilder) =>
             {
                 labelBuilder.AddContent(0, "Created At");
             }));
@@ -1254,9 +1234,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     value: entity.CreatedAt,
                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    slotBuilder.OpenComponent<FluentText>(0);
+                    slotBuilder.AddAttribute(1, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, entity.CreatedAt.ToString("d", CultureInfo.CurrentCulture));
                     }));
@@ -1265,8 +1244,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<FluentText>(fieldSeq++);
-                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                b.OpenComponent<FluentText>(822);
+                b.AddAttribute(823, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.CreatedAt.ToString("d", CultureInfo.CurrentCulture));
                 }));
@@ -1279,29 +1258,31 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         builder.CloseComponent();
         };
 
-        builder.AddMarkupContent(seq++, "<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
+        builder.AddMarkupContent(100, "<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
 
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _viewKey);
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(101);
+        builder.AddAttribute(102, "ViewKey", _viewKey);
         builder.CloseComponent();
 
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _viewKey);
-        builder.AddAttribute(seq++, "ItemsCount", state.Items.Count);
-        builder.AddAttribute(seq++, "AnyRealFilterActive", anyRealFilterActive);
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(103);
+        builder.AddAttribute(104, "ViewKey", _viewKey);
+        builder.AddAttribute(105, "ItemsCount", state.Items.Count);
+        builder.AddAttribute(106, "AnyRealFilterActive", anyRealFilterActive);
         builder.CloseComponent();
 
-        RenderNewItemIndicators(builder, ref seq);
+        builder.OpenRegion(107);
+        RenderNewItemIndicators(builder);
+        builder.CloseRegion();
 
-        builder.OpenElement(seq++, "span");
-        builder.AddAttribute(seq++, "class", "fc-row-count");
-        builder.AddContent(seq++, $"{state.Items.Count} " + "orders");
+        builder.OpenElement(108, "span");
+        builder.AddAttribute(109, "class", "fc-row-count");
+        builder.AddContent(110, $"{state.Items.Count} " + "orders");
         builder.CloseElement();
 
-        builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", GridHostClass());
-        builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
-        builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
+        builder.OpenElement(111, "div");
+        builder.AddAttribute(112, "class", GridHostClass());
+        builder.AddAttribute(113, "data-fc-datagrid", _viewKey);
+        builder.AddAttribute(114, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
 
         var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(OrderProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
         if (__viewOverrideDescriptor is not null)
@@ -1322,9 +1303,9 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<OrderProjection>>(seq++);
-            builder.AddAttribute(seq++, "Descriptor", __viewOverrideDescriptor);
-            builder.AddAttribute(seq++, "Context", __viewOverrideContext);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<OrderProjection>>(115);
+            builder.AddAttribute(116, "Descriptor", __viewOverrideDescriptor);
+            builder.AddAttribute(117, "Context", __viewOverrideContext);
             builder.CloseComponent();
         }
         else
@@ -1345,9 +1326,9 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<OrderProjection>>(seq++);
-            builder.AddAttribute(seq++, "Descriptor", __templateDescriptor);
-            builder.AddAttribute(seq++, "Context", __templateContext);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<OrderProjection>>(118);
+            builder.AddAttribute(119, "Descriptor", __templateDescriptor);
+            builder.AddAttribute(120, "Context", __templateContext);
             builder.CloseComponent();
         }
         else

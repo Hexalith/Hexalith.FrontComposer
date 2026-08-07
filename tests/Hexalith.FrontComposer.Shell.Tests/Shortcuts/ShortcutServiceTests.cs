@@ -18,6 +18,9 @@ public class ShortcutServiceTests {
         time = new FakeTimeProvider();
         logger = Substitute.For<ILogger<ShortcutService>>();
         logger.IsEnabled(LogLevel.Warning).Returns(true);
+        // Story 11.21 — HFC2108 now flows through FrontComposerDiagnosticLog, whose generated
+        // delegate short-circuits on IsEnabled just like the Warning family already did.
+        logger.IsEnabled(LogLevel.Information).Returns(true);
         return new ShortcutService(time, logger);
     }
 

@@ -43,10 +43,14 @@ public sealed class QueryRequestJsonConverter : JsonConverter<QueryRequest>
     /// <inheritdoc />
     public override QueryRequest Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
     {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(options);
+#else
         if (options is null)
         {
             throw new ArgumentNullException(nameof(options));
         }
+#endif
 
         using JsonDocument document = JsonDocument.ParseValue(ref reader);
         JsonElement root = document.RootElement;
@@ -102,6 +106,11 @@ public sealed class QueryRequestJsonConverter : JsonConverter<QueryRequest>
     /// <inheritdoc />
     public override void Write(Utf8JsonWriter writer, QueryRequest value, JsonSerializerOptions options)
     {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(writer);
+        ArgumentNullException.ThrowIfNull(value);
+        ArgumentNullException.ThrowIfNull(options);
+#else
         if (writer is null)
         {
             throw new ArgumentNullException(nameof(writer));
@@ -116,6 +125,7 @@ public sealed class QueryRequestJsonConverter : JsonConverter<QueryRequest>
         {
             throw new ArgumentNullException(nameof(options));
         }
+#endif
 
         writer.WriteStartObject();
         WriteString(writer, nameof(QueryRequest.ProjectionType), value.Criteria.ProjectionType, options);
@@ -267,7 +277,7 @@ public sealed class QueryRequestJsonConverter : JsonConverter<QueryRequest>
         throw new JsonException($"QueryRequest property '{PropertyName(clrName, options)}' must be a boolean.");
     }
 
-    private static IReadOnlyDictionary<string, string>? ReadDictionary(JsonElement root, string clrName, JsonSerializerOptions options)
+    private static Dictionary<string, string>? ReadDictionary(JsonElement root, string clrName, JsonSerializerOptions options)
     {
         if (!TryGetProperty(root, clrName, options, out JsonElement value) || value.ValueKind == JsonValueKind.Null)
         {
@@ -293,7 +303,7 @@ public sealed class QueryRequestJsonConverter : JsonConverter<QueryRequest>
         return result;
     }
 
-    private static IReadOnlyList<string>? ReadList(JsonElement root, string clrName, JsonSerializerOptions options)
+    private static List<string>? ReadList(JsonElement root, string clrName, JsonSerializerOptions options)
     {
         if (!TryGetProperty(root, clrName, options, out JsonElement value) || value.ValueKind == JsonValueKind.Null)
         {

@@ -35,7 +35,7 @@ internal static class SubmoduleBoundaryReader {
         bool inSubmoduleSection = false;
         foreach (string line in lines) {
             string trimmed = line.Trim();
-            if (trimmed.StartsWith("[", StringComparison.Ordinal)) {
+            if (trimmed.StartsWith('[')) {
                 inSubmoduleSection = trimmed.StartsWith("[submodule ", StringComparison.Ordinal);
                 continue;
             }

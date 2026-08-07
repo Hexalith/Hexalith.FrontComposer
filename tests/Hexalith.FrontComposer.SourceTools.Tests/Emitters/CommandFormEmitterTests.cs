@@ -89,8 +89,9 @@ public class CommandFormEmitterTests {
         source.ShouldContain("OpenComponent<EditForm>");
         source.ShouldContain("OpenComponent<DataAnnotationsValidator>");
         source.ShouldContain("OpenComponent<FluentValidationSummary>");
-        source.ShouldContain("__b.AddAttribute(cseq++, \"EditContext\", _editContext);");
-        source.ShouldNotContain("__b.AddAttribute(cseq++, \"Model\", (object)_model);");
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        masked.ShouldContain("__b.AddAttribute(#, \"EditContext\", _editContext);");
+        masked.ShouldNotContain("__b.AddAttribute(#, \"Model\", (object)_model);");
     }
 
     [Fact]
@@ -144,7 +145,8 @@ public class CommandFormEmitterTests {
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        source.ShouldContain("builder.AddAttribute(seq++, \"RejectionDetails\", BuildFcLifecycleRejectionDetails());");
+        GeneratedRenderTreeText.MaskSequenceArguments(source)
+            .ShouldContain("builder.AddAttribute(#, \"RejectionDetails\", BuildFcLifecycleRejectionDetails());");
         source.ShouldContain("private CommandRejectionDetails? BuildFcLifecycleRejectionDetails()");
         source.ShouldContain("LifecycleState.Value.RejectionErrorCode");
         source.ShouldContain("LifecycleState.Value.RejectionReasonCategory");
@@ -194,8 +196,9 @@ public class CommandFormEmitterTests {
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
         source.ShouldContain("OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldPlaceholder>");
-        source.ShouldContain("__b.AddAttribute(cseq++, \"FieldName\", \"Raw\");");
-        source.ShouldContain("__b.AddAttribute(cseq++, \"TypeName\", \"System.Object\");");
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        masked.ShouldContain("__b.AddAttribute(#, \"FieldName\", \"Raw\");");
+        masked.ShouldContain("__b.AddAttribute(#, \"TypeName\", \"System.Object\");");
         source.ShouldContain("FluentButton");
     }
 
@@ -393,8 +396,10 @@ public class CommandFormEmitterTests {
         CommandFormModel form = BuildForm(System.Array.Empty<FormFieldModel>());
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        source.ShouldContain("private string ResolveLabel(string propertyName, string staticLabel, bool hasExplicitDisplay)");
-        source.ShouldContain("Localizer[propertyName]");
+        // Story 11.21 CA1507 — the parameter names the command model property, not a member of the
+        // generated form, so it must not be called `propertyName`.
+        source.ShouldContain("private string ResolveLabel(string commandPropertyName, string staticLabel, bool hasExplicitDisplay)");
+        source.ShouldContain("Localizer[commandPropertyName]");
     }
 
     [Fact]
@@ -427,10 +432,11 @@ public class CommandFormEmitterTests {
         source.ShouldContain("_AmountString");
         source.ShouldContain("_AmountParseError");
         source.ShouldContain("OnAmountChanged(string? value)");
-        source.ShouldContain("__b.OpenElement(cseq++, \"input\")");
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        masked.ShouldContain("__b.OpenElement(#, \"input\")");
         source.ShouldContain("EventCallback.Factory.Create<ChangeEventArgs>(this, e => OnAmountChanged(e.Value?.ToString()))");
         source.ShouldContain("NotifyClientFieldChanged(\"Amount\")");
-        source.ShouldNotContain("__b.AddAttribute(cseq++, \"required\"");
+        masked.ShouldNotContain("__b.AddAttribute(#, \"required\"");
         source.ShouldContain("int.TryParse(value,");
     }
 
@@ -441,10 +447,11 @@ public class CommandFormEmitterTests {
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        source.ShouldContain("__b.OpenElement(cseq++, \"input\")");
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        masked.ShouldContain("__b.OpenElement(#, \"input\")");
         source.ShouldContain("EventCallback.Factory.Create<ChangeEventArgs>(this, e => { _model.Note = e.Value?.ToString(); NotifyClientFieldChanged(\"Note\"); })");
         source.ShouldContain("NotifyClientFieldChanged(\"Note\")");
-        source.ShouldNotContain("__b.AddAttribute(cseq++, \"required\"");
+        masked.ShouldNotContain("__b.AddAttribute(#, \"required\"");
     }
 
     [Fact]
@@ -589,4 +596,43 @@ public class CommandFormEmitterTests {
         source.ShouldNotContain("// Field: TenantId");
         source.ShouldNotContain("ResolveLabel(\"TenantId\"");
     }
+
+    [Fact]
+    public void Emit_UsesLiteralRenderTreeSequencesInsteadOfRuntimeCounters() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+            new FormFieldModel("Note", "String", FormFieldTypeCategory.TextInput, "Note", true, false, null),
+        ]);
+
+        RenderTreeSequenceRewriterTests.ShouldUseLiteralRenderTreeSequences(
+            CommandFormEmitter.Emit(form, BuildFluxor()));
+    }
+
+    [Fact]
+    public void Emit_IdempotentDisposeSuppressesFinalization() {
+        CommandFormModel form = BuildForm(System.Array.Empty<FormFieldModel>());
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        // Story 11.21 CA1816 — the guard still short-circuits a repeat call, and the suppression is
+        // the last statement of the first (and only effective) pass.
+        source.ShouldContain("if (_disposed) return;");
+        source.ShouldContain("System.GC.SuppressFinalize(this);");
+        source.IndexOf("System.GC.SuppressFinalize(this);", StringComparison.Ordinal)
+            .ShouldBeGreaterThan(source.IndexOf("if (_disposed) return;", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Emit_ClientParseErrorHelperIsStaticOnlyWhenNoFieldCanFailToParse() {
+        string withoutNumericFields = CommandFormEmitter.Emit(
+            BuildForm([new FormFieldModel("Note", "String", FormFieldTypeCategory.TextInput, "Note", true, false, null)]),
+            BuildFluxor());
+        string withNumericField = CommandFormEmitter.Emit(
+            BuildForm([new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)]),
+            BuildFluxor());
+
+        withoutNumericFields.ShouldContain("private static bool HasClientParseErrors()");
+        withNumericField.ShouldContain("private bool HasClientParseErrors()");
+        withNumericField.ShouldNotContain("private static bool HasClientParseErrors()");
+    }
+
 }

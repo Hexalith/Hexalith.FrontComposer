@@ -1,8 +1,15 @@
+using System;
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Transforms;
+
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Hexalith.FrontComposer.SourceTools.Emitters;
 
@@ -38,7 +45,10 @@ public static class RazorEmitter {
         EmitBuildRenderTree(sb, model);
         EmitClassFooter(sb);
 
-        return sb.ToString();
+        // Story 11.21 ASP0006 — the emitters above write runtime `seq++` counters; the rewriter
+        // converts each call site to the literal for its position in this document, and fails the
+        // generation rather than emitting a counter this output has no control for.
+        return RenderTreeSequenceRewriter.AssignLiteralsOrFail(sb.ToString());
     }
 
     private static void EmitFileHeader(StringBuilder sb) {
@@ -373,7 +383,9 @@ public static class RazorEmitter {
 
                 _ = sb.AppendLine("    };");
                 _ = sb.AppendLine();
-                _ = sb.AppendLine("    private static readonly System.Collections.Generic.IReadOnlyList<string> _defaultHiddenColumns = new string[]");
+                // Story 11.21 CA1859 — declared as string[] so ResolveHiddenColumns can return the
+                // concrete array type on every path.
+                _ = sb.AppendLine("    private static readonly string[] _defaultHiddenColumns = new string[]");
                 _ = sb.AppendLine("    {");
                 for (int i = 10; i < model.Columns.Count; i++) {
                     string trailingComma = i == model.Columns.Count - 1 ? string.Empty : ",";
@@ -488,32 +500,174 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
-        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(" + model.TypeName + " row, string columnPropertyName)");
-        _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        if (row is null || string.IsNullOrEmpty(columnPropertyName))");
-        _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            return static _ => { };");
-        _ = sb.AppendLine("        }");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("        switch (columnPropertyName)");
-        _ = sb.AppendLine("        {");
+        // Story 11.21 CA1822 — the modifier is decided from the emitted body against both the known
+        // injected members and every instance member this class has already declared (see
+        // ReferencesProjectionInstanceMember). The switch is emitted into a scratch buffer first so
+        // that decision reads the text that will actually be compiled, including any `#if DEBUG`
+        // dev-mode block, which keeps the choice valid in both Debug and Release consumer builds.
+        StringBuilder defaultFieldBody = new(1024);
+        _ = defaultFieldBody.AppendLine("        if (row is null || string.IsNullOrEmpty(columnPropertyName))");
+        _ = defaultFieldBody.AppendLine("        {");
+        _ = defaultFieldBody.AppendLine("            return static _ => { };");
+        _ = defaultFieldBody.AppendLine("        }");
+        _ = defaultFieldBody.AppendLine();
+        _ = defaultFieldBody.AppendLine("        switch (columnPropertyName)");
+        _ = defaultFieldBody.AppendLine("        {");
         for (int i = 0; i < model.Columns.Count; i++) {
             ColumnModel col = model.Columns[i];
-            _ = sb.AppendLine("            case \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\":");
-            _ = sb.AppendLine("                return builder =>");
-            _ = sb.AppendLine("                {");
-            _ = sb.AppendLine("                    if (row is null) { return; }");
-            _ = sb.AppendLine("                    int fieldSeq = 0;");
-            EmitTemplateFieldContent(sb, model, col, "row", "builder", "fieldSeq", "                    ");
-            _ = sb.AppendLine("                };");
+            _ = defaultFieldBody.AppendLine("            case \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\":");
+            _ = defaultFieldBody.AppendLine("                return builder =>");
+            _ = defaultFieldBody.AppendLine("                {");
+            _ = defaultFieldBody.AppendLine("                    if (row is null) { return; }");
+            _ = defaultFieldBody.AppendLine("                    int fieldSeq = 0;");
+            EmitTemplateFieldContent(defaultFieldBody, model, col, "row", "builder", "fieldSeq", "                    ");
+            _ = defaultFieldBody.AppendLine("                };");
         }
 
-        _ = sb.AppendLine("            default:");
-        _ = sb.AppendLine("                return static _ => { };");
-        _ = sb.AppendLine("        }");
+        _ = defaultFieldBody.AppendLine("            default:");
+        _ = defaultFieldBody.AppendLine("                return static _ => { };");
+        _ = defaultFieldBody.AppendLine("        }");
+
+        string defaultFieldModifier = ReferencesProjectionInstanceMember(sb, defaultFieldBody.ToString())
+            ? "    private "
+            : "    private static ";
+        _ = sb.AppendLine(defaultFieldModifier + "global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(" + model.TypeName + " row, string columnPropertyName)");
+        _ = sb.AppendLine("    {");
+        _ = sb.Append(defaultFieldBody);
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
     }
+
+    /// <summary>
+    /// Instance members of the emitted projection view that a default-field render body is known to
+    /// reach.
+    /// </summary>
+    /// <remarks>
+    /// The bodies produced by <see cref="EmitTemplateFieldContent"/> (directly, or through
+    /// <see cref="ColumnEmitter.EmitInlineEnumRenderFragment"/> and
+    /// <see cref="EmitDevModeAnnotation"/>) dereference these four injected members; every other
+    /// helper they call — <c>FormatRelativeTime</c>, <c>HumanizeEnumLabel</c>, <c>Truncate</c> — is
+    /// emitted as <see langword="static"/>. Keeping the list here rather than inferring it from a
+    /// semantic model is intentional: emitters run without a compilation of their own output.
+    /// <para>
+    /// This list alone does <em>not</em> fail safe. Matching a fixed set of names means an emitted
+    /// body that dereferences <em>any other</em> instance member is classified as static-safe, the
+    /// method is emitted <see langword="static"/>, and the adopter's build fails with CS0120 inside
+    /// generated code the adopter cannot edit — the expensive direction. The over-classification
+    /// direction is merely a CA1822 finding. <see cref="ReferencesProjectionInstanceMember"/>
+    /// therefore also derives the instance members actually declared on the class being emitted, so
+    /// this list is a floor rather than the whole answer.
+    /// </para>
+    /// </remarks>
+    private static readonly string[] ProjectionInstanceMemberNames =
+    [
+        "RenderContext",
+        "TimeProvider",
+        "DevModeServices",
+        ColumnEmitter.ShellLocalizerFieldName,
+    ];
+
+    /// <summary>
+    /// Determines whether an emitted method body dereferences projection view instance state.
+    /// </summary>
+    /// <param name="classSoFar">The generated class text emitted up to this member.</param>
+    /// <param name="body">The emitted method body text.</param>
+    /// <returns><see langword="true"/> when the body must remain an instance method.</returns>
+    /// <remarks>
+    /// Answers from three signals, any of which forces an instance method: a <c>this</c> reference,
+    /// a name from <see cref="ProjectionInstanceMemberNames"/>, and — the conservative part — a
+    /// non-<see langword="static"/> member already declared on <paramref name="classSoFar"/>. The
+    /// third signal is what keeps a newly emitted instance member from silently becoming a CS0120 in
+    /// adopter output. When <paramref name="classSoFar"/> cannot be parsed the derivation is skipped
+    /// and only the first two signals apply, which is the historical behaviour.
+    /// </remarks>
+    private static bool ReferencesProjectionInstanceMember(StringBuilder classSoFar, string body) {
+        if (ContainsIdentifier(body, "this")) {
+            return true;
+        }
+
+        foreach (string memberName in ProjectionInstanceMemberNames) {
+            if (ContainsIdentifier(body, memberName)) {
+                return true;
+            }
+        }
+
+        foreach (string memberName in DeclaredInstanceMemberNames(classSoFar)) {
+            if (ContainsIdentifier(body, memberName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Parses the partially emitted class and returns the names of every member it declares that is
+    /// not <see langword="static"/>.
+    /// </summary>
+    /// <param name="classSoFar">The generated class text emitted so far, with its body still open.</param>
+    /// <returns>The declared instance member names, or an empty list when the text cannot be parsed.</returns>
+    private static IReadOnlyList<string> DeclaredInstanceMemberNames(StringBuilder classSoFar) {
+        SyntaxTree tree = CSharpSyntaxTree.ParseText(classSoFar.ToString() + "}");
+        foreach (Diagnostic diagnostic in tree.GetDiagnostics()) {
+            if (diagnostic.Severity == DiagnosticSeverity.Error) {
+                return [];
+            }
+        }
+
+        List<string> names = [];
+        foreach (ClassDeclarationSyntax declaration in tree.GetRoot().DescendantNodes().OfType<ClassDeclarationSyntax>()) {
+            foreach (MemberDeclarationSyntax member in declaration.Members) {
+                if (member.Modifiers.Any(SyntaxKind.StaticKeyword)) {
+                    continue;
+                }
+
+                switch (member) {
+                    case FieldDeclarationSyntax field:
+                        foreach (VariableDeclaratorSyntax variable in field.Declaration.Variables) {
+                            names.Add(variable.Identifier.ValueText);
+                        }
+
+                        break;
+                    case EventFieldDeclarationSyntax eventField:
+                        foreach (VariableDeclaratorSyntax variable in eventField.Declaration.Variables) {
+                            names.Add(variable.Identifier.ValueText);
+                        }
+
+                        break;
+                    case PropertyDeclarationSyntax property:
+                        names.Add(property.Identifier.ValueText);
+                        break;
+                    case MethodDeclarationSyntax method:
+                        names.Add(method.Identifier.ValueText);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+        return names;
+    }
+
+    private static bool ContainsIdentifier(string text, string identifier) {
+        int index = text.IndexOf(identifier, StringComparison.Ordinal);
+        while (index >= 0) {
+            bool leftBoundary = index == 0 || !IsIdentifierCharacter(text[index - 1]);
+            int end = index + identifier.Length;
+            bool rightBoundary = end >= text.Length || !IsIdentifierCharacter(text[end]);
+            if (leftBoundary && rightBoundary) {
+                return true;
+            }
+
+            index = text.IndexOf(identifier, index + 1, StringComparison.Ordinal);
+        }
+
+        return false;
+    }
+
+    private static bool IsIdentifierCharacter(char value)
+        => char.IsLetterOrDigit(value) || value == '_';
 
     private static void EmitTemplateRowRenderer(StringBuilder sb, RazorModel model) {
         _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateRow(" + model.TypeName + " row)");
@@ -1042,6 +1196,8 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }");
             _ = sb.AppendLine("        _dotNetRef?.Dispose();");
             _ = sb.AppendLine("        _dotNetRef = null;");
+            // Story 11.21 CA1816 — suppress finalization for derived types that add a finalizer.
+            _ = sb.AppendLine("        System.GC.SuppressFinalize(this);");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
 
@@ -1096,6 +1252,8 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    public void Dispose()");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
+            // Story 11.21 CA1816 — suppress finalization for derived types that add a finalizer.
+            _ = sb.AppendLine("        System.GC.SuppressFinalize(this);");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
         }
@@ -1167,7 +1325,9 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        return items.Where(row => RowMatchesActiveStatus(row, activeSet));");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
-            _ = sb.AppendLine("    private static bool RowMatchesActiveStatus(" + model.TypeName + " row, System.Collections.Generic.ISet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> activeSlots)");
+            // Story 11.21 CA1859 — both call sites already materialise a concrete HashSet, so the
+            // parameter is declared as the concrete type to avoid the interface dispatch on Contains.
+            _ = sb.AppendLine("    private static bool RowMatchesActiveStatus(" + model.TypeName + " row, System.Collections.Generic.HashSet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> activeSlots)");
             _ = sb.AppendLine("    {");
             foreach (ColumnModel col in model.Columns) {
                 if (col.BadgeMappings.Count == 0) {
@@ -1271,8 +1431,11 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder, ref int seq)");
+        // Story 11.21 ASP0006 — the caller opens a render region around this call, so the loop reuses
+        // one literal per source location; SetKey keeps each indicator individually identifiable.
+        _ = sb.AppendLine("    private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)");
         _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        int seq = 0;");
         _ = sb.AppendLine("        foreach (var entry in NewItemIndicators.Snapshot(_viewKey))");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcNewItemIndicator>(seq++);");
@@ -1341,8 +1504,10 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
 
+        // Story 11.21 CA1859 — every return path already produces a string[]; the concrete return
+        // type removes the interface indirection at the single `hiddenColumnSet` consumer.
         if (model.Columns.Count > 15) {
-            _ = sb.AppendLine("    private static System.Collections.Generic.IReadOnlyList<string> ResolveHiddenColumns(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+            _ = sb.AppendLine("    private static string[] ResolveHiddenColumns(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (snapshot is null || !snapshot.Filters.TryGetValue(global::Hexalith.FrontComposer.Contracts.Rendering.VirtualizationReservedKeys.HiddenColumnsKey, out var csv))");
             _ = sb.AppendLine("        {");
@@ -1354,7 +1519,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    }");
         }
         else {
-            _ = sb.AppendLine("    private static System.Collections.Generic.IReadOnlyList<string> ResolveHiddenColumns(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+            _ = sb.AppendLine("    private static string[] ResolveHiddenColumns(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
             _ = sb.AppendLine("        => System.Array.Empty<string>();");
         }
 
@@ -1362,8 +1527,10 @@ public static class RazorEmitter {
     }
 
     private static void EmitFormatters(StringBuilder sb, RazorModel model) {
+        // Story 11.21 CA1845 — span-based concat avoids the intermediate Substring allocation.
+        // The produced string is character-identical to the previous Substring(...) + ellipsis form.
         _ = sb.AppendLine("    private static string Truncate(string value, int maxLength)");
-        _ = sb.AppendLine("        => value.Length <= maxLength ? value : value.Substring(0, maxLength - 1) + \"\\u2026\";");
+        _ = sb.AppendLine("        => value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), \"\\u2026\");");
         _ = sb.AppendLine();
         if (HasRelativeTimeColumns(model)) {
             // Story 6-1 review F8 — Unspecified DateTime values are interpreted as UTC. The
@@ -1687,7 +1854,12 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        builder.CloseComponent();");
         _ = sb.AppendLine();
 
-        _ = sb.AppendLine("        RenderNewItemIndicators(builder, ref seq);");
+        // Story 11.21 ASP0006 — the indicator helper appends a variable number of keyed frames from
+        // its own method scope, so it gets an explicit render region rather than borrowing (and
+        // advancing) the caller's sequence space.
+        _ = sb.AppendLine("        builder.OpenRegion(seq++);");
+        _ = sb.AppendLine("        RenderNewItemIndicators(builder);");
+        _ = sb.AppendLine("        builder.CloseRegion();");
         _ = sb.AppendLine();
 
         // Story 4-4 T2.7 / D9 — unfiltered row count above the grid (filter-summary path is owned by Story 4-3).

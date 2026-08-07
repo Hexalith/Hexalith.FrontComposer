@@ -18,7 +18,7 @@
     bool bcShowsNew = !SeenCapabilities.Contains(bcCapabilityId) && Card.AggregateCount > 0;
     string ariaLabel = Card.AggregateCount > 0
         ? string.Format(
-            System.Globalization.CultureInfo.CurrentUICulture,
+            System.Globalization.CultureInfo.CurrentCulture,
             Localizer["HomeCardPendingAriaLabelTemplate"].Value,
             Card.Manifest.Name,
             Card.AggregateCount)

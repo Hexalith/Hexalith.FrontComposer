@@ -2,6 +2,7 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 
@@ -80,7 +81,7 @@ public sealed class ScopeReadinessGate : IScopeReadinessGate {
         }
 
         string correlationId = NewCorrelationId();
-        _logger.LogDebug("StorageReadyAction dispatched for first-time scope flip. CorrelationId={CorrelationId}.", correlationId);
+        FrontComposerDiagnosticLog.ScopeReadinessStorageReadyDispatched(_logger, correlationId);
         dispatcher.Dispatch(new StorageReadyAction(correlationId));
         return Task.CompletedTask;
     }

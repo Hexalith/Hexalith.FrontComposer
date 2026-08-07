@@ -75,8 +75,9 @@ public class RazorEmitterBadgeColumnTests {
 
         string source = RazorEmitter.Emit(model);
 
-        source.ShouldContain("b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);");
-        source.ShouldNotContain("b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);");
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        masked.ShouldContain("b.OpenComponent<TemplateColumn<OrderProjection>>(#);");
+        masked.ShouldNotContain("b.OpenComponent<PropertyColumn<OrderProjection, string?>>(#);");
         source.ShouldContain("Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon");
         source.ShouldNotContain("Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge");
         source.ShouldContain("case \"Pending\":");

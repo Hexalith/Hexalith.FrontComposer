@@ -22,10 +22,10 @@ public static class McpMarkdownProjectionRenderer {
             McpResourceDescriptor descriptor = request.Descriptor;
             McpProjectionRenderStrategy role = descriptor.RenderStrategy;
             string roleText = role.ToString();
-            IReadOnlyList<McpParameterDescriptor> fields = descriptor.Fields
+            McpParameterDescriptor[] fields = descriptor.Fields
                 .Take(Math.Max(1, options.MaxFieldsPerResource))
                 .ToArray();
-            bool fieldsTruncated = descriptor.Fields.Count > fields.Count;
+            bool fieldsTruncated = descriptor.Fields.Count > fields.Length;
 
             // Dashboard and unknown strategies must not silently fall through to a Default
             // table render — per the canonical contract they return the sanitized
@@ -64,7 +64,7 @@ public static class McpMarkdownProjectionRenderer {
 
     private static RenderedMarkdown RenderTableDocument(
         McpResourceDescriptor descriptor,
-        IReadOnlyList<McpParameterDescriptor> fields,
+        McpParameterDescriptor[] fields,
         IReadOnlyList<object> items,
         long totalCount,
         string role,
@@ -88,7 +88,7 @@ public static class McpMarkdownProjectionRenderer {
         _ = sb.Append("- Role: ").AppendLine(EscapeMarkdownText(role));
         _ = sb.AppendLine();
 
-        if (fields.Count == 0) {
+        if (fields.Length == 0) {
             AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
             return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
         }

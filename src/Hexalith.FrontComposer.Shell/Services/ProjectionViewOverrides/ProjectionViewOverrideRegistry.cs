@@ -159,8 +159,8 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
         // and source-compatible; MinorDrift suggests the adopter rebuild.
         if (comparison.ShouldReportDiagnostic
             && comparison.Decision == CustomizationContractVersionDecision.MinorDrift) {
-            _logger.LogInformation(
-                "{DiagnosticId}: Level 4 view override targets contract minor {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} but installed framework reports {ActualMajor}.{ActualMinor}.{ActualBuild}. Override accepted (source-compatible). Source: {Source}. Fix: rebuild the replacement to silence this message. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1045",
+            FrontComposerDiagnosticLog.ProjectionViewOverrideContractVersionDrift(
+                _logger,
                 FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch,
                 comparison.Expected.Major,
                 comparison.Expected.Minor,
@@ -173,11 +173,11 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
         else if (descriptor.ContractVersion != ProjectionViewOverrideContractVersion.Current) {
             // BuildDrift — silent at Information level; preserves observability for operators
             // running with verbose log filters.
-            _logger.LogInformation(
-                "{DiagnosticId}: Level 4 view override build drift for projection {Projection} role {Role}. Installed: {Current}. Got: {ContractVersion}. Source: {Source}. Selection proceeds.",
+            FrontComposerDiagnosticLog.ProjectionViewOverrideBuildDrift(
+                _logger,
                 FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch,
                 descriptor.ProjectionType.FullName,
-                descriptor.Role?.ToString() ?? "<any>",
+                descriptor.Role,
                 ProjectionViewOverrideContractVersion.Current,
                 descriptor.ContractVersion,
                 descriptor.RegistrationSource);

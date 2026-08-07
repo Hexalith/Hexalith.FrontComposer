@@ -169,7 +169,7 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
             await _storage.SetAsync(key, snapshot, CancellationToken.None).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
-            _logger.LogDebug("Capability-seen persist cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.CapabilitySeenPersistCancelled(_logger);
         }
         catch (Exception ex) {
             FrontComposerWarningLog.CapabilityPersistFailed(
@@ -208,7 +208,7 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
             }
         }
         catch (OperationCanceledException) {
-            _logger.LogDebug("Capability-seen hydrate cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.CapabilitySeenHydrateCancelled(_logger);
         }
         catch (Exception ex) {
             // D13 hydrate-side parity: storage faults during hydrate are fail-soft — dispatch

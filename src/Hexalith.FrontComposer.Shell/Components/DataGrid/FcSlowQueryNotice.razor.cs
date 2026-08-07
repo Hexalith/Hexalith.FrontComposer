@@ -102,5 +102,6 @@ public partial class FcSlowQueryNotice : ComponentBase, IDisposable {
     public void Dispose() {
         LoadedPage.StateChanged -= OnStateChanged;
         _dismissTimer?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

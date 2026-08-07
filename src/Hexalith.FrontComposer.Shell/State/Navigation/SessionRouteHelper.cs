@@ -71,7 +71,7 @@ internal static class SessionRouteHelper {
         }
 
         string working = candidate.Trim();
-        if (working.StartsWith("/", StringComparison.Ordinal)) {
+        if (working.StartsWith('/')) {
             working = working[1..];
         }
 

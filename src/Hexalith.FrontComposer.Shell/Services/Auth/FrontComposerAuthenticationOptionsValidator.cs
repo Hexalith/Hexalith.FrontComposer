@@ -111,8 +111,8 @@ internal sealed class FrontComposerAuthenticationOptionsValidator(IHostEnvironme
     }
 
     private static void ValidateOidcScopes(FrontComposerOpenIdConnectOptions oidc, List<string> failures) {
-        IReadOnlyList<string> nonWhitespace = oidc.Scopes.Where(s => !string.IsNullOrWhiteSpace(s)).ToArray();
-        if (nonWhitespace.Count == 0) {
+        string[] nonWhitespace = [.. oidc.Scopes.Where(static s => !string.IsNullOrWhiteSpace(s))];
+        if (nonWhitespace.Length == 0) {
             failures.Add(Fail(
                 "OpenIdConnect.Scopes must contain at least one non-whitespace scope.",
                 "Include 'openid' (and 'profile') in OpenIdConnect.Scopes.",

@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services;
 
@@ -141,9 +142,7 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
             // "CTA suppressed because the type couldn't be loaded" (assembly trimmed, type
             // renamed, FQN typo, cross-assembly without assembly-qualified name). Pass-4 P-CR17
             // mirrors the palette's Pass-2 P-NP20 pattern.
-            Logger?.LogInformation(
-                "Empty-state CTA suppressed: command type {CommandFqn} could not be resolved. The type may be trimmed, renamed, or live in a different assembly than the projection.",
-                commandFqn);
+            FrontComposerDiagnosticLog.EmptyStateCtaCommandTypeUnresolved(Logger, commandFqn);
         }
 
         return resolved;
@@ -224,7 +223,7 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
 
     private static string PluralizeHumanized(string typeName) {
         string humanized = HumanizeAndStripProjectionSuffix(typeName).ToLowerInvariant();
-        if (humanized.EndsWith("s", StringComparison.Ordinal)) {
+        if (humanized.EndsWith('s')) {
             return humanized;
         }
 

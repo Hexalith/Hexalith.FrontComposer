@@ -872,3 +872,99 @@ when CI remains authoritative.
 - [x] Test summary updated.
 - [x] Tests saved to appropriate directories.
 - [x] Summary includes coverage metrics and local blockers.
+
+## Story 11.21 — Recommended analyzer product and generator burn-down (2026-08-07/08, session 2)
+
+Branch `fix/11-21-analyzer-burndown-2`, baseline commit `6388d5a5c311988d2cd29b0aa9755ac1e13bc693`.
+Toolchain SDK `10.0.302`, MSBuild `18.6.11.33009`, Roslyn `5.6.0`. Every test lane below was run
+through the built xUnit v3 executable directly with `DiffEngine_Disabled=true -parallel none`;
+solution-level `dotnet test` was deliberately not used, per the story's Testing and Validation
+Requirements.
+
+### Default lane, every test project
+
+- [x] `Hexalith.FrontComposer.Cli.Tests` — 73 total, 0 failed.
+- [x] `Hexalith.FrontComposer.Contracts.Tests` — 216 total, 0 failed.
+- [x] `Hexalith.FrontComposer.Contracts.UI.Tests` — 10 total, 0 failed.
+- [x] `Hexalith.FrontComposer.Mcp.Tests` — 377 total, 0 failed.
+- [x] `Hexalith.FrontComposer.Shell.Tests` — 2417 total, 0 failed.
+- [x] `Hexalith.FrontComposer.SourceTools.Tests` — 1122 total, 0 failed.
+- [x] `Hexalith.FrontComposer.Testing.Tests` — 59 total, 0 failed.
+- [x] Aggregate: **4274 tests, 0 failed**, with the trait exclusions
+      `-notrait Category=Performance -notrait Category=e2e-palette -notrait Category=NightlyProperty
+      -notrait Category=Quarantined`.
+
+### Governance and Contract lanes
+
+- [x] Shell.Tests `-trait Category=Governance` — 218 total, 0 failed.
+- [x] Shell.Tests `-trait Category=Contract` — 3 total, 0 failed.
+- [x] `AnalyzerPolicyGovernanceTests` — 4/4. Proven non-vacuous during the run: it failed closed on
+      identifier-seal drift (`count=6307`) and passed only after the ledger seal was corrected to the
+      measured value.
+- [x] `SecurityLoggingGovernanceTests` — 7/7 with the intentional low-severity remainder assertion
+      moved from exactly 73 to 0, the three Story 11.18 EventId range assertions untouched, and a new
+      Story 11.21 block sealing EventIds 6000-6072.
+
+### Analyzer gates
+
+- [x] Canonical Release `dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore
+      --no-incremental -m:1` — exit 0, **0 Warning(s) / 0 Error(s)**.
+- [x] Strict `-p:AnalysisMode=Recommended` with `TreatWarningsAsErrors` unchanged, Release net10.0,
+      for Cli, Contracts, Contracts.UI, Mcp, Schema, Shell and Testing — exit 0 and 0 warnings /
+      0 errors for all seven.
+- [x] Contracts and Schema `-f netstandard2.0` under their preserved analyzer boundary — 0 warnings.
+- [x] SourceTools as a Roslyn component — 0 warnings.
+- [x] Generated consumers Counter.Domain, Counter.Specimens.Domain and IdeParityCounter under strict
+      Recommended — exit 0, 0 warnings / 0 errors each.
+- [x] Owned product findings 275 -> 0 and owned generated findings 503 -> 0, deduplicated on
+      `(file, line, col, id)` and attributed by owning project.
+- [x] Shell.Tests has **zero** diagnostics located in SourceTools-generated output; 72 hand-authored
+      findings remain there and stay explicitly owned by Story 11.22.
+- [x] ASP0006 negative control with `-p:NoWarn=` across Counter.Domain, Counter.Specimens.Domain,
+      Counter.Specimens, Counter.Web, IdeParityCounter, Shell.Tests and Testing.Tests — **0 generated
+      ASP0006 everywhere**; the only remaining 17 sites are hand-authored Shell.Tests fixtures.
+
+### Artifact and package gates
+
+- [x] `pwsh ./eng/validate-contract-artifacts.ps1` — exit 0, "Contract artifacts validated
+      successfully."
+- [x] Package validation with `-p:EnableFrontComposerPackageValidation=true` for all eight packable
+      projects — exit 0 with **zero ApiCompat codes**. This also confirms the additive `IDisposable`
+      on `ETagCacheService` is not a breaking change. Note for reproduction: a local `dotnet pack`
+      must stamp an explicit assembly version, because MinVer resolves 1.0.0 with no reachable tags
+      and trips `CP0003` against the 3.0.0 published baseline — a purely environmental version check,
+      not an API break.
+- [x] 24 `.verified.txt` snapshots re-approved after per-file semantic review.
+- [x] `git diff --check` and `git diff --cached --check` — clean.
+- [x] `docs/` untouched, so the DocFX docs-validation gate is not triggered by this story.
+
+### Checklist
+- [x] Tests use standard test framework APIs (xUnit v3 + Shouldly + NSubstitute + bUnit + Verify).
+- [x] Tests cover the happy path.
+- [x] Tests cover the critical regression path, including mutation-verified negative controls for the
+      surrogate-safe truncation path and a non-vacuity probe for the packaged analyzer consumer.
+- [x] Story-owned focused lanes run through the direct xUnit v3 in-process runner.
+- [x] No hardcoded waits or sleeps.
+- [x] Tests are independent.
+- [x] Test summary updated.
+- [x] Summary includes coverage metrics and local blockers.
+
+### Post-review verification (2026-08-08)
+
+Three adversarial review layers produced 12 applied patches and 7 deferred entries. Re-verified after
+the patch set landed:
+
+- [x] Default lane, all seven test projects — **4304 total, 0 failed** (Cli 73, Contracts 216,
+      Contracts.UI 10, Mcp 377, Shell 2423, SourceTools 1146, Testing 59). Up from 4274 before review.
+- [x] Shell.Tests `-trait Category=Governance` — 218 total, 0 failed, including
+      `AnalyzerPolicyGovernanceTests` 4/4 with the identifier seal recomputed to `count=6328`.
+- [x] Shell.Tests `-trait Category=Contract` — 3 total, 0 failed.
+- [x] Canonical Release `.slnx` — 0 Warning(s) / 0 Error(s).
+- [x] Strict `AnalysisMode=Recommended` with TWAE unchanged, all seven product projects — 0/0 each.
+- [x] Contracts and Schema netstandard2.0 legs, SourceTools Roslyn component — 0 warnings.
+- [x] Generated consumers Counter.Domain, Counter.Specimens.Domain, IdeParityCounter — 0/0 each.
+- [x] Story artifact validation — passed, with the four PR #82 submodule gitlinks declared unrelated.
+
+Note on seal reproduction: the identifier seal is computed over `git ls-files`, so it must be measured
+with every new file staged. An unstaged measurement during the patch round read `count=6319`; the
+correct staged value is `count=6328`.

@@ -41,5 +41,5 @@ public partial class FcFilterEmptyState : ComponentBase {
     protected override void OnParametersSet() => _message = Localizer[
             "EmptyFilteredStateTemplate",
             EntityPlural,
-            TotalCount.ToString(CultureInfo.CurrentUICulture)].Value;
+            TotalCount.ToString(CultureInfo.CurrentCulture)].Value;
 }

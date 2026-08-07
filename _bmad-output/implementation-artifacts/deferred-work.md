@@ -2157,3 +2157,31 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
   summary: `RepositoryRoot()` is duplicated a fifth time instead of reusing the `internal static` helper deliberately exposed on `CiGovernanceTests`.
   evidence: `CiGovernanceTests.RepositoryRoot()` is `internal static`; `AppHostNuGetAuditPolicyTests`, `FluentConformanceTests`, `InfrastructureGovernanceTests` and now `AnalyzerPolicyGovernanceTests` each carry a private copy of the same slnx walk.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+  summary: The new 6000-band `ScopeReadinessStorageReadyDispatched` event logs a correlation id verbatim while the Story 11.18 hot-path family always digests correlation ids, so the two cannot be joined and the raw identifier reaches logs.
+  evidence: `FrontComposerDiagnosticLog.cs:1181-1190` passes `correlationId` through `Bounded()`, which returns any value under 512 chars without line-forging characters verbatim — a 26-char ULID is unchanged. `LifecycleStateService.cs:282` documents "Join key with HotPath lifecycle events: same opaque sha256 digest (Decision 2)" and uses `FrontComposerHotPathLog.DigestIdentifier`, which always returns `sha256:<16 hex>`. Not a regression (the pre-migration direct call also logged it raw), but it leaves the 11.18 digest posture unapplied. Fixing it changes operator-visible output, which trades against Story 11.21's migration-fidelity property that values stay unchanged — a Framework Maintainer decision.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+  summary: `FrontComposerDiagnosticLog.Digest` and `FrontComposerHotPathLog.DigestIdentifier` are two independent digest implementations with different token formats.
+  evidence: HotPath emits `sha256:<16 hex>` (`FrontComposerHotPathLog.cs:588`); the new family emits `sha256:<16 hex>:len:<n>` with different null/empty handling and a 4096-character pre-hash truncation (`FrontComposerDiagnosticLog.cs:1711-1712`). The same value therefore hashes to different tokens across the two families.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+  summary: `SemaphoreSlim.Dispose()` in `ETagCacheService` can strand a caller already awaiting `WaitAsync` rather than faulting it.
+  evidence: `ETagCacheService.cs:73-79,324-356`. The added `catch (ObjectDisposedException)` covers only an already-disposed gate at call time; `SemaphoreSlim.Dispose` is documented as unsafe with pending waiters, so a seed in flight at circuit teardown is not guaranteed to observe the exception. A `CancellationTokenSource` cancelled in `Dispose()` and linked into `WaitAsync` would fault queued waiters deterministically. Story 11.21 added dispose tests but did not change the synchronisation primitive.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+  summary: `SecurityLoggingGovernanceTests` lost its per-site, per-line inventory of the low-severity log calls when the remainder went from 73 to 0, so silently deleting a migrated diagnostic call now leaves the Governance lane green.
+  evidence: `ExpectedIntentionalLowSeverityRemainderLocations` and `ExpectedDirectCallCounts` were removed and replaced by an empty-set assertion. An exact inventory over the `FrontComposerDiagnosticLog` wrapper call sites (path, member, event) would restore the deletion-detection the removed ledger provided.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+  summary: `ObjectDisposedException.ObjectName` and message changed from the short type name to the namespace-qualified name at five disposal sites, and two `ThrowIf` styles were introduced for the same fix.
+  evidence: `ObjectDisposedException.ThrowIf` uses `Type.FullName`, replacing `new ObjectDisposedException(nameof(X))`. Sites: `LifecycleStateService.cs:80,167`, `ProjectionSubscriptionService.cs:684`, `NewItemIndicatorStateService.cs:237`, `ReconnectionReconciliationCoordinator.cs:239`, `FrontComposerMcpLifecycleStore.cs:294` — the last passes `this` while the others pass `typeof(T)`. No test asserts either the old or the new name.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+  summary: `Counter.Web` and `Counter.Specimens` had their ASP0006 `NoWarn` removed but are not part of any asserted zero-ASP0006 consumer set, so a regression reaching only those consumers would be ungated.
+  evidence: `PackagedAnalyzerConsumerTests` asserts over its own generated temp consumer; the negative control for these two projects was run manually during Story 11.21 and is not encoded as a test.
+
+- source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+  summary: The Story 11.21 census records `totalWarnings: 1125` against `locatedDiagnostics: 1120`, and the five unlocated diagnostics are never dispositioned.
+  evidence: `story1121Census` in `analyzer-policy-exception-ledger-v1.json`; `ownedTotal` 778 + `deferredToStory1122` 342 reconciles to 1120 exactly. Story 11.21 Task 1 required escalating any unmatched finding, so the five should either be enumerated or the census should state that project-level MSBuild diagnostics without a file location are out of scope.

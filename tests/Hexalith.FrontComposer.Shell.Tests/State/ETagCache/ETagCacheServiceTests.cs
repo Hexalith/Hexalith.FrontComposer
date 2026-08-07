@@ -237,6 +237,53 @@ public class ETagCacheServiceTests {
         loaded.ShouldBeNull();
     }
 
+    [Fact]
+    public void Dispose_IsIdempotent() {
+        // The service is registered as a scoped IDisposable; a container that disposes twice (or a
+        // caller that disposes an already-disposed scope) must not see ObjectDisposedException from
+        // the single-flight gate.
+        ETagCacheService cache = NewCache(out _);
+
+        Should.NotThrow(cache.Dispose);
+        Should.NotThrow(cache.Dispose);
+        Should.NotThrow(cache.Dispose);
+    }
+
+    [Fact]
+    public async Task SetAsync_AfterDispose_DegradesToAnUnseededCacheInsteadOfThrowing() {
+        // Story 11.21 CA1001/CA2213 — Dispose() releases the seeding gate. A write that races scope
+        // teardown must still complete against storage and must not wait on (or dispose-fault) that
+        // gate; the persisted-LRU seed is simply skipped.
+        FailingKeysStorage storage = new(failuresBeforeSuccess: 0);
+        ETagCacheService cache = new(
+            storage,
+            new TestOptionsMonitor(new FcShellOptions { MaxETagCacheEntries = 200 }),
+            TimeProvider.System,
+            NullLogger<ETagCacheService>.Instance);
+        const string key = "acme:alice:etag:projection-page:Foo:s0-t25";
+
+        cache.Dispose();
+
+        await Should.NotThrowAsync(() => cache.SetAsync(key, NewEntry(eTag: "\"v1\""), CancellationToken.None));
+
+        // Unseeded: the persisted-key enumeration that seeding performs was never attempted.
+        storage.GetKeysCalls.ShouldBe(0);
+
+        // The write itself still landed and the in-memory LRU still tracks it.
+        cache.TrackedKeyCount.ShouldBe(1);
+        (await storage.GetAsync<ETagCacheEntry>(key, CancellationToken.None)).ShouldNotBeNull();
+
+        // Non-vacuous control: the same first write on a live instance does seed from storage.
+        FailingKeysStorage liveStorage = new(failuresBeforeSuccess: 0);
+        using ETagCacheService live = new(
+            liveStorage,
+            new TestOptionsMonitor(new FcShellOptions { MaxETagCacheEntries = 200 }),
+            TimeProvider.System,
+            NullLogger<ETagCacheService>.Instance);
+        await live.SetAsync(key, NewEntry(eTag: "\"v1\""), CancellationToken.None);
+        liveStorage.GetKeysCalls.ShouldBe(1);
+    }
+
     private static ETagCacheService NewCache(out InMemoryStorageService storage, int maxEntries = 200) {
         storage = new InMemoryStorageService();
         TestOptionsMonitor monitor = new(new FcShellOptions { MaxETagCacheEntries = maxEntries });

@@ -27,7 +27,6 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("// Do not edit directly");
         _ = sb.AppendLine();
         _ = sb.AppendLine("#nullable enable");
-        _ = sb.AppendLine("#pragma warning disable ASP0006");
         _ = sb.AppendLine();
         _ = sb.AppendLine("using System;");
         _ = sb.AppendLine("using System.Collections.Generic;");
@@ -117,6 +116,13 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    private Action? _externalSubmit;");
         _ = sb.AppendLine("    private IJSObjectReference? _expandInRowModule;");
         _ = sb.AppendLine("    private " + commandFqn + " _prefilledModel = new();");
+        if (model.NonDerivablePropertyNames.Count >= 1) {
+            // Story 11.21 CA1861 — the inline-popover ShowFieldsOnly argument was a constant array
+            // allocated on every render pass. Hoisting it to a cached static also gives the form
+            // parameter a stable reference across renders, which the Blazor parameter diff prefers.
+            _ = sb.AppendLine("    private static readonly string[] _popoverShowFieldsOnly = new string[] { \"" + EscapeString(model.NonDerivablePropertyNames[0]) + "\" };");
+        }
+
         if (hasAuthorizationPolicy) {
             _ = sb.AppendLine("    [Inject] private global::Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;");
             _ = sb.AppendLine("    private const string AuthorizationPolicyName = \"" + EscapeString(model.AuthorizationPolicyName!) + "\";");
@@ -275,6 +281,8 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("        catch (global::System.ObjectDisposedException) { }");
             _ = sb.AppendLine("        _authorizationCts?.Dispose();");
             _ = sb.AppendLine("        _authorizationCts = null;");
+            // Story 11.21 CA1816 — suppress finalization for derived types that add a finalizer.
+            _ = sb.AppendLine("        System.GC.SuppressFinalize(this);");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationSurface ResolveAuthorizationSurface()");
@@ -383,7 +391,12 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("        return true;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private Icon? ResolveIcon()");
+        // Story 11.21 CA1822 — without a configured icon name the helper only calls the static
+        // TryResolveIcon fallback; the `Logger` dereference below is the sole instance access.
+        // Both call sites are unqualified invocations, so they bind to either form unchanged.
+        _ = sb.AppendLine(string.IsNullOrEmpty(model.IconName)
+            ? "    private static Icon? ResolveIcon()"
+            : "    private Icon? ResolveIcon()");
         _ = sb.AppendLine("    {");
         if (!string.IsNullOrEmpty(model.IconName)) {
             _ = sb.AppendLine("        if (TryResolveIcon(\"" + EscapeString(model.IconName!) + "\", out Icon? configured))");
@@ -608,10 +621,13 @@ public static class CommandRendererEmitter {
         EmitLogMethods(sb, model, densityName, hasAuthorizationPolicy);
 
         _ = sb.AppendLine("}");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("#pragma warning restore ASP0006");
 
-        return sb.ToString();
+        // Story 11.21 ASP0006 — the emitters above write runtime `seq++` counters; the rewriter
+        // converts each call site to the literal for its position in this document, which is what
+        // replaced the disable/restore pragma pair that used to bracket this file. If the rewriter
+        // ever fails safe and leaves a counter behind it fails the generation, because this output no
+        // longer carries a control that would cover the resulting ASP0006 in a consumer build.
+        return RenderTreeSequenceRewriter.AssignLiteralsOrFail(sb.ToString());
     }
 
     /// <summary>
@@ -720,7 +736,6 @@ public static class CommandRendererEmitter {
     private static void EmitBuildRenderTree(StringBuilder sb, CommandRendererModel model, string displayLabelEscaped) {
         string formFqn = string.IsNullOrEmpty(model.Namespace) ? model.FormComponentName : model.Namespace + "." + model.FormComponentName;
         int nonDerivableCount = model.NonDerivablePropertyNames.Count;
-        string firstFieldName = nonDerivableCount >= 1 ? EscapeString(model.NonDerivablePropertyNames[0]) : "";
         // Story 2-5 Task 6.1 — destructive commands route BeforeSubmit through DestructiveBeforeSubmitAsync
         // which opens the confirmation dialog. Non-destructive commands keep the default (derived-values
         // refresh only).
@@ -792,7 +807,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"onkeydown\", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleEscape));");
             _ = sb.AppendLine("                    __popover.OpenComponent<" + formFqn + ">(pseq++);");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"InitialValue\", _prefilledModel);");
-            _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"ShowFieldsOnly\", new[] { \"" + firstFieldName + "\" });");
+            _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"ShowFieldsOnly\", _popoverShowFieldsOnly);");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"BeforeSubmit\", " + beforeSubmitFunc + ");");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"OnConfirmed\", EventCallback.Factory.Create(this, OnConfirmedAsync));");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");

@@ -38,7 +38,7 @@
     }
     else
     {
-        IReadOnlyList<HomeCardModel> aggregated = AggregateManifests(manifests, discovery.Counts);
+        List<HomeCardModel> aggregated = AggregateManifests(manifests, discovery.Counts);
         bool isSeeded = discovery.HydrationState == CapabilityDiscoveryHydrationState.Seeded;
         int totalActionable = 0;
         int contextsWithUrgency = 0;
@@ -56,7 +56,7 @@
             @if (totalActionable > 0)
             {
                 <p class="fc-home-subtitle" data-testid="fc-home-subtitle">
-                    @string.Format(System.Globalization.CultureInfo.CurrentUICulture,
+                    @string.Format(System.Globalization.CultureInfo.CurrentCulture,
                         Localizer["HomeItemsTemplate"].Value, totalActionable, contextsWithUrgency)
                 </p>
             }

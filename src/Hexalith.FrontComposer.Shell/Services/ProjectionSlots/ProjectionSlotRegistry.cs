@@ -126,8 +126,8 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
         // emit equivalent log messages naming expected/actual + rebuild guidance.
         if (comparison.ShouldReportDiagnostic
             && comparison.Decision == CustomizationContractVersionDecision.MinorDrift) {
-            _logger.LogInformation(
-                "{DiagnosticId}: Level 3 slot descriptor for projection {Projection} field {Field} targets contract minor {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} but installed framework reports {ActualMajor}.{ActualMinor}.{ActualBuild}. Override accepted (source-compatible). Fix: rebuild the slot to silence this message. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1041",
+            FrontComposerDiagnosticLog.ProjectionSlotContractVersionDrift(
+                _logger,
                 FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch,
                 descriptor.ProjectionType.FullName,
                 descriptor.FieldName,

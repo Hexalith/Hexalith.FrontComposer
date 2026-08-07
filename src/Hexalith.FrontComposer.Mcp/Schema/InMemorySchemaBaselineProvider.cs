@@ -11,8 +11,7 @@ public sealed class InMemorySchemaBaselineProvider : ISchemaBaselineProvider {
     // callers, letting the gate fall back to descriptor.Fingerprint byte-match behavior. Hosts
     // that need fixture-driven baselines must register their own `ISchemaBaselineProvider`
     // implementation, or the test suite registers an in-memory provider with real snapshots.
-    private static readonly IReadOnlyDictionary<BaselineKey, SchemaBaselineSnapshot> EmptySnapshots
-        = new Dictionary<BaselineKey, SchemaBaselineSnapshot>();
+    private static readonly Dictionary<BaselineKey, SchemaBaselineSnapshot> EmptySnapshots = [];
 
     public bool TryResolve(
         SchemaContractFamily family,

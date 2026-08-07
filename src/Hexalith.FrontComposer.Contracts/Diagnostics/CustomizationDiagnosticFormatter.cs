@@ -8,9 +8,13 @@ public static class CustomizationDiagnosticFormatter {
     /// Formats the diagnostic as SourceTools/Shell-compatible teaching text.
     /// </summary>
     public static string Format(CustomizationDiagnostic diagnostic) {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(diagnostic);
+#else
         if (diagnostic is null) {
             throw new ArgumentNullException(nameof(diagnostic));
         }
+#endif
 
         List<string> sections = [
             $"What: {diagnostic.What}",

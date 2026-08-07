@@ -63,16 +63,16 @@ public partial class FcFilterSummary : ComponentBase {
         _visible = _clauses.Count > 0;
         _prefix = Localizer[
             "FilterSummaryShowingTemplate",
-            FilteredCount.ToString(CultureInfo.CurrentUICulture),
-            TotalCount.ToString(CultureInfo.CurrentUICulture),
+            FilteredCount.ToString(CultureInfo.CurrentCulture),
+            TotalCount.ToString(CultureInfo.CurrentCulture),
             EntityPlural].Value;
     }
 
     private List<string> BuildClauses() {
         List<string> clauses = [];
 
-        IReadOnlyList<string> statusSlots = GetOrderedStatusSlots();
-        if (statusSlots.Count > 0) {
+        string[] statusSlots = GetOrderedStatusSlots();
+        if (statusSlots.Length > 0) {
             clauses.Add(Localizer["FilterSummaryStatusClauseTemplate", JoinWithLocalizedOr(statusSlots)].Value);
         }
 
@@ -100,7 +100,7 @@ public partial class FcFilterSummary : ComponentBase {
             ? value
             : value.Replace("\"", "”", StringComparison.Ordinal);
 
-    private IReadOnlyList<string> GetOrderedStatusSlots() {
+    private string[] GetOrderedStatusSlots() {
         if (!Filters.TryGetValue(ReservedFilterKeys.StatusKey, out string? statusCsv)
             || string.IsNullOrWhiteSpace(statusCsv)) {
             return [];
@@ -138,21 +138,21 @@ public partial class FcFilterSummary : ComponentBase {
                 ? header
                 : columnKey;
 
-    private string JoinWithLocalizedOr(IReadOnlyList<string> values) {
-        if (values.Count == 0) {
+    private string JoinWithLocalizedOr(string[] values) {
+        if (values.Length == 0) {
             return string.Empty;
         }
 
-        if (values.Count == 1) {
+        if (values.Length == 1) {
             return values[0];
         }
 
         string conjunction = GetLocalizedOrConjunction();
-        if (values.Count == 2) {
+        if (values.Length == 2) {
             return values[0] + conjunction + values[1];
         }
 
-        return string.Join(", ", values.Take(values.Count - 1)) + conjunction + values[^1];
+        return string.Join(", ", values.Take(values.Length - 1)) + conjunction + values[^1];
     }
 
     private string ComposeSortClause(string sortColumn) {

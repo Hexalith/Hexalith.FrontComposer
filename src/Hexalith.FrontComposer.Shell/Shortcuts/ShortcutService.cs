@@ -84,8 +84,8 @@ public sealed class ShortcutService : IShortcutService, IDisposable {
             factoryArgument: entry);
 
         if (previous is not null) {
-            _logger.LogInformation(
-                "{DiagnosticId}: Duplicate shortcut registration replaced. Binding={Binding} PreviousDescriptionKey={PreviousDescriptionKey} NewDescriptionKey={NewDescriptionKey} PreviousCallSiteFile={PreviousCallSiteFile} PreviousCallSiteLine={PreviousCallSiteLine} NewCallSiteFile={NewCallSiteFile} NewCallSiteLine={NewCallSiteLine}",
+            FrontComposerDiagnosticLog.ShortcutDuplicateRegistrationReplaced(
+                _logger,
                 FcDiagnosticIds.HFC2108_ShortcutConflict,
                 normalised,
                 previous.DescriptionKey,

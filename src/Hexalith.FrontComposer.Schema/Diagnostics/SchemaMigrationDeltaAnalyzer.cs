@@ -41,6 +41,10 @@ public static class SchemaMigrationDeltaAnalyzer {
         SchemaBaselineSnapshot baseline,
         SchemaBaselineSnapshot current,
         int maxDeltaCount = _maxDeltaCount) {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(baseline);
+        ArgumentNullException.ThrowIfNull(current);
+#else
         if (baseline is null) {
             throw new ArgumentNullException(nameof(baseline));
         }
@@ -48,6 +52,7 @@ public static class SchemaMigrationDeltaAnalyzer {
         if (current is null) {
             throw new ArgumentNullException(nameof(current));
         }
+#endif
 
         // P-12: caller-supplied 0 or negative maxDeltaCount would suppress every delta
         // (including Breaking ones), so reject the misuse rather than silently truncating.
@@ -283,6 +288,12 @@ public static class SchemaMigrationDeltaAnalyzer {
             cut--;
         }
 
+        // The span-based concat produces the identical string; only the intermediate Substring
+        // allocation is removed. netstandard2.0 has no ReadOnlySpan<char> string.Concat overload.
+#if NET10_0_OR_GREATER
+        return string.Concat(path.AsSpan(0, cut), "...");
+#else
         return path.Substring(0, cut) + "...";
+#endif
     }
 }

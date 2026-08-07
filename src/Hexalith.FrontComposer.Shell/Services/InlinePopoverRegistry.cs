@@ -16,9 +16,7 @@ public sealed class InlinePopoverRegistry {
     /// open one.
     /// </summary>
     public async Task OpenAsync(IInlinePopover popover) {
-        if (popover is null) {
-            throw new ArgumentNullException(nameof(popover));
-        }
+        ArgumentNullException.ThrowIfNull(popover);
 
         IInlinePopover? previous;
         lock (_gate) {

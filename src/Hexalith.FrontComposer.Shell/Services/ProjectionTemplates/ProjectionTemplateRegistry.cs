@@ -97,11 +97,11 @@ public sealed class ProjectionTemplateRegistry : IProjectionTemplateRegistry {
         // equivalent log messages naming expected/actual + rebuild guidance.
         if (comparison.ShouldReportDiagnostic
             && comparison.Decision == CustomizationContractVersionDecision.MinorDrift) {
-            _logger.LogInformation(
-                "{DiagnosticId}: ProjectionTemplateDescriptor for projection {Projection} (role {Role}) targets contract minor {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} but installed framework reports {ActualMajor}.{ActualMinor}.{ActualBuild}. Override accepted (source-compatible). Fix: rebuild the template to silence this message. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1036",
+            FrontComposerDiagnosticLog.ProjectionTemplateContractVersionDrift(
+                _logger,
                 FcDiagnosticIds.HFC1036_ProjectionTemplateContractVersionDrift,
                 descriptor.ProjectionType.FullName,
-                descriptor.Role?.ToString() ?? "<any>",
+                descriptor.Role,
                 comparison.Expected.Major,
                 comparison.Expected.Minor,
                 comparison.Expected.Build,

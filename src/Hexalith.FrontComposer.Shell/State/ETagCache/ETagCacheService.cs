@@ -34,7 +34,7 @@ namespace Hexalith.FrontComposer.Shell.State.ETagCache;
 /// browser localStorage view stays in sync.
 /// </para>
 /// </remarks>
-public sealed class ETagCacheService : IETagCache {
+public sealed class ETagCacheService : IETagCache, IDisposable {
     private readonly IStorageService _storage;
     private readonly IOptionsMonitor<FcShellOptions> _options;
     private readonly TimeProvider _time;
@@ -42,6 +42,7 @@ public sealed class ETagCacheService : IETagCache {
     private readonly ConcurrentDictionary<string, long> _lru = new(System.StringComparer.Ordinal);
     private readonly SemaphoreSlim _lruSeedGate = new(1, 1);
     private int _lruSeeded;
+    private int _disposed;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ETagCacheService"/> class.
@@ -63,6 +64,19 @@ public sealed class ETagCacheService : IETagCache {
 
     /// <summary>Gets the number of entries currently tracked in the in-memory LRU map.</summary>
     internal int TrackedKeyCount => _lru.Count;
+
+    /// <summary>
+    /// Releases the single-flight gate that guards persisted-LRU seeding. The scoped container owns
+    /// the lifetime of this instance; no cached entry is removed, and the persisted storage view is
+    /// untouched.
+    /// </summary>
+    public void Dispose() {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) {
+            return;
+        }
+
+        _lruSeedGate.Dispose();
+    }
 
     /// <inheritdoc />
     public bool TryBuildKey(string? tenantId, string? userId, string? discriminator, out string key) {
@@ -308,11 +322,18 @@ public sealed class ETagCacheService : IETagCache {
     }
 
     private async Task EnsurePersistedLruSeededAsync(CancellationToken cancellationToken) {
-        if (Volatile.Read(ref _lruSeeded) != 0) {
+        if (Volatile.Read(ref _lruSeeded) != 0 || Volatile.Read(ref _disposed) != 0) {
             return;
         }
 
-        await _lruSeedGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try {
+            await _lruSeedGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException) {
+            // Scope teardown raced this best-effort pass; the LRU simply stays unseeded.
+            return;
+        }
+
         try {
             if (Volatile.Read(ref _lruSeeded) != 0) {
                 return;
@@ -326,7 +347,12 @@ public sealed class ETagCacheService : IETagCache {
             throw;
         }
         finally {
-            _ = _lruSeedGate.Release();
+            try {
+                _ = _lruSeedGate.Release();
+            }
+            catch (ObjectDisposedException) {
+                // Same teardown race as above; the gate no longer needs releasing.
+            }
         }
     }
 

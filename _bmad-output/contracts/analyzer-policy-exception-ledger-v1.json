@@ -75,8 +75,8 @@
   },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, one-based line, and C# identifier token containing an underscore",
-    "testUnderscoreIdentifierTokens": 6247,
-    "testInventorySha256": "ae48223236e200b57f2669ade7475dbb0041499214166ad880e44b4828f03e1a",
+    "testUnderscoreIdentifierTokens": 6328,
+    "testInventorySha256": "584a60f3c0ce5020ed76dbbd7678aee76ef74628be919d9fc74bd13560b10af8",
     "contractsUnderscoreIdentifierTokens": 90,
     "contractsInventorySha256": "a06a2c10b7bcc9e2abd18b585af55e93d70bd3ad85a20519791590313ffcb3b7"
   },
@@ -246,15 +246,15 @@
     {
       "key": "asp0006-generator-debt",
       "sourceKind": "MSBuild and emitter pragma",
-      "exactScope": "listed sample/test projects and SourceTools emitter files",
+      "exactScope": "no remaining control; formerly the five sample/test project NoWarn entries and the two SourceTools emitter pragma pairs",
       "mechanism": "ASP0006 NoWarn and emitted pragma",
-      "decision": "move",
-      "rationale": "RenderTreeBuilder sequence-number debt belongs to the generator/product burn-down phase.",
+      "decision": "fix",
+      "rationale": "Story 11.21 replaced every runtime RenderTreeBuilder sequence counter with a literal assigned at generator execution time (RenderTreeSequenceRewriter), removed the emitted ASP0006 pragma pairs from CommandFormEmitter and CommandRendererEmitter, and removed the ASP0006 NoWarn entries from Counter.Domain, Counter.Specimens.Domain, Counter.Specimens, Counter.Web, IdeParityCounter, Testing.Tests, and the packaged consumer template.",
       "owner": "SourceTools Generator Owner",
-      "decisionDate": "2026-07-17",
+      "decisionDate": "2026-08-07",
       "reviewDate": "2027-01-17",
-      "trigger": "Remove when generated RenderTreeBuilder sequences are compile-time constants.",
-      "evidence": "Story 11.21 separately gated backlog phase.",
+      "trigger": "Reopen only if generated RenderTreeBuilder output stops using compile-time constant sequences.",
+      "evidence": "Negative-control Release builds with -p:NoWarn= cleared report ASP0006 zero for Counter.Domain, Counter.Specimens.Domain, Counter.Specimens, Counter.Web, IdeParityCounter, and Testing.Tests; PackagedAnalyzerConsumerTests builds a clean packaged consumer with AnalysisMode=Recommended, TreatWarningsAsErrors, and no ASP0006 control.",
       "followUpStory": "11.21"
     },
     {
@@ -337,6 +337,20 @@
       "evidence": "Story 11.21 refreshed census at commit 4a8cfa4926b8fc52850da70f811103a91df22dfc reported exactly these three CA1000 sites and no others.",
       "approval": "Administrator approved this scoped ledger amendment on 2026-08-07 after Story 11.21's entry gate found no pre-existing CA1000 disposition; Story 11.20's scope covered Naming findings and warning controls only.",
       "followUpStory": "11.21"
+    },
+    {
+      "key": "asp0006-hand-authored-fixture-debt",
+      "sourceKind": "MSBuild",
+      "exactScope": "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj",
+      "mechanism": "ASP0006 NoWarn",
+      "decision": "move",
+      "rationale": "Story 11.21's negative control cleared this NoWarn and measured 17 remaining ASP0006 sites, all of them hand-authored bUnit fixture render fragments and none of them SourceTools-generated output. Absorbing them here would take Story 11.21 into Story 11.22's hand-authored test surface, so the control is retained at project scope and handed over intact.",
+      "owner": "Test Architecture Owner",
+      "decisionDate": "2026-08-07",
+      "reviewDate": "2027-01-17",
+      "trigger": "Remove when the three fixture files use literal render-tree sequence numbers.",
+      "evidence": "Release build of Hexalith.FrontComposer.Shell.Tests with -p:NoWarn= and TreatWarningsAsErrors=false: 17 ASP0006 sites across Generated/ActionQueueProjectionContextIsolationTests.cs (13), Components/Rendering/FcProjectionViewOverrideHostTests.cs (2), and Components/DataGrid/FcNewItemIndicatorLaneIntegrationTests.cs (2); zero in generated trees.",
+      "followUpStory": "11.22"
     }
   ],
   "warningControls": [
@@ -375,48 +389,11 @@
       "path": "tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj",
       "property": "NoWarn",
       "diagnosticIds": [
-        "ASP0006",
         "CA2007"
       ],
       "exactScope": "Testing.Tests project",
       "mechanism": "NoWarn",
       "dispositionKey": "testing-ca2007-audit"
-    },
-    {
-      "key": "msbuild-counter-specimens-domain-nowarn",
-      "sourceKind": "msbuild",
-      "path": "samples/Counter/Counter.Specimens.Domain/Counter.Specimens.Domain.csproj",
-      "property": "NoWarn",
-      "diagnosticIds": [
-        "ASP0006"
-      ],
-      "exactScope": "Counter.Specimens.Domain project",
-      "mechanism": "NoWarn",
-      "dispositionKey": "asp0006-generator-debt"
-    },
-    {
-      "key": "msbuild-counter-specimens-nowarn",
-      "sourceKind": "msbuild",
-      "path": "samples/Counter/Counter.Specimens/Counter.Specimens.csproj",
-      "property": "NoWarn",
-      "diagnosticIds": [
-        "ASP0006"
-      ],
-      "exactScope": "Counter.Specimens project",
-      "mechanism": "NoWarn",
-      "dispositionKey": "asp0006-generator-debt"
-    },
-    {
-      "key": "msbuild-ide-parity-nowarn",
-      "sourceKind": "msbuild",
-      "path": "samples/IdeParityCounter/IdeParityCounter.csproj",
-      "property": "NoWarn",
-      "diagnosticIds": [
-        "ASP0006"
-      ],
-      "exactScope": "IdeParityCounter project",
-      "mechanism": "NoWarn",
-      "dispositionKey": "asp0006-generator-debt"
     },
     {
       "key": "msbuild-testing-package-nowarn",
@@ -430,30 +407,6 @@
       "exactScope": "Testing package",
       "mechanism": "NoWarn",
       "dispositionKey": "package-warning-policy"
-    },
-    {
-      "key": "msbuild-counter-web-nowarn",
-      "sourceKind": "msbuild",
-      "path": "samples/Counter/Counter.Web/Counter.Web.csproj",
-      "property": "NoWarn",
-      "diagnosticIds": [
-        "ASP0006"
-      ],
-      "exactScope": "Counter.Web project",
-      "mechanism": "NoWarn",
-      "dispositionKey": "asp0006-generator-debt"
-    },
-    {
-      "key": "msbuild-counter-domain-nowarn",
-      "sourceKind": "msbuild",
-      "path": "samples/Counter/Counter.Domain/Counter.Domain.csproj",
-      "property": "NoWarn",
-      "diagnosticIds": [
-        "ASP0006"
-      ],
-      "exactScope": "Counter.Domain project",
-      "mechanism": "NoWarn",
-      "dispositionKey": "asp0006-generator-debt"
     },
     {
       "key": "msbuild-benchmark-twae",
@@ -487,9 +440,9 @@
       "diagnosticIds": [
         "ASP0006"
       ],
-      "exactScope": "Shell.Tests project",
+      "exactScope": "Shell.Tests project; retained for 17 hand-authored fixture render fragments in Generated/ActionQueueProjectionContextIsolationTests.cs, Components/Rendering/FcProjectionViewOverrideHostTests.cs, and Components/DataGrid/FcNewItemIndicatorLaneIntegrationTests.cs",
       "mechanism": "NoWarn",
-      "dispositionKey": "asp0006-generator-debt"
+      "dispositionKey": "asp0006-hand-authored-fixture-debt"
     },
     {
       "key": "msbuild-shell-package-nowarn",
@@ -658,6 +611,16 @@
       "dispositionKey": "naming-ca1707-diagnostic-id-compatibility"
     },
     {
+      "key": "source-emitter-pragmas",
+      "sourceKind": "emitter-pragma",
+      "paths": [],
+      "entryCount": 0,
+      "diagnosticIds": [],
+      "exactScope": "no SourceTools emitter emits a pragma warning disable",
+      "mechanism": "emitted pragma warning disable",
+      "dispositionKey": "asp0006-generator-debt"
+    },
+    {
       "key": "source-pragmas",
       "sourceKind": "pragma",
       "paths": [
@@ -778,21 +741,6 @@
       "exactScope": "listed root-owned source paths",
       "mechanism": "SuppressMessage or UnconditionalSuppressMessage",
       "dispositionKey": "source-local-compatibility-controls"
-    },
-    {
-      "key": "source-emitter-pragmas",
-      "sourceKind": "emitter-pragma",
-      "paths": [
-        "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs",
-        "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs"
-      ],
-      "entryCount": 2,
-      "diagnosticIds": [
-        "ASP0006"
-      ],
-      "exactScope": "listed SourceTools emitter paths",
-      "mechanism": "emitted pragma warning disable",
-      "dispositionKey": "asp0006-generator-debt"
     }
   ],
   "story1121Census": {
@@ -837,5 +785,20 @@
     },
     "driftFromCreateStoryBaseline": "Generated findings reconcile exactly at 503 with an identical per-diagnostic distribution. Product findings moved from 278 actionable to 275: Contracts fell 119 -> 30 because Story 11.20's exact-file CA1707 scope now suppresses its 89 compatibility findings as designed, and Shell CA1873 fell 83 -> 80 through unrelated repository evolution. The -3 product drift is -1.1%, below the 5% escalation threshold in Story 11.21 Task 1.",
     "note": "Census instrumentation only. TreatWarningsAsErrors is relaxed solely to enumerate; it is not a green gate and does not activate Recommended repository-wide."
+  },
+  "story1121Completion": {
+    "baselineCommit": "6388d5a5c311988d2cd29b0aa9755ac1e13bc693",
+    "sdk": "10.0.302",
+    "msbuild": "18.6.11.33009",
+    "roslyn": "5.6.0",
+    "ownedProductFindingsBefore": 275,
+    "ownedProductFindingsAfter": 0,
+    "ownedGeneratedFindingsBefore": 503,
+    "ownedGeneratedFindingsAfter": 0,
+    "strictGate": "All seven product projects build Release net10.0 at AnalysisMode=Recommended with TreatWarningsAsErrors unchanged: 0 warnings / 0 errors each. Contracts and Schema netstandard2.0 legs and the SourceTools Roslyn component are clean. The three generated consumers pass the strict candidate gate.",
+    "loggingFamily": "The 73-site low-severity Shell remainder migrated to EventIds 6000-6072, disjoint from the Story 11.18 Security 5660-5691, HotPath 5700-5780 and Warning 5800-5853 families and from the 5900-5926 band used by SourceTools-generated output. SecurityLoggingGovernanceTests remainder assertion moved 73 -> 0 with the three 11.18 range assertions untouched.",
+    "reviewHardening": "Three adversarial review layers produced 12 applied patches: the render-tree rewriter now bails out on non-DEBUG preprocessor branches and parse errors and asserts non-overlapping edits, all four emitters fail closed if a runtime sequence counter survives rewriting, role-specific projection bodies gained literal-sequencing assertions, GeneratedLogMethodEmitter validates the LoggerMessage.Define six-argument ceiling and placeholder parity, and log bounding now digests U+2028, U+2029 and Unicode format characters.",
+    "deferredToStory1122": "72 hand-authored findings remain in Shell.Tests source plus its 17 ASP0006 fixture sites, ledgered as asp0006-hand-authored-fixture-debt. The three sample consumers are fully clean.",
+    "testEvidence": "Default lane across all seven test projects: 4304 total, 0 failed. Shell.Tests Governance 218 and Contract 3 lanes green."
   }
 }

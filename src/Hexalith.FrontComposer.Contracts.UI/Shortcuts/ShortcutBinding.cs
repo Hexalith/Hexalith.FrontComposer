@@ -12,6 +12,11 @@ namespace Hexalith.FrontComposer.Contracts.Shortcuts;
 public static class ShortcutBinding {
     private static readonly string[] _modifierOrder = ["ctrl", "shift", "alt", "meta"];
 
+    // Cached separator arrays: the Split overloads below run on every palette label render and
+    // every binding normalisation, so the constant arrays are hoisted out of the call sites.
+    private static readonly char[] _chordSeparator = [' '];
+    private static readonly char[] _modifierSeparator = ['+'];
+
     /// <summary>
     /// Renders a normalised binding (e.g., <c>"ctrl+k"</c>) as a human-readable label
     /// (e.g., <c>"Ctrl+K"</c>) for the palette's "shortcuts" reference view.
@@ -24,11 +29,11 @@ public static class ShortcutBinding {
         }
 
         if (normalisedBinding.Contains(' ')) {
-            string[] parts = normalisedBinding.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
+            string[] parts = normalisedBinding.Split(_chordSeparator, 2, StringSplitOptions.RemoveEmptyEntries);
             return $"{Capitalise(parts[0])} {Capitalise(parts[1])}";
         }
 
-        string[] tokens = normalisedBinding.Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
+        string[] tokens = normalisedBinding.Split(_modifierSeparator, StringSplitOptions.RemoveEmptyEntries);
         for (int i = 0; i < tokens.Length; i++) {
             tokens[i] = Capitalise(tokens[i]);
         }

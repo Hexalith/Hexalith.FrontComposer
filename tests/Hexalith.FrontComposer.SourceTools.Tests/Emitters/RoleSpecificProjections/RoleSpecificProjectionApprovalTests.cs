@@ -1,5 +1,7 @@
 using System.Text;
 
+using Hexalith.FrontComposer.SourceTools.Tests.Emitters;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
@@ -246,6 +248,14 @@ public class RoleSpecificProjectionApprovalTests {
             + string.Join(", ", result.GeneratedTrees.Select(t => Path.GetFileName(t.FilePath))));
 
         string generatedSource = razorTree.GetText(cancellationToken).ToString();
+
+        // Story 11.21 (ASP0006) — role-specific bodies are the largest sequence-emitting surface in
+        // the generator (ProjectionRoleBodyEmitter, ~51 emissions) and were previously covered only
+        // by whole-text snapshots, which state what the output is but never assert that its
+        // render-tree sequencing is literal. No compiled consumer exercises a [ProjectionRole] type
+        // without an ASP0006 control either, so this is the assertion that keeps role output honest.
+        RenderTreeSequenceRewriterTests.ShouldUseLiteralRenderTreeSequences(generatedSource);
+
         return (generatedSource, result.Diagnostics);
     }
 

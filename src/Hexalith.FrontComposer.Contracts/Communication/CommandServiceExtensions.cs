@@ -30,9 +30,13 @@ public static class CommandServiceExtensions {
         Action<CommandLifecycleState, string?>? onLifecycleChange,
         CancellationToken cancellationToken = default)
         where TCommand : class {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(commandService);
+#else
         if (commandService is null) {
             throw new ArgumentNullException(nameof(commandService));
         }
+#endif
 
         if (commandService is ICommandServiceWithLifecycle lifecycleAware) {
             return lifecycleAware.DispatchAsync(command, onLifecycleChange, cancellationToken);

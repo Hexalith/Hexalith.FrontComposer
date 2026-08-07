@@ -13,7 +13,7 @@ namespace Hexalith.FrontComposer.Mcp;
 public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescriptorEpochProvider {
     private readonly IReadOnlyDictionary<string, McpCommandDescriptor> _commands;
     private readonly IReadOnlyDictionary<string, McpResourceDescriptor> _resources;
-    private readonly IReadOnlyDictionary<string, string> _normalizedNames;
+    private readonly Dictionary<string, string> _normalizedNames;
     private readonly IReadOnlyList<FrontComposerRenderContract> _renderContracts;
 
     public FrontComposerMcpDescriptorRegistry(IOptions<FrontComposerMcpOptions> options)
@@ -118,7 +118,7 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
         }
     }
 
-    private static IReadOnlyDictionary<string, McpCommandDescriptor> BuildCommandMap(IEnumerable<McpManifest> manifests) {
+    private static Dictionary<string, McpCommandDescriptor> BuildCommandMap(IEnumerable<McpManifest> manifests) {
         // OrdinalIgnoreCase regardless of population — keeps lookup semantics stable across the
         // empty / populated state transition.
         Dictionary<string, McpCommandDescriptor> map = new(StringComparer.OrdinalIgnoreCase);
@@ -131,7 +131,7 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
         return map;
     }
 
-    private static IReadOnlyDictionary<string, string> BuildNormalizedNameMap(IEnumerable<McpCommandDescriptor> commands) {
+    private static Dictionary<string, string> BuildNormalizedNameMap(IEnumerable<McpCommandDescriptor> commands) {
         Dictionary<string, string> map = new(StringComparer.Ordinal);
         foreach (McpCommandDescriptor descriptor in commands) {
             string normalized = FrontComposerMcpToolAdmissionService.NormalizeForMatching(descriptor.ProtocolName, out bool unsupported);
@@ -141,7 +141,7 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
         return map;
     }
 
-    private static IReadOnlyDictionary<string, McpResourceDescriptor> BuildResourceMap(IEnumerable<McpManifest> manifests) {
+    private static Dictionary<string, McpResourceDescriptor> BuildResourceMap(IEnumerable<McpManifest> manifests) {
         Dictionary<string, McpResourceDescriptor> map = new(StringComparer.OrdinalIgnoreCase);
         foreach (McpResourceDescriptor descriptor in manifests.SelectMany(m => m.Resources)) {
             if (!map.TryAdd(descriptor.ProtocolUri, descriptor)) {

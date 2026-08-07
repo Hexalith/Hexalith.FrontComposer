@@ -297,7 +297,7 @@ public partial class FrontComposerNavigation : FluxorComponent, IAsyncDisposable
     /// </summary>
     /// <param name="entries">All registered navigation entries.</param>
     /// <returns>The orphan bounded-context names.</returns>
-    private IReadOnlyList<string> OrphanEntryContexts(IReadOnlyList<FrontComposerNavEntry> entries) {
+    private List<string> OrphanEntryContexts(IReadOnlyList<FrontComposerNavEntry> entries) {
         ArgumentNullException.ThrowIfNull(entries);
         HashSet<string> manifestContexts = new(StringComparer.Ordinal);
         foreach (DomainManifest manifest in Registry.GetManifests()) {

@@ -291,11 +291,7 @@ public sealed partial class FrontComposerMcpLifecycleStore(
         return Math.Clamp((int)Math.Ceiling(ms), min, max);
     }
 
-    private void ThrowIfDisposed() {
-        if (Volatile.Read(ref _disposed) != 0) {
-            throw new ObjectDisposedException(nameof(FrontComposerMcpLifecycleStore));
-        }
-    }
+    private void ThrowIfDisposed() => ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 
     [GeneratedRegex("^[0-9A-HJKMNP-TV-Z]{26}$", RegexOptions.CultureInvariant)]
     private static partial Regex CanonicalUlidRegex();

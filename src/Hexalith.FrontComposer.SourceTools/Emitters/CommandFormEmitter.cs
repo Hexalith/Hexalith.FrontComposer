@@ -29,7 +29,6 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("// Do not edit directly");
         _ = sb.AppendLine();
         _ = sb.AppendLine("#nullable enable");
-        _ = sb.AppendLine("#pragma warning disable ASP0006 // seq++ pattern inside BuildRenderTree");
         _ = sb.AppendLine();
         _ = sb.AppendLine("using System;");
         _ = sb.AppendLine("using System.Globalization;");
@@ -328,9 +327,14 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        _serverValidationMessages?.Clear(e.FieldIdentifier);");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private void NotifyClientFieldChanged(string propertyName) {");
+        // Story 11.21 CA1507 — the parameter carries a property name of the *command model*, never a
+        // member of this form component. Naming it `propertyName` made CA1507 offer `nameof(...)`
+        // bindings against the form's own `InitialValue` parameter whenever an adopter command
+        // happened to declare a field with the same name; the resolved string would have been a
+        // coincidence rather than the intended model property. The names below say what the value is.
+        _ = sb.AppendLine("    private void NotifyClientFieldChanged(string commandPropertyName) {");
         _ = sb.AppendLine("        if (_editContext is null) return;");
-        _ = sb.AppendLine("        _editContext.NotifyFieldChanged(new FieldIdentifier(_model, propertyName));");
+        _ = sb.AppendLine("        _editContext.NotifyFieldChanged(new FieldIdentifier(_model, commandPropertyName));");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private CommandLifecycleState _previousLifecycleState = CommandLifecycleState.Idle;");
@@ -372,7 +376,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    /// is consulted, and finally the humanized compile-time label is used as a fallback.");
         _ = sb.AppendLine("    /// Patch 2026-04-16 P-09 (precedence) + P-04 (narrow catch).");
         _ = sb.AppendLine("    /// </summary>");
-        _ = sb.AppendLine("    private string ResolveLabel(string propertyName, string staticLabel, bool hasExplicitDisplay)");
+        _ = sb.AppendLine("    private string ResolveLabel(string commandPropertyName, string staticLabel, bool hasExplicitDisplay)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (hasExplicitDisplay)");
         _ = sb.AppendLine("        {");
@@ -381,7 +385,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            var localized = Localizer[propertyName];");
+        _ = sb.AppendLine("            var localized = Localizer[commandPropertyName];");
         _ = sb.AppendLine("            if (!localized.ResourceNotFound && !string.IsNullOrEmpty(localized.Value))");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                return localized.Value;");
@@ -395,7 +399,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        return staticLabel;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private static bool IsDerivableField(string propertyName) => propertyName switch");
+        _ = sb.AppendLine("    private static bool IsDerivableField(string commandPropertyName) => commandPropertyName switch");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        \"MessageId\" or \"CommandId\" or \"CorrelationId\" or \"TenantId\" or \"UserId\" or \"Timestamp\" or \"CreatedAt\" or \"ModifiedAt\" => true,");
         _ = sb.AppendLine("        _ => false,");
@@ -412,10 +416,13 @@ public static class CommandFormEmitter {
         EmitLogMethods(sb, hasAuthorizationPolicy);
 
         _ = sb.AppendLine("}");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("#pragma warning restore ASP0006");
 
-        return sb.ToString();
+        // Story 11.21 ASP0006 — the emitters above write runtime `seq++` counters; the rewriter
+        // converts each call site to the literal for its position in this document, which is what
+        // replaced the disable/restore pragma pair that used to bracket this file. If the rewriter
+        // ever fails safe and leaves a counter behind it fails the generation, because this output no
+        // longer carries a control that would cover the resulting ASP0006 in a consumer build.
+        return RenderTreeSequenceRewriter.AssignLiteralsOrFail(sb.ToString());
     }
 
     /// <summary>
@@ -578,12 +585,16 @@ public static class CommandFormEmitter {
     }
 
     private static void EmitClientParseErrorHelper(StringBuilder sb, CommandFormModel form) {
-        _ = sb.AppendLine("    private bool HasClientParseErrors()");
-        _ = sb.AppendLine("    {");
-
         string[] parseErrorFields = [.. form.Fields
             .Where(field => field.TypeCategory is FormFieldTypeCategory.NumberInput or FormFieldTypeCategory.DecimalInput)
             .Select(field => field.PropertyName)];
+
+        // Story 11.21 CA1822 — with no parse-error backing fields the helper reads no instance state.
+        // The single call site is an unqualified invocation, so it binds to either form unchanged.
+        _ = sb.AppendLine(parseErrorFields.Length == 0
+            ? "    private static bool HasClientParseErrors()"
+            : "    private bool HasClientParseErrors()");
+        _ = sb.AppendLine("    {");
 
         if (parseErrorFields.Length == 0) {
             _ = sb.AppendLine("        return false;");
@@ -890,6 +901,9 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;");
             _ = sb.AppendLine("        }");
         }
+        // Story 11.21 CA1816 — suppress finalization for derived types that add a finalizer. Placed
+        // after the idempotence guard so a repeat Dispose() call stays a no-op.
+        _ = sb.AppendLine("        System.GC.SuppressFinalize(this);");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
     }

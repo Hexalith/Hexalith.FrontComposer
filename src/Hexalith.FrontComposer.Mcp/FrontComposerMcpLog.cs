@@ -108,7 +108,11 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
-        LogCommandInvocationSchemaFailed(logger, BoundedCategory(category));
+        // CA1873: the bounded-category projection is already deferred behind the IsEnabled guard
+        // above; binding it to a local keeps that laziness explicit at the call site rather than
+        // relying on the analyzer to model the early-return guard. No behavioural change.
+        string boundedCategory = BoundedCategory(category);
+        LogCommandInvocationSchemaFailed(logger, boundedCategory);
     }
 
     /// <summary>
@@ -162,11 +166,17 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
+        // CA1873: see CommandInvocationSchemaFailed — the bounded-token projections are already
+        // deferred behind the IsEnabled guard above and are bound to locals so the laziness is
+        // explicit. No behavioural change.
+        string boundedCategory = BoundedSchemaToken(category);
+        string boundedMessageKey = BoundedSchemaToken(messageKey);
+        string boundedDocsCode = BoundedSchemaToken(docsCode);
         LogSchemaNegotiationDecision(
             logger,
-            BoundedSchemaToken(category),
-            BoundedSchemaToken(messageKey),
-            BoundedSchemaToken(docsCode),
+            boundedCategory,
+            boundedMessageKey,
+            boundedDocsCode,
             Enum.IsDefined(decisionKind) ? decisionKind.ToString() : "Unknown");
     }
 

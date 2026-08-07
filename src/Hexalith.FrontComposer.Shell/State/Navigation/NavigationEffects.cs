@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
@@ -219,8 +220,8 @@ public sealed class NavigationEffects(
         try {
             blob = await storage.GetAsync<NavigationPersistenceBlob>(key).ConfigureAwait(false);
             if (blob is null) {
-                logger.LogInformation(
-                    "{DiagnosticId}: Navigation hydration found no stored value — feature defaults apply. Reason={Reason}.",
+                FrontComposerDiagnosticLog.NavigationHydrationEmpty(
+                    logger,
                     FcDiagnosticIds.HFC2107_NavigationHydrationEmpty,
                     "Empty");
                 // Reset to feature defaults — previously the null-blob branch left in-memory state
@@ -241,14 +242,14 @@ public sealed class NavigationEffects(
                     .ToImmutableDictionary(static kv => kv.Key, static kv => kv.Value, StringComparer.Ordinal);
         }
         catch (OperationCanceledException) {
-            logger.LogDebug("Navigation hydration cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.NavigationHydrationCancelled(logger);
             dispatcher.Dispatch(new NavigationHydratedCompletedAction());
             return;
         }
         catch (Exception ex) {
-            logger.LogInformation(
+            FrontComposerDiagnosticLog.NavigationHydrationErrored(
+                logger,
                 ex,
-                "{DiagnosticId}: Navigation hydration errored — feature defaults apply. Reason={Reason}.",
                 FcDiagnosticIds.HFC2107_NavigationHydrationEmpty,
                 "Corrupt");
             dispatcher.Dispatch(new NavigationHydratedCompletedAction());
@@ -266,8 +267,8 @@ public sealed class NavigationEffects(
                 prunePersistRequired = !string.Equals(blob.LastActiveRoute, normalizedRoute, StringComparison.Ordinal);
             }
             else {
-                logger.LogInformation(
-                    "{DiagnosticId}: Pruning stale LastActiveRoute — stored route rejected by internal-route/base-path validation. Reason={Reason}.",
+                FrontComposerDiagnosticLog.NavigationRoutePrunedInvalid(
+                    logger,
                     FcDiagnosticIds.HFC2107_NavigationHydrationEmpty,
                     "Invalid");
                 prunePersistRequired = true;
@@ -277,8 +278,8 @@ public sealed class NavigationEffects(
         if (hydratedRoute is not null) {
             string? bc = BoundedContextRouteParser.Parse(hydratedRoute);
             if (bc is not null && IsUnregisteredBoundedContext(bc)) {
-                logger.LogInformation(
-                    "{DiagnosticId}: Pruning stale LastActiveRoute — bounded context '{BoundedContext}' is no longer registered. Reason={Reason}.",
+                FrontComposerDiagnosticLog.NavigationRoutePrunedOutOfScope(
+                    logger,
                     FcDiagnosticIds.HFC2107_NavigationHydrationEmpty,
                     bc,
                     "OutOfScope");
@@ -314,9 +315,9 @@ public sealed class NavigationEffects(
             return true;
         }
         catch (Exception ex) {
-            logger.LogInformation(
+            FrontComposerDiagnosticLog.NavigationRegistryEnumerationFailed(
+                logger,
                 ex,
-                "{DiagnosticId}: Registry enumeration failed during hydrate-side LastActiveRoute prune — preserving route. Reason={Reason}.",
                 FcDiagnosticIds.HFC2107_NavigationHydrationEmpty,
                 "RegistryFailure");
             return false;
@@ -372,12 +373,12 @@ public sealed class NavigationEffects(
             await storage.SetAsync(key, blob).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
-            logger.LogDebug("Navigation persist cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.NavigationPersistCancelled(logger);
         }
         catch (Exception ex) {
-            logger.LogInformation(
+            FrontComposerDiagnosticLog.NavigationPersistFailed(
+                logger,
                 ex,
-                "{DiagnosticId}: Navigation persistence failed — swallowed (next toggle retries).",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
         }
     }

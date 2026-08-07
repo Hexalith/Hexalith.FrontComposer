@@ -6,6 +6,7 @@ using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
@@ -222,12 +223,12 @@ public sealed class DataGridNavigationEffects : IDisposable {
             await _storage.SetAsync(key, blob).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
-            _logger.LogDebug("DataGrid persist cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.DataGridPersistCancelled(_logger);
         }
         catch (Exception ex) {
-            _logger.LogInformation(
+            FrontComposerDiagnosticLog.DataGridPersistFailed(
+                _logger,
                 ex,
-                "{DiagnosticId}: DataGrid {Direction} failed — swallowed (next capture retries). ViewKey={ViewKey}.",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
                 "persist",
                 viewKey);
@@ -267,12 +268,12 @@ public sealed class DataGridNavigationEffects : IDisposable {
             await _storage.RemoveAsync(key).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
-            _logger.LogDebug("DataGrid clear cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.DataGridClearCancelled(_logger);
         }
         catch (Exception ex) {
-            _logger.LogInformation(
+            FrontComposerDiagnosticLog.DataGridClearFailed(
+                _logger,
                 ex,
-                "{DiagnosticId}: DataGrid clear failed — swallowed. ViewKey={ViewKey}.",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
                 action.ViewKey);
         }
@@ -308,13 +309,13 @@ public sealed class DataGridNavigationEffects : IDisposable {
             blob = await _storage.GetAsync<GridViewPersistenceBlob>(key).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
-            _logger.LogDebug("DataGrid on-demand hydrate cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.DataGridOnDemandHydrateCancelled(_logger);
             return;
         }
         catch (Exception ex) {
-            _logger.LogInformation(
+            FrontComposerDiagnosticLog.DataGridOnDemandHydrateFailed(
+                _logger,
                 ex,
-                "{DiagnosticId}: DataGrid on-demand hydrate failed. Reason={Reason}. ViewKey={ViewKey}.",
                 FcDiagnosticIds.HFC2114_DataGridHydrationEmpty,
                 "Corrupt",
                 action.ViewKey);
@@ -322,8 +323,8 @@ public sealed class DataGridNavigationEffects : IDisposable {
         }
 
         if (blob is null) {
-            _logger.LogInformation(
-                "{DiagnosticId}: DataGrid on-demand hydrate found no stored value. Reason={Reason}. ViewKey={ViewKey}.",
+            FrontComposerDiagnosticLog.DataGridOnDemandHydrateEmpty(
+                _logger,
                 FcDiagnosticIds.HFC2114_DataGridHydrationEmpty,
                 "Empty",
                 action.ViewKey);
@@ -359,14 +360,14 @@ public sealed class DataGridNavigationEffects : IDisposable {
             keys = await _storage.GetKeysAsync(prefix).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
-            _logger.LogDebug("DataGrid hydrate cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.DataGridHydrateCancelled(_logger);
             dispatcher.Dispatch(new DataGridNavigationHydratedCompletedAction());
             return;
         }
         catch (Exception ex) {
-            _logger.LogInformation(
+            FrontComposerDiagnosticLog.DataGridHydrateKeyEnumerationFailed(
+                _logger,
                 ex,
-                "{DiagnosticId}: DataGrid hydrate key enumeration failed — hydrate abandoned. Direction={Direction}.",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
                 "hydrate");
             dispatcher.Dispatch(new DataGridNavigationHydratedCompletedAction());
@@ -380,8 +381,8 @@ public sealed class DataGridNavigationEffects : IDisposable {
             }
 
             if (!TryExtractViewKey(key, prefix, out string viewKey)) {
-                _logger.LogInformation(
-                    "{DiagnosticId}: DataGrid per-key hydrate rejected malformed storage key. Reason={Reason}. StorageKey={StorageKey}.",
+                FrontComposerDiagnosticLog.DataGridMalformedStorageKeyRejected(
+                    _logger,
                     FcDiagnosticIds.HFC2114_DataGridHydrationEmpty,
                     "Corrupt",
                     key);
@@ -390,13 +391,13 @@ public sealed class DataGridNavigationEffects : IDisposable {
                     await _storage.RemoveAsync(key).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) {
-                    _logger.LogDebug("DataGrid malformed-key prune cancelled — circuit disposing.");
+                    FrontComposerDiagnosticLog.DataGridMalformedKeyPruneCancelled(_logger);
                     break;
                 }
                 catch (Exception ex) {
-                    _logger.LogInformation(
+                    FrontComposerDiagnosticLog.DataGridMalformedKeyPruneFailed(
+                        _logger,
                         ex,
-                        "{DiagnosticId}: DataGrid malformed-key prune failed. StorageKey={StorageKey}.",
                         FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
                         key);
                 }
@@ -406,8 +407,8 @@ public sealed class DataGridNavigationEffects : IDisposable {
 
             if (!registryFailed && IsOutOfScope(viewKey, registeredBcs)) {
                 if (_loggedOutOfScope.TryAdd(viewKey, 0)) {
-                    _logger.LogInformation(
-                        "{DiagnosticId}: Pruning stale DataGrid snapshot — bounded context is no longer registered. Reason={Reason}. ViewKey={ViewKey}.",
+                    FrontComposerDiagnosticLog.DataGridOutOfScopeSnapshotPruned(
+                        _logger,
                         FcDiagnosticIds.HFC2114_DataGridHydrationEmpty,
                         "OutOfScope",
                         viewKey);
@@ -417,12 +418,12 @@ public sealed class DataGridNavigationEffects : IDisposable {
                     await _storage.RemoveAsync(key).ConfigureAwait(false);
                 }
                 catch (OperationCanceledException) {
-                    _logger.LogDebug("DataGrid out-of-scope prune cancelled — circuit disposing.");
+                    FrontComposerDiagnosticLog.DataGridOutOfScopePruneCancelled(_logger);
                 }
                 catch (Exception ex) {
-                    _logger.LogInformation(
+                    FrontComposerDiagnosticLog.DataGridOutOfScopePruneFailed(
+                        _logger,
                         ex,
-                        "{DiagnosticId}: DataGrid out-of-scope prune failed. ViewKey={ViewKey}.",
                         FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
                         viewKey);
                 }
@@ -435,13 +436,13 @@ public sealed class DataGridNavigationEffects : IDisposable {
                 blob = await _storage.GetAsync<GridViewPersistenceBlob>(key).ConfigureAwait(false);
             }
             catch (OperationCanceledException) {
-                _logger.LogDebug("DataGrid per-key hydrate cancelled — circuit disposing.");
+                FrontComposerDiagnosticLog.DataGridPerKeyHydrateCancelled(_logger);
                 break;
             }
             catch (Exception ex) {
-                _logger.LogInformation(
+                FrontComposerDiagnosticLog.DataGridPerKeyHydrateFailed(
+                    _logger,
                     ex,
-                    "{DiagnosticId}: DataGrid per-key hydrate failed. Reason={Reason}. ViewKey={ViewKey}.",
                     FcDiagnosticIds.HFC2114_DataGridHydrationEmpty,
                     "Corrupt",
                     viewKey);
@@ -449,8 +450,8 @@ public sealed class DataGridNavigationEffects : IDisposable {
             }
 
             if (blob is null) {
-                _logger.LogInformation(
-                    "{DiagnosticId}: DataGrid per-key hydrate found no blob at enumerated key. Reason={Reason}. ViewKey={ViewKey}.",
+                FrontComposerDiagnosticLog.DataGridPerKeyHydrateEmpty(
+                    _logger,
                     FcDiagnosticIds.HFC2114_DataGridHydrationEmpty,
                     "Empty",
                     viewKey);
@@ -462,9 +463,9 @@ public sealed class DataGridNavigationEffects : IDisposable {
                 snapshot = blob.ToSnapshot();
             }
             catch (Exception ex) {
-                _logger.LogInformation(
+                FrontComposerDiagnosticLog.DataGridPerKeySnapshotRejected(
+                    _logger,
                     ex,
-                    "{DiagnosticId}: DataGrid per-key hydrate rejected by snapshot invariants. Reason={Reason}. ViewKey={ViewKey}.",
                     FcDiagnosticIds.HFC2114_DataGridHydrationEmpty,
                     "Corrupt",
                     viewKey);
@@ -482,8 +483,8 @@ public sealed class DataGridNavigationEffects : IDisposable {
         HashSet<string> result = new(StringComparer.Ordinal);
         if (_registry is null) {
             registryFailed = true;
-            _logger.LogInformation(
-                "{DiagnosticId}: DataGrid hydrate — registry unavailable (null), out-of-scope pruning skipped. Reason={Reason}.",
+            FrontComposerDiagnosticLog.DataGridRegistryUnavailable(
+                _logger,
                 FcDiagnosticIds.HFC2114_DataGridHydrationEmpty,
                 "RegistryFailure");
             return result;
@@ -499,9 +500,9 @@ public sealed class DataGridNavigationEffects : IDisposable {
         }
         catch (Exception ex) {
             registryFailed = true;
-            _logger.LogInformation(
+            FrontComposerDiagnosticLog.DataGridRegistryEnumerationFailed(
+                _logger,
                 ex,
-                "{DiagnosticId}: Registry enumeration failed during DataGrid hydrate — out-of-scope pruning abandoned for this pass. Reason={Reason}.",
                 FcDiagnosticIds.HFC2114_DataGridHydrationEmpty,
                 "RegistryFailure");
         }

@@ -56,8 +56,8 @@ public sealed class RazorEmitterVirtualizationTests {
 
     [Fact]
     public void EmitsProjectionGridClassStickyHeaderItemSizeAndDensityKeyTogether() {
-        string src = RazorEmitter.Emit(Model(Col("Id"), Col("Name")));
-        int gridIndex = src.IndexOf("builder.OpenComponent<FluentDataGrid<OrderProjection>>(seq++);", StringComparison.Ordinal);
+        string src = GeneratedRenderTreeText.MaskSequenceArguments(RazorEmitter.Emit(Model(Col("Id"), Col("Name"))));
+        int gridIndex = src.IndexOf("builder.OpenComponent<FluentDataGrid<OrderProjection>>(#);", StringComparison.Ordinal);
         gridIndex.ShouldBeGreaterThanOrEqualTo(0);
 
         string gridBlock = src[gridIndex..src.IndexOf("builder.CloseComponent();", gridIndex, StringComparison.Ordinal)];
@@ -106,4 +106,48 @@ public sealed class RazorEmitterVirtualizationTests {
         string src = RazorEmitter.Emit(Model(Col("Name"), Col("Other")));
         src.ShouldContain("static x => (object)x;");
     }
+
+    [Fact]
+    public void Emit_UsesLiteralRenderTreeSequencesInsteadOfRuntimeCounters() {
+        RenderTreeSequenceRewriterTests.ShouldUseLiteralRenderTreeSequences(
+            RazorEmitter.Emit(Model(Col("Id"), Col("Name"), BadgeCol())));
+    }
+
+    [Fact]
+    public void Emit_PicksTheConcreteHiddenColumnAndBadgeSetTypes() {
+        string source = RazorEmitter.Emit(Model(Col("Id"), BadgeCol()));
+
+        // Story 11.21 CA1859 — concrete return/parameter types; both call sites already hand in a
+        // HashSet, and every ResolveHiddenColumns path already produced a string[].
+        source.ShouldContain("private static string[] ResolveHiddenColumns(");
+        source.ShouldContain("System.Collections.Generic.HashSet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> activeSlots)");
+        source.ShouldNotContain("System.Collections.Generic.ISet<global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot> activeSlots)");
+    }
+
+    [Fact]
+    public void Emit_TruncateUsesSpanBasedConcatWithIdenticalOutput() {
+        string source = RazorEmitter.Emit(Model(Col("Id")));
+
+        // Story 11.21 CA1845 — same characters, one fewer allocation.
+        source.ShouldContain("=> value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), \"\\u2026\");");
+        source.ShouldNotContain("value.Substring(0, maxLength - 1) + ");
+    }
+
+    [Fact]
+    public void Emit_DefaultFieldRendererIsStaticOnlyWhenItReadsNoInstanceState() {
+        // Text columns render from the row alone.
+        RazorEmitter.Emit(Model(Col("Id"), Col("Name")))
+            .ShouldContain("private static global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(");
+
+        // A badge column falls back to the injected shell localizer for unmapped members.
+        string withBadge = RazorEmitter.Emit(Model(Col("Id"), BadgeCol()));
+        withBadge.ShouldContain("private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(");
+        withBadge.ShouldNotContain("private static global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(");
+    }
+
+    [Fact]
+    public void Emit_ProjectionTeardownSuppressesFinalization() {
+        RazorEmitter.Emit(Model(Col("Id"))).ShouldContain("System.GC.SuppressFinalize(this);");
+    }
+
 }

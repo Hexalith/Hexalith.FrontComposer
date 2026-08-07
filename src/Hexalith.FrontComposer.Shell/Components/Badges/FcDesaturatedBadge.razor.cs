@@ -67,7 +67,7 @@ public partial class FcDesaturatedBadge : ComponentBase {
                 ? Localizer["OptimisticBadgeDefaultColumnHeader"].Value
                 : ColumnHeader!;
             return string.Format(
-                CultureInfo.CurrentUICulture,
+                CultureInfo.CurrentCulture,
                 Localizer["OptimisticBadgeAriaLabelTemplate"].Value,
                 column,
                 StateLabel,

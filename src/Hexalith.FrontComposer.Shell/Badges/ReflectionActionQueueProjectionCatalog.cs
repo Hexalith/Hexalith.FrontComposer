@@ -3,6 +3,7 @@ using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Badges;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
@@ -59,7 +60,7 @@ public sealed class ReflectionActionQueueProjectionCatalog : IActionQueueProject
     /// <inheritdoc />
     public IReadOnlyList<Type> ActionQueueTypes => _cache.Value;
 
-    private IReadOnlyList<Type> Discover(Assembly[] assemblies) {
+    private List<Type> Discover(Assembly[] assemblies) {
         List<Type> result = [];
         HashSet<Type> seen = [];
         foreach (Assembly assembly in assemblies) {
@@ -98,16 +99,16 @@ public sealed class ReflectionActionQueueProjectionCatalog : IActionQueueProject
             return assembly.GetTypes();
         }
         catch (ReflectionTypeLoadException ex) {
-            _logger.LogInformation(
+            FrontComposerDiagnosticLog.ActionQueueCatalogPartialTypeLoad(
+                _logger,
                 ex,
-                "ReflectionActionQueueProjectionCatalog: partial type-load for assembly '{AssemblyName}' — continuing with resolved types.",
                 assembly.FullName);
             return ex.Types.Where(static t => t is not null)!;
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogInformation(
+            FrontComposerDiagnosticLog.ActionQueueCatalogAssemblySkipped(
+                _logger,
                 ex,
-                "ReflectionActionQueueProjectionCatalog: skipped assembly '{AssemblyName}' — GetTypes threw.",
                 assembly.FullName);
             return [];
         }

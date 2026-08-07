@@ -69,7 +69,10 @@ public sealed class RazorEmitterExpandInRowTests {
         src.ShouldContain("\"HasExpanded\", _expandedItem is not null");
         src.ShouldContain("DetailPanelAriaLabel");
         src.ShouldContain("ExpandInRowDetailPanelAriaLabelTemplate");
-        src.ShouldContain("int seq = 800;");
+        // Story 11.21 ASP0006 — the detail body keeps its own sequence scope; the `int seq = 800`
+        // counter it used to declare is now the literal that its first emitted frame carries.
+        src.ShouldNotContain("int seq = 800;");
+        src.ShouldContain("if (_expandedItem is null) { return; }");
         src.ShouldContain("var entity = _expandedItem;");
         src.ShouldContain("\"Header\", \"Shipping\"");
     }
