@@ -57,9 +57,9 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         _effectiveMode = RenderMode ?? CommandRenderMode.Inline;
         if (RenderMode.HasValue && !IsCompatibleOverride(RenderMode.Value))
         {
-            Logger?.LogWarning("HFC1015: RenderMode {Mode} incompatible with DemoCommand density Inline", _effectiveMode);
+            if (Logger is not null) { LogRenderModeIncompatible(Logger, _effectiveMode); }
         }
-        Logger?.LogInformation("Rendering {CommandType} in {Mode} (density=Inline)", "Demo.Domain.DemoCommand", _effectiveMode);
+        if (Logger is not null) { LogRendering(Logger, "Demo.Domain.DemoCommand", _effectiveMode); }
         _prefilledModel = InitialValue ?? new();
         await PrefillDerivableFieldsAsync().ConfigureAwait(false);
     }
@@ -93,12 +93,12 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                 return;
             }
 
-            Logger?.LogWarning("Derived value for {PropertyName} on {CommandType} could not be assigned.", propertyName, "Demo.Domain.DemoCommand");
+            if (Logger is not null) { LogDerivedValueNotAssigned(Logger, propertyName, "Demo.Domain.DemoCommand"); }
         }
 
         if (!anyProviderResolved)
         {
-            Logger?.LogDebug("No derived value could be resolved for {PropertyName} on {CommandType}; leaving default value in place.", propertyName, "Demo.Domain.DemoCommand");
+            if (Logger is not null) { LogDerivedValueNotResolved(Logger, propertyName, "Demo.Domain.DemoCommand"); }
         }
     }
 
@@ -248,7 +248,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 
         if (!string.IsNullOrEmpty(path))
         {
-            Logger?.LogError("D32: ReturnPath '{Path}' rejected as invalid-relative; navigating home. CorrelationId={CorrelationId}", path, ResolveLoggingCorrelationId());
+            if (Logger is not null) { LogReturnPathRejected(Logger, path, ResolveLoggingCorrelationId()); }
         }
         NavigationManager.NavigateTo("/");
     }
@@ -402,6 +402,54 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
             }
         }
     }
+
+    // Story 11.21 — cached LoggerMessage delegates (CA1848/CA1873). Generated code cannot use
+    // [LoggerMessage]: Roslyn does not run the compile-time logging generator over generator output.
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, global::Hexalith.FrontComposer.Contracts.Rendering.CommandRenderMode, global::System.Exception?> _logRenderModeIncompatible =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<global::Hexalith.FrontComposer.Contracts.Rendering.CommandRenderMode>(
+            global::Microsoft.Extensions.Logging.LogLevel.Warning,
+            new global::Microsoft.Extensions.Logging.EventId(5920, "CommandRendererModeIncompatible"),
+            "HFC1015: RenderMode {Mode} incompatible with DemoCommand density Inline");
+
+    private static void LogRenderModeIncompatible(global::Microsoft.Extensions.Logging.ILogger logger, global::Hexalith.FrontComposer.Contracts.Rendering.CommandRenderMode mode)
+        => _logRenderModeIncompatible(logger, mode, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string, global::Hexalith.FrontComposer.Contracts.Rendering.CommandRenderMode, global::System.Exception?> _logRendering =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string, global::Hexalith.FrontComposer.Contracts.Rendering.CommandRenderMode>(
+            global::Microsoft.Extensions.Logging.LogLevel.Information,
+            new global::Microsoft.Extensions.Logging.EventId(5921, "CommandRendererRendering"),
+            "Rendering {CommandType} in {Mode} (density=Inline)");
+
+    private static void LogRendering(global::Microsoft.Extensions.Logging.ILogger logger, string commandType, global::Hexalith.FrontComposer.Contracts.Rendering.CommandRenderMode mode)
+        => _logRendering(logger, commandType, mode, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string, string, global::System.Exception?> _logDerivedValueNotAssigned =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string, string>(
+            global::Microsoft.Extensions.Logging.LogLevel.Warning,
+            new global::Microsoft.Extensions.Logging.EventId(5923, "CommandRendererDerivedValueNotAssigned"),
+            "Derived value for {PropertyName} on {CommandType} could not be assigned.");
+
+    private static void LogDerivedValueNotAssigned(global::Microsoft.Extensions.Logging.ILogger logger, string propertyName, string commandType)
+        => _logDerivedValueNotAssigned(logger, propertyName, commandType, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string, string, global::System.Exception?> _logDerivedValueNotResolved =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string, string>(
+            global::Microsoft.Extensions.Logging.LogLevel.Debug,
+            new global::Microsoft.Extensions.Logging.EventId(5924, "CommandRendererDerivedValueNotResolved"),
+            "No derived value could be resolved for {PropertyName} on {CommandType}; leaving default value in place.");
+
+    private static void LogDerivedValueNotResolved(global::Microsoft.Extensions.Logging.ILogger logger, string propertyName, string commandType)
+        => _logDerivedValueNotResolved(logger, propertyName, commandType, null);
+
+    private static readonly global::System.Action<global::Microsoft.Extensions.Logging.ILogger, string?, string?, global::System.Exception?> _logReturnPathRejected =
+        global::Microsoft.Extensions.Logging.LoggerMessage.Define<string?, string?>(
+            global::Microsoft.Extensions.Logging.LogLevel.Error,
+            new global::Microsoft.Extensions.Logging.EventId(5926, "CommandRendererReturnPathRejected"),
+            "D32: ReturnPath '{Path}' rejected as invalid-relative; navigating home. CorrelationId={CorrelationId}");
+
+    private static void LogReturnPathRejected(global::Microsoft.Extensions.Logging.ILogger logger, string? path, string? correlationId)
+        => _logReturnPathRejected(logger, path, correlationId, null);
+
 }
 
 #pragma warning restore ASP0006

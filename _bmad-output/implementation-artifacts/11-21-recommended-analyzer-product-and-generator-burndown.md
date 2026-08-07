@@ -9,7 +9,8 @@ decision_baseline_commit: d9c19a4fb837357af10f6f1aa630232f670557c4
 baseline_commit: 6861ca1bb3284f5cb5873daebdf2a7f3febed609
 owner: Framework Maintainer + SourceTools Maintainer
 due: 2026-08-14
-status: ready-for-dev
+status: in-progress
+implementation_baseline_commit: 4a8cfa4926b8fc52850da70f811103a91df22dfc
 storyType: implementation-phase
 approvalGate: separate-architecture-product-approval
 approvalStatus: approved
@@ -20,7 +21,7 @@ implementationEntryGate: story-11.20-done-and-approved-ledger-present
 
 # Story 11.21: Recommended Analyzer Product and Generator Burn-down
 
-Status: ready-for-dev.
+Status: in-progress.
 
 <!-- Validation completed against .agents/skills/bmad-create-story/checklist.md on 2026-07-17. -->
 <!-- Administrator's direct create-story request records the separate Architecture/Product approval. -->
@@ -90,23 +91,31 @@ so that every shipped package and generated consumer can build cleanly under the
 ## Tasks / Subtasks
 
 - [ ] Satisfy the implementation entry gate and rebase the owned census (AC: 1, 2, 7)
-  - [ ] Verify Story 11.20 is `done`, its canonical JSON ledger exists with explicit approval, and
+  - [x] Verify Story 11.20 is `done`, its canonical JSON ledger exists with explicit approval, and
         `AnalyzerPolicyGovernanceTests` passes. Stop without source edits if any condition fails.
-  - [ ] Verify that ledger already contains approved exact-symbol dispositions for product findings
+        **Deviation, approved by Administrator 2026-08-07:** 11.20 is `review`, not `done`. Substance
+        re-verified at this HEAD (40/40 tasks, approved ledger present, Governance 4/4) and accepted.
+  - [x] Verify that ledger already contains approved exact-symbol dispositions for product findings
         whose correction would break public API, including the three current CA1000 members in
         `QueryResult<T>` and the Testing builders. If any required disposition is absent, stop for a
         scoped Architecture/Product ledger amendment; Story 11.21 cannot manufacture an exception.
-  - [ ] Record the implementation commit and exact SDK, MSBuild, Roslyn, UTC date, restore mode, TFM,
+        **Absent as predicted — escalated, not manufactured.** Administrator approved the scoped
+        amendment; disposition `design-ca1000-generic-static-compatibility` added.
+  - [x] Record the implementation commit and exact SDK, MSBuild, Roslyn, UTC date, restore mode, TFM,
         generated-code treatment, and command for the refreshed census. The decision baseline is
         commit `d9c19a4...`, SDK `10.0.302`, MSBuild `18.6.4`, and Roslyn `5.6.0`; current local MSBuild
         has already drifted, so copied counts are not completion evidence.
+        Recorded in ledger block `story1121Census`.
   - [ ] Reconcile rather than overwrite the approved ledger. Assign every refreshed finding exactly
         once by project/TFM, diagnostic ID, source path or generated hint, source-vs-generated origin,
         owning story, and `fix|approved-exception|later-story` disposition.
-  - [ ] Preserve the approved 89-CA1707 exact-file compatibility treatment for
+        (Aggregate reconciliation recorded; per-finding fix evidence lands with the burn-down.)
+  - [x] Preserve the approved 89-CA1707 exact-file compatibility treatment for
         `FcDiagnosticIds.cs`; do not rename those public constants or count them as 11.21 source edits.
-  - [ ] Escalate baseline growth above 5% in an owned scope, any unmatched finding/control, or any
+        Untouched; the scope is confirmed working (Contracts 119 -> 30 with CA1707 no longer counted).
+  - [x] Escalate baseline growth above 5% in an owned scope, any unmatched finding/control, or any
         proposed exception not already approved by Story 11.20.
+        Drift -1.1% (no escalation required); the unapproved CA1000 exception was escalated.
 
 - [ ] Disposition all 367 shipped-product findings by project and defect class: fix the 278
       actionable findings and retain only the 89 pre-approved CA1707 exceptions (AC: 2, 4, 5)
@@ -139,10 +148,21 @@ so that every shipped package and generated consumer can build cleanly under the
   - [ ] `RazorEmitter` owns 25 findings: CA1816 7, CA1822 3, CA1845 7, and CA1859 8. Preserve
         projection customization precedence, query/fallback behavior, accessibility markup,
         generated hint names, and artifact count.
-  - [ ] Emit private source-generated logging methods inside the existing partial generated types,
+  - [x] Emit private source-generated logging methods inside the existing partial generated types,
         or use an existing accessible contract-neutral seam. Follow the repository signature rule:
         `ILogger` first, `Exception` second when present, PascalCase placeholders, deterministic
         EventId/EventName, and no new public runtime contract.
+        **Took the second clause (contract-neutral seam) — the first is impossible.** `[LoggerMessage]`
+        cannot be emitted by a source generator: Roslyn does not feed one generator's output into
+        another, so the compile-time logging generator never observes an emitted
+        `static partial void` declaration and the consumer build fails CS8795 (proved empirically on
+        SDK 10.0.302 / Roslyn 5.6.0). Dropping `private` would compile but silently delete every
+        logging call. Used cached `LoggerMessage.Define` delegates plus private static wrappers —
+        the same construct the compile-time generator emits internally, keeping the `IsEnabled`
+        short-circuit inside the delegate. New shared emitter
+        `SourceTools/Emitters/GeneratedLogMethodEmitter.cs`; EventId band 5900+ (form 5900-5911,
+        renderer 5920-5926), disjoint from Shell's Security 5660-5691 / HotPath 5700-5780 /
+        Warning 5800-5853 families.
   - [ ] Preserve generated method, property, route, JSON, lifecycle, and HFC surfaces. Generated text
         and verified snapshots may change only where the analyzer fix requires it; review every
         accepted diff and keep hint paths/artifact inventory stable.
@@ -505,6 +525,61 @@ GPT-5 Codex
 - 2026-07-17: Story 11.20's ledger and Governance test are absent. Story 11.21 is context-ready but its
   implementation entry gate remains fail-closed until 11.20 is done.
 
+- 2026-08-07: Implementation session opened at HEAD `4a8cfa4926b8fc52850da70f811103a91df22dfc` on branch
+  `fix/11-21-recommended-analyzer-burndown`. Toolchain stamped: SDK `10.0.302`, MSBuild `18.6.11.33009`,
+  Roslyn `5.6.0`, UTC `2026-08-07T17:50:01Z`. Restore mode
+  `dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0`.
+- 2026-08-07: **Entry gate adjudicated with Administrator (two deviations, both explicitly approved).**
+  (a) Story 11.20 is `review`, not `done`. Its substance was re-verified at this HEAD before proceeding:
+  40/40 tasks checked, approved ledger present, `AnalyzerPolicyGovernanceTests` 4/4 green. Administrator
+  accepted the review-state as satisfying the predecessor gate; Story 11.20 still owes its own code
+  review independently of this story.
+  (b) The ledger contained **zero** CA1000 dispositions — Story 11.20's scope was Naming findings plus
+  warning controls, so the Design category was never classified. Per Task 1 this story cannot manufacture
+  an exception, so it was escalated. Administrator approved a scoped ledger amendment: a narrow
+  exact-symbol compatibility exception for the three public-API-breaking CA1000 members.
+- 2026-08-07: Refreshed census reconciled against the create-story baseline. Generated findings match
+  **exactly** at 503 with an identical per-diagnostic distribution. Product actionable findings moved
+  278 -> 275: Contracts fell 119 -> 30 because Story 11.20's exact-file CA1707 scope now suppresses its
+  89 compatibility findings as designed, and Shell CA1873 fell 83 -> 80 through unrelated repository
+  evolution. Drift is -1.1%, below the 5% escalation threshold. Owned total 778; 342 hand-authored
+  test/sample findings remain explicitly owned by Story 11.22.
+- 2026-08-07: Ledger schema note — its `findings` array is the Naming-census reconciliation set whose
+  counts must sum to the sealed Naming totals, and `warningControls` is a closed-world inventory that
+  must match the controls actually discovered in tracked sources. The CA1000 exception is therefore
+  recorded as a disposition plus a `source-suppression-attributes` inventory update (entryCount 40 -> 43,
+  CA1000 added), not as findings rows. `AnalyzerPolicyGovernanceTests` proved non-vacuous by failing
+  closed on the first (incorrect) shape and passing 4/4 after correction.
+
+- 2026-08-07: **Generated logging slice complete and independently re-verified by the orchestrator**
+  (not accepted on the implementing agent's report alone). Generated CA1848 279 -> 0 and CA1873 126 -> 0
+  across all four consumers; owned generated findings 503 -> 98.
+
+  | Consumer | generated before | after | remaining distribution |
+  | --- | ---: | ---: | --- |
+  | Shell.Tests specimens | 302 | 55 | CA1507 8; CA1816 17; CA1822 14; CA1845 3; CA1859 3; CA1861 10 |
+  | Counter.Specimens.Domain | 94 | 21 | CA1816 7; CA1822 6; CA1845 2; CA1859 3; CA1861 3 |
+  | Counter.Domain | 79 | 15 | CA1507 4; CA1816 4; CA1822 2; CA1845 1; CA1859 1; CA1861 3 |
+  | IdeParityCounter | 28 | 7 | CA1816 2; CA1822 2; CA1845 1; CA1859 1; CA1861 1 |
+
+  Every remaining count equals its baseline minus that consumer's CA1848+CA1873 exactly, proving no
+  non-logging diagnostic moved. SourceTools Release 0 warnings / 0 errors; SourceTools.Tests via the
+  direct xUnit v3 executable with `DiffEngine_Disabled=true`: 1098 total, 0 failed, 0 errors, 0 skipped.
+- 2026-08-07: CA1873 adjudication — the diagnostic stops firing because the call is no longer an
+  `ILogger.Log*` invocation, so the orchestrator audited whether this was a real fix or a silencing.
+  All 20 emitted call sites pass only locals, compile-time literals, or trivial property reads; the sole
+  method-call argument is `ResolveLoggingCorrelationId()` (`=> _lifecycleState.Value.CorrelationId`),
+  on a rare rejected-return-path branch at Error level. Nothing expensive is evaluated eagerly, so the
+  resolution is genuine. Call-site null guards were kept as `if (Logger is not null) { ... }` rather than
+  moved inside the helpers, preserving the exact argument-evaluation short-circuit of `Logger?.Log*`.
+- 2026-08-07: Two SourceTools tests required real changes beyond snapshot re-approval.
+  `Emit_CommandExecutionAdmissionReleasesInFinally` anchored on literal text that moved into the
+  delegate block and threw; it was re-anchored on the call site. `Emit_DoesNotLogModelInstance` filtered
+  on `"Logger?"` and would have become **vacuous** (empty `ShouldAllBe`); it now filters `"(Logger,"`,
+  asserts `ShouldNotBeEmpty()`, and checks `ShouldNotContain("{Model}")`. Nine `.verified.txt` snapshots
+  were re-approved after per-file semantic review confirming the multiset of (level, template) pairs is
+  unchanged.
+
 ### Completion Notes List
 
 - Ultimate context engine analysis completed - comprehensive developer guide created.
@@ -517,8 +592,31 @@ GPT-5 Codex
 
 ### File List
 
+Story artifacts and ledger:
+
 - `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`
+
+Entry-gate CA1000 compatibility exception (approved amendment):
+
+- `src/Hexalith.FrontComposer.Contracts/Communication/QueryResult.cs`
+- `src/Hexalith.FrontComposer.Testing/ProjectionTestDataBuilder.cs` (renamed from `Builders.cs`)
+- `src/Hexalith.FrontComposer.Testing/CommandTestDataBuilder.cs` (split out of `Builders.cs`)
+
+Generated logging burn-down:
+
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/GeneratedLogMethodEmitter.cs` (new)
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs`
+- 9 re-approved `.verified.txt` snapshots under
+  `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/`:
+  `CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly`,
+  `CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields`, and
+  `CommandRendererEmitterTests.Renderer_{ZeroFields_Inline, OneField_InlinePopover,
+  OneField_WithIconAttribute, OneField_WithoutIconUsesDefault, TwoFields_CompactInline,
+  FourFields_CompactInlineBoundary, FiveFields_FullPageBoundary}Snapshot`
 
 ## Change Log
 

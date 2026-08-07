@@ -136,9 +136,9 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("        _effectiveMode = RenderMode ?? " + defaultModeLiteral + ";");
         _ = sb.AppendLine("        if (RenderMode.HasValue && !IsCompatibleOverride(RenderMode.Value))");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            Logger?.LogWarning(\"HFC1015: RenderMode {Mode} incompatible with " + model.TypeName + " density " + densityName + "\", _effectiveMode);");
+        _ = sb.AppendLine("            if (Logger is not null) { LogRenderModeIncompatible(Logger, _effectiveMode); }");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        Logger?.LogInformation(\"Rendering {CommandType} in {Mode} (density=" + densityName + ")\", \"" + commandFqn + "\", _effectiveMode);");
+        _ = sb.AppendLine("        if (Logger is not null) { LogRendering(Logger, \"" + commandFqn + "\", _effectiveMode); }");
         _ = sb.AppendLine("        _prefilledModel = InitialValue ?? new();");
         _ = sb.AppendLine("        await PrefillDerivableFieldsAsync().ConfigureAwait(false);");
         if (hasAuthorizationPolicy) {
@@ -185,7 +185,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        catch (global::System.Exception ex)");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            Logger?.LogWarning(ex, \"Renderer authorization evaluation failed; trigger remains disabled. CommandType={CommandType}\", \"" + commandFqn + "\");");
+            _ = sb.AppendLine("            if (Logger is not null) { LogAuthorizationEvaluationFailed(Logger, ex, \"" + commandFqn + "\"); }");
             _ = sb.AppendLine("            decision = null;");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        if (_authorizationDisposed) { return; }");
@@ -322,12 +322,12 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                return;");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("            Logger?.LogWarning(\"Derived value for {PropertyName} on {CommandType} could not be assigned.\", propertyName, \"" + commandFqn + "\");");
+        _ = sb.AppendLine("            if (Logger is not null) { LogDerivedValueNotAssigned(Logger, propertyName, \"" + commandFqn + "\"); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        if (!anyProviderResolved)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            Logger?.LogDebug(\"No derived value could be resolved for {PropertyName} on {CommandType}; leaving default value in place.\", propertyName, \"" + commandFqn + "\");");
+        _ = sb.AppendLine("            if (Logger is not null) { LogDerivedValueNotResolved(Logger, propertyName, \"" + commandFqn + "\"); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
@@ -390,7 +390,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            return configured;");
             _ = sb.AppendLine("        }");
-            _ = sb.AppendLine("        Logger?.LogWarning(\"Icon '{IconName}' failed to resolve on {CommandType}; falling back to Play.\", \"" + EscapeString(model.IconName!) + "\", \"" + commandFqn + "\");");
+            _ = sb.AppendLine("        if (Logger is not null) { LogIconResolutionFailed(Logger, \"" + EscapeString(model.IconName!) + "\", \"" + commandFqn + "\"); }");
         }
         _ = sb.AppendLine("        return TryResolveIcon(\"Regular.Size16.Play\", out Icon? fallback) ? fallback : null;");
         _ = sb.AppendLine("    }");
@@ -536,7 +536,7 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("        if (!string.IsNullOrEmpty(path))");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            Logger?.LogError(\"D32: ReturnPath '{Path}' rejected as invalid-relative; navigating home. CorrelationId={CorrelationId}\", path, ResolveLoggingCorrelationId());");
+        _ = sb.AppendLine("            if (Logger is not null) { LogReturnPathRejected(Logger, path, ResolveLoggingCorrelationId()); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        NavigationManager.NavigateTo(\"/\");");
         _ = sb.AppendLine("    }");
@@ -603,12 +603,118 @@ public static class CommandRendererEmitter {
 
         // BuildRenderTree — dispatches on _effectiveMode
         EmitBuildRenderTree(sb, model, displayLabelEscaped);
+        _ = sb.AppendLine();
+
+        EmitLogMethods(sb, model, densityName, hasAuthorizationPolicy);
 
         _ = sb.AppendLine("}");
         _ = sb.AppendLine();
         _ = sb.AppendLine("#pragma warning restore ASP0006");
 
         return sb.ToString();
+    }
+
+    /// <summary>
+    /// Story 11.21 — emits the renderer's cached <c>LoggerMessage</c> delegates and their private static
+    /// wrappers. Levels, templates, placeholder sets, and argument order are unchanged from the direct
+    /// <c>ILogger</c> calls they replace; only the logging mechanism differs (CA1848/CA1873).
+    /// </summary>
+    /// <remarks>
+    /// Event ids use the generated-code <c>5920</c>-<c>5939</c> band, which is disjoint from the form
+    /// emitter's <c>5900</c>-<c>5919</c> band and from the Shell's Security <c>5660</c>-<c>5691</c>,
+    /// HotPath <c>5700</c>-<c>5780</c>, and Warning <c>5800</c>-<c>5853</c> families. A helper is emitted
+    /// only when its call site is emitted, so no unused private member is generated.
+    /// </remarks>
+    /// <param name="sb">Target buffer, positioned inside the generated class body.</param>
+    /// <param name="model">Renderer metadata supplying the command type name and icon configuration.</param>
+    /// <param name="densityName">Density literal already baked into the two mode-selection templates.</param>
+    /// <param name="hasAuthorizationPolicy">Whether the authorization-gated call site was emitted.</param>
+    private static void EmitLogMethods(
+        StringBuilder sb,
+        CommandRendererModel model,
+        string densityName,
+        bool hasAuthorizationPolicy) {
+        const string renderModeType = "global::Hexalith.FrontComposer.Contracts.Rendering.CommandRenderMode";
+
+        _ = sb.AppendLine("    // Story 11.21 — cached LoggerMessage delegates (CA1848/CA1873). Generated code cannot use");
+        _ = sb.AppendLine("    // [LoggerMessage]: Roslyn does not run the compile-time logging generator over generator output.");
+
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogRenderModeIncompatible",
+            5920,
+            "CommandRendererModeIncompatible",
+            "Warning",
+            "HFC1015: RenderMode {Mode} incompatible with " + model.TypeName + " density " + densityName,
+            hasException: false,
+            (renderModeType, "mode"));
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogRendering",
+            5921,
+            "CommandRendererRendering",
+            "Information",
+            "Rendering {CommandType} in {Mode} (density=" + densityName + ")",
+            hasException: false,
+            ("string", "commandType"),
+            (renderModeType, "mode"));
+
+        if (hasAuthorizationPolicy) {
+            GeneratedLogMethodEmitter.Emit(
+                sb,
+                "LogAuthorizationEvaluationFailed",
+                5922,
+                "CommandRendererAuthorizationEvaluationFailed",
+                "Warning",
+                "Renderer authorization evaluation failed; trigger remains disabled. CommandType={CommandType}",
+                hasException: true,
+                ("string", "commandType"));
+        }
+
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogDerivedValueNotAssigned",
+            5923,
+            "CommandRendererDerivedValueNotAssigned",
+            "Warning",
+            "Derived value for {PropertyName} on {CommandType} could not be assigned.",
+            hasException: false,
+            ("string", "propertyName"),
+            ("string", "commandType"));
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogDerivedValueNotResolved",
+            5924,
+            "CommandRendererDerivedValueNotResolved",
+            "Debug",
+            "No derived value could be resolved for {PropertyName} on {CommandType}; leaving default value in place.",
+            hasException: false,
+            ("string", "propertyName"),
+            ("string", "commandType"));
+
+        if (!string.IsNullOrEmpty(model.IconName)) {
+            GeneratedLogMethodEmitter.Emit(
+                sb,
+                "LogIconResolutionFailed",
+                5925,
+                "CommandRendererIconResolutionFailed",
+                "Warning",
+                "Icon '{IconName}' failed to resolve on {CommandType}; falling back to Play.",
+                hasException: false,
+                ("string", "iconName"),
+                ("string", "commandType"));
+        }
+
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogReturnPathRejected",
+            5926,
+            "CommandRendererReturnPathRejected",
+            "Error",
+            "D32: ReturnPath '{Path}' rejected as invalid-relative; navigating home. CorrelationId={CorrelationId}",
+            hasException: false,
+            ("string?", "path"),
+            ("string?", "correlationId"));
     }
 
     private static void EmitBuildRenderTree(StringBuilder sb, CommandRendererModel model, string displayLabelEscaped) {
