@@ -52,6 +52,7 @@
     "reVerifiedCommit": "054817718c6157ea6d92cc6a06f5de30b8178ab1"
   },
   "postPolicyCensus": {
+    "sourceCommit": "67154049edddbbc9837fd65bc6ddba7c042e0b06",
     "utcDate": "2026-07-17T10:24:07Z",
     "command": "dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0 -p:AnalysisMode=Recommended -p:TreatWarningsAsErrors=false",
     "namingFindings": 0,
@@ -75,8 +76,8 @@
   },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, one-based line, and C# identifier token containing an underscore",
-    "testUnderscoreIdentifierTokens": 6335,
-    "testInventorySha256": "3e003ea35ba3afa4625e93a167b47cbe808e9ced52d96826f28319a88dc67606",
+    "testUnderscoreIdentifierTokens": 6338,
+    "testInventorySha256": "54758a2e28227e288df5d9480053c3d38a70f34283a41977fe793182f5a4617e",
     "contractsUnderscoreIdentifierTokens": 90,
     "contractsInventorySha256": "a06a2c10b7bcc9e2abd18b585af55e93d70bd3ad85a20519791590313ffcb3b7"
   },

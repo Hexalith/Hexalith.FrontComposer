@@ -127,6 +127,26 @@ public sealed class AnalyzerPolicyGovernanceTests
         ValidateDocument(localisedReview)
             .ShouldContain(static error => error.Contains("unparseable review date", StringComparison.Ordinal));
 
+        JsonObject unparseableDecision = Clone(ledger);
+        RequiredArray(unparseableDecision, "dispositions")[0]!["decisionDate"] = "07-17-2026";
+        ValidateDocument(unparseableDecision)
+            .ShouldContain(static error => error.Contains("unparseable decision date", StringComparison.Ordinal));
+
+        JsonObject emptyDiagnosticIds = Clone(ledger);
+        RequiredArray(emptyDiagnosticIds, "warningControls").Add(new JsonObject
+        {
+            ["key"] = "invalid-empty-diagnostic-ids",
+            ["sourceKind"] = "msbuild",
+            ["path"] = "Directory.Build.props",
+            ["property"] = "NoWarn",
+            ["diagnosticIds"] = new JsonArray(),
+            ["exactScope"] = "repository",
+            ["mechanism"] = "NoWarn",
+            ["dispositionKey"] = "policy-root-twae",
+        });
+        ValidateDocument(emptyDiagnosticIds)
+            .ShouldContain(static error => error.Contains("missing or empty diagnosticIds", StringComparison.Ordinal));
+
         string[] configuredKeys = ConfiguredControlKeys(root);
         ValidateParity(configuredKeys.Skip(1), configuredKeys)
             .ShouldContain(static error => error.Contains("unledgered", StringComparison.Ordinal));
@@ -176,6 +196,8 @@ public sealed class AnalyzerPolicyGovernanceTests
             ("[*.cs]", "dotnet_analyzer_diagnostic.category-Naming.severity", "hidden"),
             ("[*.cs]", "dotnet_analyzer_diagnostic.severity", "none"),
             ("[*]", "dotnet_analyzer_diagnostic.severity", "suggestion"),
+            ("[src/**/*.cs]", "dotnet_analyzer_diagnostic.category-Naming.severity", "none"),
+            ("[tests/**.cs]", "dotnet_analyzer_diagnostic.severity", "hidden"),
         ];
         foreach ((string disableSection, string disableProperty, string disableValue) in categoryDisables)
         {
@@ -334,6 +356,19 @@ public sealed class AnalyzerPolicyGovernanceTests
             RequireValue(toolchain, field, errors);
         }
 
+        JsonObject postPolicy = RequiredObject(ledger, "postPolicyCensus");
+        foreach (string field in new[] { "sourceCommit", "utcDate", "command", "ownership" })
+        {
+            RequireValue(postPolicy, field, errors);
+        }
+
+        if (IntValue(postPolicy, "namingFindings") != 0)
+        {
+            errors.Add("postPolicyCensus namingFindings must be 0");
+        }
+
+        ValidateCommit(StringValue(postPolicy, "sourceCommit"), "postPolicyCensus sourceCommit", errors);
+
         if (!string.Equals(StringValue(ledger, "schemaVersion"), "1.0", StringComparison.Ordinal))
         {
             errors.Add("unsupported schemaVersion");
@@ -377,6 +412,17 @@ public sealed class AnalyzerPolicyGovernanceTests
             else if (reviewDate < today)
             {
                 errors.Add($"expired review date for {key}");
+            }
+
+            string decisionDateText = StringValue(disposition, "decisionDate");
+            if (!DateOnly.TryParseExact(
+                    decisionDateText,
+                    "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.None,
+                    out _))
+            {
+                errors.Add($"unparseable decision date for {key}: {decisionDateText}");
             }
 
             string exactScope = StringValue(disposition, "exactScope");
@@ -474,7 +520,6 @@ public sealed class AnalyzerPolicyGovernanceTests
             string sourceKind = StringValue(control, "sourceKind");
             string path = StringValue(control, "path");
             string property = StringValue(control, "property");
-            string section = StringValue(control, "section");
             string value = StringValue(control, "value");
             string[] diagnosticIds = StringArray(control, "diagnosticIds");
             // NoWarn silences a CA rule; WarningsNotAsErrors demotes it back to a warning and so
@@ -489,17 +534,46 @@ public sealed class AnalyzerPolicyGovernanceTests
                 errors.Add($"root {property} contains a CA entry in {key}");
             }
 
-            // Catch every shape of bulk/category disable: the repository-wide `[*]` section, the
-            // bulk `dotnet_analyzer_diagnostic.severity` property, and every severity that stops a
-            // rule failing the build under TreatWarningsAsErrors.
+            if (sourceKind == "msbuild"
+                && property is "NoWarn" or "WarningsNotAsErrors" or "WarningsAsErrors"
+                && diagnosticIds.Length == 0)
+            {
+                errors.Add($"missing or empty diagnosticIds for {key}");
+            }
+
+            // Catch every shape of bulk/category disable in any EditorConfig section. Path-scoped
+            // category disables are still category-wide suppressions and are forbidden; only the two
+            // exact CA1707 diagnostic severities are approved Naming exceptions.
             if (sourceKind == "editorconfig"
-                && (section is "[*.cs]" or "[**.cs]" or "[*]")
                 && (property.StartsWith("dotnet_analyzer_diagnostic.category-", StringComparison.Ordinal)
                     || property == "dotnet_analyzer_diagnostic.severity")
                 && value is "none" or "silent" or "suggestion" or "hidden")
             {
                 errors.Add($"root/category CA category disable in {key}");
             }
+        }
+
+        string[] approvedCa1707Sections =
+        [
+            "[tests/**.cs]",
+            "[src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs]",
+        ];
+        string[] ca1707Sections = controls
+            .Select(static item => RequiredObject(item, "control"))
+            .Where(static control =>
+                string.Equals(StringValue(control, "sourceKind"), "editorconfig", StringComparison.Ordinal)
+                && string.Equals(
+                    StringValue(control, "property"),
+                    "dotnet_diagnostic.CA1707.severity",
+                    StringComparison.Ordinal))
+            .Select(static control => StringValue(control, "section"))
+            .Order(StringComparer.Ordinal)
+            .ToArray();
+        if (!ca1707Sections.SequenceEqual(approvedCa1707Sections.Order(StringComparer.Ordinal), StringComparer.Ordinal))
+        {
+            errors.Add(
+                "CA1707 EditorConfig scopes must be exactly the two approved sections; found: "
+                + string.Join(", ", ca1707Sections));
         }
 
         return [.. errors];
@@ -946,6 +1020,11 @@ public sealed class AnalyzerPolicyGovernanceTests
         }
 
         string editorConfigPath = Path.Combine(root, ".editorconfig");
+        if (!File.Exists(editorConfigPath))
+        {
+            throw new InvalidDataException("missing root .editorconfig");
+        }
+
         string section = string.Empty;
         foreach (string rawLine in File.ReadLines(editorConfigPath))
         {
@@ -958,6 +1037,11 @@ public sealed class AnalyzerPolicyGovernanceTests
                 || line.StartsWith("dotnet_analyzer_diagnostic.", StringComparison.Ordinal))
             {
                 string[] parts = line.Split('=', 2, StringSplitOptions.TrimEntries);
+                if (parts.Length < 2)
+                {
+                    throw new InvalidDataException($"malformed EditorConfig analyzer line without '=': {line}");
+                }
+
                 controls.Add(CanonicalEditorConfig(section, parts[0], parts[1]));
             }
         }
@@ -1026,7 +1110,9 @@ public sealed class AnalyzerPolicyGovernanceTests
                     }
 
                     AttributeArgumentSyntax? checkIdArgument = attribute.ArgumentList?.Arguments
-                        .FirstOrDefault(static argument => argument.NameEquals?.Name.Identifier.ValueText == "CheckId")
+                        .FirstOrDefault(static argument =>
+                            argument.NameEquals?.Name.Identifier.ValueText == "CheckId"
+                            || argument.NameColon?.Name.Identifier.ValueText is "CheckId" or "checkId")
                         ?? attribute.ArgumentList?.Arguments.ElementAtOrDefault(1);
                     if (checkIdArgument?.Expression is not LiteralExpressionSyntax literal
                         || !literal.IsKind(SyntaxKind.StringLiteralExpression))
@@ -1091,6 +1177,17 @@ public sealed class AnalyzerPolicyGovernanceTests
             || !contractsSection.Contains("dotnet_diagnostic.CA1707.severity = none", StringComparison.Ordinal))
         {
             errors.Add("the two exact CA1707 scopes are missing");
+        }
+
+        MatchCollection ca1707SeverityEntries = Regex.Matches(
+            editorConfig,
+            @"^dotnet_diagnostic\.CA1707\.severity\s*=",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        if (ca1707SeverityEntries.Count != 2)
+        {
+            errors.Add(
+                "CA1707 EditorConfig severity entries must be exactly two approved scopes; found "
+                + ca1707SeverityEntries.Count.ToString(CultureInfo.InvariantCulture));
         }
 
         string counterFixture = File.ReadAllText(Path.Combine(root, "samples/Counter/Counter.Domain/CounterProjection.cs"));
@@ -1395,6 +1492,28 @@ public sealed class AnalyzerPolicyGovernanceTests
                 "/nr:false").ConfigureAwait(true);
             ca1707ExitCode.ShouldNotBe(0);
             ca1707Output.ShouldContain("error CA1707");
+            File.Delete(Path.Combine(productDirectory, "ProductionApi.cs"));
+
+            string contractsSiblingDirectory = Path.Combine(
+                temporaryRoot,
+                "src",
+                "Hexalith.FrontComposer.Contracts");
+            await File.WriteAllTextAsync(
+                Path.Combine(contractsSiblingDirectory, "SiblingApi.cs"),
+                "namespace Synthetic.Contracts; public sealed class SiblingApi { public void Bad_Name() { } }",
+                TestContext.Current.CancellationToken).ConfigureAwait(true);
+            (int siblingExitCode, string siblingOutput) = await RunDotnetResultAsync(
+                temporaryRoot,
+                "build",
+                "Synthetic.csproj",
+                "-c",
+                "Release",
+                "--no-restore",
+                "--no-incremental",
+                "-m:1",
+                "/nr:false").ConfigureAwait(true);
+            siblingExitCode.ShouldNotBe(0);
+            siblingOutput.ShouldContain("error CA1707");
         }
         finally
         {
