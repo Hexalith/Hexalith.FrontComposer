@@ -63,8 +63,26 @@ context:
 - Given intentional invalid, fatal, async, and render-tree fixtures, when diagnostics are remediated, then behavior is preserved and every remaining exception is exact, governed, dated, and trigger-bound.
 - Given candidate validation, when every owned project builds, then actionable Recommended findings are zero, both removed-control probes are zero, all tests have zero failures/skips, protected baselines are unchanged unless explicitly approved, and normal Release is 0 warnings/0 errors.
 
+### Review Findings
+
+_Chunk 1 — Governance & contracts (`c3154b9b...HEAD`, 2026-08-08)._
+
+- [x] [Review][Decision] Predecessor closeouts vs frozen Always — Accepted: separate 11.20/11.21 code reviews supersede the frozen “remain `review`” clause; keep status/`sourceCommit`/story closeouts as landed (no revert).
+- [x] [Review][Patch] Repo-wide CA2012/CA2201 fixture pragma seal [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:807`]
+- [x] [Review][Patch] Re-execute ASP0006/CA2007 negative-control probes (not JSON-only) [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:690`]
+- [x] [Review][Patch] Match CA2012/CA2201 restore pragmas that carry trailing comments [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:841`]
+- [x] [Review][Patch] Clear `followUpStory` on fixed dispositions `testing-ca2007-audit` and `asp0006-hand-authored-fixture-debt` [`_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json:273`]
+- [x] [Review][Patch] Resolve obsolete Shell.Tests ASP0006 deferred-work bullet after NoWarn removal [`_bmad-output/implementation-artifacts/deferred-work.md:5`]
+- [x] [Review][Patch] Align traditional story artifact `11-22-...burndown.md` (still `backlog`/open ACs) with spec/sprint completion bookkeeping [`_bmad-output/implementation-artifacts/11-22-recommended-analyzer-test-and-sample-burndown.md:10`]
+- [x] [Review][Patch] `FindDisposition` should fail-closed into `errors` instead of throwing on missing/duplicate keys [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:970`]
+- [x] [Review][Patch] Close `hiddenControlProbes` to exactly ASP0006 and CA2007 [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:689`]
+- [x] [Review][Patch] Fail-closed on non-integer census count JSON in `SumCounts` / `byLocation` [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:900`]
+- [x] [Review][Defer] Thirteen-project Recommended Governance rebuild gate is expensive [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:316`] — deferred, pre-existing
+- [x] [Review][Defer] `RunDotnetResultAsync` timeout path can orphan output awaits [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:1714`] — deferred, pre-existing
+
 ## Spec Change Log
 
+- 2026-08-08: Chunk-1 code-review patches — repo-wide CA2012/CA2201 fixture seal, executable ASP0006/CA2007 negative-control probes, restore-comment matching, fail-closed disposition/count/probe guards, cleared `followUpStory` on fixed dispositions, resealed identifier inventory (6,359 / `6dd0420b...`), aligned traditional story artifact, and resolved the obsolete ASP0006 deferred-work bullet.
 - 2026-08-08: Implemented the approved 345-finding test/sample burn-down, removed the ASP0006 and CA2007 project controls, sealed exact retained fixture exceptions, refreshed governance evidence, and completed the required verification matrix.
 
 ## Design Notes
@@ -95,6 +113,7 @@ The implementation baseline is `85fb8865e96ad2cef9aec3ac67f1e805386b5347`: 345 v
 ## File List
 
 - `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`
+- `_bmad-output/implementation-artifacts/11-22-recommended-analyzer-test-and-sample-burndown.md`
 - `_bmad-output/implementation-artifacts/spec-11-22-recommended-analyzer-test-and-sample-burn-down.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `samples/Counter/Counter.Web/CounterProjectionEffects.cs`

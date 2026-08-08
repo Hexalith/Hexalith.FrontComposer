@@ -76,8 +76,8 @@
   },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, one-based line, and C# identifier token containing an underscore",
-    "testUnderscoreIdentifierTokens": 6338,
-    "testInventorySha256": "54758a2e28227e288df5d9480053c3d38a70f34283a41977fe793182f5a4617e",
+    "testUnderscoreIdentifierTokens": 6359,
+    "testInventorySha256": "6dd0420bb690399896ddf8c7d130fa7dc32ae82d91787be299668355a618ed0d",
     "contractsUnderscoreIdentifierTokens": 90,
     "contractsInventorySha256": "a06a2c10b7bcc9e2abd18b585af55e93d70bd3ad85a20519791590313ffcb3b7"
   },
@@ -269,8 +269,7 @@
       "decisionDate": "2026-08-08",
       "reviewDate": "2027-01-17",
       "trigger": "Reopen only if a future async-disposal fixture cannot preserve the test context with ConfigureAwait(true).",
-      "evidence": "Testing.Tests strict Recommended build and a negative-control build without the former project CA2007 NoWarn both complete with 0 warnings / 0 errors; the changed test assembly passes with zero failures and skips.",
-      "followUpStory": "11.22"
+      "evidence": "Testing.Tests strict Recommended build and a negative-control build without the former project CA2007 NoWarn both complete with 0 warnings / 0 errors; the changed test assembly passes with zero failures and skips."
     },
     {
       "key": "benchmark-twae-exception",
@@ -350,8 +349,7 @@
       "decisionDate": "2026-08-08",
       "reviewDate": "2027-01-17",
       "trigger": "Reopen only if a hand-authored render fragment introduces a non-literal sequence number.",
-      "evidence": "Shell.Tests strict Recommended build and a negative-control build without the former project ASP0006 NoWarn both complete with 0 warnings / 0 errors; the changed test assembly passes with zero failures and skips.",
-      "followUpStory": "11.22"
+      "evidence": "Shell.Tests strict Recommended build and a negative-control build without the former project ASP0006 NoWarn both complete with 0 warnings / 0 errors; the changed test assembly passes with zero failures and skips."
     },
     {
       "key": "story1122-ca2012-datagrid-focus-valuetask-fixtures",

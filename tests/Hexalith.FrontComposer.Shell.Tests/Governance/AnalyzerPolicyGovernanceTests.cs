@@ -290,6 +290,31 @@ public sealed class AnalyzerPolicyGovernanceTests
             StringComparison.Ordinal);
         ValidateStory1122Evidence(broadenedHiddenControl)
             .ShouldContain(static error => error.Contains("hidden-control scope/command drift", StringComparison.Ordinal));
+
+        JsonObject extraHiddenControl = Clone(ledger);
+        RequiredObject(RequiredObject(extraHiddenControl, "story1122Census"), "hiddenControlProbes")["CA9999"]
+            = new JsonObject
+            {
+                ["before"] = 0,
+                ["after"] = 0,
+                ["scope"] = "synthetic",
+                ["command"] = "dotnet build -p:AnalysisMode=Recommended -p:NoWarn=0419%3B1570%3B1572%3B1573%3B1574%3B1734",
+            };
+        ValidateStory1122Evidence(extraHiddenControl)
+            .ShouldContain(static error => error.Contains("hidden-control probe set is not closed", StringComparison.Ordinal));
+
+        JsonObject missingMovedControlDisposition = Clone(ledger);
+        JsonArray dispositions = RequiredArray(missingMovedControlDisposition, "dispositions");
+        for (int index = dispositions.Count - 1; index >= 0; index--)
+        {
+            if (StringValue(RequiredObject(dispositions[index], "disposition"), "key") == "testing-ca2007-audit")
+            {
+                dispositions.RemoveAt(index);
+            }
+        }
+
+        ValidateStory1122Evidence(missingMovedControlDisposition)
+            .ShouldContain(static error => error.Contains("missing disposition testing-ca2007-audit", StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -331,6 +356,24 @@ public sealed class AnalyzerPolicyGovernanceTests
             Regex.IsMatch(output, @"^\s*0 Error\(s\)\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)
                 .ShouldBeTrue($"Strict Recommended regression gate did not prove zero errors for {project}:{Environment.NewLine}{output}");
         }
+    }
+
+    [Fact]
+    public async Task AnalyzerPolicy_Story1122HiddenControlNegativeProbes_RemainClean()
+    {
+        string root = RepositoryRoot();
+        JsonObject ledger = LoadLedger(root);
+        JsonObject hiddenControlProbes = RequiredObject(RequiredObject(ledger, "story1122Census"), "hiddenControlProbes");
+        hiddenControlProbes.Count.ShouldBe(2);
+
+        await AssertNegativeControlProbeCleanAsync(
+            root,
+            RequiredObject(hiddenControlProbes, "ASP0006"),
+            "tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj").ConfigureAwait(true);
+        await AssertNegativeControlProbeCleanAsync(
+            root,
+            RequiredObject(hiddenControlProbes, "CA2007"),
+            "tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj").ConfigureAwait(true);
     }
 
     private static string[] ValidateDocument(JsonObject ledger)
@@ -663,9 +706,12 @@ public sealed class AnalyzerPolicyGovernanceTests
         foreach ((string path, JsonNode? count) in byLocation)
         {
             ValidateSafePath(path, "Story 11.22 census location", errors);
-            if (count?.GetValue<int>() <= 0)
+            if (!TryGetInt(count, out int locationCount) || locationCount <= 0)
             {
-                errors.Add($"Story 11.22 census location has no findings: {path}");
+                errors.Add(
+                    TryGetInt(count, out _)
+                        ? $"Story 11.22 census location has no findings: {path}"
+                        : $"Story 11.22 non-integer count for byLocation:{path}");
             }
         }
 
@@ -677,16 +723,31 @@ public sealed class AnalyzerPolicyGovernanceTests
         }
 
         int visibleFindings = IntValue(census, "visibleFindings");
+        bool projectSumOk = TrySumCounts(byProject, "byProject", errors, out int projectSum);
+        bool diagnosticSumOk = TrySumCounts(byDiagnostic, "byDiagnostic", errors, out int diagnosticSum);
+        bool originSumOk = TrySumCounts(byOrigin, "byOrigin", errors, out int originSum);
+        bool locationSumOk = TrySumCounts(byLocation, "byLocation", errors, out int locationSum);
         if (visibleFindings != 345
-            || SumCounts(byProject) != visibleFindings
-            || SumCounts(byDiagnostic) != visibleFindings
-            || SumCounts(byOrigin) != visibleFindings
-            || SumCounts(byLocation) != visibleFindings)
+            || !projectSumOk
+            || !diagnosticSumOk
+            || !originSumOk
+            || !locationSumOk
+            || projectSum != visibleFindings
+            || diagnosticSum != visibleFindings
+            || originSum != visibleFindings
+            || locationSum != visibleFindings)
         {
             errors.Add("Story 11.22 census count drift");
         }
 
         JsonObject hiddenControlProbes = RequiredObject(census, "hiddenControlProbes");
+        if (hiddenControlProbes.Count != 2
+            || !hiddenControlProbes.ContainsKey("ASP0006")
+            || !hiddenControlProbes.ContainsKey("CA2007"))
+        {
+            errors.Add("Story 11.22 hidden-control probe set is not closed");
+        }
+
         ValidateHiddenControlProbe(
             hiddenControlProbes,
             "ASP0006",
@@ -702,12 +763,26 @@ public sealed class AnalyzerPolicyGovernanceTests
             "dotnet build tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj -c Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0 -p:AnalysisMode=Recommended -p:NoWarn=0419%3B1570%3B1572%3B1573%3B1574%3B1734",
             errors);
 
-        JsonObject testingDisposition = FindDisposition(ledger, "testing-ca2007-audit");
-        JsonObject aspDisposition = FindDisposition(ledger, "asp0006-hand-authored-fixture-debt");
-        if (StringValue(testingDisposition, "decision") != "fix"
-            || !StringValue(testingDisposition, "exactScope").StartsWith("no remaining control", StringComparison.Ordinal)
-            || StringValue(aspDisposition, "decision") != "fix"
-            || !StringValue(aspDisposition, "exactScope").StartsWith("no remaining control", StringComparison.Ordinal))
+        bool foundTestingDisposition = TryFindDisposition(
+            ledger,
+            "testing-ca2007-audit",
+            errors,
+            out JsonObject? testingDisposition);
+        bool foundAspDisposition = TryFindDisposition(
+            ledger,
+            "asp0006-hand-authored-fixture-debt",
+            errors,
+            out JsonObject? aspDisposition);
+        if (foundTestingDisposition
+            && foundAspDisposition
+            && testingDisposition is not null
+            && aspDisposition is not null
+            && (StringValue(testingDisposition, "decision") != "fix"
+                || !StringValue(testingDisposition, "exactScope").StartsWith("no remaining control", StringComparison.Ordinal)
+                || !string.IsNullOrWhiteSpace(StringValue(testingDisposition, "followUpStory"))
+                || StringValue(aspDisposition, "decision") != "fix"
+                || !StringValue(aspDisposition, "exactScope").StartsWith("no remaining control", StringComparison.Ordinal)
+                || !string.IsNullOrWhiteSpace(StringValue(aspDisposition, "followUpStory"))))
         {
             errors.Add("Story 11.22 moved-control dispositions are not closed as fixes");
         }
@@ -813,10 +888,20 @@ public sealed class AnalyzerPolicyGovernanceTests
             .ToArray();
         List<string> actual = [];
 
-        foreach (IGrouping<string, (string RelativePath, string Method, string DiagnosticId, string SyntaxDigest)> fileSpans
-            in Story1122FixturePragmaSpans.GroupBy(static span => span.RelativePath, StringComparer.Ordinal))
+        // Closed-world: every tracked root-owned .cs CA2012/CA2201 pragma span must equal the sealed
+        // allow-list. Scanning only the allow-listed files would let a new fixture suppression land
+        // after a routine source-pragmas reseal without a Story 11.22 disposition/digest update.
+        foreach (string relativePath in TrackedFiles(root)
+            .Where(static path => path.EndsWith(".cs", StringComparison.OrdinalIgnoreCase)))
         {
-            string source = File.ReadAllText(Path.Combine(root, fileSpans.Key));
+            string absolutePath = Path.Combine(root, relativePath);
+            string source = File.ReadAllText(absolutePath);
+            if (!source.Contains("#pragma warning disable CA2012", StringComparison.Ordinal)
+                && !source.Contains("#pragma warning disable CA2201", StringComparison.Ordinal))
+            {
+                continue;
+            }
+
             string[] lines = source.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
             MethodDeclarationSyntax[] methods = CSharpSyntaxTree.ParseText(source)
                 .GetRoot()
@@ -840,7 +925,7 @@ public sealed class AnalyzerPolicyGovernanceTests
                 while (restoreIndex < lines.Length
                     && !Regex.IsMatch(
                         lines[restoreIndex],
-                        @"^\s*#pragma\s+warning\s+restore\s+" + Regex.Escape(diagnosticId) + @"\s*$",
+                        @"^\s*#pragma\s+warning\s+restore\s+" + Regex.Escape(diagnosticId) + @"\b(?:\s+//.*)?$",
                         RegexOptions.CultureInvariant))
                 {
                     restoreIndex++;
@@ -852,7 +937,7 @@ public sealed class AnalyzerPolicyGovernanceTests
                     || string.IsNullOrWhiteSpace(lines[restoreIndex - 1])
                     || lines[(lineIndex + 1)..restoreIndex].Any(string.IsNullOrWhiteSpace))
                 {
-                    errors.Add($"Story 11.22 {diagnosticId} directives are not immediately adjacent to one approved syntax span in {fileSpans.Key}:{lineIndex + 1}");
+                    errors.Add($"Story 11.22 {diagnosticId} directives are not immediately adjacent to one approved syntax span in {relativePath}:{lineIndex + 1}");
                     continue;
                 }
 
@@ -863,7 +948,7 @@ public sealed class AnalyzerPolicyGovernanceTests
                 });
                 if (method is null)
                 {
-                    errors.Add($"Story 11.22 {diagnosticId} pragma is outside an approved method in {fileSpans.Key}:{lineIndex + 1}");
+                    errors.Add($"Story 11.22 {diagnosticId} pragma is outside an approved method in {relativePath}:{lineIndex + 1}");
                     continue;
                 }
 
@@ -873,7 +958,7 @@ public sealed class AnalyzerPolicyGovernanceTests
                     " ",
                     RegexOptions.CultureInvariant);
                 string syntaxDigest = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(normalizedSyntax))).ToLowerInvariant();
-                actual.Add(PragmaSpanKey(fileSpans.Key, method.Identifier.ValueText, diagnosticId, syntaxDigest));
+                actual.Add(PragmaSpanKey(relativePath, method.Identifier.ValueText, diagnosticId, syntaxDigest));
                 lineIndex = restoreIndex;
             }
         }
@@ -891,20 +976,53 @@ public sealed class AnalyzerPolicyGovernanceTests
 
     private static void RequireCount(JsonObject counts, string key, int expected, List<string> errors)
     {
-        if (IntValue(counts, key) != expected)
+        if (!counts.TryGetPropertyValue(key, out JsonNode? node) || !TryGetInt(node, out int actual))
+        {
+            errors.Add($"Story 11.22 non-integer count for {key}");
+            return;
+        }
+
+        if (actual != expected)
         {
             errors.Add($"Story 11.22 count drift for {key}");
         }
     }
 
-    private static int SumCounts(JsonObject counts)
-        => counts.Sum(static item => item.Value?.GetValue<int>() ?? 0);
+    private static bool TrySumCounts(JsonObject counts, string subject, List<string> errors, out int sum)
+    {
+        sum = 0;
+        bool ok = true;
+        foreach ((string key, JsonNode? value) in counts)
+        {
+            if (!TryGetInt(value, out int count))
+            {
+                errors.Add($"Story 11.22 non-integer count for {subject}:{key}");
+                ok = false;
+                continue;
+            }
+
+            sum += count;
+        }
+
+        return ok;
+    }
+
+    private static bool TryGetInt(JsonNode? node, out int value)
+    {
+        if (node is JsonValue jsonValue && jsonValue.TryGetValue(out value))
+        {
+            return true;
+        }
+
+        value = 0;
+        return false;
+    }
 
     private static string CanonicalCountDigest(JsonObject counts)
     {
         string canonical = string.Concat(
             counts.OrderBy(static item => item.Key, StringComparer.Ordinal)
-                .Select(static item => $"{item.Key}={item.Value?.GetValue<int>() ?? 0}\n"));
+                .Select(static item => $"{item.Key}={(TryGetInt(item.Value, out int count) ? count : 0)}\n"));
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonical))).ToLowerInvariant();
     }
 
@@ -967,10 +1085,29 @@ public sealed class AnalyzerPolicyGovernanceTests
         }
     }
 
-    private static JsonObject FindDisposition(JsonObject ledger, string key)
-        => RequiredArray(ledger, "dispositions")
+    private static bool TryFindDisposition(
+        JsonObject ledger,
+        string key,
+        List<string> errors,
+        out JsonObject? disposition)
+    {
+        JsonObject[] matches = RequiredArray(ledger, "dispositions")
             .Select(static item => RequiredObject(item, "disposition"))
-            .Single(disposition => StringValue(disposition, "key") == key);
+            .Where(candidate => StringValue(candidate, "key") == key)
+            .ToArray();
+        if (matches.Length != 1)
+        {
+            errors.Add(
+                matches.Length == 0
+                    ? $"Story 11.22 missing disposition {key}"
+                    : $"Story 11.22 duplicate disposition {key}");
+            disposition = null;
+            return false;
+        }
+
+        disposition = matches[0];
+        return true;
+    }
 
     private static void ValidateFixtureDisposition(
         JsonObject ledger,
@@ -979,7 +1116,11 @@ public sealed class AnalyzerPolicyGovernanceTests
         string exactScope,
         List<string> errors)
     {
-        JsonObject disposition = FindDisposition(ledger, key);
+        if (!TryFindDisposition(ledger, key, errors, out JsonObject? disposition) || disposition is null)
+        {
+            return;
+        }
+
         if (StringValue(disposition, "exactScope") != exactScope)
         {
             errors.Add($"Story 11.22 exact scope drift for {key}");
@@ -990,6 +1131,36 @@ public sealed class AnalyzerPolicyGovernanceTests
         {
             errors.Add($"Story 11.22 diagnostic disposition drift for {key}");
         }
+    }
+
+    private static async Task AssertNegativeControlProbeCleanAsync(
+        string root,
+        JsonObject probe,
+        string project)
+    {
+        string expectedCommand =
+            $"dotnet build {project} -c Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0 -p:AnalysisMode=Recommended -p:NoWarn=0419%3B1570%3B1572%3B1573%3B1574%3B1734";
+        StringValue(probe, "command").ShouldBe(expectedCommand);
+        IntValue(probe, "after").ShouldBe(0);
+
+        (int exitCode, string output) = await RunDotnetResultAsync(
+            root,
+            "build",
+            project,
+            "-c",
+            "Release",
+            "--no-restore",
+            "--no-incremental",
+            "-m:1",
+            "-p:NuGetAudit=false",
+            "-p:MinVerVersionOverride=4.0.0",
+            "-p:AnalysisMode=Recommended",
+            "-p:NoWarn=0419%3B1570%3B1572%3B1573%3B1574%3B1734").ConfigureAwait(true);
+        exitCode.ShouldBe(0, $"Story 11.22 negative-control probe failed for {project}:{Environment.NewLine}{output}");
+        Regex.IsMatch(output, @"^\s*0 Warning\(s\)\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBeTrue($"Story 11.22 negative-control probe did not prove zero warnings for {project}:{Environment.NewLine}{output}");
+        Regex.IsMatch(output, @"^\s*0 Error\(s\)\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBeTrue($"Story 11.22 negative-control probe did not prove zero errors for {project}:{Environment.NewLine}{output}");
     }
 
     private static string[] ValidateParity(IEnumerable<string> ledgerKeys, IEnumerable<string> configuredKeys)

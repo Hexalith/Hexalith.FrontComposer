@@ -1,8 +1,13 @@
 # Deferred Work
 
+## Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md (2026-08-08)
+
+- Thirteen-project Recommended Governance rebuild gate (`AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean`) runs sequential 180s-bounded builds and slows every Governance lane; intentional executable gate — optimize later (caching, narrower trait, or shared binary log reuse).
+- `RunDotnetResultAsync` kills on timeout then still awaits stdout/stderr tasks that may cancel uncleanly; pre-existing helper shared by several governance proofs — harden when the next timeout-related flake appears.
+
 ## Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4b (2026-08-08)
 
-- Shell.Tests ASP0006 `NoWarn` comment claims exactly 17 hand-authored fixture sites but nothing asserts that count; debt growth under the same control would stay silent until Story 11.22.
+- ~~Shell.Tests ASP0006 `NoWarn` comment claims exactly 17 hand-authored fixture sites but nothing asserts that count; debt growth under the same control would stay silent until Story 11.22.~~ Resolved by Story 11.22: project `NoWarn` removed, sites fixed to literals, and Governance re-executes the ASP0006 negative-control probe.
 - Diagnostic EventId/level/exception inventory (73 / 56 Information / 17 Debug / 20 exceptions) is hard-coded independently in `SecurityLoggingGovernanceTests` and `FrontComposerDiagnosticLogTests`, so the two guards can drift.
 - `McpLifecycleStoreDisposalTests` only exercises `TryReadSnapshot` after dispose; `AcknowledgeAsync` / `TryRecordObservedTransition` share `ThrowIfDisposed` but are not pinned.
 - Badge/Shortcut helpers gained `IsEnabled` stubs for Information-level HFC21xx asserts; other Shell `Substitute.For<ILogger<T>>()` factories that omit `IsEnabled` remain a latent false-negative risk now that wrappers short-circuit.

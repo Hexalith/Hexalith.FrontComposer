@@ -1,20 +1,26 @@
 ---
 created: 2026-07-16
-updated: 2026-07-16
+updated: 2026-08-08
 epic: 11
 sourceDecision: _bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md
 parentDecisionStory: 11.19d
 dependsOn: 11.20, 11.21
 owner: Test Architect + Framework Maintainer
 due: 2026-09-04
-status: backlog
+status: review
 storyType: implementation-phase
 approvalGate: separate-architecture-product-approval
+approvalStatus: approved
+approvedBy: Administrator
+approvedOn: 2026-08-08
 ---
 
 # Story 11.22: Recommended Analyzer Test and Sample Burn-down
 
-Status: backlog.
+Status: review.
+
+Executable intent and completion evidence live in
+`_bmad-output/implementation-artifacts/spec-11-22-recommended-analyzer-test-and-sample-burn-down.md`.
 
 ## Story
 
@@ -52,12 +58,12 @@ so that the complete repository can approach `Recommended` activation with trust
 
 ## Tasks / Subtasks
 
-- [ ] Regenerate the test/sample census after Stories 11.20 and 11.21.
-- [ ] Apply the approved Naming policy without mass-renaming tests.
-- [ ] Burn down non-Naming test diagnostics by project and defect class.
-- [ ] Burn down sample diagnostics and validate generated consumers.
-- [ ] Audit and narrow intentional fixture suppressions with ledger updates.
-- [ ] Run focused, default, Governance, Contract, snapshot, and artifact validation.
+- [x] Regenerate the test/sample census after Stories 11.20 and 11.21.
+- [x] Apply the approved Naming policy without mass-renaming tests.
+- [x] Burn down non-Naming test diagnostics by project and defect class.
+- [x] Burn down sample diagnostics and validate generated consumers.
+- [x] Audit and narrow intentional fixture suppressions with ledger updates.
+- [x] Run focused, default, Governance, Contract, snapshot, and artifact validation.
 
 ## Dev Notes
 
@@ -83,18 +89,31 @@ silently ignored.
 - `_bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md`
 - `_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`
 - `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
+- `_bmad-output/implementation-artifacts/spec-11-22-recommended-analyzer-test-and-sample-burn-down.md`
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
+Composer (Cursor) — Story 11.22 implementation and chunk-1 code-review patches.
+
 ### Debug Log References
 
 ### Completion Notes List
 
+- Spec `spec-11-22-recommended-analyzer-test-and-sample-burn-down.md` holds the approved intent, File List,
+  verification matrix, and Review Findings (chunk 1 patches applied 2026-08-08).
+- Ledger `story1122Census` / `story1122Completion` seal the 345 → 0 burn-down and removed ASP0006/CA2007
+  controls; Governance re-executes the negative-control probes and repo-wide CA2012/CA2201 fixture seal.
+
 ### File List
+
+See the Spec File List (authoritative for this story's owned surface).
 
 ## Change Log
 
+- 2026-08-08: Aligned traditional story artifact with implementation completion (`review`); chunk-1
+  code-review patches applied (repo-wide fixture seal, executable negative-control probes, disposition
+  cleanup, bookkeeping).
 - 2026-08-07: Recorded explicit `dependsOn: 11.20, 11.21` so CA1707/ledger ACs name both predecessors (11.19d code-review patch).
 - 2026-07-16: Materialized approved staged-activation Phase 3 from Story 11.19d.
