@@ -43,7 +43,7 @@ public class DerivedValueProviderChainTests {
         public string? UserId { get; init; }
     }
 
-    private static IUserContextAccessor StubUser(string? tenant = "t1", string? user = "alice@example.com")
+    private static StubUserContext StubUser(string? tenant = "t1", string? user = "alice@example.com")
         => new StubUserContext { TenantId = tenant, UserId = user };
 
     // ===== Per-provider — positive resolve + miss (10 tests) =================

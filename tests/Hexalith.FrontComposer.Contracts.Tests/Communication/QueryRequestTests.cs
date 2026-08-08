@@ -13,6 +13,14 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Communication;
 public sealed class QueryRequestTests
 {
     private static readonly JsonSerializerOptions WebJson = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions WebJsonIgnoreDefault = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault,
+    };
+    private static readonly JsonSerializerOptions WebJsonIgnoreNull = new(JsonSerializerDefaults.Web)
+    {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
 
     [Fact]
     public void CanonicalConstructor_Defaults_AreStable()
@@ -259,7 +267,7 @@ public sealed class QueryRequestTests
         JsonIgnoreCondition condition,
         bool includesFalseBoolean)
     {
-        JsonSerializerOptions options = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = condition };
+        JsonSerializerOptions options = OptionsFor(condition);
         QueryRequest request = QueryRequest.Create(new ProjectionQuery("Orders"), null);
 
         string json = JsonSerializer.Serialize(request, options);
@@ -275,7 +283,7 @@ public sealed class QueryRequestTests
     [InlineData(JsonIgnoreCondition.WhenWritingDefault)]
     public void DirectJson_NullProjectionType_IsOmittedUnderIgnoreConditions(JsonIgnoreCondition condition)
     {
-        JsonSerializerOptions options = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = condition };
+        JsonSerializerOptions options = OptionsFor(condition);
 #pragma warning disable HFC0001, CS8625 // Intentional v1.12 nullable-disabled consumer shape.
         QueryRequest request = new(null, null);
 #pragma warning restore HFC0001, CS8625
@@ -285,6 +293,14 @@ public sealed class QueryRequestTests
         json.ShouldNotContain("\"projectionType\"");
     }
 
+    private static JsonSerializerOptions OptionsFor(JsonIgnoreCondition condition)
+        => condition switch
+        {
+            JsonIgnoreCondition.WhenWritingNull => WebJsonIgnoreNull,
+            JsonIgnoreCondition.WhenWritingDefault => WebJsonIgnoreDefault,
+            _ => throw new ArgumentOutOfRangeException(nameof(condition), condition, "Unsupported JSON ignore condition."),
+        };
+
     [Fact]
     public void DirectJson_NullProjectionType_IsWrittenUnderDefaultIgnoreCondition()
     {
@@ -292,7 +308,7 @@ public sealed class QueryRequestTests
         QueryRequest request = new(null, null);
 #pragma warning restore HFC0001, CS8625
 
-        string json = JsonSerializer.Serialize(request, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        string json = JsonSerializer.Serialize(request, WebJson);
 
         json.ShouldContain("\"projectionType\":null");
     }

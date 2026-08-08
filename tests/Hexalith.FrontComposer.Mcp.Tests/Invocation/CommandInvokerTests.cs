@@ -177,7 +177,7 @@ public sealed class CommandInvokerTests {
         ulids.Count.ShouldBe(2);
     }
 
-    private static IServiceCollection Services(ICommandService commandService, IUlidFactory? ulidFactory) {
+    private static ServiceCollection Services(ICommandService commandService, IUlidFactory? ulidFactory) {
         var services = new ServiceCollection();
         _ = services.AddSingleton(commandService);
         if (ulidFactory is not null) {
@@ -299,8 +299,8 @@ public sealed class CommandInvokerTests {
                 previous,
                 newState,
                 messageId,
-                DateTimeOffset.Parse("2026-06-05T00:00:00Z"),
-                DateTimeOffset.Parse("2026-06-05T00:00:00Z"),
+                DateTimeOffset.Parse("2026-06-05T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
+                DateTimeOffset.Parse("2026-06-05T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
                 idempotencyResolved);
             foreach (Action<CommandLifecycleTransition> callback in callbacks.ToArray()) {
                 callback(transition);

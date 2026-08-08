@@ -23,7 +23,7 @@ public class Hfc1029DiagnosticTests {
         hfc1029.Length.ShouldBe(1);
         hfc1029[0].Severity.ShouldBe(DiagnosticSeverity.Info);
 
-        string message = hfc1029[0].GetMessage();
+        string message = hfc1029[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         message.ShouldContain("OrderProjection");
         message.ShouldContain("20", Case.Sensitive);
         // Columns at positions 11+ (indices 10..19) are hidden by default: Field11..Field20.
@@ -69,7 +69,7 @@ public class Hfc1029DiagnosticTests {
         return source.ToString();
     }
 
-    private static IReadOnlyList<Diagnostic> RunGenerator(string source) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunGenerator(string source) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

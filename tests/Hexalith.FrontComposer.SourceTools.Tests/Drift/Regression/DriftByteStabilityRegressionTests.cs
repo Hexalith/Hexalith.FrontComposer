@@ -312,7 +312,7 @@ public sealed class DriftByteStabilityRegressionTests {
         return [.. driver.GetRunResult().Diagnostics.Where(d => IsDriftDiagnostic(d.Id))];
     }
 
-    private static IReadOnlyList<Diagnostic> RunAndCollectAllDiagnostics(string[] sources, string baselineJson, bool driftEnabled) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunAndCollectAllDiagnostics(string[] sources, string baselineJson, bool driftEnabled) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(sources);
         FrontComposerGenerator generator = new();

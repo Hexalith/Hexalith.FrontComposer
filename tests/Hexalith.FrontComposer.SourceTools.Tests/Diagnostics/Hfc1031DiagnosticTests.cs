@@ -18,7 +18,7 @@ public sealed class Hfc1031DiagnosticTests {
         hfc1031.Length.ShouldBe(1);
         hfc1031[0].Severity.ShouldBe(DiagnosticSeverity.Info);
 
-        string message = hfc1031[0].GetMessage();
+        string message = hfc1031[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         message.ShouldContain("OrderProjection");
         message.ShouldContain("Timeline");
         message.ShouldContain("2 group annotation");
@@ -79,7 +79,7 @@ namespace TestDomain
                 "        public string Notes" + i.ToString(System.Globalization.CultureInfo.InvariantCulture) + " { get; set; } = string.Empty;"));
     }
 
-    private static IReadOnlyList<Diagnostic> RunGenerator(string source) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunGenerator(string source) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

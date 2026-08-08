@@ -144,10 +144,9 @@ if (fakeAuthRequested && !builder.Environment.IsDevelopment()) {
 }
 
 if (fakeAuthRequested) {
-    LoggerFactory.Create(b => b.AddConsole())
-        .CreateLogger("Counter.FakeAuth")
-        .LogCritical(
-            "Counter sample is running with FAKE authentication (Hexalith:FrontComposer:FakeAuth:Enabled=true). All requests share a single shared identity. Do not deploy with this flag set.");
+    using ILoggerFactory fakeAuthLoggerFactory = LoggerFactory.Create(b => b.AddConsole());
+    ILogger fakeAuthLogger = fakeAuthLoggerFactory.CreateLogger("Counter.FakeAuth");
+    CounterFakeAuthLogging.FakeAuthenticationEnabled(fakeAuthLogger);
 }
 
 Type userContextAccessorType = fakeAuthRequested

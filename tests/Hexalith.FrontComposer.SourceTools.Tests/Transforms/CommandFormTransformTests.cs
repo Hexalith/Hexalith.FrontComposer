@@ -8,6 +8,8 @@ using Shouldly;
 namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
 public class CommandFormTransformTests {
+    private static readonly string[] ExpectedAmountField = ["Amount"];
+
     [Theory]
     [InlineData("String", FormFieldTypeCategory.TextInput)]
     [InlineData("Int32", FormFieldTypeCategory.NumberInput)]
@@ -99,7 +101,7 @@ public class CommandFormTransformTests {
 
         CommandFormModel result = CommandFormTransform.Transform(command);
 
-        result.Fields.Select(f => f.PropertyName).ShouldBe(new[] { "Amount" });
+        result.Fields.Select(f => f.PropertyName).ShouldBe(ExpectedAmountField);
     }
 
     [Fact]

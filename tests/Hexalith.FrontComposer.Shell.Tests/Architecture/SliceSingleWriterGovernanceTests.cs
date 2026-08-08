@@ -98,7 +98,7 @@ public sealed class SliceSingleWriterGovernanceTests {
 
     private static List<(string file, int count)> SetAsyncCallSites(string folder)
         => Directory.EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories)
-            .Select(f => (file: Path.GetFileName(f), count: SetAsyncCall.Matches(File.ReadAllText(f)).Count))
+            .Select(f => (file: Path.GetFileName(f), count: SetAsyncCall.Count(File.ReadAllText(f))))
             .Where(x => x.count > 0)
             .ToList();
 
@@ -107,7 +107,7 @@ public sealed class SliceSingleWriterGovernanceTests {
         foreach (string f in Directory.EnumerateFiles(folder, "*.cs", SearchOption.AllDirectories)) {
             int count = File.ReadLines(f)
                 .Where(line => !line.TrimStart().StartsWith("///", StringComparison.Ordinal))
-                .Sum(line => pattern.Matches(line).Count);
+                .Sum(pattern.Count);
             if (count > 0) {
                 sites.Add((Path.GetFileName(f), count));
             }
@@ -117,7 +117,7 @@ public sealed class SliceSingleWriterGovernanceTests {
     }
 
     private static string Describe(IEnumerable<(string file, int count)> sites)
-        => sites.Count() == 0
+        => !sites.Any()
             ? "(none)"
             : string.Join(", ", sites.Select(s => $"{s.file}×{s.count}"));
 

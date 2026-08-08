@@ -228,10 +228,9 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
             ArgumentNullException.ThrowIfNull(builder);
             builder.OpenElement(0, "section");
             builder.AddAttribute(1, "override-count", Context.Items.Count);
-            int seq = 2;
             foreach (ViewProjection item in Context.Items) {
-                builder.AddContent(seq++, item.Name);
-                builder.AddMarkupContent(seq++, " ");
+                builder.AddContent(2, item.Name);
+                builder.AddMarkupContent(3, " ");
             }
 
             builder.CloseElement();

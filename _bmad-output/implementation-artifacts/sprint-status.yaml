@@ -516,7 +516,7 @@ development_status:
   # 11.21 moved backlog -> ready-for-dev on 2026-07-17 (create-story; Administrator supplied separate phase approval; comprehensive product/generator census, hidden ASP0006 emitter debt, exact 11.18 logging handoff, hard 11.20 ledger entry gate, and scoped validation recorded.)
   # 11.21 moved ready-for-dev -> in-progress on 2026-08-07 (bmad-build; implementation baseline 4a8cfa49. Entry gate adjudicated with Administrator: (a) Story 11.20 accepted at `review` rather than `done` because its substance is verified green at this HEAD — approved ledger present, AnalyzerPolicyGovernanceTests 4/4, 40/40 tasks checked; 11.20 still owes its own code review independently. (b) The ledger contained zero CA1000 dispositions, so Administrator approved a narrow exact-symbol compatibility exception for the three public-API-breaking CA1000 members (QueryResult<T>.NotModified, QueryResult<T>.NotModifiedFromCache, ProjectionTestDataBuilder<TProjection>.BuildMany), preserving the shipped 2.x surface; the ledger is amended before any source edit.)
   11-21-recommended-analyzer-product-and-generator-burndown: review
-  11-22-recommended-analyzer-test-and-sample-burndown: backlog
+  11-22-recommended-analyzer-test-and-sample-burndown: review
   11-23-recommended-analyzer-repository-activation: backlog
   # 11.24 registered as blocked backlog on 2026-07-17 by approved direct course correction.
   # Do not create its story file or move it to ready-for-dev until EventStore Story 1.20 durably

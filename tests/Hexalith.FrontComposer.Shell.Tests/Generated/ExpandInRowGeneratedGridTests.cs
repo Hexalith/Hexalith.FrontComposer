@@ -265,7 +265,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
                 .ShouldBeTrue("generated collapse trigger must dispatch CollapseRowAction before the test empties reducer state"));
 
     private void RestoreCollapsedRowState() {
-        IFeature feature = Services.GetRequiredService<ExpandedRowFeature>();
+        ExpandedRowFeature feature = Services.GetRequiredService<ExpandedRowFeature>();
         feature.RestoreState(new ExpandedRowState {
             ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty,
         });
@@ -287,7 +287,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
     }
 
     private void RestoreExpandedRowState(ExpandRowAction action) {
-        IFeature feature = Services.GetRequiredService<ExpandedRowFeature>();
+        ExpandedRowFeature feature = Services.GetRequiredService<ExpandedRowFeature>();
         feature.RestoreState(new ExpandedRowState {
             ExpandedByViewKey = ImmutableDictionary<string, ExpandedRowEntry>.Empty.SetItem(
                 action.ViewKey,

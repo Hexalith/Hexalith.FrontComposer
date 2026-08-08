@@ -35,7 +35,7 @@ public sealed class EventStoreContractTests {
     [InlineData("")]
     [InlineData(" ")]
     [InlineData("orders:tenant")]
-    public void EventStoreValidation_RejectsMissingOrColonRoutingValues(string value) => _ = Should.Throw<ArgumentException>(() => EventStoreValidation.RequireNonColonSegment(value, "value"));
+    public void EventStoreValidation_RejectsMissingOrColonRoutingValues(string value) => _ = Should.Throw<ArgumentException>(() => EventStoreValidation.RequireNonColonSegment(value, nameof(value)));
 
     [Fact]
     public void EventStoreValidation_RejectsMoreThanTenEtags() {

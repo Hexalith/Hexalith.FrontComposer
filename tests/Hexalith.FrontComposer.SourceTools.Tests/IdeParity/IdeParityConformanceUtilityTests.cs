@@ -180,7 +180,7 @@ public sealed class IdeParityConformanceUtilityTests {
         // quotes) only fires when the value contains comma, double-quote, or newline; in
         // that case the final form is `"'<original>"`. Either way the cell content visible
         // to a spreadsheet starts with `'` and not with a formula trigger.
-        bool startsWithGuard = csv.StartsWith("'", StringComparison.Ordinal)
+        bool startsWithGuard = csv.StartsWith('\'')
             || csv.StartsWith("\"'", StringComparison.Ordinal);
         startsWithGuard.ShouldBeTrue($"Sanitized CSV cell '{csv}' must lead with a single-quote formula guard.");
         csv.ShouldNotMatch("^[=+\\-@\\s]");

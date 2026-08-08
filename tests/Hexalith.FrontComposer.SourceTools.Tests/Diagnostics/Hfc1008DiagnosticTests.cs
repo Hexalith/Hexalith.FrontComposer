@@ -83,9 +83,9 @@ namespace TestDomain
 
         Diagnostic diagnostic = diagnostics.Single(d => d.Id == "HFC1008");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Warning);
-        diagnostic.GetMessage().ShouldContain("SubmitOrderCommand");
-        diagnostic.GetMessage().ShouldContain("Traits");
-        diagnostic.GetMessage().ShouldContain("FcFieldPlaceholder");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("SubmitOrderCommand");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("Traits");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("FcFieldPlaceholder");
     }
 
     [Fact]
@@ -94,9 +94,9 @@ namespace TestDomain
 
         Diagnostic diagnostic = diagnostics.Single(d => d.Id == "HFC1008");
         diagnostic.Severity.ShouldBe(DiagnosticSeverity.Warning);
-        diagnostic.GetMessage().ShouldContain("OrderTraits");
-        diagnostic.GetMessage().ShouldContain("[ProjectionBadge]");
-        diagnostic.GetMessage().ShouldContain("ignored");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("OrderTraits");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("[ProjectionBadge]");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("ignored");
     }
 
     [Fact]
@@ -115,7 +115,7 @@ namespace TestDomain
             .ShouldContain("HFC1008 | HexalithFrontComposer | Warning | [Flags] enum in a single-value UI context");
     }
 
-    private static IReadOnlyList<Diagnostic> RunGenerator(string source) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunGenerator(string source) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

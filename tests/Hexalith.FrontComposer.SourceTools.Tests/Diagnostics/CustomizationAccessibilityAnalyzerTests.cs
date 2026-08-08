@@ -38,12 +38,12 @@ public sealed class CustomizationAccessibilityAnalyzerTests {
 
         Diagnostic diagnostic = diagnostics.Single(d => d.Id == expectedId);
         diagnostic.DefaultSeverity.ShouldBe(DiagnosticSeverity.Warning);
-        diagnostic.GetMessage().ShouldContain("What:");
-        diagnostic.GetMessage().ShouldContain("Expected:");
-        diagnostic.GetMessage().ShouldContain("Got:");
-        diagnostic.GetMessage().ShouldContain("Fix:");
-        diagnostic.GetMessage().ShouldContain("Fallback:");
-        diagnostic.GetMessage().ShouldContain($"DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/{expectedId}");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("What:");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("Expected:");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("Got:");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("Fix:");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("Fallback:");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain($"DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/{expectedId}");
     }
 
     [Fact]

@@ -45,8 +45,8 @@ public sealed class DriftClassifierMetadataTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        diagnostics.Count(d => d.GetMessage().Contains("Notes", StringComparison.Ordinal)
-                            && d.GetMessage().Contains(category, StringComparison.OrdinalIgnoreCase))
+        diagnostics.Count(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Notes", StringComparison.Ordinal)
+                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains(category, StringComparison.OrdinalIgnoreCase))
             .ShouldBe(1, $"AC7 caps category '{category}' to ≤1 diagnostic per declaration.");
         // Ensure baseline parameter referenced (avoid IDE0060 false positive for the dev later).
         _ = oldAttr.ShouldNotBeNull();
@@ -80,7 +80,7 @@ public sealed class DriftClassifierMetadataTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        Diagnostic[] notesDrifts = [.. diagnostics.Where(d => d.GetMessage().Contains("Notes", StringComparison.Ordinal))];
+        Diagnostic[] notesDrifts = [.. diagnostics.Where(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Notes", StringComparison.Ordinal))];
         notesDrifts.Length.ShouldBe(4, "AC7 — exactly one diagnostic per affected metadata category (Display.Name, Description, ColumnPriority, ProjectionFieldGroup).");
     }
 
@@ -110,8 +110,8 @@ public sealed class DriftClassifierMetadataTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         diagnostics.Any(d => d.Id == "HFC1066"
-                          && d.GetMessage().Contains("RelativeTime", StringComparison.Ordinal)
-                          && d.GetMessage().Contains("OccurredAt", StringComparison.Ordinal))
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("RelativeTime", StringComparison.Ordinal)
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("OccurredAt", StringComparison.Ordinal))
             .ShouldBeTrue("AC7 — relative-time window change must emit one HFC1066 metadata-drift diagnostic.");
     }
 
@@ -140,8 +140,8 @@ public sealed class DriftClassifierMetadataTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         diagnostics.Any(d => d.Id == "HFC1066"
-                          && d.GetMessage().Contains("RequiresPolicy", StringComparison.Ordinal)
-                          && d.GetMessage().Contains("CancelCommand", StringComparison.Ordinal))
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("RequiresPolicy", StringComparison.Ordinal)
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("CancelCommand", StringComparison.Ordinal))
             .ShouldBeTrue("AC7 — RequiresPolicy change must emit one HFC1066 metadata-drift diagnostic.");
     }
 
@@ -175,8 +175,8 @@ public sealed class DriftClassifierMetadataTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         diagnostics.Count(d => d.Id == "HFC1066"
-                            && d.GetMessage().Contains("ProjectionBadge", StringComparison.Ordinal)
-                            && d.GetMessage().Contains("Status", StringComparison.Ordinal))
+                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("ProjectionBadge", StringComparison.Ordinal)
+                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Status", StringComparison.Ordinal))
             .ShouldBe(1, "AC8 — ProjectionBadge drift must emit exactly one HFC1066 per member/category.");
     }
 
@@ -205,8 +205,8 @@ public sealed class DriftClassifierMetadataTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         diagnostics.Count(d => d.Id == "HFC1066"
-                            && d.GetMessage().Contains(kind, StringComparison.Ordinal)
-                            && d.GetMessage().Contains("OrderProjection", StringComparison.Ordinal))
+                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains(kind, StringComparison.Ordinal)
+                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("OrderProjection", StringComparison.Ordinal))
             .ShouldBe(1, $"AC8 — {kind} drift must emit exactly one HFC1066 per declaration/category.");
     }
 
@@ -232,8 +232,8 @@ public sealed class DriftClassifierMetadataTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         diagnostics.Count(d => d.Id == "HFC1066"
-                            && d.GetMessage().Contains("DisplayFormat", StringComparison.Ordinal)
-                            && d.GetMessage().Contains("Amount", StringComparison.Ordinal))
+                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("DisplayFormat", StringComparison.Ordinal)
+                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Amount", StringComparison.Ordinal))
             .ShouldBe(1, "AC8 — currency/display-format drift must emit exactly one HFC1066 per member/category.");
     }
 
@@ -266,12 +266,12 @@ public sealed class DriftClassifierMetadataTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         diagnostics.Count(d => d.Id == "HFC1066"
-                            && d.GetMessage().Contains(kind, StringComparison.Ordinal)
-                            && d.GetMessage().Contains("CancelOrderCommand", StringComparison.Ordinal))
+                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains(kind, StringComparison.Ordinal)
+                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("CancelOrderCommand", StringComparison.Ordinal))
             .ShouldBe(1, $"AC8 — {kind} command metadata drift must emit exactly one HFC1066 per declaration/category.");
     }
 
-    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string source, string baselineJson) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

@@ -682,8 +682,8 @@ public sealed class McpCommandToolAdapterTests {
                 previous,
                 newState,
                 messageId,
-                DateTimeOffset.Parse("2026-06-05T00:00:00Z"),
-                DateTimeOffset.Parse("2026-06-05T00:00:00Z"),
+                DateTimeOffset.Parse("2026-06-05T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
+                DateTimeOffset.Parse("2026-06-05T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
                 idempotencyResolved);
             foreach (Action<CommandLifecycleTransition> callback in callbacks.ToArray()) {
                 callback(transition);

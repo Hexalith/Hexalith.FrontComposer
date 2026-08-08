@@ -65,7 +65,7 @@ public sealed class CounterProjectionEffects {
     private Task BumpAndDispatch(string correlationId, IDispatcher dispatcher, int delta) {
         CounterProjection updated = new() {
             Id = "counter-1",
-            Count = (_state.Value.Items?.FirstOrDefault()?.Count ?? 0) + delta,
+            Count = (_state.Value.Items is { Count: > 0 } items ? items[0].Count : 0) + delta,
             LastUpdated = DateTimeOffset.UtcNow,
         };
 

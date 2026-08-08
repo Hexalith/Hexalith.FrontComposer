@@ -50,17 +50,17 @@ public sealed class DriftClassifierProjectionPropertyTests {
         IReadOnlyList<Diagnostic> diagnostics = RunGeneratorWithBaseline(source, BaselineWithPriorityAndDueDate);
 
         Diagnostic[] removeDrifts = [.. diagnostics.Where(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
-                                                            && d.GetMessage().Contains("DueDate", StringComparison.Ordinal))];
+                                                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("DueDate", StringComparison.Ordinal))];
         removeDrifts.Length.ShouldBe(1, "AC2 emits exactly one diagnostic per removed property.");
-        removeDrifts[0].GetMessage().ShouldContain("OrderProjection");
-        removeDrifts[0].GetMessage().ShouldContain("DueDate");
+        removeDrifts[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("OrderProjection");
+        removeDrifts[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("DueDate");
         // AC2 — message must list documented affected surfaces. Story 9-1 review CB-35: the
         // earlier `Any` substring check passed on incidental "column" matches (e.g. "ColumnPriority"
         // in unrelated metadata text). For the canonical removed-DateTimeOffset case the
         // production message says: "Affected surface: DataGrid column, detail field, MCP descriptor".
         // Pin the assertion to require BOTH `DataGrid` and `detail` so a regression that emits
         // only metadata-style prose is caught.
-        string message = removeDrifts[0].GetMessage();
+        string message = removeDrifts[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         message.ShouldContain("Affected surface", Case.Insensitive,
             customMessage: "AC2 — diagnostic must label the affected surface explicitly.");
         message.ShouldContain("DataGrid", Case.Insensitive,
@@ -92,9 +92,9 @@ public sealed class DriftClassifierProjectionPropertyTests {
         IReadOnlyList<Diagnostic> diagnostics = RunGeneratorWithBaseline(source, BaselineWithPriorityAndDueDate);
 
         Diagnostic[] addDrifts = [.. diagnostics.Where(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
-                                                         && d.GetMessage().Contains("added", StringComparison.OrdinalIgnoreCase))];
+                                                         && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("added", StringComparison.OrdinalIgnoreCase))];
         addDrifts.Length.ShouldBeGreaterThanOrEqualTo(1, "AC3 emits a diagnostic for each added property.");
-        addDrifts[0].GetMessage().ShouldContain(expectedSurface, Case.Insensitive);
+        addDrifts[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain(expectedSurface, Case.Insensitive);
     }
 
     [Fact()]
@@ -115,12 +115,12 @@ public sealed class DriftClassifierProjectionPropertyTests {
         IReadOnlyList<Diagnostic> diagnostics = RunGeneratorWithBaseline(source, BaselineWithPriorityAndDueDate);
 
         diagnostics.Where(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
-                            && (d.GetMessage().Contains("added", StringComparison.OrdinalIgnoreCase)
-                                || d.GetMessage().Contains("removed", StringComparison.OrdinalIgnoreCase)))
+                            && (d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("added", StringComparison.OrdinalIgnoreCase)
+                                || d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("removed", StringComparison.OrdinalIgnoreCase)))
             .ShouldBeEmpty("Equal shape ⇒ no drift diagnostics.");
     }
 
-    private static IReadOnlyList<Diagnostic> RunGeneratorWithBaseline(string source, string baselineJson) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunGeneratorWithBaseline(string source, string baselineJson) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

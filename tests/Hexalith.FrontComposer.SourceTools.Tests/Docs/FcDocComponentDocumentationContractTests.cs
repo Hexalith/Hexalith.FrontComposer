@@ -189,7 +189,7 @@ public sealed partial class FcDocComponentDocumentationContractTests {
             .Skip(referenceIndex + 1)
             .Take(searchEnd - referenceIndex - 1)
             .Any(line => line.TrimStart().StartsWith("- name: Components", StringComparison.Ordinal)
-                && line.StartsWith(" ", StringComparison.Ordinal));
+                && line.StartsWith(' '));
 
         componentsNestedUnderReference.ShouldBeTrue(
             "A `Components` group must be nested under the Reference node in docs/toc.yml.");

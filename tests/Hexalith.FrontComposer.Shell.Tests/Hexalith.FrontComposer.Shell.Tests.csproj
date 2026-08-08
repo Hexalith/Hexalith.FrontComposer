@@ -2,15 +2,6 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
-    <!-- Story 11.21 negative control: with this entry removed the only ASP0006 sites left in
-         this project are 17 hand-authored fixture render fragments in
-         Generated/ActionQueueProjectionContextIsolationTests.cs,
-         Components/Rendering/FcProjectionViewOverrideHostTests.cs, and
-         Components/DataGrid/FcNewItemIndicatorLaneIntegrationTests.cs. No SourceTools-generated
-         tree contributes any. That hand-authored debt is owned by Story 11.22, so the control is
-         retained here rather than absorbed; the unsuppressed proof for generated output lives in
-         Counter.Domain, Counter.Specimens.Domain, IdeParityCounter, and the packaged consumer. -->
-    <NoWarn>$(NoWarn);ASP0006</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\samples\Counter\Counter.Domain\Counter.Domain.csproj" />

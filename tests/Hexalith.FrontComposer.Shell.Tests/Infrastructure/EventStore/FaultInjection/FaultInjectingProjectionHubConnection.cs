@@ -25,6 +25,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore.FaultInje
 /// </para>
 /// </remarks>
 internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConnection {
+    private static readonly string _disposedObjectName = typeof(FaultInjectingProjectionHubConnection).FullName!;
+
     private static int _nextInstanceId;
 
     private readonly int _instanceId = Interlocked.Increment(ref _nextInstanceId);
@@ -260,9 +262,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
     /// <paramref name="count"/> times. Resolves immediately if the count is already reached.
     /// </summary>
     public Task WaitForAsync(HarnessCheckpoint checkpoint, int count = 1, CancellationToken cancellationToken = default) {
-        if (count <= 0) {
-            throw new ArgumentOutOfRangeException(nameof(count));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
         TaskCompletionSource tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
         lock (_gate) {
@@ -369,9 +369,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
 
     /// <summary>Releases a queued nudge to the handlers <paramref name="count"/> times.</summary>
     public async Task ReleaseAsync(NudgeQueueToken token, int count = 1) {
-        if (count <= 0) {
-            throw new ArgumentOutOfRangeException(nameof(count));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(count);
 
         QueuedNudge nudge = TakeQueuedNudge(token);
         for (int i = 0; i < count; i++) {
@@ -748,9 +746,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
     }
 
     private void ThrowIfDisposedLocked() {
-        if (_disposed) {
-            throw new ObjectDisposedException(nameof(FaultInjectingProjectionHubConnection));
-        }
+        ObjectDisposedException.ThrowIf(_disposed, typeof(FaultInjectingProjectionHubConnection));
     }
 
     private void ThrowIfDisposed() {
@@ -787,7 +783,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
 
                 foreach (Queue<TaskCompletionSource> blocked in _activeBlocks.Values) {
                     foreach (TaskCompletionSource tcs in blocked) {
-                        _ = tcs.TrySetException(new ObjectDisposedException(nameof(FaultInjectingProjectionHubConnection)));
+                        _ = tcs.TrySetException(new ObjectDisposedException(_disposedObjectName));
                     }
                 }
 
@@ -815,7 +811,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
                 foreach (Queue<ScriptedAction> queue in _scripts.Values) {
                     foreach (ScriptedAction action in queue) {
                         if (action.Kind == ScriptedActionKind.Block && action.Tcs is not null) {
-                            _ = action.Tcs.TrySetException(new ObjectDisposedException(nameof(FaultInjectingProjectionHubConnection)));
+                            _ = action.Tcs.TrySetException(new ObjectDisposedException(_disposedObjectName));
                         }
                     }
                 }
@@ -848,7 +844,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
                     _ = builder.Append("Outstanding WaitFor awaiters: ").Append(outstanding).Append(". ");
                     foreach (List<WaiterEntry> list in _waiters.Values) {
                         foreach (WaiterEntry entry in list) {
-                            _ = entry.Tcs.TrySetException(new ObjectDisposedException(nameof(FaultInjectingProjectionHubConnection)));
+                            _ = entry.Tcs.TrySetException(new ObjectDisposedException(_disposedObjectName));
                         }
                     }
                 }
@@ -865,7 +861,7 @@ internal sealed class FaultInjectingProjectionHubConnection : IProjectionHubConn
 
     private static TaskCompletionSource NewBlockTcs() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
-    private IDisposable RegisterHandler<TDelegate>(List<HandlerRegistration<TDelegate>> registry, TDelegate handler)
+    private HandlerDisposer RegisterHandler<TDelegate>(List<HandlerRegistration<TDelegate>> registry, TDelegate handler)
         where TDelegate : Delegate {
         HandlerRegistration<TDelegate> registration = new(handler);
         lock (_gate) {

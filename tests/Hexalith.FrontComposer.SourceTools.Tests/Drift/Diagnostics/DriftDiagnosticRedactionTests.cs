@@ -58,7 +58,7 @@ public sealed class DriftDiagnosticRedactionTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baselineJson);
 
         foreach (Diagnostic d in diagnostics) {
-            string message = d.GetMessage();
+            string message = d.GetMessage(System.Globalization.CultureInfo.InvariantCulture);
             foreach (string sentinel in Sentinels) {
                 message.ShouldNotContain(sentinel,
                     customMessage: $"AC13 — diagnostic {d.Id} leaked sentinel '{sentinel}' into its message.");
@@ -103,11 +103,11 @@ public sealed class DriftDiagnosticRedactionTests {
         // "Acme.SENTINEL_TENANT_d4f1.SENTINEL_USER_88aa.SecretProjection" — drift comparison
         // for that contract MUST be suppressed.
         diagnostics.Any(d => (d.Id == "HFC1065" || d.Id == "HFC1066")
-                          && d.GetMessage().Contains("SecretProjection", StringComparison.Ordinal))
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("SecretProjection", StringComparison.Ordinal))
             .ShouldBeFalse("AC13 — redaction failure must SUPPRESS the would-have-leaked drift diagnostic for the affected contract.");
     }
 
-    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string source, string baselineJson) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

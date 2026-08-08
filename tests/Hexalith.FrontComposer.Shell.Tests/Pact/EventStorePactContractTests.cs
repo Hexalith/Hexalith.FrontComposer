@@ -29,6 +29,20 @@ public sealed class EventStorePactContractTests {
     private const string SyntheticTenant = "tenant-contract-a";
     private const string SyntheticUser = "user-contract-a";
     private const string SyntheticMessageId = "01HXCNTRCT0000000000000000";
+    private static readonly string[] ForbiddenProviderDependencies = [
+        "DAPR",
+        "Aspire",
+        "Keycloak",
+        "external network",
+        "persisted shared state",
+    ];
+    private static readonly string[] ProviderStartupGuards = [
+        "unique loopback port",
+        "health probe",
+        "bounded startup timeout",
+        "stale process detection",
+        "process cleanup on failure",
+    ];
 
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) {
         WriteIndented = true,
@@ -125,7 +139,7 @@ public sealed class EventStorePactContractTests {
     [Trait("Category", "Contract")]
     public async Task ETagContractGuards_RejectUnsafeValidatorsBeforeSend() {
         RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK));
-        IQueryService sut = NewQueryClient(handler, new NoCache());
+        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache());
 
         QueryRequest tooMany = QueryRequest(ETags: Enumerable.Range(0, 11).Select(i => $"\"etag-{i}\"").ToArray());
         _ = await Should.ThrowAsync<ArgumentException>(() => sut.QueryAsync<OrderProjection>(tooMany, TestContext.Current.CancellationToken));
@@ -166,7 +180,7 @@ public sealed class EventStorePactContractTests {
                 headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(2));
                 headers.Add("X-Correlation-ID", "corr-command-accepted");
             }));
-        ICommandService sut = NewCommandClient(handler);
+        EventStoreCommandClient sut = NewCommandClient(handler);
 
         CommandResult result = await sut.DispatchAsync(Command(), TestContext.Current.CancellationToken);
 
@@ -194,7 +208,7 @@ public sealed class EventStorePactContractTests {
         await VerifyPactNetInteractionAsync(
             interaction,
             async mockServerUri => {
-                ICommandService mockSut = NewCommandClient(mockServerUri);
+                EventStoreCommandClient mockSut = NewCommandClient(mockServerUri);
                 CommandResult mockResult = await mockSut.DispatchAsync(Command(), TestContext.Current.CancellationToken);
                 mockResult.MessageId.ShouldBe(SyntheticMessageId);
                 mockResult.Status.ShouldBe("Accepted");
@@ -221,7 +235,7 @@ public sealed class EventStorePactContractTests {
                     headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(5));
                 }
             }));
-        ICommandService sut = NewCommandClient(handler);
+        EventStoreCommandClient sut = NewCommandClient(handler);
 
         Exception ex = await Should.ThrowAsync<Exception>(() => sut.DispatchAsync(Command(), TestContext.Current.CancellationToken));
         ex.GetType().Name.ShouldBe(classifierExpectation);
@@ -239,7 +253,7 @@ public sealed class EventStorePactContractTests {
         await VerifyPactNetInteractionAsync(
             interaction,
             async mockServerUri => {
-                ICommandService mockSut = NewCommandClient(mockServerUri);
+                EventStoreCommandClient mockSut = NewCommandClient(mockServerUri);
                 Exception mockEx = await Should.ThrowAsync<Exception>(() => mockSut.DispatchAsync(Command(), TestContext.Current.CancellationToken));
                 mockEx.GetType().Name.ShouldBe(classifierExpectation);
             });
@@ -252,7 +266,7 @@ public sealed class EventStorePactContractTests {
             HttpStatusCode.OK,
             payload,
             headers => headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"etag-query-1\"")));
-        IQueryService sut = NewQueryClient(handler, new NoCache());
+        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache());
 
         QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(QueryRequest(), TestContext.Current.CancellationToken);
 
@@ -271,7 +285,7 @@ public sealed class EventStorePactContractTests {
         await VerifyPactNetInteractionAsync(
             interaction,
             async mockServerUri => {
-                IQueryService mockSut = NewQueryClient(mockServerUri, new NoCache());
+                EventStoreQueryClient mockSut = NewQueryClient(mockServerUri, new NoCache());
                 QueryResult<OrderProjection> mockResult = await mockSut.QueryAsync<OrderProjection>(QueryRequest(), TestContext.Current.CancellationToken);
                 mockResult.ETag.ShouldBe("\"etag-query-1\"");
             });
@@ -286,7 +300,7 @@ public sealed class EventStorePactContractTests {
         string classifierExpectation) {
         string body = ProblemDetails((int)status, providerState);
         RecordingHandler handler = new(_ => Response(status, body));
-        IQueryService sut = NewQueryClient(handler, new NoCache());
+        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache());
 
         Exception ex = await Should.ThrowAsync<Exception>(() => sut.QueryAsync<OrderProjection>(QueryRequest(), TestContext.Current.CancellationToken));
         ex.GetType().Name.ShouldBe(classifierExpectation);
@@ -301,7 +315,7 @@ public sealed class EventStorePactContractTests {
         await VerifyPactNetInteractionAsync(
             interaction,
             async mockServerUri => {
-                IQueryService mockSut = NewQueryClient(mockServerUri, new NoCache());
+                EventStoreQueryClient mockSut = NewQueryClient(mockServerUri, new NoCache());
                 Exception mockEx = await Should.ThrowAsync<Exception>(() => mockSut.QueryAsync<OrderProjection>(QueryRequest(), TestContext.Current.CancellationToken));
                 mockEx.GetType().Name.ShouldBe(classifierExpectation);
             });
@@ -315,7 +329,7 @@ public sealed class EventStorePactContractTests {
             HttpStatusCode.NotModified,
             body: null,
             headers => headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"etag-cache-1\"")));
-        IQueryService sut = NewQueryClient(
+        EventStoreQueryClient sut = NewQueryClient(
             handler,
             new SeededCache("\"etag-cache-1\"", cachedPayload));
 
@@ -337,7 +351,7 @@ public sealed class EventStorePactContractTests {
         await VerifyPactNetInteractionAsync(
             interaction,
             async mockServerUri => {
-                IQueryService mockSut = NewQueryClient(
+                EventStoreQueryClient mockSut = NewQueryClient(
                     mockServerUri,
                     new SeededCache("\"etag-cache-1\"", cachedPayload));
                 QueryResult<OrderProjection> mockResult = await mockSut.QueryAsync<OrderProjection>(
@@ -355,7 +369,7 @@ public sealed class EventStorePactContractTests {
             HttpStatusCode.NotModified,
             body: null,
             headers => headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"etag-caller-1\"")));
-        IQueryService sut = NewQueryClient(handler, new NoCache());
+        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache());
 
         QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(
             QueryRequest(ETag: "\"etag-caller-1\""),
@@ -375,7 +389,7 @@ public sealed class EventStorePactContractTests {
         await VerifyPactNetInteractionAsync(
             interaction,
             async mockServerUri => {
-                IQueryService mockSut = NewQueryClient(mockServerUri, new NoCache());
+                EventStoreQueryClient mockSut = NewQueryClient(mockServerUri, new NoCache());
                 QueryResult<OrderProjection> mockResult = await mockSut.QueryAsync<OrderProjection>(
                     QueryRequest(ETag: "\"etag-caller-1\""),
                     TestContext.Current.CancellationToken);
@@ -388,7 +402,7 @@ public sealed class EventStorePactContractTests {
 
     private static async Task<ContractInteraction> BuildQueryMultipleValidatorsInteraction() {
         RecordingHandler handler = new(_ => Response(HttpStatusCode.OK, """{"payload":[{"id":"order-1","status":"Pending"}],"totalCount":1}"""));
-        IQueryService sut = NewQueryClient(handler, new NoCache());
+        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache());
 
         _ = await sut.QueryAsync<OrderProjection>(
             QueryRequest(ETags: ["\"etag-1\"", "\"etag-2\"", "\"etag-3\""]),
@@ -406,7 +420,7 @@ public sealed class EventStorePactContractTests {
         await VerifyPactNetInteractionAsync(
             interaction,
             async mockServerUri => {
-                IQueryService mockSut = NewQueryClient(mockServerUri, new NoCache());
+                EventStoreQueryClient mockSut = NewQueryClient(mockServerUri, new NoCache());
                 _ = await mockSut.QueryAsync<OrderProjection>(
                     QueryRequest(ETags: ["\"etag-1\"", "\"etag-2\"", "\"etag-3\""]),
                     TestContext.Current.CancellationToken);
@@ -417,7 +431,7 @@ public sealed class EventStorePactContractTests {
 
     private static async Task<ContractInteraction> BuildCommandAuthTenantPropagationInteraction() {
         RecordingHandler handler = new(_ => Response(HttpStatusCode.Accepted, """{"correlationId":"corr-auth-tenant"}"""));
-        ICommandService sut = NewCommandClient(handler, tenant: "Tenant_Contract_Case");
+        EventStoreCommandClient sut = NewCommandClient(handler, tenant: "Tenant_Contract_Case");
 
         _ = await sut.DispatchAsync(Command(tenantId: "Tenant_Contract_Case"), TestContext.Current.CancellationToken);
 
@@ -436,7 +450,7 @@ public sealed class EventStorePactContractTests {
         await VerifyPactNetInteractionAsync(
             interaction,
             async mockServerUri => {
-                ICommandService mockSut = NewCommandClient(mockServerUri, tenant: "Tenant_Contract_Case");
+                EventStoreCommandClient mockSut = NewCommandClient(mockServerUri, tenant: "Tenant_Contract_Case");
                 _ = await mockSut.DispatchAsync(Command(tenantId: "Tenant_Contract_Case"), TestContext.Current.CancellationToken);
             });
 
@@ -445,7 +459,7 @@ public sealed class EventStorePactContractTests {
 
     private static async Task<ContractInteraction> BuildQueryAuthTenantPropagationInteraction() {
         RecordingHandler handler = new(_ => Response(HttpStatusCode.OK, """{"payload":[{"id":"order-1","status":"Pending"}],"totalCount":1}"""));
-        IQueryService sut = NewQueryClient(handler, new NoCache(), tenant: "Tenant_Contract_Case");
+        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache(), tenant: "Tenant_Contract_Case");
 
         _ = await sut.QueryAsync<OrderProjection>(
             QueryRequest(TenantId: "Tenant_Contract_Case"),
@@ -465,7 +479,7 @@ public sealed class EventStorePactContractTests {
         await VerifyPactNetInteractionAsync(
             interaction,
             async mockServerUri => {
-                IQueryService mockSut = NewQueryClient(mockServerUri, new NoCache(), tenant: "Tenant_Contract_Case");
+                EventStoreQueryClient mockSut = NewQueryClient(mockServerUri, new NoCache(), tenant: "Tenant_Contract_Case");
                 _ = await mockSut.QueryAsync<OrderProjection>(
                     QueryRequest(TenantId: "Tenant_Contract_Case"),
                     TestContext.Current.CancellationToken);
@@ -617,8 +631,8 @@ public sealed class EventStorePactContractTests {
         WriteJson(Path.Combine(pactDirectory, "provider-state-catalog.json"), new {
             provider = ProviderName,
             defaultIsolation = "state reset per interaction; tenant/user/aggregate/cache data scoped by verification run id",
-            forbiddenDependencies = new[] { "DAPR", "Aspire", "Keycloak", "external network", "persisted shared state" },
-            startupGuards = new[] { "unique loopback port", "health probe", "bounded startup timeout", "stale process detection", "process cleanup on failure" },
+            forbiddenDependencies = ForbiddenProviderDependencies,
+            startupGuards = ProviderStartupGuards,
             states,
         });
     }
@@ -668,7 +682,7 @@ public sealed class EventStorePactContractTests {
         File.WriteAllText(Path.Combine(pactDirectory, "provider-verification-handoff.md"), text, Encoding.UTF8);
     }
 
-    private static ICommandService NewCommandClient(RecordingHandler handler, string tenant = SyntheticTenant)
+    private static EventStoreCommandClient NewCommandClient(RecordingHandler handler, string tenant = SyntheticTenant)
         => new EventStoreCommandClient(
             new SingleClientFactory(handler),
             Options(),
@@ -677,7 +691,7 @@ public sealed class EventStorePactContractTests {
             EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
-    private static ICommandService NewCommandClient(Uri baseAddress, string tenant = SyntheticTenant)
+    private static EventStoreCommandClient NewCommandClient(Uri baseAddress, string tenant = SyntheticTenant)
         => new EventStoreCommandClient(
             new BaseAddressClientFactory(baseAddress),
             Options(),
@@ -686,7 +700,7 @@ public sealed class EventStorePactContractTests {
             EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
-    private static IQueryService NewQueryClient(RecordingHandler handler, IETagCache cache, string tenant = SyntheticTenant)
+    private static EventStoreQueryClient NewQueryClient(RecordingHandler handler, IETagCache cache, string tenant = SyntheticTenant)
         => new EventStoreQueryClient(
             new SingleClientFactory(handler),
             Options(),
@@ -696,7 +710,7 @@ public sealed class EventStorePactContractTests {
             new EventStoreTestSupport.RecordingAuthRedirector(),
             NullLogger<EventStoreQueryClient>.Instance);
 
-    private static IQueryService NewQueryClient(Uri baseAddress, IETagCache cache, string tenant = SyntheticTenant)
+    private static EventStoreQueryClient NewQueryClient(Uri baseAddress, IETagCache cache, string tenant = SyntheticTenant)
         => new EventStoreQueryClient(
             new BaseAddressClientFactory(baseAddress),
             Options(),
@@ -923,7 +937,7 @@ public sealed class EventStorePactContractTests {
             "set-cookie",
         ];
 
-        public static IReadOnlyList<string> FindLeaks(string text) {
+        public static List<string> FindLeaks(string text) {
             List<string> leaks = [];
             string normalized = text.Replace(SyntheticBearerToken, "ALLOWLISTED_SYNTHETIC_TOKEN", StringComparison.Ordinal);
             string lower = normalized.ToLowerInvariant();

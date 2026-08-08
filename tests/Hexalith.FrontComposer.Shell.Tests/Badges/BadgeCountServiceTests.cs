@@ -45,9 +45,9 @@ public sealed class BadgeCountServiceTests {
         public void NotifyChanged(string projectionType) => ProjectionChanged?.Invoke(projectionType);
     }
 
-    private static IServiceProvider EmptyProvider() => new ServiceCollection().BuildServiceProvider();
+    private static ServiceProvider EmptyProvider() => new ServiceCollection().BuildServiceProvider();
 
-    private static IServiceProvider WithNotifier(IProjectionChangeNotifier notifier) {
+    private static ServiceProvider WithNotifier(IProjectionChangeNotifier notifier) {
         ServiceCollection services = new();
         _ = services.AddSingleton(notifier);
         return services.BuildServiceProvider();

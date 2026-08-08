@@ -13,6 +13,8 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Communication;
 /// not silently regress the typed exception taxonomy.
 /// </summary>
 public class Story52ResponseSurfaceTests {
+    private static readonly string[] QuantityValidationErrors = ["must be > 0"];
+
     [Fact]
     public void QueryResult_NotModified_HasEmptyItems_ZeroCount_AndIsNotModifiedFlag() {
         var result = QueryResult<string>.NotModified("\"v1\"");
@@ -41,7 +43,7 @@ public class Story52ResponseSurfaceTests {
             Status: 400,
             EntityLabel: null,
             ValidationErrors: new Dictionary<string, IReadOnlyList<string>> {
-                ["Quantity"] = new[] { "must be > 0" },
+                ["Quantity"] = QuantityValidationErrors,
             },
             GlobalErrors: System.Array.Empty<string>());
 

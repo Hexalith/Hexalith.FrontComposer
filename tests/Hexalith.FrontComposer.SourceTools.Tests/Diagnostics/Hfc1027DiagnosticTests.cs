@@ -71,7 +71,7 @@ namespace TestDomain
 
         Diagnostic[] hfc1027 = [.. diagnostics.Where(d => d.Id == "HFC1027")];
         hfc1027.Length.ShouldBe(1);
-        string message = hfc1027[0].GetMessage();
+        string message = hfc1027[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         message.ShouldContain("OrderProjection");
         message.ShouldContain("Tags");
         message.ShouldContain("Ids");
@@ -92,7 +92,7 @@ namespace TestDomain
         diagnostics.Any(d => d.Id == "HFC1027").ShouldBeFalse();
     }
 
-    private static IReadOnlyList<Diagnostic> RunGenerator(string source) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunGenerator(string source) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

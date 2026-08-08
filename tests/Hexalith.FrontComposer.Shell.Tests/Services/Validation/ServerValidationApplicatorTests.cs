@@ -13,6 +13,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services.Validation;
 /// nested, hostile, or global errors to a form-level MessageBar list.
 /// </summary>
 public class ServerValidationApplicatorTests {
+    private static readonly string[] GlobalPolicyErrors = ["tenant-wide policy block"];
+
     [Fact]
     public void Apply_KnownField_AddsValidationMessageToStore() {
         SampleCommand model = new();
@@ -83,7 +85,7 @@ public class ServerValidationApplicatorTests {
             Status: 400,
             EntityLabel: null,
             ValidationErrors: new Dictionary<string, IReadOnlyList<string>>(System.StringComparer.Ordinal),
-            GlobalErrors: new[] { "tenant-wide policy block" });
+            GlobalErrors: GlobalPolicyErrors);
         CommandValidationException exception = new(problem);
 
         IReadOnlyList<string> formLevel = ServerValidationApplicator.Apply(store, exception, allowlist, model);

@@ -107,7 +107,7 @@ public sealed class DriftCultureInvarianceTests {
         && int.TryParse(id.AsSpan("HFC".Length), NumberStyles.None, CultureInfo.InvariantCulture, out int n)
         && n is >= 1058 and <= 1099;
 
-    private static IReadOnlyList<Diagnostic> RunUnderCulture(CultureInfo culture) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunUnderCulture(CultureInfo culture) {
         CultureInfo prior = CultureInfo.CurrentCulture;
         CultureInfo priorUi = CultureInfo.CurrentUICulture;
         try {

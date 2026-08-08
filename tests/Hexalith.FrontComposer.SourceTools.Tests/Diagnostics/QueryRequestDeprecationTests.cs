@@ -84,8 +84,8 @@ public sealed class QueryRequestDeprecationTests
         Diagnostic[] obsolete = diagnostics.Where(diagnostic => diagnostic.Id == "CS0618").ToArray();
 
         obsolete.Length.ShouldBe(12);
-        obsolete.All(diagnostic => diagnostic.GetMessage().Contains("HFC0001", StringComparison.Ordinal)).ShouldBeTrue();
-        obsolete.All(diagnostic => diagnostic.GetMessage().Contains("v3.0.0", StringComparison.Ordinal)).ShouldBeTrue();
+        obsolete.All(diagnostic => diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("HFC0001", StringComparison.Ordinal)).ShouldBeTrue();
+        obsolete.All(diagnostic => diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("v3.0.0", StringComparison.Ordinal)).ShouldBeTrue();
         diagnostics.Where(diagnostic => diagnostic.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
     }
 

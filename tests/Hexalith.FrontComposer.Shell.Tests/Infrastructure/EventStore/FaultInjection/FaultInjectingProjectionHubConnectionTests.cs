@@ -375,8 +375,9 @@ public sealed class FaultInjectingProjectionHubConnectionTests {
         await sut.RaiseStateAsync(HarnessConnectionStates.Reconnected("conn-2")).ConfigureAwait(true);
 
         calls.ShouldBe(0);
-        _ = await Should.ThrowAsync<ObjectDisposedException>(
+        ObjectDisposedException disposed = await Should.ThrowAsync<ObjectDisposedException>(
             async () => await sut.StartAsync(TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
+        disposed.ObjectName.ShouldBe(typeof(FaultInjectingProjectionHubConnection).FullName);
     }
 
     [Fact]
@@ -451,7 +452,8 @@ public sealed class FaultInjectingProjectionHubConnectionTests {
 
         Exception? failure = await Record.ExceptionAsync(async () => await blocked.ConfigureAwait(true)).ConfigureAwait(true);
         failure.ShouldNotBeNull();
-        failure.ShouldBeOfType<ObjectDisposedException>();
+        ObjectDisposedException disposed = failure.ShouldBeOfType<ObjectDisposedException>();
+        disposed.ObjectName.ShouldBe(typeof(FaultInjectingProjectionHubConnection).FullName);
     }
 
     [Fact]

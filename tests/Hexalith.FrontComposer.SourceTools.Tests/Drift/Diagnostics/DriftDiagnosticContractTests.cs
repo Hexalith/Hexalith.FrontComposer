@@ -72,9 +72,9 @@ public sealed class DriftDiagnosticContractTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(SourceWithMissingMember(), BaselineProjectionRemovedMember);
 
         Diagnostic? drift = diagnostics.FirstOrDefault(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
-                                                         && d.GetMessage().Contains("Removed", StringComparison.Ordinal));
+                                                         && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Removed", StringComparison.Ordinal));
         _ = drift.ShouldNotBeNull();
-        string message = drift!.GetMessage();
+        string message = drift!.GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         // Story 9-1 review CB-6: AC12 enumerates "What, Expected, Got, Fix, and DocsLink fields".
         // Production templates do emit "What:" — assert it explicitly so a regression that drops
         // the leading What: clause is caught.
@@ -146,7 +146,7 @@ public sealed class DriftDiagnosticContractTests {
         }
         """;
 
-    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string source, string baselineJson) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

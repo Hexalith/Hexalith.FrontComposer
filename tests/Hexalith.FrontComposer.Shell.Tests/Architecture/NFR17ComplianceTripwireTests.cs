@@ -77,7 +77,7 @@ public sealed class NFR17ComplianceTripwireTests {
         const int expectedCallSites = 7;
         string stateFolder = LocateStateFolder();
         int actualCallSites = Directory.EnumerateFiles(stateFolder, "*.cs", SearchOption.AllDirectories)
-            .Sum(f => SetAsyncCall.Matches(File.ReadAllText(f)).Count);
+            .Sum(f => SetAsyncCall.Count(File.ReadAllText(f)));
 
         actualCallSites.ShouldBe(expectedCallSites,
             $"SetAsync call site count changed from {expectedCallSites} to {actualCallSites}. "

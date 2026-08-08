@@ -275,7 +275,7 @@ public sealed class AppHostNuGetAuditPolicyTests {
         return matches.Length == 1 ? matches[0].Value.Trim() : string.Empty;
     }
 
-    private static IReadOnlyCollection<string> SplitWarningCodes(string? value) => (value ?? string.Empty)
+    private static string[] SplitWarningCodes(string? value) => (value ?? string.Empty)
         .Split([';', ',', ' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
     private static string ReviewedSuppressionXml(

@@ -377,7 +377,7 @@ public sealed class Story11_5ResolutionTests {
     /// </summary>
     [Fact]
     public void DN13_EnumDisplayLabels_DoNotLeakIntoAgentContractValues() {
-        string[] enumNames = [.. Enum.GetNames(typeof(McpSchemaNegotiationResultKind))];
+        string[] enumNames = Enum.GetNames<McpSchemaNegotiationResultKind>();
 
         McpSchemaNegotiationResult[] results = [
             McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(

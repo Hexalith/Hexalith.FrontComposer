@@ -18,14 +18,14 @@ namespace Hexalith.FrontComposer.Mcp.Tests;
 public sealed class AuthContextAccessorTests {
     [Fact]
     public void NoAuth_NoApiKey_FailsClosed_AuthFailed() {
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out _, configure: null);
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out _, configure: null);
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
     }
 
     [Fact]
     public void EmptyApiKeyHeader_FailsClosed() {
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = string.Empty;
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
@@ -34,7 +34,7 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void WhitespaceApiKeyHeader_FailsClosed() {
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = "   ";
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
@@ -43,7 +43,7 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void MultiValuedApiKeyHeader_FailsClosed() {
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = new StringValues(["valid-key", "extra"]);
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
@@ -52,7 +52,7 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void UnknownApiKey_FailsClosed() {
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = "wrong-key";
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
@@ -61,7 +61,7 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void ValidApiKey_ResolvesContext() {
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: o => o.ApiKeys["valid-key"] = new("tenant-a", "agent-a"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = "valid-key";
 
         FrontComposerMcpAgentContext context = sut.GetContext();
@@ -73,7 +73,7 @@ public sealed class AuthContextAccessorTests {
     public void ApiKey_TakesPrecedence_OverIdentityClaims() {
         // When both API key and authenticated claims are present, the API key wins. This avoids
         // privilege ambiguity if an attacker leaks both an API key and a stale session token.
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(
             out HttpContext http,
             configure: o => o.ApiKeys["valid-key"] = new("tenant-from-key", "agent-from-key"));
         http.Request.Headers["X-FrontComposer-Mcp-Key"] = "valid-key";
@@ -86,7 +86,7 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void AuthenticatedClaims_MissingTenant_FailsClosed_TenantMissing() {
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.User = new ClaimsPrincipal(new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "agent-a")], "jwt"));
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(sut.GetContext);
@@ -95,7 +95,7 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void AuthenticatedClaims_WhitespaceTenant_FailsClosed_TenantMissing() {
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.User = new ClaimsPrincipal(new ClaimsIdentity([
             new Claim("TenantId", "   "),
             new Claim(ClaimTypes.NameIdentifier, "agent-a"),
@@ -109,7 +109,7 @@ public sealed class AuthContextAccessorTests {
     public void AuthenticatedClaims_NameIdentifierUri_Resolves() {
         // P-2 — the default claim list must resolve a real OIDC/JWT principal whose user id is
         // mapped to the WS-* nameidentifier URI.
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.User = AuthenticatedUser(tenant: "tenant-a", user: "agent-a");
 
         FrontComposerMcpAgentContext context = sut.GetContext();
@@ -121,7 +121,7 @@ public sealed class AuthContextAccessorTests {
     public void AuthenticatedClaims_PreservesIdpRoles_ForFutureGate() {
         // P-6 — Story 8-2 will read role/group claims from context.Principal; the synthetic
         // principal must carry through every claim other than TenantId/UserId duplicates.
-        IFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
+        HttpFrontComposerMcpAgentContextAccessor sut = BuildAccessor(out HttpContext http, configure: null);
         http.User = new ClaimsPrincipal(new ClaimsIdentity([
             new Claim("TenantId", "tenant-a"),
             new Claim(ClaimTypes.NameIdentifier, "agent-a"),
@@ -369,7 +369,7 @@ public sealed class AuthContextAccessorTests {
         rotated.UserId.ShouldBe("agent-b");
     }
 
-    private static IFrontComposerMcpAgentContextAccessor BuildAccessor(
+    private static HttpFrontComposerMcpAgentContextAccessor BuildAccessor(
         out HttpContext http,
         Action<FrontComposerMcpOptions>? configure) {
         DefaultHttpContext context = new();

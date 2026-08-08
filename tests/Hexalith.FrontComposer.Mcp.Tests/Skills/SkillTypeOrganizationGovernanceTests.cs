@@ -12,6 +12,11 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Skills;
 
 [Trait("Category", "Governance")]
 public sealed class SkillTypeOrganizationGovernanceTests {
+    private static readonly string[] ExpectedInternalReferences = [
+        "SkillCorpusParser.Sha256Hex",
+        "SkillCorpusParser.Sha256Hex",
+    ];
+
     private const string SkillNamespace = "Hexalith.FrontComposer.Mcp.Skills";
     internal static readonly string[] RuntimeTypeNames = [
         "SkillCorpusDiagnosticCategory",
@@ -79,7 +84,7 @@ public sealed class SkillTypeOrganizationGovernanceTests {
                 + "} } } }\n"),
         ];
 
-        IReadOnlyList<string> violations = FindOrganizationViolations(sources);
+        List<string> violations = FindOrganizationViolations(sources);
 
         violations.Count.ShouldBe(1);
         foreach (string declarationName in new[] { "First", "Second", "Third", "Fourth", "Fifth" }) {
@@ -203,14 +208,11 @@ public sealed class SkillTypeOrganizationGovernanceTests {
             }
         }
 
-        internalMcpReferences.Order(StringComparer.Ordinal).ShouldBe(new[] {
-            "SkillCorpusParser.Sha256Hex",
-            "SkillCorpusParser.Sha256Hex",
-        });
+        internalMcpReferences.Order(StringComparer.Ordinal).ShouldBe(ExpectedInternalReferences);
     }
 
     private static bool IsExpectedSourceGenerationDiagnostic(Diagnostic diagnostic) {
-        string message = diagnostic.GetMessage();
+        string message = diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         return diagnostic.Id is "CS0117" or "CS0534"
                 && message.Contains("SkillBenchmarkJsonContext", StringComparison.Ordinal)
             || diagnostic.Id == "CS7036"
@@ -233,15 +235,15 @@ public sealed class SkillTypeOrganizationGovernanceTests {
         return true;
     }
 
-    private static IReadOnlyList<string> FindOrganizationViolations(
+    private static List<string> FindOrganizationViolations(
         IEnumerable<(string Path, string Content)> sources) {
         List<string> violations = [];
 
         foreach ((string path, string content) in sources) {
-            IReadOnlyList<MemberDeclarationSyntax> declarations = GetDirectDeclarations(content);
-            if (declarations.Count != 1) {
+            MemberDeclarationSyntax[] declarations = GetDirectDeclarations(content);
+            if (declarations.Length != 1) {
                 violations.Add(
-                    $"{path}: expected one declaration; found {declarations.Count} "
+                    $"{path}: expected one declaration; found {declarations.Length} "
                     + $"({string.Join(", ", declarations.Select(GetDeclarationName))})");
                 continue;
             }
@@ -256,7 +258,7 @@ public sealed class SkillTypeOrganizationGovernanceTests {
         return violations;
     }
 
-    private static IReadOnlyList<MemberDeclarationSyntax> GetDirectDeclarations(string source) {
+    private static MemberDeclarationSyntax[] GetDirectDeclarations(string source) {
         string allConditionalBranches = ActivateAllConditionalBranches(source);
         CompilationUnitSyntax root = CSharpSyntaxTree.ParseText(
             allConditionalBranches,

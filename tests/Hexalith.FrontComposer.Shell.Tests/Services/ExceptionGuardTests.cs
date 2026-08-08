@@ -10,10 +10,16 @@ public sealed class ExceptionGuardTests {
     [Fact]
     public void IsFatal_FourAuthoritativeFatalTypes_ReturnsTrue() {
         Exception[] exceptions = [
+#pragma warning disable CA2201 // This intentional fatal-exception construction is the fixture under test.
             new OutOfMemoryException(),
+#pragma warning restore CA2201
+#pragma warning disable CA2201 // This intentional fatal-exception construction is the fixture under test.
             new StackOverflowException(),
+#pragma warning restore CA2201
             (ThreadAbortException)RuntimeHelpers.GetUninitializedObject(typeof(ThreadAbortException)),
+#pragma warning disable CA2201 // This intentional fatal-exception construction is the fixture under test.
             new AccessViolationException(),
+#pragma warning restore CA2201
         ];
 
         exceptions.ShouldAllBe(exception => ExceptionGuard.IsFatal(exception));

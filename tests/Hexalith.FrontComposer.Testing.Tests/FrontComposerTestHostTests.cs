@@ -69,7 +69,8 @@ public sealed class FrontComposerTestHostTests {
 
     [Fact]
     public async Task AddFrontComposerTestHostAsync_DuringHostSetup_CompositionInitializesStore() {
-        await using BunitContext context = new();
+        BunitContext context = new();
+        await using var contextLifetime = context.ConfigureAwait(true);
         using FrontComposerTestHostBuilder host = await context.Services.AddFrontComposerTestHostAsync(
             context,
             options => options.StoreInitialization = StoreInitializationMode.DuringHostSetup,
@@ -91,7 +92,8 @@ public sealed class FrontComposerTestHostTests {
 
     [Fact]
     public async Task AddFrontComposerTestHost_CustomReplacementBeforeStoreInitialization_IsHonored() {
-        await using BunitContext context = new();
+        BunitContext context = new();
+        await using var contextLifetime = context.ConfigureAwait(true);
         FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
             context,
             options => {
@@ -222,7 +224,8 @@ public sealed class FrontComposerTestHostTests {
 
     [Fact]
     public async Task QueryAndPageLoaderEvidence_MaxEvidenceRecords_IsBounded() {
-        await using BunitContext context = new();
+        BunitContext context = new();
+        await using var contextLifetime = context.ConfigureAwait(true);
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
             context,
             options => options.MaxEvidenceRecords = 2);
@@ -589,7 +592,8 @@ public sealed class FrontComposerTestHostTests {
 
     [Fact]
     public async Task CounterProjectionView_WithCompositionHost_RendersDataGridAndViewOverride() {
-        await using BunitContext context = new();
+        BunitContext context = new();
+        await using var contextLifetime = context.ConfigureAwait(true);
         FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
         _ = host.AddDomainAssembly<CounterDomain>();
         _ = context.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
@@ -599,7 +603,7 @@ public sealed class FrontComposerTestHostTests {
         IDispatcher dispatcher = context.Services.GetRequiredService<IDispatcher>();
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
             Guid.NewGuid().ToString(),
-            [new CounterProjection { Id = "counter-1", Count = 12, LastUpdated = DateTimeOffset.Parse("2026-04-14T00:00:00Z") }]));
+            [new CounterProjection { Id = "counter-1", Count = 12, LastUpdated = DateTimeOffset.Parse("2026-04-14T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture) }]));
 
         IRenderedComponent<CounterProjectionView> cut = context.Render<CounterProjectionView>();
 
@@ -611,7 +615,8 @@ public sealed class FrontComposerTestHostTests {
 
     [Fact]
     public async Task CounterIncrementCommandRenderer_WithCompositionHost_DispatchesThroughFakeService() {
-        await using BunitContext context = new();
+        BunitContext context = new();
+        await using var contextLifetime = context.ConfigureAwait(true);
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
         _ = host.AddDomainAssembly<CounterDomain>();
         IStore store = context.Services.GetRequiredService<IStore>();

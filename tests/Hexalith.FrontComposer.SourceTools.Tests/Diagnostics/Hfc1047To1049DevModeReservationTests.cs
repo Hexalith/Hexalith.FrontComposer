@@ -21,7 +21,7 @@ public class Hfc1047To1049DevModeReservationTests {
         descriptor.DefaultSeverity.ShouldBe(DiagnosticSeverity.Info);
         descriptor.Category.ShouldBe("HexalithFrontComposer");
         descriptor.IsEnabledByDefault.ShouldBeTrue();
-        descriptor.Title.ToString().ShouldContain("annotation site", Case.Insensitive);
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("annotation site", Case.Insensitive);
     }
 
     [Fact]
@@ -32,7 +32,7 @@ public class Hfc1047To1049DevModeReservationTests {
         descriptor.DefaultSeverity.ShouldBe(DiagnosticSeverity.Info);
         descriptor.Category.ShouldBe("HexalithFrontComposer");
         descriptor.IsEnabledByDefault.ShouldBeTrue();
-        descriptor.Title.ToString().ShouldContain("emission level", Case.Insensitive);
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("emission level", Case.Insensitive);
     }
 
     [Fact]
@@ -43,7 +43,7 @@ public class Hfc1047To1049DevModeReservationTests {
         descriptor.DefaultSeverity.ShouldBe(DiagnosticSeverity.Info);
         descriptor.Category.ShouldBe("HexalithFrontComposer");
         descriptor.IsEnabledByDefault.ShouldBeTrue();
-        descriptor.Title.ToString().ShouldContain("stale", Case.Insensitive);
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("stale", Case.Insensitive);
     }
 
     [Fact]

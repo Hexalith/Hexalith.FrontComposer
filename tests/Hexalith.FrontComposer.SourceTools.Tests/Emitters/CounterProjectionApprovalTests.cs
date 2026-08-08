@@ -190,7 +190,7 @@ public sealed class CounterProjectionApprovalTests {
 
     private static IEnumerable<(int LineNumber, string Content)> EnumerateDiffLines(
         string regenerated,
-        IReadOnlyList<(int LineNumber, string Content)> approvedLines) {
+        List<(int LineNumber, string Content)> approvedLines) {
         List<(int LineNumber, string Content)> regeneratedLines = NormalizeLines(regenerated);
         int approvedIndex = 0;
 

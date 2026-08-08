@@ -37,7 +37,7 @@ public sealed class McpMarkdownProjectionRendererTests {
 
         McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
             descriptor,
-            [new InvoiceProjection("run /approve | <script>\n- [ ] task", 7, DateTimeOffset.Parse("2026-05-03T10:15:00Z"), BillingStatus.Blocked)],
+            [new InvoiceProjection("run /approve | <script>\n- [ ] task", 7, DateTimeOffset.Parse("2026-05-03T10:15:00Z", System.Globalization.CultureInfo.InvariantCulture), BillingStatus.Blocked)],
             TotalCount: 1), new FrontComposerMcpOptions(), TestContext.Current.CancellationToken);
 
         result.IsSuccess.ShouldBeTrue();
@@ -135,9 +135,9 @@ public sealed class McpMarkdownProjectionRendererTests {
         McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
             descriptor,
             [
-                new InvoiceProjection("Old", 10, DateTimeOffset.Parse("2026-05-01T08:00:00Z"), BillingStatus.Pending),
+                new InvoiceProjection("Old", 10, DateTimeOffset.Parse("2026-05-01T08:00:00Z", System.Globalization.CultureInfo.InvariantCulture), BillingStatus.Pending),
                 new InvoiceProjection("No date", 30, null, BillingStatus.Blocked),
-                new InvoiceProjection("New", 20, DateTimeOffset.Parse("2026-05-03T08:00:00Z"), BillingStatus.Blocked),
+                new InvoiceProjection("New", 20, DateTimeOffset.Parse("2026-05-03T08:00:00Z", System.Globalization.CultureInfo.InvariantCulture), BillingStatus.Blocked),
             ],
             TotalCount: 3), new FrontComposerMcpOptions(), TestContext.Current.CancellationToken);
 
@@ -356,8 +356,8 @@ public sealed class McpMarkdownProjectionRendererTests {
         McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
             descriptor,
             [
-                new InvoiceProjection("Old", 10, DateTimeOffset.Parse("2026-05-01T08:00:00Z"), BillingStatus.Pending),
-                new InvoiceProjection("New", 20, DateTimeOffset.Parse("2026-05-03T08:00:00Z"), BillingStatus.Blocked),
+                new InvoiceProjection("Old", 10, DateTimeOffset.Parse("2026-05-01T08:00:00Z", System.Globalization.CultureInfo.InvariantCulture), BillingStatus.Pending),
+                new InvoiceProjection("New", 20, DateTimeOffset.Parse("2026-05-03T08:00:00Z", System.Globalization.CultureInfo.InvariantCulture), BillingStatus.Blocked),
             ],
             TotalCount: 2),
             new FrontComposerMcpOptions { MaxProjectionTimelineEntries = 1 },

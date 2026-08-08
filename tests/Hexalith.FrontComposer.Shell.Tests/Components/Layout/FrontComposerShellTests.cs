@@ -97,7 +97,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("fc-shell-root");
             cut.Markup.ShouldContain("Hexalith FrontComposer");
-            cut.Markup.ShouldContain(DateTime.Now.Year.ToString(), Case.Sensitive);
+            cut.Markup.ShouldContain(DateTime.Now.Year.ToString(System.Globalization.CultureInfo.InvariantCulture), Case.Sensitive);
             cut.Markup.ShouldContain("48px");
             cut.Markup.ShouldNotContain("220px");
             _ = cut.FindComponent<FcSystemThemeWatcher>();
@@ -156,7 +156,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
             bool defaultFooterUsesFluentText = cut
                 .FindAll("fluent-text")
-                .Any(element => element.TextContent.Contains(DateTime.Now.Year.ToString(), StringComparison.Ordinal));
+                .Any(element => element.TextContent.Contains(DateTime.Now.Year.ToString(System.Globalization.CultureInfo.InvariantCulture), StringComparison.Ordinal));
             defaultFooterUsesFluentText.ShouldBeTrue("the default footer must render through FluentText, not as raw layout text.");
         });
     }

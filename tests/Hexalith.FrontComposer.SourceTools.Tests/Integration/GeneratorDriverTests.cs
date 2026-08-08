@@ -723,7 +723,7 @@ public partial class AllUnsupportedProjection
         Diagnostic hfc1009 = result.Diagnostics.Single(d => d.Id == "HFC1009");
         hfc1009.Severity.ShouldBe(DiagnosticSeverity.Error);
         result.Diagnostics.Single(d => d.Id == "HFC1006")
-            .GetMessage()
+            .GetMessage(System.Globalization.CultureInfo.InvariantCulture)
             .ShouldContain("correlated end-to-end");
 
         string[] fileNames = result.GeneratedTrees.Select(t => Path.GetFileName(t.FilePath)).ToArray();
@@ -741,8 +741,8 @@ public partial class AllUnsupportedProjection
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         Diagnostic diagnostic = result.Diagnostics.First(d => d.Id == "HFC1002");
-        diagnostic.GetMessage().ShouldContain("command customization path");
-        diagnostic.GetMessage().ShouldNotContain("override rendering with [ProjectionFieldSlot]");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("command customization path");
+        diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldNotContain("override rendering with [ProjectionFieldSlot]");
 
         SyntaxTree formTree = result.GeneratedTrees
             .Single(t => Path.GetFileName(t.FilePath) == "TestDomain.UnsupportedCommand.CommandForm.g.razor.cs");

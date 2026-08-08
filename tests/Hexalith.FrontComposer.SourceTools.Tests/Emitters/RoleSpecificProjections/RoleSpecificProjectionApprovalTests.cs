@@ -197,7 +197,7 @@ public class RoleSpecificProjectionApprovalTests {
         IEnumerable<Diagnostic> fcDiagnostics = diagnostics
             .Where(d => d.Id.StartsWith("HFC", StringComparison.Ordinal))
             .OrderBy(d => d.Id, StringComparer.Ordinal)
-            .ThenBy(d => d.GetMessage(), StringComparer.Ordinal);
+            .ThenBy(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture), StringComparer.Ordinal);
 
         bool any = false;
         foreach (Diagnostic diagnostic in fcDiagnostics) {
@@ -206,7 +206,7 @@ public class RoleSpecificProjectionApprovalTests {
             _ = snapshot.Append(' ');
             _ = snapshot.Append(diagnostic.Severity);
             _ = snapshot.Append(": ");
-            _ = snapshot.AppendLine(diagnostic.GetMessage());
+            _ = snapshot.AppendLine(diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture));
         }
         if (!any) {
             _ = snapshot.AppendLine("(none)");
@@ -259,7 +259,7 @@ public class RoleSpecificProjectionApprovalTests {
         return (generatedSource, result.Diagnostics);
     }
 
-    private static IReadOnlyList<Diagnostic> RunGeneratorDiagnostics(string source) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunGeneratorDiagnostics(string source) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
@@ -281,7 +281,7 @@ public class RoleSpecificProjectionApprovalTests {
         Diagnostic match = matches[0];
         match.Severity.ShouldBe(expectedSeverity, $"{diagnosticId} should be {expectedSeverity}.");
 
-        string message = match.GetMessage();
+        string message = match.GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         foreach (string fragment in expectedMessageFragments) {
             message.ShouldContain(fragment);
         }
@@ -296,6 +296,6 @@ public class RoleSpecificProjectionApprovalTests {
                 FileLinePositionSpan span = d.Location.GetLineSpan();
                 string path = string.IsNullOrWhiteSpace(span.Path) ? "<unknown>" : Path.GetFileName(span.Path);
                 int line = span.StartLinePosition.Line >= 0 ? span.StartLinePosition.Line + 1 : 0;
-                return $"{d.Id} {d.Severity} @ {path}:{line} - {d.GetMessage()}";
+                return $"{d.Id} {d.Severity} @ {path}:{line} - {d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)}";
             }));
 }
