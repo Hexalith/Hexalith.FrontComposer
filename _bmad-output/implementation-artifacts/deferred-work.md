@@ -1,5 +1,11 @@
 # Deferred Work
 
+## Deferred from: code review of spec-11-23-recommended-analyzer-repository-activation.md (2026-08-08)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-23-recommended-analyzer-repository-activation.md`
+  summary: Dual full-solution Release builds in `AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate` can contend when Governance facts run in parallel.
+  evidence: The new parity fact runs two solution builds against shared outputs; sibling Governance rebuild gates already deferred the same contention class under Story 11.22.
+
 ## Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md chunk 4 (2026-08-08)
 
 - `CommandFormEmitterTests` admission dispose ordering still anchors with `IndexOf("try")` / `IndexOf("finally")` after the submitted-log call site; a larger token containing those substrings could mis-order the assert (pre-existing; this chunk only reordered the greater-than checks).

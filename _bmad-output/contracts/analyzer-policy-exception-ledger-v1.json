@@ -1,9 +1,9 @@
 {
   "schemaVersion": "1.0",
   "contractId": "frontcomposer-analyzer-policy-exception-ledger-v1",
-  "decision": "Adopt Recommended analyzers in staged category lanes; classify every current Naming finding and warning control without enabling repository-wide Recommended mode in this phase.",
+  "decision": "Activate Recommended analyzers centrally after the staged category burn-down; classify every warning control and preserve only narrow, owner-bound exceptions.",
   "owner": "Architect + Framework Maintainer",
-  "approval": "Story 11.20 approved by Administrator on 2026-07-17; Stories 11.21-11.23 remain separately gated.",
+  "approval": "Story 11.20 approved by Administrator on 2026-07-17; Story 11.23 activation is approved by its frozen specification on 2026-08-08.",
   "baseline": {
     "commit": "d9c19a4fb837357af10f6f1aa630232f670557c4",
     "sdk": "10.0.302",
@@ -74,10 +74,31 @@
     "roslyn": "5.6.0",
     "analyzers": "Built-in .NET SDK analyzers only"
   },
+  "story1123Activation": {
+    "baselineCommit": "490447e3be5142c3793019fa5491c19b8910f899",
+    "sdk": "10.0.302",
+    "msbuild": "18.6.11.33009",
+    "roslyn": "5.6.0",
+    "utcDate": "2026-08-08T14:05:00Z",
+    "preActivationCensusCommand": "dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0 -p:AnalysisMode=Recommended -p:TreatWarningsAsErrors=false",
+    "preActivationWarnings": 0,
+    "preActivationErrors": 0,
+    "postActivationReleaseCommand": "dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0",
+    "postActivationWarnings": 0,
+    "postActivationErrors": 0,
+    "buildParity": "Canonical activated Release and an explicit -p:AnalysisMode=Recommended candidate both report 0 warnings / 0 errors.",
+    "governanceTests": 7,
+    "defaultTests": 4328,
+    "contractTests": 3,
+    "contractArtifacts": "passed",
+    "docsValidation": "passed",
+    "activation": "Directory.Build.props declares AnalysisMode=Recommended beside unchanged TreatWarningsAsErrors=true.",
+    "rollback": "A separately approved emergency rollback may remove only the root AnalysisMode declaration; it may not lower TreatWarningsAsErrors or add broad suppressions."
+  },
   "identifierInventory": {
     "algorithm": "SHA-256 over sorted repo-relative path, one-based line, and C# identifier token containing an underscore",
     "testUnderscoreIdentifierTokens": 6359,
-    "testInventorySha256": "6dd0420bb690399896ddf8c7d130fa7dc32ae82d91787be299668355a618ed0d",
+    "testInventorySha256": "7d029f6394dadf923fe591e2ce379ccf8f991ffc61146b84b11e0e79ed45042e",
     "contractsUnderscoreIdentifierTokens": 90,
     "contractsInventorySha256": "a06a2c10b7bcc9e2abd18b585af55e93d70bd3ad85a20519791590313ffcb3b7"
   },
@@ -152,6 +173,19 @@
       "reviewDate": "2027-07-17",
       "trigger": "Revalidate on SDK feature-band or central build-policy change.",
       "evidence": "Effective MSBuild evaluation for representative projects and both Contracts target frameworks."
+    },
+    {
+      "key": "policy-root-analysis-mode",
+      "sourceKind": "MSBuild",
+      "exactScope": "Directory.Build.props",
+      "mechanism": "AnalysisMode=Recommended",
+      "decision": "remain",
+      "rationale": "Recommended is the approved repository-wide analyzer posture and v1.0 release gate.",
+      "owner": "Architect + Framework Maintainer + Release Owner",
+      "decisionDate": "2026-08-08",
+      "reviewDate": "2027-08-08",
+      "trigger": "Revalidate on SDK feature-band or central build-policy change.",
+      "evidence": "Story 11.23 pre-activation census and activated Release parity gate both report 0 warnings / 0 errors."
     },
     {
       "key": "naming-ca1707-diagnostic-id-compatibility",
@@ -274,15 +308,15 @@
     {
       "key": "benchmark-twae-exception",
       "sourceKind": "MSBuild",
-      "exactScope": "tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj",
-      "mechanism": "TreatWarningsAsErrors=false",
-      "decision": "remain",
-      "rationale": "The benchmark executable is the single approved non-blocking benchmark harness exception.",
+      "exactScope": "no remaining control; formerly tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj",
+      "mechanism": "removed TreatWarningsAsErrors=false",
+      "decision": "fix",
+      "rationale": "The benchmark harness is clean under central Recommended analysis, so its warning-as-error exception is no longer needed.",
       "owner": "Performance Owner",
-      "decisionDate": "2026-07-17",
-      "reviewDate": "2027-07-17",
-      "trigger": "Revalidate if the benchmark harness joins the blocking product lane.",
-      "evidence": "Effective MSBuild property evaluation and exact exception count."
+      "decisionDate": "2026-08-08",
+      "reviewDate": "2027-08-08",
+      "trigger": "Reopen if a BenchmarkDotNet update introduces a genuine warning; remediate the warning rather than restoring the exception.",
+      "evidence": "Story 11.23 forced Recommended census reports 0 warnings / 0 errors including Bench before removal; activated Release must continue to report 0 warnings / 0 errors."
     },
     {
       "key": "source-local-compatibility-controls",
@@ -430,6 +464,18 @@
       "dispositionKey": "policy-root-twae"
     },
     {
+      "key": "msbuild-root-analysis-mode",
+      "sourceKind": "msbuild",
+      "path": "Directory.Build.props",
+      "property": "AnalysisMode",
+      "diagnosticIds": [
+        "Recommended"
+      ],
+      "exactScope": "repository",
+      "mechanism": "AnalysisMode",
+      "dispositionKey": "policy-root-analysis-mode"
+    },
+    {
       "key": "msbuild-source-doc-nowarn",
       "sourceKind": "msbuild",
       "path": "src/Directory.Build.props",
@@ -458,18 +504,6 @@
       "exactScope": "Testing package",
       "mechanism": "NoWarn",
       "dispositionKey": "package-warning-policy"
-    },
-    {
-      "key": "msbuild-benchmark-twae",
-      "sourceKind": "msbuild",
-      "path": "tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj",
-      "property": "TreatWarningsAsErrors",
-      "diagnosticIds": [
-        "false"
-      ],
-      "exactScope": "benchmark executable",
-      "mechanism": "TreatWarningsAsErrors",
-      "dispositionKey": "benchmark-twae-exception"
     },
     {
       "key": "msbuild-contracts-ui-nowarn",

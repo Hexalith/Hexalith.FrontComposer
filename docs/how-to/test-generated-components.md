@@ -72,9 +72,11 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Testing;
 using Microsoft.Extensions.DependencyInjection;
 
+namespace FrontComposer.Snippets;
+
 public sealed class CommandDispatchTests
 {
-    public static async Task CommandService_Dispatch_CapturesRedactedEvidence()
+    public static async Task CommandServiceDispatchCapturesRedactedEvidence()
     {
         using BunitContext context = new();
         using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);

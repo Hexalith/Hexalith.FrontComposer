@@ -1,21 +1,27 @@
 ---
 created: 2026-07-16
-updated: 2026-07-16
+updated: 2026-08-08
 epic: 11
 sourceDecision: _bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md
 parentDecisionStory: 11.19d
 dependsOn: 11.22
 owner: Architect + Framework Maintainer + Release Owner
 due: 2026-09-11
-status: backlog
+status: review
 storyType: implementation-phase
 approvalGate: separate-architecture-product-approval
+approvalStatus: approved
+approvedBy: Administrator
+approvedOn: 2026-08-08
 releaseGate: v1.0
 ---
 
 # Story 11.23: Recommended Analyzer Repository Activation
 
-Status: backlog.
+Status: review.
+
+Executable intent and completion evidence live in
+`_bmad-output/implementation-artifacts/spec-11-23-recommended-analyzer-repository-activation.md`.
 
 ## Story
 
@@ -52,12 +58,12 @@ so that analyzer strictness becomes a durable v1.0 build invariant.
 
 ## Tasks / Subtasks
 
-- [ ] Verify Stories 11.20-11.22 are done and regenerate a zero-actionable-finding census.
-- [ ] Add `AnalysisMode=Recommended` to root `Directory.Build.props` with approved TFM boundaries.
-- [ ] Reconcile the benchmark warning-policy exception with the zero-warning Release gate.
-- [ ] Add durable analyzer-policy Governance tests.
-- [ ] Run the full forced Release, test, compatibility, docs, and artifact gates.
-- [ ] Record Release Owner evidence and update sprint/release traceability.
+- [x] Verify Stories 11.20-11.22 are done and regenerate a zero-actionable-finding census.
+- [x] Add `AnalysisMode=Recommended` to root `Directory.Build.props` with approved TFM boundaries.
+- [x] Reconcile the benchmark warning-policy exception with the zero-warning Release gate.
+- [x] Add durable analyzer-policy Governance tests.
+- [x] Run the full forced Release, test, compatibility, docs, and artifact gates.
+- [x] Record Release Owner evidence and update sprint/release traceability.
 
 ## Dev Notes
 
@@ -94,9 +100,41 @@ artifact validation.
 
 ### Completion Notes List
 
+- 2026-08-08: Forced Recommended census at the approved implementation baseline completed with
+  0 warnings / 0 errors before root activation. The activated Release build also completed with
+  0 warnings / 0 errors.
+- Root `Directory.Build.props` now declares `AnalysisMode=Recommended` beside unchanged
+  `TreatWarningsAsErrors=true`. Contracts and Schema dual-TFM legs and the netstandard2.0 SourceTools
+  host retain their existing boundaries.
+- The Bench `TreatWarningsAsErrors=false` exception was removed after its census and activated Release
+  evidence were both clean. The ledger records it as a fixed, no-remaining-control disposition.
+- Governance now requires central Recommended, forbids any false TWAE declaration, proves representative
+  effective properties (including Schema/SourceTools), and compares activated vs forced Recommended
+  Release warning/error summaries.
+- `docs/how-to/test-generated-components.md` renamed the CA1707-violating snippet method and added a
+  namespace so the identifier inventory seal remains coherent under Recommended naming analysis.
+- Release Owner evidence and AnalysisMode-only rollback posture are recorded in the canonical ledger.
+- Architecture/Product approval is recorded via the frozen bmad-build specification approved 2026-08-08.
+
 ### File List
+
+- `Directory.Build.props`
+- `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs`
+- `docs/how-to/test-generated-components.md`
+- `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`
+- `_bmad-output/contracts/analyzer-elevation-decision-2026-07-16.md`
+- `_bmad-output/implementation-artifacts/spec-11-23-recommended-analyzer-repository-activation.md`
+- `_bmad-output/implementation-artifacts/11-23-recommended-analyzer-repository-activation.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
 
 ## Change Log
 
+- 2026-08-08: Code-review patches — discrete Story 11.23 activation evidence errors, exact census/Release
+  command seals, Schema/SourceTools effective-property probes, activated-vs-forced summary parity,
+  AnalysisMode rollback comment, Bench fixed-disposition pointer, elevation-decision current posture
+  refresh, and docs CA1707 snippet inventory note.
+- 2026-08-08: Activated central Recommended analysis, removed the Bench warning-as-error exception,
+  and recorded Release Owner evidence and the activated governance proof.
 - 2026-08-07: Named root `Directory.Build.props` as the Phase 4 `AnalysisMode=Recommended` activation location (11.19d code-review patch).
 - 2026-07-16: Materialized approved staged-activation Phase 4 from Story 11.19d.

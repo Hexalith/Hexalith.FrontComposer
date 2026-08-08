@@ -5,10 +5,8 @@
     <!-- Story 3-7 D3 — separate BDN project keeps the heavy BDN dependency tree out of the
          default-lane Shell.Tests cold-start. Matches Story 1-8 precedent. -->
     <OutputType>Exe</OutputType>
-    <!-- BenchmarkDotNet emits its own warnings about RyuJIT/Release/etc. that we surface
-         as informational rather than promoting to errors here. The default-lane projects
-         still build with -warnaserror. -->
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Story 11.23 removed TreatWarningsAsErrors=false after Recommended Release proved 0W/0E;
+         see ledger disposition benchmark-twae-exception (fixed). -->
   </PropertyGroup>
   <ItemGroup>
     <Using Include="Xunit" />

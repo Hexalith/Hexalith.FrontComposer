@@ -19,7 +19,13 @@ public sealed class AnalyzerPolicyGovernanceTests
 {
     private const string LedgerPath = "_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json";
     private const string ContractsProject = "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj";
+    private const string SchemaProject = "src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj";
+    private const string SourceToolsProject = "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj";
     private const string Story1122ByLocationDigest = "3d3fdd71f06585b85307381775ae03172aeedc33cc6c8b6fc4bed77661f5a239";
+    private const string Story1123PreActivationCensusCommand =
+        "dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0 -p:AnalysisMode=Recommended -p:TreatWarningsAsErrors=false";
+    private const string Story1123PostActivationReleaseCommand =
+        "dotnet build Hexalith.FrontComposer.slnx -c Release --no-restore --no-incremental -m:1 -p:NuGetAudit=false -p:MinVerVersionOverride=4.0.0";
     private const int DotnetTimeoutMilliseconds = 180_000;
     private const int GitTimeoutMilliseconds = 60_000;
 
@@ -102,6 +108,7 @@ public sealed class AnalyzerPolicyGovernanceTests
             .. ValidateRepositoryPolicy(root, ledger),
             .. ValidateConfigurationClosure(root),
             .. ValidateStory1122Evidence(ledger),
+            .. ValidateStory1123Activation(ledger),
             .. ValidateStory1122FixtureSourceScopes(root),
         ];
         errors.ShouldBeEmpty();
@@ -374,6 +381,35 @@ public sealed class AnalyzerPolicyGovernanceTests
             root,
             RequiredObject(hiddenControlProbes, "CA2007"),
             "tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj").ConfigureAwait(true);
+    }
+
+    [Fact]
+    public async Task AnalyzerPolicy_ActivatedReleaseBuild_MatchesForcedRecommendedCandidate()
+    {
+        string root = RepositoryRoot();
+        string[] canonicalArguments =
+        [
+            "build",
+            "Hexalith.FrontComposer.slnx",
+            "-c",
+            "Release",
+            "--no-restore",
+            "--no-incremental",
+            "-m:1",
+            "-p:NuGetAudit=false",
+            "-p:MinVerVersionOverride=4.0.0",
+        ];
+        string[] forcedCandidateArguments = [.. canonicalArguments, "-p:AnalysisMode=Recommended"];
+
+        (string canonicalWarnings, string canonicalErrors) =
+            await AssertZeroWarningZeroErrorBuildAsync(root, canonicalArguments).ConfigureAwait(true);
+        (string forcedWarnings, string forcedErrors) =
+            await AssertZeroWarningZeroErrorBuildAsync(root, forcedCandidateArguments).ConfigureAwait(true);
+
+        // After central activation the forced candidate is redundant for severity, but the summaries
+        // must still match so a latent CLI-only gate cannot diverge from the activated Release gate.
+        forcedWarnings.ShouldBe(canonicalWarnings);
+        forcedErrors.ShouldBe(canonicalErrors);
     }
 
     private static string[] ValidateDocument(JsonObject ledger)
@@ -879,6 +915,84 @@ public sealed class AnalyzerPolicyGovernanceTests
         return [.. errors];
     }
 
+    private static string[] ValidateStory1123Activation(JsonObject ledger)
+    {
+        List<string> errors = [];
+        JsonObject activation = RequiredObject(ledger, "story1123Activation");
+        foreach (string field in new[]
+        {
+            "baselineCommit", "sdk", "msbuild", "roslyn", "utcDate", "preActivationCensusCommand",
+            "postActivationReleaseCommand", "buildParity", "contractArtifacts", "docsValidation",
+            "activation", "rollback",
+        })
+        {
+            RequireValue(activation, field, errors);
+        }
+
+        ValidateCommit(StringValue(activation, "baselineCommit"), "Story 11.23 baseline commit", errors);
+        ValidateVersion(StringValue(activation, "sdk"), threeComponents: true, "Story 11.23 SDK", errors);
+        ValidateVersion(StringValue(activation, "msbuild"), threeComponents: false, "Story 11.23 MSBuild", errors);
+        ValidateVersion(StringValue(activation, "roslyn"), threeComponents: true, "Story 11.23 Roslyn", errors);
+        ValidateUtcTimestamp(StringValue(activation, "utcDate"), "Story 11.23 UTC date", errors);
+
+        RequireExactInt(activation, "preActivationWarnings", 0, errors);
+        RequireExactInt(activation, "preActivationErrors", 0, errors);
+        RequireExactInt(activation, "postActivationWarnings", 0, errors);
+        RequireExactInt(activation, "postActivationErrors", 0, errors);
+        RequireExactInt(activation, "defaultTests", 4328, errors);
+        RequireExactInt(activation, "contractTests", 3, errors);
+        if (!TryGetInt(activation, "governanceTests", out int governanceTests) || governanceTests < 7)
+        {
+            errors.Add(
+                TryGetInt(activation, "governanceTests", out _)
+                    ? "Story 11.23 governanceTests must be at least 7"
+                    : "Story 11.23 governanceTests must be an integer");
+        }
+
+        if (StringValue(activation, "preActivationCensusCommand") != Story1123PreActivationCensusCommand)
+        {
+            errors.Add("Story 11.23 preActivationCensusCommand drift");
+        }
+
+        if (StringValue(activation, "postActivationReleaseCommand") != Story1123PostActivationReleaseCommand)
+        {
+            errors.Add("Story 11.23 postActivationReleaseCommand drift");
+        }
+
+        if (!StringValue(activation, "buildParity").Contains(
+                "-p:AnalysisMode=Recommended",
+                StringComparison.Ordinal))
+        {
+            errors.Add("Story 11.23 buildParity must reference the forced Recommended candidate");
+        }
+
+        if (StringValue(activation, "contractArtifacts") != "passed")
+        {
+            errors.Add("Story 11.23 contractArtifacts must be passed");
+        }
+
+        if (StringValue(activation, "docsValidation") != "passed")
+        {
+            errors.Add("Story 11.23 docsValidation must be passed");
+        }
+
+        if (!StringValue(activation, "activation").Contains(
+                "AnalysisMode=Recommended",
+                StringComparison.Ordinal))
+        {
+            errors.Add("Story 11.23 activation must name AnalysisMode=Recommended");
+        }
+
+        if (!StringValue(activation, "rollback").Contains(
+                "only the root AnalysisMode declaration",
+                StringComparison.Ordinal))
+        {
+            errors.Add("Story 11.23 rollback must limit emergency revert to AnalysisMode only");
+        }
+
+        return [.. errors];
+    }
+
     private static string[] ValidateStory1122FixtureSourceScopes(string root)
     {
         List<string> errors = [];
@@ -1163,6 +1277,26 @@ public sealed class AnalyzerPolicyGovernanceTests
             .ShouldBeTrue($"Story 11.22 negative-control probe did not prove zero errors for {project}:{Environment.NewLine}{output}");
     }
 
+    private static async Task<(string WarningSummary, string ErrorSummary)> AssertZeroWarningZeroErrorBuildAsync(
+        string root,
+        params string[] arguments)
+    {
+        (int exitCode, string output) = await RunDotnetResultAsync(root, arguments).ConfigureAwait(true);
+        string command = "dotnet " + string.Join(' ', arguments);
+        exitCode.ShouldBe(0, $"{command} failed:{Environment.NewLine}{output}");
+        Match warning = Regex.Match(
+            output,
+            @"^\s*0 Warning\(s\)\s*$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        Match error = Regex.Match(
+            output,
+            @"^\s*0 Error\(s\)\s*$",
+            RegexOptions.Multiline | RegexOptions.CultureInvariant);
+        warning.Success.ShouldBeTrue($"{command} did not prove zero warnings:{Environment.NewLine}{output}");
+        error.Success.ShouldBeTrue($"{command} did not prove zero errors:{Environment.NewLine}{output}");
+        return (warning.Value.Trim(), error.Value.Trim());
+    }
+
     private static string[] ValidateParity(IEnumerable<string> ledgerKeys, IEnumerable<string> configuredKeys)
     {
         string[] ledger = ledgerKeys.Distinct(StringComparer.Ordinal).Order(StringComparer.Ordinal).ToArray();
@@ -1412,9 +1546,13 @@ public sealed class AnalyzerPolicyGovernanceTests
             errors.Add("TreatWarningsAsErrors is not canonically true");
         }
 
-        if (rootProps.Descendants().Any(static element => element.Name.LocalName.StartsWith("AnalysisMode", StringComparison.Ordinal)))
+        XElement[] rootAnalysisModes = rootProps
+            .Descendants()
+            .Where(static element => element.Name.LocalName == "AnalysisMode")
+            .ToArray();
+        if (rootAnalysisModes.Length != 1 || rootAnalysisModes[0].Value.Trim() != "Recommended")
         {
-            errors.Add("central AnalysisMode activation belongs to Story 11.23");
+            errors.Add("root AnalysisMode must be exactly Recommended");
         }
 
         string[] trackedProjects = TrackedFiles(root).Where(IsMsBuildFile).ToArray();
@@ -1448,9 +1586,9 @@ public sealed class AnalyzerPolicyGovernanceTests
             .Select(path => XDocument.Load(Path.Combine(root, path)))
             .SelectMany(static document => document.Descendants())
             .Count(static element => element.Name.LocalName == "TreatWarningsAsErrors" && element.Value.Trim() == "false");
-        if (falseTreatWarningsAsErrors != 1)
+        if (falseTreatWarningsAsErrors != 0)
         {
-            errors.Add($"expected one benchmark TreatWarningsAsErrors=false exception, found {falseTreatWarningsAsErrors}");
+            errors.Add($"TreatWarningsAsErrors=false is forbidden after activation; found {falseTreatWarningsAsErrors}");
         }
 
         if (IntValue(RequiredObject(ledger, "implementationSnapshot"), "policyOutcomeNamingFindings") != 0)
@@ -1542,31 +1680,60 @@ public sealed class AnalyzerPolicyGovernanceTests
     {
         foreach (string targetFramework in new[] { "net10.0", "netstandard2.0" })
         {
-            string output = await RunDotnetAsync(
+            await AssertRecommendedTwaePropertiesAsync(
                 root,
-                "msbuild",
                 ContractsProject,
-                "-p:Configuration=Release",
-                $"-p:TargetFramework={targetFramework}",
-                "-getProperty:NoWarn,TreatWarningsAsErrors,AnalysisMode,AnalysisModeNaming",
-                "-nologo").ConfigureAwait(true);
-            JsonObject properties = RequiredObject(RequiredObject(JsonNode.Parse(output), "evaluation"), "Properties");
-            StringValue(properties, "TreatWarningsAsErrors").ShouldBe("true");
-            StringValue(properties, "AnalysisMode").ShouldBeEmpty();
+                targetFramework,
+                expectSourceDocNoWarn: true).ConfigureAwait(true);
+        }
+
+        await AssertRecommendedTwaePropertiesAsync(
+            root,
+            SchemaProject,
+            "netstandard2.0",
+            expectSourceDocNoWarn: true).ConfigureAwait(true);
+        await AssertRecommendedTwaePropertiesAsync(
+            root,
+            SourceToolsProject,
+            "netstandard2.0",
+            expectSourceDocNoWarn: true).ConfigureAwait(true);
+        await AssertRecommendedTwaePropertiesAsync(
+            root,
+            "tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj",
+            targetFramework: null,
+            expectSourceDocNoWarn: false).ConfigureAwait(true);
+    }
+
+    private static async Task AssertRecommendedTwaePropertiesAsync(
+        string root,
+        string project,
+        string? targetFramework,
+        bool expectSourceDocNoWarn)
+    {
+        List<string> arguments =
+        [
+            "msbuild",
+            project,
+            "-p:Configuration=Release",
+        ];
+        if (targetFramework is not null)
+        {
+            arguments.Add($"-p:TargetFramework={targetFramework}");
+        }
+
+        arguments.Add("-getProperty:NoWarn,TreatWarningsAsErrors,AnalysisMode,AnalysisModeNaming");
+        arguments.Add("-nologo");
+
+        string output = await RunDotnetAsync(root, [.. arguments]).ConfigureAwait(true);
+        JsonObject properties = RequiredObject(RequiredObject(JsonNode.Parse(output), "evaluation"), "Properties");
+        StringValue(properties, "TreatWarningsAsErrors").ShouldBe("true");
+        StringValue(properties, "AnalysisMode").ShouldBe("Recommended");
+        if (expectSourceDocNoWarn)
+        {
             SplitDiagnosticIds(StringValue(properties, "NoWarn")).ShouldBe(
                 ["0419", "1570", "1572", "1573", "1574", "1734"],
                 ignoreOrder: false);
         }
-
-        string benchmarkOutput = await RunDotnetAsync(
-            root,
-            "msbuild",
-            "tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj",
-            "-p:Configuration=Release",
-            "-getProperty:TreatWarningsAsErrors,NoWarn",
-            "-nologo").ConfigureAwait(true);
-        JsonObject benchmarkProperties = RequiredObject(RequiredObject(JsonNode.Parse(benchmarkOutput), "evaluation"), "Properties");
-        StringValue(benchmarkProperties, "TreatWarningsAsErrors").ShouldBe("false");
     }
 
     private static async Task ValidateCompileSpecimensAsync(string root)
@@ -1591,7 +1758,7 @@ public sealed class AnalyzerPolicyGovernanceTests
                 <Project>
                   <PropertyGroup>
                     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-                    <AnalysisModeNaming>Recommended</AnalysisModeNaming>
+                    <AnalysisMode>Recommended</AnalysisMode>
                     <Nullable>enable</Nullable>
                   </PropertyGroup>
                 </Project>
@@ -1720,6 +1887,27 @@ public sealed class AnalyzerPolicyGovernanceTests
 
     private static int IntValue(JsonObject value, string name)
         => value[name]?.GetValue<int>() ?? 0;
+
+    private static bool TryGetInt(JsonObject value, string name, out int number)
+    {
+        number = 0;
+        return value[name] is JsonValue jsonValue && jsonValue.TryGetValue(out number);
+    }
+
+    private static void RequireExactInt(JsonObject value, string name, int expected, List<string> errors)
+    {
+        if (!TryGetInt(value, name, out int actual))
+        {
+            errors.Add($"Story 11.23 {name} must be an integer");
+            return;
+        }
+
+        if (actual != expected)
+        {
+            errors.Add(
+                $"Story 11.23 {name} must be {expected.ToString(CultureInfo.InvariantCulture)}, found {actual.ToString(CultureInfo.InvariantCulture)}");
+        }
+    }
 
     private static string[] StringArray(JsonObject value, string name)
         => value[name] is JsonArray array

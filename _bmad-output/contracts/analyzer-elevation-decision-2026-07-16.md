@@ -76,11 +76,17 @@ To inspect an evidence file, decompress it and open the `.binlog` with an MSBuil
 
 ## Effective current configuration
 
-The repository declares no `AnalysisMode`. Normal net10.0 projects resolve `AnalysisLevel=latest`,
-`EnableNETAnalyzers=true`, `EnforceCodeStyleInBuild=false`, and `TreatWarningsAsErrors=true`.
-`Contracts` and `Schema` disable .NET analyzers on their netstandard2.0 legs; SourceTools also disables
-them on netstandard2.0 to preserve compiler-host compatibility. The benchmark project is the existing
-project-local exception with `TreatWarningsAsErrors=false`; this decision does not change it.
+As of Story 11.23 (2026-08-08), root `Directory.Build.props` declares `AnalysisMode=Recommended`
+beside unchanged `TreatWarningsAsErrors=true`. Normal net10.0 projects also resolve
+`AnalysisLevel=latest`, `EnableNETAnalyzers=true`, and `EnforceCodeStyleInBuild=false`.
+`Contracts` and `Schema` keep their documented netstandard2.0 analyzer/TFM boundaries; SourceTools
+remains netstandard2.0 / Roslyn-host compatible with no net10-only analyzer dependency. The former
+benchmark `TreatWarningsAsErrors=false` exception was removed after Recommended Release proved
+0 warnings / 0 errors; see ledger disposition `benchmark-twae-exception` (fixed).
+
+The historical 2026-07-16 decision baseline below still records the pre-activation posture for
+census/binlog evidence: the repository then declared no `AnalysisMode`, and Bench still carried the
+project-local TWAE exception. Those facts are superseded for current configuration by Story 11.23.
 
 The root `.editorconfig` explicitly sets CA1062, CA1822, and CA2007 to warning and CA1014 to none.
 CS1591 is none outside the four approved Contracts API-freeze globs, where it is warning. Individual

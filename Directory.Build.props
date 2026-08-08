@@ -30,6 +30,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Story 11.23 v1.0 gate. Emergency rollback may remove only this AnalysisMode declaration. -->
+    <AnalysisMode>Recommended</AnalysisMode>
   </PropertyGroup>
 
 </Project>
