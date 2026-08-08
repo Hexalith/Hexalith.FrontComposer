@@ -28,6 +28,8 @@ public sealed partial class DiagnosticRegistryTests {
     private const string CanonicalDocsHost = "hexalith.github.io";
     private static readonly StringComparer Ordinal = StringComparer.Ordinal;
     private static readonly StringComparer OrdinalIgnoreCase = StringComparer.OrdinalIgnoreCase;
+    private static readonly CompositeFormat CanonicalHelpLinkCompositeFormat = CompositeFormat.Parse(CanonicalHelpLinkFormat);
+    private static readonly string[] ShellApiCompatibilityDiagnosticIds = ["CP0001", "CP0002", "CP0008"];
     private static readonly (int Start, int End)[] ExpectedRangeBounds =
         [(1, 999), (1000, 1999), (2000, 2999), (3000, 3999), (4000, 4999), (5000, 5999)];
     private static readonly string[] ExpectedMcpBenchmarkRemovalTargets = [
@@ -113,7 +115,7 @@ public sealed partial class DiagnosticRegistryTests {
         hfc1601Exception.ConsumingPackage.ShouldBe("Shell");
         hfc1601Exception.NumericRangeOwner.ShouldBe("SourceTools");
         hfc1601Exception.ApprovingStory.ShouldBe("11-2-diagnostic-registry-and-documentation-governance-follow-ups");
-        hfc1601Exception.HelpLinkUri.ShouldBe(string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, "HFC1601"));
+        hfc1601Exception.HelpLinkUri.ShouldBe(string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkCompositeFormat, "HFC1601"));
 
         _ = registry.Diagnostics.ShouldNotBeNull();
         registry.Diagnostics.Length.ShouldBeGreaterThan(0, "registry has no diagnostics — accidental wipe.");
@@ -139,7 +141,7 @@ public sealed partial class DiagnosticRegistryTests {
                 $"{diagnostic.Id} message template must follow What/Expected/Got|.../Fix/DocsLink shape.");
             diagnostic.MessageTemplate.ShouldContain("DocsLink", Case.Sensitive);
             diagnostic.DocsSlug.ShouldBe($"diagnostics/{diagnostic.Id}");
-            diagnostic.HelpLinkUri.ShouldBe(string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, diagnostic.Id));
+            diagnostic.HelpLinkUri.ShouldBe(string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkCompositeFormat, diagnostic.Id));
             diagnostic.RedactionClass.ShouldBeOneOf(AllowedRedactionClasses.ToArray());
             diagnostic.SuppressionPolicy.ShouldBeOneOf(AllowedSuppressionPolicies.ToArray());
 
@@ -792,7 +794,7 @@ public sealed partial class DiagnosticRegistryTests {
                     diagnosticId.ShouldBe("CP0001", "Contracts suppressions are exact reviewed type moves.");
                 }
                 else if (package == "Hexalith.FrontComposer.Shell") {
-                    new[] { "CP0001", "CP0002", "CP0008" }.ShouldContain(
+                    ShellApiCompatibilityDiagnosticIds.ShouldContain(
                         diagnosticId,
                         "Shell suppressions are exact type relocations, member assembly-binding changes, or interface changes.");
                 }
@@ -2129,7 +2131,7 @@ public sealed partial class DiagnosticRegistryTests {
                     || ownerPackage != "SourceTools"
                     || consumingPackage != "Shell"
                     || numericRangeOwner != "SourceTools"
-                    || helpLinkUri != string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, id)
+                    || helpLinkUri != string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkCompositeFormat, id)
                     // Pass-2 R34: cross-package-exception introducedIn must follow SemVer shape.
                     || !SemverShapeRegex().IsMatch(exIntroducedIn!)) {
                     yield return "invalid-cross-package-exception";

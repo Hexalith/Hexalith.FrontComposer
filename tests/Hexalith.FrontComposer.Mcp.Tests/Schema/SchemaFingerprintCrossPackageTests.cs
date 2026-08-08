@@ -81,7 +81,7 @@ public sealed class SchemaFingerprintCrossPackageTests {
             + "the fingerprint regeneration in the story log.");
     }
 
-    private static IReadOnlyList<string[]> ExtractCatalog() {
+    private static string[][] ExtractCatalog() {
         GeneratedSchemaPayload payload = SchemaFingerprintTransform.CreateLifecycleResultPayload();
         string canonical = payload.Json ?? string.Empty;
         return canonical

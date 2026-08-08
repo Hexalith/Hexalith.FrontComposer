@@ -42,12 +42,12 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         Diagnostic? typeDrift = diagnostics.FirstOrDefault(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
-                                                             && d.GetMessage().Contains("Amount", StringComparison.Ordinal)
+                                                             && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Amount", StringComparison.Ordinal)
                                                              && d.Severity == DiagnosticSeverity.Warning);
         _ = typeDrift.ShouldNotBeNull("AC5 type change must emit a Warning by default.");
-        typeDrift!.GetMessage().ShouldContain(CategoryFor(baselineType), Case.Insensitive);
-        typeDrift.GetMessage().ShouldContain(CategoryFor(currentType), Case.Insensitive);
-        typeDrift.GetMessage().ShouldContain(expectedSurface, Case.Insensitive);
+        typeDrift!.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain(CategoryFor(baselineType), Case.Insensitive);
+        typeDrift.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain(CategoryFor(currentType), Case.Insensitive);
+        typeDrift.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain(expectedSurface, Case.Insensitive);
     }
 
     [Fact()]
@@ -70,8 +70,8 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        diagnostics.Any(d => d.GetMessage().Contains("nullable", StringComparison.OrdinalIgnoreCase)
-                          && d.GetMessage().Contains("Reference", StringComparison.Ordinal)
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("nullable", StringComparison.OrdinalIgnoreCase)
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Reference", StringComparison.Ordinal)
                           && d.Severity == DiagnosticSeverity.Warning)
             .ShouldBeTrue("AC5 nullability change must emit a Warning naming the property.");
     }
@@ -96,13 +96,13 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        Diagnostic? nullabilityDrift = diagnostics.FirstOrDefault(d => d.GetMessage().Contains("Reference", StringComparison.Ordinal)
-                                                                    && d.GetMessage().Contains("nullable", StringComparison.OrdinalIgnoreCase));
+        Diagnostic? nullabilityDrift = diagnostics.FirstOrDefault(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Reference", StringComparison.Ordinal)
+                                                                    && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("nullable", StringComparison.OrdinalIgnoreCase));
         _ = nullabilityDrift.ShouldNotBeNull();
         // Story 9-1 review CB-25: anchor with word boundaries so a regression that drops the
         // breaking-hint token but leaves an incidental substring (e.g. "required" inside a
         // doc-link path or "tightly-coupled" prose) does not pass silently.
-        nullabilityDrift!.GetMessage().ShouldMatch(@"\b(required|breaking|tightened)\b");
+        nullabilityDrift!.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldMatch(@"\b(required|breaking|tightened)\b");
     }
 
     [Theory()]
@@ -136,7 +136,7 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         diagnostics.Any(d => d.Id == "HFC1065"
-                          && d.GetMessage().Contains(memberName, StringComparison.Ordinal)
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains(memberName, StringComparison.Ordinal)
                           && d.Severity == DiagnosticSeverity.Warning)
             .ShouldBeTrue($"AC5 cross-kind boundary — {baselineClr} → {currentClr} on {memberName} must emit a structural-drift Warning.");
     }
@@ -162,8 +162,8 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        diagnostics.Any(d => d.GetMessage().Contains("Quantity", StringComparison.Ordinal)
-                          && d.GetMessage().Contains("form", StringComparison.OrdinalIgnoreCase)
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Quantity", StringComparison.Ordinal)
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("form", StringComparison.OrdinalIgnoreCase)
                           && d.Severity == DiagnosticSeverity.Warning)
             .ShouldBeTrue("AC5 — command type change must call out form input rendering risk.");
     }
@@ -193,8 +193,8 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         diagnostics.Any(d => d.Id == "HFC1065"
-                          && d.GetMessage().Contains("Quantity", StringComparison.Ordinal)
-                          && d.GetMessage().Contains("added", StringComparison.OrdinalIgnoreCase)
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Quantity", StringComparison.Ordinal)
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("added", StringComparison.OrdinalIgnoreCase)
                           && d.Severity == DiagnosticSeverity.Warning)
             .ShouldBeTrue("AC3 — command field add must emit one structural-drift Warning.");
     }
@@ -224,9 +224,9 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         diagnostics.Any(d => d.Id == "HFC1065"
-                          && d.GetMessage().Contains("OldField", StringComparison.Ordinal)
-                          && (d.GetMessage().Contains("not found", StringComparison.OrdinalIgnoreCase)
-                           || d.GetMessage().Contains("removed", StringComparison.OrdinalIgnoreCase))
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("OldField", StringComparison.Ordinal)
+                          && (d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("not found", StringComparison.OrdinalIgnoreCase)
+                           || d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("removed", StringComparison.OrdinalIgnoreCase))
                           && d.Severity == DiagnosticSeverity.Warning)
             .ShouldBeTrue("AC3 — command field remove must emit one structural-drift Warning naming the removed property.");
     }
@@ -241,7 +241,7 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
         _ => "Unknown",
     };
 
-    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string source, string baselineJson) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

@@ -305,16 +305,16 @@ internal static class IdeParityVersionRevalidator {
         StringBuilder body = new();
         _ = body.AppendLine("## IDE parity version drift");
         _ = body.AppendLine();
-        _ = body.AppendLine($"- product: {sanitizedProduct}");
-        _ = body.AppendLine($"- detected version: {sanitizedVersion}");
-        _ = body.AppendLine($"- current pin: {supported.MinimumInclusive} <= version < {supported.MaximumExclusive}");
-        _ = body.AppendLine($"- OS/container: {IdeParityReportSanitizer.Sanitize(detected.Os, IdeParityReportFormat.IssueBody)}");
-        _ = body.AppendLine($"- fixture: {IdeParityReportSanitizer.Sanitize(detected.Fixture, IdeParityReportFormat.IssueBody)}");
-        _ = body.AppendLine($"- release owner: {IdeParityReportSanitizer.Sanitize(supported.Owner, IdeParityReportFormat.IssueBody)}");
+        _ = body.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"- product: {sanitizedProduct}");
+        _ = body.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"- detected version: {sanitizedVersion}");
+        _ = body.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"- current pin: {supported.MinimumInclusive} <= version < {supported.MaximumExclusive}");
+        _ = body.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"- OS/container: {IdeParityReportSanitizer.Sanitize(detected.Os, IdeParityReportFormat.IssueBody)}");
+        _ = body.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"- fixture: {IdeParityReportSanitizer.Sanitize(detected.Fixture, IdeParityReportFormat.IssueBody)}");
+        _ = body.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"- release owner: {IdeParityReportSanitizer.Sanitize(supported.Owner, IdeParityReportFormat.IssueBody)}");
         _ = body.AppendLine("- Visual Studio calibration row passes: evidence required before widening the pin");
-        _ = body.AppendLine($"- expected behavior: {IdeParityReportSanitizer.Sanitize(detected.ExpectedBehavior, IdeParityReportFormat.IssueBody)}");
-        _ = body.AppendLine($"- observed behavior: {IdeParityReportSanitizer.Sanitize(detected.ObservedBehavior, IdeParityReportFormat.IssueBody)}");
-        _ = body.AppendLine($"- required evidence: refresh matrix rows {string.Join(", ", detected.MatrixRows.Select(row => IdeParityReportSanitizer.Sanitize(row, IdeParityReportFormat.IssueBody)))}");
+        _ = body.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"- expected behavior: {IdeParityReportSanitizer.Sanitize(detected.ExpectedBehavior, IdeParityReportFormat.IssueBody)}");
+        _ = body.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"- observed behavior: {IdeParityReportSanitizer.Sanitize(detected.ObservedBehavior, IdeParityReportFormat.IssueBody)}");
+        _ = body.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"- required evidence: refresh matrix rows {string.Join(", ", detected.MatrixRows.Select(row => IdeParityReportSanitizer.Sanitize(row, IdeParityReportFormat.IssueBody)))}");
         if (!githubAvailable) {
             _ = body.AppendLine("- fallback: GitHub issue creation unavailable; this dry-run artifact blocks the release checklist.");
         }

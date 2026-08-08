@@ -24,6 +24,8 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 public sealed class ProjectionSubscriptionServiceTests {
+    private static readonly string[] ExpectedRejoinedGroups = ["billing:acme", "orders:acme"];
+
     [Fact]
     public async Task Subscribe_CommitsActiveGroupOnlyAfterJoinSucceeds_AndNotifiesOnNudge() {
         FakeProjectionHubConnection connection = new();
@@ -408,7 +410,7 @@ public sealed class ProjectionSubscriptionServiceTests {
 
         // P49 — multi-group at-most-once join per epoch. Two distinct groups → exactly two joins.
         connection.JoinedGroups.OrderBy(static g => g, StringComparer.Ordinal)
-            .ShouldBe(new[] { "billing:acme", "orders:acme" });
+            .ShouldBe(ExpectedRejoinedGroups);
         // DN5=a — Connected applied unconditionally after rejoin completes (here both rejoins
         // succeed; per-group degradation in the failed-rejoin scenario is covered by
         // FailedRejoin_MarksGroupDegraded below).

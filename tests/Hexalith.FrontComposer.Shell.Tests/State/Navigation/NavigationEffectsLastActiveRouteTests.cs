@@ -44,7 +44,7 @@ public sealed class NavigationEffectsLastActiveRouteTests {
         return accessor;
     }
 
-    private static IServiceProvider BuildServiceProvider(NavigationManager? navigation = null) {
+    private static ServiceProvider BuildServiceProvider(NavigationManager? navigation = null) {
         ServiceCollection services = new();
         if (navigation is not null) {
             services.AddSingleton(navigation);

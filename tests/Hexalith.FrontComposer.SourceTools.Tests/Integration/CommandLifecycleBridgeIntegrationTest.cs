@@ -33,10 +33,10 @@ public class CommandLifecycleBridgeIntegrationTest {
             .Single(t => System.IO.Path.GetFileName(t.FilePath).EndsWith("CommandLifecycleBridge.g.cs", StringComparison.Ordinal));
         string bridgeSource = bridgeTree.GetText(ct).ToString();
 
-        int subscribeCount = System.Text.RegularExpressions.Regex.Matches(bridgeSource, "SubscribeToAction<").Count;
+        int subscribeCount = System.Text.RegularExpressions.Regex.Count(bridgeSource, "SubscribeToAction<");
         subscribeCount.ShouldBe(6, "bridge must subscribe to exactly the 6 lifecycle actions");
 
-        int transitionCallCount = System.Text.RegularExpressions.Regex.Matches(bridgeSource, "_service\\.Transition\\(").Count;
+        int transitionCallCount = System.Text.RegularExpressions.Regex.Count(bridgeSource, "_service\\.Transition\\(");
         transitionCallCount.ShouldBe(6, "each subscription must forward via _service.Transition");
     }
 }

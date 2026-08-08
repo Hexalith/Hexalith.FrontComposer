@@ -47,8 +47,8 @@ public sealed class TrimAotReflectionCatalogDiagnosticTests {
         _ = trim.ShouldNotBeNull(
             $"AC14 — HFC1070 must fire when PublishTrimmed={publishTrimmed} (PublishAot={publishAot}) with default reflection catalog.");
         trim!.Severity.ShouldBe(DiagnosticSeverity.Warning);
-        trim.GetMessage().ShouldContain("IActionQueueProjectionCatalog", Case.Insensitive);
-        trim.GetMessage().ShouldContain("source-generated", Case.Insensitive);
+        trim.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("IActionQueueProjectionCatalog", Case.Insensitive);
+        trim.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("source-generated", Case.Insensitive);
     }
 
     [Fact]
@@ -158,17 +158,17 @@ public sealed class TrimAotReflectionCatalogDiagnosticTests {
         // remain authoritative. The descriptor's MessageFormat is the parameterized "{0}" shape
         // (DEF-9-1A-3), so we trigger an actual diagnostic and assert its rendered message
         // mentions the source-generated path — the user-visible "recorded explicitly" surface.
-        IReadOnlyList<Diagnostic> diagnostics = Run(ProjectionSource, publishTrimmed: true, publishAot: false);
+        System.Collections.Immutable.ImmutableArray<Diagnostic> diagnostics = Run(ProjectionSource, publishTrimmed: true, publishAot: false);
         Diagnostic? trim = diagnostics.FirstOrDefault(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning);
         _ = trim.ShouldNotBeNull("AC14 — HFC1070 must fire under the test conditions.");
-        trim!.GetMessage().ShouldContain("source-generated", Case.Insensitive,
+        trim!.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("source-generated", Case.Insensitive,
             "AC15 — HFC1070 message must point at the source-generated catalog path so the runtime-authoritative remediation is recorded explicitly.");
     }
 
-    private static IReadOnlyList<Diagnostic> Run(string source, bool publishTrimmed, bool publishAot)
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string source, bool publishTrimmed, bool publishAot)
         => Run([source], publishTrimmed, publishAot);
 
-    private static IReadOnlyList<Diagnostic> Run(string[] sources, bool publishTrimmed, bool publishAot) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string[] sources, bool publishTrimmed, bool publishAot) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(sources);
         FrontComposerGenerator generator = new();
@@ -182,7 +182,7 @@ public sealed class TrimAotReflectionCatalogDiagnosticTests {
         return driver.GetRunResult().Diagnostics;
     }
 
-    private static AnalyzerConfigOptionsProvider TrimAotOptions(bool publishTrimmed, bool publishAot)
+    private static InMemoryOptions TrimAotOptions(bool publishTrimmed, bool publishAot)
         => new InMemoryOptions(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
             ["build_property.PublishTrimmed"] = publishTrimmed ? "true" : "false",
             ["build_property.PublishAot"] = publishAot ? "true" : "false",

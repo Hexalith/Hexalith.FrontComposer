@@ -50,11 +50,11 @@ public sealed class DriftDiagnosticPrecedenceTests {
             : null;
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline, maxBytes);
 
-        diagnostics.Any(d => d.GetMessage().Contains(trustToken, StringComparison.OrdinalIgnoreCase)
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains(trustToken, StringComparison.OrdinalIgnoreCase)
                           && d.Severity == DiagnosticSeverity.Error)
             .ShouldBeTrue($"Trust failure '{trustToken}' must always emit an Error.");
-        diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase)
-                          || d.GetMessage().Contains("metadata drift", StringComparison.OrdinalIgnoreCase))
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("structural drift", StringComparison.OrdinalIgnoreCase)
+                          || d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("metadata drift", StringComparison.OrdinalIgnoreCase))
             .ShouldBeFalse($"Trust failure '{trustToken}' must SUPPRESS lower-precedence drift comparison.");
     }
 
@@ -84,11 +84,11 @@ public sealed class DriftDiagnosticPrecedenceTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
         Diagnostic[] orderingSensitive = [.. diagnostics
             .Where(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
-                     && (d.GetMessage().Contains("Added", StringComparison.Ordinal)
-                      || d.GetMessage().Contains("display", StringComparison.OrdinalIgnoreCase)))];
+                     && (d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Added", StringComparison.Ordinal)
+                      || d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("display", StringComparison.OrdinalIgnoreCase)))];
 
         orderingSensitive.Length.ShouldBeGreaterThanOrEqualTo(2);
-        orderingSensitive[0].GetMessage().ShouldContain("Added", Case.Insensitive,
+        orderingSensitive[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("Added", Case.Insensitive,
             customMessage: "Structural drift takes precedence over metadata drift in emission order.");
     }
 
@@ -119,7 +119,7 @@ public sealed class DriftDiagnosticPrecedenceTests {
         diagnostics.Any(d => d.Id == "HFC1059" && d.Severity == DiagnosticSeverity.Error)
             .ShouldBeTrue("CB-10 — configured baseline path that does not resolve must emit HFC1059 Error.");
         // Drift comparison must be suppressed for the affected configured baseline.
-        diagnostics.Any(d => d.GetMessage().Contains("Added", StringComparison.Ordinal)
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Added", StringComparison.Ordinal)
                           && d.Id == "HFC1065")
             .ShouldBeFalse("CB-10 — configured-path failure must suppress drift comparison for that baseline.");
     }
@@ -180,7 +180,7 @@ public sealed class DriftDiagnosticPrecedenceTests {
             .ShouldBeFalse("CB-10 + P24 — whitespace-only HfcDriftBaselinePath must NOT emit HFC1059.");
     }
 
-    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson, int? maxBaselineBytesOverride = null) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string source, string baselineJson, int? maxBaselineBytesOverride = null) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
@@ -198,7 +198,7 @@ public sealed class DriftDiagnosticPrecedenceTests {
         return driver.GetRunResult().Diagnostics;
     }
 
-    private static IReadOnlyList<Diagnostic> RunWithConfiguredPath(string source, string baselineJson, string configuredPath) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunWithConfiguredPath(string source, string baselineJson, string configuredPath) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

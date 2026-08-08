@@ -283,7 +283,9 @@ public sealed class EmptyStateCtaResolverTests {
     [Fact]
     public void RegistryThrowsAccessViolation_PropagatesFatalException() {
         IWriteAwareRegistry registry = Substitute.For<IWriteAwareRegistry>();
+#pragma warning disable CA2201 // Intentional fatal-exception fixture verifies propagation rather than recovery.
         registry.GetManifests().Returns(_ => throw new AccessViolationException());
+#pragma warning restore CA2201
         var resolver = new EmptyStateCtaResolver(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
 
         Should.Throw<AccessViolationException>(() => resolver.Resolve(typeof(OrderProjection)));

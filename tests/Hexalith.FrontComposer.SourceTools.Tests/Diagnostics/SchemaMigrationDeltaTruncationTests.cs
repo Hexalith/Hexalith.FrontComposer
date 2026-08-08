@@ -23,7 +23,7 @@ public sealed class SchemaMigrationDeltaTruncationTests {
         var currentFields = new SchemaFieldContract[30];
         currentFields[0] = new SchemaFieldContract("Anchor", "String", "string", true, false);
         for (int i = 1; i < 28; i++) {
-            currentFields[i] = new SchemaFieldContract("Optional" + i.ToString("D2"), "String", "string", false, true);
+            currentFields[i] = new SchemaFieldContract("Optional" + i.ToString("D2", System.Globalization.CultureInfo.InvariantCulture), "String", "string", false, true);
         }
 
         // Indexes 28 and 29 add type-changes that, sorted ordinal, push them past index 25 of the
@@ -82,7 +82,7 @@ public sealed class SchemaMigrationDeltaTruncationTests {
         var currentFields = new SchemaFieldContract[30];
         currentFields[0] = new SchemaFieldContract("Anchor", "String", "string", true, false);
         for (int i = 1; i < 30; i++) {
-            currentFields[i] = new SchemaFieldContract("Optional" + i.ToString("D2"), "String", "string", false, true);
+            currentFields[i] = new SchemaFieldContract("Optional" + i.ToString("D2", System.Globalization.CultureInfo.InvariantCulture), "String", "string", false, true);
         }
 
         SchemaBaselineSnapshot current = Snapshot(currentFields);

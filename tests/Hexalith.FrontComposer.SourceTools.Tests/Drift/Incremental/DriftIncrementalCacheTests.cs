@@ -150,14 +150,14 @@ public sealed class DriftIncrementalCacheTests {
     }
 
     private static void AssertCachedOrUnchanged(GeneratorRunResult result, string stepName) {
-        if (!result.TrackedSteps.ContainsKey(stepName)) {
+        if (!result.TrackedSteps.TryGetValue(stepName, out ImmutableArray<IncrementalGeneratorRunStep> steps)) {
             // Step was not exercised in this fixture — that's allowed (e.g., Parse for a
             // command-only fixture). The AC10 contract is "remains Cached/Unchanged when
             // exercised", not "must always be present".
             return;
         }
 
-        result.TrackedSteps[stepName]
+        steps
             .SelectMany(s => s.Outputs)
             .Any(o => o.Reason is IncrementalStepRunReason.Cached or IncrementalStepRunReason.Unchanged)
             .ShouldBeTrue($"AC10 — '{stepName}' should report Cached/Unchanged after non-affecting edit.");

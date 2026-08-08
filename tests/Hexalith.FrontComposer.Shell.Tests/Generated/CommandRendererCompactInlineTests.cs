@@ -123,7 +123,7 @@ public sealed class CommandRendererCompactInlineTests : CommandRendererTestBase 
 
         cut.WaitForAssertion(() => {
             // Exactly one <form> in markup — emitted by the inner Form's <EditForm>.
-            int formCount = System.Text.RegularExpressions.Regex.Matches(cut.Markup, "<form\\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase).Count;
+            int formCount = System.Text.RegularExpressions.Regex.Count(cut.Markup, "<form\\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
             formCount.ShouldBe(1);
         });
     }

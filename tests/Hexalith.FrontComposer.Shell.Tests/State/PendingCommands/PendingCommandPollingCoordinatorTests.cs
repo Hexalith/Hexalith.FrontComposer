@@ -34,6 +34,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         state.Register(Registration(SecondCorrelationId, "01BRZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
 
         IPendingCommandStatusQuery query = Substitute.For<IPendingCommandStatusQuery>();
+#pragma warning disable CA2012 // NSubstitute owns the callback-produced ValueTask and the coordinator awaits it once.
         query.QueryAsync(Arg.Any<PendingCommandEntry>(), Arg.Any<CancellationToken>())
             .Returns(call => {
                 PendingCommandEntry entry = call[0] as PendingCommandEntry
@@ -43,6 +44,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
                     PendingCommandTerminalOutcome.Confirmed,
                     entry.MessageId));
             });
+#pragma warning restore CA2012
 
         PendingCommandPollingCoordinator sut = new(
             state,
@@ -129,6 +131,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         state.Register(Registration(SecondCorrelationId, "01BRZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
 
         IPendingCommandStatusQuery query = Substitute.For<IPendingCommandStatusQuery>();
+#pragma warning disable CA2012 // NSubstitute owns the callback-produced ValueTask and the coordinator awaits it once.
         query.QueryAsync(Arg.Any<PendingCommandEntry>(), Arg.Any<CancellationToken>())
             .Returns<ValueTask<PendingCommandOutcomeObservation?>>(call => {
                 PendingCommandEntry entry = call[0] as PendingCommandEntry
@@ -140,6 +143,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
                         PendingCommandTerminalOutcome.Confirmed,
                         entry.MessageId));
             });
+#pragma warning restore CA2012
 
         PendingCommandPollingCoordinator sut = new(
             state,

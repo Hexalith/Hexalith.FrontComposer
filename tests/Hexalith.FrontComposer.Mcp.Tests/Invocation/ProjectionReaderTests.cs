@@ -77,7 +77,7 @@ public sealed class ProjectionReaderTests {
         entry.Exception.ShouldBeNull();
     }
 
-    private static IServiceCollection Services(IQueryService queryService) {
+    private static ServiceCollection Services(IQueryService queryService) {
         var services = new ServiceCollection();
         _ = services.AddSingleton(queryService);
         _ = services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));

@@ -68,7 +68,7 @@ public class CounterDomainIntegrationTests {
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         SyntaxTree razorTree = result.GeneratedTrees
-            .Single(t => System.IO.Path.GetFileName(t.FilePath).EndsWith(".g.razor.cs"));
+            .Single(t => System.IO.Path.GetFileName(t.FilePath).EndsWith(".g.razor.cs", StringComparison.Ordinal));
         string razorSource = razorTree.GetText(ct).ToString();
 
         // Verify 3 columns: Id (text), Count (numeric N0), LastUpdated (relative-time DateTime)

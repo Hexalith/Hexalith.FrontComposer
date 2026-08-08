@@ -151,10 +151,10 @@ public class CommandRendererEmitterTests {
         // gate at least three times across the three switch arms.
         string source = CommandRendererEmitter.Emit(BuildModel(1, authorizationPolicyName: "OrderApprover"));
 
-        int gateOccurrences = System.Text.RegularExpressions.Regex.Matches(source, @"AuthorizationTriggerDisabled\(\)").Count;
+        int gateOccurrences = System.Text.RegularExpressions.Regex.Count(source, @"AuthorizationTriggerDisabled\(\)");
         gateOccurrences.ShouldBeGreaterThanOrEqualTo(3, "expected gating in Inline + CompactInline + FullPage cases");
         // Inline + CompactInline + FullPage placeholder branches all check the gate via if-statement.
-        int placeholderBranches = System.Text.RegularExpressions.Regex.Matches(source, @"if \(AuthorizationTriggerDisabled\(\)\)").Count;
+        int placeholderBranches = System.Text.RegularExpressions.Regex.Count(source, @"if \(AuthorizationTriggerDisabled\(\)\)");
         placeholderBranches.ShouldBe(3, "Inline + CompactInline + FullPage placeholder branches");
     }
 

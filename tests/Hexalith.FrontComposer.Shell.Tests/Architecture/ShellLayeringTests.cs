@@ -262,7 +262,7 @@ public sealed class ShellLayeringTests {
     }
 
     private static void AddViolationIfForbidden(
-        ISet<string> violations,
+        HashSet<string> violations,
         SourceFile source,
         Dependency dependency) {
         string sourceLayer = source.Path.Split('/')[0];

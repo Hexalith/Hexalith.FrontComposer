@@ -14,6 +14,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 
 [Trait("Category", "Governance")]
 public sealed class InfrastructureGovernanceTests {
+    private static readonly string[] PackageVersionOperations = ["Include", "Update", "Remove"];
     private static readonly string[] FrameworkProjectRelativePaths = [
         "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
         "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj",
@@ -480,7 +481,7 @@ public sealed class InfrastructureGovernanceTests {
         => document
             .Descendants()
             .Where(static element => element.Name.LocalName == "PackageVersion")
-            .Where(element => new[] { "Include", "Update", "Remove" }
+            .Where(element => PackageVersionOperations
                 .Any(operation => ItemSpecSelectsPackage(
                     (string?)element.Attribute(operation),
                     packageId)))

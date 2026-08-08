@@ -57,7 +57,7 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
         // (otherwise this test would degrade to the single-dimension scenario the previous fact covered).
         IEnumerable<string> contexts = driftSorted.Select(d =>
             d.Properties.GetValueOrDefault("BoundedContext")
-                ?? d.GetMessage().Split(']').FirstOrDefault()
+                ?? d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Split(']').FirstOrDefault()
                 ?? string.Empty);
         contexts.Distinct(StringComparer.Ordinal).Count().ShouldBeGreaterThanOrEqualTo(2,
             "AC16 — multi-dimensional scenario must surface drift in ≥2 bounded contexts so the sort key's first tier is exercised.");
@@ -89,7 +89,7 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
         truncations.Length.ShouldBe(1, $"AC16 — exactly one truncation summary for total={totalDrifts}.");
         Diagnostic truncation = truncations[0];
         truncation.Severity.ShouldBe(DiagnosticSeverity.Warning, "AC16 — truncation summary severity is Warning.");
-        truncation.GetMessage().ShouldContain(expectedOmitted.ToString(System.Globalization.CultureInfo.InvariantCulture),
+        truncation.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain(expectedOmitted.ToString(System.Globalization.CultureInfo.InvariantCulture),
             customMessage: $"AC16 — truncation summary must report omittedCount={expectedOmitted} for total={totalDrifts}.");
     }
 
@@ -103,7 +103,7 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
         // Story 9-1 review CB-21: pin to HFC1068 (TruncationId).
         Diagnostic? truncation = diagnostics.FirstOrDefault(d => d.Id == "HFC1068");
         _ = truncation.ShouldNotBeNull("AC16 — exactly one HFC1068 truncation summary must follow the cap.");
-        truncation!.GetMessage().ShouldContain((totalDrifts - 50).ToString(System.Globalization.CultureInfo.InvariantCulture),
+        truncation!.GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain((totalDrifts - 50).ToString(System.Globalization.CultureInfo.InvariantCulture),
             customMessage: "AC16 — truncation summary must report the omitted count.");
         diagnostics.Count(d => d.Id == "HFC1068")
             .ShouldBe(1, "AC16 — exactly one truncation summary, no per-declaration repetition.");
@@ -124,7 +124,7 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
 
         drifts.Length.ShouldBe(1, "CB-30 — cap=1 emits exactly one drift diagnostic.");
         truncations.Length.ShouldBe(1, "CB-30 — cap=1 with 5 drifts emits exactly one truncation summary.");
-        truncations[0].GetMessage().ShouldContain("4", customMessage: "CB-30 — truncation summary must report the 4 omitted diagnostics.");
+        truncations[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("4", customMessage: "CB-30 — truncation summary must report the 4 omitted diagnostics.");
     }
 
     [Fact()]
@@ -142,7 +142,7 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
         string declName = d.Properties.GetValueOrDefault("DeclarationName") ?? string.Empty;
         string memberName = d.Properties.GetValueOrDefault("MemberName") ?? string.Empty;
         string boundedContext = d.Properties.GetValueOrDefault("BoundedContext")
-            ?? d.GetMessage().Split(']').FirstOrDefault() ?? string.Empty;
+            ?? d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Split(']').FirstOrDefault() ?? string.Empty;
         string driftKind = d.Properties.GetValueOrDefault("DriftKind") ?? d.Id;
         return $"{boundedContext}|{declName}|{memberName}|{driftKind}";
     }
@@ -218,7 +218,7 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
         return (source, baseline);
     }
 
-    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string source, string baselineJson) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
@@ -231,7 +231,7 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
         return driver.GetRunResult().Diagnostics;
     }
 
-    private static IReadOnlyList<Diagnostic> RunWithCap(string source, string baselineJson, int maxDiagnostics) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunWithCap(string source, string baselineJson, int maxDiagnostics) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

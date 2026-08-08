@@ -8,6 +8,23 @@ using Shouldly;
 namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
 
 public class CommandParserTests {
+    private static readonly string[] ExpectedKitchenSinkDerivableProperties = [
+        "MessageId",
+        "CommandId",
+        "CorrelationId",
+        "TenantId",
+        "UserId",
+        "Timestamp",
+        "CreatedAt",
+        "ModifiedAt",
+        "RequestIp",
+    ];
+    private static readonly string[] ExpectedMessageIdProperty = ["MessageId"];
+    private static readonly string[] ExpectedNameProperty = ["Name"];
+    private static readonly string[] ExpectedPayloadProperty = ["Payload"];
+    private static readonly string[] ExpectedPlaceOrderDerivableProperties = ["MessageId", "TenantId"];
+    private static readonly string[] ExpectedPlaceOrderProperties = ["CustomerName", "Quantity", "TotalAmount", "Expedited", "OrderedAt"];
+
     [Fact]
     public void Parse_SingleStringFieldCommand_SeparatesMessageIdFromName() {
         CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.SingleStringFieldCommand, "TestDomain.SetNameCommand");
@@ -16,8 +33,8 @@ public class CommandParserTests {
         result.Model.TypeName.ShouldBe("SetNameCommand");
         result.Model.Namespace.ShouldBe("TestDomain");
         result.Model.Properties.Count.ShouldBe(2);
-        result.Model.DerivableProperties.Select(p => p.Name).ShouldBe(new[] { "MessageId" });
-        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldBe(new[] { "Name" });
+        result.Model.DerivableProperties.Select(p => p.Name).ShouldBe(ExpectedMessageIdProperty);
+        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldBe(ExpectedNameProperty);
     }
 
     [Fact]
@@ -26,8 +43,8 @@ public class CommandParserTests {
 
         _ = result.Model.ShouldNotBeNull();
         result.Model.BoundedContext.ShouldBe("Orders");
-        result.Model.DerivableProperties.Select(p => p.Name).ShouldBe(new[] { "MessageId", "TenantId" }, ignoreOrder: true);
-        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldBe(new[] { "CustomerName", "Quantity", "TotalAmount", "Expedited", "OrderedAt" }, ignoreOrder: true);
+        result.Model.DerivableProperties.Select(p => p.Name).ShouldBe(ExpectedPlaceOrderDerivableProperties, ignoreOrder: true);
+        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldBe(ExpectedPlaceOrderProperties, ignoreOrder: true);
     }
 
     [Fact]
@@ -105,9 +122,9 @@ public class CommandParserTests {
 
         _ = result.Model.ShouldNotBeNull();
         result.Model.DerivableProperties.Select(p => p.Name).ShouldBe(
-            new[] { "MessageId", "CommandId", "CorrelationId", "TenantId", "UserId", "Timestamp", "CreatedAt", "ModifiedAt", "RequestIp" },
+            ExpectedKitchenSinkDerivableProperties,
             ignoreOrder: true);
-        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldBe(new[] { "Payload" });
+        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldBe(ExpectedPayloadProperty);
         result.Model.Density.ShouldBe(CommandDensity.Inline);
     }
 

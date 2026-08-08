@@ -415,7 +415,7 @@ public sealed class FluentConformanceTests {
         string razor,
         string css,
         bool expectedOffender) {
-        FindDeadScopedCssOnFluentRoots(razor, css, "Fixture.razor").Any().ShouldBe(expectedOffender);
+        (FindDeadScopedCssOnFluentRoots(razor, css, "Fixture.razor").Count > 0).ShouldBe(expectedOffender);
     }
 
     [Fact]
@@ -659,7 +659,7 @@ public sealed class FluentConformanceTests {
             || normalized.Contains("/obj/", StringComparison.Ordinal);
     }
 
-    private static IReadOnlyList<string> FindDeadScopedCssOnFluentRoots(
+    private static List<string> FindDeadScopedCssOnFluentRoots(
         string razor,
         string css,
         string displayPath) {
@@ -700,7 +700,7 @@ public sealed class FluentConformanceTests {
             foreach (string selector in selectors.Split(',')) {
                 string trimmed = selector.Trim();
                 if (trimmed.Length == 0
-                    || trimmed.StartsWith("@", StringComparison.Ordinal)
+                    || trimmed.StartsWith('@')
                     || trimmed.Contains("::deep", StringComparison.Ordinal)
                     || trimmed.Contains(":global", StringComparison.Ordinal)) {
                     continue;

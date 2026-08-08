@@ -30,12 +30,12 @@ public sealed class TestingFailureModeTests {
         host.CommandService.Timeout();
         await Should.ThrowAsync<TimeoutException>(
             () => host.CommandService.DispatchAsync(new TestCommand(), Xunit.TestContext.Current.CancellationToken)).ConfigureAwait(true);
-        host.CommandService.Evidence.Last().LifecycleStates.ShouldBe([CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing]);
+        host.CommandService.Evidence[^1].LifecycleStates.ShouldBe([CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing]);
 
         host.CommandService.StallAtSyncing();
         CommandResult stalled = await host.CommandService.DispatchAsync(new TestCommand(), Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
         stalled.Status.ShouldBe(CommandResultStatus.Accepted);
-        host.CommandService.Evidence.Last().LifecycleStates.ShouldNotContain(CommandLifecycleState.Confirmed);
+        host.CommandService.Evidence[^1].LifecycleStates.ShouldNotContain(CommandLifecycleState.Confirmed);
         host.CommandService.Evidence.Select(item => item.MessageId).ShouldBe(["test-message-0001", "test-message-0002", "test-message-0003"]);
     }
 
@@ -62,7 +62,7 @@ public sealed class TestingFailureModeTests {
 
         QueryResult<string> result = await host.QueryService.QueryAsync<string>(request, Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
         result.Items.ShouldBe(["needle"]);
-        host.QueryService.Evidence.Last().Mode.ShouldBe("callback");
+        host.QueryService.Evidence[^1].Mode.ShouldBe("callback");
 
         host.QueryService.SucceedWith<string>(["static"]);
         result = await host.QueryService.QueryAsync<string>(request, Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
@@ -71,7 +71,7 @@ public sealed class TestingFailureModeTests {
         host.QueryService.SucceedWith<string>(_ => throw new InvalidOperationException("configured failure"));
         await Should.ThrowAsync<InvalidOperationException>(
             () => host.QueryService.QueryAsync<string>(request, Xunit.TestContext.Current.CancellationToken)).ConfigureAwait(true);
-        host.QueryService.Evidence.Last().Mode.ShouldBe("callback-failed");
+        host.QueryService.Evidence[^1].Mode.ShouldBe("callback-failed");
     }
 
     [Fact]
@@ -114,8 +114,8 @@ public sealed class TestingFailureModeTests {
         await Should.ThrowAsync<OperationCanceledException>(() => pageTask).ConfigureAwait(true);
         queryTask.IsCanceled.ShouldBeTrue();
         pageTask.IsCanceled.ShouldBeTrue();
-        host.QueryService.Evidence.Last().Mode.ShouldBe("callback-failed");
-        host.PageLoader.Evidence.Last().Mode.ShouldBe("callback-failed");
+        host.QueryService.Evidence[^1].Mode.ShouldBe("callback-failed");
+        host.PageLoader.Evidence[^1].Mode.ShouldBe("callback-failed");
     }
 
     [Fact]
@@ -263,7 +263,8 @@ public sealed class TestingFailureModeTests {
 
     [Fact]
     public async Task AddFrontComposerTestHostAsync_CanceledSetup_ThrowsCancellationAndPreservesCulture() {
-        await using BunitContext context = new();
+        BunitContext context = new();
+        await using var contextLifetime = context.ConfigureAwait(true);
         System.Globalization.CultureInfo original = System.Globalization.CultureInfo.CurrentCulture;
         using CancellationTokenSource canceled = new();
         canceled.Cancel();

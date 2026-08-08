@@ -244,7 +244,7 @@ public partial class Bad { public string X { get }";
             $"The generator emitted code that introduces {newGeneratorErrors.Length} NEW compile error(s) " +
             "beyond the malformed source's original diagnostics. This regresses the inner-loop experience: " +
             "the developer sees generator-amplified noise on top of the real edit-in-progress error. " +
-            $"New errors: [{string.Join("; ", newGeneratorErrors.Select(d => d.Id + " " + d.GetMessage()))}].");
+            $"New errors: [{string.Join("; ", newGeneratorErrors.Select(d => d.Id + " " + d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)))}].");
     }
 
     // Story 9-3 — IDE-MUST-006: NFR8 evidence row claims CI-blocking 500 ms warm-update

@@ -161,8 +161,8 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
             cut.Markup.ShouldContain("fluent-button", Case.Insensitive));
 
         logger.WarningMessages.ShouldContain(message =>
-            message.IndexOf("Icon", StringComparison.OrdinalIgnoreCase) >= 0
-            && message.IndexOf("This.Icon.Definitely.Does.Not.Exist", StringComparison.Ordinal) >= 0);
+            message.Contains("Icon", StringComparison.OrdinalIgnoreCase)
+            && message.Contains("This.Icon.Definitely.Does.Not.Exist", StringComparison.Ordinal));
     }
 
     [Fact]

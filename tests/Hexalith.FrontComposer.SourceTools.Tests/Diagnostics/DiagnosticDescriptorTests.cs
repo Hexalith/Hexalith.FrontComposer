@@ -41,11 +41,11 @@ public class DiagnosticDescriptorTests {
         DiagnosticDescriptor descriptor = DiagnosticDescriptors.ProjectionWhenStateMemberUnknown;
 
         descriptor.Id.ShouldBe("HFC1022");
-        descriptor.Title.ToString().ShouldContain("unknown enum member");
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("unknown enum member");
         // The format is a pass-through "{0}" placeholder per the SourceTools convention; the
         // concrete message is built in AttributeParser and validated by the parser-side
         // tests. We lock the shape of the descriptor here.
-        descriptor.MessageFormat.ToString().ShouldBe("{0}");
+        descriptor.MessageFormat.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldBe("{0}");
     }
 
     [Fact]
@@ -54,8 +54,8 @@ public class DiagnosticDescriptorTests {
 
         descriptor.Id.ShouldBe("HFC1023");
         descriptor.DefaultSeverity.ShouldBe(DiagnosticSeverity.Info);
-        descriptor.Title.ToString().ShouldContain("Dashboard");
-        descriptor.Title.ToString().ShouldContain("deferred");
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("Dashboard");
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("deferred");
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class DiagnosticDescriptorTests {
 
         descriptor.Id.ShouldBe("HFC1024");
         descriptor.DefaultSeverity.ShouldBe(DiagnosticSeverity.Warning);
-        descriptor.Title.ToString().ShouldContain("Unknown ProjectionRole");
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("Unknown ProjectionRole");
     }
 
     [Fact]
@@ -73,9 +73,9 @@ public class DiagnosticDescriptorTests {
 
         descriptor.Id.ShouldBe("HFC1030");
         descriptor.DefaultSeverity.ShouldBe(DiagnosticSeverity.Info);
-        descriptor.Title.ToString().ShouldContain("ProjectionFieldGroup");
-        descriptor.Title.ToString().ShouldContain("reserved catch-all");
-        descriptor.MessageFormat.ToString().ShouldBe("{0}");
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("ProjectionFieldGroup");
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("reserved catch-all");
+        descriptor.MessageFormat.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldBe("{0}");
     }
 
     [Fact]
@@ -84,9 +84,9 @@ public class DiagnosticDescriptorTests {
 
         descriptor.Id.ShouldBe("HFC1031");
         descriptor.DefaultSeverity.ShouldBe(DiagnosticSeverity.Info);
-        descriptor.Title.ToString().ShouldContain("ProjectionFieldGroup");
-        descriptor.Title.ToString().ShouldContain("ignored");
-        descriptor.MessageFormat.ToString().ShouldBe("{0}");
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("ProjectionFieldGroup");
+        descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("ignored");
+        descriptor.MessageFormat.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldBe("{0}");
     }
 
     [Fact]

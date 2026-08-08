@@ -17,6 +17,9 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 /// docs-link shape, and Title / MessageFormat are non-empty.
 /// </summary>
 public sealed class DiagnosticCatalogTests {
+    private static readonly System.Text.CompositeFormat CanonicalHelpLinkFormat =
+        System.Text.CompositeFormat.Parse(DiagnosticDescriptors.CanonicalHelpLinkFormat);
+
     [Fact]
     public void FcDiagnosticIdsConstants_AreUnique_AndShapedHFCxxxx() {
         string[] ids = TypeIdConstants(typeof(FcDiagnosticIds)).ToArray();
@@ -48,8 +51,8 @@ public sealed class DiagnosticCatalogTests {
 
         foreach (DiagnosticDescriptor descriptor in descriptors) {
             descriptor.Id.ShouldNotBeNullOrWhiteSpace();
-            descriptor.Title.ToString().ShouldNotBeNullOrWhiteSpace();
-            descriptor.MessageFormat.ToString().ShouldNotBeNullOrWhiteSpace();
+            descriptor.Title.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldNotBeNullOrWhiteSpace();
+            descriptor.MessageFormat.ToString(System.Globalization.CultureInfo.InvariantCulture).ShouldNotBeNullOrWhiteSpace();
             descriptor.Category.ShouldBe("HexalithFrontComposer");
             descriptor.Id.ShouldStartWith("HFC");
         }
@@ -85,7 +88,7 @@ public sealed class DiagnosticCatalogTests {
 
         // The single docs-link source of truth lives in DiagnosticDescriptors.CanonicalHelpLinkFormat;
         // its registry-equality assertion lives in DiagnosticRegistryTests.
-        string sampleHelpLink = string.Format(DiagnosticDescriptors.CanonicalHelpLinkFormat, "HFC1050");
+        string sampleHelpLink = string.Format(System.Globalization.CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, "HFC1050");
         sampleHelpLink.ShouldStartWith("https://");
         sampleHelpLink.ShouldEndWith("/HFC1050");
     }

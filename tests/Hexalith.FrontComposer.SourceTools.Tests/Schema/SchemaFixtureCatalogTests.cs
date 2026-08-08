@@ -79,7 +79,7 @@ public sealed class SchemaFixtureCatalogTests {
             "AC9 ties the renderer fixture to the live options-sourced bounds, not literal magic numbers.");
     }
 
-    private static IReadOnlyList<string> LoadFixtureIds() {
+    private static List<string> LoadFixtureIds() {
         DirectoryInfo dir = LocateFixtureDirectory();
         List<string> ids = [];
         foreach (FileInfo file in dir.EnumerateFiles("*.json")) {

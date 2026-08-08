@@ -86,7 +86,7 @@ public sealed class TenantContextValidationMatrixTests {
 
     [Fact]
     public void ManifestGate_ReturnsNoContext_WhenTenantContextInvalid() {
-        ITenantScopedManifestGate gate = new TenantScopedManifestGate(NewAccessor(null, "user"));
+        TenantScopedManifestGate gate = new TenantScopedManifestGate(NewAccessor(null, "user"));
 
         TenantContextResult result = gate.TryAuthorizeEnumeration();
 

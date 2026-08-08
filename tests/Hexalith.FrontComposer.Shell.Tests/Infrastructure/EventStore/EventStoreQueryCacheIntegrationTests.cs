@@ -20,20 +20,26 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 /// 200-write, 304-reuse, 304-protocol-drift retry, 304-without-cache-discriminator pass-through,
 /// and warning-class exception propagation.
 /// </summary>
-public class EventStoreQueryCacheIntegrationTests {
+public class EventStoreQueryCacheIntegrationTests : IDisposable {
     private const string Tenant = "acme";
     private const string User = "alice";
     private const string Domain = "orders";
     private const string ProjectionType = "Counter.Domain.OrderProjection";
 
     private readonly InMemoryStorageService _storage = new();
-    private readonly IETagCache _cache;
+    private readonly ETagCacheService _cache;
 
     public EventStoreQueryCacheIntegrationTests() => _cache = new ETagCacheService(
             _storage,
             new TestOptionsMonitor(new FcShellOptions { MaxETagCacheEntries = 50 }),
             TimeProvider.System,
             NullLogger<ETagCacheService>.Instance);
+
+    public void Dispose()
+    {
+        _cache.Dispose();
+        GC.SuppressFinalize(this);
+    }
 
     [Fact]
     public async Task QueryAsync_200_WritesCacheEntryAndReturnsItems() {

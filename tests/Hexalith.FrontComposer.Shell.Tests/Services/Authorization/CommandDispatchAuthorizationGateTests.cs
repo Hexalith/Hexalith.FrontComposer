@@ -214,7 +214,7 @@ public sealed class CommandDispatchAuthorizationGateTests {
         return registry;
     }
 
-    private static IFrontComposerRegistry PlainRegistry(string? policy)
+    private static PlainFrontComposerRegistry PlainRegistry(string? policy)
         => new PlainFrontComposerRegistry(new DomainManifest(
             "Orders",
             "Orders",

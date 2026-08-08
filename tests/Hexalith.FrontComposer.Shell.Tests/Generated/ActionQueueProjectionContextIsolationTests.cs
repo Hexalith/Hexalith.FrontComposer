@@ -103,9 +103,8 @@ public sealed class ActionQueueProjectionContextIsolationTests : GeneratedCompon
         [Parameter] public EventCallback<string?> OnObservedAggregateId { get; set; }
 
         protected override void BuildRenderTree(RenderTreeBuilder builder) {
-            int seq = 0;
-            builder.OpenElement(seq++, "section");
-            builder.AddAttribute(seq++, "data-testid", $"action-queue-view-{ViewName.ToLowerInvariant()}");
+            builder.OpenElement(0, "section");
+            builder.AddAttribute(1, "data-testid", $"action-queue-view-{ViewName.ToLowerInvariant()}");
 
             foreach (ActionQueueRow item in Items) {
                 ProjectionContext rowContext = new(
@@ -116,10 +115,10 @@ public sealed class ActionQueueProjectionContextIsolationTests : GeneratedCompon
                         .Add(nameof(ActionQueueRow.Id), item.Id)
                         .Add(nameof(ActionQueueRow.Label), item.Label));
 
-                builder.OpenComponent<CascadingValue<ProjectionContext>>(seq++);
-                builder.AddAttribute(seq++, "Value", rowContext);
-                builder.AddAttribute(seq++, "IsFixed", true);
-                builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((RenderTreeBuilder rowBuilder) => {
+                builder.OpenComponent<CascadingValue<ProjectionContext>>(2);
+                builder.AddAttribute(3, "Value", rowContext);
+                builder.AddAttribute(4, "IsFixed", true);
+                builder.AddAttribute(5, "ChildContent", (RenderFragment)((RenderTreeBuilder rowBuilder) => {
                     rowBuilder.OpenComponent<ProjectionContextProbe>(0);
                     rowBuilder.AddAttribute(1, nameof(ProjectionContextProbe.RowId), item.Id);
                     rowBuilder.AddAttribute(2, nameof(ProjectionContextProbe.OnObservedAggregateId), OnObservedAggregateId);
@@ -140,21 +139,19 @@ public sealed class ActionQueueProjectionContextIsolationTests : GeneratedCompon
         [Parameter] public EventCallback<string?> OnObservedAggregateId { get; set; }
 
         protected override void BuildRenderTree(RenderTreeBuilder builder) {
-            int seq = 0;
-
-            builder.OpenElement(seq++, "span");
-            builder.AddAttribute(seq++, "data-testid", $"context-{RowId}");
-            builder.AddContent(seq++, ProjectionContext?.AggregateId ?? "null");
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "data-testid", $"context-{RowId}");
+            builder.AddContent(2, ProjectionContext?.AggregateId ?? "null");
             builder.CloseElement();
 
-            builder.OpenElement(seq++, "button");
-            builder.AddAttribute(seq++, "type", "button");
-            builder.AddAttribute(seq++, "data-testid", $"probe-{RowId}");
+            builder.OpenElement(3, "button");
+            builder.AddAttribute(4, "type", "button");
+            builder.AddAttribute(5, "data-testid", $"probe-{RowId}");
             builder.AddAttribute(
-                seq++,
+                6,
                 "onclick",
                 EventCallback.Factory.Create(this, () => OnObservedAggregateId.InvokeAsync(ProjectionContext?.AggregateId)));
-            builder.AddContent(seq++, $"Use {RowId}");
+            builder.AddContent(7, $"Use {RowId}");
             builder.CloseElement();
         }
     }

@@ -80,7 +80,7 @@ public sealed class LoadedPageStateCacheBoundTests {
         state.PagesByKey.ContainsKey((ViewKey, 120)).ShouldBeTrue();
         state.PagesByKey.ContainsKey((ViewKey, 140)).ShouldBeTrue();
 
-        logger.Messages.Count(m => m.Contains("eviction") && m.StartsWith("Information:")).ShouldBe(3);
+        logger.Messages.Count(m => m.Contains("eviction") && m.StartsWith("Information:", StringComparison.Ordinal)).ShouldBe(3);
     }
 
     [Fact]

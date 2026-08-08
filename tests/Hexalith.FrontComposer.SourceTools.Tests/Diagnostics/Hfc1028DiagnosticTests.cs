@@ -95,7 +95,7 @@ namespace TestDomain
         hfc1028.Length.ShouldBe(1);
         hfc1028[0].Severity.ShouldBe(DiagnosticSeverity.Info);
 
-        string message = hfc1028[0].GetMessage();
+        string message = hfc1028[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         message.ShouldContain("OrderProjection");
         message.ShouldContain("Name");
         message.ShouldContain("Count");
@@ -111,7 +111,7 @@ namespace TestDomain
         Diagnostic[] hfc1028 = [.. diagnostics.Where(d => d.Id == "HFC1028")];
         hfc1028.Length.ShouldBe(2);
 
-        string allMessages = string.Join("\n", hfc1028.Select(d => d.GetMessage()));
+        string allMessages = string.Join("\n", hfc1028.Select(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture)));
         allMessages.ShouldContain("Name");
         allMessages.ShouldContain("Count");
         allMessages.ShouldContain("Alpha");
@@ -127,7 +127,7 @@ namespace TestDomain
         unannotated.Any(d => d.Id == "HFC1028").ShouldBeFalse();
     }
 
-    private static IReadOnlyList<Diagnostic> RunGenerator(string source) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunGenerator(string source) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

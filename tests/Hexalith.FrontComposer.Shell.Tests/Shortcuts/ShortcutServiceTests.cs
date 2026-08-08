@@ -255,7 +255,7 @@ public class ShortcutServiceTests {
         regs.ShouldContain(r => r.Binding == "ctrl+,");
     }
 
-    private static IReadOnlyList<LoggedEntry> GetLogEntries(ILogger<ShortcutService> logger) {
+    private static List<LoggedEntry> GetLogEntries(ILogger<ShortcutService> logger) {
         List<LoggedEntry> entries = [];
         foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls()) {
             if (!string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal)) {

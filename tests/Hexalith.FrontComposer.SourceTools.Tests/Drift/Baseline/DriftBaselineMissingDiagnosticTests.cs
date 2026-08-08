@@ -29,12 +29,12 @@ public sealed class DriftBaselineMissingDiagnosticTests {
 
         IReadOnlyList<Diagnostic> diagnostics = RunWithoutBaseline(source);
 
-        Diagnostic[] missing = [.. diagnostics.Where(d => d.GetMessage().Contains("baseline", StringComparison.OrdinalIgnoreCase)
-                                                       && (d.GetMessage().Contains("first run", StringComparison.OrdinalIgnoreCase)
-                                                        || d.GetMessage().Contains("missing", StringComparison.OrdinalIgnoreCase)))];
+        Diagnostic[] missing = [.. diagnostics.Where(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("baseline", StringComparison.OrdinalIgnoreCase)
+                                                       && (d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("first run", StringComparison.OrdinalIgnoreCase)
+                                                        || d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("missing", StringComparison.OrdinalIgnoreCase)))];
         missing.Length.ShouldBe(1, "AC8 — exactly one first-run/missing-baseline diagnostic, regardless of declaration count.");
         missing[0].Severity.ShouldBe(DiagnosticSeverity.Warning);
-        missing[0].GetMessage().ShouldContain("Story 9-2", Case.Insensitive);
+        missing[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("Story 9-2", Case.Insensitive);
     }
 
     [Fact()]
@@ -57,11 +57,11 @@ public sealed class DriftBaselineMissingDiagnosticTests {
         IReadOnlyList<Diagnostic> withoutBaseline = RunWithoutBaseline(source);
         IReadOnlyList<Diagnostic> invalidPath = RunWithMisconfiguredBaselinePath(source);
 
-        Diagnostic? missing = withoutBaseline.FirstOrDefault(d => d.GetMessage().Contains("baseline", StringComparison.OrdinalIgnoreCase)
-                                                               && (d.GetMessage().Contains("first run", StringComparison.OrdinalIgnoreCase)
-                                                                || d.GetMessage().Contains("missing", StringComparison.OrdinalIgnoreCase)));
-        Diagnostic? invalid = invalidPath.FirstOrDefault(d => d.GetMessage().Contains("baseline", StringComparison.OrdinalIgnoreCase)
-                                                           && d.GetMessage().Contains("path", StringComparison.OrdinalIgnoreCase));
+        Diagnostic? missing = withoutBaseline.FirstOrDefault(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("baseline", StringComparison.OrdinalIgnoreCase)
+                                                               && (d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("first run", StringComparison.OrdinalIgnoreCase)
+                                                                || d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("missing", StringComparison.OrdinalIgnoreCase)));
+        Diagnostic? invalid = invalidPath.FirstOrDefault(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("baseline", StringComparison.OrdinalIgnoreCase)
+                                                           && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("path", StringComparison.OrdinalIgnoreCase));
 
         _ = missing.ShouldNotBeNull();
         _ = invalid.ShouldNotBeNull();
@@ -69,7 +69,7 @@ public sealed class DriftBaselineMissingDiagnosticTests {
         missing.Id.ShouldBe("HFC1058", "AC8 — first-run/missing baseline pinned to HFC1058.");
         invalid.Id.ShouldBe("HFC1059", "AC8 — invalid-configured-path pinned to HFC1059.");
 
-        invalidPath.Any(d => d.GetMessage().Contains("first run", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse(
+        invalidPath.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("first run", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse(
             "AC8 — the invalid-path diagnostic must NOT reuse the first-run wording.");
     }
 
@@ -91,12 +91,12 @@ public sealed class DriftBaselineMissingDiagnosticTests {
 
         IReadOnlyList<Diagnostic> diagnostics = RunWithoutBaseline(source);
 
-        diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase)
-                          || d.GetMessage().Contains("metadata drift", StringComparison.OrdinalIgnoreCase))
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("structural drift", StringComparison.OrdinalIgnoreCase)
+                          || d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("metadata drift", StringComparison.OrdinalIgnoreCase))
             .ShouldBeFalse("AC8 — missing baseline suppresses drift comparison.");
     }
 
-    private static IReadOnlyList<Diagnostic> RunWithoutBaseline(string source) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunWithoutBaseline(string source) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
@@ -110,7 +110,7 @@ public sealed class DriftBaselineMissingDiagnosticTests {
         return driver.GetRunResult().Diagnostics;
     }
 
-    private static IReadOnlyList<Diagnostic> RunWithMisconfiguredBaselinePath(string source) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunWithMisconfiguredBaselinePath(string source) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
@@ -124,7 +124,7 @@ public sealed class DriftBaselineMissingDiagnosticTests {
         return driver.GetRunResult().Diagnostics;
     }
 
-    private static AnalyzerConfigOptionsProvider EnabledOptions(Dictionary<string, string>? extra = null) {
+    private static InMemoryOptions EnabledOptions(Dictionary<string, string>? extra = null) {
         Dictionary<string, string> values = extra is null
             ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
             : new Dictionary<string, string>(extra, StringComparer.OrdinalIgnoreCase);

@@ -24,6 +24,10 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// renders popover with checkbox list, and swaps aria-label at N=0.
 /// </summary>
 public sealed class FcColumnPrioritizerTests : BunitContext {
+    private static readonly string[] HiddenColumn = ["Col11"];
+    private static readonly string[] HiddenColumns = ["Col11", "Col12"];
+    private static readonly string[] ThreeHiddenColumns = ["Col11", "Col12", "Col13"];
+
     private readonly IDispatcher _dispatcher = Substitute.For<IDispatcher>();
 
     public FcColumnPrioritizerTests() {
@@ -59,7 +63,7 @@ public sealed class FcColumnPrioritizerTests : BunitContext {
     public void Gear_RendersTopRightWithHiddenCountAriaLabel() {
         IRenderedComponent<FcColumnPrioritizer> cut = RenderPrioritizer(
             MakeColumns(16),
-            hidden: new[] { "Col11", "Col12", "Col13" });
+            hidden: ThreeHiddenColumns);
 
         AngleSharp.Dom.IElement gear = cut.Find("[data-testid=\"fc-column-prioritizer-gear\"]");
         (gear.GetAttribute("aria-label") ?? string.Empty).ShouldContain("Hidden columns: 3");
@@ -71,7 +75,7 @@ public sealed class FcColumnPrioritizerTests : BunitContext {
     public void Gear_RendersStableClassReachedThroughScopedRootDeepSelector() {
         IRenderedComponent<FcColumnPrioritizer> cut = RenderPrioritizer(
             MakeColumns(16),
-            hidden: new[] { "Col11", "Col12", "Col13" });
+            hidden: ThreeHiddenColumns);
 
         AngleSharp.Dom.IElement root = cut.Find(".fc-column-prioritizer");
         AngleSharp.Dom.IElement gear = cut.Find("[data-testid=\"fc-column-prioritizer-gear\"]");
@@ -98,7 +102,7 @@ public sealed class FcColumnPrioritizerTests : BunitContext {
     public void ClickingGear_OpensPopover_WithCheckboxForEachColumn() {
         IRenderedComponent<FcColumnPrioritizer> cut = RenderPrioritizer(
             MakeColumns(16),
-            hidden: new[] { "Col11" });
+            hidden: HiddenColumn);
 
         cut.FindAll("[data-testid=\"fc-column-prioritizer-popover\"]").Count.ShouldBe(0);
 
@@ -130,7 +134,7 @@ public sealed class FcColumnPrioritizerTests : BunitContext {
     public void ClickingResetButton_DispatchesResetColumnVisibilityAction() {
         IRenderedComponent<FcColumnPrioritizer> cut = RenderPrioritizer(
             MakeColumns(16),
-            hidden: new[] { "Col11", "Col12" });
+            hidden: HiddenColumns);
 
         cut.Find("[data-testid=\"fc-column-prioritizer-gear\"]").Click();
         cut.Find("[data-testid=\"fc-column-prioritizer-reset\"]").Click();

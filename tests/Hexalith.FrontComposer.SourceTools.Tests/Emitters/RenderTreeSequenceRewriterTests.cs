@@ -452,7 +452,7 @@ public sealed partial class RenderTreeSequenceRewriterTests {
                     + " @ "
                     + DescribeSite(generatedSource, diagnostic.Location.SourceSpan.Start)
                     + " - "
-                    + diagnostic.GetMessage())));
+                    + diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture))));
     }
 
     /// <summary>Names an offset by line number and line text so a failure identifies the site.</summary>

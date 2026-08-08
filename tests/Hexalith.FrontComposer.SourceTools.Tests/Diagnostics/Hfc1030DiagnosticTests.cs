@@ -65,7 +65,7 @@ namespace TestDomain
         hfc1030.Length.ShouldBe(1);
         hfc1030[0].Severity.ShouldBe(DiagnosticSeverity.Info);
 
-        string message = hfc1030[0].GetMessage();
+        string message = hfc1030[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         message.ShouldContain("OrderProjection");
         message.ShouldContain("Additional details");
         message.ShouldContain("reserved catch-all");
@@ -77,8 +77,8 @@ namespace TestDomain
 
         Diagnostic[] hfc1030 = [.. diagnostics.Where(d => d.Id == "HFC1030")];
         hfc1030.Length.ShouldBe(1);
-        hfc1030[0].GetMessage().ShouldContain("additional DETAILS");
-        hfc1030[0].GetMessage().ShouldContain("Additional details");
+        hfc1030[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("additional DETAILS");
+        hfc1030[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("Additional details");
     }
 
     [Fact]
@@ -88,7 +88,7 @@ namespace TestDomain
         diagnostics.Any(d => d.Id == "HFC1030").ShouldBeFalse();
     }
 
-    private static IReadOnlyList<Diagnostic> RunGenerator(string source) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunGenerator(string source) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

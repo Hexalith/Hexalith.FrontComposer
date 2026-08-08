@@ -44,15 +44,15 @@ public sealed class DriftClassifierBoundedContextTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        Diagnostic[] contextDrifts = [.. diagnostics.Where(d => d.GetMessage().Contains("BoundedContext", StringComparison.Ordinal)
-                                                              || d.GetMessage().Contains("bounded context", StringComparison.OrdinalIgnoreCase))];
+        Diagnostic[] contextDrifts = [.. diagnostics.Where(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("BoundedContext", StringComparison.Ordinal)
+                                                              || d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("bounded context", StringComparison.OrdinalIgnoreCase))];
         contextDrifts.Length.ShouldBe(1, "AC6: exactly one diagnostic per bounded-context rename.");
 
         // Story 9-1 review CB-36: AC6 inherits the AC2/AC5 default-Warning severity contract.
         contextDrifts[0].Severity.ShouldBe(DiagnosticSeverity.Warning,
             "AC6 — bounded context rename emits Warning by default.");
 
-        string message = contextDrifts[0].GetMessage();
+        string message = contextDrifts[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         message.ShouldContain("Sales", Case.Insensitive);
         message.ShouldContain("Orders", Case.Insensitive);
         foreach (string surface in RequiredAffectedSurfaces) {
@@ -87,8 +87,8 @@ public sealed class DriftClassifierBoundedContextTests {
         // a structural drift (declaration identity changes because identity includes context).
         // Either is acceptable — silent absence of a diagnostic is not.
         diagnostics.Any(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
-                          && (d.GetMessage().Contains("Sales", StringComparison.Ordinal)
-                           || d.GetMessage().Contains("OrderProjection", StringComparison.Ordinal)))
+                          && (d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Sales", StringComparison.Ordinal)
+                           || d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("OrderProjection", StringComparison.Ordinal)))
             .ShouldBeTrue("CB-22 — removing [BoundedContext] from source must surface a deterministic drift diagnostic, not silent.");
     }
 
@@ -112,11 +112,11 @@ public sealed class DriftClassifierBoundedContextTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        diagnostics.Any(d => d.GetMessage().Contains("bounded context", StringComparison.OrdinalIgnoreCase))
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("bounded context", StringComparison.OrdinalIgnoreCase))
             .ShouldBeFalse("Equal context name ⇒ no diagnostic.");
     }
 
-    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string source, string baselineJson) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

@@ -95,8 +95,8 @@ public class AttributeParserTests {
         Diagnostic[] diagnostics = driver.GetRunResult().Diagnostics.Where(diagnostic => diagnostic.Id == "HFC1002").ToArray();
 
         diagnostics.Length.ShouldBe(1);
-        diagnostics[0].GetMessage().ShouldContain("UnapprovedFixture");
-        diagnostics[0].GetMessage().ShouldNotContain("'ApprovedFixture'");
+        diagnostics[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("UnapprovedFixture");
+        diagnostics[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldNotContain("'ApprovedFixture'");
     }
 
     [Fact]
@@ -128,7 +128,7 @@ public class AttributeParserTests {
         Diagnostic[] diagnostics = driver.GetRunResult().Diagnostics.Where(diagnostic => diagnostic.Id == "HFC1002").ToArray();
 
         diagnostics.Length.ShouldBe(1);
-        diagnostics[0].GetMessage().ShouldContain("OtherRuleSuppressed");
+        diagnostics[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("OtherRuleSuppressed");
     }
 
     [Fact]

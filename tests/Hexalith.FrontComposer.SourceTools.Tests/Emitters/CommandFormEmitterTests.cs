@@ -12,6 +12,8 @@ using Shouldly;
 namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 
 public class CommandFormEmitterTests {
+    private static readonly string[] ExpectedPayloadField = ["Payload"];
+
     private static CommandFluxorModel BuildFluxor(string typeName = "IncrementCommand", string @namespace = "Counter.Domain") => new(
             typeName,
             @namespace,
@@ -588,7 +590,7 @@ public class CommandFormEmitterTests {
         CommandFormModel form = CommandFormTransform.Transform(parse.Model);
         string source = CommandFormEmitter.Emit(form, fluxor);
 
-        form.Fields.Select(f => f.PropertyName).ShouldBe(new[] { "Payload" });
+        form.Fields.Select(f => f.PropertyName).ShouldBe(ExpectedPayloadField);
         source.ShouldContain("// Field: Payload");
         source.ShouldContain("ResolveLabel(\"Payload\"");
         source.ShouldNotContain("// Field: RequestIp");

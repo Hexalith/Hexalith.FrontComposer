@@ -8,6 +8,11 @@ namespace Hexalith.FrontComposer.Shell.Tests.Bench.Skills;
 
 [Trait("Category", "Performance")]
 public sealed class BenchmarkHarnessTests {
+    private static readonly string[] ExpectedInternalBenchmarkTypeNames = [
+        "SkillBenchmarkJsonContext",
+        "SkillBenchmarkPromptDto",
+        "SkillBenchmarkPromptSetDto",
+    ];
     private static readonly string[] BenchmarkTypeNames = [
         "SkillBenchmarkPrompt",
         "SkillBenchmarkPromptSet",
@@ -55,7 +60,7 @@ public sealed class BenchmarkHarnessTests {
         benchmarkTypes.Length.ShouldBe(29);
         benchmarkTypes.Count(type => type.IsPublic).ShouldBe(26);
         benchmarkTypes.Where(type => !type.IsPublic).Select(type => type.Name).Order(StringComparer.Ordinal).ShouldBe(
-            new[] { "SkillBenchmarkJsonContext", "SkillBenchmarkPromptDto", "SkillBenchmarkPromptSetDto" });
+            ExpectedInternalBenchmarkTypeNames);
         assembly.GetManifestResourceNames().ShouldContain(
             "Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json");
     }
@@ -288,7 +293,7 @@ public sealed class BenchmarkHarnessTests {
 
     [Fact]
     public void BudgetPolicy_FailsClosedForMissingAtLimitExpiredMalformedAndRetryStormState() {
-        var now = DateTimeOffset.Parse("2026-05-10T12:00:00Z");
+        var now = DateTimeOffset.Parse("2026-05-10T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture);
         var available = new SkillBenchmarkBudgetState(100, 99, now.AddDays(1), ProviderCostMetadataAvailable: true, RetryStormDetected: false);
 
         SkillBenchmarkBudgetPolicy.Evaluate(available, now).ShouldBe(SkillBenchmarkBudgetStatus.Available);
@@ -320,7 +325,7 @@ public sealed class BenchmarkHarnessTests {
             CommitSha: "abc123",
             ApproverMarker: "approved-by-release-owner",
             SanitizedSummaryHash: "summary",
-            CapturedAt: DateTimeOffset.Parse("2026-05-10T12:00:00Z"));
+            CapturedAt: DateTimeOffset.Parse("2026-05-10T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture));
 
         SkillBenchmarkGateResult gate = SkillBenchmarkGate.Evaluate(promptSet, results, baseline);
         gate.Status.ShouldBe(SkillBenchmarkGateStatus.Passed);
@@ -439,5 +444,5 @@ public sealed class BenchmarkHarnessTests {
             CommitSha: "abc123",
             ApproverMarker: "approved-by-release-owner",
             SanitizedSummaryHash: "summary",
-            CapturedAt: DateTimeOffset.Parse("2026-05-10T12:00:00Z"));
+            CapturedAt: DateTimeOffset.Parse("2026-05-10T12:00:00Z", System.Globalization.CultureInfo.InvariantCulture));
 }

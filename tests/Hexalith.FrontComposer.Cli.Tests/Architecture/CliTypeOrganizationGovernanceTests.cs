@@ -59,7 +59,7 @@ public sealed class CliTypeOrganizationGovernanceTests {
         (string Path, string Content)[] sources = LoadProductionSources(LocateCliRoot());
         sources.ShouldNotBeEmpty("The CLI source locator must not let the governance scan pass vacuously.");
 
-        IReadOnlyList<string> violations = FindMultiTypeViolations(sources);
+        List<string> violations = FindMultiTypeViolations(sources);
 
         violations.ShouldBeEmpty(
             "CLI production files may contain at most one direct namespace/compilation-unit type or delegate. "
@@ -77,7 +77,7 @@ public sealed class CliTypeOrganizationGovernanceTests {
                 + "internal delegate void Second();\n"),
         ];
 
-        IReadOnlyList<string> violations = FindMultiTypeViolations(sources);
+        List<string> violations = FindMultiTypeViolations(sources);
 
         violations.Count.ShouldBe(1);
         violations[0].ShouldContain("Synthetic/MultiType.cs");
@@ -96,7 +96,7 @@ public sealed class CliTypeOrganizationGovernanceTests {
                 + "} } }\n"),
         ];
 
-        IReadOnlyList<string> violations = FindMultiTypeViolations(sources);
+        List<string> violations = FindMultiTypeViolations(sources);
 
         violations.Count.ShouldBe(1);
         violations[0].ShouldContain("Synthetic/NestedNamespace.cs");
@@ -116,7 +116,7 @@ public sealed class CliTypeOrganizationGovernanceTests {
                 + "#endif\n"),
         ];
 
-        IReadOnlyList<string> violations = FindMultiTypeViolations(sources);
+        List<string> violations = FindMultiTypeViolations(sources);
 
         violations.Count.ShouldBe(1);
         violations[0].ShouldContain("Synthetic/Conditional.cs");
@@ -159,13 +159,13 @@ public sealed class CliTypeOrganizationGovernanceTests {
         ]);
     }
 
-    private static IReadOnlyList<string> FindMultiTypeViolations(
+    private static List<string> FindMultiTypeViolations(
         IEnumerable<(string Path, string Content)> sources) {
         List<string> violations = [];
 
         foreach ((string path, string content) in sources) {
-            IReadOnlyList<MemberDeclarationSyntax> declarations = GetDirectTopLevelDeclarations(content);
-            if (declarations.Count <= 1) {
+            MemberDeclarationSyntax[] declarations = GetDirectTopLevelDeclarations(content);
+            if (declarations.Length <= 1) {
                 continue;
             }
 
@@ -175,7 +175,7 @@ public sealed class CliTypeOrganizationGovernanceTests {
         return violations;
     }
 
-    private static IReadOnlyList<MemberDeclarationSyntax> GetDirectTopLevelDeclarations(string source) {
+    private static MemberDeclarationSyntax[] GetDirectTopLevelDeclarations(string source) {
         string allConditionalBranches = ActivateAllConditionalBranches(source);
         CompilationUnitSyntax root = CSharpSyntaxTree.ParseText(
             allConditionalBranches,

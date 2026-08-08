@@ -11,6 +11,17 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 
 [Trait("Category", "Governance")]
 public sealed class CiGovernanceTests {
+    private static readonly string[] ApprovedStrykerTargetRoots = [
+        "src/Hexalith.FrontComposer.SourceTools/Parsing",
+        "src/Hexalith.FrontComposer.SourceTools/Transforms",
+    ];
+    private static readonly string[] StrykerTriageActions = [
+        "kill-test-added",
+        "equivalent-accepted",
+        "deferred-with-owner",
+        "blocking",
+    ];
+
     [Fact]
     public void CommitlintJob_BlocksPrTitlesAndCommitMessagesUsedBySemanticRelease() {
         // REL-2 (2026-07-13): commitlint moved out of the inline ci.yml job into the dedicated
@@ -2035,10 +2046,7 @@ public sealed class CiGovernanceTests {
             File.WriteAllText(manifestPath, JsonSerializer.Serialize(new Dictionary<string, object?> {
                 ["schemaVersion"] = "1.0",
                 ["ownerStory"] = "governance-fixture",
-                ["approvedTargetRoots"] = new[] {
-                    "src/Hexalith.FrontComposer.SourceTools/Parsing",
-                    "src/Hexalith.FrontComposer.SourceTools/Transforms",
-                },
+                ["approvedTargetRoots"] = ApprovedStrykerTargetRoots,
                 ["segments"] = new[] {
                     new Dictionary<string, object?> {
                         ["name"] = "happy-path",
@@ -2049,7 +2057,7 @@ public sealed class CiGovernanceTests {
                     },
                 },
                 ["explicitExclusions"] = Array.Empty<object>(),
-                ["triageActions"] = new[] { "kill-test-added", "equivalent-accepted", "deferred-with-owner", "blocking" },
+                ["triageActions"] = StrykerTriageActions,
                 ["problemMutantTriage"] = Array.Empty<object>(),
             }));
 

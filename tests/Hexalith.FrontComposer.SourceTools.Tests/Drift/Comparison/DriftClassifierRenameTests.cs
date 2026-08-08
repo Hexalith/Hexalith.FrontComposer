@@ -40,7 +40,7 @@ public sealed class DriftClassifierRenameTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        Diagnostic[] renames = [.. diagnostics.Where(d => d.GetMessage().Contains("rename", StringComparison.OrdinalIgnoreCase))];
+        Diagnostic[] renames = [.. diagnostics.Where(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("rename", StringComparison.OrdinalIgnoreCase))];
         renames.Length.ShouldBe(1, "AC4 — 1:1 deterministic match emits exactly one rename diagnostic.");
         // Epic 9 verbatim wording shape (story §AC4):
         // "Property '{OldName}' was expected on {TypeName} but not found. '{NewName}' was added.
@@ -49,7 +49,7 @@ public sealed class DriftClassifierRenameTests {
         // regression that drops single quotes, reorders sentences, or drops the trailing
         // "See HFC..." pointer is caught. The `[\s\S]*?` between sentences allows for an
         // optional drift-prefix preamble emitted by the production message template.
-        string message = renames[0].GetMessage();
+        string message = renames[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture);
         message.ShouldMatch(
             @"Property 'OldLabel' was expected on TestDomain\.OrderProjection but not found\.[\s\S]*?'NewLabel' was added\.[\s\S]*?If this is a rename, update the generated output\.[\s\S]*?See HFC1\d{3}\.",
             customMessage: "AC4 — full Epic 9 wording shape with single-quoted member names, period-terminated sentences, and trailing 'See HFC####.' pointer must be preserved.");
@@ -79,10 +79,10 @@ public sealed class DriftClassifierRenameTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        diagnostics.Any(d => d.GetMessage().Contains("rename", StringComparison.OrdinalIgnoreCase))
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("rename", StringComparison.OrdinalIgnoreCase))
             .ShouldBeFalse("AC4 — ambiguous matches MUST NOT be classified as renames.");
-        diagnostics.Count(d => d.GetMessage().Contains("not found", StringComparison.OrdinalIgnoreCase)).ShouldBe(2);
-        diagnostics.Count(d => d.GetMessage().Contains("added", StringComparison.OrdinalIgnoreCase)).ShouldBe(2);
+        diagnostics.Count(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("not found", StringComparison.OrdinalIgnoreCase)).ShouldBe(2);
+        diagnostics.Count(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("added", StringComparison.OrdinalIgnoreCase)).ShouldBe(2);
     }
 
     [Fact()]
@@ -107,7 +107,7 @@ public sealed class DriftClassifierRenameTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        diagnostics.Any(d => d.GetMessage().Contains("rename", StringComparison.OrdinalIgnoreCase))
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("rename", StringComparison.OrdinalIgnoreCase))
             .ShouldBeFalse();
     }
 
@@ -139,12 +139,12 @@ public sealed class DriftClassifierRenameTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
-        diagnostics.Any(d => d.GetMessage().Contains("rename", StringComparison.OrdinalIgnoreCase))
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("rename", StringComparison.OrdinalIgnoreCase))
             .ShouldBeFalse($"AC4 boundary — {baselineCategory}→{addedCategory} cross-name change must NOT collapse into a rename.");
-        diagnostics.Count(d => d.GetMessage().Contains("not found", StringComparison.OrdinalIgnoreCase)).ShouldBe(1,
+        diagnostics.Count(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("not found", StringComparison.OrdinalIgnoreCase)).ShouldBe(1,
             $"AC4 boundary — {baselineCategory}→{addedCategory} must surface OldField as removed.");
-        diagnostics.Count(d => d.GetMessage().Contains("added", StringComparison.OrdinalIgnoreCase)
-                            && d.GetMessage().Contains("NewField", StringComparison.Ordinal)).ShouldBe(1,
+        diagnostics.Count(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("added", StringComparison.OrdinalIgnoreCase)
+                            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("NewField", StringComparison.Ordinal)).ShouldBe(1,
             $"AC4 boundary — {baselineCategory}→{addedCategory} must surface NewField as added.");
     }
 
@@ -161,7 +161,7 @@ public sealed class DriftClassifierRenameTests {
     private static string Initializer(string category, string nullable)
         => category == "String" && nullable == "false" ? " = string.Empty;" : string.Empty;
 
-    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string source, string baselineJson) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();

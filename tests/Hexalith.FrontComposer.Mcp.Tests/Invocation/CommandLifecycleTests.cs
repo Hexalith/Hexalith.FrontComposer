@@ -231,7 +231,7 @@ public sealed class CommandLifecycleTests {
     [Fact]
     public async Task ReadAsync_InProgressPastConfiguredTimeout_ReturnsTimedOutTerminalSnapshot() {
         // P37: deterministic timer firing via FakeTimeProvider — no wall-clock dependency.
-        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z"));
+        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture));
         FrontComposerMcpCommandInvoker invoker = Build(
             out LifecycleAwareCommandService service,
             out ServiceProvider provider,
@@ -267,7 +267,7 @@ public sealed class CommandLifecycleTests {
     public async Task ReadAsync_RealConfirmedAfterSyntheticTimedOut_TerminalStaysTimedOut() {
         // P38: synthetic-vs-real terminal monotonicity (AC18). Once a synthetic timeout seals the
         // entry, a late real Confirmed observation must not regress or duplicate the terminal.
-        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z"));
+        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture));
         FrontComposerMcpCommandInvoker invoker = Build(
             out LifecycleAwareCommandService service,
             out ServiceProvider provider,
@@ -310,7 +310,7 @@ public sealed class CommandLifecycleTests {
     public async Task ReadAsync_RepeatedReadsOfSyntheticTerminal_ReturnIdenticalSnapshots() {
         // P39: AC5/AC18 — repeated lifecycle reads after a synthetic terminal must return the same
         // terminal outcome idempotently with no transition history growth or duplicate registration.
-        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z"));
+        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture));
         FrontComposerMcpCommandInvoker invoker = Build(
             out LifecycleAwareCommandService service,
             out ServiceProvider provider,
@@ -795,8 +795,8 @@ public sealed class CommandLifecycleTests {
             CommandLifecycleState.Idle,
             state,
             messageId,
-            DateTimeOffset.Parse("2026-05-02T00:00:00Z"),
-            DateTimeOffset.Parse("2026-05-02T00:00:00Z"),
+            DateTimeOffset.Parse("2026-05-02T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
+            DateTimeOffset.Parse("2026-05-02T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
             idempotencyResolved)).ShouldBeTrue();
     }
 
@@ -898,8 +898,8 @@ public sealed class CommandLifecycleTests {
                 previous,
                 newState,
                 messageId,
-                DateTimeOffset.Parse("2026-05-02T00:00:00Z"),
-                DateTimeOffset.Parse("2026-05-02T00:00:00Z"),
+                DateTimeOffset.Parse("2026-05-02T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
+                DateTimeOffset.Parse("2026-05-02T00:00:00Z", System.Globalization.CultureInfo.InvariantCulture),
                 idempotencyResolved);
             foreach (Action<CommandLifecycleTransition> callback in callbacks.ToArray()) {
                 callback(transition);

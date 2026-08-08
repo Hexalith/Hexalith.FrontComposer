@@ -39,7 +39,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
         // Story 9-1 review CB-34: pin the configuration diagnostic to HFC1067 (InvalidOption)
         // so a refactor that emits the message under a different ID is caught.
         diagnostics.Any(d => d.Id == ConfigDiagnosticId
-                          && d.GetMessage().Contains(optionKey.Split('.').Last(), StringComparison.OrdinalIgnoreCase))
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains(optionKey.Split('.').Last(), StringComparison.OrdinalIgnoreCase))
             .ShouldBeTrue($"AC9 — invalid {optionKey}={optionValue} must surface HFC1067 (InvalidOption) referencing the option name.");
     }
 
@@ -78,7 +78,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
         IReadOnlyList<Diagnostic> diagnostics = RunWithOption(SourceWithProjection, "build_property.HfcDriftSeverity", value);
 
         diagnostics.Any(d => d.Id == ConfigDiagnosticId
-                          && d.GetMessage().Contains("HfcDriftSeverity", StringComparison.OrdinalIgnoreCase))
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("HfcDriftSeverity", StringComparison.OrdinalIgnoreCase))
             .ShouldBeFalse($"AC9 — HfcDriftSeverity='{value}' must be accepted (case-insensitive, trimmed).");
     }
 
@@ -95,7 +95,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
         IReadOnlyList<Diagnostic> diagnostics = RunWithOption(SourceWithProjection, "build_property.HfcDriftMaxDiagnostics", raw);
 
         bool emittedConfigDiagnostic = diagnostics.Any(d => d.Id == ConfigDiagnosticId
-                                                         && d.GetMessage().Contains("HfcDriftMaxDiagnostics", StringComparison.OrdinalIgnoreCase));
+                                                         && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("HfcDriftMaxDiagnostics", StringComparison.OrdinalIgnoreCase));
         emittedConfigDiagnostic.ShouldBe(!expectAccepted,
             $"CB-14 — HfcDriftMaxDiagnostics={raw} expected accepted={expectAccepted}.");
     }
@@ -130,7 +130,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
 
         // When enabled, the "Added" property drift must surface. When disabled (or garbage),
         // no drift comparison runs, so no HFC1065 referencing "Added" should appear.
-        bool driftFired = diagnostics.Any(d => d.Id == "HFC1065" && d.GetMessage().Contains("Added", StringComparison.Ordinal));
+        bool driftFired = diagnostics.Any(d => d.Id == "HFC1065" && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Added", StringComparison.Ordinal));
         driftFired.ShouldBe(expectEnabled, $"CB-15 — HfcDriftDetectionEnabled='{value}' expected enabled={expectEnabled}.");
     }
 
@@ -159,7 +159,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
             "true",
             "build_property.FrontComposerDriftDetectionEnabled");
 
-        diagnostics.Any(d => d.Id == "HFC1065" && d.GetMessage().Contains("Added", StringComparison.Ordinal))
+        diagnostics.Any(d => d.Id == "HFC1065" && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Added", StringComparison.Ordinal))
             .ShouldBeTrue("AC1 — FrontComposerDriftDetectionEnabled=true must enable drift comparison when the primary HfcDriftDetectionEnabled option is absent.");
     }
 
@@ -194,9 +194,9 @@ public sealed class DriftAnalyzerConfigOptionsTests {
             source, baseline, "build_property.HfcDriftMaxDiagnostics", "-1");
 
         diagnostics.Any(d => d.Id == ConfigDiagnosticId
-                          && d.GetMessage().Contains("HfcDriftMaxDiagnostics", StringComparison.OrdinalIgnoreCase))
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("HfcDriftMaxDiagnostics", StringComparison.OrdinalIgnoreCase))
             .ShouldBeTrue("CB-33 — HFC1067 must fire for the invalid option.");
-        diagnostics.Any(d => d.Id == "HFC1065" && d.GetMessage().Contains("NewProp", StringComparison.Ordinal))
+        diagnostics.Any(d => d.Id == "HFC1065" && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("NewProp", StringComparison.Ordinal))
             .ShouldBeTrue("AC9 + CB-33 — drift detection must keep working under documented safe defaults; invalid options must not silently disable it.");
     }
 
@@ -218,7 +218,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
         }
     }
 
-    private static IReadOnlyList<Diagnostic> RunWithOption(string source, string optionKey, string optionValue) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunWithOption(string source, string optionKey, string optionValue) {
         // Story 9-1 review CB-35: keep modeling the production opt-in path explicitly. The
         // configuration-diagnostic check fires before the Enabled gate today, but routing
         // through DriftEnabledOptions guards against a future refactor that moves option
@@ -237,7 +237,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
         return driver.GetRunResult().Diagnostics;
     }
 
-    private static IReadOnlyList<Diagnostic> RunWithOptionAndBaseline(string source, string baselineJson, string optionKey, string optionValue) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunWithOptionAndBaseline(string source, string baselineJson, string optionKey, string optionValue) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
@@ -253,7 +253,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
         return driver.GetRunResult().Diagnostics;
     }
 
-    private static IReadOnlyList<Diagnostic> RunWithEnabledOverrideAndBaseline(
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunWithEnabledOverrideAndBaseline(
         string source,
         string baselineJson,
         string enabledRaw,

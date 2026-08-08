@@ -1,4 +1,7 @@
+using Counter.Web;
+
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 using Shouldly;
 
@@ -47,9 +50,24 @@ public sealed class CounterFakeAuthIntegrationTests {
         ex.Message.ShouldContain("Development", Case.Insensitive);
     }
 
+    [Fact]
+    public void FakeAuthEnabledLog_EmitsOneCriticalNamedEventWithDeploymentWarning() {
+        CapturingLogger<CounterFakeAuthIntegrationTests> logger = new();
+
+        CounterFakeAuthLogging.FakeAuthenticationEnabled(logger);
+
+        CapturedLogEntry entry = logger.Entries.ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Critical);
+        entry.EventId.Id.ShouldBe(1);
+        entry.EventId.Name.ShouldBe("FakeAuthenticationEnabled");
+        entry.Message.ShouldBe(
+            "Counter sample is running with FAKE authentication (Hexalith:FrontComposer:FakeAuth:Enabled=true). All requests share a single shared identity. Do not deploy with this flag set.");
+        entry.Exception.ShouldBeNull();
+    }
+
     /// <summary>
-    /// Mirrors the production guard in `samples/Counter/Counter.Web/Program.cs`. Kept private to
-    /// avoid coupling the Shell test project to the sample project.
+    /// Mirrors the production environment guard in `samples/Counter/Counter.Web/Program.cs`;
+    /// the logging contract itself is asserted directly against the sample logging type above.
     /// </summary>
     private static void SimulateProgramGuard(bool fakeAuthRequested, bool isDevelopment) {
         if (fakeAuthRequested && !isDevelopment) {

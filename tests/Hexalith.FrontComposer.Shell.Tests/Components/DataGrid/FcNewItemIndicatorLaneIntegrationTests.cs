@@ -125,9 +125,8 @@ public sealed class FcNewItemIndicatorLaneIntegrationTests : LayoutComponentTest
         public string ViewKey { get; set; } = default!;
 
         protected override void BuildRenderTree(RenderTreeBuilder builder) {
-            int seq = 0;
             foreach (NewItemIndicatorEntry entry in State.Snapshot(ViewKey)) {
-                builder.OpenComponent<FcNewItemIndicator>(seq++);
+                builder.OpenComponent<FcNewItemIndicator>(0);
                 builder.SetKey(entry.EntityKey);
                 builder.CloseComponent();
             }

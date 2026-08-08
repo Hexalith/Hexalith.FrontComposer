@@ -62,22 +62,22 @@ public class ParseStagePerformanceTests {
         _ = sb.AppendLine();
 
         for (int i = 0; i < count; i++) {
-            _ = sb.AppendLine($"[BoundedContext(\"Perf\")]");
-            _ = sb.AppendLine($"[Projection]");
-            _ = sb.AppendLine($"[ProjectionRole(ProjectionRole.StatusOverview)]");
-            _ = sb.AppendLine($"public partial class Projection{i}");
+            _ = sb.AppendLine("[BoundedContext(\"Perf\")]");
+            _ = sb.AppendLine("[Projection]");
+            _ = sb.AppendLine("[ProjectionRole(ProjectionRole.StatusOverview)]");
+            _ = sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"public partial class Projection{i}");
             _ = sb.AppendLine("{");
-            _ = sb.AppendLine($"    [Display(Name = \"Name {i}\")]");
-            _ = sb.AppendLine($"    public string Name {{ get; set; }} = string.Empty;");
-            _ = sb.AppendLine($"    public int Count {{ get; set; }}");
-            _ = sb.AppendLine($"    public decimal Amount {{ get; set; }}");
-            _ = sb.AppendLine($"    public bool IsActive {{ get; set; }}");
-            _ = sb.AppendLine($"    public DateTime CreatedAt {{ get; set; }}");
-            _ = sb.AppendLine($"    public Guid Id {{ get; set; }}");
-            _ = sb.AppendLine($"    public ItemStatus Status {{ get; set; }}");
-            _ = sb.AppendLine($"    public string? Description {{ get; set; }}");
-            _ = sb.AppendLine($"    public int? OptionalCount {{ get; set; }}");
-            _ = sb.AppendLine($"    public List<string> Tags {{ get; set; }} = new();");
+            _ = sb.AppendLine(System.Globalization.CultureInfo.InvariantCulture, $"    [Display(Name = \"Name {i}\")]");
+            _ = sb.AppendLine("    public string Name { get; set; } = string.Empty;");
+            _ = sb.AppendLine("    public int Count { get; set; }");
+            _ = sb.AppendLine("    public decimal Amount { get; set; }");
+            _ = sb.AppendLine("    public bool IsActive { get; set; }");
+            _ = sb.AppendLine("    public DateTime CreatedAt { get; set; }");
+            _ = sb.AppendLine("    public Guid Id { get; set; }");
+            _ = sb.AppendLine("    public ItemStatus Status { get; set; }");
+            _ = sb.AppendLine("    public string? Description { get; set; }");
+            _ = sb.AppendLine("    public int? OptionalCount { get; set; }");
+            _ = sb.AppendLine("    public List<string> Tags { get; set; } = new();");
             _ = sb.AppendLine("}");
             _ = sb.AppendLine();
         }

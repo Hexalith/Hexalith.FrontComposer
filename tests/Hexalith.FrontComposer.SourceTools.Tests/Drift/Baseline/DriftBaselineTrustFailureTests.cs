@@ -54,11 +54,11 @@ public sealed class DriftBaselineTrustFailureTests {
 
         Diagnostic? trustFailure = diagnostics.FirstOrDefault(d =>
             d.Severity == DiagnosticSeverity.Error
-            && d.GetMessage().Contains(expectedMessageToken, StringComparison.OrdinalIgnoreCase));
+            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains(expectedMessageToken, StringComparison.OrdinalIgnoreCase));
         _ = trustFailure.ShouldNotBeNull(
             $"AC9 — fixture {fixtureFileName} must emit a deterministic Error diagnostic carrying the token '{expectedMessageToken}'.");
 
-        diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase))
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("structural drift", StringComparison.OrdinalIgnoreCase))
             .ShouldBeFalse($"AC9 — trust failure must suppress structural-drift comparison for {fixtureFileName}.");
     }
 
@@ -231,16 +231,16 @@ public sealed class DriftBaselineTrustFailureTests {
 
         Diagnostic? duplicate = diagnostics.FirstOrDefault(d =>
             d.Severity == DiagnosticSeverity.Error
-            && d.GetMessage().Contains("duplicate", StringComparison.OrdinalIgnoreCase)
-            && d.GetMessage().Contains("Acme.Shipping.ShipmentProjection", StringComparison.Ordinal));
+            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("duplicate", StringComparison.OrdinalIgnoreCase)
+            && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("Acme.Shipping.ShipmentProjection", StringComparison.Ordinal));
         _ = duplicate.ShouldNotBeNull(
             "AC9 — duplicate identity across files MUST fail closed with an Error; no silent last-writer-wins merge.");
 
         // Drift comparison must be fully suppressed for that contract: neither structural drift
         // (Priority added vs file-B nullable) nor metadata drift (displayName diff between the
         // two files) may leak.
-        diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
-        diagnostics.Any(d => d.GetMessage().Contains("metadata drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("structural drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("metadata drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
     }
 
     [Fact()]
@@ -260,11 +260,11 @@ public sealed class DriftBaselineTrustFailureTests {
 
         diagnostics.Any(d => d.Id == "HFC1064"
                           && d.Severity == DiagnosticSeverity.Error
-                          && d.GetMessage().Contains("duplicate", StringComparison.OrdinalIgnoreCase))
+                          && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("duplicate", StringComparison.OrdinalIgnoreCase))
             .ShouldBeTrue();
         // Even though the source defines the contract, drift comparison must be suppressed for it.
-        diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
-        diagnostics.Any(d => d.GetMessage().Contains("metadata drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("structural drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+        diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("metadata drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
     }
 
     [Fact()]
@@ -290,8 +290,8 @@ public sealed class DriftBaselineTrustFailureTests {
         foreach ((IReadOnlyList<Diagnostic> diagnostics, string label) in new[] { (forward, "forward"), (reverse, "reverse") }) {
             diagnostics.Any(d => d.Id == "HFC1064" && d.Severity == DiagnosticSeverity.Error)
                 .ShouldBeTrue($"AC9 — {label} ordering must emit HFC1064 duplicate-identity Error.");
-            diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase)
-                              || d.GetMessage().Contains("metadata drift", StringComparison.OrdinalIgnoreCase))
+            diagnostics.Any(d => d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("structural drift", StringComparison.OrdinalIgnoreCase)
+                              || d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("metadata drift", StringComparison.OrdinalIgnoreCase))
                 .ShouldBeFalse($"AC9 — {label} ordering must suppress drift comparison for the duplicated identity.");
         }
 
@@ -320,11 +320,11 @@ public sealed class DriftBaselineTrustFailureTests {
 
         diagnostics.Count(d => d.Id == "HFC1061").ShouldBe(2,
             "AC7 — load-phase trust diagnostics must honor HfcDriftMaxDiagnostics.");
-        diagnostics.Any(d => d.Id == "HFC1068" && d.GetMessage().Contains("3 omitted", StringComparison.Ordinal))
+        diagnostics.Any(d => d.Id == "HFC1068" && d.GetMessage(System.Globalization.CultureInfo.InvariantCulture).Contains("3 omitted", StringComparison.Ordinal))
             .ShouldBeTrue("AC7 — capped load-phase diagnostics must emit a deterministic HFC1068 truncation fact.");
     }
 
-    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson, int? maxBaselineBytesOverride = null) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> Run(string source, string baselineJson, int? maxBaselineBytesOverride = null) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
@@ -340,7 +340,7 @@ public sealed class DriftBaselineTrustFailureTests {
         return driver.GetRunResult().Diagnostics;
     }
 
-    private static IReadOnlyList<Diagnostic> RunWithMultipleBaselines(string source, params (string Path, string Content)[] baselines) {
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunWithMultipleBaselines(string source, params (string Path, string Content)[] baselines) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
@@ -354,7 +354,7 @@ public sealed class DriftBaselineTrustFailureTests {
         return driver.GetRunResult().Diagnostics;
     }
 
-    private static IReadOnlyList<Diagnostic> RunWithMultipleBaselines(
+    private static System.Collections.Immutable.ImmutableArray<Diagnostic> RunWithMultipleBaselines(
         string source,
         int maxDiagnostics,
         params (string Path, string Content)[] baselines) {
@@ -419,7 +419,7 @@ public sealed class DriftBaselineTrustFailureTests {
             return new DiagnosticShape(
                 diagnostic.Id,
                 diagnostic.Severity,
-                diagnostic.GetMessage(),
+                diagnostic.GetMessage(System.Globalization.CultureInfo.InvariantCulture),
                 path,
                 properties);
         }

@@ -36,7 +36,7 @@ public sealed class SourceToolsTypeOrganizationGovernanceTests {
     public void ProductionSources_DirectDeclarations_UseOneSameNamedTypePerFile() {
         (string Path, string Content)[] sources = LoadProductionSources(LocateDriftRoot());
 
-        IReadOnlyList<string> violations = FindOrganizationViolations(sources);
+        List<string> violations = FindOrganizationViolations(sources);
 
         sources.Length.ShouldBe(17);
         violations.ShouldBeEmpty(
@@ -55,7 +55,7 @@ public sealed class SourceToolsTypeOrganizationGovernanceTests {
                 + "internal delegate void Second();\n"),
         ];
 
-        IReadOnlyList<string> violations = FindOrganizationViolations(sources);
+        List<string> violations = FindOrganizationViolations(sources);
 
         violations.Count.ShouldBe(1);
         violations[0].ShouldContain("Synthetic/MultiType.cs");
@@ -75,7 +75,7 @@ public sealed class SourceToolsTypeOrganizationGovernanceTests {
                 + "internal sealed class First { }\n"),
         ];
 
-        IReadOnlyList<string> violations = FindOrganizationViolations(sources);
+        List<string> violations = FindOrganizationViolations(sources);
 
         violations.Count.ShouldBe(1);
         violations[0].ShouldContain("Synthetic/Second.cs");
@@ -135,14 +135,14 @@ public sealed class SourceToolsTypeOrganizationGovernanceTests {
         exportedDriftTypes.ShouldBeEmpty();
     }
 
-    private static IReadOnlyList<string> FindOrganizationViolations(
+    private static List<string> FindOrganizationViolations(
         IEnumerable<(string Path, string Content)> sources) {
         List<string> violations = [];
 
         foreach ((string path, string content) in sources) {
-            IReadOnlyList<MemberDeclarationSyntax> declarations = GetDirectTopLevelDeclarations(content);
-            if (declarations.Count != 1) {
-                violations.Add($"{path}: expected one declaration; found {declarations.Count} ({string.Join(", ", declarations.Select(GetDeclarationName))})");
+            MemberDeclarationSyntax[] declarations = GetDirectTopLevelDeclarations(content);
+            if (declarations.Length != 1) {
+                violations.Add($"{path}: expected one declaration; found {declarations.Length} ({string.Join(", ", declarations.Select(GetDeclarationName))})");
                 continue;
             }
 
@@ -156,7 +156,7 @@ public sealed class SourceToolsTypeOrganizationGovernanceTests {
         return violations;
     }
 
-    private static IReadOnlyList<MemberDeclarationSyntax> GetDirectTopLevelDeclarations(string source) {
+    private static MemberDeclarationSyntax[] GetDirectTopLevelDeclarations(string source) {
         CompilationUnitSyntax root = CSharpSyntaxTree.ParseText(source).GetCompilationUnitRoot();
         return root.Members
             .SelectMany(member => member is BaseNamespaceDeclarationSyntax namespaceDeclaration
