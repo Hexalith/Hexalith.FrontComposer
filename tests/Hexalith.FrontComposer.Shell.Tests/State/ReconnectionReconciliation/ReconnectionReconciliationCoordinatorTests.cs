@@ -102,8 +102,9 @@ public sealed class ReconnectionReconciliationCoordinatorTests {
             NullLogger<ReconnectionReconciliationCoordinator>.Instance);
         sut.Dispose();
 
-        _ = await Should.ThrowAsync<ObjectDisposedException>(
+        ObjectDisposedException disposed = await Should.ThrowAsync<ObjectDisposedException>(
             () => sut.ReconcileAsync(TestContext.Current.CancellationToken));
+        disposed.ObjectName.ShouldBe(typeof(ReconnectionReconciliationCoordinator).FullName);
     }
 
     [Fact]

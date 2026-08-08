@@ -1,5 +1,16 @@
 # Deferred Work
 
+## Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md chunk 3 (2026-08-08)
+
+- `BadgeCountServiceTests` / `NavigationEffectsLastActiveRouteTests` CA1859 helpers now return concrete `ServiceProvider` but call sites still do not dispose the built providers (same lifetime gap existed when typed as `IServiceProvider`).
+
+## Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md chunk 2 (2026-08-08)
+
+- `ETagCacheService.EnsurePersistedLruSeededAsync` re-checks `_disposed` after acquiring `_lruSeedGate` but Dispose can still land after that re-check and before/during `TrySeedPersistedLruAsync` / `_lruSeeded` write; residual race beyond the wait-gate fix from the 11.21 review closeout.
+- `FrontComposerMcpLog` applies the CA1873 local-binding pattern on some paths only; sibling helpers can still pass category formatting straight into `Log*` — complete when the next MCP logging burn-down touches those sites.
+- `RenderTreeSequenceRewriter.StartsArgumentList` now skips whitespace before `(` / the identifier but still ignores comments/trivia (e.g. `( /*x*/ ++seq)`), so the OrFail prefilter can miss some fail-safe leftovers.
+- `GeneratedLogMethodEmitter.ValidateArguments` rejects null/whitespace `methodName`/`eventName` but still accepts non-empty invalid C# identifiers that would fail to compile in generated output.
+
 ## Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md (2026-08-08)
 
 - Thirteen-project Recommended Governance rebuild gate (`AnalyzerPolicy_Story1122RecordedProjects_RemainRecommendedClean`) runs sequential 180s-bounded builds and slows every Governance lane; intentional executable gate — optimize later (caching, narrower trait, or shared binary log reuse).

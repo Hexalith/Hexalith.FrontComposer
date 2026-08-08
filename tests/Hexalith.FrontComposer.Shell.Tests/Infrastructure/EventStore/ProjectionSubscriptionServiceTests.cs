@@ -34,8 +34,9 @@ public sealed class ProjectionSubscriptionServiceTests {
         ProjectionSubscriptionService sut = Create(connection, notifier);
         await sut.DisposeAsync();
 
-        _ = await Should.ThrowAsync<ObjectDisposedException>(
+        ObjectDisposedException disposed = await Should.ThrowAsync<ObjectDisposedException>(
             () => sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken));
+        disposed.ObjectName.ShouldBe(typeof(ProjectionSubscriptionService).FullName);
     }
 
     [Fact]

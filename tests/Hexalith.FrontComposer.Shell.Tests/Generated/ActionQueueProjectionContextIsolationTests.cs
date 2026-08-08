@@ -116,6 +116,7 @@ public sealed class ActionQueueProjectionContextIsolationTests : GeneratedCompon
                         .Add(nameof(ActionQueueRow.Label), item.Label));
 
                 builder.OpenComponent<CascadingValue<ProjectionContext>>(2);
+                builder.SetKey(item.Id);
                 builder.AddAttribute(3, "Value", rowContext);
                 builder.AddAttribute(4, "IsFixed", true);
                 builder.AddAttribute(5, "ChildContent", (RenderFragment)((RenderTreeBuilder rowBuilder) => {

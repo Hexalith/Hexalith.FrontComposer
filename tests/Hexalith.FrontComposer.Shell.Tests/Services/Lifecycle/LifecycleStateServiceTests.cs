@@ -85,7 +85,9 @@ public class LifecycleStateServiceTests {
         LifecycleStateService service = Create();
         service.Dispose();
 
-        _ = Should.Throw<ObjectDisposedException>(() => service.Subscribe("c-disposed", _ => { }));
+        ObjectDisposedException disposed = Should.Throw<ObjectDisposedException>(
+            () => service.Subscribe("c-disposed", _ => { }));
+        disposed.ObjectName.ShouldBe(typeof(LifecycleStateService).FullName);
     }
 
     [Fact]
@@ -94,8 +96,9 @@ public class LifecycleStateServiceTests {
         LifecycleStateService service = Create();
         service.Dispose();
 
-        _ = Should.Throw<ObjectDisposedException>(
+        ObjectDisposedException disposed = Should.Throw<ObjectDisposedException>(
             () => service.Transition("c-disposed", CommandLifecycleState.Submitting));
+        disposed.ObjectName.ShouldBe(typeof(LifecycleStateService).FullName);
     }
 
     [Fact]

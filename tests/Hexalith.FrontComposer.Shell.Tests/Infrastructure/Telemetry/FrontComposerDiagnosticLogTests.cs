@@ -249,7 +249,8 @@ public sealed class FrontComposerDiagnosticLogTests
             return Activator.CreateInstance(type);
         }
 
-        return null;
+        throw new NotSupportedException(
+            $"NullLogger_IsAcceptedByEveryWrapper needs a sample argument for parameter '{parameter.Name}' of type '{type.FullName}'.");
     }
 
     [Fact]

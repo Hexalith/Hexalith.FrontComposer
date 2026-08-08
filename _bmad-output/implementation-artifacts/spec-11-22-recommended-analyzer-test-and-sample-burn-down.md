@@ -80,8 +80,27 @@ _Chunk 1 — Governance & contracts (`c3154b9b...HEAD`, 2026-08-08)._
 - [x] [Review][Defer] Thirteen-project Recommended Governance rebuild gate is expensive [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:316`] — deferred, pre-existing
 - [x] [Review][Defer] `RunDotnetResultAsync` timeout path can orphan output awaits [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:1714`] — deferred, pre-existing
 
+_Chunk 2 — Samples + product/src (+ Tenants gitlink) (`c3154b9b...HEAD`, 2026-08-08)._
+
+- [x] [Review][Decision] Predecessor product/emitter/gitlink vs 11.22 Ask First — Accepted carve-out: 11.20/11.21 review closeouts + Spec Verification’s Tenants-unrelated note cover those hunks; leave tree as-is; 11.22 evidence stays sample/test-owned.
+- [x] [Review][Patch] Restore null-safe first-item Count read after CA1826 rewrite [`samples/Counter/Counter.Web/CounterProjectionEffects.cs:68`]
+- [x] [Review][Defer] ETag LRU seed still races Dispose after the post-gate re-check [`src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheService.cs:340`] — deferred, pre-existing
+- [x] [Review][Defer] FrontComposerMcpLog CA1873 local-binding remains incomplete on sibling helpers [`src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs:127`] — deferred, pre-existing
+- [x] [Review][Defer] StartsArgumentList still ignores comments/trivia between `(` and the operator [`src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:248`] — deferred, pre-existing
+- [x] [Review][Defer] GeneratedLogMethodEmitter validates whitespace but not C# identifier shape [`src/Hexalith.FrontComposer.SourceTools/Emitters/GeneratedLogMethodEmitter.cs:217`] — deferred, pre-existing
+
+_Chunk 3 — Shell / Testing / Mcp / Contracts / Cli tests (`c3154b9b...HEAD`, 2026-08-08)._
+
+- [x] [Review][Patch] Add `SetKey` on ActionQueue multi-row CascadingValue loop after ASP0006 literal rewrite [`tests/Hexalith.FrontComposer.Shell.Tests/Generated/ActionQueueProjectionContextIsolationTests.cs:118`]
+- [x] [Review][Patch] Append seven chunk-3 owned paths missing from Spec File List [`_bmad-output/implementation-artifacts/spec-11-22-recommended-analyzer-test-and-sample-burn-down.md:123`]
+- [x] [Review][Patch] Fail fast in `CreateSampleArgument` for unknown NullLogger wrapper parameter types [`tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerDiagnosticLogTests.cs:252`]
+- [x] [Review][Patch] Align new CA1513 dispose pins to assert `ObjectName` like FaultInjecting tests [`tests/Hexalith.FrontComposer.Shell.Tests/Services/Lifecycle/LifecycleStateServiceTests.cs:83`]
+- [x] [Review][Defer] `ServiceProvider` helpers from CA1859 narrowing still leak undisposed providers at call sites [`tests/Hexalith.FrontComposer.Shell.Tests/Badges/BadgeCountServiceTests.cs:48`] — deferred, pre-existing
+
 ## Spec Change Log
 
+- 2026-08-08: Chunk-3 code-review — ActionQueue `SetKey` after ASP0006 rewrite; File List honesty for seven owned paths; NullLogger sample-arg fail-closed; ObjectName dispose-pin alignment; deferred undisposed `ServiceProvider` helpers.
+- 2026-08-08: Chunk-2 code-review — accepted predecessor product/emitter/Tenants carve-out; restored null-safe `items[0]?.Count` in Counter.Web projection effect after CA1826 rewrite.
 - 2026-08-08: Chunk-1 code-review patches — repo-wide CA2012/CA2201 fixture seal, executable ASP0006/CA2007 negative-control probes, restore-comment matching, fail-closed disposition/count/probe guards, cleared `followUpStory` on fixed dispositions, resealed identifier inventory (6,359 / `6dd0420b...`), aligned traditional story artifact, and resolved the obsolete ASP0006 deferred-work bullet.
 - 2026-08-08: Implemented the approved 345-finding test/sample burn-down, removed the ASP0006 and CA2007 project controls, sealed exact retained fixture exceptions, refreshed governance evidence, and completed the required verification matrix.
 
@@ -125,17 +144,21 @@ The implementation baseline is `85fb8865e96ad2cef9aec3ac67f1e805386b5347`: 345 v
 - `tests/Hexalith.FrontComposer.Contracts.Tests/Communication/EventStoreContractTests.cs`
 - `tests/Hexalith.FrontComposer.Contracts.Tests/Communication/QueryRequestTests.cs`
 - `tests/Hexalith.FrontComposer.Contracts.Tests/Communication/Story52ResponseSurfaceTests.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Schema/CanonicalSchemaMaterialFingerprintVectorTests.cs`
 - `tests/Hexalith.FrontComposer.Mcp.Tests/AuthContextAccessorTests.cs`
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs`
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs`
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/McpCommandToolAdapterTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/McpLifecycleStoreDisposalTests.cs`
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTests.cs`
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/McpMarkdownProjectionRendererTests.cs`
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaFingerprintCrossPackageTests.cs`
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/Story11_5ResolutionTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillCorpusAggregateManifestRenderTests.cs`
 - `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillTypeOrganizationGovernanceTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests.Bench/Skills/BenchmarkHarnessTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/NFR17ComplianceTripwireTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/ShellLayeringTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SliceSingleWriterGovernanceTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Badges/BadgeCountServiceTests.cs`
@@ -157,6 +180,7 @@ The implementation baseline is `85fb8865e96ad2cef9aec3ac67f1e805386b5347`: 345 v
 - `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnection.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnectionTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerDiagnosticLogTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Tenancy/TenantContextValidationMatrixTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Pact/EventStorePactContractTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/CommandDispatchAuthorizationGateTests.cs`
@@ -165,11 +189,13 @@ The implementation baseline is `85fb8865e96ad2cef9aec3ac67f1e805386b5347`: 345 v
 - `tests/Hexalith.FrontComposer.Shell.Tests/Services/DerivedValueProviderChainTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Services/EmptyStateCtaResolverTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Services/ExceptionGuardTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Lifecycle/LifecycleStateServiceTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Services/Validation/ServerValidationApplicatorTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutServiceTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/DataGridNavigation/LoadedPageStateCacheBoundTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/Navigation/NavigationEffectsLastActiveRouteTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinatorTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Architecture/SourceToolsTypeOrganizationGovernanceTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Benchmarks/IncrementalRebuildBenchmarkTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/CustomizationAccessibilityAnalyzerTests.cs`
