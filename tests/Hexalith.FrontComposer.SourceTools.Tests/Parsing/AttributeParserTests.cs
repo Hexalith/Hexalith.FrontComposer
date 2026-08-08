@@ -160,6 +160,38 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    public void Parse_PropertyUnconditionalSuppressMessageForOtherCheckId_StillReportsHFC1002() {
+        // Mirrors Parse_PropertySuppressMessageForOtherCheckId_StillReportsHFC1002 for the
+        // UnconditionalSuppressMessage branch of HasSuppressMessage checkId comparison.
+        const string source = """
+            using System.Collections.Generic;
+            using System.Diagnostics.CodeAnalysis;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [Projection]
+            public partial class UnconditionalOtherCheckIdFixtureProjection
+            {
+                [UnconditionalSuppressMessage(
+                    "Style",
+                    "IDE0057:Use range operator",
+                    Justification = "Unrelated rule; must not suppress HFC1002.")]
+                public Dictionary<string, string> OtherRuleUnconditionallySuppressed { get; set; } = new();
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+
+        driver = driver.RunGenerators(compilation, TestContext.Current.CancellationToken);
+        Diagnostic[] diagnostics = driver.GetRunResult().Diagnostics.Where(diagnostic => diagnostic.Id == "HFC1002").ToArray();
+
+        diagnostics.Length.ShouldBe(1);
+        diagnostics[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture)
+            .ShouldContain("OtherRuleUnconditionallySuppressed");
+    }
+
+    [Fact]
     public void Parse_TypeLevelSuppressMessageForHfc1002_StillReportsHFC1002() {
         const string source = """
             using System.Collections.Generic;

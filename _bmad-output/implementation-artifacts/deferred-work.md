@@ -1,5 +1,9 @@
 # Deferred Work
 
+## Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md chunk 4 (2026-08-08)
+
+- `CommandFormEmitterTests` admission dispose ordering still anchors with `IndexOf("try")` / `IndexOf("finally")` after the submitted-log call site; a larger token containing those substrings could mis-order the assert (pre-existing; this chunk only reordered the greater-than checks).
+
 ## Deferred from: code review of spec-11-22-recommended-analyzer-test-and-sample-burn-down.md chunk 3 (2026-08-08)
 
 - `BadgeCountServiceTests` / `NavigationEffectsLastActiveRouteTests` CA1859 helpers now return concrete `ServiceProvider` but call sites still do not dispose the built providers (same lifetime gap existed when typed as `IServiceProvider`).

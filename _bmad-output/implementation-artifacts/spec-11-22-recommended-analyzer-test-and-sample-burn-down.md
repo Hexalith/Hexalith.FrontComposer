@@ -46,7 +46,7 @@ context:
 - `tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj` -- remove CA2007 `NoWarn`; repair five `FrontComposerTestHostTests.cs` and one `TestingFailureModeTests.cs` async-disposal sites without losing test context.
 - `tests/Hexalith.FrontComposer.{SourceTools,Shell,Mcp,Testing,Contracts,Contracts.UI,Cli}.Tests/**` and `tests/Hexalith.FrontComposer.Shell.Tests.Bench/**` -- semantic fixes by diagnostic/project; keep raw Roslyn-invalid fixtures intact and use exact approved CA2012/CA2201 exceptions only.
 - `samples/Counter/Counter.Web/CounterProjectionEffects.cs`, `CounterFakeAuthLogging.cs`, and `Program.cs` plus `CounterFakeAuthIntegrationTests.cs` -- resolve CA1826/CA1848 while preserving sample behavior and directly proving the Critical anti-deployment event contract.
-- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs` and `src/Hexalith.FrontComposer.Contracts/Conformance/GeneratedOutputPathContract.cs` -- read-only package/generated-output proof.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs` -- governed packaged-consumer gate (literal render-tree sequences, Recommended elevation positive control, Default contrast); `src/Hexalith.FrontComposer.Contracts/Conformance/GeneratedOutputPathContract.cs` -- read-only generated-output path contract.
 
 ## Tasks & Acceptance
 
@@ -97,8 +97,19 @@ _Chunk 3 — Shell / Testing / Mcp / Contracts / Cli tests (`c3154b9b...HEAD`, 2
 - [x] [Review][Patch] Align new CA1513 dispose pins to assert `ObjectName` like FaultInjecting tests [`tests/Hexalith.FrontComposer.Shell.Tests/Services/Lifecycle/LifecycleStateServiceTests.cs:83`]
 - [x] [Review][Defer] `ServiceProvider` helpers from CA1859 narrowing still leak undisposed providers at call sites [`tests/Hexalith.FrontComposer.Shell.Tests/Badges/BadgeCountServiceTests.cs:48`] — deferred, pre-existing
 
+_Chunk 4 — SourceTools.Tests (`c3154b9b...HEAD`, 2026-08-08)._
+
+- [x] [Review][Decision] PackagedAnalyzerConsumerTests edited despite Code Map “read-only” — Accepted: keep CA1822 elevation / Default contrast / `\s*\+\+` packaged regex gate hardening; amend Code Map + File List (no revert).
+- [x] [Review][Decision] Beyond-census SourceTools.Tests contract expansions — Accepted: keep GeneratedLogMethodEmitter / AttributeParser Unconditional+type-level / RenderTree spaced-`seq ++` OrFail / RazorEmitterExpandInRow FluentCard(800) pins as intentional verification; File List honesty follows.
+- [x] [Review][Patch] Amend Code Map PackagedAnalyzerConsumerTests from read-only to governed gate surface [`_bmad-output/implementation-artifacts/spec-11-22-recommended-analyzer-test-and-sample-burn-down.md:49`]
+- [x] [Review][Patch] Append three chunk-4 owned paths missing from Spec File List [`_bmad-output/implementation-artifacts/spec-11-22-recommended-analyzer-test-and-sample-burn-down.md:199`]
+- [x] [Review][Patch] Pin UnconditionalSuppressMessage checkId discrimination with a wrong-checkId negative [`tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/AttributeParserTests.cs:134`]
+- [x] [Review][Patch] Assert `RuntimeSequenceArgumentPattern` matches spaced `seq ++` leftovers [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RenderTreeSequenceRewriterTests.cs:508`]
+- [x] [Review][Defer] Admission dispose ordering uses raw `IndexOf("try")` substring after submitted-log anchor [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs:360`] — deferred, pre-existing
+
 ## Spec Change Log
 
+- 2026-08-08: Chunk-4 code-review — accepted PackagedAnalyzerConsumerTests governed-gate + beyond-census verification carve-outs; Code Map/File List honesty; Unconditional checkId negative; spaced `seq ++` regex positive match; deferred `IndexOf("try")` substring anchor.
 - 2026-08-08: Chunk-3 code-review — ActionQueue `SetKey` after ASP0006 rewrite; File List honesty for seven owned paths; NullLogger sample-arg fail-closed; ObjectName dispose-pin alignment; deferred undisposed `ServiceProvider` helpers.
 - 2026-08-08: Chunk-2 code-review — accepted predecessor product/emitter/Tenants carve-out; restored null-safe `items[0]?.Count` in Counter.Web projection effect after CA1826 rewrite.
 - 2026-08-08: Chunk-1 code-review patches — repo-wide CA2012/CA2201 fixture seal, executable ASP0006/CA2007 negative-control probes, restore-comment matching, fail-closed disposition/count/probe guards, cleared `followUpStory` on fixed dispositions, resealed identifier inventory (6,359 / `6dd0420b...`), aligned traditional story artifact, and resolved the obsolete ASP0006 deferred-work bullet.
@@ -232,6 +243,8 @@ The implementation baseline is `85fb8865e96ad2cef9aec3ac67f1e805386b5347`: 345 v
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CounterProjectionApprovalTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/GeneratedLogMethodEmitterTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterExpandInRowTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RenderTreeSequenceRewriterTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityConformanceHelpers.cs`
@@ -239,6 +252,7 @@ The implementation baseline is `85fb8865e96ad2cef9aec3ac67f1e805386b5347`: 345 v
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CommandLifecycleBridgeIntegrationTest.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CounterDomainIntegrationTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/GeneratorDriverTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/AttributeParserTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Performance/ParseStagePerformanceTests.cs`

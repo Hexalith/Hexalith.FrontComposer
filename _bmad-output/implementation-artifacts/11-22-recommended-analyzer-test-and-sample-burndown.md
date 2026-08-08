@@ -7,7 +7,7 @@ parentDecisionStory: 11.19d
 dependsOn: 11.20, 11.21
 owner: Test Architect + Framework Maintainer
 due: 2026-09-04
-status: review
+status: done
 storyType: implementation-phase
 approvalGate: separate-architecture-product-approval
 approvalStatus: approved
@@ -17,7 +17,7 @@ approvedOn: 2026-08-08
 
 # Story 11.22: Recommended Analyzer Test and Sample Burn-down
 
-Status: review.
+Status: done.
 
 Executable intent and completion evidence live in
 `_bmad-output/implementation-artifacts/spec-11-22-recommended-analyzer-test-and-sample-burn-down.md`.

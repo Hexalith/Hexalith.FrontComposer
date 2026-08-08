@@ -413,6 +413,16 @@ public sealed partial class RenderTreeSequenceRewriterTests {
     }
 
     [Fact]
+    public void RuntimeSequenceArgumentPattern_MatchesSpacedAndTightIncrementArguments() {
+        // Pins the packaged / ShouldUseLiteralRenderTreeSequences gate independently of OrFail.
+        // Dropping \s* from the regex would leave AssignLiteralsOrFail_DetectsSpacedIncrementLeftByFailSafe
+        // green while spaced leftovers bypass the consumer scan.
+        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(seq ++, "a")""").ShouldBeTrue();
+        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(seq++, "a")""").ShouldBeTrue();
+        RuntimeSequenceArgumentPattern().IsMatch("""builder.AddContent(0, "a")""").ShouldBeFalse();
+    }
+
+    [Fact]
     public void AssignLiterals_IsDeterministicAndIdempotent() {
         const string source = """
             class C
