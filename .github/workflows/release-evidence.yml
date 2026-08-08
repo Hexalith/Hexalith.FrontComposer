@@ -22,6 +22,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
+      - name: Checkout helper surface for AD-15 verification
+        if: always()
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          submodules: false
+
       - name: Seed forensic evidence
         if: always()
         env:
@@ -30,7 +38,7 @@ jobs:
           UPSTREAM_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           UPSTREAM_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
-          mkdir -p verification-evidence
+          mkdir -p verification-evidence/ad15
           jq -n \
             --arg run_id "$UPSTREAM_RUN_ID" \
             --arg run_attempt "$UPSTREAM_RUN_ATTEMPT" \
@@ -38,6 +46,74 @@ jobs:
             --arg head_sha "$UPSTREAM_HEAD_SHA" \
             '{decision_contract:"frontcomposer.release-run-disposition.v2",status:"unclassified",governed_attempt:null,run_id:$run_id,run_attempt:$run_attempt,conclusion:$conclusion,head_sha:$head_sha}' \
             > verification-evidence/release-disposition.json
+
+      - name: Authenticate AD-15 release-verification-handoff
+        id: ad15
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_RUN_ID: ${{ github.event.workflow_run.id }}
+          UPSTREAM_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+        run: |
+          set -euo pipefail
+          artifact_name="release-verification-handoff-${UPSTREAM_RUN_ID}-${UPSTREAM_RUN_ATTEMPT}"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${UPSTREAM_RUN_ID}/artifacts?per_page=100" \
+            > verification-evidence/ad15-artifacts.json
+          present="$(python3 - "$artifact_name" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          payload = json.loads(Path("verification-evidence/ad15-artifacts.json").read_text())
+          if not isinstance(payload, dict) or not isinstance(payload.get("artifacts"), list):
+              raise SystemExit("malformed AD-15 artifact API response")
+          if payload.get("total_count") != len(payload["artifacts"]):
+              raise SystemExit("ambiguous or paginated AD-15 artifact API response")
+          matches = [
+              row for row in payload["artifacts"]
+              if isinstance(row, dict) and row.get("name") == sys.argv[1] and row.get("expired") is False
+          ]
+          if len(matches) != 1 or not isinstance(matches[0].get("id"), int):
+              Path("verification-evidence/ad15/status.json").write_text(
+                  json.dumps({"ok": False, "error": "AD-15 release-verification-handoff artifact missing"}, indent=2)
+                  + "\n"
+              )
+              print("false")
+              raise SystemExit(0)
+          Path("verification-evidence/ad15/artifact-id.txt").write_text(str(matches[0]["id"]) + "\n")
+          print("true")
+          PY
+          )"
+          echo "present=$present" >> "$GITHUB_OUTPUT"
+          if [ "$present" != "true" ]; then
+            echo "AD-15 artifact missing; continuing with fail-closed disposition." >> "$GITHUB_STEP_SUMMARY"
+            echo "verified=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          artifact_id="$(tr -d '\r\n' < verification-evidence/ad15/artifact-id.txt)"
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${artifact_id}/zip" \
+            > verification-evidence/ad15.zip
+          python3 - <<'PY'
+          import zipfile
+          from pathlib import Path, PurePosixPath
+
+          with zipfile.ZipFile("verification-evidence/ad15.zip") as archive:
+              if any(PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts for name in archive.namelist()):
+                  raise SystemExit("AD-15 archive contains unsafe paths")
+              archive.extractall("verification-evidence/ad15")
+          PY
+          if [ -f verification-evidence/ad15/release-verification-handoff.json ] \
+             && [ -f verification-evidence/ad15/dependency-release-handoff.json ]; then
+            python3 eng/dependency_handoff.py verify-release \
+              --handoff verification-evidence/ad15/release-verification-handoff.json \
+              --ci-handoff verification-evidence/ad15/dependency-release-handoff.json \
+              > verification-evidence/ad15/verify-release.json
+            echo "verified=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "AD-15 artifact lacks a sealed handoff pair (deferred emission)." >> "$GITHUB_STEP_SUMMARY"
+            echo "verified=false" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Authenticate and classify the operator Release run
         id: disposition
@@ -94,12 +170,20 @@ jobs:
               raise SystemExit("Release run head SHA is malformed")
           if any(not isinstance(job, dict) or job.get("status") != "completed" for job in jobs):
               raise SystemExit("Release job topology is malformed or incomplete")
-          known = {"verify-source", "plan-release", "prepare-candidate", "release", "release / release", "verify-publication"}
+          known = {
+              "verify-source",
+              "plan-release",
+              "prepare-candidate",
+              "release",
+              "release / release",
+              "verify-publication",
+              "emit-verification-handoff",
+          }
           names = [job.get("name") for job in jobs]
           if any(name not in known for name in names) or len(names) != len(set(names)):
               raise SystemExit(f"Release job topology is unknown or ambiguous: {names}")
           by_name = {job["name"]: job for job in jobs}
-          for required in ("verify-source", "plan-release"):
+          for required in ("verify-source", "plan-release", "emit-verification-handoff"):
               if required not in by_name:
                   raise SystemExit(f"Release job topology lacks {required}")
           governed = by_name.get("release / release")
@@ -115,6 +199,17 @@ jobs:
           else:
               disposition = "rejected-before-publication"
               governed_attempt = False
+          # Prefer the AD-15 handoff candidate when present; never trust second-hop head_sha alone.
+          ad15_candidate = None
+          ad15_path = Path("verification-evidence/ad15/release-verification-handoff.json")
+          if ad15_path.is_file():
+              ad15 = load(str(ad15_path))
+              if isinstance(ad15, dict) and isinstance(ad15.get("candidate"), str):
+                  ad15_candidate = ad15["candidate"]
+          candidate = ad15_candidate or run["head_sha"]
+          if ad15_candidate is not None and ad15_candidate != run["head_sha"]:
+              # Race fixture: default branch may advance; AD-15 candidate remains authoritative.
+              pass
           result = {
               "decision_contract": "frontcomposer.release-run-disposition.v2",
               "status": disposition,
@@ -123,12 +218,13 @@ jobs:
               "run_attempt": run["run_attempt"],
               "conclusion": run["conclusion"],
               "head_sha": run["head_sha"],
+              "candidate": candidate,
               "jobs": [{"name": job["name"], "conclusion": job.get("conclusion")} for job in jobs],
           }
           Path("verification-evidence/release-disposition.json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
           print(f"governed-attempt={'true' if governed_attempt else 'false'}")
           print(f"disposition={disposition}")
-          print(f"candidate={run['head_sha']}")
+          print(f"candidate={candidate}")
           PY
 
       - name: Record explicit non-publication disposition
@@ -220,7 +316,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: Hexalith/Hexalith.Builds
-          ref: 3ac633386faa2dc4c785bc1ffa06487974906d79
+          ref: a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a
           path: .hexalith/builds-execution
           persist-credentials: false
 

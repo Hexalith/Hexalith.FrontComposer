@@ -406,6 +406,155 @@ def _load(path: str) -> tuple[Any, bytes]:
     return dg.load_json_bytes(raw, path), raw
 
 
+def _write_json(path: Path, value: Any) -> bytes:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return path.read_bytes()
+
+
+def _evidence_from_payload(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise HandoffError("dependency evidence must be a JSON object")
+    evidence = value.get("evidence", value)
+    if not isinstance(evidence, dict):
+        raise HandoffError("dependency evidence must be a JSON object")
+    return evidence
+
+
+def _caller_blob_sha256(root: Path, commit: str, workflow_path: str) -> str:
+    blob = dg.read_blob(root, commit, workflow_path, 1_048_576, f"{commit}:{workflow_path}")
+    if blob is None:
+        raise HandoffError(f"caller workflow blob missing at {commit}:{workflow_path}")
+    return hashlib.sha256(blob).hexdigest()
+
+
+def _load_evaluator(path: str) -> dict[str, Any]:
+    value, _raw = _load(path)
+    return validate_evaluator(value)
+
+
+def _deferred_result(output: Path, error: str) -> int:
+    """Record a fail-closed handoff deferral without claiming a sealed artifact."""
+    deferred_path = (
+        output.with_suffix(".deferred.json")
+        if output.suffix == ".json"
+        else Path(str(output) + ".deferred.json")
+    )
+    _write_json(deferred_path, {"ok": False, "deferred": True, "error": error})
+    print(json.dumps({"ok": False, "deferred": True, "error": error}, sort_keys=True))
+    return 2
+
+
+def create_ci_handoff_from_evidence(
+    *,
+    root: Path,
+    evidence: dict[str, Any],
+    run_id: int,
+    run_attempt: int,
+    evaluator: dict[str, Any],
+) -> dict[str, Any]:
+    """Build the AD-13 handoff from release-eligible push dependency evidence."""
+    revisions = evidence.get("revisions")
+    if not isinstance(revisions, dict) or revisions.get("event") != "push":
+        raise HandoffError("AD-13 CI handoff requires push dependency evidence")
+    if revisions.get("release_eligible") is not True:
+        raise HandoffError("dependency evidence is not release eligible")
+    base = dg.require_commit(revisions.get("event_base"), "CI handoff base")
+    candidate = dg.require_commit(revisions.get("candidate"), "CI handoff candidate")
+    policy, _raw, projection = dg.load_policy_at_commit(root, base)
+    graph = evidence.get("candidate_graph")
+    if not isinstance(graph, dict):
+        raise HandoffError("dependency evidence must include candidate_graph")
+    return create_ci_handoff(
+        run_id=run_id,
+        run_attempt=run_attempt,
+        base=base,
+        candidate=candidate,
+        evaluator=evaluator,
+        dependency_policy=projection,
+        dependency_graph=graph,
+        policy=policy,
+    )
+
+
+def draft_evaluator_for_stage(
+    *,
+    root: Path,
+    stage: str,
+    caller_commit: str,
+    caller_workflow_path: str,
+    policy_commit: str,
+) -> dict[str, Any]:
+    """Project an evaluator for handoff creation.
+
+    When the active policy already authorizes exactly one closure whose caller blob
+    matches the live workflow blob, that closure is materialized with the live caller
+    commit. Otherwise a structurally valid but unauthorized evaluator is drafted so
+    ``create_ci_handoff`` / ``create_release_handoff`` still run and fail closed.
+    """
+    if stage not in {"ci", "release", "post_release"}:
+        raise HandoffError(f"unsupported evaluator stage {stage!r}")
+    caller_commit = dg.require_commit(caller_commit, "draft evaluator caller commit")
+    policy_commit = dg.require_commit(policy_commit, "draft evaluator policy commit")
+    dg.normalize_path(caller_workflow_path, "draft evaluator caller workflow_path")
+    policy, _raw, _projection = dg.load_policy_at_commit(root, policy_commit)
+    caller_blob = _caller_blob_sha256(root, caller_commit, caller_workflow_path)
+    matches = [
+        row
+        for row in policy["evaluator_authorizations"][stage]
+        if (
+            row["caller"]["repository"] == ROOT_REPOSITORY
+            and row["caller"]["workflow_path"] == caller_workflow_path
+            and row["caller"]["blob_sha256"] == caller_blob
+        )
+    ]
+    if len(matches) == 1:
+        row = matches[0]
+        evaluator = {
+            "caller": {
+                "repository": ROOT_REPOSITORY,
+                "workflow_path": caller_workflow_path,
+                "commit": caller_commit,
+                "blob_sha256": caller_blob,
+            },
+            "reusable": row["reusable"],
+            "actions": row["actions"],
+        }
+        evaluator["definition_digest"] = dg.canonical_digest({
+            "caller": evaluator["caller"],
+            "reusable": evaluator["reusable"],
+            "actions": evaluator["actions"],
+        })
+        return validate_evaluator(evaluator)
+
+    reusable_path = (
+        ".github/workflows/domain-ci.yml"
+        if stage == "ci"
+        else ".github/workflows/domain-release.yml"
+    )
+    evaluator = {
+        "caller": {
+            "repository": ROOT_REPOSITORY,
+            "workflow_path": caller_workflow_path,
+            "commit": caller_commit,
+            "blob_sha256": caller_blob,
+        },
+        "reusable": {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "workflow_path": reusable_path,
+            "commit": "0" * 40,
+            "blob_sha256": "0" * 64,
+        },
+        "actions": [],
+    }
+    evaluator["definition_digest"] = dg.canonical_digest({
+        "caller": evaluator["caller"],
+        "reusable": evaluator["reusable"],
+        "actions": evaluator["actions"],
+    })
+    return validate_evaluator(evaluator)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=".")
@@ -417,6 +566,29 @@ def build_parser() -> argparse.ArgumentParser:
     verify_release.add_argument("--handoff", required=True)
     verify_release.add_argument("--ci-handoff", required=True)
     verify_release.add_argument("--live", action="store_true")
+    draft_evaluator = sub.add_parser("draft-evaluator")
+    draft_evaluator.add_argument("--stage", required=True, choices=("ci", "release", "post_release"))
+    draft_evaluator.add_argument("--caller-commit", required=True)
+    draft_evaluator.add_argument("--caller-workflow", required=True)
+    draft_evaluator.add_argument("--policy-commit", required=True)
+    draft_evaluator.add_argument("--output", required=True)
+    create_ci = sub.add_parser("create-ci")
+    create_ci.add_argument("--evidence", required=True)
+    create_ci.add_argument("--run-id", required=True, type=int)
+    create_ci.add_argument("--run-attempt", required=True, type=int)
+    create_ci.add_argument("--evaluator", required=True)
+    create_ci.add_argument("--output", required=True)
+    create_release = sub.add_parser("create-release")
+    create_release.add_argument("--ci-handoff", required=True)
+    create_release.add_argument("--release-run-id", required=True, type=int)
+    create_release.add_argument("--release-run-attempt", required=True, type=int)
+    create_release.add_argument("--conclusion", required=True)
+    create_release.add_argument("--evaluator", required=True)
+    create_release.add_argument("--policy-commit", required=True)
+    create_release.add_argument("--release", required=True)
+    create_release.add_argument("--manifest", required=True)
+    create_release.add_argument("--assets", required=True)
+    create_release.add_argument("--output", required=True)
     create_source = sub.add_parser("create-source")
     create_source.add_argument("--evidence", required=True)
     create_source.add_argument("--run-id", required=True, type=int)
@@ -430,33 +602,87 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    root = Path(args.root).resolve() if getattr(args, "live", False) else None
+    checkout_root = Path(args.root).resolve()
+    live_root = checkout_root if getattr(args, "live", False) else None
     try:
+        if args.command == "draft-evaluator":
+            evaluator = draft_evaluator_for_stage(
+                root=checkout_root,
+                stage=args.stage,
+                caller_commit=args.caller_commit,
+                caller_workflow_path=args.caller_workflow,
+                policy_commit=args.policy_commit,
+            )
+            raw = _write_json(Path(args.output), evaluator)
+            print(json.dumps({
+                "ok": True,
+                "sha256": hashlib.sha256(raw).hexdigest(),
+                "authorized_draft": evaluator["reusable"]["commit"] != "0" * 40,
+            }, sort_keys=True))
+            return 0
+        if args.command == "create-ci":
+            evidence_value, _evidence_raw = _load(args.evidence)
+            evidence = _evidence_from_payload(evidence_value)
+            evaluator = _load_evaluator(args.evaluator)
+            try:
+                handoff = create_ci_handoff_from_evidence(
+                    root=checkout_root,
+                    evidence=evidence,
+                    run_id=args.run_id,
+                    run_attempt=args.run_attempt,
+                    evaluator=evaluator,
+                )
+            except dg.GraphError as exc:
+                return _deferred_result(Path(args.output), str(exc))
+            raw = _write_json(Path(args.output), handoff)
+            print(json.dumps({"ok": True, "sha256": hashlib.sha256(raw).hexdigest()}, sort_keys=True))
+            return 0
+        if args.command == "create-release":
+            _ci_value, ci_raw = _load(args.ci_handoff)
+            evaluator = _load_evaluator(args.evaluator)
+            release_value, _ = _load(args.release)
+            manifest_value, _ = _load(args.manifest)
+            assets_value, _ = _load(args.assets)
+            if not isinstance(assets_value, list):
+                raise HandoffError("Release handoff assets file must contain a JSON array")
+            policy_commit = dg.require_commit(args.policy_commit, "create-release policy commit")
+            policy, _raw, _projection = dg.load_policy_at_commit(checkout_root, policy_commit)
+            try:
+                handoff = create_release_handoff(
+                    release_run_id=args.release_run_id,
+                    release_run_attempt=args.release_run_attempt,
+                    conclusion=args.conclusion,
+                    ci_handoff_raw=ci_raw,
+                    evaluator=evaluator,
+                    policy=policy,
+                    release=release_value,
+                    manifest=manifest_value,
+                    assets=assets_value,
+                )
+            except dg.GraphError as exc:
+                return _deferred_result(Path(args.output), str(exc))
+            raw = _write_json(Path(args.output), handoff)
+            print(json.dumps({"ok": True, "sha256": hashlib.sha256(raw).hexdigest()}, sort_keys=True))
+            return 0
         if args.command == "create-source":
             evidence_value, _evidence_raw = _load(args.evidence)
-            evidence = evidence_value.get("evidence", evidence_value) if isinstance(evidence_value, dict) else evidence_value
-            if not isinstance(evidence, dict):
-                raise HandoffError("dependency evidence must be a JSON object")
+            evidence = _evidence_from_payload(evidence_value)
             proof = create_source_proof(
                 run_id=args.run_id,
                 run_attempt=args.run_attempt,
                 evidence=evidence,
             )
-            Path(args.output).write_text(
-                json.dumps(proof, indent=2, sort_keys=True) + "\n",
-                encoding="utf-8",
-            )
-            raw = Path(args.output).read_bytes()
+            raw = _write_json(Path(args.output), proof)
         elif args.command == "verify-source":
             value, raw = _load(args.proof)
-            validate_source_proof(value, root=root)
+            validate_source_proof(value, root=live_root)
         else:
             value, raw = _load(args.handoff)
         if args.command == "verify-ci":
-            validate_ci_handoff(value, root=root)
+            validate_ci_handoff(value, root=live_root)
         elif args.command == "verify-release":
             _ci_value, ci_raw = _load(args.ci_handoff)
-            validate_release_handoff(value, ci_handoff_raw=ci_raw, root=root)
+            validate_release_handoff(value, ci_handoff_raw=ci_raw, root=live_root)
         elif args.command not in {"create-source", "verify-source"}:
             raise HandoffError(f"unsupported command {args.command!r}")
         print(json.dumps({"ok": True, "sha256": hashlib.sha256(raw).hexdigest()}, sort_keys=True))

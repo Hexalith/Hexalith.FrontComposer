@@ -22,7 +22,7 @@ permissions:
 
 jobs:
   ci:
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a
     with:
       solution: Hexalith.FrontComposer.slnx
       # Enables scripts/pack-release-packages.py + validate-nuget-packages.py +
@@ -145,6 +145,59 @@ jobs:
           retention-days: 30
           if-no-files-found: error
           path: artifacts/dependency-governance/dependency-release-source.json
+
+      # AD-13 producer. Always invokes create_ci_handoff via create-ci. Empty
+      # evaluator_authorizations or an unauthorized draft fail closed with exit 2
+      # (deferred diagnostic) so the graph gate stays green until AD-16 populates
+      # an owner-accepted immutable reusable/action closure in policy.
+      - name: Create AD-13 dependency-release-handoff
+        id: ad13-handoff
+        if: github.event_name == 'push' && steps.dependency-diff.outputs.exit-code == '0'
+        shell: bash
+        env:
+          OBJECT_ROOT: ${{ steps.dependency-diff.outputs.object-root }}
+          CANDIDATE: ${{ steps.revisions.outputs.candidate }}
+          EVENT_BASE: ${{ steps.revisions.outputs.event-base }}
+        run: |
+          set -euo pipefail
+          policy_commit="$EVENT_BASE"
+          if [ "$policy_commit" = "0000000000000000000000000000000000000000" ]; then
+            policy_commit="$CANDIDATE"
+          fi
+          python3 eng/dependency_handoff.py --root "$OBJECT_ROOT" draft-evaluator \
+            --stage ci \
+            --caller-commit "$CANDIDATE" \
+            --caller-workflow .github/workflows/ci.yml \
+            --policy-commit "$policy_commit" \
+            --output artifacts/dependency-governance/ci-evaluator.json
+          set +e
+          python3 eng/dependency_handoff.py --root "$OBJECT_ROOT" create-ci \
+            --evidence artifacts/dependency-governance/dependency-graph-diff.json \
+            --run-id "${{ github.run_id }}" \
+            --run-attempt "${{ github.run_attempt }}" \
+            --evaluator artifacts/dependency-governance/ci-evaluator.json \
+            --output artifacts/dependency-governance/dependency-release-handoff.json
+          status=$?
+          set -e
+          echo "exit-code=$status" >> "$GITHUB_OUTPUT"
+          if [ "$status" -eq 0 ]; then
+            echo "created=true" >> "$GITHUB_OUTPUT"
+          elif [ "$status" -eq 2 ]; then
+            echo "created=false" >> "$GITHUB_OUTPUT"
+            echo "AD-13 handoff deferred pending active-policy evaluator authorization (AD-16)." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::AD-13 create-ci failed unexpectedly (exit=$status)"
+            exit "$status"
+          fi
+
+      - name: Upload AD-13 dependency-release-handoff
+        if: github.event_name == 'push' && steps.ad13-handoff.outputs.created == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: dependency-release-handoff-${{ github.run_id }}-${{ github.run_attempt }}
+          retention-days: 30
+          if-no-files-found: error
+          path: artifacts/dependency-governance/dependency-release-handoff.json
 
       - name: Upload deterministic dependency evidence
         if: always()

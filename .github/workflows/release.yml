@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  BUILDS_EXECUTION_SHA: 3ac633386faa2dc4c785bc1ffa06487974906d79
+  BUILDS_EXECUTION_SHA: a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a
   EXPECTED_PACKAGE_COUNT: '8'
 
 jobs:
@@ -27,6 +27,8 @@ jobs:
     outputs:
       ci-run-id: ${{ steps.ci.outputs.run-id }}
       ci-run-attempt: ${{ steps.ci.outputs.run-attempt }}
+      candidate: ${{ steps.ci.outputs.candidate }}
+      policy-commit: ${{ steps.handoff.outputs.policy-commit }}
     steps:
       - name: Checkout exact dispatched source
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -36,7 +38,7 @@ jobs:
           persist-credentials: false
           submodules: false
 
-      - name: Authenticate current main and successful exact-source CI
+      - name: Authenticate current main and successful push CI
         id: ci
         shell: bash
         env:
@@ -71,8 +73,10 @@ jobs:
           run_attempt="$(jq -er '.run_attempt' artifacts/release-source/selected-ci.json)"
           echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
           echo "run-attempt=$run_attempt" >> "$GITHUB_OUTPUT"
+          echo "candidate=$DISPATCH_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Download and validate the exact CI source proof
+      - name: Download and validate the AD-13 CI handoff
+        id: handoff
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -82,7 +86,7 @@ jobs:
           CI_RUN_ATTEMPT: ${{ steps.ci.outputs.run-attempt }}
         run: |
           set -euo pipefail
-          artifact_name="dependency-release-source-${CI_RUN_ID}-${CI_RUN_ATTEMPT}"
+          artifact_name="dependency-release-handoff-${CI_RUN_ID}-${CI_RUN_ATTEMPT}"
           gh api "repos/${REPOSITORY}/actions/runs/${CI_RUN_ID}/artifacts?per_page=100" \
             > artifacts/release-source/ci-artifacts.json
           python3 - "$artifact_name" <<'PY'
@@ -97,30 +101,36 @@ jobs:
               raise SystemExit("ambiguous or paginated CI artifact API response")
           matches = [row for row in payload["artifacts"] if isinstance(row, dict) and row.get("name") == sys.argv[1] and row.get("expired") is False]
           if len(matches) != 1 or not isinstance(matches[0].get("id"), int) or matches[0]["id"] < 1:
-              raise SystemExit(f"expected exactly one non-expired exact-attempt source artifact; found {len(matches)}")
+              raise SystemExit(
+                  "expected exactly one non-expired AD-13 dependency-release-handoff artifact; "
+                  f"found {len(matches)}. Push CI must emit hexalith.dependency-release-handoff.v1 "
+                  "under an active-policy-authorized evaluator (AD-13/AD-16)."
+              )
           Path("artifacts/release-source/artifact-id.txt").write_text(str(matches[0]["id"]) + "\n")
           PY
           artifact_id="$(tr -d '\r\n' < artifacts/release-source/artifact-id.txt)"
-          gh api "repos/${REPOSITORY}/actions/artifacts/${artifact_id}/zip" > artifacts/release-source/source.zip
+          gh api "repos/${REPOSITORY}/actions/artifacts/${artifact_id}/zip" > artifacts/release-source/handoff.zip
           python3 - <<'PY'
           import zipfile
           from pathlib import Path, PurePosixPath
 
-          archive = Path("artifacts/release-source/source.zip")
+          archive = Path("artifacts/release-source/handoff.zip")
           with zipfile.ZipFile(archive) as source:
               names = source.namelist()
-              if names != ["dependency-release-source.json"] or any(PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts for name in names):
-                  raise SystemExit("source artifact archive has an unexpected shape")
-              source.extractall("artifacts/release-source/ci-proof")
+              if names != ["dependency-release-handoff.json"] or any(PurePosixPath(name).is_absolute() or ".." in PurePosixPath(name).parts for name in names):
+                  raise SystemExit("AD-13 handoff artifact archive has an unexpected shape")
+              source.extractall("artifacts/release-source/ci-handoff")
           PY
-          proof="artifacts/release-source/ci-proof/dependency-release-source.json"
-          python3 eng/dependency_handoff.py verify-source --proof "$proof"
+          handoff="artifacts/release-source/ci-handoff/dependency-release-handoff.json"
+          python3 eng/dependency_handoff.py verify-ci --handoff "$handoff" --live
           jq -e \
             --arg sha "$DISPATCH_SHA" \
             --argjson run "$CI_RUN_ID" \
             --argjson attempt "$CI_RUN_ATTEMPT" \
             '.run.candidate == $sha and .revisions.candidate == $sha and .run.run_id == $run and .run.run_attempt == $attempt' \
-            "$proof" > /dev/null
+            "$handoff" > /dev/null
+          policy_commit="$(jq -er '.dependency_policy.commit' "$handoff")"
+          echo "policy-commit=$policy_commit" >> "$GITHUB_OUTPUT"
 
       - name: Validate approved package boundary
         run: |
@@ -133,11 +143,11 @@ jobs:
             --manifest tools/release-packages.json \
             --expected-count 8
 
-      - name: Carry authenticated source proof into this release run
+      - name: Carry authenticated AD-13 handoff into this release run
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: release-source-proof-${{ github.run_id }}-${{ github.run_attempt }}
-          path: artifacts/release-source/ci-proof/dependency-release-source.json
+          name: release-ci-handoff-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/release-source/ci-handoff/dependency-release-handoff.json
           if-no-files-found: error
           retention-days: 30
 
@@ -206,7 +216,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: Hexalith/Hexalith.Builds
-          ref: 3ac633386faa2dc4c785bc1ffa06487974906d79
+          ref: a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a
           path: .hexalith/builds-execution
           persist-credentials: false
       - name: Initialize root-declared dependencies
@@ -221,20 +231,28 @@ jobs:
           node-version: '24'
       - name: Install release tooling for governance tests
         run: npm ci
-      - name: Restore authenticated exact-source proof
+      - name: Restore authenticated AD-13 CI handoff and draft Release evaluator
         env:
           GH_TOKEN: ${{ github.token }}
+          POLICY_COMMIT: ${{ needs.verify-source.outputs.policy-commit }}
+          CANDIDATE: ${{ needs.verify-source.outputs.candidate }}
         run: |
           set -euo pipefail
           mkdir -p artifacts/release-source
           gh run download "${{ github.run_id }}" \
             --repo "${{ github.repository }}" \
-            --name "release-source-proof-${{ github.run_id }}-${{ github.run_attempt }}" \
+            --name "release-ci-handoff-${{ github.run_id }}-${{ github.run_attempt }}" \
             --dir artifacts/release-source
-          test -f artifacts/release-source/dependency-release-source.json
-          python3 eng/dependency_handoff.py verify-source \
-            --proof artifacts/release-source/dependency-release-source.json \
+          test -f artifacts/release-source/dependency-release-handoff.json
+          python3 eng/dependency_handoff.py verify-ci \
+            --handoff artifacts/release-source/dependency-release-handoff.json \
             --live
+          python3 eng/dependency_handoff.py draft-evaluator \
+            --stage release \
+            --caller-commit "$CANDIDATE" \
+            --caller-workflow .github/workflows/release.yml \
+            --policy-commit "$POLICY_COMMIT" \
+            --output artifacts/release-source/release-evaluator.json
       - name: Revalidate current main before using protected credentials
         env:
           GH_TOKEN: ${{ github.token }}
@@ -244,13 +262,14 @@ jobs:
           set -euo pipefail
           live="$(gh api "repos/${REPOSITORY}/git/ref/heads/main" --jq '.object.sha')"
           if [[ ! "$live" =~ ^[0-9a-f]{40}$ ]] || [ "$live" != "$DISPATCH_SHA" ]; then
-            echo "main advanced or returned an ambiguous source identity; redispatch after exact-source CI succeeds." >&2
+            echo "main advanced or returned an ambiguous source identity; redispatch after AD-13 CI handoff succeeds." >&2
             exit 1
           fi
       - name: Prepare and seal the pack-once candidate
         env:
-          DEPENDENCY_RELEASE_SOURCE_PROOF: artifacts/release-source/dependency-release-source.json
-          HEXALITH_BUILDS_EXECUTION_SHA: 3ac633386faa2dc4c785bc1ffa06487974906d79
+          DEPENDENCY_RELEASE_HANDOFF: artifacts/release-source/dependency-release-handoff.json
+          RELEASE_EVALUATOR: artifacts/release-source/release-evaluator.json
+          HEXALITH_BUILDS_EXECUTION_SHA: a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a
           RELEASE_ATTESTATION_STATUS: ${{ vars.RELEASE_ATTESTATION_STATUS || 'approved-unsupported' }}
           RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER }}
           RELEASE_ATTESTATION_FALLBACK_APPROVED_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVED_AT }}
@@ -285,7 +304,7 @@ jobs:
       id-token: write
       issues: write
       pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@3ac633386faa2dc4c785bc1ffa06487974906d79
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a
     with:
       solution: Hexalith.FrontComposer.slnx
       test-projects: ''
@@ -293,7 +312,7 @@ jobs:
       environment-name: production
       publish-containers: false
       container-projects: ''
-      builds-execution-sha: 3ac633386faa2dc4c785bc1ffa06487974906d79
+      builds-execution-sha: a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a
       source-branch: main
       source-ci-workflow: ci.yml
       package-manifest: tools/release-packages.json
@@ -365,3 +384,148 @@ jobs:
             --tag-ref release-verification/tag-ref.json \
             --tag-objects release-verification/tag-objects.json
           echo "Published ${tag} from exact source ${DISPATCH_SHA}." >> "$GITHUB_STEP_SUMMARY"
+
+  # AD-15: every governed Release attempt emits exactly one verification handoff.
+  emit-verification-handoff:
+    needs: [verify-source, plan-release, prepare-candidate, release, verify-publication]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout exact dispatched source
+        if: always()
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+          submodules: false
+
+      - name: Emit AD-15 release-verification-handoff
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_ATTEMPT: ${{ github.run_attempt }}
+          VERIFY_RESULT: ${{ needs.verify-source.result }}
+          PLAN_RESULT: ${{ needs.plan-release.result }}
+          PREPARE_RESULT: ${{ needs.prepare-candidate.result }}
+          RELEASE_RESULT: ${{ needs.release.result }}
+          PUBLICATION_RESULT: ${{ needs.verify-publication.result }}
+          POLICY_COMMIT: ${{ needs.verify-source.outputs.policy-commit }}
+          CANDIDATE: ${{ needs.verify-source.outputs.candidate }}
+          VERSION: ${{ needs.plan-release.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/release-verification-handoff
+          conclusion="failure"
+          if [ "$VERIFY_RESULT" = "success" ] && [ "$PLAN_RESULT" = "success" ]; then
+            if [ "$PREPARE_RESULT" = "skipped" ] && [ "$RELEASE_RESULT" = "skipped" ] && [ "$PUBLICATION_RESULT" = "skipped" ]; then
+              conclusion="success"
+            elif [ "$PREPARE_RESULT" = "success" ] && [ "$RELEASE_RESULT" = "success" ] && [ "$PUBLICATION_RESULT" = "success" ]; then
+              conclusion="success"
+            elif [ "$PREPARE_RESULT" = "skipped" ] || [ "$RELEASE_RESULT" = "skipped" ] || [ "$PUBLICATION_RESULT" = "skipped" ]; then
+              conclusion="cancelled"
+            else
+              conclusion="failure"
+            fi
+          fi
+          published=false
+          version_json=null
+          tag_json=null
+          release_id_json=null
+          manifest_path_json=null
+          manifest_sha_json=null
+          manifest_seal_json=null
+          echo '[]' > artifacts/release-verification-handoff/assets.json
+          if [ "$VERIFY_RESULT" != "success" ] || [ -z "${POLICY_COMMIT:-}" ] || [ -z "${CANDIDATE:-}" ]; then
+            jq -n \
+              --arg error "AD-13 CI handoff was not authenticated; AD-15 emission deferred" \
+              '{ok:false,deferred:true,error:$error}' \
+              > artifacts/release-verification-handoff/release-verification-handoff.deferred.json
+            echo "AD-15 deferred: AD-13 CI handoff unavailable." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          gh run download "$RUN_ID" \
+            --repo "$REPOSITORY" \
+            --name "release-ci-handoff-${RUN_ID}-${RUN_ATTEMPT}" \
+            --dir artifacts/release-verification-handoff/ci
+          ci_handoff="artifacts/release-verification-handoff/ci/dependency-release-handoff.json"
+          test -f "$ci_handoff"
+          python3 eng/dependency_handoff.py draft-evaluator \
+            --stage release \
+            --caller-commit "$CANDIDATE" \
+            --caller-workflow .github/workflows/release.yml \
+            --policy-commit "$POLICY_COMMIT" \
+            --output artifacts/release-verification-handoff/release-evaluator.json
+          if [ "$PUBLICATION_RESULT" = "success" ] && [ -n "${VERSION:-}" ]; then
+            published=true
+            version_json="$(jq -n --arg v "$VERSION" '$v')"
+            tag_json="$(jq -n --arg v "v${VERSION}" '$v')"
+            if gh api "repos/${REPOSITORY}/releases/tags/v${VERSION}" > artifacts/release-verification-handoff/github-release.json; then
+              release_id_json="$(jq -er '.id' artifacts/release-verification-handoff/github-release.json)"
+            fi
+            if [ "$PREPARE_RESULT" = "success" ]; then
+              gh run download "$RUN_ID" \
+                --repo "$REPOSITORY" \
+                --name "release-candidate-${RUN_ID}-${RUN_ATTEMPT}" \
+                --dir artifacts/release-verification-handoff/candidate || true
+              manifest="artifacts/release-verification-handoff/candidate/release-evidence/sealed-manifest.json"
+              if [ -f "$manifest" ]; then
+                manifest_path_json="$(jq -n --arg p "release-evidence/sealed-manifest.json" '$p')"
+                manifest_sha_json="$(jq -n --arg h "$(sha256sum "$manifest" | awk '{print $1}')" '$h')"
+                manifest_seal_json="$(jq -er '.seal' "$manifest")"
+                manifest_seal_json="$(jq -n --arg h "$manifest_seal_json" '$h')"
+              fi
+            fi
+          fi
+          jq -n \
+            --argjson published "$published" \
+            --argjson version "$version_json" \
+            --argjson tag "$tag_json" \
+            --argjson github_release_id "$release_id_json" \
+            '{version:$version,tag:$tag,github_release_id:$github_release_id,published:$published}' \
+            > artifacts/release-verification-handoff/release.json
+          jq -n \
+            --argjson path "$manifest_path_json" \
+            --argjson sha256 "$manifest_sha_json" \
+            --argjson seal "$manifest_seal_json" \
+            '{path:$path,sha256:$sha256,seal:$seal}' \
+            > artifacts/release-verification-handoff/manifest.json
+          set +e
+          python3 eng/dependency_handoff.py create-release \
+            --ci-handoff "$ci_handoff" \
+            --release-run-id "$RUN_ID" \
+            --release-run-attempt "$RUN_ATTEMPT" \
+            --conclusion "$conclusion" \
+            --evaluator artifacts/release-verification-handoff/release-evaluator.json \
+            --policy-commit "$POLICY_COMMIT" \
+            --release artifacts/release-verification-handoff/release.json \
+            --manifest artifacts/release-verification-handoff/manifest.json \
+            --assets artifacts/release-verification-handoff/assets.json \
+            --output artifacts/release-verification-handoff/release-verification-handoff.json
+          status=$?
+          set -e
+          if [ "$status" -eq 0 ]; then
+            cp "$ci_handoff" artifacts/release-verification-handoff/dependency-release-handoff.json
+            echo "AD-15 release-verification-handoff sealed (conclusion=$conclusion)." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$status" -eq 2 ]; then
+            echo "AD-15 handoff deferred pending active-policy release evaluator authorization." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::error::AD-15 create-release failed unexpectedly (exit=$status)"
+            exit "$status"
+          fi
+
+      - name: Upload AD-15 release-verification-handoff
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-verification-handoff-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/release-verification-handoff/
+          if-no-files-found: error
+          retention-days: 30

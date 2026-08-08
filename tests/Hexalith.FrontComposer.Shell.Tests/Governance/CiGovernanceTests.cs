@@ -265,7 +265,12 @@ public sealed class CiGovernanceTests {
         string root = RepositoryRoot();
         string ci = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
 
-        ci.ShouldContain("uses: Hexalith/Hexalith.Builds/.github/workflows/domain-ci.yml@main");
+        Match domainCiPin = Regex.Match(
+            ci,
+            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-ci\.yml@(?<sha>[0-9a-f]{40})\b");
+        domainCiPin.Success.ShouldBeTrue(
+            "ci.yml must pin domain-ci.yml to an exact 40-hex lowercase Builds commit SHA (never @main).");
+        ci.ShouldNotContain("domain-ci.yml@main");
         ci.ShouldContain("solution: Hexalith.FrontComposer.slnx");
         ci.ShouldContain("run-consumer-validation: true");
         ci.ShouldContain("unit-test-projects:");
@@ -296,6 +301,9 @@ public sealed class CiGovernanceTests {
         ci.ShouldContain("eng/dependency_graph.py --root \"$object_root\" diff");
         ci.ShouldContain("eng/dependency_graph.py --root \"${{ steps.dependency-diff.outputs.object-root }}\" run-affected");
         ci.ShouldContain("dependency-graph-evidence-${{ github.run_id }}-${{ github.run_attempt }}");
+        ci.ShouldContain("dependency_handoff.py --root \"$OBJECT_ROOT\" draft-evaluator");
+        ci.ShouldContain("dependency_handoff.py --root \"$OBJECT_ROOT\" create-ci");
+        ci.ShouldContain("dependency-release-handoff-${{ github.run_id }}-${{ github.run_attempt }}");
         ci.ShouldNotContain("submodule update --init --recursive");
         ci.ShouldNotContain("eval ");
 
@@ -1179,7 +1187,11 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("DISPATCH_REF");
         workflow.ShouldContain("refs/heads/main");
         workflow.ShouldContain("release_contract.py select-ci");
-        workflow.ShouldContain("dependency_handoff.py verify-source");
+        workflow.ShouldContain("dependency_handoff.py verify-ci");
+        workflow.ShouldContain("dependency-release-handoff-");
+        workflow.ShouldContain("emit-verification-handoff");
+        workflow.ShouldContain("create-release");
+        workflow.ShouldContain("release-verification-handoff-");
         workflow.ShouldContain("status=completed");
         File.ReadAllText(Path.Combine(root, "eng/release_contract.py")).ShouldContain("conclusion");
         workflow.ShouldContain("environment: production");
@@ -1348,6 +1360,9 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("Initialize exact root-declared dependencies");
 
         workflow.ShouldContain("frontcomposer.release-run-disposition.v2");
+        workflow.ShouldContain("release-verification-handoff-");
+        workflow.ShouldContain("dependency_handoff.py verify-release");
+        workflow.ShouldContain("emit-verification-handoff");
         workflow.ShouldContain("prepared-candidate.json");
         workflow.ShouldContain("GitHub Release tag does not resolve to the dispatched source SHA");
         releaseConfig.ShouldNotContain("classify-release");

@@ -28,6 +28,8 @@ DEFAULT_LIMITS = {
 
 _LIMIT_KEYS = frozenset(DEFAULT_LIMITS)
 _POLICY_STAGES = ("ci", "release", "post_release")
+_BUILDS_IDENTITY = "github.com/hexalith/hexalith.builds"
+_BUILDS_LOCAL_EXECUTION_PREFIX = ".hexalith/builds-execution/"
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _IDENTITY_RE = re.compile(
@@ -36,6 +38,13 @@ _IDENTITY_RE = re.compile(
 _EXTERNAL_USES_RE = re.compile(
     r"^(?P<owner>[A-Za-z0-9._-]+)/(?P<repository>[A-Za-z0-9._-]+)"
     r"(?P<path>/[^@\s]+)?@(?P<commit>[0-9a-f]{40})$"
+)
+_BUILDS_EXECUTION_CHECKOUT_RE = re.compile(
+    r"(?ms)repository:\s*Hexalith/Hexalith\.Builds\s*\n"
+    r"(?:[^\n]*\n){0,6}?"
+    r"\s*ref:\s*(?P<commit>[0-9a-f]{40})\s*\n"
+    r"(?:[^\n]*\n){0,6}?"
+    r"\s*path:\s*\.hexalith/builds-execution\b"
 )
 _MAPPING_RE = re.compile(
     r"^(?P<indent> *)(?:(?P<dash>-) +)?(?P<key>[A-Za-z_][A-Za-z0-9_-]*) *:"
@@ -406,6 +415,53 @@ class _Collector:
             )
         return candidates[0]
 
+    def _builds_execution_commit_for_caller(
+        self,
+        repository: str,
+        commit: str,
+        context: str,
+    ) -> str:
+        """Resolve the literal Builds checkout behind a caller builds-execution path."""
+
+        workflow_keys = [
+            key
+            for key in reversed(self._active)
+            if key[0] == repository and key[1] == commit and _is_workflow_path(key[2])
+        ]
+        if not workflow_keys:
+            raise WorkflowClosureError(
+                f"{context}: builds-execution local uses requires an enclosing workflow source"
+            )
+        workflow_repository, workflow_commit, workflow_path = workflow_keys[0]
+        # `_read_source` returns empty bytes on a cache hit (it only records hashes), so
+        # re-load the exact enclosing workflow blob from the object store for this parse.
+        entry = self._blob_entry(workflow_repository, workflow_commit, workflow_path)
+        if entry is None:
+            raise WorkflowClosureError(
+                f"{context}: enclosing workflow blob is missing at "
+                f"{workflow_repository}@{workflow_commit}:{workflow_path}"
+            )
+        object_id, _size = entry
+        blob = _run_git(
+            ["cat-file", "blob", object_id],
+            self._store(workflow_repository),
+            f"{workflow_repository}@{workflow_commit}:{workflow_path}",
+        )
+        try:
+            text = blob.decode("utf-8-sig", "strict")
+        except UnicodeDecodeError as error:
+            raise WorkflowClosureError(
+                f"{context}: enclosing workflow is not valid UTF-8 ({error})"
+            ) from error
+        matches = list(_BUILDS_EXECUTION_CHECKOUT_RE.finditer(text))
+        commits = sorted({match.group("commit") for match in matches})
+        if len(commits) != 1:
+            raise WorkflowClosureError(
+                f"{context}: expected exactly one literal Hexalith.Builds checkout into "
+                f".hexalith/builds-execution with a 40-hex ref, found {len(commits)}"
+            )
+        return _require_commit(commits[0], f"{context} builds-execution ref")
+
     def _resolve_uses(
         self,
         literal: str,
@@ -423,6 +479,26 @@ class _Collector:
                     f"{context}: local uses reference must not contain a ref: {literal!r}"
                 )
             target_path = _normalize_path(literal[2:], f"{context} local uses path")
+            if target_path.startswith(_BUILDS_LOCAL_EXECUTION_PREFIX):
+                # Builds governed composites are checked out under this runtime prefix and must
+                # hash as exact blobs from the Builds commit that supplied that checkout.
+                relative = _normalize_path(
+                    target_path[len(_BUILDS_LOCAL_EXECUTION_PREFIX) :],
+                    f"{context} builds-execution path",
+                )
+                if repository == _BUILDS_IDENTITY:
+                    target_repository = repository
+                    target_commit = commit
+                else:
+                    target_repository = _BUILDS_IDENTITY
+                    target_commit = self._builds_execution_commit_for_caller(
+                        repository,
+                        commit,
+                        context,
+                    )
+                if _is_workflow_path(relative):
+                    return target_repository, target_commit, relative, "workflow"
+                return target_repository, target_commit, relative, "action"
             if _is_workflow_path(target_path):
                 return repository, commit, target_path, "workflow"
             return repository, commit, target_path, "action"
@@ -552,6 +628,12 @@ def _strip_yaml_comment(value: str) -> str:
                 double = False
         else:
             if character == "'":
+                # Plain-scalar apostrophes inside words (it's / there's) are not YAML quotes.
+                previous = value[index - 1] if index > 0 else ""
+                nxt = value[index + 1] if index + 1 < len(value) else ""
+                if previous.isalnum() and nxt.isalnum():
+                    index += 1
+                    continue
                 single = True
             elif character == '"':
                 double = True
@@ -727,12 +809,18 @@ def collect_workflow_source_closure(
     reusable: Mapping[str, Any],
     *,
     limits: Mapping[str, Any] | None = None,
+    require_reusable_edge: bool = True,
 ) -> dict[str, Any]:
     """Collect the exact caller/reusable/action closure from immutable Git blobs.
 
     ``repository_stores`` is the trusted identity-to-local-object-store map prepared by
     acquisition.  Workflow content never supplies a remote URL.  ``caller`` and
     ``reusable`` each contain exactly ``repository``, ``workflow_path``, and ``commit``.
+
+    When ``require_reusable_edge`` is true (default), the caller static ``uses:`` closure
+    must contain the reusable workflow.  Post-release verifiers authorize their own caller
+    closure plus the Builds revision they check out, so they may pass false and have both
+    roots visited independently.
     """
 
     caller_coordinate = _validate_coordinate(caller, "caller")
@@ -752,11 +840,14 @@ def collect_workflow_source_closure(
 
     collector = _Collector(repository_stores, limits)
     collector.visit_workflow(*caller_key, depth=0)
-    if reusable_key not in collector._visited:
-        raise WorkflowClosureError(
-            "caller static closure does not contain the expected reusable workflow "
-            f"{reusable_key[0]}@{reusable_key[1]}:{reusable_key[2]}"
-        )
+    if require_reusable_edge:
+        if reusable_key not in collector._visited:
+            raise WorkflowClosureError(
+                "caller static closure does not contain the expected reusable workflow "
+                f"{reusable_key[0]}@{reusable_key[1]}:{reusable_key[2]}"
+            )
+    elif reusable_key not in collector._visited:
+        collector.visit_workflow(*reusable_key, depth=0)
 
     caller_record = collector._records[caller_key]
     reusable_record = collector._records[reusable_key]

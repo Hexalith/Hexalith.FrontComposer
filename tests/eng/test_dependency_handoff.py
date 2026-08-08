@@ -7,7 +7,9 @@ import copy
 import json
 import pathlib
 import sys
+import tempfile
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "eng"))
@@ -200,6 +202,61 @@ class HandoffTests(unittest.TestCase):
                     proof["run"]["run_id"] = 0
                 with self.assertRaises(dh.HandoffError):
                     dh.validate_source_proof(proof)
+
+    def test_create_ci_from_evidence_requires_authorized_evaluator(self) -> None:
+        evaluator = self._evaluator("ci")
+        evidence = {
+            "revisions": {
+                "event": "push",
+                "event_base": self.base,
+                "candidate": self.candidate,
+                "release_eligible": True,
+            },
+            "candidate_graph": self._graph(self.candidate),
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            # Empty authorizations: create_ci_handoff must be invoked and fail closed.
+            policy = {
+                "schema": dg.POLICY_SCHEMA,
+                "builds_identity": "github.com/hexalith/hexalith.builds",
+                "trusted_identities": [{
+                    "identity": dh.ROOT_REPOSITORY,
+                    "local_path": ".",
+                }],
+                "semantic_profiles": {},
+                "owner_profiles": {},
+                "module_build_registry": {},
+                "resource_limits": {
+                    "max_edges": 4096,
+                    "max_ls_tree_bytes": 67108864,
+                    "max_gitmodules_bytes": 1048576,
+                    "max_catalog_blob_bytes": 4194304,
+                    "max_contract_tree_files": 16384,
+                    "max_contract_tree_blob_bytes": 16777216,
+                    "max_contract_tree_total_bytes": 268435456,
+                    "max_workflow_closure_depth": 16,
+                    "max_workflow_closure_sources": 256,
+                    "max_workflow_source_blob_bytes": 1048576,
+                    "max_workflow_source_total_bytes": 16777216,
+                },
+                "evaluator_authorizations": {"ci": [], "release": [], "post_release": []},
+            }
+            with mock.patch.object(dg, "load_policy_at_commit", return_value=(policy, b"{}", {
+                "schema": dg.POLICY_SCHEMA,
+                "repository": dh.ROOT_REPOSITORY,
+                "path": dg.POLICY_PATH,
+                "commit": self.base,
+                "sha256": "4" * 64,
+            })):
+                with self.assertRaises(dh.HandoffError):
+                    dh.create_ci_handoff_from_evidence(
+                        root=root,
+                        evidence=evidence,
+                        run_id=9,
+                        run_attempt=1,
+                        evaluator=evaluator,
+                    )
 
 
 if __name__ == "__main__":

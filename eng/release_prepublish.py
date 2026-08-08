@@ -352,7 +352,13 @@ def phase_manifest(version: str, tag: str) -> None:
         "--output", str(EVIDENCE_DIR / "pre-manifest.json"),
     ]
     source_proof = os.environ.get("DEPENDENCY_RELEASE_SOURCE_PROOF", "")
+    ci_handoff = os.environ.get("DEPENDENCY_RELEASE_HANDOFF", "")
+    release_evaluator = os.environ.get("RELEASE_EVALUATOR", "")
     builds_sha = os.environ.get("HEXALITH_BUILDS_EXECUTION_SHA", "")
+    if ci_handoff:
+        prepare_cmd.extend(["--ci-handoff", ci_handoff])
+    if release_evaluator:
+        prepare_cmd.extend(["--release-evaluator", release_evaluator])
     if source_proof:
         prepare_cmd.extend(["--source-proof", source_proof])
     if builds_sha:
