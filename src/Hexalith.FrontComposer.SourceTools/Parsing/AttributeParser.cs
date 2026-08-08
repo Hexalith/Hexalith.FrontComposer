@@ -23,6 +23,8 @@ public static class AttributeParser {
     private const string DescriptionAttributeName = "System.ComponentModel.DescriptionAttribute";
     private const string DisplayAttributeName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
     private const string SuppressMessageAttributeName = "System.Diagnostics.CodeAnalysis.SuppressMessageAttribute";
+    private const string UnconditionalSuppressMessageAttributeName =
+        "System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessageAttribute";
 
     /// <summary>
     /// Story 4-5 D9 / D16 — reserved catch-all label for properties with no
@@ -1072,7 +1074,8 @@ public static class AttributeParser {
 
     private static bool HasSuppressMessage(ISymbol symbol, string diagnosticId) {
         foreach (AttributeData attribute in symbol.GetAttributes()) {
-            if (attribute.AttributeClass?.ToDisplayString() != SuppressMessageAttributeName
+            string? attributeName = attribute.AttributeClass?.ToDisplayString();
+            if (attributeName is not (SuppressMessageAttributeName or UnconditionalSuppressMessageAttributeName)
                 || attribute.ConstructorArguments.Length < 2
                 || attribute.ConstructorArguments[1].Value is not string checkId) {
                 continue;

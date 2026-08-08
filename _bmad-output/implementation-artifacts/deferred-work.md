@@ -1,5 +1,10 @@
 # Deferred Work
 
+## Deferred from: code review of 11-20-recommended-analyzer-policy-and-exception-ledger.md (2026-08-08)
+
+- Identifier inventory algorithm hashes every underscore-containing C# token under `tests/**` (including locals/discards), so routine non-CA1707 test edits force ledger reseals; narrow the sealed token set only under an explicit follow-up that preserves fail-closed CA1707 scope drift detection.
+- Ledger `warningControls` for `TreatWarningsAsErrors` encode the boolean MSBuild value in `diagnosticIds` (`["true"]` / `["false"]`); schema clarity can improve later without changing the current governance parity keys.
+
 ## Broad Suite Pre-Existing Failures (2026-07-03)
 
 The broad filtered suite for the FrontComposer UI tenant/party host implementation surfaced existing governance/doc failures outside the new UI integration scope:

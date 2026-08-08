@@ -12,7 +12,7 @@ due: 2026-07-24
 # The original due date lapsed while the story sat blocked on two package conditions that were later
 # resolved by unrelated work. Implementation completed and was re-verified on 2026-08-07; the date is
 # kept as the historical commitment rather than back-dated.
-status: review
+status: done
 storyType: implementation-phase
 approvalGate: separate-architecture-product-approval
 approvalStatus: approved
@@ -22,7 +22,7 @@ approvedOn: 2026-07-17
 
 # Story 11.20: Recommended Analyzer Policy and Exception Ledger
 
-Status: review.
+Status: done.
 
 <!-- Validation completed against .agents/skills/bmad-create-story/checklist.md on 2026-07-17. -->
 <!-- Administrator explicitly satisfied the separate Architecture/Product approval gate on 2026-07-17. -->
@@ -184,6 +184,23 @@ findings globally.
   - [x] Confirm no PublicAPI, schema, generated-output, Verify snapshot, pact, package, solution, or
         submodule baseline changed; if a baseline change is genuinely required, stop for separate
         approval rather than regenerating it opportunistically.
+
+### Review Findings
+
+- [x] [Review][Patch] Document HFC1002 property-level SuppressMessage contract [`docs/diagnostics/HFC1002.md`]
+- [x] [Review][Patch] CA1707 exact-scope proof allows additive path widenings [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:1082`]
+- [x] [Review][Patch] Category-disable guard misses non-root EditorConfig sections [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:496`]
+- [x] [Review][Patch] EditorConfig control scan throws on lines without `=` [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:960`]
+- [x] [Review][Patch] Missing root `.editorconfig` is not fail-closed in ConfiguredControlKeys [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:948`]
+- [x] [Review][Patch] SuppressMessage census misses `CheckId:` NameColon arguments [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:1028`]
+- [x] [Review][Patch] Empty `diagnosticIds` arrays bypass RequireValue [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:1439`]
+- [x] [Review][Patch] `decisionDate` is not fail-closed parsed like `reviewDate` [`tests/Hexalith.FrontComposer.Shell.Tests/Governance/AnalyzerPolicyGovernanceTests.cs:367`]
+- [x] [Review][Patch] `HasSuppressMessage` ignores `UnconditionalSuppressMessageAttribute` [`src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:1073`]
+- [x] [Review][Patch] Missing negative coverage for non-property / non-matching HFC1002 SuppressMessage shapes [`tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/AttributeParserTests.cs`]
+- [x] [Review][Patch] Reconcile story evidence drift (Auto Run `done` vs `review`, Governance 1/1 vs 4/4, seal 6,242 vs 6,247, matrix 4,217 vs 4,221) [`_bmad-output/implementation-artifacts/11-20-recommended-analyzer-policy-and-exception-ledger.md`]
+- [x] [Review][Patch] `postPolicyCensus` lacks a commit stamp and governance presence assertion [`_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json:54`]
+- [x] [Review][Defer] Identifier inventory seals every underscore token under `tests/**` [`_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json:76`] — deferred, pre-existing
+- [x] [Review][Defer] `TreatWarningsAsErrors` encodes booleans in `diagnosticIds` [`_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`] — deferred, pre-existing
 
 ## Dev Notes
 
@@ -533,11 +550,12 @@ GPT-5 Codex
 - Added exact brownfield file guidance, current census drift, ledger schema expectations, suppression
   narrowing, CA1707 compatibility scopes, CA1711 fixes, governance negatives, and preservation rules.
 - 2026-08-07 completion pass: the story's policy implementation was already landed and correct at HEAD.
-  The only change this pass required was resealing the analyzer identifier inventory in
-  `analyzer-policy-exception-ledger-v1.json` to 6,242 tokens / sha256 `5291e6e9...`, absorbing
-  underscore-named test identifiers introduced by unrelated commits after the previous reseal. The
-  count-drift guard behaved exactly as designed: it fails closed on repository evolution and forces an
-  explicit, owner-reviewed reseal rather than silently widening the CA1707 path scope.
+  The completion pass resealed the analyzer identifier inventory and then hardened Governance into four
+  independent facts. The final post-hardening seal recorded in Auto Run Result is 6,247 tokens /
+  sha256 `ae482232...` (the intermediate 6,242 / `5291e6e9...` seal absorbed unrelated post-reseal
+  identifier drift before that hardening). The count-drift guard behaved exactly as designed: it fails
+  closed on repository evolution and forces an explicit, owner-reviewed reseal rather than silently
+  widening the CA1707 path scope.
 - Both previously recorded blocking conditions were re-tested and cleared without any package-policy or
   package-baseline change, which the story forbids. The restore is green and the package-boundary test
   now pins 10.0.10 from the imported Hexalith.Builds catalog.
@@ -555,6 +573,7 @@ GPT-5 Codex
 - `.editorconfig`
 - `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`
 - `_bmad-output/implementation-artifacts/tests/test-summary.md`
+- `docs/diagnostics/HFC1002.md`
 - `samples/Counter/Counter.Domain/Counter.Domain.csproj`
 - `samples/Counter/Counter.Domain/CounterProjection.cs`
 - `samples/Counter/Counter.Specimens.Domain/Counter.Specimens.Domain.csproj`
@@ -576,17 +595,17 @@ GPT-5 Codex
   approval-gated backlog story.
 - 2026-07-17: Administrator explicitly supplied Architecture/Product approval; create-story enriched
   the implementation guide, reconciled current Naming drift, and promoted backlog -> ready-for-dev.
-- 2026-08-07: Completion pass re-verified the landed policy implementation at HEAD `05481771`, cleared
-  both previously recorded package blockers empirically without any package change, resealed the
-  analyzer identifier inventory for unrelated post-reseal test-identifier drift, and promoted
-  blocked -> review (sprint-status vocabulary; the story frontmatter records the equivalent in-review).
+- 2026-08-08: Code review patched CA1707 exact-scope proofs, category-disable coverage, EditorConfig
+  fail-closed parsing, HFC1002 UnconditionalSuppressMessage support plus docs, ledger
+  `postPolicyCensus.sourceCommit`, and evidence drift; promoted review -> done.
 
 ## Auto Run Result
 
 Status: done
 
 All six acceptance criteria are satisfied and every validation lane is green at HEAD
-`054817718c6157ea6d92cc6a06f5de30b8178ab1`.
+`054817718c6157ea6d92cc6a06f5de30b8178ab1`. Code-review patches landed on 2026-08-08 and the story
+is promoted to `done`.
 
 The two 2026-07-17 blocking conditions no longer reproduce and were cleared without the package-policy
 or package-baseline changes this story forbids. The solution restore exits 0 with no NU1506, because
@@ -597,9 +616,11 @@ surviving only as the intentional mismatch input of the negative theory case.
 Evidence: forced Release build 0 warnings / 0 errors; strict `AnalysisModeNaming=Recommended` candidate
 0 warnings / 0 errors; full `AnalysisMode=Recommended` census with TWAE relaxed for enumeration reported
 1,122 warnings / 0 errors with zero Naming diagnostics, all remaining findings belonging to Stories
-11.21 and 11.22; focused analyzer-policy Governance 1/1; focused SourceTools collection/culture lane
-103/103; and the complete default test matrix 4,217 / 4,217 across Cli, Contracts, Contracts.UI, Mcp,
-SourceTools, Testing, and Shell. No PublicAPI, schema, generated-output, Verify snapshot, pact, package,
+11.21 and 11.22; focused analyzer-policy Governance 4/4 after the hardening split; focused SourceTools
+collection/culture lane 103/103; and the complete default test matrix after hardening 4,221 / 4,221
+across Cli, Contracts, Contracts.UI, Mcp, SourceTools, Testing, and Shell (Shell 2,409 / 2,409). The
+earlier pre-hardening matrix figure of 4,217 / 4,217 (Shell 2,406 / 2,406) is retained only as the
+pre-hardening checkpoint. No PublicAPI, schema, generated-output, Verify snapshot, pact, package,
 solution, or submodule baseline changed.
 
 The analyzer identifier inventory was resealed to 6,247 tokens / sha256 `ae482232...`. That absorbs

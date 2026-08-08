@@ -132,6 +132,63 @@ public class AttributeParserTests {
     }
 
     [Fact]
+    public void Parse_PropertyUnconditionalSuppressMessageForHfc1002_SuppressesDiagnostic() {
+        const string source = """
+            using System.Collections.Generic;
+            using System.Diagnostics.CodeAnalysis;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [Projection]
+            public partial class UnconditionalHfc1002FixtureProjection
+            {
+                [UnconditionalSuppressMessage(
+                    "HexalithFrontComposer",
+                    "HFC1002:Unsupported field type",
+                    Justification = "Approved unconditional fixture suppression.")]
+                public Dictionary<string, string> UnconditionallySuppressed { get; set; } = new();
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+
+        driver = driver.RunGenerators(compilation, TestContext.Current.CancellationToken);
+        Diagnostic[] diagnostics = driver.GetRunResult().Diagnostics.Where(diagnostic => diagnostic.Id == "HFC1002").ToArray();
+
+        diagnostics.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Parse_TypeLevelSuppressMessageForHfc1002_StillReportsHFC1002() {
+        const string source = """
+            using System.Collections.Generic;
+            using System.Diagnostics.CodeAnalysis;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [Projection]
+            [SuppressMessage(
+                "HexalithFrontComposer",
+                "HFC1002:Unsupported field type",
+                Justification = "Type-level suppression must not silence property HFC1002.")]
+            public partial class TypeLevelHfc1002FixtureProjection
+            {
+                public Dictionary<string, string> StillReported { get; set; } = new();
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+
+        driver = driver.RunGenerators(compilation, TestContext.Current.CancellationToken);
+        Diagnostic[] diagnostics = driver.GetRunResult().Diagnostics.Where(diagnostic => diagnostic.Id == "HFC1002").ToArray();
+
+        diagnostics.Length.ShouldBe(1);
+        diagnostics[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture).ShouldContain("StillReported");
+    }
+
+    [Fact]
     public void Parse_NonPartialProjection_EmitsHFC1003() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NonPartialProjection);

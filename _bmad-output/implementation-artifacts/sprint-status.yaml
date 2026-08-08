@@ -1,5 +1,5 @@
 # generated: 2026-07-05T17:13:53+02:00
-# last_updated: 2026-08-07
+# last_updated: 2026-08-08
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -512,7 +512,8 @@ development_status:
   # 11.20 moved backlog -> ready-for-dev on 2026-07-17 (create-story; Administrator explicitly satisfied the separate Architecture/Product approval gate; comprehensive policy/ledger context, refreshed 2,959-Naming census, narrow CA1707 scopes, CA1711 fixes, warning-control dispositions, Governance coverage, and scoped validation lanes recorded.)
   # 11.20 moved ready-for-dev -> in-progress on 2026-08-07 (bmad-build; resuming the story after the 2026-07-17 auto-run recorded status blocked on the NU1506 duplicate SignalR.Client central declaration and the Localization.Abstractions 10.0.9 package-boundary expectation, both of which no longer reproduce at HEAD.)
   # 11.20 moved in-progress -> review on 2026-08-07 (completion pass at HEAD 05481771; both former package blockers cleared empirically with no package-policy change; the landed CA1707 scopes, ledger, CA1711 test-group renames, HFC1002 narrowing, and Governance coverage re-verified; analyzer identifier inventory resealed to 6,242 tokens for unrelated post-reseal test-identifier drift; Release 0W/0E, strict AnalysisModeNaming=Recommended 0W/0E, full Recommended census 1,122 warnings with zero Naming, default matrix 4,217/4,217.)
-  11-20-recommended-analyzer-policy-and-exception-ledger: review
+  # 11.20 moved review -> done on 2026-08-08 (bmad-code-review; CA1707 exact-scope + Contracts-sibling specimens, category-disable any-section guard, EditorConfig fail-closed parsing, NameColon CheckId census, empty NoWarn diagnosticIds, decisionDate parse, UnconditionalSuppressMessage + HFC1002 docs/tests, postPolicyCensus.sourceCommit, evidence drift reconciled).
+  11-20-recommended-analyzer-policy-and-exception-ledger: done
   # 11.21 moved backlog -> ready-for-dev on 2026-07-17 (create-story; Administrator supplied separate phase approval; comprehensive product/generator census, hidden ASP0006 emitter debt, exact 11.18 logging handoff, hard 11.20 ledger entry gate, and scoped validation recorded.)
   # 11.21 moved ready-for-dev -> in-progress on 2026-08-07 (bmad-build; implementation baseline 4a8cfa49. Entry gate adjudicated with Administrator: (a) Story 11.20 accepted at `review` rather than `done` because its substance is verified green at this HEAD — approved ledger present, AnalyzerPolicyGovernanceTests 4/4, 40/40 tasks checked; 11.20 still owes its own code review independently. (b) The ledger contained zero CA1000 dispositions, so Administrator approved a narrow exact-symbol compatibility exception for the three public-API-breaking CA1000 members (QueryResult<T>.NotModified, QueryResult<T>.NotModifiedFromCache, ProjectionTestDataBuilder<TProjection>.BuildMany), preserving the shipped 2.x surface; the ledger is amended before any source edit.)
   11-21-recommended-analyzer-product-and-generator-burndown: review

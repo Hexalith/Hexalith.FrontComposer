@@ -32,8 +32,8 @@ when CI remains authoritative.
 - [x] Normal forced Release `--no-restore --no-incremental -m:1` build passed with 0 warnings and 0 errors.
 - [x] Strict `AnalysisModeNaming=Recommended` forced Release build with canonical TWAE passed with 0 warnings and 0 errors.
 - [x] Full `AnalysisMode=Recommended` census with TWAE disabled only for enumeration completed with 1,122 warnings, 0 errors, and no Naming diagnostic.
-- [x] Focused Shell analyzer-policy Governance passed 1/1; focused SourceTools DiagnosticRegistry/culture lane passed 103/103; focused HFC1002 suppression regression passed 1/1.
-- [x] Per-assembly default lane passed on 2026-08-07 with `DiffEngine_Disabled=true` and the standard trait exclusions: Cli 73/73, Contracts 211/211, Contracts.UI 10/10, Mcp 367/367, SourceTools 1,091/1,091, Testing 59/59, and Shell 2,406/2,406 - 4,217 tests, 0 failures.
+- [x] Focused Shell analyzer-policy Governance passed 4/4 after the hardening split; focused SourceTools DiagnosticRegistry/culture lane passed 103/103; focused HFC1002 suppression regression passed 1/1.
+- [x] Per-assembly default lane passed on 2026-08-07 with `DiffEngine_Disabled=true` and the standard trait exclusions. Pre-hardening checkpoint: Cli 73/73, Contracts 211/211, Contracts.UI 10/10, Mcp 367/367, SourceTools 1,091/1,091, Testing 59/59, and Shell 2,406/2,406 - 4,217 tests, 0 failures. Post-hardening re-verification: 4,221 tests with Shell 2,409/2,409.
 - [x] The Testing package-boundary assertion now expects `Microsoft.Extensions.Localization.Abstractions` 10.0.10, matching the imported Hexalith.Builds catalog; `10.0.9` survives only as the deliberate mismatch input of the negative theory case. No package-baseline edit was made by this story.
 - [x] Story-artifact validation passed after the parent workflow reconciled the implementation File List.
 - [x] The analyzer identifier inventory was resealed to `testUnderscoreIdentifierTokens` 6,247 / sha256 `ae482232...` - absorbing both underscore-named test identifiers added by unrelated commits after the previous reseal and the identifiers added by this pass's own adversarial-review hardening. Story 11.20 owns this ledger, so the reseal is in scope here rather than a concurrent blocker.
@@ -43,7 +43,7 @@ when CI remains authoritative.
 - [x] `TrackedFiles` now passes `--cached` only. Confirmed inert at seal time: `git ls-files --others --exclude-standard` returned 0 files and the `--cached` / `--cached --others` sets were byte-identical.
 - [x] `TrackedFiles` drains stdout and stderr concurrently with a 60 s bounded wait, removing the sequential-`ReadToEnd` deadlock shape.
 - [x] Root `WarningsNotAsErrors` and `WarningsAsErrors` carrying CA identifiers are now policed exactly as root `NoWarn`, closing a TreatWarningsAsErrors bypass. Two synthetic negative cases added.
-- [x] Category-disable guard broadened to the `[*]` section, the bulk `dotnet_analyzer_diagnostic.severity` property, and the `suggestion`/`hidden` severities. Seven synthetic negative cases added.
+- [x] Category-disable guard rejects bulk/category severities in any EditorConfig section (not only `[*]` / `[*.cs]` / `[**.cs]`), including path-scoped category disables. Synthetic negatives cover root and non-root sections.
 - [x] Analyzer-configuration closed world is now enforced: tracked `.editorconfig`/`.globalconfig`/`.ruleset` files outside `references/**` beyond the root `.editorconfig` fail closed. `references/Hexalith.Builds/Hexalith.globalconfig` remains excluded per the story's explicit disposition.
 - [x] Root `TreatWarningsAsErrors` lookup no longer throws on 0 or 2+ declarations; it reports a named error.
 - [x] `reviewDate` is parsed with `TryParseExact` against `yyyy-MM-dd` under `InvariantCulture` and fails closed on unparseable values. Two synthetic negative cases added, including a locale-ambiguous `17/07/2027`.
