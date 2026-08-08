@@ -27,6 +27,18 @@ public sealed class ProjectionSubscriptionServiceTests {
     private static readonly string[] ExpectedRejoinedGroups = ["billing:acme", "orders:acme"];
 
     [Fact]
+    public async Task SubscribeAsync_AfterDispose_ThrowsObjectDisposedException() {
+        // Story 11.21 CA1513 — pin fail-closed post-dispose SubscribeAsync (mirrors McpLifecycleStoreDisposalTests).
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier);
+        await sut.DisposeAsync();
+
+        _ = await Should.ThrowAsync<ObjectDisposedException>(
+            () => sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task Subscribe_CommitsActiveGroupOnlyAfterJoinSucceeds_AndNotifiesOnNudge() {
         FakeProjectionHubConnection connection = new();
         TestNotifier notifier = new();

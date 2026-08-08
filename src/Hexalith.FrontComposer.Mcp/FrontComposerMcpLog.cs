@@ -127,7 +127,9 @@ internal static partial class FrontComposerMcpLog {
             return;
         }
 
-        LogCommandInvocationKnownFailure(logger, BoundedCategory(category));
+        // CA1873: same local-binding pattern as CommandInvocationSchemaFailed.
+        string boundedCategory = BoundedCategory(category);
+        LogCommandInvocationKnownFailure(logger, boundedCategory);
     }
 
     /// <summary>
@@ -172,12 +174,13 @@ internal static partial class FrontComposerMcpLog {
         string boundedCategory = BoundedSchemaToken(category);
         string boundedMessageKey = BoundedSchemaToken(messageKey);
         string boundedDocsCode = BoundedSchemaToken(docsCode);
+        string boundedDecisionKind = Enum.IsDefined(decisionKind) ? decisionKind.ToString() : "Unknown";
         LogSchemaNegotiationDecision(
             logger,
             boundedCategory,
             boundedMessageKey,
             boundedDocsCode,
-            Enum.IsDefined(decisionKind) ? decisionKind.ToString() : "Unknown");
+            boundedDecisionKind);
     }
 
     private static string BoundedCategory(FrontComposerMcpFailureCategory category)

@@ -335,7 +335,9 @@ public sealed class ETagCacheService : IETagCache, IDisposable {
         }
 
         try {
-            if (Volatile.Read(ref _lruSeeded) != 0) {
+            // Re-check after the gate is acquired: Dispose may have raced the wait and released the
+            // semaphore, leaving this waiter holding a disposed gate with seeding still pending.
+            if (Volatile.Read(ref _lruSeeded) != 0 || Volatile.Read(ref _disposed) != 0) {
                 return;
             }
 

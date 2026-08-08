@@ -244,18 +244,27 @@ internal static class RenderTreeSequenceRewriter {
     /// Reports whether the identifier ending at <paramref name="operatorIndex"/> is the first thing
     /// inside an argument list, or is itself prefixed by an operator that opens one.
     /// </summary>
+    /// <remarks>
+    /// Whitespace between the identifier and the operator (<c>seq ++</c>) is skipped so a fail-safe
+    /// leftover with spaces cannot bypass the OrFail Roslyn scan via this prefilter.
+    /// </remarks>
     private static bool StartsArgumentList(string source, int operatorIndex) {
-        // Prefix form: `(++seq, ...)`.
-        if (operatorIndex > 0 && source[operatorIndex - 1] == '(') {
+        // Prefix form: `(++seq, ...)` or `( ++seq, ...)`.
+        int cursor = operatorIndex;
+        while (cursor > 0 && char.IsWhiteSpace(source[cursor - 1])) {
+            cursor--;
+        }
+
+        if (cursor > 0 && source[cursor - 1] == '(') {
             return true;
         }
 
-        int start = operatorIndex;
+        int start = cursor;
         while (start > 0 && IsIdentifierCharacter(source[start - 1])) {
             start--;
         }
 
-        return start != operatorIndex && start > 0 && source[start - 1] == '(';
+        return start != cursor && start > 0 && source[start - 1] == '(';
     }
 
     /// <summary>Extracts the invoked member's simple name, ignoring any generic argument list.</summary>

@@ -57,6 +57,7 @@ internal static class GeneratedLogMethodEmitter {
     /// <c>LoggerMessage.Define</c> cannot bind.
     /// </exception>
     /// <exception cref="ArgumentException">
+    /// <paramref name="methodName"/> or <paramref name="eventName"/> is null/empty/whitespace,
     /// <paramref name="messageTemplate"/> is malformed, or its placeholder count differs from
     /// <paramref name="parameters"/>'s length — either shape emits source that does not compile or a
     /// message whose holes never bind.
@@ -82,7 +83,7 @@ internal static class GeneratedLogMethodEmitter {
             throw new ArgumentNullException(nameof(parameters));
         }
 
-        ValidateArguments(methodName, messageTemplate, parameters);
+        ValidateArguments(methodName, eventName, messageTemplate, parameters);
 
         string fieldName = "_" + char.ToLowerInvariant(methodName[0]) + methodName.Substring(1);
 
@@ -108,10 +109,12 @@ internal static class GeneratedLogMethodEmitter {
 
         _ = sb.AppendLine("(");
         _ = sb.AppendLine("            global::Microsoft.Extensions.Logging.LogLevel." + level + ",");
+        // Escape both string channels the same way: event names are literals today, but a quote or
+        // backslash would still break the EventId argument the same way an unescaped template would.
         _ = sb.AppendLine(
             "            new global::Microsoft.Extensions.Logging.EventId("
             + eventId.ToString(CultureInfo.InvariantCulture)
-            + ", \"" + eventName + "\"),");
+            + ", \"" + GeneratedLiteral.Escape(eventName) + "\"),");
         _ = sb.AppendLine("            \"" + GeneratedLiteral.Escape(messageTemplate) + "\");");
         _ = sb.AppendLine();
 
@@ -187,16 +190,30 @@ internal static class GeneratedLogMethodEmitter {
     /// message holes cannot bind.
     /// </summary>
     /// <remarks>
-    /// Both conditions are silent in the emitter but loud in the adopter build: more than
-    /// <see cref="MaxMessageArguments"/> arguments emits a <c>LoggerMessage.Define</c> overload that
-    /// does not exist, and a placeholder/parameter mismatch emits a template whose holes never render
-    /// the values that were passed. Throwing here surfaces the defect in this repository's emitter
-    /// tests instead of in a consumer's generated output.
+    /// Empty <paramref name="methodName"/> would otherwise throw <see cref="IndexOutOfRangeException"/>
+    /// while building the field name, and an unescaped <paramref name="eventName"/> would break the
+    /// generated <c>EventId</c> literal. More than <see cref="MaxMessageArguments"/> arguments emits a
+    /// <c>LoggerMessage.Define</c> overload that does not exist, and a placeholder/parameter mismatch
+    /// emits a template whose holes never render the values that were passed. Throwing here surfaces
+    /// the defect in this repository's emitter tests instead of in a consumer's generated output.
     /// </remarks>
     private static void ValidateArguments(
         string methodName,
+        string eventName,
         string messageTemplate,
         (string Type, string Name)[] parameters) {
+        if (string.IsNullOrWhiteSpace(methodName)) {
+            throw new ArgumentException(
+                "Generated log methodName is required and cannot be empty or whitespace.",
+                nameof(methodName));
+        }
+
+        if (string.IsNullOrWhiteSpace(eventName)) {
+            throw new ArgumentException(
+                "Generated log eventName is required and cannot be empty or whitespace.",
+                nameof(eventName));
+        }
+
         if (parameters.Length > MaxMessageArguments) {
             throw new ArgumentOutOfRangeException(
                 nameof(parameters),

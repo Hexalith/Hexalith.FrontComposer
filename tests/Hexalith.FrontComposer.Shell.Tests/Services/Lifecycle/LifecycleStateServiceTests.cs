@@ -80,6 +80,25 @@ public class LifecycleStateServiceTests {
     }
 
     [Fact]
+    public void Subscribe_AfterDispose_ThrowsObjectDisposedException() {
+        // Story 11.21 CA1513 — pin fail-closed post-dispose Subscribe (mirrors McpLifecycleStoreDisposalTests).
+        LifecycleStateService service = Create();
+        service.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(() => service.Subscribe("c-disposed", _ => { }));
+    }
+
+    [Fact]
+    public void Transition_AfterDispose_ThrowsObjectDisposedException() {
+        // Story 11.21 CA1513 — pin fail-closed post-dispose Transition.
+        LifecycleStateService service = Create();
+        service.Dispose();
+
+        _ = Should.Throw<ObjectDisposedException>(
+            () => service.Transition("c-disposed", CommandLifecycleState.Submitting));
+    }
+
+    [Fact]
     public void GetActiveCorrelationIds_ReturnsSnapshot_LiveAfterTransitions() {
         using LifecycleStateService service = Create();
         service.Transition("a", CommandLifecycleState.Submitting);

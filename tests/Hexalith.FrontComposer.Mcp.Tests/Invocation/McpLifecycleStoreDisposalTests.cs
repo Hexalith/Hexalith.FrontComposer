@@ -45,8 +45,15 @@ public sealed class McpLifecycleStoreDisposalTests {
         FrontComposerMcpLifecycleStore store = CreateStore();
 
         store.Dispose();
-
         Should.NotThrow(store.Dispose);
+
+        // Idempotent Dispose must not reopen the store: a post-dispose read still fails closed.
+        _ = Should.Throw<ObjectDisposedException>(
+            () => store.TryReadSnapshot(
+                "01JBX0000000000000000000AB",
+                new FrontComposerMcpOptions(),
+                out _,
+                out _));
     }
 
     private static FrontComposerMcpLifecycleStore CreateStore()

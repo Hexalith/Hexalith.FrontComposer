@@ -1,7 +1,11 @@
+using System.Collections.Immutable;
 using System.Reflection;
 
+using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Services.DevMode;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 
 using Microsoft.Extensions.Logging;
@@ -108,16 +112,39 @@ public sealed class FrontComposerDiagnosticLogTests
         FrontComposerDiagnosticLog.PaletteCommandTypeUnresolved(logger, ControlCharacterPayload);
 
         logger.Entries.Count.ShouldBe(2);
+        logger.Entries[0].State["CommandTypeName"].ShouldBe("sha256:45a7c7ef95c3417e:len:513");
+        logger.Entries[1].State["CommandTypeName"].ShouldBe("sha256:b7cf21f1a82cce00:len:25");
         foreach (CapturedLogEntry entry in logger.Entries)
         {
             string rendered = entry.State["CommandTypeName"].ShouldBeOfType<string>();
             rendered.ShouldStartWith("sha256:");
+            rendered.ShouldContain(":len:");
             rendered.Length.ShouldBeLessThan(64);
         }
 
         logger.Entries[0].Message.ShouldNotContain(oversized);
         logger.Entries[1].Message.ShouldNotContain(ControlCharacterPayload);
         logger.Entries[1].Message.ShouldNotContain("injected-log-line");
+    }
+
+    [Fact]
+    public void ValuesDifferingOnlyPastMaxDigestCharacters_ShareADigestWhenLengthsMatch()
+    {
+        // Digest hashes at most MaxDigestCharacters (4096) of the value, then appends :len:{count}.
+        // Two values that share the hashed prefix and the same length must therefore collide.
+        CapturingLogger<FrontComposerDiagnosticLogTests> logger = new();
+        string sharedPrefix = new('a', 4096);
+        string first = sharedPrefix + 'x';
+        string second = sharedPrefix + 'y';
+
+        FrontComposerDiagnosticLog.PaletteCommandTypeUnresolved(logger, first);
+        FrontComposerDiagnosticLog.PaletteCommandTypeUnresolved(logger, second);
+
+        string firstDigest = logger.Entries[0].State["CommandTypeName"].ShouldBeOfType<string>();
+        string secondDigest = logger.Entries[1].State["CommandTypeName"].ShouldBeOfType<string>();
+        firstDigest.ShouldBe(secondDigest);
+        firstDigest.ShouldBe("sha256:c93eee2d0db02f10:len:4097");
+        logger.Entries[0].Message.ShouldNotContain(sharedPrefix);
     }
 
     [Theory]
@@ -154,8 +181,75 @@ public sealed class FrontComposerDiagnosticLogTests
     [Fact]
     public void NullLogger_IsAcceptedByEveryWrapper()
     {
-        Should.NotThrow(() => FrontComposerDiagnosticLog.ClipboardCopyTimedOut(null));
-        Should.NotThrow(() => FrontComposerDiagnosticLog.PaletteCommandTypeUnresolved(null, ViewKey));
+        MethodInfo[] wrappers = [.. typeof(FrontComposerDiagnosticLog)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .Where(static method =>
+            {
+                ParameterInfo[] parameters = method.GetParameters();
+                return parameters.Length > 0 && parameters[0].ParameterType == typeof(ILogger);
+            })
+            .OrderBy(static method => method.Name, StringComparer.Ordinal)];
+
+        wrappers.Length.ShouldBe(73);
+
+        foreach (MethodInfo method in wrappers)
+        {
+            object?[] arguments = [.. method.GetParameters().Select(CreateSampleArgument)];
+            arguments[0] = null;
+            Should.NotThrow(
+                () => method.Invoke(null, arguments),
+                $"{method.Name} must accept a null logger without throwing.");
+        }
+    }
+
+    private static object? CreateSampleArgument(ParameterInfo parameter)
+    {
+        Type type = parameter.ParameterType;
+        if (type == typeof(ILogger))
+        {
+            return null;
+        }
+
+        if (type == typeof(Exception) || typeof(Exception).IsAssignableFrom(type))
+        {
+            return new InvalidOperationException("unused when logger is null");
+        }
+
+        if (type == typeof(string))
+        {
+            return "sample";
+        }
+
+        if (type == typeof(int))
+        {
+            return 0;
+        }
+
+        if (type == typeof(ClipboardCopyResult)
+            || type == typeof(CustomizationLevel)
+            || type == typeof(PaletteResultCategory)
+            || type == typeof(ProjectionRole)
+            || type == typeof(ComponentTreeStaleReason))
+        {
+            return Activator.CreateInstance(type);
+        }
+
+        if (Nullable.GetUnderlyingType(type) is Type underlying && underlying.IsEnum)
+        {
+            return Activator.CreateInstance(underlying);
+        }
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(ImmutableArray<>))
+        {
+            return Activator.CreateInstance(type);
+        }
+
+        if (type.IsValueType)
+        {
+            return Activator.CreateInstance(type);
+        }
+
+        return null;
     }
 
     [Fact]
@@ -220,7 +314,7 @@ public sealed class FrontComposerDiagnosticLogTests
             DisabledPathAllocationBudgetBytes,
             $"The disabled low-severity path allocated {allocated} bytes over 40,000 wrapper calls; "
             + "the guard evaluates neither the bounded-value digest nor the message template when the "
-            + "level is disabled, so per-call allocation must stay at zero.");
+            + $"level is disabled, so allocation must stay within the {DisabledPathAllocationBudgetBytes}-byte budget.");
     }
 
     private static void InvokeDisabledWrappers(DisabledLogger logger, Exception exception, string oversized)

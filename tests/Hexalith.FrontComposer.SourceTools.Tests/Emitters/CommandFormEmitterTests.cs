@@ -358,11 +358,12 @@ public class CommandFormEmitterTests {
         submittedLogIndex.ShouldBeGreaterThan(0);
 
         int tryIndex = source.IndexOf("try", submittedLogIndex, StringComparison.Ordinal);
-        int finallyIndex = source.IndexOf("finally", tryIndex, StringComparison.Ordinal);
-        int disposeIndex = source.IndexOf("admission.Dispose();", finallyIndex, StringComparison.Ordinal);
-
         tryIndex.ShouldBeGreaterThan(0);
+
+        int finallyIndex = source.IndexOf("finally", tryIndex, StringComparison.Ordinal);
         finallyIndex.ShouldBeGreaterThan(tryIndex);
+
+        int disposeIndex = source.IndexOf("admission.Dispose();", finallyIndex, StringComparison.Ordinal);
         disposeIndex.ShouldBeGreaterThan(finallyIndex);
     }
 

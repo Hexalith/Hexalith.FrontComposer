@@ -87,6 +87,50 @@ public sealed class CanonicalSchemaMaterialFingerprintVectorTests {
     }
 
     [Fact]
+    public void CreatePayload_FieldNestedMapInsertionOrder_DoesNotAffectTheFingerprint() {
+        // NormalizeDictionary is also applied to per-field Metadata and ValidationConstraints.
+        SchemaFieldContract commentFirstOrder = new(
+            "Comment",
+            "String",
+            "string",
+            false,
+            true,
+            ValidationConstraints: new Dictionary<string, string> {
+                ["maxLength"] = "256",
+                ["minLength"] = "1",
+            },
+            Metadata: new Dictionary<string, string> {
+                ["zeta"] = "last",
+                ["alpha"] = "first",
+            });
+        SchemaFieldContract commentSecondOrder = new(
+            "Comment",
+            "String",
+            "string",
+            false,
+            true,
+            ValidationConstraints: new Dictionary<string, string> {
+                ["minLength"] = "1",
+                ["maxLength"] = "256",
+            },
+            Metadata: new Dictionary<string, string> {
+                ["alpha"] = "first",
+                ["zeta"] = "last",
+            });
+        SchemaFieldContract orderNumber = new("OrderNumber", "String", "string", true, false);
+
+        SchemaCanonicalPayload first = CanonicalSchemaMaterial.CreatePayload(
+            PinnedDocument() with { Fields = [orderNumber, commentFirstOrder] });
+        SchemaCanonicalPayload second = CanonicalSchemaMaterial.CreatePayload(
+            PinnedDocument() with { Fields = [orderNumber, commentSecondOrder] });
+
+        second.Json.ShouldBe(first.Json);
+        second.Fingerprint.Value.ShouldBe(first.Fingerprint.Value);
+        first.Json.ShouldContain("""{"alpha":"first","zeta":"last"}""");
+        first.Json.ShouldContain("""{"maxLength":"256","minLength":"1"}""");
+    }
+
+    [Fact]
     public void CreatePayload_NullDocument_ThrowsArgumentNullExceptionNamingTheParameter() {
         // Guards the CA1510 rewrite to ArgumentNullException.ThrowIfNull: the exception type and the
         // parameter name are part of the published contract.

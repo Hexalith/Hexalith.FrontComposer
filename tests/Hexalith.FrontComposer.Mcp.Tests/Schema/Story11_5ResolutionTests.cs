@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Contracts.Schema;
 using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.Mcp.Schema;
+using Hexalith.FrontComposer.Mcp.Tests.Skills;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,7 +20,12 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 /// adversarial review by adding focused tests that pin behavior the existing schema/admission/auth
 /// coverage either implies or only proves pairwise. Each fact is anchored to a DN number in its
 /// XML comment so a future reviewer can map the test back to the original review finding.
+/// <para>
+/// DN12 mutates process-wide culture, so the class joins <see cref="McpCultureTestGroup"/> —
+/// the serial collection shared by every culture-mutating MCP suite.
+/// </para>
 /// </summary>
+[Collection(McpCultureTestGroup.Name)]
 public sealed class Story11_5ResolutionTests {
     private const string SentinelTenant = "SENTINEL-TENANT-9d4f7a";
     private const string SentinelUser = "SENTINEL-USER-c2e1b8";

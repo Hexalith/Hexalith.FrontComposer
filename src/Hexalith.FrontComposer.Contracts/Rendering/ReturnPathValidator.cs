@@ -144,10 +144,19 @@ public static class ReturnPathValidator {
     // such as `https:/evil.example` to `https://evil.example`, so a nested `next=https:/evil`
     // token must not survive validation. The mid-string `//` check applies to raw and decoded
     // forms alike so acceptance never depends on whether unrelated percent-encoding is present.
+    // Ordinal single-character membership. `Contains(char)` is not available on netstandard2.0
+    // (would bind to Enumerable.Contains via ImplicitUsings), so that face keeps IndexOf.
+    private static bool ContainsBackslash(string path)
+#if NET10_0_OR_GREATER
+        => path.Contains('\\');
+#else
+        => path.IndexOf('\\') >= 0;
+#endif
+
     private static bool HasUnsafePathShape(string path)
         => HasProtocolRelativePrefix(path)
             || path.Contains(":/", StringComparison.Ordinal)
-            || path.Contains('\\')
+            || ContainsBackslash(path)
             || HasTraversalSegment(path)
             || path.Contains("//", StringComparison.Ordinal);
 

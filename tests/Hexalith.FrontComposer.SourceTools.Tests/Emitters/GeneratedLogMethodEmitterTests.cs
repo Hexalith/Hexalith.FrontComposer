@@ -67,6 +67,29 @@ public sealed class GeneratedLogMethodEmitterTests {
     }
 
     [Fact]
+    public void Emit_WithAnExceptionAndTemplateParameters_KeepsExceptionSecondInTheWrapperSignature() {
+        StringBuilder sb = new();
+
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogCommandValidationFailed",
+            5908,
+            "CommandFormValidationFailed",
+            "Warning",
+            "Validation failed. CorrelationId={CorrelationId}",
+            hasException: true,
+            ("string", "correlationId"));
+
+        string emitted = sb.ToString();
+
+        emitted.ShouldContain(
+            "private static void LogCommandValidationFailed(global::Microsoft.Extensions.Logging.ILogger logger, global::System.Exception exception, string correlationId)");
+        emitted.ShouldContain("=> _logCommandValidationFailed(logger, correlationId, exception);");
+        emitted.ShouldContain("global::Microsoft.Extensions.Logging.LoggerMessage.Define<string>(");
+        ShouldBeAValidClassBody(emitted);
+    }
+
+    [Fact]
     public void Emit_AtTheSixArgumentCeiling_StillEmits() {
         StringBuilder sb = new();
 
@@ -160,6 +183,8 @@ public sealed class GeneratedLogMethodEmitterTests {
             "Broken {Placeholder",
             hasException: false,
             ("string", "placeholder")));
+
+        sb.ToString().ShouldBeEmpty();
     }
 
     [Theory]
@@ -187,6 +212,65 @@ public sealed class GeneratedLogMethodEmitterTests {
             ("string", "real")));
 
         ShouldBeAValidClassBody(sb.ToString());
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Emit_WithMissingMethodName_FailsTheGenerationInsteadOfIndexingEmpty(string? methodName) {
+        StringBuilder sb = new();
+
+        ArgumentException thrown = Should.Throw<ArgumentException>(() => GeneratedLogMethodEmitter.Emit(
+            sb,
+            methodName!,
+            5999,
+            "EventName",
+            "Debug",
+            "no holes",
+            hasException: false));
+
+        thrown.ParamName.ShouldBe("methodName");
+        sb.ToString().ShouldBeEmpty();
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Emit_WithMissingEventName_FailsTheGeneration(string? eventName) {
+        StringBuilder sb = new();
+
+        ArgumentException thrown = Should.Throw<ArgumentException>(() => GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogSomething",
+            5999,
+            eventName!,
+            "Debug",
+            "no holes",
+            hasException: false));
+
+        thrown.ParamName.ShouldBe("eventName");
+        sb.ToString().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Emit_EscapesQuotesInEventNameTheSameWayAsTheMessageTemplate() {
+        StringBuilder sb = new();
+
+        GeneratedLogMethodEmitter.Emit(
+            sb,
+            "LogQuoted",
+            5999,
+            "NameWith\"Quote",
+            "Debug",
+            "Message with \"quotes\"",
+            hasException: false);
+
+        string emitted = sb.ToString();
+        emitted.ShouldContain("new global::Microsoft.Extensions.Logging.EventId(5999, \"NameWith\\\"Quote\"),");
+        emitted.ShouldContain("\"Message with \\\"quotes\\\"\"");
+        ShouldBeAValidClassBody(emitted);
     }
 
     /// <summary>

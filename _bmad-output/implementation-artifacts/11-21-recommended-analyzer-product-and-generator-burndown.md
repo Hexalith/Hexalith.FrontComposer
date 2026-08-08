@@ -308,6 +308,69 @@ so that every shipped package and generated consumer can build cleanly under the
         CA/ASP suppression, no hand-edited `obj`, no unapproved public/schema/wire change, no
         release-workflow edit, no UX behaviour change and no submodule edit entered this story.
 
+### Review Findings
+
+Chunk 1 — Shell product (`src/Hexalith.FrontComposer.Shell/`, `4a8cfa49..18192fd8`).
+
+- [x] [Review][Patch] Re-check `_disposed` after `WaitAsync` before seeding LRU [`src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheService.cs:337`]
+- [x] [Review][Patch] Add post-dispose `ObjectDisposedException` coverage for `Subscribe`/`Transition` [`src/Hexalith.FrontComposer.Shell/Services/Lifecycle/LifecycleStateService.cs:87`]
+- [x] [Review][Patch] Add post-dispose `ObjectDisposedException` coverage for `SubscribeAsync` [`src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs:694`]
+- [x] [Review][Patch] Add post-dispose `ObjectDisposedException` coverage for `ReconcileAsync` [`src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinator.cs:240`]
+- [x] [Review][Patch] Remove unused `ThrowIfDisposed` helper after CA1513 rewrite [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs:237`]
+
+Chunk 2 — Other product (Contracts, Contracts.UI, Mcp, Schema, Cli, Testing; `4a8cfa49..18192fd8`).
+
+- [x] [Review][Patch] Dual-TFM-safe backslash check in `HasUnsafePathShape` [`src/Hexalith.FrontComposer.Contracts/Rendering/ReturnPathValidator.cs:150`]
+- [x] [Review][Patch] Hoist `BoundedCategory` local in `CommandInvocationKnownFailure` [`src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs:130`]
+- [x] [Review][Patch] Hoist `decisionKind` string local in `SchemaNegotiationDecision` [`src/Hexalith.FrontComposer.Mcp/FrontComposerMcpLog.cs:180`]
+- [x] [Review][Defer] `FormatLabel` indexes chord parts without a length guard [`src/Hexalith.FrontComposer.Contracts.UI/Shortcuts/ShortcutBinding.cs:31`] — deferred, pre-existing
+- [x] [Review][Defer] Test builders: nested/Convert selectors, non-writable `SetValue`, null `BuildMany` callbacks [`src/Hexalith.FrontComposer.Testing/CommandTestDataBuilder.cs:35`] — deferred, pre-existing
+- [x] [Review][Defer] `DispatchAsync` null-checks only `commandService`, not `command` [`src/Hexalith.FrontComposer.Contracts/Communication/CommandServiceExtensions.cs:33`] — deferred, pre-existing
+- [x] [Review][Defer] `HasFullPageRoute` / `IsCommandWritable` do not validate `commandTypeName` [`src/Hexalith.FrontComposer.Contracts/Registration/FrontComposerRegistryExtensions.cs:80`] — deferred, pre-existing
+
+Chunk 3 — SourceTools emitters (`src/Hexalith.FrontComposer.SourceTools/Emitters/`, `4a8cfa49..18192fd8`).
+
+- [x] [Review][Patch] Validate `methodName`/`eventName` and escape `eventName` in `GeneratedLogMethodEmitter.Emit` [`src/Hexalith.FrontComposer.SourceTools/Emitters/GeneratedLogMethodEmitter.cs:85`]
+- [x] [Review][Patch] OrFail prefilter must treat spaced `seq ++` as a first-argument increment [`src/Hexalith.FrontComposer.SourceTools/Emitters/RenderTreeSequenceRewriter.cs:247`]
+- [x] [Review][Defer] `Truncate` throws on `maxLength < 1` for non-empty values [`src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:1532`] — deferred, pre-existing
+- [x] [Review][Defer] Razor grid/non-grid dispose paths lack a `_disposed` idempotence guard [`src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:1174`] — deferred, pre-existing
+
+Chunk 4a — SourceTools.Tests (`tests/Hexalith.FrontComposer.SourceTools.Tests/`, `4a8cfa49..18192fd8`).
+
+- [x] [Review][Patch] Add the story-required CA1822 Recommended-vs-Default non-vacuous probe to `PackagedAnalyzerConsumerTests` [`tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs:132`]
+- [x] [Review][Patch] Allow optional whitespace before `++` in both `RuntimeSequenceArgumentPattern` copies [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RenderTreeSequenceRewriterTests.cs:508`]
+- [x] [Review][Patch] Assert ExpandInRow detail body still opens at literal sequence `800` [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterExpandInRowTests.cs:72`]
+- [x] [Review][Patch] Assert `tryIndex >= 0` before `IndexOf("finally", tryIndex)` in admission finally ordering [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs:360`]
+- [x] [Review][Patch] When an icon is configured, assert static `ResolveIcon()` is absent [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.cs:313`]
+- [x] [Review][Patch] Assert authorization dispose places `_authorizationDisposed` before `SuppressFinalize` [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandRendererEmitterTests.cs:320`]
+- [x] [Review][Patch] Cover `hasException: true` with template parameters in `GeneratedLogMethodEmitterTests` [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/GeneratedLogMethodEmitterTests.cs:45`]
+- [x] [Review][Patch] Assert empty `StringBuilder` after unterminated-placeholder failure [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/GeneratedLogMethodEmitterTests.cs:151`]
+- [x] [Review][Defer] `SchemaMigrationDeltaPathTruncationTests` lacks Substring oracle / AddedField / shared MaxPathLength / extra surrogate cuts [`tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaPathTruncationTests.cs`] — deferred, pre-existing
+- [x] [Review][Defer] `GeneratedRenderTreeText.MaskSequenceArguments` has no dedicated unit tests [`tests/Hexalith.FrontComposer.SourceTools.Tests/GeneratedRenderTreeText.cs`] — deferred, pre-existing
+- [x] [Review][Defer] BadgeColumn / ExpandInRow suites omit `ShouldUseLiteralRenderTreeSequences` [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterBadgeColumnTests.cs`] — deferred, pre-existing
+- [x] [Review][Defer] Packaged consumer gate builds Release only (no Debug parse/analyzer pass) [`tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/PackagedAnalyzerConsumerTests.cs:136`] — deferred, pre-existing
+
+Chunk 4b — Shell / Mcp / Contracts / Testing tests (`4a8cfa49..18192fd8`).
+
+- [x] [Review][Patch] Pin digest `:len:{count}` (and collision-free length) instead of only `sha256:` prefix [`tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerDiagnosticLogTests.cs:114`]
+- [x] [Review][Patch] Pin `MaxDigestCharacters` (4096) pre-hash truncation: values that differ only past the prefix share a digest when lengths match [`tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerDiagnosticLogTests.cs:101`]
+- [x] [Review][Patch] Make `NullLogger_IsAcceptedByEveryWrapper` exercise every public wrapper (or rename to match the two-method sample) [`tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerDiagnosticLogTests.cs:155`]
+- [x] [Review][Patch] Align disabled-path allocation failure text with the 4096-byte budget (stop claiming exact zero) [`tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerDiagnosticLogTests.cs:221`]
+- [x] [Review][Patch] Accept `global::System.Exception` in `IsExceptionParameterType` unbound-spelling fallback [`tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs:647`]
+- [x] [Review][Patch] Assert beta section delimiter exists before indexing `Split(...)[1]` [`tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillCorpusAggregateManifestRenderTests.cs:41`]
+- [x] [Review][Patch] After double `Dispose`, assert `TryReadSnapshot` still throws `ObjectDisposedException` [`tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/McpLifecycleStoreDisposalTests.cs:44`]
+- [x] [Review][Patch] Cover field-level `Metadata` / `ValidationConstraints` insertion-order invariance in the canonical fingerprint vector [`tests/Hexalith.FrontComposer.Contracts.Tests/Schema/CanonicalSchemaMaterialFingerprintVectorTests.cs:69`]
+- [x] [Review][Patch] Put `Story11_5ResolutionTests` (culture-mutating DN12) in `McpCultureTestGroup` [`tests/Hexalith.FrontComposer.Mcp.Tests/Schema/Story11_5ResolutionTests.cs:23`]
+- [x] [Review][Defer] Shell.Tests ASP0006 `NoWarn` documents "17" fixture sites but does not assert the count [`tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj:5`] — deferred, pre-existing
+- [x] [Review][Defer] Diagnostic EventId/level/exception inventory constants duplicated across governance and `FrontComposerDiagnosticLogTests` [`tests/Hexalith.FrontComposer.Shell.Tests/Architecture/SecurityLoggingGovernanceTests.cs:327`] — deferred, pre-existing
+- [x] [Review][Defer] MCP dispose suite covers only `TryReadSnapshot` among `ThrowIfDisposed` entry points [`tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/McpLifecycleStoreDisposalTests.cs:18`] — deferred, pre-existing
+- [x] [Review][Defer] Incomplete rollout of `IsEnabled` stubs on remaining Shell `ILogger` NSubstitute factories outside Badge/Shortcut helpers — deferred, pre-existing
+- [x] [Review][Defer] Canonical fingerprint golden never varies `Collections` order or non-empty `EnumValues` [`tests/Hexalith.FrontComposer.Contracts.Tests/Schema/CanonicalSchemaMaterialFingerprintVectorTests.cs:20`] — deferred, pre-existing
+
+Chunk 4c — Counter + IdeParity samples (`samples/`, `4a8cfa49..18192fd8`).
+
+- Clean review — ASP0006 `NoWarn` removals match AC3 File List; proof lives in story validation + Story 11.22 strict sample gates / ledger evidence. No patch, defer, or decision items.
+
 ## Dev Notes
 
 ### Approval, Sequencing, and Fail-Closed Entry Gate

@@ -312,8 +312,10 @@ public class CommandRendererEmitterTests {
     [Fact]
     public void Emit_IconResolverIsStaticOnlyWhenNoIconNameIsConfigured() {
         CommandRendererEmitter.Emit(BuildModel(1)).ShouldContain("private static Icon? ResolveIcon()");
-        CommandRendererEmitter.Emit(BuildModel(1, iconName: "Regular.Size16.Add"))
-            .ShouldContain("private Icon? ResolveIcon()");
+
+        string withIcon = CommandRendererEmitter.Emit(BuildModel(1, iconName: "Regular.Size16.Add"));
+        withIcon.ShouldContain("private Icon? ResolveIcon()");
+        withIcon.ShouldNotContain("private static Icon? ResolveIcon()");
     }
 
     [Fact]
@@ -322,6 +324,8 @@ public class CommandRendererEmitterTests {
 
         source.ShouldContain("if (_authorizationDisposed) { return; }");
         source.ShouldContain("System.GC.SuppressFinalize(this);");
+        source.IndexOf("System.GC.SuppressFinalize(this);", StringComparison.Ordinal)
+            .ShouldBeGreaterThan(source.IndexOf("if (_authorizationDisposed) { return; }", StringComparison.Ordinal));
     }
 
 }

@@ -89,6 +89,24 @@ public sealed class ReconnectionReconciliationCoordinatorTests {
     }
 
     [Fact]
+    public async Task ReconcileAsync_AfterDispose_ThrowsObjectDisposedException() {
+        // Story 11.21 CA1513 — pin fail-closed post-dispose ReconcileAsync (mirrors McpLifecycleStoreDisposalTests).
+        TestScheduler scheduler = new(ProjectionReconciliationRefreshResult.Empty);
+        ReconnectionReconciliationStateService state = NewState();
+        FakeDispatcher dispatcher = new();
+        ReconnectionReconciliationCoordinator sut = new(
+            scheduler,
+            state,
+            dispatcher,
+            new FakeTimeProvider(FixedNow),
+            NullLogger<ReconnectionReconciliationCoordinator>.Instance);
+        sut.Dispose();
+
+        _ = await Should.ThrowAsync<ObjectDisposedException>(
+            () => sut.ReconcileAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task ReconcileAsync_SupersededEpochResultDiscarded() {
         // P46 — superseded reconnect epoch cleanup. A second ReconcileAsync replaces the first;
         // the first must not mutate state with its eventual result.

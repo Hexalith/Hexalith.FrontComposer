@@ -1,5 +1,32 @@
 # Deferred Work
 
+## Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4b (2026-08-08)
+
+- Shell.Tests ASP0006 `NoWarn` comment claims exactly 17 hand-authored fixture sites but nothing asserts that count; debt growth under the same control would stay silent until Story 11.22.
+- Diagnostic EventId/level/exception inventory (73 / 56 Information / 17 Debug / 20 exceptions) is hard-coded independently in `SecurityLoggingGovernanceTests` and `FrontComposerDiagnosticLogTests`, so the two guards can drift.
+- `McpLifecycleStoreDisposalTests` only exercises `TryReadSnapshot` after dispose; `AcknowledgeAsync` / `TryRecordObservedTransition` share `ThrowIfDisposed` but are not pinned.
+- Badge/Shortcut helpers gained `IsEnabled` stubs for Information-level HFC21xx asserts; other Shell `Substitute.For<ILogger<T>>()` factories that omit `IsEnabled` remain a latent false-negative risk now that wrappers short-circuit.
+- Canonical fingerprint golden pins document-level `Metadata` order and empty nested maps but never varies `Collections` order or non-empty `EnumValues`.
+
+## Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 4a (2026-08-08)
+
+- `SchemaMigrationDeltaPathTruncationTests` drives only `RemovedField` through `TruncatePath`, hard-codes `MaxPathLength = 256`, and never compares against a Substring-based oracle or additional surrogate cut shapes.
+- `GeneratedRenderTreeText.MaskSequenceArguments` has no dedicated unit tests (including the claimed `seq++` leave-unmasked behavior).
+- `RazorEmitterBadgeColumnTests` / `RazorEmitterExpandInRowTests` never call `ShouldUseLiteralRenderTreeSequences`; literal sequencing is only indirectly pinned via snapshots / negative `int seq = 800` checks.
+- `PackagedAnalyzerConsumerTests` builds the temp consumer Release-only; rewriter unit tests already stress DEBUG vs Release parse safety, but the packaged Recommended gate does not.
+
+## Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 3 (2026-08-08)
+
+- `RazorEmitter.Truncate` uses `AsSpan(0, maxLength - 1)` (CA1845); `maxLength < 1` on a non-empty value still throws. Sole production call site passes `30`; same failure shape existed with `Substring`.
+- RazorEmitter grid `DisposeAsync` / non-grid `Dispose` call `SuppressFinalize` (CA1816) but have no `_disposed` early-return, unlike the form emitter. Teardown is mostly naturally idempotent (null refs / catch); repeat dispose remains weaker than the form path.
+
+## Deferred from: code review of 11-21-recommended-analyzer-product-and-generator-burndown.md chunk 2 (2026-08-08)
+
+- `FormatLabel` indexes `parts[0]`/`parts[1]` after a space-split with `RemoveEmptyEntries` and no length check; malformed public inputs (e.g. a lone space) can `IndexOutOfRangeException`. Normalize already enforces two chord parts for registered bindings.
+- `CommandTestDataBuilder` / `ProjectionTestDataBuilder` `GetProperty` accepts any `MemberExpression` (nested access / boxed value-type Convert shapes fail opaquely); `Build` does not check `CanWrite`; `BuildMany` NREs on a null configure callback. File split + CA1000 SuppressMessage did not introduce these.
+- `CommandServiceExtensions.DispatchAsync` CA1510-modernized only `commandService`; `command` remains unchecked at the extension boundary.
+- `FrontComposerRegistryExtensions.HasFullPageRoute` / `IsCommandWritable` gained `registry` null checks but still forward unchecked `commandTypeName`.
+
 ## Deferred from: code review of 11-20-recommended-analyzer-policy-and-exception-ledger.md (2026-08-08)
 
 - Identifier inventory algorithm hashes every underscore-containing C# token under `tests/**` (including locals/discards), so routine non-CA1707 test edits force ledger reseals; narrow the sealed token set only under an explicit follow-up that preserves fail-closed CA1707 scope drift detection.

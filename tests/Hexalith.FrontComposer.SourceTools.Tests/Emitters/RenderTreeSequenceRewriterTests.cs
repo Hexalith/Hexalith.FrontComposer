@@ -391,6 +391,28 @@ public sealed partial class RenderTreeSequenceRewriterTests {
     }
 
     [Fact]
+    public void AssignLiteralsOrFail_DetectsSpacedIncrementLeftByFailSafe() {
+        // A leftover `seq ++` (space before ++) must still trip OrFail; the prefilter used to walk
+        // only identifier characters immediately before `++` and would skip the Roslyn scan.
+        const string failsSafeSpaced = """
+            class C
+            {
+                void BuildRenderTree(RenderTreeBuilder builder)
+                {
+                    int seq = 0;
+                    builder.AddContent(seq ++, "a");
+                    Helper(builder, ref seq);
+                }
+            }
+            """;
+
+        InvalidOperationException thrown = Should.Throw<InvalidOperationException>(
+            () => RenderTreeSequenceRewriter.AssignLiteralsOrFail(failsSafeSpaced));
+        thrown.Message.ShouldContain("builder.AddContent(seq ++, \"a\")");
+        thrown.Message.ShouldContain("ASP0006");
+    }
+
+    [Fact]
     public void AssignLiterals_IsDeterministicAndIdempotent() {
         const string source = """
             class C
@@ -484,7 +506,7 @@ public sealed partial class RenderTreeSequenceRewriterTests {
     }
 
     [GeneratedRegex(
-        @"\.(?:OpenElement|OpenComponent|AddAttribute|AddContent|AddMarkupContent|OpenRegion|AddMultipleAttributes|AddElementReferenceCapture|AddComponentReferenceCapture)(?:<[^(]*>)?\(\s*[A-Za-z_][A-Za-z0-9_]*\+\+",
+        @"\.(?:OpenElement|OpenComponent|AddAttribute|AddContent|AddMarkupContent|OpenRegion|AddMultipleAttributes|AddElementReferenceCapture|AddComponentReferenceCapture)(?:<[^(]*>)?\(\s*[A-Za-z_][A-Za-z0-9_]*\s*\+\+",
         RegexOptions.CultureInvariant)]
     private static partial Regex RuntimeSequenceArgumentPattern();
 }

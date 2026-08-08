@@ -131,17 +131,9 @@ public sealed partial class CreateOrderCommand
 
         // Story 11.21 AC3/AC7 — the consumer template enables AnalysisMode=Recommended with
         // TreatWarningsAsErrors intact and no ASP0006 control, so this build is the independent
-        // proof that generated output is clean under the elevated policy. The captured log is
-        // asserted as well so a future NoWarn/severity relaxation cannot make the gate vacuous.
+        // proof that generated output is clean under the elevated policy.
         string buildLog = await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-c", "Release", "-m:1", "/nr:false").ConfigureAwait(true);
-        string[] recommendedDiagnostics = [.. buildLog
-            .Split('\n')
-            .Select(static line => line.Trim())
-            .Where(static line => line.Contains(": warning CA", StringComparison.Ordinal)
-                || line.Contains(": error CA", StringComparison.Ordinal)
-                || line.Contains(": warning ASP", StringComparison.Ordinal)
-                || line.Contains(": error ASP", StringComparison.Ordinal))];
-        recommendedDiagnostics.ShouldBeEmpty();
+        CollectCaAspDiagnostics(buildLog).ShouldBeEmpty();
 
         string assets = await File.ReadAllTextAsync(Path.Combine(consumer, "obj", "project.assets.json"), TestContext.Current.CancellationToken).ConfigureAwait(true);
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components/" + FluentV5Version + "\"");
@@ -172,16 +164,64 @@ public sealed partial class CreateOrderCommand
 
         nonLiteralSequenceSites.ShouldBeEmpty();
         projectionSource.ShouldContain("BuildRenderTree");
+
+        // Positive control: an injected CA1822 must surface under the template's Recommended mode and
+        // stay silent under Default. An empty CA/ASP log alone cannot prove elevation is active —
+        // NoWarn / Default would also produce an empty log.
+        string probePath = Path.Combine(consumer, "Ca1822Probe.cs");
+        await File.WriteAllTextAsync(probePath, """
+namespace PackageConsumer;
+
+public sealed class Ca1822Probe
+{
+    public string Describe() => "probe";
+}
+""", TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        (int recommendedExit, string recommendedProbeLog) = await RunDotnetAllowingFailureAsync(
+            consumer,
+            TestContext.Current.CancellationToken,
+            "build",
+            "-c",
+            "Release",
+            "-m:1",
+            "/nr:false").ConfigureAwait(true);
+        recommendedExit.ShouldNotBe(0, "injected CA1822 must fail the Recommended + TWAE consumer build");
+        CollectCaAspDiagnostics(recommendedProbeLog)
+            .ShouldContain(static line => line.Contains("CA1822", StringComparison.Ordinal));
+
+        (int defaultExit, string defaultProbeLog) = await RunDotnetAllowingFailureAsync(
+            consumer,
+            TestContext.Current.CancellationToken,
+            "build",
+            "-c",
+            "Release",
+            "-m:1",
+            "/nr:false",
+            "-p:AnalysisMode=Default").ConfigureAwait(true);
+        defaultExit.ShouldBe(0, "the same CA1822 probe must stay silent under AnalysisMode=Default");
+        CollectCaAspDiagnostics(defaultProbeLog)
+            .ShouldNotContain(static line => line.Contains("CA1822", StringComparison.Ordinal));
     }
 
     /// <summary>
     /// Matches a <c>RenderTreeBuilder</c> call whose sequence argument is a runtime counter
-    /// increment rather than an emitter-assigned literal.
+    /// increment rather than an emitter-assigned literal. Optional whitespace before <c>++</c>
+    /// is included so a leftover <c>seq ++</c> cannot bypass the packaged gate.
     /// </summary>
     [GeneratedRegex(
-        @"\.(?:OpenElement|OpenComponent|AddAttribute|AddContent|AddMarkupContent|OpenRegion|AddMultipleAttributes|AddElementReferenceCapture|AddComponentReferenceCapture)(?:<[^(]*>)?\(\s*[A-Za-z_][A-Za-z0-9_]*\+\+",
+        @"\.(?:OpenElement|OpenComponent|AddAttribute|AddContent|AddMarkupContent|OpenRegion|AddMultipleAttributes|AddElementReferenceCapture|AddComponentReferenceCapture)(?:<[^(]*>)?\(\s*[A-Za-z_][A-Za-z0-9_]*\s*\+\+",
         RegexOptions.CultureInvariant)]
     private static partial Regex RuntimeSequenceArgumentPattern();
+
+    private static string[] CollectCaAspDiagnostics(string buildLog)
+        => [.. buildLog
+            .Split('\n')
+            .Select(static line => line.Trim())
+            .Where(static line => line.Contains(": warning CA", StringComparison.Ordinal)
+                || line.Contains(": error CA", StringComparison.Ordinal)
+                || line.Contains(": warning ASP", StringComparison.Ordinal)
+                || line.Contains(": error ASP", StringComparison.Ordinal))];
 
     private static string FindRepoRoot() {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
@@ -226,6 +266,19 @@ public sealed partial class CreateOrderCommand
     }
 
     private static async Task<string> RunDotnetAsync(string workingDirectory, CancellationToken cancellationToken, params string[] args) {
+        (int exitCode, string log) = await RunDotnetAllowingFailureAsync(workingDirectory, cancellationToken, args).ConfigureAwait(true);
+        if (exitCode != 0) {
+            throw new InvalidOperationException(
+                $"dotnet {string.Join(' ', args)} failed with exit code {exitCode}.{Environment.NewLine}{log}");
+        }
+
+        return log;
+    }
+
+    private static async Task<(int ExitCode, string Log)> RunDotnetAllowingFailureAsync(
+        string workingDirectory,
+        CancellationToken cancellationToken,
+        params string[] args) {
         ProcessStartInfo startInfo = new("dotnet") {
             WorkingDirectory = workingDirectory,
             RedirectStandardError = true,
@@ -241,11 +294,6 @@ public sealed partial class CreateOrderCommand
         string stderr = await process.StandardError.ReadToEndAsync(cancellationToken).ConfigureAwait(true);
         await process.WaitForExitAsync(cancellationToken).ConfigureAwait(true);
 
-        if (process.ExitCode != 0) {
-            throw new InvalidOperationException(
-                $"dotnet {string.Join(' ', args)} failed with exit code {process.ExitCode}.{Environment.NewLine}{stdout}{Environment.NewLine}{stderr}");
-        }
-
-        return stdout + Environment.NewLine + stderr;
+        return (process.ExitCode, stdout + Environment.NewLine + stderr);
     }
 }

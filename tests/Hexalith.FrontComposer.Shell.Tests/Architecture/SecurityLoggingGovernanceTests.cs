@@ -642,9 +642,10 @@ public sealed class SecurityLoggingGovernanceTests
             // without `using System;`. The single-file governance compilation cannot bind that
             // type, and without this fallback an Exception parameter would be silently misread as
             // a message placeholder. Only the exact spelling counts, so a look-alike such as
-            // `FakeException` still fails to qualify.
+            // `FakeException` still fails to qualify. `global::System.Exception` is accepted for
+            // fully-qualified source that never relies on a using directive.
             string spelling = type.ToString().TrimEnd('?');
-            return spelling is "Exception" or "System.Exception";
+            return spelling is "Exception" or "System.Exception" or "global::System.Exception";
         }
 
         while (symbol is not null)

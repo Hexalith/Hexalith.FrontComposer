@@ -38,7 +38,12 @@ public sealed class SkillCorpusAggregateManifestRenderTests {
     public void Render_OmitsOptionalLinesWhenTheEntryLeavesThemUnset() {
         // The beta entry has no owning story, migration owner, public API references, or sample
         // paths; each of those lines is conditionally emitted and must be absent from its section.
-        string betaSection = Render(Manifest()).Split("### `frontcomposer://skills/beta`")[1];
+        const string BetaDelimiter = "### `frontcomposer://skills/beta`";
+        string[] parts = Render(Manifest()).Split(BetaDelimiter);
+        parts.Length.ShouldBeGreaterThan(
+            1,
+            $"rendered markdown must contain the beta section delimiter {BetaDelimiter}");
+        string betaSection = parts[1];
 
         betaSection.ShouldNotContain("- owningStory:");
         betaSection.ShouldNotContain("- migrationOwner:");
