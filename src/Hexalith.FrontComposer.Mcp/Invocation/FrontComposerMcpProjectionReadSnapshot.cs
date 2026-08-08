@@ -11,5 +11,5 @@ internal sealed record FrontComposerMcpProjectionReadSnapshot(
     long CatalogEpoch,
     string QueryShapeCategory,
     string RequestId,
-    CancellationToken CancellationToken,
-    FrontComposerMcpProjectionDescriptorSnapshot Descriptor);
+    FrontComposerMcpProjectionDescriptorSnapshot Descriptor,
+    CancellationToken CancellationToken);

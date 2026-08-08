@@ -137,8 +137,8 @@ public sealed class LoadedPageReducers {
             }
 
             nextPages = nextPages.Remove(evicted);
-            _logger.LogInformation(
-                "LoadedPageState eviction — MaxCachedPages={Cap} reached; evicted (viewKey={ViewKey}, skip={Skip})",
+            FrontComposerDiagnosticLog.LoadedPageEvicted(
+                _logger,
                 cap,
                 evicted.ViewKey,
                 evicted.Skip);

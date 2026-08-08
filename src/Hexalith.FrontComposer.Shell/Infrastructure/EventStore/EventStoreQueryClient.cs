@@ -238,7 +238,7 @@ public sealed class EventStoreQueryClient(
                 case QueryClassificationOutcome.Ok: {
                         FrontComposerTelemetry.SetOutcome(activity, "ok");
                         string body = await EventStoreHttp.ReadBoundedResponseBodyAsync(response.Content, current.MaxResponseBytes, logger, cancellationToken).ConfigureAwait(false);
-                        IReadOnlyList<T> items;
+                        List<T> items;
                         int totalCount;
                         try {
                             using var document = JsonDocument.Parse(body);
@@ -401,7 +401,7 @@ public sealed class EventStoreQueryClient(
     private static QueryResult<T> DeserializeNotModifiedFromCache<T>(ETagCacheEntry entry, string projectionType) {
         try {
             using var document = JsonDocument.Parse(entry.Payload);
-            IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
+            List<T> items = ReadPayloadItems<T>(document.RootElement);
             int totalCount = ReadTotalCount(document.RootElement, items.Count);
             return QueryResult<T>.NotModifiedFromCache(items, totalCount, entry.ETag);
         }
@@ -463,7 +463,7 @@ public sealed class EventStoreQueryClient(
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
         Justification = "EventStore adapter deserializes adopter projection DTOs at runtime; AOT-specific contexts are deferred to Story 9-4.")]
-    private static IReadOnlyList<T> ReadPayloadItems<T>(JsonElement root) {
+    private static List<T> ReadPayloadItems<T>(JsonElement root) {
         if (!root.TryGetProperty("payload", out JsonElement payload)
             || payload.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined) {
             return [];

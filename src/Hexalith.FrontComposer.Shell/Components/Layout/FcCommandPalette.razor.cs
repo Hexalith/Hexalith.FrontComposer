@@ -154,6 +154,7 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         }
 
         await base.DisposeAsync();
+        GC.SuppressFinalize(this);
     }
 
     private Task OnQueryChangedAsync(string newQuery) {

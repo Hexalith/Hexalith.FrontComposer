@@ -32,7 +32,7 @@
                         <FluentCheckbox Value="@isVisible"
                                         ValueChanged="@((bool newValue) => OnVisibilityChangedAsync(column.Key, newValue))"
                                         Label="@column.Header"
-                                        aria-label="@string.Format(System.Globalization.CultureInfo.CurrentUICulture, _checkboxAriaLabelTemplate, column.Header)"
+                                        aria-label="@string.Format(System.Globalization.CultureInfo.CurrentCulture, _checkboxAriaLabelTemplate, column.Header)"
                                         data-testid="@("fc-column-prioritizer-checkbox-" + column.Key)" />
                     }
                 </div>

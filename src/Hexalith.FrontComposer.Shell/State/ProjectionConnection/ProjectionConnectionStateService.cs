@@ -86,10 +86,11 @@ public sealed class ProjectionConnectionStateService(
             snapshot.LastFailureCategory,
             snapshot.ReconnectAttempt,
             suppressedCount);
-        if (emitLog) {
+        if (emitLog && logger.IsEnabled(LogLevel.Information)) {
+            string status = snapshot.Status.ToString();
             FrontComposerLog.ProjectionConnectionChanged(
                 logger,
-                snapshot.Status.ToString(),
+                status,
                 snapshot.ReconnectAttempt,
                 snapshot.LastFailureCategory ?? "none",
                 suppressedCount);
@@ -180,10 +181,11 @@ public sealed class ProjectionConnectionStateService(
             }
         });
 
-        if (flush.Suppressed > 0) {
+        if (flush.Suppressed > 0 && logger.IsEnabled(LogLevel.Information)) {
+            string status = flush.Current.Status.ToString();
             FrontComposerLog.ProjectionConnectionChanged(
                 logger,
-                flush.Current.Status.ToString(),
+                status,
                 flush.Current.ReconnectAttempt,
                 flush.Current.LastFailureCategory ?? "none",
                 flush.Suppressed);

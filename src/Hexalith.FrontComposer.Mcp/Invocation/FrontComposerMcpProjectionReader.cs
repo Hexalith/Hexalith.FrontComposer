@@ -172,8 +172,8 @@ public sealed class FrontComposerMcpProjectionReader(
             CatalogEpoch: epochs.CatalogEpoch,
             QueryShapeCategory: "take",
             RequestId: Guid.NewGuid().ToString("n"),
-            CancellationToken: cancellationToken,
-            Descriptor: descriptorSnapshot);
+            Descriptor: descriptorSnapshot,
+            CancellationToken: cancellationToken);
     }
 
     private McpDescriptorEpochs CurrentEpochs(IFrontComposerMcpDescriptorEpochProvider? provider)

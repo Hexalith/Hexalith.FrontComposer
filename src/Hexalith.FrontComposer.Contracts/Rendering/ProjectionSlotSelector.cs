@@ -35,9 +35,13 @@ public static class ProjectionSlotSelector {
         => ParseCore(field);
 
     private static ProjectionSlotFieldIdentity ParseCore(LambdaExpression lambda) {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(lambda);
+#else
         if (lambda is null) {
             throw new ArgumentNullException(nameof(lambda));
         }
+#endif
 
         Expression body = StripConversions(lambda.Body);
         if (body is not MemberExpression memberExpression

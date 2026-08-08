@@ -39,7 +39,7 @@ public partial class FcFilterResetButton : ComponentBase {
     /// <inheritdoc />
     protected override void OnParametersSet() => _ariaLabel = Localizer[
             "FilterResetButtonAriaLabelTemplate",
-            ActiveFilterCount.ToString(CultureInfo.CurrentUICulture)].Value;
+            ActiveFilterCount.ToString(CultureInfo.CurrentCulture)].Value;
 
     private Task OnResetClickedAsync() {
         Dispatcher.Dispatch(new FiltersResetAction(ViewKey));

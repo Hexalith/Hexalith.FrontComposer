@@ -234,11 +234,8 @@ public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService
         }
     }
 
-    private void ThrowIfDisposed() {
-        if (_disposed) {
-            throw new ObjectDisposedException(nameof(NewItemIndicatorStateService));
-        }
-    }
+    private void ThrowIfDisposed()
+        => ObjectDisposedException.ThrowIf(_disposed, typeof(NewItemIndicatorStateService));
 
     private sealed record TrackedEntry(NewItemIndicatorEntry Entry, ITimer Timer, long Generation);
 

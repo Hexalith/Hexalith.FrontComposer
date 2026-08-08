@@ -106,7 +106,10 @@ public static class CommandPageEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine("}");
 
-        return sb.ToString();
+        // Story 11.21 ASP0006 — the emitters above write runtime `seq++` counters; the rewriter
+        // converts each call site to the literal for its position in this document, and fails the
+        // generation rather than emitting a counter this output has no control for.
+        return RenderTreeSequenceRewriter.AssignLiteralsOrFail(sb.ToString());
     }
 
     /// <summary>Delegates to <see cref="GeneratedLiteral.Escape"/> — the single escaping helper

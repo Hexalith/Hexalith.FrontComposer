@@ -1,6 +1,7 @@
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Forms;
@@ -113,8 +114,8 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
 
         // D13 — wrapper-initiated navigation (Start over) bypasses the guard.
         if (WrapperInitiatedNavigation) {
-            Logger.LogInformation(
-                "{Diag} Abandonment guard yielded for wrapper-initiated navigation. Target={Target}",
+            FrontComposerDiagnosticLog.AbandonmentGuardWrapperNavigationYielded(
+                Logger,
                 FcDiagnosticIds.HFC2103_AbandonmentDuringSubmitting,
                 context.TargetLocation);
             return;
@@ -140,8 +141,8 @@ public partial class FcFormAbandonmentGuard : ComponentBase, IDisposable {
         if (!string.IsNullOrEmpty(CorrelationId)) {
             CommandLifecycleState current = LifecycleService.GetState(CorrelationId);
             if (current == CommandLifecycleState.Submitting) {
-                Logger.LogInformation(
-                    "{Diag} Abandonment guard suppressed while lifecycle state is Submitting. CorrelationId={Cid}",
+                FrontComposerDiagnosticLog.AbandonmentGuardSuppressedWhileSubmitting(
+                    Logger,
                     FcDiagnosticIds.HFC2103_AbandonmentDuringSubmitting,
                     RedactForLog(CorrelationId));
                 return;

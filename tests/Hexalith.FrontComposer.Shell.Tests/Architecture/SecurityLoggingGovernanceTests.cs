@@ -222,111 +222,9 @@ public sealed class SecurityLoggingGovernanceTests
         "src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs:HandleThemeChanged:159:LogWarning",
     ];
 
-    private static readonly string[] ExpectedIntentionalLowSeverityRemainderLocations =
-    [
-        "src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:LogUnresolvedOnce:345:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Badges/ReflectionActionQueueProjectionCatalog.cs:SafeGetTypes:101:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Badges/ReflectionActionQueueProjectionCatalog.cs:SafeGetTypes:108:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Components/Forms/FcFormAbandonmentGuard.razor.cs:HandleNavigationChangingAsync:116:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Components/Forms/FcFormAbandonmentGuard.razor.cs:HandleNavigationChangingAsync:143:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs:ResolveCommandType:144:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Extensions/AddFrontComposerDevModeExtensions.cs:StartAsync:95:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Extensions/AddFrontComposerDevModeExtensions.cs:StartAsync:118:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:MergeCommandPolicies:279:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/DevMode/ClipboardJSModule.cs:CopyToClipboardAsync:35:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/DevMode/ClipboardJSModule.cs:CopyToClipboardAsync:56:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/DevMode/ClipboardJSModule.cs:CopyToClipboardAsync:62:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/DevMode/ClipboardJSModule.cs:CopyToClipboardAsync:72:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/DevMode/RazorEmitter.cs:EmitStarterTemplate:30:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/DevMode/RazorEmitter.cs:EmitStarterTemplate:39:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/DevMode/RazorEmitter.cs:EmitStarterTemplate:58:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs:Register:129:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/ProjectionTemplates/ProjectionTemplateRegistry.cs:Register:100:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideRegistry.cs:Register:162:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideRegistry.cs:Register:176:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:Register:87:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryEffects.cs:HandleCapabilityVisited:172:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryEffects.cs:HydrateSeenSetAsync:211:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HydrateRecentRoutesAsync:190:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HydrateRecentRoutesAsync:209:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HydrateRecentRoutesAsync:219:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HydrateRecentRoutesAsync:234:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteResultActivated:517:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteResultActivated:545:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteResultActivated:609:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandleRecentRouteVisited:663:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandleRecentRouteVisited:674:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandleRecentRouteVisited:677:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:CanSurfaceCommandAsync:881:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HandleCaptureGridState:225:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HandleCaptureGridState:228:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HandleClearGridState:270:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HandleClearGridState:273:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HandleRestoreGridState:311:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HandleRestoreGridState:315:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HandleRestoreGridState:325:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:362:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:367:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:383:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:393:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:397:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:409:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:420:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:423:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:438:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:442:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:452:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:HydrateAsync:465:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:ResolveRegisteredBoundedContexts:485:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs:ResolveRegisteredBoundedContexts:502:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs:ReduceLoadPageSucceeded:140:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Density/DensityEffects.cs:HydrateAsync:132:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Density/DensityEffects.cs:HydrateAsync:139:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/Density/DensityEffects.cs:HydrateAsync:144:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Density/DensityEffects.cs:HydrateAsync:152:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Density/DensityEffects.cs:PersistAsync:235:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/Density/DensityEffects.cs:PersistAsync:238:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs:HydrateAsync:222:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs:HydrateAsync:244:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs:HydrateAsync:249:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs:HydrateAsync:269:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs:HydrateAsync:280:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs:IsUnregisteredBoundedContext:317:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs:WriteBlobAsync:375:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs:WriteBlobAsync:378:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Navigation/ScopeReadinessGate.cs:EvaluateAsync:83:LogDebug",
-        "src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs:HydrateAsync:112:LogInformation",
-        "src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs:HydrateAsync:118:LogDebug",
-    ];
-
     private static readonly HashSet<string> ExpectedHotPathMemberKeys = new(
         ExpectedHotPathBaselineLocations.Select(GetMemberKey),
         StringComparer.Ordinal);
-
-    private static readonly IReadOnlyDictionary<string, int> ExpectedDirectCallCounts
-        = new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs"] = 1,
-            ["src/Hexalith.FrontComposer.Shell/Badges/ReflectionActionQueueProjectionCatalog.cs"] = 2,
-            ["src/Hexalith.FrontComposer.Shell/Components/Forms/FcFormAbandonmentGuard.razor.cs"] = 2,
-            ["src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs"] = 1,
-            ["src/Hexalith.FrontComposer.Shell/Extensions/AddFrontComposerDevModeExtensions.cs"] = 2,
-            ["src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs"] = 1,
-            ["src/Hexalith.FrontComposer.Shell/Services/DevMode/ClipboardJSModule.cs"] = 4,
-            ["src/Hexalith.FrontComposer.Shell/Services/DevMode/RazorEmitter.cs"] = 3,
-            ["src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs"] = 1,
-            ["src/Hexalith.FrontComposer.Shell/Services/ProjectionTemplates/ProjectionTemplateRegistry.cs"] = 1,
-            ["src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideRegistry.cs"] = 2,
-            ["src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs"] = 1,
-            ["src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryEffects.cs"] = 2,
-            ["src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs"] = 11,
-            ["src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationEffects.cs"] = 21,
-            ["src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs"] = 1,
-            ["src/Hexalith.FrontComposer.Shell/State/Density/DensityEffects.cs"] = 6,
-            ["src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs"] = 8,
-            ["src/Hexalith.FrontComposer.Shell/State/Navigation/ScopeReadinessGate.cs"] = 1,
-            ["src/Hexalith.FrontComposer.Shell/State/Theme/ThemeEffects.cs"] = 2,
-        };
 
     [Fact]
     public void ShellSources_HaveExactScopedInventoryAndCollisionFreeSecurityEvents()
@@ -341,19 +239,11 @@ public sealed class SecurityLoggingGovernanceTests
         }
 
         DirectLogSite[] sites = [.. sources.SelectMany(FindDirectLogSites)];
-        sites.Length.ShouldBe(73);
+        sites.ShouldBeEmpty(
+            "Story 11.21 migrated the last 73 low-severity direct calls, so no Shell production source "
+            + "may call ILogger.Log* directly. " + FormatSites(sites));
         sites.Where(site => SecuritySourcePaths.Contains(site.Path, StringComparer.Ordinal)).ShouldBeEmpty(
             "11.18a security sources must use FrontComposerSecurityLog wrappers. " + FormatSites(sites));
-
-        string[] actualInventory = [.. sites
-            .GroupBy(static site => site.Path, StringComparer.Ordinal)
-            .OrderBy(static group => group.Key, StringComparer.Ordinal)
-            .Select(static group => $"{group.Key}|{group.Count()}")];
-        string[] expectedInventory = [.. ExpectedDirectCallCounts
-            .OrderBy(static entry => entry.Key, StringComparer.Ordinal)
-            .Select(static entry => $"{entry.Key}|{entry.Value}")];
-        actualInventory.ShouldBe(expectedInventory,
-            "every post-11.18c direct call must remain path-pinned by the exact remainder ledger");
 
         DirectLogSite[] security = [.. sites.Where(site => ClassifyOwnership(site) == LogOwnership.Security)];
         DirectLogSite[] story11_18c = [.. sites.Where(site => ClassifyOwnership(site) == LogOwnership.HotPath)];
@@ -364,9 +254,10 @@ public sealed class SecurityLoggingGovernanceTests
         security.ShouldBeEmpty("11.18a security sources have already been migrated");
         story11_18b.ShouldBeEmpty("11.18b must leave no residual direct Warning/Error/Critical calls");
         story11_18c.ShouldBeEmpty("11.18c must leave no direct call in a frozen semantic hot-path member");
-        intentionalLowSeverityRemainder.Length.ShouldBe(73, "non-hot Trace/Debug/Information sites remain intentionally outside 11.18c");
-        intentionalLowSeverityRemainder.Select(static site => site.Location).ShouldBe(ExpectedIntentionalLowSeverityRemainderLocations,
-            "every non-hot low-severity call must remain pinned by exact path, member, line, and level");
+        intentionalLowSeverityRemainder.ShouldBeEmpty(
+            "Story 11.21 burned the 73-call low-severity remainder down to zero; every non-hot "
+            + "Trace/Debug/Information site now uses FrontComposerDiagnosticLog. "
+            + FormatSites(intentionalLowSeverityRemainder));
         security.Length
             .ShouldBe(0);
         (security.Length + story11_18c.Length + story11_18b.Length + intentionalLowSeverityRemainder.Length + unowned.Length)
@@ -428,6 +319,37 @@ public sealed class SecurityLoggingGovernanceTests
             entry.EventName.ShouldNotBeNullOrWhiteSpace($"{entry.Location} must declare an explicit EventName");
             entry.HasExceptionParameter.ShouldBeFalse($"{entry.Location} must not capture an Exception parameter");
         }
+
+        // Story 11.21 — the migrated low-severity family occupies its own collision-free band above
+        // every Story 11.18 family and above the 5900+ band owned by SourceTools-generated output.
+        LoggerEvent[] diagnosticEvents = [.. events.Where(static entry =>
+            entry.Path.EndsWith("/FrontComposerDiagnosticLog.cs", StringComparison.Ordinal))];
+        diagnosticEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(6000, 73));
+        diagnosticEvents.Count(static entry => entry.Level == "Information").ShouldBe(56);
+        diagnosticEvents.Count(static entry => entry.Level == "Debug").ShouldBe(17);
+        diagnosticEvents.Select(static entry => entry.EventName).Distinct(StringComparer.Ordinal).Count().ShouldBe(73);
+
+        // Unlike the Story 11.18 families, this family preserves the exception attachment of the
+        // direct calls it replaced: exactly the 20 migrated sites that passed an Exception keep one.
+        diagnosticEvents.Count(static entry => entry.HasExceptionParameter).ShouldBe(20);
+        foreach (LoggerEvent entry in diagnosticEvents)
+        {
+            entry.EventName.ShouldNotBeNullOrWhiteSpace($"{entry.Location} must declare an explicit EventName");
+            entry.Level.ShouldBeOneOf(
+                "Trace",
+                "Debug",
+                "Information");
+        }
+
+        int[] story11_18EventIds = [.. existingEvents
+            .Concat(securityEvents)
+            .Concat(hotPathEvents)
+            .Concat(warningEvents)
+            .Select(static entry => entry.EventId)];
+        diagnosticEvents
+            .Select(static entry => entry.EventId)
+            .Intersect(story11_18EventIds)
+            .ShouldBeEmpty("Story 11.21 must not reuse a Story 11.18 EventId");
     }
 
     [Fact]
@@ -708,7 +630,23 @@ public sealed class SecurityLoggingGovernanceTests
 
     private static bool IsExceptionParameterType(TypeSyntax? type, SemanticModel model)
     {
-        INamedTypeSymbol? symbol = type is null ? null : model.GetTypeInfo(type).Type as INamedTypeSymbol;
+        if (type is null)
+        {
+            return false;
+        }
+
+        INamedTypeSymbol? symbol = model.GetTypeInfo(type).Type as INamedTypeSymbol;
+        if (symbol is null or IErrorTypeSymbol)
+        {
+            // The Shell compiles with ImplicitUsings, so a scanned source may name `Exception`
+            // without `using System;`. The single-file governance compilation cannot bind that
+            // type, and without this fallback an Exception parameter would be silently misread as
+            // a message placeholder. Only the exact spelling counts, so a look-alike such as
+            // `FakeException` still fails to qualify.
+            string spelling = type.ToString().TrimEnd('?');
+            return spelling is "Exception" or "System.Exception";
+        }
+
         while (symbol is not null)
         {
             if (symbol.ToDisplayString() == "System.Exception")

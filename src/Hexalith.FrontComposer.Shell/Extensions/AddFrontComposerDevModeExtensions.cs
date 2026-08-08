@@ -1,3 +1,4 @@
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services.DevMode;
 using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 
@@ -92,8 +93,8 @@ public static class AddFrontComposerDevModeExtensions {
         IHostEnvironment environment) : IHostedService {
         public Task StartAsync(CancellationToken cancellationToken) {
             if (Interlocked.Exchange(ref marker.Logged, 1) == 0) {
-                logger.LogInformation(
-                    "FrontComposer dev-mode overlay registered. Environment={EnvironmentName} OverlayVersion={OverlayVersion} GradientLevels={GradientLevels}",
+                FrontComposerDiagnosticLog.DevModeOverlayRegistered(
+                    logger,
                     environment.EnvironmentName,
                     "6.5",
                     "Default,Level1,Level2,Level3,Level4");
@@ -115,8 +116,8 @@ public static class AddFrontComposerDevModeExtensions {
         IHostEnvironment environment) : IHostedService {
         public Task StartAsync(CancellationToken cancellationToken) {
             if (Interlocked.Exchange(ref marker.Logged, 1) == 0) {
-                logger.LogInformation(
-                    "HFC2010: FrontComposer dev-mode AddFrontComposerDevMode invoked outside Development; overlay services were not registered. Environment={EnvironmentName}",
+                FrontComposerDiagnosticLog.DevModeOverlaySkippedOutsideDevelopment(
+                    logger,
                     environment.EnvironmentName);
             }
 

@@ -187,7 +187,7 @@ public sealed class CommandPaletteEffects : IDisposable {
             stored = await storage.GetAsync<string[]>(key).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
-            _logger.LogDebug("Palette hydration cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.PaletteHydrationCancelled(_logger);
             dispatcher.Dispatch(new PaletteHydratedCompletedAction());
             return;
         }
@@ -206,9 +206,9 @@ public sealed class CommandPaletteEffects : IDisposable {
                 InvalidOperationException => "Lifecycle",
                 _ => "Unknown",
             };
-            _logger.LogInformation(
+            FrontComposerDiagnosticLog.PaletteHydrationErrored(
+                _logger,
                 ex,
-                "{DiagnosticId}: Palette hydration errored. Reason={Reason}.",
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
                 reason);
             dispatcher.Dispatch(new PaletteHydratedCompletedAction());
@@ -216,8 +216,8 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
 
         if (stored is null || stored.Length == 0) {
-            _logger.LogInformation(
-                "{DiagnosticId}: Palette hydration found no stored value. Reason={Reason}.",
+            FrontComposerDiagnosticLog.PaletteHydrationEmpty(
+                _logger,
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
                 "Empty");
             dispatcher.Dispatch(new PaletteHydratedCompletedAction());
@@ -231,8 +231,8 @@ public sealed class CommandPaletteEffects : IDisposable {
             .Distinct(StringComparer.OrdinalIgnoreCase)];
         int rejected = stored.Length - filtered.Length;
         if (rejected > 0) {
-            _logger.LogInformation(
-                "{DiagnosticId}: {RejectedCount} of {TotalCount} palette recent-route entries rejected. Reason={Reason}.",
+            FrontComposerDiagnosticLog.PaletteRecentRouteEntriesRejected(
+                _logger,
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
                 rejected,
                 stored.Length,
@@ -514,8 +514,8 @@ public sealed class CommandPaletteEffects : IDisposable {
             && (string.IsNullOrWhiteSpace(result.CommandTypeName)
                 || Registry is not { } activationRegistry
                 || !activationRegistry.HasFullPageRoute(result.CommandTypeName))) {
-            _logger.LogInformation(
-                "{DiagnosticId}: Command activation rejected because no generated full-page route is registered.",
+            FrontComposerDiagnosticLog.PaletteCommandRouteMissing(
+                _logger,
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty);
             SafeDispatchClose(dispatcher);
             return Task.CompletedTask;
@@ -542,8 +542,8 @@ public sealed class CommandPaletteEffects : IDisposable {
             // a non-internal target through the activation path. Shortcuts are reference rows
             // pre-validated at registration time and skip this gate.
             if (result.Category != PaletteResultCategory.Shortcut && !CommandRouteBuilder.IsInternalRoute(targetUrl)) {
-                _logger.LogInformation(
-                    "{DiagnosticId}: {Category} activation rejected by internal-route filter. Reason={Reason}.",
+                FrontComposerDiagnosticLog.PaletteActivationRejectedByRouteFilter(
+                    _logger,
                     FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
                     result.Category,
                     "Tampered");
@@ -606,8 +606,8 @@ public sealed class CommandPaletteEffects : IDisposable {
             // CommandTypeName that fell through the switch's `when` clause. Differentiate the two
             // so operators can diagnose unreachable-command cases. The shortcut path returned
             // before reaching here, so this else branch is the unreachable-command case.
-            _logger.LogInformation(
-                "{DiagnosticId}: Palette command activation produced no target URL — Category={Category}, BoundedContext='{BoundedContext}', CommandTypeName='{CommandTypeName}'. Closing palette without navigation.",
+            FrontComposerDiagnosticLog.PaletteActivationWithoutTargetUrl(
+                _logger,
                 FcDiagnosticIds.HFC2110_PaletteScoringFault,
                 result.Category,
                 result.BoundedContext ?? "<null>",
@@ -660,8 +660,8 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
 
         if (!gateAcquired) {
-            _logger.LogInformation(
-                "{DiagnosticId}: Palette recent-route persist gate timeout after {TimeoutMs}ms — dropping stale payload (a newer activation will retry).",
+            FrontComposerDiagnosticLog.PaletteRecentRoutePersistGateTimeout(
+                _logger,
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
                 (int)PersistGateTimeout.TotalMilliseconds);
             return;
@@ -671,12 +671,12 @@ public sealed class CommandPaletteEffects : IDisposable {
             await persistStorage.SetAsync(key, payload).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
-            _logger.LogDebug("Palette recent-route persist cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.PaletteRecentRoutePersistCancelled(_logger);
         }
         catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-            _logger.LogInformation(
+            FrontComposerDiagnosticLog.PaletteRecentRoutePersistFailed(
+                _logger,
                 ex,
-                "{DiagnosticId}: Palette recent-route persistence failed.",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
         }
         finally {
@@ -878,9 +878,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         Type? commandType = ProjectionTypeResolver.Resolve(commandTypeName);
         if (commandType is null) {
             // Pass 3 — distinguish silent-deny-due-to-missing-type from authorization deny per Pass-2 NP20.
-            _logger.LogInformation(
-                "Command palette filter dropped {CommandTypeName}: ProjectionTypeResolver could not resolve the type. Possible trim/AOT mismatch or assembly removal.",
-                commandTypeName);
+            FrontComposerDiagnosticLog.PaletteCommandTypeUnresolved(_logger, commandTypeName);
             return false;
         }
 

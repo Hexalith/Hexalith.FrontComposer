@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -32,9 +33,7 @@ public sealed class ClipboardJSModule(
         // P12 — cap clipboard payload size to prevent JS-interop DOS via runaway starter emission.
         int maxBytes = _options.DevMode.MaxClipboardPayloadBytes;
         if (System.Text.Encoding.UTF8.GetByteCount(text) > maxBytes) {
-            _logger?.LogInformation(
-                "Dev-mode clipboard payload exceeded MaxClipboardPayloadBytes={MaxBytes}; copy rejected.",
-                maxBytes);
+            FrontComposerDiagnosticLog.ClipboardPayloadRejected(_logger, maxBytes);
             return ClipboardCopyResult.Failed;
         }
 
@@ -53,13 +52,11 @@ public sealed class ClipboardJSModule(
                 .ConfigureAwait(false);
 
             ClipboardCopyResult result = MapOutcome(outcome);
-            _logger?.LogInformation(
-                "Dev-mode clipboard copy completed. Outcome={Outcome}",
-                result);
+            FrontComposerDiagnosticLog.ClipboardCopyCompleted(_logger, result);
             return result;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
-            _logger?.LogInformation("Dev-mode clipboard copy timed out.");
+            FrontComposerDiagnosticLog.ClipboardCopyTimedOut(_logger);
             return ClipboardCopyResult.TimedOut;
         }
         catch (JSDisconnectedException) {
@@ -69,9 +66,7 @@ public sealed class ClipboardJSModule(
             // P11 — JS side categorizes outcomes; reaching this catch means the JS module itself
             // failed to load or threw a non-categorizable error. Treat as Failed without locale-
             // sensitive string sniffing.
-            _logger?.LogInformation(
-                "Dev-mode clipboard copy failed unexpectedly. ExceptionType={ExceptionType}",
-                ex.GetType().FullName);
+            FrontComposerDiagnosticLog.ClipboardCopyFailed(_logger, ex);
             return ClipboardCopyResult.Failed;
         }
     }

@@ -109,13 +109,13 @@ public class ThemeEffects(
                 dispatcher.Dispatch(new ThemeChangedAction(correlationId, theme));
             }
             else {
-                logger.LogInformation(
-                    "{DiagnosticId}: Theme hydration found no stored value — feature defaults apply.",
+                FrontComposerDiagnosticLog.ThemeHydrationEmpty(
+                    logger,
                     FcDiagnosticIds.HFC2106_PreferenceHydrationFallback);
             }
         }
         catch (OperationCanceledException) {
-            logger.LogDebug("Theme hydration cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.ThemeHydrationCancelled(logger);
             // Consistent with NavigationEffects / DensityEffects / DataGridNavigationEffects — every
             // terminal path dispatches Completed so HydrationState leaves Hydrating. Prevents the
             // re-hydrate StorageReady gate from blocking forever on a transient cancellation.

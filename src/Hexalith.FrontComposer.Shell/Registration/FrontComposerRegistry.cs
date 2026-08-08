@@ -270,14 +270,13 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         }
     }
 
-    private IReadOnlyDictionary<string, string> MergeCommandPolicies(
+    private Dictionary<string, string> MergeCommandPolicies(
         IReadOnlyDictionary<string, string> existing,
         IReadOnlyDictionary<string, string> incoming) {
         Dictionary<string, string> merged = new(existing, StringComparer.Ordinal);
         foreach (KeyValuePair<string, string> pair in incoming) {
             if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value)) {
-                _logger.LogInformation(
-                    "FrontComposer registry merge: skipping command policy entry with empty key or value during manifest merge.");
+                FrontComposerDiagnosticLog.RegistryCommandPolicyEntrySkipped(_logger);
                 continue;
             }
 

@@ -36,7 +36,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogLifecycleIdempotencyResolved(logger, diagnosticId, Digest(correlationId));
+        string correlationIdDigest = Digest(correlationId);
+        LogLifecycleIdempotencyResolved(logger, diagnosticId, correlationIdDigest);
     }
 
     /// <summary>Emits the <c>LifecycleIdempotentInfoBarRendered</c> hot-path event.</summary>
@@ -50,7 +51,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogLifecycleIdempotentInfoBarRendered(logger, diagnosticId, Digest(correlationId));
+        string correlationIdDigest = Digest(correlationId);
+        LogLifecycleIdempotentInfoBarRendered(logger, diagnosticId, correlationIdDigest);
     }
 
     /// <summary>Emits the <c>PendingStatusProtocolFailure</c> hot-path event.</summary>
@@ -92,7 +94,9 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogReconciliationLaneMissingTenant(logger, Digest(viewKey), Digest(projectionType));
+        string viewKeyDigest = Digest(viewKey);
+        string projectionTypeDigest = Digest(projectionType);
+        LogReconciliationLaneMissingTenant(logger, viewKeyDigest, projectionTypeDigest);
     }
 
     /// <summary>Emits the <c>ReconciliationLaneDegraded</c> hot-path event.</summary>
@@ -106,7 +110,9 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogReconciliationLaneDegraded(logger, Digest(viewKey), Digest(projectionType));
+        string viewKeyDigest = Digest(viewKey);
+        string projectionTypeDigest = Digest(projectionType);
+        LogReconciliationLaneDegraded(logger, viewKeyDigest, projectionTypeDigest);
     }
 
     /// <summary>Emits the <c>ProjectionRefreshNegativeCount</c> hot-path event.</summary>
@@ -210,7 +216,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogLifecycleMessageCacheEvicted(logger, Digest(messageId));
+        string messageIdDigest = Digest(messageId);
+        LogLifecycleMessageCacheEvicted(logger, messageIdDigest);
     }
 
     /// <summary>Emits the <c>ETagStorageReadFailed</c> hot-path event.</summary>
@@ -237,9 +244,10 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
+        string keyDigest = Digest(key);
         LogETagIncompatibleEntry(
             logger,
-            Digest(key),
+            keyDigest,
             formatVersion,
             payloadVersion,
             expectedPayloadVersion);
@@ -322,7 +330,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogNewItemStateCleared(logger, Category(reason));
+        string reasonCategory = Category(reason);
+        LogNewItemStateCleared(logger, reasonCategory);
     }
 
     /// <summary>Emits the <c>PendingOutcomeMissingIdentity</c> hot-path event.</summary>
@@ -347,7 +356,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogPendingOutcomeFallbackIdentityIncomplete(logger, Category(source));
+        string sourceCategory = Category(source);
+        LogPendingOutcomeFallbackIdentityIncomplete(logger, sourceCategory);
     }
 
     /// <summary>Emits the <c>PendingOutcomeNoMatch</c> hot-path event.</summary>
@@ -358,7 +368,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogPendingOutcomeNoMatch(logger, Category(source));
+        string sourceCategory = Category(source);
+        LogPendingOutcomeNoMatch(logger, sourceCategory);
     }
 
     /// <summary>Emits the <c>PendingOutcomeAmbiguous</c> hot-path event.</summary>
@@ -380,7 +391,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogNewItemMetadataIncomplete(logger, Digest(messageId));
+        string messageIdDigest = Digest(messageId);
+        LogNewItemMetadataIncomplete(logger, messageIdDigest);
     }
 
     /// <summary>Emits the <c>PendingPollDuplicateTerminal</c> hot-path event.</summary>
@@ -391,7 +403,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogPendingPollDuplicateTerminal(logger, Digest(messageId));
+        string messageIdDigest = Digest(messageId);
+        LogPendingPollDuplicateTerminal(logger, messageIdDigest);
     }
 
     /// <summary>Emits the <c>PendingPollNonResolved</c> hot-path event.</summary>
@@ -460,7 +473,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogPendingTerminalUnknown(logger, Digest(messageId));
+        string messageIdDigest = Digest(messageId);
+        LogPendingTerminalUnknown(logger, messageIdDigest);
     }
 
     /// <summary>Emits the <c>PendingStateCleared</c> hot-path event.</summary>
@@ -471,7 +485,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogPendingStateCleared(logger, Category(reason), outstandingPendingCount);
+        string reasonCategory = Category(reason);
+        LogPendingStateCleared(logger, reasonCategory, outstandingPendingCount);
     }
 
     /// <summary>Emits the <c>PendingEvictedUnresolved</c> hot-path event.</summary>
@@ -496,7 +511,9 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogPendingEvictedDispatchSkipped(logger, Digest(messageId), Category(currentStatus));
+        string messageIdDigest = Digest(messageId);
+        string currentStatusCategory = Category(currentStatus);
+        LogPendingEvictedDispatchSkipped(logger, messageIdDigest, currentStatusCategory);
     }
 
     /// <summary>Emits the <c>PendingLifecycleDisposed</c> hot-path event.</summary>
@@ -507,7 +524,8 @@ internal static partial class FrontComposerHotPathLog
             return;
         }
 
-        LogPendingLifecycleDisposed(logger, Category(reason));
+        string reasonCategory = Category(reason);
+        LogPendingLifecycleDisposed(logger, reasonCategory);
     }
 
     /// <summary>Emits the <c>PendingLifecycleDispatchFailed</c> hot-path event.</summary>

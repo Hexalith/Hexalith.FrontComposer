@@ -47,7 +47,7 @@ public partial class FcDensityAnnouncer : ComponentBase, IDisposable {
 
         _previousDensity = current;
         _announcementText = string.Format(
-            System.Globalization.CultureInfo.CurrentUICulture,
+            System.Globalization.CultureInfo.CurrentCulture,
             Localizer["DensityAnnouncementTemplate"].Value,
             LocalizedDensityLabel(current));
         _hasAnnouncement = true;

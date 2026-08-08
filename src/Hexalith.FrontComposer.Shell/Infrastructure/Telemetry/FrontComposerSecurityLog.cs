@@ -482,12 +482,15 @@ internal static partial class FrontComposerSecurityLog
             return;
         }
 
+        string featureIdentifier = SanitizeIdentifier(feature);
+        string boundedDirection = BoundedDirection(direction);
+        string exceptionTypeOrDefault = ExceptionTypeOrDefault(exceptionType);
         LogStorageAccessorFailed(
             logger,
             FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
-            SanitizeIdentifier(feature),
-            BoundedDirection(direction),
-            ExceptionTypeOrDefault(exceptionType));
+            featureIdentifier,
+            boundedDirection,
+            exceptionTypeOrDefault);
     }
 
     /// <summary>Logs missing storage scope with pseudonymized feature attribution.</summary>
@@ -498,11 +501,13 @@ internal static partial class FrontComposerSecurityLog
             return;
         }
 
+        string featureIdentifier = SanitizeIdentifier(feature);
+        string boundedDirection = BoundedDirection(direction);
         LogStorageScopeMissing(
             logger,
             FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
-            SanitizeIdentifier(feature),
-            BoundedDirection(direction));
+            featureIdentifier,
+            boundedDirection);
     }
 
     private static void LogAuthorizationFailure(

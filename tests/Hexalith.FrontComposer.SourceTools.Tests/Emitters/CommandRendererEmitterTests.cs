@@ -226,16 +226,17 @@ public class CommandRendererEmitterTests {
         source.ShouldContain("private EditContext? _formEditContext;");
         source.ShouldContain("private void OnFormEditContextReady(EditContext context)");
         source.ShouldContain("_formEditContext = context;");
-        source.ShouldContain("builder.OpenComponent<FcFormAbandonmentGuard>(seq++);");
-        source.ShouldContain("builder.AddAttribute(seq++, \"CorrelationId\", _lifecycleState.Value.CorrelationId ?? string.Empty);");
-        source.ShouldContain("builder.AddAttribute(seq++, \"EditContext\", _formEditContext);");
-        source.ShouldContain("__guard.AddAttribute(gseq++, \"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);");
-        source.ShouldContain("__guard.AddAttribute(gseq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");
+        string masked = GeneratedRenderTreeText.MaskSequenceArguments(source);
+        masked.ShouldContain("builder.OpenComponent<FcFormAbandonmentGuard>(#);");
+        masked.ShouldContain("builder.AddAttribute(#, \"CorrelationId\", _lifecycleState.Value.CorrelationId ?? string.Empty);");
+        masked.ShouldContain("builder.AddAttribute(#, \"EditContext\", _formEditContext);");
+        masked.ShouldContain("__guard.AddAttribute(#, \"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);");
+        masked.ShouldContain("__guard.AddAttribute(#, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");
 
-        int guardIndex = source.IndexOf("builder.OpenComponent<FcFormAbandonmentGuard>(seq++);", StringComparison.Ordinal);
-        int formIndex = source.IndexOf("__guard.OpenComponent<Demo.Domain.DemoCommandForm>(gseq++);", StringComparison.Ordinal);
-        int beforeSubmitIndex = source.IndexOf("__guard.AddAttribute(gseq++, \"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);", StringComparison.Ordinal);
-        int editContextReadyIndex = source.IndexOf("__guard.AddAttribute(gseq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));", StringComparison.Ordinal);
+        int guardIndex = masked.IndexOf("builder.OpenComponent<FcFormAbandonmentGuard>(#);", StringComparison.Ordinal);
+        int formIndex = masked.IndexOf("__guard.OpenComponent<Demo.Domain.DemoCommandForm>(#);", StringComparison.Ordinal);
+        int beforeSubmitIndex = masked.IndexOf("__guard.AddAttribute(#, \"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);", StringComparison.Ordinal);
+        int editContextReadyIndex = masked.IndexOf("__guard.AddAttribute(#, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));", StringComparison.Ordinal);
 
         guardIndex.ShouldBeGreaterThanOrEqualTo(0);
         formIndex.ShouldBeGreaterThan(guardIndex);
@@ -278,4 +279,49 @@ public class CommandRendererEmitterTests {
         endIndex.ShouldBeGreaterThan(startIndex);
         return source[startIndex..endIndex];
     }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void Emit_UsesLiteralRenderTreeSequencesInsteadOfRuntimeCounters(int nonDerivableCount) {
+        RenderTreeSequenceRewriterTests.ShouldUseLiteralRenderTreeSequences(
+            CommandRendererEmitter.Emit(BuildModel(nonDerivableCount)));
+        RenderTreeSequenceRewriterTests.ShouldUseLiteralRenderTreeSequences(
+            CommandPageEmitter.Emit(BuildModel(nonDerivableCount)));
+    }
+
+    [Fact]
+    public void Emit_HoistsThePopoverShowFieldsOnlyArrayToACachedStaticField() {
+        string withPopover = CommandRendererEmitter.Emit(BuildModel(1));
+        string withoutFields = CommandRendererEmitter.Emit(BuildModel(0));
+
+        // Story 11.21 CA1861 — the constant array is allocated once and passed by reference, which
+        // also gives the form parameter a stable identity across renders.
+        withPopover.ShouldContain("private static readonly string[] _popoverShowFieldsOnly = new string[] { \"Field0\" };");
+        GeneratedRenderTreeText.MaskSequenceArguments(withPopover)
+            .ShouldContain("__popover.AddAttribute(#, \"ShowFieldsOnly\", _popoverShowFieldsOnly);");
+        withPopover.ShouldNotContain("\"ShowFieldsOnly\", new[]");
+
+        // A zero-field command never opens the popover, so the cached array must not be emitted.
+        withoutFields.ShouldNotContain("_popoverShowFieldsOnly");
+    }
+
+    [Fact]
+    public void Emit_IconResolverIsStaticOnlyWhenNoIconNameIsConfigured() {
+        CommandRendererEmitter.Emit(BuildModel(1)).ShouldContain("private static Icon? ResolveIcon()");
+        CommandRendererEmitter.Emit(BuildModel(1, iconName: "Regular.Size16.Add"))
+            .ShouldContain("private Icon? ResolveIcon()");
+    }
+
+    [Fact]
+    public void Emit_AuthorizationDisposeSuppressesFinalization() {
+        string source = CommandRendererEmitter.Emit(BuildModel(1, authorizationPolicyName: "CanDoIt"));
+
+        source.ShouldContain("if (_authorizationDisposed) { return; }");
+        source.ShouldContain("System.GC.SuppressFinalize(this);");
+    }
+
 }

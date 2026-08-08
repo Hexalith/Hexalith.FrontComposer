@@ -61,6 +61,6 @@ public partial class FcMaxItemsCapNotice : ComponentBase {
         int cap = ShellOptions.CurrentValue.MaxUnfilteredItems;
         _message = Localizer[
             "MaxItemsCapNoticeTemplate",
-            cap.ToString(CultureInfo.CurrentUICulture)].Value;
+            cap.ToString(CultureInfo.CurrentCulture)].Value;
     }
 }

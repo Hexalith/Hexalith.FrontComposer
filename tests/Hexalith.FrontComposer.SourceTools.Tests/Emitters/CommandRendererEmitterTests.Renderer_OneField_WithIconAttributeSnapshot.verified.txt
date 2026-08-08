@@ -2,7 +2,6 @@
 // Do not edit directly
 
 #nullable enable
-#pragma warning disable ASP0006
 
 using System;
 using System.Collections.Generic;
@@ -51,6 +50,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
     private Action? _externalSubmit;
     private IJSObjectReference? _expandInRowModule;
     private Demo.Domain.DemoCommand _prefilledModel = new();
+    private static readonly string[] _popoverShowFieldsOnly = new string[] { "Field0" };
 
     protected override async Task OnInitializedAsync()
     {
@@ -317,47 +317,45 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
-        int seq = 0;
         switch (_effectiveMode)
         {
             case CommandRenderMode.Inline:
             {
-                builder.OpenComponent<FluentButton>(seq++);
-                builder.AddAttribute(seq++, "Id", _triggerButtonId);
-                builder.AddAttribute(seq++, "Type", ButtonType.Button);
-                builder.AddAttribute(seq++, "role", "button");
-                builder.AddAttribute(seq++, "aria-label", "Demo");
-                builder.AddAttribute(seq++, "Appearance", ButtonAppearance.Outline);
-                builder.AddAttribute(seq++, "IconStart", ResolveIcon());
-                builder.AddAttribute(seq++, "Label", "Demo");
-                builder.AddAttribute(seq++, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => OpenPopoverAsync()));
-                builder.AddAttribute(seq++, "aria-expanded", _popoverOpen);
+                builder.OpenComponent<FluentButton>(0);
+                builder.AddAttribute(1, "Id", _triggerButtonId);
+                builder.AddAttribute(2, "Type", ButtonType.Button);
+                builder.AddAttribute(3, "role", "button");
+                builder.AddAttribute(4, "aria-label", "Demo");
+                builder.AddAttribute(5, "Appearance", ButtonAppearance.Outline);
+                builder.AddAttribute(6, "IconStart", ResolveIcon());
+                builder.AddAttribute(7, "Label", "Demo");
+                builder.AddAttribute(8, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => OpenPopoverAsync()));
+                builder.AddAttribute(9, "aria-expanded", _popoverOpen);
                 builder.CloseComponent();
 
-                builder.OpenComponent<FluentPopover>(seq++);
-                builder.AddAttribute(seq++, "AnchorId", _triggerButtonId);
-                builder.AddAttribute(seq++, "Opened", _popoverOpen);
-                builder.AddAttribute(seq++, "OpenedChanged", EventCallback.Factory.Create<bool>(this, value => _popoverOpen = value));
-                builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__popover =>
+                builder.OpenComponent<FluentPopover>(10);
+                builder.AddAttribute(11, "AnchorId", _triggerButtonId);
+                builder.AddAttribute(12, "Opened", _popoverOpen);
+                builder.AddAttribute(13, "OpenedChanged", EventCallback.Factory.Create<bool>(this, value => _popoverOpen = value));
+                builder.AddAttribute(14, "ChildContent", (RenderFragment)(__popover =>
                 {
-                    int pseq = 0;
-                    __popover.OpenElement(pseq++, "div");
-                    __popover.AddAttribute(pseq++, "class", "fc-popover");
-                    __popover.AddAttribute(pseq++, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleEscape));
-                    __popover.OpenComponent<Demo.Domain.DemoCommandForm>(pseq++);
-                    __popover.AddAttribute(pseq++, "InitialValue", _prefilledModel);
-                    __popover.AddAttribute(pseq++, "ShowFieldsOnly", new[] { "Field0" });
-                    __popover.AddAttribute(pseq++, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
-                    __popover.AddAttribute(pseq++, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
-                    __popover.AddAttribute(pseq++, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
+                    __popover.OpenElement(0, "div");
+                    __popover.AddAttribute(1, "class", "fc-popover");
+                    __popover.AddAttribute(2, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleEscape));
+                    __popover.OpenComponent<Demo.Domain.DemoCommandForm>(3);
+                    __popover.AddAttribute(4, "InitialValue", _prefilledModel);
+                    __popover.AddAttribute(5, "ShowFieldsOnly", _popoverShowFieldsOnly);
+                    __popover.AddAttribute(6, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
+                    __popover.AddAttribute(7, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                    __popover.AddAttribute(8, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
                     __popover.CloseComponent();
-                    __popover.OpenComponent<FluentButton>(pseq++);
-                    __popover.AddAttribute(pseq++, "Type", ButtonType.Button);
-                    __popover.AddAttribute(pseq++, "role", "button");
-                    __popover.AddAttribute(pseq++, "aria-label", "Cancel");
-                    __popover.AddAttribute(pseq++, "Appearance", ButtonAppearance.Outline);
-                    __popover.AddAttribute(pseq++, "Label", "Cancel");
-                    __popover.AddAttribute(pseq++, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => ClosePopoverAsync()));
+                    __popover.OpenComponent<FluentButton>(9);
+                    __popover.AddAttribute(10, "Type", ButtonType.Button);
+                    __popover.AddAttribute(11, "role", "button");
+                    __popover.AddAttribute(12, "aria-label", "Cancel");
+                    __popover.AddAttribute(13, "Appearance", ButtonAppearance.Outline);
+                    __popover.AddAttribute(14, "Label", "Cancel");
+                    __popover.AddAttribute(15, "OnClick", EventCallback.Factory.Create<MouseEventArgs>(this, _ => ClosePopoverAsync()));
                     __popover.CloseComponent();
                     __popover.CloseElement();
                 }));
@@ -366,23 +364,22 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
             }
             case CommandRenderMode.CompactInline:
             {
-                builder.OpenElement(seq++, "div");
-                builder.AddAttribute(seq++, "class", "fc-expand-in-row");
-                builder.AddAttribute(seq++, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleCompactEscapeAsync));
-                builder.AddAttribute(seq++, "tabindex", "-1");
-                builder.AddElementReferenceCapture(seq++, r => _compactCardRef = r);
-                builder.OpenComponent<FluentCard>(seq++);
-                builder.AddAttribute(seq++, "Appearance", CardAppearance.Outline);
-                builder.AddAttribute(seq++, "Shadow", CardShadow.Small);
-                builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__card =>
+                builder.OpenElement(15, "div");
+                builder.AddAttribute(16, "class", "fc-expand-in-row");
+                builder.AddAttribute(17, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleCompactEscapeAsync));
+                builder.AddAttribute(18, "tabindex", "-1");
+                builder.AddElementReferenceCapture(19, r => _compactCardRef = r);
+                builder.OpenComponent<FluentCard>(20);
+                builder.AddAttribute(21, "Appearance", CardAppearance.Outline);
+                builder.AddAttribute(22, "Shadow", CardShadow.Small);
+                builder.AddAttribute(23, "ChildContent", (RenderFragment)(__card =>
                 {
-                    int cseq = 0;
-                    __card.OpenComponent<Demo.Domain.DemoCommandForm>(cseq++);
-                    __card.AddAttribute(cseq++, "InitialValue", _prefilledModel);
-                    __card.AddAttribute(cseq++, "DerivableFieldsHidden", true);
-                    __card.AddAttribute(cseq++, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
-                    __card.AddAttribute(cseq++, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
-                    __card.AddAttribute(cseq++, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
+                    __card.OpenComponent<Demo.Domain.DemoCommandForm>(0);
+                    __card.AddAttribute(1, "InitialValue", _prefilledModel);
+                    __card.AddAttribute(2, "DerivableFieldsHidden", true);
+                    __card.AddAttribute(3, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
+                    __card.AddAttribute(4, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                    __card.AddAttribute(5, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
                     __card.CloseComponent();
                 }));
                 builder.CloseComponent();
@@ -393,30 +390,29 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
             default:
             {
                 var opts = ShellOptions.Value;
-                builder.OpenElement(seq++, "div");
-                builder.AddAttribute(seq++, "style", $"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;");
+                builder.OpenElement(24, "div");
+                builder.AddAttribute(25, "style", $"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;");
                 if (opts.EmbeddedBreadcrumb)
                 {
-                    builder.OpenElement(seq++, "nav");
-                    builder.AddAttribute(seq++, "aria-label", "breadcrumb");
-                    builder.OpenElement(seq++, "a");
-                    builder.AddAttribute(seq++, "href", GetBreadcrumbReturnPath());
-                    builder.AddContent(seq++, GetBreadcrumbBoundedContext());
+                    builder.OpenElement(26, "nav");
+                    builder.AddAttribute(27, "aria-label", "breadcrumb");
+                    builder.OpenElement(28, "a");
+                    builder.AddAttribute(29, "href", GetBreadcrumbReturnPath());
+                    builder.AddContent(30, GetBreadcrumbBoundedContext());
                     builder.CloseElement();
-                    builder.AddContent(seq++, " > Demo");
+                    builder.AddContent(31, " > Demo");
                     builder.CloseElement();
                 }
-                builder.OpenComponent<FcFormAbandonmentGuard>(seq++);
-                builder.AddAttribute(seq++, "CorrelationId", _lifecycleState.Value.CorrelationId ?? string.Empty);
-                builder.AddAttribute(seq++, "EditContext", _formEditContext);
-                builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__guard =>
+                builder.OpenComponent<FcFormAbandonmentGuard>(32);
+                builder.AddAttribute(33, "CorrelationId", _lifecycleState.Value.CorrelationId ?? string.Empty);
+                builder.AddAttribute(34, "EditContext", _formEditContext);
+                builder.AddAttribute(35, "ChildContent", (RenderFragment)(__guard =>
                 {
-                    int gseq = 0;
-                    __guard.OpenComponent<Demo.Domain.DemoCommandForm>(gseq++);
-                    __guard.AddAttribute(gseq++, "InitialValue", _prefilledModel);
-                    __guard.AddAttribute(gseq++, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
-                    __guard.AddAttribute(gseq++, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
-                    __guard.AddAttribute(gseq++, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
+                    __guard.OpenComponent<Demo.Domain.DemoCommandForm>(0);
+                    __guard.AddAttribute(1, "InitialValue", _prefilledModel);
+                    __guard.AddAttribute(2, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
+                    __guard.AddAttribute(3, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                    __guard.AddAttribute(4, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
                     __guard.CloseComponent();
                 }));
                 builder.CloseComponent();
@@ -483,5 +479,3 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         => _logReturnPathRejected(logger, path, correlationId, null);
 
 }
-
-#pragma warning restore ASP0006

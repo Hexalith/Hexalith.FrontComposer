@@ -151,62 +151,57 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                 return builder =>
                 {
                     if (row is null) { return; }
-                    int fieldSeq = 0;
-                    builder.AddContent(fieldSeq++, row.Id.ToString());
+                    builder.AddContent(0, row.Id.ToString());
                 };
             case "Actor":
                 return builder =>
                 {
                     if (row is null) { return; }
-                    int fieldSeq = 0;
-                    builder.AddContent(fieldSeq++, row.Actor.ToString());
+                    builder.AddContent(0, row.Actor.ToString());
                 };
             case "Description":
                 return builder =>
                 {
                     if (row is null) { return; }
-                    int fieldSeq = 0;
-                    builder.AddContent(fieldSeq++, row.Description.ToString());
+                    builder.AddContent(0, row.Description.ToString());
                 };
             case "OccurredAt":
                 return builder =>
                 {
                     if (row is null) { return; }
-                    int fieldSeq = 0;
-                    builder.AddContent(fieldSeq++, row.OccurredAt.ToString("d", CultureInfo.CurrentCulture));
+                    builder.AddContent(0, row.OccurredAt.ToString("d", CultureInfo.CurrentCulture));
                 };
             case "Severity":
                 return builder =>
                 {
                     if (row is null) { return; }
-                    int fieldSeq = 0;
                     var _memberName = row.Severity.ToString();
                     var _label = HumanizeEnumLabel(_memberName);
                     switch (_memberName)
                     {
                         case "Info":
-                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
-                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
-                            builder.AddAttribute(fieldSeq++, "Label", _label);
-                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Severity");
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(0);
+                            builder.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                            builder.AddAttribute(2, "Label", _label);
+                            builder.AddAttribute(3, "ColumnHeader", "Severity");
                             builder.CloseComponent();
                             break;
                         case "Warning":
-                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
-                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning);
-                            builder.AddAttribute(fieldSeq++, "Label", _label);
-                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Severity");
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(4);
+                            builder.AddAttribute(5, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning);
+                            builder.AddAttribute(6, "Label", _label);
+                            builder.AddAttribute(7, "ColumnHeader", "Severity");
                             builder.CloseComponent();
                             break;
                         case "Critical":
-                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(fieldSeq++);
-                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
-                            builder.AddAttribute(fieldSeq++, "Label", _label);
-                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Severity");
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusIcon>(8);
+                            builder.AddAttribute(9, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
+                            builder.AddAttribute(10, "Label", _label);
+                            builder.AddAttribute(11, "ColumnHeader", "Severity");
                             builder.CloseComponent();
                             break;
                         default:
-                            builder.AddContent(fieldSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                            builder.AddContent(12, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
                             break;
                     }
                 };
@@ -224,41 +219,40 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
 
         return builder =>
         {
-            int rowSeq = 0;
-            builder.OpenElement(rowSeq++, "div");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-row");
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "fc-template-row");
             {
-            builder.OpenElement(rowSeq++, "span");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
-            builder.AddAttribute(rowSeq++, "data-fc-field", "Id");
+            builder.OpenElement(2, "span");
+            builder.AddAttribute(3, "class", "fc-template-field");
+            builder.AddAttribute(4, "data-fc-field", "Id");
             RenderTemplateField(row, "Id")(builder);
             builder.CloseElement();
             }
             {
-            builder.OpenElement(rowSeq++, "span");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
-            builder.AddAttribute(rowSeq++, "data-fc-field", "Actor");
+            builder.OpenElement(5, "span");
+            builder.AddAttribute(6, "class", "fc-template-field");
+            builder.AddAttribute(7, "data-fc-field", "Actor");
             RenderTemplateField(row, "Actor")(builder);
             builder.CloseElement();
             }
             {
-            builder.OpenElement(rowSeq++, "span");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
-            builder.AddAttribute(rowSeq++, "data-fc-field", "Description");
+            builder.OpenElement(8, "span");
+            builder.AddAttribute(9, "class", "fc-template-field");
+            builder.AddAttribute(10, "data-fc-field", "Description");
             RenderTemplateField(row, "Description")(builder);
             builder.CloseElement();
             }
             {
-            builder.OpenElement(rowSeq++, "span");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
-            builder.AddAttribute(rowSeq++, "data-fc-field", "OccurredAt");
+            builder.OpenElement(11, "span");
+            builder.AddAttribute(12, "class", "fc-template-field");
+            builder.AddAttribute(13, "data-fc-field", "OccurredAt");
             RenderTemplateField(row, "OccurredAt")(builder);
             builder.CloseElement();
             }
             {
-            builder.OpenElement(rowSeq++, "span");
-            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
-            builder.AddAttribute(rowSeq++, "data-fc-field", "Severity");
+            builder.OpenElement(14, "span");
+            builder.AddAttribute(15, "class", "fc-template-field");
+            builder.AddAttribute(16, "data-fc-field", "Severity");
             RenderTemplateField(row, "Severity")(builder);
             builder.CloseElement();
             }
@@ -322,10 +316,11 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
     public void Dispose()
     {
         TimelineProjectionState.StateChanged -= OnStateChanged;
+        System.GC.SuppressFinalize(this);
     }
 
     private static string Truncate(string value, int maxLength)
-        => value.Length <= maxLength ? value : value.Substring(0, maxLength - 1) + "\u2026";
+        => value.Length <= maxLength ? value : string.Concat(value.AsSpan(0, maxLength - 1), "\u2026");
 
     private static string HumanizeEnumLabel(string value)
     {
@@ -403,12 +398,11 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         var state = TimelineProjectionState.Value;
-        int seq = 0;
         #if DEBUG
         if (DevModeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)) is global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)
         {
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DevMode.FcDevModeAnnotation>(seq++);
-            builder.AddAttribute(seq++, "Node", new global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode(
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DevMode.FcDevModeAnnotation>(0);
+            builder.AddAttribute(1, "Node", new global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode(
                 AnnotationKey: "TimelineProjection-view",
                 Convention: new global::Hexalith.FrontComposer.Contracts.DevMode.ConventionDescriptor("TimelineProjection generated projection view", "Generated projection view surface.", "Use a Level 2 template for body changes, Level 4 for full replacement.", global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel.Default),
                 ContractTypeName: "TimelineProjection",
@@ -423,60 +417,57 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                 SourceComponentIdentity: "TimelineProjection.TimelineProjection-view",
                 StaleReasons: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeStaleReason>.Empty,
                 IsUnsupported: false));
-            builder.AddAttribute(seq++, "CssClass", "fc-devmode-annotation");
+            builder.AddAttribute(2, "CssClass", "fc-devmode-annotation");
             builder.CloseComponent();
         }
         #endif
 
-        builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionSubtitle>(seq++);
-        builder.AddAttribute(seq++, "ProjectionType", typeof(TimelineProjection));
-        builder.AddAttribute(seq++, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
-        builder.AddAttribute(seq++, "WhenState", (string?)null);
-        builder.AddAttribute(seq++, "FallbackCount", state.Items?.Count ?? 0);
-        builder.AddAttribute(seq++, "DistinctStatusCount", (int?)null);
-        builder.AddAttribute(seq++, "EntityLabel", "Timeline");
-        builder.AddAttribute(seq++, "EntityPluralLabel", "timelines");
-        builder.AddAttribute(seq++, "IsLoading", state.IsLoading);
+        builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionSubtitle>(3);
+        builder.AddAttribute(4, "ProjectionType", typeof(TimelineProjection));
+        builder.AddAttribute(5, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
+        builder.AddAttribute(6, "WhenState", (string?)null);
+        builder.AddAttribute(7, "FallbackCount", state.Items?.Count ?? 0);
+        builder.AddAttribute(8, "DistinctStatusCount", (int?)null);
+        builder.AddAttribute(9, "EntityLabel", "Timeline");
+        builder.AddAttribute(10, "EntityPluralLabel", "timelines");
+        builder.AddAttribute(11, "IsLoading", state.IsLoading);
         builder.CloseComponent();
 
         if (state.IsLoading)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(seq++);
-            builder.AddAttribute(seq++, "ColumnCount", 5);
-            builder.AddAttribute(seq++, "RowCount", 5);
-            builder.AddAttribute(seq++, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.Timeline);
-            builder.AddAttribute(seq++, "EntityLabel", "timelines");
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(12);
+            builder.AddAttribute(13, "ColumnCount", 5);
+            builder.AddAttribute(14, "RowCount", 5);
+            builder.AddAttribute(15, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.Timeline);
+            builder.AddAttribute(16, "EntityLabel", "timelines");
             builder.CloseComponent();
             return;
         }
 
         if (state.Items is null || state.Items.Count == 0)
         {
-            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(seq++);
-            builder.AddAttribute(seq++, "ProjectionType", typeof(TimelineProjection));
-            builder.AddAttribute(seq++, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
-            builder.AddAttribute(seq++, "EntityPluralOverride", "timelines");
-            builder.AddAttribute(seq++, "CtaCommandName", (string?)null);
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(17);
+            builder.AddAttribute(18, "ProjectionType", typeof(TimelineProjection));
+            builder.AddAttribute(19, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
+            builder.AddAttribute(20, "EntityPluralOverride", "timelines");
+            builder.AddAttribute(21, "CtaCommandName", (string?)null);
             builder.CloseComponent();
             return;
         }
 
-        seq = 100;
         global::Microsoft.AspNetCore.Components.RenderFragment defaultBody = (global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __bb) =>
         {
             var builder = __bb;
-            int seq = 100;
         var orderedItems = state.Items.OrderByDescending(x => x.OccurredAt).ToList();
 
-        builder.OpenComponent<FluentStack>(seq++);
-        builder.AddAttribute(seq++, "Orientation", Orientation.Vertical);
-        builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
+        builder.OpenComponent<FluentStack>(100);
+        builder.AddAttribute(101, "Orientation", Orientation.Vertical);
+        builder.AddAttribute(102, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
         {
-            int rowSeq = 700;
             foreach (var item in orderedItems)
             {
-                b.OpenElement(rowSeq++, "div");
-                b.AddAttribute(rowSeq++, "class", "fc-timeline-row");
+                b.OpenElement(700, "div");
+                b.AddAttribute(701, "class", "fc-timeline-row");
                 if (HasProjectionSlot("OccurredAt"))
                 {
                     RenderSlotField(item,
@@ -493,7 +484,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                 {
                     RenderTemplateDefaultField(item, "OccurredAt")(b);
                 }
-                b.AddMarkupContent(rowSeq++, " ");
+                b.AddMarkupContent(702, " ");
                 if (HasProjectionSlot("Description"))
                 {
                     RenderSlotField(item,
@@ -510,7 +501,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                 {
                     RenderTemplateDefaultField(item, "Description")(b);
                 }
-                b.AddMarkupContent(rowSeq++, " ");
+                b.AddMarkupContent(703, " ");
                 if (HasProjectionSlot("Severity"))
                 {
                     RenderSlotField(item,
@@ -552,9 +543,9 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<TimelineProjection>>(seq++);
-            builder.AddAttribute(seq++, "Descriptor", __viewOverrideDescriptor);
-            builder.AddAttribute(seq++, "Context", __viewOverrideContext);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<TimelineProjection>>(100);
+            builder.AddAttribute(101, "Descriptor", __viewOverrideDescriptor);
+            builder.AddAttribute(102, "Context", __viewOverrideContext);
             builder.CloseComponent();
         }
         else
@@ -575,9 +566,9 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
-            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<TimelineProjection>>(seq++);
-            builder.AddAttribute(seq++, "Descriptor", __templateDescriptor);
-            builder.AddAttribute(seq++, "Context", __templateContext);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<TimelineProjection>>(103);
+            builder.AddAttribute(104, "Descriptor", __templateDescriptor);
+            builder.AddAttribute(105, "Context", __templateContext);
             builder.CloseComponent();
         }
         else

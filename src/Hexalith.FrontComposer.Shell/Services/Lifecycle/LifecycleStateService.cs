@@ -82,17 +82,9 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
 
     /// <inheritdoc/>
     public IDisposable Subscribe(string correlationId, Action<CommandLifecycleTransition> onTransition) {
-        if (correlationId is null) {
-            throw new ArgumentNullException(nameof(correlationId));
-        }
-
-        if (onTransition is null) {
-            throw new ArgumentNullException(nameof(onTransition));
-        }
-
-        if (Volatile.Read(ref _disposed) != 0) {
-            throw new ObjectDisposedException(nameof(LifecycleStateService));
-        }
+        ArgumentNullException.ThrowIfNull(correlationId);
+        ArgumentNullException.ThrowIfNull(onTransition);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, typeof(LifecycleStateService));
 
         Subscription subscription = new(correlationId, onTransition);
 
@@ -135,9 +127,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
 
     /// <inheritdoc/>
     public CommandLifecycleState GetState(string correlationId) {
-        if (correlationId is null) {
-            throw new ArgumentNullException(nameof(correlationId));
-        }
+        ArgumentNullException.ThrowIfNull(correlationId);
 
         if (_entries.TryGetValue(correlationId, out LifecycleEntry? entry)) {
             lock (entry) {
@@ -150,9 +140,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
 
     /// <inheritdoc/>
     public string? GetMessageId(string correlationId) {
-        if (correlationId is null) {
-            throw new ArgumentNullException(nameof(correlationId));
-        }
+        ArgumentNullException.ThrowIfNull(correlationId);
 
         if (_entries.TryGetValue(correlationId, out LifecycleEntry? entry)) {
             lock (entry) {
@@ -176,13 +164,8 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         CommandLifecycleState newState,
         string? messageId,
         bool idempotencyResolved) {
-        if (correlationId is null) {
-            throw new ArgumentNullException(nameof(correlationId));
-        }
-
-        if (Volatile.Read(ref _disposed) != 0) {
-            throw new ObjectDisposedException(nameof(LifecycleStateService));
-        }
+        ArgumentNullException.ThrowIfNull(correlationId);
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, typeof(LifecycleStateService));
 
         DateTimeOffset now = _time.GetUtcNow();
         bool entryExistedBefore = _entries.TryGetValue(correlationId, out _);
@@ -297,12 +280,18 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             transition.MessageId,
             effectiveIdempotencyResolved);
         // Join key with HotPath lifecycle events: same opaque sha256 digest (Decision 2).
-        FrontComposerLog.LifecycleTransitionObserved(
-            _logger,
-            FrontComposerHotPathLog.DigestIdentifier(correlationId),
-            FrontComposerHotPathLog.DigestIdentifier(transition.MessageId),
-            applied.ToString(),
-            effectiveIdempotencyResolved);
+        // 11.21 — the two sha256 digests are only computed when the Information level is enabled.
+        if (_logger.IsEnabled(LogLevel.Information)) {
+            string correlationIdDigest = FrontComposerHotPathLog.DigestIdentifier(correlationId);
+            string messageIdDigest = FrontComposerHotPathLog.DigestIdentifier(transition.MessageId);
+            string appliedState = applied.ToString();
+            FrontComposerLog.LifecycleTransitionObserved(
+                _logger,
+                correlationIdDigest,
+                messageIdDigest,
+                appliedState,
+                effectiveIdempotencyResolved);
+        }
 
         InvokeSubscribers(correlationId, transition);
     }

@@ -75,7 +75,7 @@ internal sealed class CustomizationContractValidationGate : IHostedService {
 
         for (int i = 0; i < rejections.Count; i++) {
             CustomizationContractRejection r = rejections[i];
-            _ = message.Append("[").Append(i + 1).Append("] ");
+            _ = message.Append('[').Append(i + 1).Append("] ");
             _ = message.Append(r.DiagnosticId).Append(' ');
             _ = message.Append(r.Level).Append(' ');
             _ = message.Append("projection=").Append(r.ProjectionTypeName).Append(' ');

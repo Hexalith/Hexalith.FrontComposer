@@ -2,13 +2,14 @@ using System.Diagnostics;
 using System.IO.Compression;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 
 using Shouldly;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
-public sealed class PackagedAnalyzerConsumerTests {
+public sealed partial class PackagedAnalyzerConsumerTests {
     private const string FluentV5Version = "5.0.0-rc.4-26180.1";
 
     [Fact]
@@ -68,7 +69,7 @@ public sealed class PackagedAnalyzerConsumerTests {
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <NoWarn>$(NoWarn);ASP0006</NoWarn>
+    <AnalysisMode>Recommended</AnalysisMode>
     <NuGetAudit>false</NuGetAudit>
     <RestorePackagesPath>$(MSBuildProjectDirectory)/packages</RestorePackagesPath>
     <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
@@ -128,7 +129,19 @@ public sealed partial class CreateOrderCommand
 }
 """, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
-        await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-c", "Release", "-m:1", "/nr:false").ConfigureAwait(true);
+        // Story 11.21 AC3/AC7 — the consumer template enables AnalysisMode=Recommended with
+        // TreatWarningsAsErrors intact and no ASP0006 control, so this build is the independent
+        // proof that generated output is clean under the elevated policy. The captured log is
+        // asserted as well so a future NoWarn/severity relaxation cannot make the gate vacuous.
+        string buildLog = await RunDotnetAsync(consumer, TestContext.Current.CancellationToken, "build", "-c", "Release", "-m:1", "/nr:false").ConfigureAwait(true);
+        string[] recommendedDiagnostics = [.. buildLog
+            .Split('\n')
+            .Select(static line => line.Trim())
+            .Where(static line => line.Contains(": warning CA", StringComparison.Ordinal)
+                || line.Contains(": error CA", StringComparison.Ordinal)
+                || line.Contains(": warning ASP", StringComparison.Ordinal)
+                || line.Contains(": error ASP", StringComparison.Ordinal))];
+        recommendedDiagnostics.ShouldBeEmpty();
 
         string assets = await File.ReadAllTextAsync(Path.Combine(consumer, "obj", "project.assets.json"), TestContext.Current.CancellationToken).ConfigureAwait(true);
         assets.ShouldContain("\"Microsoft.FluentUI.AspNetCore.Components/" + FluentV5Version + "\"");
@@ -145,7 +158,30 @@ public sealed partial class CreateOrderCommand
         string projectionSource = await File.ReadAllTextAsync(projectionSourcePath, TestContext.Current.CancellationToken).ConfigureAwait(true);
         projectionSource.ShouldContain("global::Hexalith.FrontComposer.Shell.Options.FcShellOptions");
         projectionSource.ShouldContain("global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadPageAction");
+
+        // Story 11.21 AC3 — packaged output must carry emitter-assigned literals, never a runtime
+        // counter, and must not reintroduce the ASP0006 pragma the literals replaced.
+        List<string> nonLiteralSequenceSites = [];
+        foreach (string generatedFile in generatedFiles) {
+            string generatedSource = await File.ReadAllTextAsync(generatedFile, TestContext.Current.CancellationToken).ConfigureAwait(true);
+            generatedSource.ShouldNotContain("ASP0006");
+            foreach (Match match in RuntimeSequenceArgumentPattern().Matches(generatedSource)) {
+                nonLiteralSequenceSites.Add(Path.GetFileName(generatedFile) + ": " + match.Value);
+            }
+        }
+
+        nonLiteralSequenceSites.ShouldBeEmpty();
+        projectionSource.ShouldContain("BuildRenderTree");
     }
+
+    /// <summary>
+    /// Matches a <c>RenderTreeBuilder</c> call whose sequence argument is a runtime counter
+    /// increment rather than an emitter-assigned literal.
+    /// </summary>
+    [GeneratedRegex(
+        @"\.(?:OpenElement|OpenComponent|AddAttribute|AddContent|AddMarkupContent|OpenRegion|AddMultipleAttributes|AddElementReferenceCapture|AddComponentReferenceCapture)(?:<[^(]*>)?\(\s*[A-Za-z_][A-Za-z0-9_]*\+\+",
+        RegexOptions.CultureInvariant)]
+    private static partial Regex RuntimeSequenceArgumentPattern();
 
     private static string FindRepoRoot() {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
@@ -189,7 +225,7 @@ public sealed partial class CreateOrderCommand
         actualVersion.ShouldBe(expectedVersion);
     }
 
-    private static async Task RunDotnetAsync(string workingDirectory, CancellationToken cancellationToken, params string[] args) {
+    private static async Task<string> RunDotnetAsync(string workingDirectory, CancellationToken cancellationToken, params string[] args) {
         ProcessStartInfo startInfo = new("dotnet") {
             WorkingDirectory = workingDirectory,
             RedirectStandardError = true,
@@ -209,5 +245,7 @@ public sealed partial class CreateOrderCommand
             throw new InvalidOperationException(
                 $"dotnet {string.Join(' ', args)} failed with exit code {process.ExitCode}.{Environment.NewLine}{stdout}{Environment.NewLine}{stderr}");
         }
+
+        return stdout + Environment.NewLine + stderr;
     }
 }

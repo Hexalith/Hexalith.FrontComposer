@@ -372,6 +372,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     /// <inheritdoc />
     public ValueTask DisposeAsync() {
         Dispose();
+        GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
     }
 

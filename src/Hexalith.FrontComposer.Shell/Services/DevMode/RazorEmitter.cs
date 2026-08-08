@@ -1,8 +1,10 @@
+using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.DevMode;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -27,8 +29,8 @@ public sealed partial class RazorEmitter : IRazorEmitter {
         ArgumentNullException.ThrowIfNull(node);
         try {
             if (node.CurrentLevel != level) {
-                _logger?.LogInformation(
-                    "HFC1048: Unsupported customization level requested for starter emission. AnnotationKey={AnnotationKey} CurrentLevel={CurrentLevel} RequestedLevel={RequestedLevel}",
+                FrontComposerDiagnosticLog.StarterEmissionLevelMismatch(
+                    _logger,
                     node.AnnotationKey,
                     node.CurrentLevel,
                     level);
@@ -36,10 +38,10 @@ public sealed partial class RazorEmitter : IRazorEmitter {
             }
 
             if (node.IsStale) {
-                _logger?.LogInformation(
-                    "HFC1049: Stale component-tree metadata suppressed starter emission. AnnotationKey={AnnotationKey} Reasons={Reasons}",
+                FrontComposerDiagnosticLog.StarterEmissionStaleMetadata(
+                    _logger,
                     node.AnnotationKey,
-                    string.Join(",", node.StaleReasons));
+                    node.StaleReasons);
                 return Header(node) + "// Starter template unavailable: stale metadata (" + string.Join(", ", node.StaleReasons) + ").";
             }
 
@@ -55,9 +57,9 @@ public sealed partial class RazorEmitter : IRazorEmitter {
             };
         }
         catch (Exception ex) {
-            _logger?.LogInformation(
+            FrontComposerDiagnosticLog.StarterEmissionFailed(
+                _logger,
                 ex,
-                "HFC1048: Starter emission failed. AnnotationKey={AnnotationKey} Level={Level}",
                 node.AnnotationKey,
                 level);
             return Header(node) + "// Starter template unavailable: emission failed.";
@@ -70,17 +72,17 @@ public sealed partial class RazorEmitter : IRazorEmitter {
         StringBuilder sb = new(Header(node));
         _ = sb.AppendLine("@using Hexalith.FrontComposer.Contracts.Rendering");
         _ = sb.AppendLine();
-        _ = sb.AppendLine($"<div class=\"fc-template-{Identifier(node.AnnotationKey).ToLowerInvariant()}\">");
+        _ = sb.AppendLine(CultureInfo.InvariantCulture, $"<div class=\"fc-template-{Identifier(node.AnnotationKey).ToLowerInvariant()}\">");
         _ = sb.AppendLine("    @Context.DefaultBody");
         _ = sb.AppendLine("</div>");
         _ = sb.AppendLine();
         _ = sb.AppendLine("@code {");
-        _ = sb.AppendLine($"    [Microsoft.AspNetCore.Components.Parameter] public ProjectionViewContext<{projectionType}> Context {{ get; set; }} = default!;");
+        _ = sb.AppendLine(CultureInfo.InvariantCulture, $"    [Microsoft.AspNetCore.Components.Parameter] public ProjectionViewContext<{projectionType}> Context {{ get; set; }} = default!;");
         _ = sb.AppendLine("}");
         AppendTree(sb, node);
         _ = sb.AppendLine();
         _ = sb.AppendLine("/* Registration:");
-        _ = sb.AppendLine($"services.AddProjectionTemplate<{projectionType}, {componentName}>();");
+        _ = sb.AppendLine(CultureInfo.InvariantCulture, $"services.AddProjectionTemplate<{projectionType}, {componentName}>();");
         _ = sb.AppendLine("*/");
         return sb.ToString();
     }
@@ -95,12 +97,12 @@ public sealed partial class RazorEmitter : IRazorEmitter {
         _ = sb.AppendLine("<span class=\"fc-slot-value\">@Context.Value</span>");
         _ = sb.AppendLine();
         _ = sb.AppendLine("@code {");
-        _ = sb.AppendLine($"    [Microsoft.AspNetCore.Components.Parameter] public FieldSlotContext<{projectionType}, {fieldType}> Context {{ get; set; }} = default!;");
+        _ = sb.AppendLine(CultureInfo.InvariantCulture, $"    [Microsoft.AspNetCore.Components.Parameter] public FieldSlotContext<{projectionType}, {fieldType}> Context {{ get; set; }} = default!;");
         _ = sb.AppendLine("}");
         AppendTree(sb, node);
         _ = sb.AppendLine();
         _ = sb.AppendLine("/* Registration:");
-        _ = sb.AppendLine($"services.AddSlotOverride<{projectionType}>(o => o.{Identifier(node.FieldAccessor ?? "Field")}, typeof({componentName}));");
+        _ = sb.AppendLine(CultureInfo.InvariantCulture, $"services.AddSlotOverride<{projectionType}>(o => o.{Identifier(node.FieldAccessor ?? "Field")}, typeof({componentName}));");
         _ = sb.AppendLine("*/");
         return sb.ToString();
     }
@@ -119,12 +121,12 @@ public sealed partial class RazorEmitter : IRazorEmitter {
         _ = sb.AppendLine("</section>");
         _ = sb.AppendLine();
         _ = sb.AppendLine("@code {");
-        _ = sb.AppendLine($"    [Microsoft.AspNetCore.Components.Parameter] public ProjectionViewContext<{projectionType}> Context {{ get; set; }} = default!;");
+        _ = sb.AppendLine(CultureInfo.InvariantCulture, $"    [Microsoft.AspNetCore.Components.Parameter] public ProjectionViewContext<{projectionType}> Context {{ get; set; }} = default!;");
         _ = sb.AppendLine("}");
         AppendTree(sb, node);
         _ = sb.AppendLine();
         _ = sb.AppendLine("/* Registration:");
-        _ = sb.AppendLine($"services.AddViewOverride<{projectionType}, {componentName}>();");
+        _ = sb.AppendLine(CultureInfo.InvariantCulture, $"services.AddViewOverride<{projectionType}, {componentName}>();");
         _ = sb.AppendLine("*/");
         return sb.ToString();
     }
@@ -145,7 +147,7 @@ public sealed partial class RazorEmitter : IRazorEmitter {
 
     private void AppendNode(StringBuilder sb, ComponentTreeNode node, int depth, HashSet<string> visited) {
         if (depth >= _options.DevMode.MaxNodeDepth) {
-            _ = sb.AppendLine($"{Indent(depth)}- Component tree truncated at MaxNodeDepth={_options.DevMode.MaxNodeDepth}");
+            _ = sb.AppendLine(CultureInfo.InvariantCulture, $"{Indent(depth)}- Component tree truncated at MaxNodeDepth={_options.DevMode.MaxNodeDepth}");
             return;
         }
 
@@ -153,11 +155,11 @@ public sealed partial class RazorEmitter : IRazorEmitter {
             ? node.SourceComponentIdentity
             : node.AnnotationKey;
         if (!visited.Add(annotationKey)) {
-            _ = sb.AppendLine($"{Indent(depth)}- Component tree reference already emitted: {Comment(annotationKey)}");
+            _ = sb.AppendLine(CultureInfo.InvariantCulture, $"{Indent(depth)}- Component tree reference already emitted: {Comment(annotationKey)}");
             return;
         }
 
-        _ = sb.AppendLine($"{Indent(depth)}- {Comment(node.AnnotationKey)} ({node.CurrentLevel})");
+        _ = sb.AppendLine(CultureInfo.InvariantCulture, $"{Indent(depth)}- {Comment(node.AnnotationKey)} ({node.CurrentLevel})");
         int count = 0;
         if (node.Children.IsDefaultOrEmpty) {
             return;
@@ -165,7 +167,7 @@ public sealed partial class RazorEmitter : IRazorEmitter {
 
         foreach (ComponentTreeNode child in node.Children) {
             if (count >= _options.DevMode.MaxFanOut) {
-                _ = sb.AppendLine($"{Indent(depth + 1)}- Component tree fan-out truncated after {_options.DevMode.MaxFanOut} children");
+                _ = sb.AppendLine(CultureInfo.InvariantCulture, $"{Indent(depth + 1)}- Component tree fan-out truncated after {_options.DevMode.MaxFanOut} children");
                 return;
             }
 

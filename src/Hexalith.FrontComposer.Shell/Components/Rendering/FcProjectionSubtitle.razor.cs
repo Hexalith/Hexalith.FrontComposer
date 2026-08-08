@@ -158,7 +158,7 @@ public partial class FcProjectionSubtitle : IAsyncDisposable, IDisposable {
             }
 
             string humanized = HumanizeProjectionTypeName().ToLowerInvariant();
-            return humanized.EndsWith("s", StringComparison.Ordinal) ? humanized : humanized + "s";
+            return humanized.EndsWith('s') ? humanized : humanized + "s";
         }
     }
 
@@ -234,6 +234,7 @@ public partial class FcProjectionSubtitle : IAsyncDisposable, IDisposable {
     /// <inheritdoc />
     public ValueTask DisposeAsync() {
         Dispose();
+        GC.SuppressFinalize(this);
         return ValueTask.CompletedTask;
     }
 
@@ -252,5 +253,6 @@ public partial class FcProjectionSubtitle : IAsyncDisposable, IDisposable {
         }
 
         _countSubscription = null;
+        GC.SuppressFinalize(this);
     }
 }

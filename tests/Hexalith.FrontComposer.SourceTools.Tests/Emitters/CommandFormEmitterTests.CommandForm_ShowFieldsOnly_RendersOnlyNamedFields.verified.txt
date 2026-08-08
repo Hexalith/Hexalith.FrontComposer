@@ -2,7 +2,6 @@
 // Do not edit directly
 
 #nullable enable
-#pragma warning disable ASP0006 // seq++ pattern inside BuildRenderTree
 
 using System;
 using System.Globalization;
@@ -127,9 +126,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         _serverValidationMessages?.Clear(e.FieldIdentifier);
     }
 
-    private void NotifyClientFieldChanged(string propertyName) {
+    private void NotifyClientFieldChanged(string commandPropertyName) {
         if (_editContext is null) return;
-        _editContext.NotifyFieldChanged(new FieldIdentifier(_model, propertyName));
+        _editContext.NotifyFieldChanged(new FieldIdentifier(_model, commandPropertyName));
     }
 
     private CommandLifecycleState _previousLifecycleState = CommandLifecycleState.Idle;
@@ -171,7 +170,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     /// is consulted, and finally the humanized compile-time label is used as a fallback.
     /// Patch 2026-04-16 P-09 (precedence) + P-04 (narrow catch).
     /// </summary>
-    private string ResolveLabel(string propertyName, string staticLabel, bool hasExplicitDisplay)
+    private string ResolveLabel(string commandPropertyName, string staticLabel, bool hasExplicitDisplay)
     {
         if (hasExplicitDisplay)
         {
@@ -180,7 +179,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
         try
         {
-            var localized = Localizer[propertyName];
+            var localized = Localizer[commandPropertyName];
             if (!localized.ResourceNotFound && !string.IsNullOrEmpty(localized.Value))
             {
                 return localized.Value;
@@ -194,7 +193,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         return staticLabel;
     }
 
-    private static bool IsDerivableField(string propertyName) => propertyName switch
+    private static bool IsDerivableField(string commandPropertyName) => commandPropertyName switch
     {
         "MessageId" or "CommandId" or "CorrelationId" or "TenantId" or "UserId" or "Timestamp" or "CreatedAt" or "ModifiedAt" => true,
         _ => false,
@@ -426,53 +425,50 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             _editContext.OnFieldChanged -= OnEditContextFieldChanged;
         }
         LifecycleState.StateChanged -= OnStateChanged;
+        System.GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc />
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
-        int seq = 0;
-        builder.OpenElement(seq++, "div");
+        builder.OpenElement(0, "div");
         // AC3 density: Comfortable by default (patch P13).
-        builder.AddAttribute(seq++, "class", "fc-command-form fc-density-comfortable");
-        builder.AddAttribute(seq++, "data-fc-interactive", _interactiveReady ? "true" : "false");
-        builder.AddAttribute(seq++, "aria-label", "Send IncrementCommand command form");
+        builder.AddAttribute(1, "class", "fc-command-form fc-density-comfortable");
+        builder.AddAttribute(2, "data-fc-interactive", _interactiveReady ? "true" : "false");
+        builder.AddAttribute(3, "aria-label", "Send IncrementCommand command form");
 
-        builder.OpenComponent<FcLifecycleWrapper>(seq++);
-        builder.AddAttribute(seq++, "CorrelationId", _submittedCorrelationId);
-        builder.AddAttribute(seq++, "CommandId", "increment");
-        builder.AddAttribute(seq++, "RejectionMessage", BuildFcLifecycleRejectionCopy());
-        builder.AddAttribute(seq++, "RejectionTitle", BuildFcLifecycleRejectionTitle());
-        builder.AddAttribute(seq++, "RejectionDetails", BuildFcLifecycleRejectionDetails());
-        builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__wrap =>
+        builder.OpenComponent<FcLifecycleWrapper>(4);
+        builder.AddAttribute(5, "CorrelationId", _submittedCorrelationId);
+        builder.AddAttribute(6, "CommandId", "increment");
+        builder.AddAttribute(7, "RejectionMessage", BuildFcLifecycleRejectionCopy());
+        builder.AddAttribute(8, "RejectionTitle", BuildFcLifecycleRejectionTitle());
+        builder.AddAttribute(9, "RejectionDetails", BuildFcLifecycleRejectionDetails());
+        builder.AddAttribute(10, "ChildContent", (RenderFragment)(__wrap =>
         {
-            int wseq = 0;
-            __wrap.OpenComponent<EditForm>(wseq++);
-            __wrap.AddAttribute(wseq++, "EditContext", _editContext);
-            __wrap.AddAttribute(wseq++, "OnValidSubmit", EventCallback.Factory.Create<EditContext>(this, async _ => await OnValidSubmitAsync()));
+            __wrap.OpenComponent<EditForm>(0);
+            __wrap.AddAttribute(1, "EditContext", _editContext);
+            __wrap.AddAttribute(2, "OnValidSubmit", EventCallback.Factory.Create<EditContext>(this, async _ => await OnValidSubmitAsync()));
         RenderFragment<EditContext> formBody = _ => (RenderFragment)(__b =>
         {
-            int cseq = 0;
-            __b.OpenComponent<DataAnnotationsValidator>(cseq++);
+            __b.OpenComponent<DataAnnotationsValidator>(0);
             __b.CloseComponent();
 
-            __b.OpenComponent<FluentValidationSummary>(cseq++);
-            __b.AddAttribute(cseq++, "EditContext", _editContext);
+            __b.OpenComponent<FluentValidationSummary>(1);
+            __b.AddAttribute(2, "EditContext", _editContext);
             __b.CloseComponent();
 
             if (_serverFormLevelErrors.Count > 0)
             {
-                __b.OpenComponent<FluentMessageBar>(cseq++);
-                __b.AddAttribute(cseq++, "Intent", MessageBarIntent.Error);
-                __b.AddAttribute(cseq++, "Title", "Validation failed");
-                __b.AddAttribute(cseq++, "AllowDismiss", true);
-                __b.AddAttribute(cseq++, "ChildContent", (RenderFragment)(__msg =>
+                __b.OpenComponent<FluentMessageBar>(3);
+                __b.AddAttribute(4, "Intent", MessageBarIntent.Error);
+                __b.AddAttribute(5, "Title", "Validation failed");
+                __b.AddAttribute(6, "AllowDismiss", true);
+                __b.AddAttribute(7, "ChildContent", (RenderFragment)(__msg =>
                 {
-                    int mseq = 0;
                     foreach (string error in _serverFormLevelErrors)
                     {
-                        __msg.OpenElement(mseq++, "div");
-                        __msg.AddContent(mseq++, error);
+                        __msg.OpenElement(0, "div");
+                        __msg.AddContent(1, error);
                         __msg.CloseElement();
                     }
                 }));
@@ -481,19 +477,18 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
             if (_serverWarning is not null)
             {
-                __b.OpenComponent<FluentMessageBar>(cseq++);
-                __b.AddAttribute(cseq++, "Intent", MessageBarIntent.Warning);
-                __b.AddAttribute(cseq++, "Title", _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedTitle"].Value : (_serverWarning.Title ?? _serverWarning.Kind.ToString()));
-                __b.AddAttribute(cseq++, "AllowDismiss", true);
-                __b.AddAttribute(cseq++, "ChildContent", (RenderFragment)(__msg =>
+                __b.OpenComponent<FluentMessageBar>(8);
+                __b.AddAttribute(9, "Intent", MessageBarIntent.Warning);
+                __b.AddAttribute(10, "Title", _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedTitle"].Value : (_serverWarning.Title ?? _serverWarning.Kind.ToString()));
+                __b.AddAttribute(11, "AllowDismiss", true);
+                __b.AddAttribute(12, "ChildContent", (RenderFragment)(__msg =>
                 {
-                    int mseq = 0;
                     string body = _serverWarning.Kind == CommandWarningKind.RetryableDispatchFailed ? ShellLocalizer["RetryableDispatchFailedFallback"].Value : (_serverWarning.Detail ?? _serverWarning.EntityLabel ?? "Please review the warning and try again.");
-                    __msg.AddContent(mseq++, body);
+                    __msg.AddContent(0, body);
                     if (_serverWarning.RetryAfter is not null)
                     {
-                        __msg.OpenElement(mseq++, "div");
-                        __msg.AddContent(mseq++, $"Retry after {_serverWarning.RetryAfter.Value.TotalSeconds:0} seconds.");
+                        __msg.OpenElement(1, "div");
+                        __msg.AddContent(2, $"Retry after {_serverWarning.RetryAfter.Value.TotalSeconds:0} seconds.");
                         __msg.CloseElement();
                     }
                 }));
@@ -505,30 +500,30 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, "Amount") >= 0))
             {
             string AmountLabel = ResolveLabel("Amount", "Amount", false);
-            __b.OpenElement(cseq++, "label");
-            __b.AddAttribute(cseq++, "class", "fc-command-field");
-            __b.OpenElement(cseq++, "span");
-            __b.AddAttribute(cseq++, "class", "fc-command-field-label");
-            __b.AddContent(cseq++, AmountLabel);
-            if (true) { __b.AddContent(cseq++, " *"); }
+            __b.OpenElement(13, "label");
+            __b.AddAttribute(14, "class", "fc-command-field");
+            __b.OpenElement(15, "span");
+            __b.AddAttribute(16, "class", "fc-command-field-label");
+            __b.AddContent(17, AmountLabel);
+            if (true) { __b.AddContent(18, " *"); }
             __b.CloseElement();
-            __b.OpenElement(cseq++, "input");
-            __b.AddAttribute(cseq++, "class", "fc-command-input");
-            __b.AddAttribute(cseq++, "value", _AmountString ?? _model.Amount.ToString(CultureInfo.CurrentCulture));
-            __b.AddAttribute(cseq++, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this, e => OnAmountChanged(e.Value?.ToString())));
+            __b.OpenElement(19, "input");
+            __b.AddAttribute(20, "class", "fc-command-input");
+            __b.AddAttribute(21, "value", _AmountString ?? _model.Amount.ToString(CultureInfo.CurrentCulture));
+            __b.AddAttribute(22, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this, e => OnAmountChanged(e.Value?.ToString())));
             __b.SetUpdatesAttributeName("value");
-            __b.AddAttribute(cseq++, "aria-label", AmountLabel);
-            __b.AddAttribute(cseq++, "name", "Amount");
-            __b.AddAttribute(cseq++, "type", "text");
-            __b.AddAttribute(cseq++, "inputmode", "numeric");
-            __b.AddAttribute(cseq++, "aria-invalid", !string.IsNullOrEmpty(_AmountParseError));
+            __b.AddAttribute(23, "aria-label", AmountLabel);
+            __b.AddAttribute(24, "name", "Amount");
+            __b.AddAttribute(25, "type", "text");
+            __b.AddAttribute(26, "inputmode", "numeric");
+            __b.AddAttribute(27, "aria-invalid", !string.IsNullOrEmpty(_AmountParseError));
             __b.CloseElement();
             if (!string.IsNullOrEmpty(_AmountParseError))
             {
-                __b.OpenElement(cseq++, "div");
-                __b.AddAttribute(cseq++, "class", "fc-command-field-message");
-                __b.AddAttribute(cseq++, "role", "alert");
-                __b.AddContent(cseq++, _AmountParseError);
+                __b.OpenElement(28, "div");
+                __b.AddAttribute(29, "class", "fc-command-field-message");
+                __b.AddAttribute(30, "role", "alert");
+                __b.AddContent(31, _AmountParseError);
                 __b.CloseElement();
             }
             __b.CloseElement();
@@ -539,49 +534,48 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, "Note") >= 0))
             {
             string NoteLabel = ResolveLabel("Note", "Note", false);
-            __b.OpenElement(cseq++, "label");
-            __b.AddAttribute(cseq++, "class", "fc-command-field");
-            __b.OpenElement(cseq++, "span");
-            __b.AddAttribute(cseq++, "class", "fc-command-field-label");
-            __b.AddContent(cseq++, NoteLabel);
-            if (false) { __b.AddContent(cseq++, " *"); }
+            __b.OpenElement(32, "label");
+            __b.AddAttribute(33, "class", "fc-command-field");
+            __b.OpenElement(34, "span");
+            __b.AddAttribute(35, "class", "fc-command-field-label");
+            __b.AddContent(36, NoteLabel);
+            if (false) { __b.AddContent(37, " *"); }
             __b.CloseElement();
-            __b.OpenElement(cseq++, "input");
-            __b.AddAttribute(cseq++, "class", "fc-command-input");
-            __b.AddAttribute(cseq++, "value", _model.Note);
-            __b.AddAttribute(cseq++, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this, e => { _model.Note = e.Value?.ToString(); NotifyClientFieldChanged("Note"); }));
+            __b.OpenElement(38, "input");
+            __b.AddAttribute(39, "class", "fc-command-input");
+            __b.AddAttribute(40, "value", _model.Note);
+            __b.AddAttribute(41, "oninput", EventCallback.Factory.Create<ChangeEventArgs>(this, e => { _model.Note = e.Value?.ToString(); NotifyClientFieldChanged("Note"); }));
             __b.SetUpdatesAttributeName("value");
-            __b.AddAttribute(cseq++, "aria-label", NoteLabel);
-            __b.AddAttribute(cseq++, "name", "Note");
-            __b.AddAttribute(cseq++, "type", "text");
+            __b.AddAttribute(42, "aria-label", NoteLabel);
+            __b.AddAttribute(43, "name", "Note");
+            __b.AddAttribute(44, "type", "text");
             __b.CloseElement();
             __b.CloseElement();
             }
 
-            __b.OpenComponent<FluentButton>(cseq++);
-            __b.AddAttribute(cseq++, "Type", ButtonType.Submit);
-            __b.AddAttribute(cseq++, "role", "button");
-            __b.AddAttribute(cseq++, "aria-label", "Send IncrementCommand");
+            __b.OpenComponent<FluentButton>(45);
+            __b.AddAttribute(46, "Type", ButtonType.Submit);
+            __b.AddAttribute(47, "role", "button");
+            __b.AddAttribute(48, "aria-label", "Send IncrementCommand");
             // Enable submit in Idle, Confirmed, or Rejected (terminals allow retry) -- patch P3.
-            __b.AddAttribute(cseq++, "Disabled",
+            __b.AddAttribute(49, "Disabled",
                 !_interactiveReady
                 || (LifecycleState.Value.State != CommandLifecycleState.Idle
                 && LifecycleState.Value.State != CommandLifecycleState.Confirmed
                 && LifecycleState.Value.State != CommandLifecycleState.Rejected));
-            __b.AddAttribute(cseq++, "ChildContent", (RenderFragment)(__btn =>
+            __b.AddAttribute(50, "ChildContent", (RenderFragment)(__btn =>
             {
-                int bseq = 0;
                 if (LifecycleState.Value.State == CommandLifecycleState.Submitting)
                 {
-                    __btn.OpenComponent<FluentSpinner>(bseq++);
-                    __btn.AddAttribute(bseq++, "Style", "width: 20px; height: 20px; margin-right: 8px;");
+                    __btn.OpenComponent<FluentSpinner>(0);
+                    __btn.AddAttribute(1, "Style", "width: 20px; height: 20px; margin-right: 8px;");
                     __btn.CloseComponent();
                 }
-                __btn.AddContent(bseq++, "Send IncrementCommand");
+                __btn.AddContent(2, "Send IncrementCommand");
             }));
             __b.CloseComponent();
         });
-            __wrap.AddAttribute(wseq++, "ChildContent", formBody);
+            __wrap.AddAttribute(3, "ChildContent", formBody);
             __wrap.CloseComponent();
         }));
         builder.CloseComponent();
@@ -725,5 +719,3 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         => _logCommandRejected(logger, correlationId, reason, null);
 
 }
-
-#pragma warning restore ASP0006

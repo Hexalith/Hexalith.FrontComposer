@@ -30,9 +30,13 @@ public sealed class ProjectionTemplateAttribute : Attribute {
     /// <see cref="Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateContractVersion.Current"/>
     /// at the time of authoring.</param>
     public ProjectionTemplateAttribute(Type projectionType, int expectedContractVersion) {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(projectionType);
+#else
         if (projectionType is null) {
             throw new ArgumentNullException(nameof(projectionType));
         }
+#endif
 
         ProjectionType = projectionType;
         ExpectedContractVersion = expectedContractVersion;

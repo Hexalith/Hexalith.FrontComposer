@@ -134,6 +134,9 @@ public sealed class BadgeCountServiceTests {
         StubReader reader = new((_, _) => new ValueTask<int>(0));
         StubNotifier notifier = new();
         ILogger<BadgeCountService> logger = Substitute.For<ILogger<BadgeCountService>>();
+        // Story 11.21 — HFC2113 now flows through FrontComposerDiagnosticLog, whose generated
+        // delegate short-circuits on IsEnabled just like the Warning family already did.
+        logger.IsEnabled(LogLevel.Information).Returns(true);
         using BadgeCountService sut = new(
             catalog, reader, WithNotifier(notifier), logger, new FakeTimeProvider());
 

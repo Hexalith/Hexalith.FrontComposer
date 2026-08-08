@@ -236,9 +236,6 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
         linked.Dispose();
     }
 
-    private void ThrowIfDisposed() {
-        if (_disposed != 0) {
-            throw new ObjectDisposedException(nameof(ReconnectionReconciliationCoordinator));
-        }
-    }
+    private void ThrowIfDisposed()
+        => ObjectDisposedException.ThrowIf(_disposed != 0, typeof(ReconnectionReconciliationCoordinator));
 }

@@ -179,7 +179,7 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         return FrontComposerMcpProtocolMapper.ToCallToolResult(result);
     }
 
-    private static IReadOnlyDictionary<string, JsonElement>? BuildArguments(IDictionary<string, JsonElement>? source) {
+    private static Dictionary<string, JsonElement>? BuildArguments(IDictionary<string, JsonElement>? source) {
         if (source is null) {
             return null;
         }
@@ -248,7 +248,7 @@ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontC
         }
 
         if (string.IsNullOrWhiteSpace(options.LifecycleUriPrefix)
-            || !options.LifecycleUriPrefix.EndsWith("/", StringComparison.Ordinal)
+            || !options.LifecycleUriPrefix.EndsWith('/')
             || !Uri.TryCreate(options.LifecycleUriPrefix, UriKind.Absolute, out Uri? prefixUri)
             || prefixUri.Scheme is not "frontcomposer" and not "https"
             || !string.IsNullOrEmpty(prefixUri.Query)

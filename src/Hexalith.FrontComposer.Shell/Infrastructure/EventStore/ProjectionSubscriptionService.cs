@@ -681,7 +681,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         return true;
     }
 
-    private IReadOnlyDictionary<ProjectionFallbackGroupKey, bool> SnapshotGroupHealth() {
+    private Dictionary<ProjectionFallbackGroupKey, bool> SnapshotGroupHealth() {
         Dictionary<ProjectionFallbackGroupKey, bool> snapshot = [];
         foreach (KeyValuePair<GroupKey, GroupState> group in _activeGroups) {
             snapshot[new ProjectionFallbackGroupKey(group.Key.ProjectionType, group.Key.TenantId)] = group.Value.Health == GroupHealth.Active;
@@ -690,11 +690,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionScopedSubscript
         return snapshot;
     }
 
-    private void ThrowIfDisposed() {
-        if (_disposed) {
-            throw new ObjectDisposedException(nameof(ProjectionSubscriptionService));
-        }
-    }
+    private void ThrowIfDisposed()
+        => ObjectDisposedException.ThrowIf(_disposed, typeof(ProjectionSubscriptionService));
 
     private async ValueTask EnsureRequiredAccessTokenAvailableAsync(CancellationToken cancellationToken) {
         if (_configuredAccessTokenProvider is null) {

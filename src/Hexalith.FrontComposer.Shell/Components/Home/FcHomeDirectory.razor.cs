@@ -74,7 +74,7 @@ public partial class FcHomeDirectory {
         }
 
         return string.Format(
-            System.Globalization.CultureInfo.CurrentUICulture,
+            System.Globalization.CultureInfo.CurrentCulture,
             Localizer["HomeWelcomeTemplate"].Value,
             _resolvedUserName);
     }
@@ -97,7 +97,7 @@ public partial class FcHomeDirectory {
         return Task.CompletedTask;
     }
 
-    private static IReadOnlyList<HomeCardModel> AggregateManifests(
+    private static List<HomeCardModel> AggregateManifests(
         IReadOnlyList<DomainManifest> manifests,
         ImmutableDictionary<Type, int> counts) {
         List<HomeCardModel> result = new(manifests.Count);

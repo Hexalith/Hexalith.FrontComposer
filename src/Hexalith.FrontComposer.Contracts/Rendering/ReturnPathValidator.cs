@@ -1,3 +1,6 @@
+#if NET10_0_OR_GREATER
+using System.Buffers;
+#endif
 using System.Globalization;
 
 namespace Hexalith.FrontComposer.Contracts.Rendering;
@@ -25,6 +28,15 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// </remarks>
 public static class ReturnPathValidator {
     private const int MaxDecodeIterations = 6;
+
+    // Cached delimiter set for the query/fragment split in HasTraversalSegment. The net10 leg uses
+    // SearchValues; netstandard2.0 has no SearchValues, so it keeps the equivalent cached char[]
+    // and the char[] IndexOfAny overload. Both forms are ordinal and match the same two code points.
+#if NET10_0_OR_GREATER
+    private static readonly SearchValues<char> _queryOrFragmentDelimiters = SearchValues.Create("?#");
+#else
+    private static readonly char[] _queryOrFragmentDelimiters = ['?', '#'];
+#endif
 
     /// <summary>
     /// Returns <see langword="true"/> when <paramref name="returnPath"/> is safe to navigate to —
@@ -62,7 +74,7 @@ public static class ReturnPathValidator {
 
         // Require a leading slash so the value resolves under the application's base path
         // rather than relative to the current page.
-        if (!path.StartsWith("/", StringComparison.Ordinal)) {
+        if (!StartsWithSlash(path)) {
             return false;
         }
 
@@ -101,7 +113,7 @@ public static class ReturnPathValidator {
                 return true;
             }
 
-            if (!decoded.StartsWith("/", StringComparison.Ordinal)
+            if (!StartsWithSlash(decoded)
                 || ContainsUnsafeCharacters(decoded)
                 || HasUnsafePathShape(decoded)) {
                 return false;
@@ -112,6 +124,15 @@ public static class ReturnPathValidator {
 
         return false;
     }
+
+    // Ordinal single-character prefix test. `StartsWith(char)` is ordinal by definition but is not
+    // available on netstandard2.0, which keeps the explicit ordinal string overload.
+    private static bool StartsWithSlash(string path)
+#if NET10_0_OR_GREATER
+        => path.StartsWith('/');
+#else
+        => path.StartsWith("/", StringComparison.Ordinal);
+#endif
 
     private static bool HasProtocolRelativePrefix(string path)
         => path.StartsWith("//", StringComparison.Ordinal)
@@ -126,17 +147,21 @@ public static class ReturnPathValidator {
     private static bool HasUnsafePathShape(string path)
         => HasProtocolRelativePrefix(path)
             || path.Contains(":/", StringComparison.Ordinal)
-            || path.IndexOf('\\') >= 0
+            || path.Contains('\\')
             || HasTraversalSegment(path)
-            || path.IndexOf("//", StringComparison.Ordinal) >= 0;
+            || path.Contains("//", StringComparison.Ordinal);
 
     private static bool HasTraversalSegment(string path) {
-        int queryIndex = path.IndexOfAny(new[] { '?', '#' });
+#if NET10_0_OR_GREATER
+        int queryIndex = path.AsSpan().IndexOfAny(_queryOrFragmentDelimiters);
+#else
+        int queryIndex = path.IndexOfAny(_queryOrFragmentDelimiters);
+#endif
         string pathOnly = queryIndex >= 0 ? path.Substring(0, queryIndex) : path;
         return pathOnly == "/.."
             || pathOnly.StartsWith("/../", StringComparison.Ordinal)
             || pathOnly.EndsWith("/..", StringComparison.Ordinal)
-            || pathOnly.IndexOf("/../", StringComparison.Ordinal) >= 0;
+            || pathOnly.Contains("/../", StringComparison.Ordinal);
     }
 
     // Runs on the raw path AND every decoded form, so an unsafe character cannot slip through by

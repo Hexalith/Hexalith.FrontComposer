@@ -52,7 +52,7 @@ public partial class FcPendingCommandSummary : ComponentBase, IDisposable {
             int rejected = SummaryEntries.Count(static entry => entry.Status == PendingCommandStatus.Rejected);
             int unresolved = SummaryEntries.Count(static entry => entry.Status == PendingCommandStatus.NeedsReview);
             return string.Format(
-                CultureInfo.CurrentUICulture,
+                CultureInfo.CurrentCulture,
                 Localizer["PendingCommandSummaryCountsTemplate"].Value,
                 pending,
                 confirmed,
@@ -62,7 +62,7 @@ public partial class FcPendingCommandSummary : ComponentBase, IDisposable {
     }
 
     protected string OverflowText => string.Format(
-        CultureInfo.CurrentUICulture,
+        CultureInfo.CurrentCulture,
         Localizer["PendingCommandSummaryOverflowTemplate"].Value,
         OverflowCount);
 
@@ -77,7 +77,7 @@ public partial class FcPendingCommandSummary : ComponentBase, IDisposable {
             _ => Localizer["PendingCommandSummaryConfirmedTemplate"].Value,
         };
 
-        return string.Format(CultureInfo.CurrentUICulture, template, DisplayName(entry));
+        return string.Format(CultureInfo.CurrentCulture, template, DisplayName(entry));
     }
 
     private static int SummaryPriority(PendingCommandStatus status) =>
@@ -101,7 +101,7 @@ public partial class FcPendingCommandSummary : ComponentBase, IDisposable {
 
         string title = NormalizeClause(string.IsNullOrWhiteSpace(entry.RejectionTitle)
             ? string.Format(
-                CultureInfo.CurrentUICulture,
+                CultureInfo.CurrentCulture,
                 Localizer["PendingCommandSummaryRejectedTitleTemplate"].Value,
                 DisplayName(entry))
             : entry.RejectionTitle!);
@@ -114,7 +114,7 @@ public partial class FcPendingCommandSummary : ComponentBase, IDisposable {
         return dataImpact is null
             ? string.Concat(title, ": ", detail, ".")
             : string.Format(
-                CultureInfo.CurrentUICulture,
+                CultureInfo.CurrentCulture,
                 Localizer["PendingCommandSummaryRejectedBodyTemplate"].Value,
                 title,
                 detail,
@@ -132,6 +132,8 @@ public partial class FcPendingCommandSummary : ComponentBase, IDisposable {
         if (PendingCommandState is not null) {
             PendingCommandState.Changed -= OnPendingCommandStateChanged;
         }
+
+        GC.SuppressFinalize(this);
     }
 
     private void OnPendingCommandStateChanged(object? sender, EventArgs e) {

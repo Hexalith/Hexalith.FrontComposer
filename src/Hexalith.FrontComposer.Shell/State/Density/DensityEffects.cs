@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
@@ -129,29 +130,29 @@ public sealed class DensityEffects(
             HydratedDensityPreference hydrated = await ReadStoredPreferenceAsync(key).ConfigureAwait(false);
             stored = hydrated.UserPreference;
             if (!hydrated.KeyExists) {
-                logger.LogInformation(
-                    "{DiagnosticId}: Density hydration found no stored value — bootstrap defaults apply until the viewport watcher emits. Reason={Reason}.",
+                FrontComposerDiagnosticLog.DensityHydrationEmpty(
+                    logger,
                     FcDiagnosticIds.HFC2106_PreferenceHydrationFallback,
                     "Empty");
             }
         }
         catch (OperationCanceledException) {
-            logger.LogDebug("Density hydration cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.DensityHydrationCancelled(logger);
             return;
         }
         catch (Exception ex) {
             if (IsBrowserStorageUnavailable(ex)) {
-                logger.LogInformation(
+                FrontComposerDiagnosticLog.DensityHydrationDeferred(
+                    logger,
                     ex,
-                    "{DiagnosticId}: Density hydration deferred until browser storage is available. Reason={Reason}.",
                     FcDiagnosticIds.HFC2106_PreferenceHydrationFallback,
                     "BrowserStorageUnavailable");
                 return;
             }
 
-            logger.LogInformation(
+            FrontComposerDiagnosticLog.DensityHydrationErrored(
+                logger,
                 ex,
-                "{DiagnosticId}: Density hydration errored — bootstrap defaults apply until the viewport watcher emits. Reason={Reason}.",
                 FcDiagnosticIds.HFC2106_PreferenceHydrationFallback,
                 "Corrupt");
         }
@@ -232,12 +233,12 @@ public sealed class DensityEffects(
             await storage.SetAsync(key, value).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
-            logger.LogDebug("Density persist cancelled — circuit disposing.");
+            FrontComposerDiagnosticLog.DensityPersistCancelled(logger);
         }
         catch (Exception ex) {
-            logger.LogInformation(
+            FrontComposerDiagnosticLog.DensityPersistFailed(
+                logger,
                 ex,
-                "{DiagnosticId}: Density persistence failed — swallowed (next change retries).",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
         }
     }

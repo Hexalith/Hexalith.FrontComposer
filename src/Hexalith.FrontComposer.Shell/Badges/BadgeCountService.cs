@@ -342,8 +342,8 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         // TryAdd is atomic, so only one thread takes the "true" branch per distinct string — but
         // we keep the lock for future-proofing against split log lines under high concurrency.
         lock (_unresolvedSync) {
-            _logger.LogInformation(
-                "{DiagnosticId}: Projection type-name '{TypeNameString}' failed Type.GetType resolution — most likely an adopter mis-registration.",
+            FrontComposerDiagnosticLog.BadgeProjectionTypeUnresolved(
+                _logger,
                 FcDiagnosticIds.HFC2113_ProjectionTypeUnresolvable,
                 projectionTypeName);
         }

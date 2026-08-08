@@ -50,7 +50,7 @@ internal sealed class EventStoreOptionsValidator : IValidateOptions<EventStoreOp
             return false;
         }
 
-        if (!value.StartsWith("/", StringComparison.Ordinal)) {
+        if (!value.StartsWith('/')) {
             return false;
         }
 
