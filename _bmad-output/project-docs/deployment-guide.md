@@ -101,7 +101,7 @@ controls before a real dispatch:
 | Name | Kind | Requirement |
 |---|---|---|
 | `production` | GitHub environment | required reviewers/protection policy; secrets are unavailable before approval |
-| `HEXALITH_RELEASE_PUBLISH_ENABLED` | repository variable | must be exactly `true` or the pinned Builds publisher freezes Semantic Release and concludes successfully without packages |
+| `HEXALITH_RELEASE_PUBLISH_ENABLED` | repository variable | Release Owner custody. On operator `workflow_dispatch` of Release, the pinned Builds `domain-release.yml` publisher evaluates this variable with an exact, case-sensitive, untrimmed bash match to `true`. Any other value (including absent) freezes publication: Semantic Release (and governed build/candidate/attestation on the governed path) is skipped, the run concludes successfully, and a freeze notice is emitted. Set a repository-level value even when an organization-level value exists — repository shadows organization. Leave unset or non-`true` while publication is unauthorized. `NUGET_API_KEY` alone cannot unfreeze publication. |
 | `NUGET_API_KEY` | production/repository secret | forwarded only to the protected shared publisher |
 | `RELEASE_ATTESTATION_STATUS` | production/repository variable | `attested` or the approved `approved-unsupported` contingency |
 | `RELEASE_ATTESTATION_FALLBACK_APPROVER` | production/repository variable | required for the bounded unsupported-attestation contingency |

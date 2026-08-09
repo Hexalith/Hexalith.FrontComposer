@@ -1219,6 +1219,86 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void ReleaseWorkflow_PinsBuildsHostedPublicationFreezeContract() {
+        // REL-4 supersession: standing freeze lives in the pinned Builds publisher, not a caller
+        // freeze-guard. Load domain-release.yml bytes via `git show {uses-sha}:...` so the tested
+        // artifact is the exact SHA release.yml pins — not a divergent submodule working tree.
+        string root = RepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        MatchCollection domainReleasePins = Regex.Matches(
+            workflow,
+            @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})\b");
+        domainReleasePins.Count.ShouldBe(
+            1,
+            "release.yml must pin exactly one domain-release.yml uses SHA for the Builds freeze contract.");
+        string buildsSha = domainReleasePins[0].Groups["sha"].Value;
+
+        string buildsRoot = Path.Combine(root, "references", "Hexalith.Builds");
+        Directory.Exists(buildsRoot).ShouldBeTrue(
+            "references/Hexalith.Builds must be present so governance can resolve the pinned publisher bytes.");
+        ProcessResult shown = RunProcess(buildsRoot, "git", [
+            "show",
+            $"{buildsSha}:.github/workflows/domain-release.yml",
+        ]);
+        shown.ExitCode.ShouldBe(
+            0,
+            $"git show {buildsSha}:.github/workflows/domain-release.yml failed: {shown.Error}");
+        string domainRelease = shown.Output.Replace("\r\n", "\n", StringComparison.Ordinal);
+        string executableDomainRelease = StripYamlComments(domainRelease);
+
+        MatchCollection freezeSteps = Regex.Matches(
+            domainRelease,
+            @"(?ms)^      - name: Resolve release publication freeze\n        id: publish-gate\n        shell: bash\n        env:\n          HEXALITH_RELEASE_PUBLISH_ENABLED: \$\{\{ vars\.HEXALITH_RELEASE_PUBLISH_ENABLED \}\}\n        run: \|.*?(?=^      - name: |\z)");
+        freezeSteps.Count.ShouldBe(
+            2,
+            "pinned domain-release.yml must host Resolve release publication freeze / publish-gate with vars.HEXALITH_RELEASE_PUBLISH_ENABLED on both release and governed-release paths.");
+        foreach (Match freezeStep in freezeSteps) {
+            freezeStep.Value.ShouldContain(
+                """if [ "${HEXALITH_RELEASE_PUBLISH_ENABLED-}" = "true" ]; then""",
+                customMessage: "each publish-gate run body must exact-match HEXALITH_RELEASE_PUBLISH_ENABLED to true.");
+            freezeStep.Value.ShouldContain(
+                "echo \"publish-enabled=false\" >> \"$GITHUB_OUTPUT\"",
+                customMessage: "each publish-gate run body must emit publish-enabled=false on the non-true path.");
+            freezeStep.Value.ShouldContain(
+                "::notice title=Release publication frozen::",
+                customMessage: "each publish-gate run body must emit the frozen-path notice.");
+        }
+
+        MatchCollection semanticReleaseSteps = Regex.Matches(
+            domainRelease,
+            @"(?m)^      - name: Semantic Release\n");
+        MatchCollection semanticReleaseGates = Regex.Matches(
+            domainRelease,
+            @"(?m)^      - name: Semantic Release\n(?:        #.*\n)*        if: \$\{\{ steps\.publish-gate\.outputs\.publish-enabled == 'true'(?: && steps\.governed-candidate\.outputs\.release-required == 'true')? \}\}\n");
+        semanticReleaseSteps.Count.ShouldBe(
+            semanticReleaseGates.Count,
+            "every Semantic Release step in the pinned publisher must be gated on publish-enabled == 'true'.");
+        semanticReleaseGates.Count.ShouldBe(
+            2,
+            "pinned domain-release.yml must gate both Semantic Release steps on publish-enabled == 'true'.");
+        semanticReleaseGates.Cast<Match>().Count(static match =>
+                match.Value.Contains("steps.governed-candidate.outputs.release-required == 'true'", StringComparison.Ordinal))
+            .ShouldBe(1, "governed-release Semantic Release must also require release-required == 'true'.");
+        semanticReleaseGates.Cast<Match>().Count(static match =>
+                !match.Value.Contains("steps.governed-candidate.outputs.release-required == 'true'", StringComparison.Ordinal))
+            .ShouldBe(1, "non-governed release Semantic Release must require only publish-enabled == 'true'.");
+
+        MatchCollection semanticReleaseRuns = Regex.Matches(
+            executableDomainRelease,
+            @"npx semantic-release");
+        semanticReleaseRuns.Count.ShouldBeGreaterThanOrEqualTo(
+            2,
+            "pinned domain-release.yml must invoke npx semantic-release in executable content on both publisher paths.");
+        foreach (Match run in semanticReleaseRuns) {
+            int lookbackStart = Math.Max(0, run.Index - 2500);
+            string preceding = executableDomainRelease[lookbackStart..run.Index];
+            preceding.ShouldContain(
+                "steps.publish-gate.outputs.publish-enabled == 'true'",
+                customMessage: "every npx semantic-release invocation must sit under a publish-enabled == 'true' step if.");
+        }
+    }
+
+    [Fact]
     public void ReleaseWorkflow_RetiresFreezeOnlyThroughOperatorProductionMigration() {
         string root = RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));

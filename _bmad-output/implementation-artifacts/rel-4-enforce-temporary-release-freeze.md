@@ -1,204 +1,131 @@
 ---
-created: 2026-07-15
-updated: 2026-08-03
-owner: Release Owner + Developer + QA/Test Architect
-sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md
-correctionProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-03.md
-status: in-review
-implemented: 2026-07-18 (dev via REL-3 quick-dev run; stop-the-line precondition)
-scope: minor
-implementationRisk: low-medium
-ordering: stop-the-line — executes before REL-3 development starts
-releaseControl: this story IS the technical freeze; REL-3 owns its later removal/re-scope
+title: 'REL-4: Pin Builds-hosted release freeze after caller supersession'
+type: 'refactor'
+created: '2026-08-09'
+status: 'done'
+baseline_commit: 'b6b7f342d14521eb49e48cb7e853fb436650a591'
+review_loop_iteration: 1
+context:
+  - '{project-root}/_bmad-output/project-docs/deployment-guide.md'
+closureDecision: '1B supersession; 2 partial-waive AC7 caller removal; 3 Builds freeze pin required; 4 deployment-guide rewrite (proposal/sprint-status deferred)'
+historicalEvidenceRun: 'https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29703682203'
 ---
 
-# REL-4: Technically Enforce the Temporary Release Freeze
+<frozen-after-approval reason="human-owned intent — do not modify unless human renegotiates">
 
-Status: in-review.
+## Intent
 
-## Implementation Record (2026-07-18)
+**Problem:** After exact-source dispatch replaced auto `workflow_run` publishing, REL-4’s caller `freeze-guard` is gone and FrontComposer does not pin the Builds freeze that now owns default-frozen publication—so a Builds pin bump can drop the freeze while FC stays green, and the operator runbook still reads like the old world.
 
-- `release.yml` gained the approved `freeze-guard` job and the `release` job's
-  `needs: freeze-guard` + `needs.freeze-guard.outputs.publish-enabled == 'true'` condition,
-  exactly per the Approved Target Shape (header comment extended; `with:`/`secrets:` unchanged;
-  no `workflow_dispatch`/dry-run/approval environment introduced).
-- Governance tests added in `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`:
-  `ReleaseWorkflow_PublishFreezeGate_IsFailClosedByDefault` and
-  `Workflows_HaveNoPublishPathOutsideGatedReleaseWorkflow` (comment-stripped executable-content
-  scan); the stale "No manual dispatch / approval / dry-run gating" comment in
-  `ReleaseWorkflow_RunsViaWorkflowRunAfterCiSuccess` now records the freeze gate as a deliberate,
-  separately-pinned exception (all existing pins kept).
-- Governance lane: 30/30 `CiGovernanceTests` release-related tests green via the direct xUnit v3
-  runner (Release build, 0 warnings/errors).
-- Deployment guide freeze subsection flipped to active-state wording.
-- First CI-authoritative frozen Release run:
-  <https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29703682203>
-  (`freeze-guard` succeeded; the reusable `release` job was skipped).
-- This proves the coarse fail-closed enforcement path only. It does not prove FR24 readiness or
-  authorize publication.
+**Approach:** Keep run `29703682203` as historical caller-freeze evidence; treat the pinned Builds `domain-release.yml` exact `HEXALITH_RELEASE_PUBLISH_ENABLED` gate as the standing freeze; add a FrontComposer governance pin on that pinned workflow; rewrite the deployment-guide freeze row for operator dispatch. Publication stays unauthorized.
 
-Approval: approved by Administrator on 2026-07-15 (Batch-mode correct-course).
+## Boundaries & Constraints
 
-## Story
+**Always:**
+- Historical evidence URL stays cited: https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29703682203
+- Standing freeze = exact POSIX bash match of `HEXALITH_RELEASE_PUBLISH_ENABLED` to `true` in Builds `domain-release.yml` at the exact SHA FrontComposer pins (`uses:` lockstep with `BUILDS_EXECUTION_SHA` / `builds-execution-sha`)
+- Caller stays `workflow_dispatch`-only; do not reintroduce caller `freeze-guard` or caller binding of the freeze variable
+- Only `release.yml` may `uses:` `domain-release.yml`; no executable `npx semantic-release` / `dotnet nuget push` in other repo workflows
+- Partial AC7 waive covers **caller** gate removal only; do not set the variable to `true`
+- Docs for this story: freeze **relocated** to Builds, not abandoned
 
-As the Release Owner,
-I want automated package publication technically disabled by default while REL-3 is being built,
-so that ordinary `fix:`/`feat:` merges to `main` cannot publish another unauthorized release.
+**Ask First:**
+- Changing the pinned Builds execution SHA
+- Restoring auto-publish (`workflow_run` / push release)
+- Authorizing `HEXALITH_RELEASE_PUBLISH_ENABLED=true` or a real release
 
-## Why This Story Exists
+**Never:**
+- Restore caller `freeze-guard` / auto-release shape
+- Edit Hexalith.Builds submodule contents (read/pin only)
+- Own FR24 pack/sign/evidence or claim REL-AI-1 closed
+- Expand into correction-proposal / sprint-status comment rewrites (deferred-work)
 
-The 2026-07-15 REL-3 correction froze publish-capable releases, but only in planning artifacts.
-The executable pipeline still auto-publishes: `release.yml` triggers via `workflow_run` after every
-successful push-CI on `main` and delegates unconditionally to the shared reusable
-`Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main`, whose final step runs
-`npx semantic-release`; `.releaserc.json`'s `publishCmd` pushes unsigned `.nupkg`/`.snupkg` straight
-to nuget.org and `@semantic-release/github` creates the GitHub Release. Product development
-explicitly continues during the freeze, so release-triggering commits are expected on `main`. The
-next such merge would publish v3.2.3 with exactly the v3.2.2 defects (unsigned, invalid manifest,
-`classification=blocked`, `publish_authorized=false`).
+## I/O & Edge-Case Matrix
 
-Per the Administrator's directive, the freeze mechanism must be **common to all Hexalith modules**:
-the identical gate contract is a required Hexalith.Builds upstream item (owner-filed; see the G2
-request document). This story implements the immediate FrontComposer-side enforcement, which does
-not wait for upstream and remains as defense-in-depth afterwards.
+| Scenario | Input / State | Expected Output / Behavior | Error Handling |
+|----------|--------------|---------------------------|----------------|
+| Default frozen | Variable absent / not exact `true` on Builds path | `publish-enabled=false`; Semantic Release skipped; green freeze notice | N/A |
+| Exact enable | Variable exactly `true` | Builds may publish under existing production gates | Not authorized by this story |
+| Malformed enable | `True` / `1` / `yes` / whitespace / empty | Remains frozen (bash exact match) | N/A |
+| Pin regression | Pinned Builds SHA drops freeze contract | New FC governance fact fails | Fail CI |
+| Alternate publish path | Non-`release.yml` gains publish `uses:`/`run:` | Existing no-publish-path fact fails | Fail CI |
 
-## Acceptance Criteria
+</frozen-after-approval>
 
-1. Given no `HEXALITH_RELEASE_PUBLISH_ENABLED` variable is configured, when CI succeeds for a push
-   to `main`, then the `release` job is skipped, `npx semantic-release` never runs, no NuGet or
-   GitHub Release side effect occurs, and the Release run concludes green with an explicit freeze
-   notice.
+## Code Map
 
-2. Given the variable is set to any value other than the exact string `true` (including `True`,
-   `TRUE`, `1`, `yes`, padded whitespace, or empty), when the guard evaluates it, then publication
-   remains frozen — the enabling comparison is an exact POSIX string match in bash, not a
-   case-insensitive GitHub expression.
+- `.github/workflows/release.yml` — `workflow_dispatch` (L5–6); pin `a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a` (L17, L307 `uses:`, L315 `builds-execution-sha`); no freeze tokens (read-only unless Ask First pin change).
+- `references/Hexalith.Builds/.github/workflows/domain-release.yml` @ pin — **Resolve release publication freeze** / `id: publish-gate` on non-governed `release` (~L370–385) and `governed-release` (~L489–504); env binds `vars.HEXALITH_RELEASE_PUBLISH_ENABLED`; bash `= "true"`; Semantic Release `if` requires `publish-enabled == 'true'` (~L435 / ~L969).
+- `tests/.../Governance/CiGovernanceTests.cs` — reuse SHA regex in `ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` (L585+); keep `RetiresFreezeOnlyThroughOperatorProductionMigration` (L1222+), `RequiresManualExactSourceCiBeforeProduction` (L1181+), `HaveNoPublishPathOutsideGatedReleaseWorkflow` (L1238+); **add** Builds freeze-bytes pin via `git show {sha}:.github/workflows/domain-release.yml` (same idea as `tests/ci-governance/stage_release_state.py` L234–245).
+- `tests/.../Governance/ReleaseModelGovernanceTests.cs` — keep ApprovalMatrix free of the freeze variable (L271–280); do not add it there.
+- `_bmad-output/project-docs/deployment-guide.md` — `## Required external configuration` (~L96); rewrite `HEXALITH_RELEASE_PUBLISH_ENABLED` row (~L104) for Builds-hosted freeze under operator dispatch.
 
-3. Given the Release Owner sets the repository variable to exactly `true`, when CI succeeds for a
-   push to `main`, then the release job proceeds under the existing CI-success + push-event guards.
+## Tasks & Acceptance
 
-4. Given the guard job fails or is skipped, when the release job is evaluated, then it is skipped
-   (fail-closed via `needs`).
+**Execution:**
+- [x] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` -- add fact: resolve pinned Builds `domain-release.yml` bytes from `release.yml` `uses` SHA; pin freeze step name, env binding, exact bash `= "true"` match, and Semantic Release `publish-enabled == 'true'` conditions for both paths present in that file -- decision 3 verification gate
+- [x] `_bmad-output/project-docs/deployment-guide.md` -- rewrite freeze variable row for Builds publisher + exact-source dispatch; keep name, exact `true`, Owner custody, org-vs-repo shadowing, `NUGET_API_KEY` residual; stop implying live caller `freeze-guard` / post-CI frozen Release as current procedure -- decision 4 (guide only)
+- [x] `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md` -- keep supersession + historical record coherent with landed pin/docs when closing -- story package honesty
 
-5. Governance tests prove the freeze:
-   - a new `ReleaseWorkflow_PublishFreezeGate_IsFailClosedByDefault` pins the `freeze-guard` job,
-     the `PUBLISH_ENABLED: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}` env binding, the exact
-     bash comparison `[ "${PUBLISH_ENABLED}" = "true" ]`, the `release` job's
-     `needs: freeze-guard` + `needs.freeze-guard.outputs.publish-enabled == 'true'` condition
-     alongside the retained CI-success/push conjuncts, the frozen-branch notice/step-summary, and
-     the REL-3 removal-condition comment marker;
-   - a new `Workflows_HaveNoPublishPathOutsideGatedReleaseWorkflow` scans every
-     `.github/workflows/*.yml` and pins that only `release.yml` contains a `uses:` reference to
-     `domain-release.yml`, and no repository-owned workflow executes `npx semantic-release` or
-     `dotnet nuget push` (assertions must target executable `uses:`/`run:` content — those strings
-     appear elsewhere in comments today).
+**Acceptance Criteria:**
+- Given the pinned Builds SHA in `release.yml`, when Governance tests run, then FC fails if that SHA’s `domain-release.yml` lacks the standing freeze contract.
+- Given current caller `release.yml`, when Governance tests run, then caller still has no `freeze-guard` / no caller freeze-variable binding, stays `workflow_dispatch`-only, and remains the only `domain-release.yml` publish path.
+- Given the deployment guide freeze row, when an operator reads it, then it describes Builds-hosted freeze under operator dispatch—not a live caller `freeze-guard` after CI.
+- Given story closure, when evidence is recorded, then run `29703682203` remains the historical caller-freeze proof and REL-4 still does not authorize publication.
 
-6. Before implementation, the deployment guide labels the freeze guard as an approved target that is not yet operational. After REL-4 lands, the Developer updates it to active-state wording and records governance-test results plus the first CI-authoritative frozen Release run URL showing `freeze-guard` success, release-job skip, and no publication side effect. The active runbook must retain: variable name, exact enabling value, Release Owner-only custody, org-vs-repo shadowing hazard, frozen-run shape, and local `NUGET_API_KEY` residual.
+## Spec Change Log
 
-7. The gate is removed or replaced only when the REL-3 exact-artifact gate is operational and
-   REL-AI-1 records passing real-release evidence; re-enabling publication is a Release Owner
-   variable change, not a workflow edit. The workflow carries a comment marker recording this
-   contract, and the governance test pins the marker.
+- 2026-08-09 (review loop 1 → re-plan): Supersession draft from intent_gap decisions `1B / 2 partial-waive / 3 required / 4 rewrite`. KEEP: historical run URL; exact-match semantics; no alternate publish path; no caller re-bind; publication unauthorized; Builds as common mechanism.
+- 2026-08-09 (token split [S]): Narrowed to Builds freeze pin + deployment-guide freeze row + story coherence. Deferred: correction-proposal annotate, sprint-status comment align, deployment-guide SHA-citation hygiene (see `deferred-work.md`). Avoids: shipping an oversized multi-doc cleanup under one implementer context.
 
-8. The gate contract (variable name, exact-match semantics, default-frozen, caller-vars resolution)
-   is recorded in the Hexalith.Builds upstream request as the common mechanism for all Hexalith
-   modules (done at approval; keep consistent if the implemented shape drifts).
+## Design Notes
 
-## Approved Target Shape (`.github/workflows/release.yml`)
+Load Builds bytes with `git show {pin}:.github/workflows/domain-release.yml` so the tested artifact is the `uses` SHA, not a divergent submodule working tree. One new CiGovernance fact is enough; do not restore caller freeze pins.
 
-```yaml
-jobs:
-  # REL-4 (2026-07-15): temporary technical release freeze (REL-3 / REL-AI-1).
-  # Publication is DISABLED BY DEFAULT. It is enabled only when the Release
-  # Owner-controlled repository variable HEXALITH_RELEASE_PUBLISH_ENABLED is
-  # exactly the string 'true'. The comparison is an exact POSIX match in bash
-  # because GitHub expression '==' is case-insensitive; missing or malformed
-  # values keep the freeze. Frozen runs conclude green with a freeze notice.
-  # REMOVAL/REPLACEMENT is permitted only when the permanent REL-3
-  # exact-artifact gate is operational and REL-AI-1 records passing
-  # real-release evidence; the variable then becomes the standing Release
-  # Owner freeze switch (see architecture.md, FR24 Release Evidence
-  # Architecture). Pinned by CiGovernanceTests.
-  freeze-guard:
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push'
-    runs-on: ubuntu-latest
-    outputs:
-      publish-enabled: ${{ steps.evaluate.outputs.publish-enabled }}
-    steps:
-      - name: Evaluate release publication freeze
-        id: evaluate
-        env:
-          PUBLISH_ENABLED: ${{ vars.HEXALITH_RELEASE_PUBLISH_ENABLED }}
-        run: |
-          set -euo pipefail
-          if [ "${PUBLISH_ENABLED}" = "true" ]; then
-            echo "publish-enabled=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Release publication ENABLED: HEXALITH_RELEASE_PUBLISH_ENABLED is exactly 'true' (Release Owner-controlled)."
-          else
-            echo "publish-enabled=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Release publication FROZEN (REL-3 / REL-AI-1): HEXALITH_RELEASE_PUBLISH_ENABLED is not exactly 'true'. No package will be published."
-            echo "Release publication is frozen until the REL-3 exact-artifact gate is operational." >> "$GITHUB_STEP_SUMMARY"
-          fi
+## Historical Implementation Record (2026-07-18, superseded)
 
-  release:
-    needs: freeze-guard
-    if: >-
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      needs.freeze-guard.outputs.publish-enabled == 'true'
-    permissions:
-      contents: write
-      issues: write
-      pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@main
-```
+Caller `freeze-guard` landed; frozen run https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29703682203. Superseded by exact-source dispatch; standing freeze relocated to pinned Builds publisher.
 
-Extend the existing workflow header comment to describe the freeze. Keep `with:`/`secrets:`
-unchanged. Do NOT introduce `workflow_dispatch`, dry-run inputs, or approval environments.
+## Verification
 
-## Dev Notes
+**Commands:**
+- `dotnet build tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj -c Release` -- expected: 0/0
+- Direct xUnit v3 Governance filter for the new Builds freeze pin + `RetiresFreeze…` + `HaveNoPublishPath…` (`DiffEngine_Disabled=true`) -- expected: green
+- `rg -n "freeze-guard|HEXALITH_RELEASE_PUBLISH_ENABLED" .github/workflows/release.yml` -- expected: no matches
+- Manual: deployment-guide freeze row reads Builds-hosted / operator-dispatch
 
-- **Existing governance-test collision:** `CiGovernanceTests.ReleaseWorkflow_RunsViaWorkflowRunAfterCiSuccess`
-  (`tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`) asserts
-  `ShouldNotContain` for `workflow_dispatch:`, `release_owner_approved`, `release_approver`,
-  `RELEASE_OWNER_APPROVED`, `RELEASE_APPROVER`, `RELEASE_DRY_RUN`, `RELEASE_CONCURRENT_SAME_VERSION`.
-  The approved token names (`freeze-guard`, `publish-enabled`, `HEXALITH_RELEASE_PUBLISH_ENABLED`)
-  do not collide — keep it that way. Amend that test's stale comment ("No manual dispatch / approval
-  / dry-run gating is reintroduced") to record the REL-4 freeze gate as a deliberate,
-  separately-pinned exception; keep all existing pins.
-- **Why bash, not expression `==`:** GitHub Actions expression string comparison is
-  case-insensitive (`'True' == 'true'` is true), which would let a malformed value enable
-  publication — violating AC2. The exact match must live in the shell step; the release job's
-  expression then compares the guard's *controlled* output only.
-- **Skip-not-fail:** frozen runs must conclude green. A red Release run on every merge trains
-  people to ignore red; the freeze is expected behavior, not a failure.
-- **Commit type:** use a `ci/`-prefixed branch and `ci:`/`test:`/`docs:` commit types so REL-4
-  itself cannot trigger a release bump even before the gate merges. Never `feat:`/`fix:` here.
-- **Test run model:** solution-level `dotnet test` with trait filters and
-  `DiffEngine_Disabled=true`; if local VSTest sockets are blocked, run the built
-  `Hexalith.FrontComposer.Shell.Tests` executable directly with `-class` filters for the
-  Governance suite.
-- **Verification of the live behavior** is CI-authoritative: after merge, the next push-CI success
-  on `main` must show Release green with `release` skipped and the freeze notice (record the run
-  URL in this story on completion).
-- This story deliberately does NOT touch `.releaserc.json`, `release-evidence.yml`,
-  `eng/release_evidence.py`, or the Hexalith.Builds submodule. The upstream common gate is
-  owner-filed via the G2 request document, not implemented here.
+## Dev Agent Record (2026-08-09 supersession)
 
-## Implementation Boundary
+Landed Builds freeze pin fact `ReleaseWorkflow_PinsBuildsHostedPublicationFreezeContract` (`git show` of `release.yml` `uses` SHA), rewrote deployment-guide `HEXALITH_RELEASE_PUBLISH_ENABLED` row for Builds-hosted freeze under operator dispatch, and did not restore caller `freeze-guard` or authorize publication. Historical evidence remains https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29703682203. Caller-era fact `ReleaseWorkflow_PublishFreezeGate_IsFailClosedByDefault` remains superseded/absent.
 
-- FrontComposer owns: `release.yml` gate, governance tests, deployment-guide accuracy.
-- Release Owner owns: `HEXALITH_RELEASE_PUBLISH_ENABLED` custody (never `true` before REL-3
-  evidence), org-vs-repo variable posture, filing the extended Hexalith.Builds request.
-- Hexalith.Builds owner owns: the common gate in `domain-release.yml` (upstream timeline).
-- REL-3 owns: later removal/re-scope of the gate on real-release evidence.
+**Review patches (2026-08-09):** strengthened pin to require co-located exact-true + `publish-enabled=false` + freeze notice per freeze step; every `Semantic Release` step gated; every executable `npx semantic-release` under `publish-enabled == 'true'`; clarified deployment-guide freeze sentence (frozen-path success/notice vs enable condition).
 
-## References
+**Verification evidence:** Release `dotnet build` Shell.Tests 0/0; xUnit v3 filter PinsBuildsHosted + RetiresFreeze + HaveNoPublishPath + RequiresManualExactSource → 4/4 passed; `rg` shows no `freeze-guard` / `HEXALITH_RELEASE_PUBLISH_ENABLED` in `.github/workflows/release.yml`.
 
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-release-freeze-enforcement.md`
-- `_bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md`
-- `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md` (AC1)
-- `_bmad-output/planning-artifacts/g2-hexalith-builds-inline-pre-publish-gate-request.md` (second required item)
-- `_bmad-output/project-docs/deployment-guide.md` ("Release freeze control" subsection)
+## Suggested Review Order
+
+**Standing freeze pin**
+
+- Entry: new fact loads pinned Builds bytes and pins fail-closed freeze contract.
+  [`CiGovernanceTests.cs:1222`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs#L1222)
+
+- Co-located exact-true, `publish-enabled=false`, and freeze notice per gate body.
+  [`CiGovernanceTests.cs:1255`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs#L1255)
+
+- Every Semantic Release step gated; every `npx semantic-release` under publish-enabled.
+  [`CiGovernanceTests.cs:1267`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs#L1267)
+
+**Operator runbook**
+
+- Freeze row rewritten for Builds-hosted exact match under operator dispatch.
+  [`deployment-guide.md:104`](../project-docs/deployment-guide.md#L104)
+
+**Caller retirement retained**
+
+- Caller still must not bind freeze variable or host freeze-guard.
+  [`CiGovernanceTests.cs:1302`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs#L1302)
+
+**Deferred tracking**
+
+- Proposal/sprint-status/SHA hygiene split out of this closure.
+  [`deferred-work.md`](deferred-work.md)

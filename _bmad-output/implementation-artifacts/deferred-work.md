@@ -2243,3 +2243,25 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/11-21-recommended-analyzer-product-and-generator-burndown.md`
   summary: The Story 11.21 census records `totalWarnings: 1125` against `locatedDiagnostics: 1120`, and the five unlocated diagnostics are never dispositioned.
   evidence: `story1121Census` in `analyzer-policy-exception-ledger-v1.json`; `ownedTotal` 778 + `deferredToStory1122` 342 reconciles to 1120 exactly. Story 11.21 Task 1 required escalating any unmatched finding, so the five should either be enumerated or the census should state that project-level MSBuild diagnostics without a file location are out of scope.
+
+## Deferred from: REL-4 supersession token split [S] (2026-08-09)
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md`
+  summary: Annotate sprint-change-proposal-2026-08-03.md so every live-caller-freeze claim is marked historical/relocated.
+  evidence: Split from REL-4 supersession closure to keep the implementable story under the token budget; proposal annotate is documentation-only and not required to land the Builds freeze pin.
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md`
+  summary: Align sprint-status.yaml REL-4 / REL-AI-1 release_control comments with Builds-hosted freeze supersession wording.
+  evidence: Split from REL-4 supersession closure; tracking-comment honesty is secondary to the governance pin and deployment-guide operator contract.
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md`
+  summary: Reconcile deployment-guide Builds execution SHA citations with the live release.yml pin (separate from freeze-row rewrite).
+  evidence: Split from REL-4 supersession closure; SHA drift is adjacent docs hygiene, not the freeze-contract acceptance criterion.
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md`
+  summary: Restate Workflows_HaveNoPublishPathOutsideGatedReleaseWorkflow comment for Builds-hosted freeze supersession (still cites 2026-07-15 caller-freeze rationale).
+  evidence: Review patch triage 2026-08-09; comment-only drift does not weaken the executable no-publish-path pin.
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md`
+  summary: Rename artifact file away from caller-enforcement title if desired (`rel-4-enforce-temporary-release-freeze.md` vs Builds-pin supersession).
+  evidence: Review blind-hunter 2026-08-09; cosmetic path naming, not an acceptance failure.
