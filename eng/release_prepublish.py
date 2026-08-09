@@ -1,24 +1,37 @@
 #!/usr/bin/env python3
-"""FR24 pre-publication orchestration for semantic-release (REL-3).
+"""FR24 pre-publication orchestration for exact-source releases (REL-3).
 
-Repository-owned exact-artifact gate. ``prepare`` runs as the semantic-release
-``prepareCmd`` and enforces the Required Artifact Invariant strictly in order:
+Unsigned-author / NuGet.org repository-signature model. The exact-artifact gate is
+split across the Release workflow and semantic-release:
 
-    pack once -> inventory -> tests -> package-consumer validation -> SBOM/symbols
-    -> benchmark candidate evidence -> checksums -> prepare/seal/verify manifest
-    (attestation bound) -> classify-release --require-publishable
+* ``prepare`` + ``bundle`` run in ``release.yml`` ``prepare-candidate`` and enforce the
+  Required Artifact Invariant fail-closed in order:
 
-Every phase is fail-closed: a non-zero exit stops semantic-release BEFORE any
-publication side effect (NuGet, GitHub Release, tag, changelog). There is no
+    pack once (unsigned ``nupkgs/*``) -> inventory -> tests -> package-consumer validation
+    -> SBOM/symbols -> benchmark candidate evidence -> checksums -> prepare/seal/verify
+    manifest (attestation bound) -> classify-release --require-publishable -> bundle
+
+* semantic-release (``.releaserc.json``) then consumes that prepared candidate only:
+
+    ``verifyReleaseCmd`` = ``restore``
+    ``prepareCmd`` = ``verify-prepared``
+    ``publishCmd`` = ``publish``
+
+``verify-prepared`` and ``publish`` re-verify the sealed manifest and consume the
+**sealed** ``release-readiness.json`` classification (sealed-readiness-only). They do
+**not** re-run ``classify-release``. Re-classify at publish changes the authorization
+clock and requires an explicit Ask First decision before enabling.
+
+Every prepare phase is fail-closed: a non-zero exit stops the Release candidate before
+any publication side effect (NuGet, GitHub Release, tag, changelog). There is no
 G1-style record-and-proceed path: a missing package, checksum drift, invalid
 manifest, or incomplete evidence aborts preparation (REL-3 AC5/AC10).
 
-``publish`` runs as the semantic-release ``publishCmd``: it re-verifies the sealed
-manifest and the publishable readiness classification immediately before pushing,
-then pushes ONLY the manifest-authorized sealed ``.nupkg`` paths and their matching
-``.snupkg`` symbol packages. It never rebuilds, repacks, or substitutes artifacts
-(AC11). Divergent per-package outcomes are recorded as a partial-publication
-incident and fail the release (AC14).
+``publish`` re-verifies the sealed manifest and the sealed publishable readiness
+immediately before pushing, then pushes ONLY the manifest-authorized sealed ``.nupkg``
+paths and their matching ``.snupkg`` symbol packages. It never rebuilds, repacks,
+author-signs, or substitutes artifacts (AC11). Divergent per-package outcomes are
+recorded as a partial-publication incident and fail the release (AC14).
 
 Local, non-publishing validation (REL-3 T6) uses ``prepare --non-publishing``:
 the full chain runs identically, classification runs with ``--dry-run true
@@ -648,6 +661,9 @@ def cmd_restore(args: argparse.Namespace) -> int:
 
 
 def cmd_verify_prepared(args: argparse.Namespace) -> int:
+    # Sealed-readiness-only contract (REL-3 residual): do not re-run classify-release.
+    # Authorization is the readiness seal produced during prepare; re-classify would
+    # move the authorization clock after the candidate was already sealed.
     _validate_candidate_descriptor(REPO_ROOT, args.version)
     result = run("prepared-verify", [
         "python3", "eng/release_evidence.py", "verify-manifest",
@@ -715,7 +731,8 @@ def cmd_publish(args: argparse.Namespace) -> int:
     if not api_key:
         raise PhaseFailure("publish", "NUGET_API_KEY is not available; publication fails closed")
 
-    # Re-verify the sealed manifest and readiness immediately before any push (AC10/AC11).
+    # Re-verify the sealed manifest and sealed readiness immediately before any push
+    # (AC10/AC11). Sealed-readiness-only: do not re-run classify-release here.
     # A failed re-verification IS observed post-seal divergence: record the typed
     # incident (AC14) before failing closed.
     verify = run("publish-verify", [

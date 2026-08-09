@@ -350,10 +350,13 @@ jobs:
             echo "Semantic Release completed without the required GitHub Release; publication is inconsistent." >&2
             exit 1
           fi
-          jq -e --arg tag "$tag" '
-            type == "object" and .tag_name == $tag and .draft == false and
-            (.id | type == "number") and (.assets | type == "array")
-          ' release-verification/github-release.json > /dev/null
+          if ! jq -e --arg tag "$tag" '
+            type == "object" and .tag_name == $tag and .draft == false and .immutable == true and
+            (.id | type == "number") and (.assets | type == "array") and (.assets | length > 0)
+          ' release-verification/github-release.json > /dev/null; then
+            echo "GitHub Release metadata is mutable, draft, empty, or malformed." >&2
+            exit 1
+          fi
           gh api "repos/${REPOSITORY}/git/ref/tags/${tag}" > release-verification/tag-ref.json
           echo '[]' > release-verification/tag-objects.json
           object_type="$(jq -er '.object.type' release-verification/tag-ref.json)"
@@ -382,7 +385,8 @@ jobs:
             --expected-tag "$tag" \
             --release release-verification/github-release.json \
             --tag-ref release-verification/tag-ref.json \
-            --tag-objects release-verification/tag-objects.json
+            --tag-objects release-verification/tag-objects.json \
+            --require-immutable
           echo "Published ${tag} from exact source ${DISPATCH_SHA}." >> "$GITHUB_STEP_SUMMARY"
 
   # AD-15: every governed Release attempt emits exactly one verification handoff.
@@ -443,11 +447,21 @@ jobs:
           manifest_sha_json=null
           manifest_seal_json=null
           echo '[]' > artifacts/release-verification-handoff/assets.json
+          # NuGet/GitHub side effects land in the release job; treat that success as published
+          # even when verify-publication never ran, so AD-15 cannot soft-defer afterward.
+          publication_attempted=false
+          if [ "$RELEASE_RESULT" = "success" ] || [ "$PUBLICATION_RESULT" = "success" ]; then
+            publication_attempted=true
+          fi
           if [ "$VERIFY_RESULT" != "success" ] || [ -z "${POLICY_COMMIT:-}" ] || [ -z "${CANDIDATE:-}" ]; then
             jq -n \
               --arg error "AD-13 CI handoff was not authenticated; AD-15 emission deferred" \
               '{ok:false,deferred:true,error:$error}' \
               > artifacts/release-verification-handoff/release-verification-handoff.deferred.json
+            if [ "$publication_attempted" = "true" ]; then
+              echo "::error::AD-15 cannot soft-succeed after publication when AD-13 CI handoff is unavailable"
+              exit 1
+            fi
             echo "AD-15 deferred: AD-13 CI handoff unavailable." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
@@ -463,26 +477,40 @@ jobs:
             --caller-workflow .github/workflows/release.yml \
             --policy-commit "$POLICY_COMMIT" \
             --output artifacts/release-verification-handoff/release-evaluator.json
-          if [ "$PUBLICATION_RESULT" = "success" ] && [ -n "${VERSION:-}" ]; then
+          if [ "$publication_attempted" = "true" ]; then
+            if [ -z "${VERSION:-}" ]; then
+              echo "::error::AD-15 published attempt lacks a release VERSION coordinate"
+              exit 1
+            fi
             published=true
             version_json="$(jq -n --arg v "$VERSION" '$v')"
             tag_json="$(jq -n --arg v "v${VERSION}" '$v')"
-            if gh api "repos/${REPOSITORY}/releases/tags/v${VERSION}" > artifacts/release-verification-handoff/github-release.json; then
-              release_id_json="$(jq -er '.id' artifacts/release-verification-handoff/github-release.json)"
+            if ! gh api "repos/${REPOSITORY}/releases/tags/v${VERSION}" > artifacts/release-verification-handoff/github-release.json; then
+              echo "::error::AD-15 published release lacks a GitHub Release for v${VERSION}"
+              exit 1
             fi
-            if [ "$PREPARE_RESULT" = "success" ]; then
-              gh run download "$RUN_ID" \
-                --repo "$REPOSITORY" \
-                --name "release-candidate-${RUN_ID}-${RUN_ATTEMPT}" \
-                --dir artifacts/release-verification-handoff/candidate || true
-              manifest="artifacts/release-verification-handoff/candidate/release-evidence/sealed-manifest.json"
-              if [ -f "$manifest" ]; then
-                manifest_path_json="$(jq -n --arg p "release-evidence/sealed-manifest.json" '$p')"
-                manifest_sha_json="$(jq -n --arg h "$(sha256sum "$manifest" | awk '{print $1}')" '$h')"
-                manifest_seal_json="$(jq -er '.seal' "$manifest")"
-                manifest_seal_json="$(jq -n --arg h "$manifest_seal_json" '$h')"
-              fi
+            release_id_json="$(jq -er '.id' artifacts/release-verification-handoff/github-release.json)"
+            if [ "$PREPARE_RESULT" != "success" ]; then
+              echo "::error::AD-15 published release requires a successful prepare-candidate artifact"
+              exit 1
             fi
+            gh run download "$RUN_ID" \
+              --repo "$REPOSITORY" \
+              --name "release-candidate-${RUN_ID}-${RUN_ATTEMPT}" \
+              --dir artifacts/release-verification-handoff/candidate
+            manifest="artifacts/release-verification-handoff/candidate/release-evidence/sealed-manifest.json"
+            if [ ! -f "$manifest" ]; then
+              echo "::error::AD-15 published release lacks sealed-manifest.json on the prepared candidate"
+              exit 1
+            fi
+            manifest_path_json="$(jq -n --arg p "release-evidence/sealed-manifest.json" '$p')"
+            manifest_sha_json="$(jq -n --arg h "$(sha256sum "$manifest" | awk '{print $1}')" '$h')"
+            manifest_seal_json="$(jq -er '.seal' "$manifest")"
+            manifest_seal_json="$(jq -n --arg h "$manifest_seal_json" '$h')"
+            python3 eng/dependency_handoff.py materialize-release-assets \
+              --release artifacts/release-verification-handoff/github-release.json \
+              --candidate-root artifacts/release-verification-handoff/candidate \
+              --output artifacts/release-verification-handoff/assets.json
           fi
           jq -n \
             --argjson published "$published" \
@@ -515,6 +543,10 @@ jobs:
             cp "$ci_handoff" artifacts/release-verification-handoff/dependency-release-handoff.json
             echo "AD-15 release-verification-handoff sealed (conclusion=$conclusion)." >> "$GITHUB_STEP_SUMMARY"
           elif [ "$status" -eq 2 ]; then
+            if [ "$published" = "true" ]; then
+              echo "::error::AD-15 create-release cannot soft-defer after publication"
+              exit 1
+            fi
             echo "AD-15 handoff deferred pending active-policy release evaluator authorization." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "::error::AD-15 create-release failed unexpectedly (exit=$status)"

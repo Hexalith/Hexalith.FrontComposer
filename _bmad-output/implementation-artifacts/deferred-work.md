@@ -2265,3 +2265,32 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md`
   summary: Rename artifact file away from caller-enforcement title if desired (`rel-4-enforce-temporary-release-freeze.md` vs Builds-pin supersession).
   evidence: Review blind-hunter 2026-08-09; cosmetic path naming, not an acceptance failure.
+
+## Deferred from: REL-3 residual token split [S] (2026-08-09)
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: Maintain the full historical REL-3 epic body (amended ACs, Implementation Record, 2026-07-18 review findings) as an active implementer surface.
+  evidence: Split under token gate [S]; archived to `rel-3-enforce-fr24-pre-publish-and-reconcile-releases.history.md` so the active plan stays T8-only.
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: REL-5 real governed release, NuGet.org unsigned-upload policy confirmation, and REL-AI-1 closure.
+  evidence: Split from residual review plan; owner-executed terminal evidence is out of T8 fail-closed scope and already tracked on REL-5.
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: GOV-1 / BUILD-REL-1 accepted immutable Builds revision and evaluator authorization closure.
+  evidence: Split from residual review plan; upstream acceptance is a transferred GOV-1 condition, not a T8 workflow patch.
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: T7 ledger completion with final upstream issue/revision and real-release evidence URLs.
+  evidence: Split from residual review plan; depends on REL-5 outcomes and is documentation/ledger work, not the fail-closed residual.
+
+## Deferred from: REL-3 T8 residual review (2026-08-09)
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: Surface distinct diagnostics when require-published-readiness fails for missing/malformed JSON vs unauthorized readiness.
+  evidence: Evidence workflow readiness subprocess currently collapses failures into one authorization message; forensic clarity is secondary to fail-closed behavior already proven.
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-3-enforce-fr24-pre-publish-and-reconcile-releases.md`
+  summary: Add a full fixture-driven jq+CLI harness that executes the release.yml verify-publication step body end-to-end.
+  evidence: Helper unit tests + CLI --require-immutable fixtures + workflow source pins cover the contract; an end-to-end workflow-body harness is extra scaffolding beyond T8.
+

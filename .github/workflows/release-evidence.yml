@@ -130,102 +130,16 @@ jobs:
             > verification-evidence/upstream-run.json
           gh api "repos/${GITHUB_REPOSITORY}/actions/runs/${UPSTREAM_RUN_ID}/attempts/${UPSTREAM_RUN_ATTEMPT}/jobs?per_page=100" \
             > verification-evidence/upstream-jobs.json
-          python3 - <<'PY' >> "$GITHUB_OUTPUT"
-          import json
-          import os
-          import re
-          from pathlib import Path
-
-          def closed(pairs):
-              value = {}
-              for key, item in pairs:
-                  if key in value:
-                      raise ValueError(f"duplicate API member: {key}")
-                  value[key] = item
-              return value
-
-          def load(name):
-              return json.loads(Path(name).read_text(), object_pairs_hook=closed)
-
-          run = load("verification-evidence/upstream-run.json")
-          envelope = load("verification-evidence/upstream-jobs.json")
-          jobs = envelope.get("jobs") if isinstance(envelope, dict) else None
-          if not isinstance(run, dict) or not isinstance(jobs, list):
-              raise SystemExit("malformed Release run/jobs API response")
-          if envelope.get("total_count") != len(jobs):
-              raise SystemExit("ambiguous or paginated Release jobs API response")
-          expected = {
-              "id": int(os.environ["UPSTREAM_RUN_ID"]),
-              "run_attempt": int(os.environ["UPSTREAM_RUN_ATTEMPT"]),
-              "event": "workflow_dispatch",
-              "status": "completed",
-              "conclusion": os.environ["UPSTREAM_CONCLUSION"],
-              "head_branch": "main",
-              "head_sha": os.environ["UPSTREAM_HEAD_SHA"],
-              "path": ".github/workflows/release.yml",
-          }
-          if any(run.get(key) != value for key, value in expected.items()):
-              raise SystemExit("Release run coordinate does not match the authenticated operator dispatch")
-          if re.fullmatch(r"[0-9a-f]{40}", run["head_sha"]) is None:
-              raise SystemExit("Release run head SHA is malformed")
-          if any(not isinstance(job, dict) or job.get("status") != "completed" for job in jobs):
-              raise SystemExit("Release job topology is malformed or incomplete")
-          known = {
-              "verify-source",
-              "plan-release",
-              "prepare-candidate",
-              "release",
-              "release / release",
-              "verify-publication",
-              "emit-verification-handoff",
-          }
-          names = [job.get("name") for job in jobs]
-          if any(name not in known for name in names) or len(names) != len(set(names)):
-              raise SystemExit(f"Release job topology is unknown or ambiguous: {names}")
-          by_name = {job["name"]: job for job in jobs}
-          for required in ("verify-source", "plan-release", "emit-verification-handoff"):
-              if required not in by_name:
-                  raise SystemExit(f"Release job topology lacks {required}")
-          governed = by_name.get("release / release")
-          if governed is not None and governed.get("conclusion") not in {"skipped", None}:
-              disposition = "governed-publication-attempt"
-              governed_attempt = True
-          elif run.get("conclusion") == "success" and by_name["verify-source"].get("conclusion") == "success" and by_name["plan-release"].get("conclusion") == "success":
-              for publication_job in ("prepare-candidate", "release", "verify-publication"):
-                  if publication_job in by_name and by_name[publication_job].get("conclusion") != "skipped":
-                      raise SystemExit(f"successful no-release topology unexpectedly ran {publication_job}")
-              disposition = "no-releasable-commits"
-              governed_attempt = False
-          else:
-              disposition = "rejected-before-publication"
-              governed_attempt = False
-          # Prefer the AD-15 handoff candidate when present; never trust second-hop head_sha alone.
-          ad15_candidate = None
-          ad15_path = Path("verification-evidence/ad15/release-verification-handoff.json")
-          if ad15_path.is_file():
-              ad15 = load(str(ad15_path))
-              if isinstance(ad15, dict) and isinstance(ad15.get("candidate"), str):
-                  ad15_candidate = ad15["candidate"]
-          candidate = ad15_candidate or run["head_sha"]
-          if ad15_candidate is not None and ad15_candidate != run["head_sha"]:
-              # Race fixture: default branch may advance; AD-15 candidate remains authoritative.
-              pass
-          result = {
-              "decision_contract": "frontcomposer.release-run-disposition.v2",
-              "status": disposition,
-              "governed_attempt": governed_attempt,
-              "run_id": run["id"],
-              "run_attempt": run["run_attempt"],
-              "conclusion": run["conclusion"],
-              "head_sha": run["head_sha"],
-              "candidate": candidate,
-              "jobs": [{"name": job["name"], "conclusion": job.get("conclusion")} for job in jobs],
-          }
-          Path("verification-evidence/release-disposition.json").write_text(json.dumps(result, indent=2, sort_keys=True) + "\n")
-          print(f"governed-attempt={'true' if governed_attempt else 'false'}")
-          print(f"disposition={disposition}")
-          print(f"candidate={candidate}")
-          PY
+          python3 eng/release_disposition.py classify \
+            --run verification-evidence/upstream-run.json \
+            --jobs verification-evidence/upstream-jobs.json \
+            --expected-run-id "$UPSTREAM_RUN_ID" \
+            --expected-run-attempt "$UPSTREAM_RUN_ATTEMPT" \
+            --expected-conclusion "$UPSTREAM_CONCLUSION" \
+            --expected-head-sha "$UPSTREAM_HEAD_SHA" \
+            --ad15-handoff verification-evidence/ad15/release-verification-handoff.json \
+            --output verification-evidence/release-disposition.json \
+            --github-output "$GITHUB_OUTPUT"
 
       - name: Record explicit non-publication disposition
         if: steps.disposition.outputs.governed-attempt == 'false'
@@ -443,7 +357,6 @@ jobs:
 
           manifest = json.loads(pathlib.Path("release-evidence/sealed-manifest.json").read_text())
           checksums = json.loads(pathlib.Path("release-evidence/checksums.json").read_text())
-          readiness = json.loads(pathlib.Path("release-evidence/release-readiness.json").read_text())
           version = os.environ["RELEASE_VERSION"]
           tag = os.environ["RELEASE_TAG"]
           failures = []
@@ -460,7 +373,14 @@ jobs:
 
           if manifest.get("tag") != tag or manifest.get("commit_sha") != os.environ["EXPECTED_SHA"]:
               fail("sealed manifest tag/source does not match the authenticated release")
-          if readiness.get("publish_authorized") is not True or readiness.get("classification") not in {"ready", "fallback-approved"}:
+          result = subprocess.run(
+              ["python3", "eng/release_disposition.py", "require-published-readiness",
+               "--readiness", "release-evidence/release-readiness.json"],
+              check=False,
+              capture_output=True,
+              text=True,
+          )
+          if result.returncode != 0:
               fail("published release was not authorized by its sealed readiness evidence")
           rows = manifest.get("packages")
           if not isinstance(rows, list) or len(rows) != 8:

@@ -1193,6 +1193,12 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("create-release");
         workflow.ShouldContain("release-verification-handoff-");
         workflow.ShouldContain("status=completed");
+        workflow.ShouldContain(".immutable == true");
+        workflow.ShouldContain("(.assets | length > 0)");
+        workflow.ShouldContain("--require-immutable");
+        workflow.ShouldContain("materialize-release-assets");
+        workflow.ShouldContain("AD-15 create-release cannot soft-defer after publication");
+        workflow.ShouldContain("AD-15 cannot soft-succeed after publication when AD-13 CI handoff is unavailable");
         File.ReadAllText(Path.Combine(root, "eng/release_contract.py")).ShouldContain("conclusion");
         workflow.ShouldContain("environment: production");
         workflow.ShouldContain("group: release-production");
@@ -1382,11 +1388,15 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("workflows: [Release]");
         workflow.ShouldContain("types: [completed]");
         executable.ShouldNotContain("github.event.workflow_run.conclusion == 'success'");
-        workflow.ShouldContain("no-releasable-commits");
-        workflow.ShouldContain("rejected-before-publication");
-        workflow.ShouldContain("governed-publication-attempt");
+        workflow.ShouldContain("release_disposition.py classify");
         workflow.ShouldContain("ref: ${{ steps.disposition.outputs.candidate }}");
         workflow.ShouldNotContain("ref: ${{ github.event.workflow_run.head_sha }}");
+
+        string dispositionHelper = File.ReadAllText(Path.Combine(root, "eng/release_disposition.py"));
+        dispositionHelper.ShouldContain("no-releasable-commits");
+        dispositionHelper.ShouldContain("rejected-before-publication");
+        dispositionHelper.ShouldContain("governed-publication-attempt");
+        dispositionHelper.ShouldContain("release / release");
 
         // AC13: independent download + verification of the published bytes.
         executable.ShouldContain("gh release download");
@@ -1442,11 +1452,65 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("frontcomposer.release-run-disposition.v2");
         workflow.ShouldContain("release-verification-handoff-");
         workflow.ShouldContain("dependency_handoff.py verify-release");
-        workflow.ShouldContain("emit-verification-handoff");
+        dispositionHelper.ShouldContain("emit-verification-handoff");
         workflow.ShouldContain("prepared-candidate.json");
         workflow.ShouldContain("GitHub Release tag does not resolve to the dispatched source SHA");
         releaseConfig.ShouldNotContain("classify-release");
         releaseConfig.ShouldNotContain("CycloneDX");
+
+        // Runtime proof: completed release / release topology must classify as governed.
+        string sha = new string('a', 40);
+        string workRoot = Path.Combine(Path.GetTempPath(), $"fc-disposition-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(workRoot);
+        try {
+            string runPath = Path.Combine(workRoot, "upstream-run.json");
+            string jobsPath = Path.Combine(workRoot, "upstream-jobs.json");
+            string outputPath = Path.Combine(workRoot, "release-disposition.json");
+            File.WriteAllText(runPath, $$"""
+            {
+              "id": 42,
+              "run_attempt": 1,
+              "event": "workflow_dispatch",
+              "status": "completed",
+              "conclusion": "success",
+              "head_branch": "main",
+              "head_sha": "{{sha}}",
+              "path": ".github/workflows/release.yml"
+            }
+            """);
+            File.WriteAllText(jobsPath, $$"""
+            {
+              "total_count": 7,
+              "jobs": [
+                {"name":"verify-source","status":"completed","conclusion":"success"},
+                {"name":"plan-release","status":"completed","conclusion":"success"},
+                {"name":"prepare-candidate","status":"completed","conclusion":"success"},
+                {"name":"release","status":"completed","conclusion":"success"},
+                {"name":"release / release","status":"completed","conclusion":"success"},
+                {"name":"verify-publication","status":"completed","conclusion":"success"},
+                {"name":"emit-verification-handoff","status":"completed","conclusion":"success"}
+              ]
+            }
+            """);
+            ProcessResult disposition = RunPython(root, [
+                "eng/release_disposition.py",
+                "classify",
+                "--run", runPath,
+                "--jobs", jobsPath,
+                "--expected-run-id", "42",
+                "--expected-run-attempt", "1",
+                "--expected-conclusion", "success",
+                "--expected-head-sha", sha,
+                "--output", outputPath,
+            ]);
+            disposition.ExitCode.ShouldBe(0, disposition.Error);
+            using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(outputPath));
+            doc.RootElement.GetProperty("governed_attempt").GetBoolean().ShouldBeTrue();
+            doc.RootElement.GetProperty("status").GetString().ShouldBe("governed-publication-attempt");
+        }
+        finally {
+            Directory.Delete(workRoot, recursive: true);
+        }
     }
 
     [Fact]

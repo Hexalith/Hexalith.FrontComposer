@@ -290,6 +290,8 @@ def validate_publication(
         raise ContractError("GitHub Release API response has malformed id/assets")
     if require_immutable and release.get("immutable") is not True:
         raise ContractError("GitHub Release must be immutable")
+    if require_immutable and len(release.get("assets") or []) < 1:
+        raise ContractError("GitHub Release must include at least one durable asset")
     if not isinstance(tag_ref, dict) or tag_ref.get("ref") != f"refs/tags/{expected_tag}":
         raise ContractError("tag-ref API response does not identify the expected tag")
     target = tag_ref.get("object")

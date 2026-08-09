@@ -401,6 +401,73 @@ def create_release_handoff(
     return validate_release_handoff(handoff, ci_handoff_raw=ci_handoff_raw)
 
 
+_UNSAFE_ASSET_NAME_CHARS = frozenset("*?[]/\\")
+
+
+def materialize_release_assets(*, release: Any, candidate_root: Path) -> list[dict[str, Any]]:
+    """Build the ordered AD-15 assets array from a GitHub Release + prepared candidate files.
+
+    Candidate bytes are authoritative. GitHub digests are optional cross-checks only and
+    never authorize an asset without a unique confined candidate file.
+    """
+    if not isinstance(release, dict) or not isinstance(release.get("assets"), list):
+        raise HandoffError("GitHub Release assets must be an array")
+    if not candidate_root.is_dir():
+        raise HandoffError("prepared candidate root is missing")
+    resolved_root = candidate_root.resolve()
+    rows: list[dict[str, Any]] = []
+    seen_names: set[str] = set()
+    for index, asset in enumerate(release["assets"]):
+        if not isinstance(asset, dict):
+            raise HandoffError(f"GitHub Release assets[{index}] must be an object")
+        name = asset.get("name")
+        size = asset.get("size")
+        if not isinstance(name, str) or not name or not name.isascii():
+            raise HandoffError(f"GitHub Release assets[{index}].name is invalid")
+        if (
+            any(char in _UNSAFE_ASSET_NAME_CHARS for char in name)
+            or ".." in name
+            or name in {".", ".."}
+        ):
+            raise HandoffError(f"GitHub Release assets[{index}].name is unsafe: {name!r}")
+        if name in seen_names:
+            raise HandoffError(f"GitHub Release assets contain duplicate name {name!r}")
+        seen_names.add(name)
+        if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+            raise HandoffError(f"GitHub Release assets[{index}].size must be a nonnegative integer")
+        matches = [
+            path
+            for path in candidate_root.rglob("*")
+            if path.is_file() and path.name == name
+        ]
+        if len(matches) != 1:
+            raise HandoffError(f"prepared candidate does not uniquely contain release asset {name!r}")
+        matched = matches[0]
+        try:
+            resolved = matched.resolve()
+        except OSError as exc:
+            raise HandoffError(f"prepared candidate asset {name!r} could not be resolved") from exc
+        if not resolved.is_file() or not resolved.is_relative_to(resolved_root):
+            raise HandoffError(f"prepared candidate asset {name!r} escapes the candidate root")
+        if resolved.stat().st_size != size:
+            raise HandoffError(f"prepared candidate size mismatch for release asset {name!r}")
+        sha256 = hashlib.sha256(resolved.read_bytes()).hexdigest()
+        digest = asset.get("digest")
+        if digest is not None and digest != "":
+            if not isinstance(digest, str) or not digest.startswith("sha256:"):
+                raise HandoffError(f"GitHub Release assets[{index}].digest must use sha256:<hex> form")
+            expected = digest[len("sha256:") :]
+            if re.fullmatch(r"[0-9a-f]{64}", expected) is None:
+                raise HandoffError(f"GitHub Release assets[{index}].digest is not lowercase 64-hex")
+            if sha256 != expected:
+                raise HandoffError(f"prepared candidate digest mismatch for release asset {name!r}")
+        rows.append({"name": name, "sha256": sha256, "size": size})
+    rows = sorted(rows, key=lambda row: (row["name"], row["sha256"], row["size"]))
+    if not rows or len({dg.canonical_bytes(item) for item in rows}) != len(rows):
+        raise HandoffError("published Release assets must be non-empty, sorted, and unique")
+    return rows
+
+
 def _load(path: str) -> tuple[Any, bytes]:
     raw = Path(path).read_bytes()
     return dg.load_json_bytes(raw, path), raw
@@ -589,6 +656,10 @@ def build_parser() -> argparse.ArgumentParser:
     create_release.add_argument("--manifest", required=True)
     create_release.add_argument("--assets", required=True)
     create_release.add_argument("--output", required=True)
+    materialize_assets = sub.add_parser("materialize-release-assets")
+    materialize_assets.add_argument("--release", required=True)
+    materialize_assets.add_argument("--candidate-root", required=True)
+    materialize_assets.add_argument("--output", required=True)
     create_source = sub.add_parser("create-source")
     create_source.add_argument("--evidence", required=True)
     create_source.add_argument("--run-id", required=True, type=int)
@@ -637,6 +708,15 @@ def main(argv: list[str] | None = None) -> int:
             raw = _write_json(Path(args.output), handoff)
             print(json.dumps({"ok": True, "sha256": hashlib.sha256(raw).hexdigest()}, sort_keys=True))
             return 0
+        if args.command == "materialize-release-assets":
+            release_value, _ = _load(args.release)
+            assets = materialize_release_assets(
+                release=release_value,
+                candidate_root=Path(args.candidate_root).resolve(),
+            )
+            raw = _write_json(Path(args.output), assets)
+            print(json.dumps({"ok": True, "count": len(assets), "sha256": hashlib.sha256(raw).hexdigest()}, sort_keys=True))
+            return 0
         if args.command == "create-release":
             _ci_value, ci_raw = _load(args.ci_handoff)
             evaluator = _load_evaluator(args.evaluator)
@@ -645,6 +725,7 @@ def main(argv: list[str] | None = None) -> int:
             assets_value, _ = _load(args.assets)
             if not isinstance(assets_value, list):
                 raise HandoffError("Release handoff assets file must contain a JSON array")
+            published = isinstance(release_value, dict) and release_value.get("published") is True
             policy_commit = dg.require_commit(args.policy_commit, "create-release policy commit")
             policy, _raw, _projection = dg.load_policy_at_commit(checkout_root, policy_commit)
             try:
@@ -660,6 +741,11 @@ def main(argv: list[str] | None = None) -> int:
                     assets=assets_value,
                 )
             except dg.GraphError as exc:
+                # Published attempts must never soft-defer (exit 2); missing sealed coords,
+                # unauthorized evaluators, or validation failures fail closed with exit 1.
+                if published:
+                    print(json.dumps({"ok": False, "deferred": False, "error": str(exc)}, sort_keys=True))
+                    return 1
                 return _deferred_result(Path(args.output), str(exc))
             raw = _write_json(Path(args.output), handoff)
             print(json.dumps({"ok": True, "sha256": hashlib.sha256(raw).hexdigest()}, sort_keys=True))

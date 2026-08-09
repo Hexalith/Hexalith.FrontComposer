@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import pathlib
 import sys
@@ -257,6 +258,172 @@ class HandoffTests(unittest.TestCase):
                         run_attempt=1,
                         evaluator=evaluator,
                     )
+
+    def test_materialize_release_assets_hashes_candidate_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            candidate = root / "candidate"
+            package = candidate / "nupkgs" / "Package.1.0.0.nupkg"
+            package.parent.mkdir(parents=True)
+            package.write_bytes(b"exact-bytes")
+            digest = hashlib.sha256(b"exact-bytes").hexdigest()
+            release = {
+                "assets": [
+                    {
+                        "name": "Package.1.0.0.nupkg",
+                        "size": len(b"exact-bytes"),
+                        "digest": f"sha256:{digest}",
+                    },
+                ],
+            }
+            assets = dh.materialize_release_assets(release=release, candidate_root=candidate)
+            self.assertEqual(
+                [{"name": "Package.1.0.0.nupkg", "sha256": digest, "size": 11}],
+                assets,
+            )
+
+    def test_materialize_release_assets_rejects_digest_and_path_negatives(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            candidate = root / "candidate"
+            package = candidate / "nupkgs" / "Package.1.0.0.nupkg"
+            package.parent.mkdir(parents=True)
+            package.write_bytes(b"exact-bytes")
+            digest = hashlib.sha256(b"exact-bytes").hexdigest()
+
+            with self.assertRaises(dh.HandoffError):
+                dh.materialize_release_assets(
+                    release={"assets": [{
+                        "name": "Package.1.0.0.nupkg",
+                        "size": len(b"exact-bytes"),
+                        "digest": f"sha256:{'f' * 64}",
+                    }]},
+                    candidate_root=candidate,
+                )
+
+            with self.assertRaises(dh.HandoffError):
+                dh.materialize_release_assets(
+                    release={"assets": [{
+                        "name": "Missing.1.0.0.nupkg",
+                        "size": 4,
+                        "digest": f"sha256:{digest}",
+                    }]},
+                    candidate_root=candidate,
+                )
+
+            for unsafe in ("../Package.1.0.0.nupkg", "nested/Package.1.0.0.nupkg", "*.nupkg", "Pack?.nupkg", "Pack[a].nupkg"):
+                with self.subTest(name=unsafe):
+                    with self.assertRaises(dh.HandoffError):
+                        dh.materialize_release_assets(
+                            release={"assets": [{"name": unsafe, "size": 1}]},
+                            candidate_root=candidate,
+                        )
+
+            outside = root / "outside"
+            outside.mkdir()
+            target = outside / "Escape.1.0.0.nupkg"
+            target.write_bytes(b"evil-bytes")
+            link = candidate / "Escape.1.0.0.nupkg"
+            link.symlink_to(target)
+            with self.assertRaises(dh.HandoffError):
+                dh.materialize_release_assets(
+                    release={"assets": [{"name": "Escape.1.0.0.nupkg", "size": len(b"evil-bytes")}]},
+                    candidate_root=candidate,
+                )
+
+            duplicate = candidate / "dup" / "Package.1.0.0.nupkg"
+            duplicate.parent.mkdir(parents=True)
+            duplicate.write_bytes(b"exact-bytes")
+            with self.assertRaises(dh.HandoffError):
+                dh.materialize_release_assets(
+                    release={"assets": [{"name": "Package.1.0.0.nupkg", "size": len(b"exact-bytes")}]},
+                    candidate_root=candidate,
+                )
+
+            single = root / "single-candidate"
+            single_pkg = single / "nupkgs" / "Only.1.0.0.nupkg"
+            single_pkg.parent.mkdir(parents=True)
+            single_pkg.write_bytes(b"only-bytes")
+            with self.assertRaises(dh.HandoffError):
+                dh.materialize_release_assets(
+                    release={"assets": [
+                        {"name": "Only.1.0.0.nupkg", "size": len(b"only-bytes")},
+                        {"name": "Only.1.0.0.nupkg", "size": len(b"only-bytes")},
+                    ]},
+                    candidate_root=single,
+                )
+
+    def test_published_create_release_hard_fails_instead_of_deferred(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            release_path = root / "release.json"
+            manifest_path = root / "manifest.json"
+            assets_path = root / "assets.json"
+            output_path = root / "handoff.json"
+            release_path.write_text(json.dumps({
+                "version": "1.2.3",
+                "tag": "v1.2.3",
+                "github_release_id": 9,
+                "published": True,
+            }), encoding="utf-8")
+            manifest_path.write_text(json.dumps({
+                "path": None,
+                "sha256": None,
+                "seal": None,
+            }), encoding="utf-8")
+            assets_path.write_text("[]\n", encoding="utf-8")
+            ci = self._ci_handoff()
+            ci_path = root / "ci.json"
+            ci_path.write_bytes(json.dumps(ci, sort_keys=True, separators=(",", ":")).encode("utf-8"))
+            evaluator = self._evaluator("release")
+            evaluator_path = root / "evaluator.json"
+            evaluator_path.write_text(json.dumps(evaluator), encoding="utf-8")
+            # Empty authorizations force create_release_handoff to fail; published must not soft-defer.
+            policy = {
+                "schema": dg.POLICY_SCHEMA,
+                "builds_identity": "github.com/hexalith/hexalith.builds",
+                "trusted_identities": [{"identity": dh.ROOT_REPOSITORY, "local_path": "."}],
+                "semantic_profiles": {},
+                "owner_profiles": {},
+                "module_build_registry": {},
+                "resource_limits": {
+                    "max_edges": 4096,
+                    "max_ls_tree_bytes": 67108864,
+                    "max_gitmodules_bytes": 1048576,
+                    "max_catalog_blob_bytes": 4194304,
+                    "max_contract_tree_files": 16384,
+                    "max_contract_tree_blob_bytes": 16777216,
+                    "max_contract_tree_total_bytes": 268435456,
+                    "max_workflow_closure_depth": 16,
+                    "max_workflow_closure_sources": 256,
+                    "max_workflow_source_blob_bytes": 1048576,
+                    "max_workflow_source_total_bytes": 16777216,
+                },
+                "evaluator_authorizations": {"ci": [], "release": [], "post_release": []},
+            }
+            with mock.patch.object(dg, "load_policy_at_commit", return_value=(policy, b"{}", {
+                "schema": dg.POLICY_SCHEMA,
+                "repository": dh.ROOT_REPOSITORY,
+                "path": dg.POLICY_PATH,
+                "commit": self.base,
+                "sha256": "4" * 64,
+            })):
+                status = dh.main([
+                    "--root", str(root),
+                    "create-release",
+                    "--ci-handoff", str(ci_path),
+                    "--release-run-id", "50",
+                    "--release-run-attempt", "1",
+                    "--conclusion", "success",
+                    "--evaluator", str(evaluator_path),
+                    "--policy-commit", self.base,
+                    "--release", str(release_path),
+                    "--manifest", str(manifest_path),
+                    "--assets", str(assets_path),
+                    "--output", str(output_path),
+                ])
+            self.assertEqual(1, status)
+            self.assertFalse(output_path.with_suffix(".deferred.json").exists())
 
 
 if __name__ == "__main__":

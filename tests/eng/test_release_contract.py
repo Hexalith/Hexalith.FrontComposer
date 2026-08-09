@@ -87,13 +87,21 @@ class ReleaseContractTests(unittest.TestCase):
                 rc.validate_package_manifest(ROOT, path, 8)
 
     def test_publication_requires_non_draft_release_and_exact_tag_sha(self) -> None:
-        release = {"id": 10, "tag_name": "v1.2.3", "draft": False, "immutable": True, "assets": []}
+        release = {
+            "id": 10,
+            "tag_name": "v1.2.3",
+            "draft": False,
+            "immutable": True,
+            "assets": [{"id": 1, "name": "pkg.nupkg"}],
+        }
         tag_ref = {"ref": "refs/tags/v1.2.3", "object": {"type": "commit", "sha": self.sha}}
         rc.validate_publication(self.sha, "v1.2.3", release, tag_ref, [], require_immutable=True)
         cases = [
             (None, tag_ref, []),
             ({**release, "draft": True}, tag_ref, []),
             ({**release, "tag_name": "v1.2.4"}, tag_ref, []),
+            ({**release, "immutable": False}, tag_ref, []),
+            ({**release, "assets": []}, tag_ref, []),
             (release, {"ref": "refs/tags/v1.2.3", "object": {"type": "commit", "sha": "b" * 40}}, []),
             (release, {"ref": "refs/tags/v1.2.3", "object": {"type": "tag", "sha": "c" * 40}}, []),
         ]
@@ -101,6 +109,42 @@ class ReleaseContractTests(unittest.TestCase):
             with self.subTest(release=changed_release, tag_ref=changed_ref):
                 with self.assertRaises(rc.ContractError):
                     rc.validate_publication(self.sha, "v1.2.3", changed_release, changed_ref, tag_objects, require_immutable=True)
+
+    def test_publication_cli_require_immutable_rejects_mutable_and_empty_assets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            work = pathlib.Path(temporary)
+            tag_ref = {"ref": "refs/tags/v1.2.3", "object": {"type": "commit", "sha": self.sha}}
+            (work / "tag-ref.json").write_text(json.dumps(tag_ref), encoding="utf-8")
+            (work / "tag-objects.json").write_text("[]\n", encoding="utf-8")
+            for label, release in (
+                ("mutable", {
+                    "id": 10,
+                    "tag_name": "v1.2.3",
+                    "draft": False,
+                    "immutable": False,
+                    "assets": [{"id": 1, "name": "pkg.nupkg"}],
+                }),
+                ("empty-assets", {
+                    "id": 10,
+                    "tag_name": "v1.2.3",
+                    "draft": False,
+                    "immutable": True,
+                    "assets": [],
+                }),
+            ):
+                with self.subTest(label=label):
+                    release_path = work / f"{label}.json"
+                    release_path.write_text(json.dumps(release), encoding="utf-8")
+                    status = rc.main([
+                        "publication",
+                        "--expected-sha", self.sha,
+                        "--expected-tag", "v1.2.3",
+                        "--release", str(release_path),
+                        "--tag-ref", str(work / "tag-ref.json"),
+                        "--tag-objects", str(work / "tag-objects.json"),
+                        "--require-immutable",
+                    ])
+                    self.assertEqual(1, status)
 
     def test_builds_identity_rejects_mismatched_workflow_input_or_gitlink(self) -> None:
         approved = "a" * 40

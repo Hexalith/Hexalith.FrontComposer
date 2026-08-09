@@ -150,7 +150,7 @@ public sealed class ReleaseModelGovernanceTests {
         // AC16 (T5 "post-publication evidence cannot authorize retroactively"): the
         // independent verifier only DOWNLOADS and COMPARES. It never classifies, and it
         // fails when the downloaded readiness was not already publish-authorized before
-        // publication. Comment-stripped so prose mentioning the banned command is inert.
+        // publication. Runtime proof executes the shared readiness gate helper.
         string root = CiGovernanceTests.RepositoryRoot();
         string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
         string executable = CiGovernanceTests.StripYamlComments(workflow);
@@ -159,14 +159,41 @@ public sealed class ReleaseModelGovernanceTests {
             "classify-release",
             customMessage: "AC16: the post-publication verifier must never run classification.");
         executable.ShouldContain(
+            "release_disposition.py\", \"require-published-readiness",
+            customMessage: "AC16: the verifier must invoke the shared readiness gate helper.");
+        executable.ShouldContain(
             "was not authorized by its sealed readiness evidence",
             customMessage: "AC16: the verifier must fail when the published release lacked prior authorization.");
         executable.ShouldContain(
-            "publish_authorized",
-            customMessage: "AC16: the verifier must check the downloaded readiness classification.");
-        executable.ShouldContain(
             "partial-publish-incident",
             customMessage: "AC14/AC19: observed divergence must produce a typed incident record.");
+
+        string workRoot = Path.Combine(Path.GetTempPath(), $"fc-retroactive-auth-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(workRoot);
+        try {
+            string unauthorized = Path.Combine(workRoot, "unauthorized-readiness.json");
+            string authorized = Path.Combine(workRoot, "authorized-readiness.json");
+            File.WriteAllText(unauthorized, """{"classification":"blocked","publish_authorized":false}""");
+            File.WriteAllText(authorized, """{"classification":"ready","publish_authorized":true}""");
+
+            CiGovernanceTests.ProcessResult blocked = CiGovernanceTests.RunPython(root, [
+                "eng/release_disposition.py",
+                "require-published-readiness",
+                "--readiness", unauthorized,
+            ]);
+            blocked.ExitCode.ShouldBe(1, "unauthorized downloaded readiness must fail closed");
+            blocked.Error.ShouldContain("was not authorized by its sealed readiness evidence");
+
+            CiGovernanceTests.ProcessResult ready = CiGovernanceTests.RunPython(root, [
+                "eng/release_disposition.py",
+                "require-published-readiness",
+                "--readiness", authorized,
+            ]);
+            ready.ExitCode.ShouldBe(0, ready.Error);
+        }
+        finally {
+            Directory.Delete(workRoot, recursive: true);
+        }
     }
 
     [Fact]

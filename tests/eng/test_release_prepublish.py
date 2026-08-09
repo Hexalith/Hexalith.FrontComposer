@@ -107,6 +107,41 @@ class ReleasePrepublishTests(unittest.TestCase):
         )
         self.assertLess(restore_idx, validation_idx)
 
+    def test_verify_prepared_and_publish_are_sealed_readiness_only(self) -> None:
+        source = (ROOT / "eng" / "release_prepublish.py").read_text(encoding="utf-8")
+        verify_start = source.index("def cmd_verify_prepared")
+        publish_start = source.index("def cmd_publish")
+        main_start = source.index("\ndef main")
+        verify_section = source[verify_start:publish_start]
+        publish_section = source[publish_start:main_start]
+        self.assertIn("Sealed-readiness-only", verify_section)
+        self.assertIn("Sealed-readiness-only", publish_section)
+        # Executable invocations must not re-classify; comments may name the banned command.
+        self.assertNotIn('"classify-release"', verify_section)
+        self.assertNotIn("'classify-release'", verify_section)
+        self.assertNotIn('"classify-release"', publish_section)
+        self.assertNotIn("'classify-release'", publish_section)
+        self.assertIn("release-readiness.json", verify_section)
+        self.assertIn("release-readiness.json", publish_section)
+        docstring = source.split('"""', 2)[1]
+        self.assertIn("prepare`` + ``bundle", docstring)
+        self.assertIn("verifyReleaseCmd", docstring)
+        self.assertIn("sealed-readiness-only", docstring)
+        self.assertNotIn("nupkgs-signed", docstring)
+
+    def test_unsigned_candidate_validation_remains_on_prepare_bundle_restore(self) -> None:
+        source = (ROOT / "eng" / "release_prepublish.py").read_text(encoding="utf-8")
+        self.assertIn('_validate_unsigned_candidates(REPO_ROOT, "pack-once")', source)
+        self.assertIn('_validate_unsigned_candidates(REPO_ROOT, "bundle")', source)
+        self.assertIn('_validate_unsigned_candidates(base, "restore")', source)
+        bundle_start = source.index("def cmd_bundle")
+        descriptor_start = source.index("def _validate_candidate_descriptor")
+        restore_start = source.index("def cmd_restore")
+        verify_start = source.index("def cmd_verify_prepared")
+        self.assertIn('_validate_unsigned_candidates(REPO_ROOT, "bundle")', source[bundle_start:descriptor_start])
+        self.assertIn('_validate_unsigned_candidates(base, "restore")', source[descriptor_start:restore_start])
+        self.assertIn("_validate_candidate_descriptor", source[restore_start:verify_start])
+
 
 if __name__ == "__main__":
     unittest.main()
