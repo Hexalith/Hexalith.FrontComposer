@@ -9,6 +9,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+using System.Reflection;
+
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State;
@@ -112,15 +114,7 @@ public sealed class HydrationStateConsolidationTests {
                 ];
             }
             """;
-        string[] trustedPlatformAssemblies = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES"))?
-            .Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries)
-            ?? throw new InvalidOperationException("Trusted platform assemblies are unavailable.");
-        MetadataReference[] references = [
-            .. trustedPlatformAssemblies
-                .Concat(Directory.EnumerateFiles(AppContext.BaseDirectory, "*.dll", SearchOption.TopDirectoryOnly))
-                .Distinct(StringComparer.Ordinal)
-                .Select(path => MetadataReference.CreateFromFile(path)),
-        ];
+        MetadataReference[] references = GetMetadataReferences().ToArray();
         CSharpCompilation compilation = CSharpCompilation.Create(
             "HydrationStateConsumer",
             [CSharpSyntaxTree.ParseText(
@@ -134,6 +128,37 @@ public sealed class HydrationStateConsolidationTests {
             diagnostic => diagnostic.Severity == DiagnosticSeverity.Error)];
 
         errors.ShouldBeEmpty(string.Join(Environment.NewLine, errors.Select(static diagnostic => diagnostic.ToString())));
+    }
+
+    private static List<MetadataReference> GetMetadataReferences()
+    {
+        List<MetadataReference> references = new();
+        HashSet<string> seenLocations = new(StringComparer.OrdinalIgnoreCase);
+
+        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+        {
+            try
+            {
+                if (assembly.IsDynamic)
+                {
+                    continue;
+                }
+
+                string? location = assembly.Location;
+                if (string.IsNullOrWhiteSpace(location) || !File.Exists(location) || !seenLocations.Add(location))
+                {
+                    continue;
+                }
+
+                references.Add(MetadataReference.CreateFromFile(location));
+            }
+            catch
+            {
+                // Ignore assemblies whose location cannot be inspected or loaded
+            }
+        }
+
+        return references;
     }
 
     private static List<string> FindViolations(

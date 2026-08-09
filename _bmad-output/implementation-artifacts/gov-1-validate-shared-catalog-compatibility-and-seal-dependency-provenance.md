@@ -6,7 +6,7 @@ owner: Product Owner + Architect + Developer + Release Owner
 source_proposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-19.md
 course_correction: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-02.md
 decision: _bmad-output/contracts/shared-catalog-dependency-governance-2026-07-19.md
-status: in-progress
+status: done
 scope: moderate
 implementation_risk: high
 priority: before the next accepted governed release manifest
