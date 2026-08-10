@@ -2294,3 +2294,12 @@ status: open
   summary: Add a full fixture-driven jq+CLI harness that executes the release.yml verify-publication step body end-to-end.
   evidence: Helper unit tests + CLI --require-immutable fixtures + workflow source pins cover the contract; an end-to-end workflow-body harness is extra scaffolding beyond T8.
 
+## Deferred from: Story 11.24 owner decision (2026-08-10)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
+  summary: EventStore and Release owners publish a retrievable replacement source/package identity with exact hashes and a matching Builds catalog commit.
+  evidence: Story 1.20's approved `999.1.20-proof.fa2d1c9910f8` archives are unrecoverable, current source/package identities differ, and no FrontComposer-scoped replacement authority exists.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
+  summary: EventStore supplies a real-loopback Pact provider verifier and separately reconciles the 19 FrontComposer consumer interactions with the provider wire contract.
+  evidence: Neither approved nor current EventStore source contains the required provider-test project, while committed pacts conflict with real query envelopes, ETags, headers, and provider-state inputs.

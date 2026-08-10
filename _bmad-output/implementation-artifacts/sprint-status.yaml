@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T17:13:53+02:00'
-last_updated: 08-09-2026 14:26
+last_updated: 08-10-2026 07:06
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -158,6 +158,9 @@ development_status:
   11-21-recommended-analyzer-product-and-generator-burn-down: done
   11-22-recommended-analyzer-test-and-sample-burn-down: done
   11-23-recommended-analyzer-repository-activation: done
+  # 2026-08-10 owner decision: remain backlog. The approved Story 1.20 package bytes are
+  # unrecoverable; resume only after a replacement identity and EventStore-owned real-provider
+  # verification/pact compatibility prerequisites are durably approved and available.
   11-24-adopt-the-owner-approved-eventstore-runtime-identity: backlog
   epic-11-retrospective: optional
 action_items:

@@ -56,6 +56,8 @@ Generated commands use `/commands/{BoundedContext}/{CommandTypeName}`; module ta
 
 MCP lifecycle state spans requests through a singleton store behind a scoped facade without captive scoped dependencies. EventStore authentication supports interactive circuits, token expiry, and sign-out eviction; projection realtime must recover after the default reconnect ladder and dispose concurrent work safely. Logging ownership is exclusive: security/fail-closed sites first, command-lifecycle/projection/polling hot paths second, and residual warning-or-higher sites last. Recommended analyzer adoption is staged through policy/exception classification, product/generator cleanup, test/sample cleanup, and repository-wide activation.
 
+EventStore runtime adoption is an identity-alignment change, not a behavioral migration: source mode and package mode must use the same owner-approved runtime, package bytes must match the approved inventory, and provider verification must exercise the committed consumer pacts against that exact runtime. Existing FrontComposer adapters, rollback paths, topology, and container ownership remain unchanged.
+
 ## UX & Interaction Patterns
 
 Use Fluent UI Blazor v5 and Fluent 2 tokens, with WCAG 2.2 AA keyboard, focus, naming, live-region, reduced-motion, and forced-colors behavior. Realtime and command experiences must expose reconnecting, fallback, degraded, pending, rejected, and confirmed states without treating HTTP acceptance or a projection nudge as confirmed success. Visual fixes require rendered evidence and Governance guards that prevent dead styles, unlinked CSS, and legacy tokens from returning.
