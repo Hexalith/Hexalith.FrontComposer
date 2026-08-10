@@ -7,7 +7,7 @@ parentDecisionStory: 11.19d
 dependsOn: 11.22
 owner: Architect + Framework Maintainer + Release Owner
 due: 2026-09-11
-status: review
+status: done
 storyType: implementation-phase
 approvalGate: separate-architecture-product-approval
 approvalStatus: approved
@@ -18,7 +18,7 @@ releaseGate: v1.0
 
 # Story 11.23: Recommended Analyzer Repository Activation
 
-Status: review.
+Status: done.
 
 Executable intent and completion evidence live in
 `_bmad-output/implementation-artifacts/spec-11-23-recommended-analyzer-repository-activation.md`.

@@ -1,26 +1,26 @@
 installation:
-  version: 6.10.1-next.49
+  version: 6.10.1-next.52
   installDate: 2026-07-11T06:33:46.380Z
-  lastUpdated: 2026-08-05T07:56:10.320Z
+  lastUpdated: 2026-08-09T12:25:25.471Z
 modules:
   - name: core
-    version: 6.10.1-next.49
+    version: 6.10.1-next.52
     installDate: 2026-07-11T06:33:45.625Z
-    lastUpdated: 2026-08-05T07:56:10.302Z
+    lastUpdated: 2026-08-09T12:25:25.461Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmm
-    version: 6.10.1-next.49
+    version: 6.10.1-next.52
     installDate: 2026-07-11T06:33:45.561Z
-    lastUpdated: 2026-08-05T07:56:10.305Z
+    lastUpdated: 2026-08-09T12:25:25.462Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: cis
     version: main
     installDate: 2026-07-11T06:33:46.279Z
-    lastUpdated: 2026-08-05T07:56:10.309Z
+    lastUpdated: 2026-08-09T12:25:25.465Z
     source: external
     npmPackage: bmad-creative-intelligence-suite
     repoUrl: https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite
@@ -29,23 +29,24 @@ modules:
   - name: tea
     version: main
     installDate: 2026-07-11T06:33:46.240Z
-    lastUpdated: 2026-08-05T07:56:10.313Z
+    lastUpdated: 2026-08-09T12:25:25.467Z
     source: external
     npmPackage: bmad-method-test-architecture-enterprise
     repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
     channel: next
-    sha: 2f88ed922c61960a6e4d582fbb53171fc68adc28
+    sha: 2882e9c8972a94f48d5e848039eec435436f2459
   - name: bmad-loop
     version: main
     installDate: 2026-07-11T06:33:45.648Z
-    lastUpdated: 2026-08-05T07:56:10.320Z
+    lastUpdated: 2026-08-09T12:25:25.471Z
     source: external
     npmPackage: null
     repoUrl: https://github.com/bmad-code-org/bmad-loop
     channel: next
-    sha: 37177586b761877503d2426403a98494f8ebd672
+    sha: 65e58441c201daebf3722393589a59cf4affa4a5
 ides:
   - claude-code
   - codex
-  - github-copilot
   - cursor
+  - github-copilot
+  - antigravity-cli
