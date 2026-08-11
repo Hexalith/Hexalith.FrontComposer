@@ -92,25 +92,11 @@ jobs:
           set -euo pipefail
           mkdir -p artifacts/dependency-governance
           object_root="$RUNNER_TEMP/dependency-object-stores"
-          echo "object-root=$object_root" >> "$GITHUB_OUTPUT"
-          # Acquisition writes its fail-closed reason to the evidence file, not to stderr.
-          # Aborting here on `set -e` left `exit-code` unset, so the enforcement step could
-          # only report `exit=` with the reason buried in an artifact. Capture the status,
-          # publish it, and echo the reason into the log instead.
-          set +e
           python3 eng/dependency_graph.py acquire \
             --event-base "$EVENT_BASE" \
             --candidate "$CANDIDATE" \
             --destination "$object_root" \
             > artifacts/dependency-governance/object-acquisition.json
-          acquire_status=$?
-          set -e
-          if [ "$acquire_status" != "0" ]; then
-            echo "exit-code=$acquire_status" >> "$GITHUB_OUTPUT"
-            echo "::error::exact-object acquisition failed (exit=$acquire_status)"
-            cat artifacts/dependency-governance/object-acquisition.json
-            exit "$acquire_status"
-          fi
           set +e
           python3 eng/dependency_graph.py --root "$object_root" diff \
             --event "$EVENT_NAME" \
@@ -120,6 +106,7 @@ jobs:
           status=$?
           set -e
           echo "exit-code=$status" >> "$GITHUB_OUTPUT"
+          echo "object-root=$object_root" >> "$GITHUB_OUTPUT"
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -228,10 +215,6 @@ jobs:
           DIFF_EXIT_CODE: ${{ steps.dependency-diff.outputs.exit-code }}
         run: |
           set -euo pipefail
-          if [ -z "$DIFF_EXIT_CODE" ]; then
-            echo "::error::dependency-governance aborted before the graph gate produced a verdict; see the collect step log and the uploaded dependency-graph evidence"
-            exit 1
-          fi
           if [ "$DIFF_EXIT_CODE" != "0" ]; then
             echo "::error::dependency graph diff/affected-module gate failed closed (exit=$DIFF_EXIT_CODE)"
             exit 1
