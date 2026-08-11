@@ -203,6 +203,17 @@ jobs:
       #   - Gate 3c (perf bench): `Category=Performance` (Story 1-8 + Story 3-7 T2 BDN bench).
       # Palette/performance lanes remain advisory while Story 3-7 stabilizes browser and latency
       # variance; governance and default unit/bUnit lanes above are blocking.
+      # Repair pass for an open runner-side defect: since 2026-08-11 the Gate 2 output has
+      # intermittently reached the test lanes with a random copy-local package assembly absent
+      # from a test project's bin (observed: OpenIdConnect, xunit.v3.assert,
+      # TimeProvider.Testing, FsCheck, Http.Connections.Client), which surfaces as
+      # `FileNotFoundException` in whichever tests touch it. It does not reproduce locally and
+      # the mechanism is not yet established. An incremental no-restore build re-copies any
+      # missing reference without recompiling, so it costs seconds and keeps the blocking lanes
+      # honest until the cause is found. Remove this once the copy defect is root-caused.
+      - name: 'Gate 2e: Restore missing copy-local test references'
+        run: dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore
+
       - name: 'Gate 3a: Unit + bUnit (default lane)'
         env:
           # DIVERGENCE 2: FrontComposer has 16+ Verify .verified.txt snapshot files.
