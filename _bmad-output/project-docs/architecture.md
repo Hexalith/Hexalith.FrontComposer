@@ -342,6 +342,11 @@ This is the "MCP boundary" described in `docs/concepts/source-generation-and-mcp
 - **Stories 11.8/11.11-11.14 (2026-07-05 through 2026-07-11):** Contracts kernel split approved and implemented. Contracts.UI is an explicit release package, existing packages validate against `v1.12.0`, and the binary-breaking ownership changes target `2.0.0` with migration evidence.
 - **Custom inline SVG icon factory** (`FcFluentIcons`) instead of the FluentUI icons NuGet (no v5-compatible release at authoring time).
 - **No third-party CLI framework** — the CLI uses a bespoke option parser and a fixed generated-output path contract.
+- **Shared-catalog shape policy:** each governed `Hexalith*Version` selector is value-independent but
+  structurally strict: it must occur exactly once, contain a literal NuGet version, and be a global
+  MSBuild property declared directly in a top-level `PropertyGroup`. The declaration may be
+  unconditional or use only the canonical self-default condition (`'$(Name)' == ''`); declarations
+  under `Target`, `Choose`, conditional/nested groups, or any other container fail closed.
 
 ## 8. External dependencies (submodules)
 

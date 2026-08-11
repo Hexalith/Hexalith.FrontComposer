@@ -90,8 +90,11 @@ not be conflated:
   of scope for v1. The 2026-07-19 census (8 root + 32 direct nested = 40) is evidence, not a fixed count.
 - **Compatibility:** validate every Builds selector inside that v1 boundary, cache catalog bytes by
   distinct selected commit, load `Props/Directory.Packages.props` from that exact commit, and evaluate
-  the selecting owner's explicit semantic package/import/marker profile. A compatible catalog at a new
-  commit passes.
+  the selecting owner's explicit semantic package/import/marker profile. FrontComposer requires each
+  governed `Hexalith*Version` property to be present exactly once in canonical self-default form with a
+  literal NuGet version, but does not repeat its point value. External-package decisions remain explicit,
+  and an internal family advance must survive the exact affected-module Release/NuGet restore and build.
+  A structurally valid, build-compatible catalog at a new commit passes.
 - **Provenance:** record the exact repository identity, owner/path edge, 40-hex commit, depth, and Builds
   catalog SHA-256 fingerprint in deterministic review and release evidence.
 
@@ -226,7 +229,7 @@ The production preparation job recomputes the live graph, requires the candidate
 the approved Builds execution commit, and emits `hexalith.release-evidence.v3`. V3 provenance binds the
 raw CI source-proof hash, exact Release caller workflow bytes at the candidate, exact reusable
 `domain-release.yml` bytes at the Builds commit, and the identical `builds-execution-sha`. The approved
-Builds identity is `3ac633386faa2dc4c785bc1ffa06487974906d79`; the reusable workflow call and input
+Builds identity is `0a3508b3e5685602dc13983c5371cab7fabaf015`; the reusable workflow call and input
 must remain identical literal 40-hex coordinates.
 
 The pack-once prepared candidate is sealed to the Release run ID/attempt and uploaded only after

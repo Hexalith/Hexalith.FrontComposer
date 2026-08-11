@@ -1118,6 +1118,68 @@ class DiffAndMaterializationTests(unittest.TestCase):
         self.assertEqual(result["modules"][0]["disposition"], "build")
         self.assertEqual(run.call_count, 2)
 
+    def test_run_affected_build_command_failure_remains_blocking(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        builds = fx.add_repo("Builds")
+        owner = fx.add_repo("Owner")
+        fx.register_module("Owner")
+        owner_commit = "a" * 40
+        builds_commit = "b" * 40
+        catalog_sha256 = hashlib.sha256(BASELINE_CATALOG).hexdigest()
+        selector = {
+            "owner_repository": fx.identity("Owner"),
+            "owner_commit": owner_commit,
+            "path": "references/Builds",
+            "repository": fx.identity("Builds"),
+            "commit": builds_commit,
+            "depth": 2,
+            "catalog_sha256": catalog_sha256,
+            "catalog_contract_version": None,
+        }
+        module = dg._module_proof(
+            fx.identity("Owner"),
+            owner_commit,
+            ["test pointer advance"],
+            fx.policy,
+        )
+        evidence = {"candidate_graph": {"edges": [selector]}, "affected_modules": [module]}
+        output_root = self.tmp_path / "affected-failure-output"
+
+        def materialize_module(_local: pathlib.Path, _commit: str, destination: pathlib.Path) -> None:
+            (destination / "references/Builds").mkdir(parents=True)
+
+        def materialize_contract(
+            _local: pathlib.Path,
+            _commit: str,
+            destination: pathlib.Path,
+            _policy: dict,
+        ) -> dict:
+            catalog = destination / "Props/Directory.Packages.props"
+            catalog.parent.mkdir(parents=True)
+            catalog.write_bytes(BASELINE_CATALOG)
+            return {"file_count": 1, "total_bytes": len(BASELINE_CATALOG), "commit": builds_commit}
+
+        restore_succeeded = subprocess.CompletedProcess([], 0, stdout="restored", stderr="")
+        build_failed = subprocess.CompletedProcess([], 23, stdout="", stderr="synthetic build failure")
+        with (
+            mock.patch.object(dg, "validate_diff_evidence", return_value=(fx.policy, evidence)),
+            mock.patch.object(dg, "materialize_repository_tree", side_effect=materialize_module),
+            mock.patch.object(dg, "materialize_contract_tree", side_effect=materialize_contract),
+            mock.patch.object(
+                dg.subprocess,
+                "run",
+                side_effect=(restore_succeeded, build_failed),
+            ) as run,
+            self.assertRaises(dg.GraphError) as ctx,
+        ):
+            dg.run_affected_builds(owner.root, evidence, output_root)
+
+        message = str(ctx.exception)
+        self.assertIn(f"affected module {fx.identity('Owner')}@{owner_commit}", message)
+        self.assertIn("build_argv failed with exit 23", message)
+        self.assertIn("synthetic build failure", message)
+        self.assertEqual(run.call_count, 2)
+
     def test_offline_graph_validation_rejects_drift_and_out_of_order_edges(self) -> None:
         _fx, _base_graph, candidate_graph = self._pointer_advance()
         drifted = copy.deepcopy(candidate_graph)
@@ -1358,15 +1420,23 @@ class PolicyShapeTests(unittest.TestCase):
         path.write_text(json.dumps(policy), encoding="utf-8")
         return dg.load_policy(path)
 
+    @staticmethod
+    def _frontcomposer_profile() -> dict:
+        policy = json.loads(
+            (ROOT / "eng" / "dependency-graph-policy.json").read_text(encoding="utf-8-sig")
+        )
+        return copy.deepcopy(policy["profiles"]["frontcomposer-catalog-v1"])
+
     def test_known_profile_keys_load(self) -> None:
         policy = self._load({
             "owner_checks": {},
-            "selected_catalog_required_properties": {"SomeVersion": "1.0.0"},
+            "selected_catalog_required_property_names": ["SomeVersion"],
+            "selected_catalog_required_properties": {},
             "selected_catalog_required_packages": {},
         })
         self.assertEqual(
-            policy["profiles"]["some-profile"]["selected_catalog_required_properties"],
-            {"SomeVersion": "1.0.0"},
+            policy["profiles"]["some-profile"]["selected_catalog_required_property_names"],
+            ["SomeVersion"],
         )
 
     def test_misspelled_required_properties_key_fails_closed(self) -> None:
@@ -1374,10 +1444,42 @@ class PolicyShapeTests(unittest.TestCase):
             self._load({"selected_catalog_required_propertys": {"SomeVersion": "1.0.0"}})
         self.assertIn("unknown keys", str(ctx.exception))
 
+    def test_required_property_names_must_be_non_empty_sorted_unique_names(self) -> None:
+        for value in (
+            [],
+            "SomeVersion",
+            ["SomeVersion", "SomeVersion"],
+            ["ZVersion", "AVersion"],
+            ["not-a-name"],
+            [1],
+        ):
+            with self.subTest(value=value):
+                with self.assertRaises(dg.GraphError):
+                    self._load({"selected_catalog_required_property_names": value})
+
+    def test_required_property_names_cannot_duplicate_literal_requirements(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({
+                "selected_catalog_required_property_names": ["SomeVersion"],
+                "selected_catalog_required_properties": {"SomeVersion": "1.0.0"},
+            })
+        self.assertIn("cannot also carry literal requirements", str(ctx.exception))
+
     def test_non_dict_required_properties_fails_closed(self) -> None:
         with self.assertRaises(dg.GraphError) as ctx:
             self._load({"selected_catalog_required_properties": ["SomeVersion"]})
         self.assertIn("must be an object", str(ctx.exception))
+
+    def test_explicit_null_required_catalog_controls_fail_closed(self) -> None:
+        for key in (
+            "selected_catalog_required_property_names",
+            "selected_catalog_required_properties",
+            "selected_catalog_required_packages",
+        ):
+            with self.subTest(key=key):
+                with self.assertRaises(dg.GraphError) as ctx:
+                    self._load({key: None})
+                self.assertIn(key, str(ctx.exception))
 
     def test_non_string_expected_value_fails_closed(self) -> None:
         with self.assertRaises(dg.GraphError) as ctx:
@@ -1485,17 +1587,255 @@ class PolicyShapeTests(unittest.TestCase):
                 "-p:UseNuGetDeps=true",
             ])
 
-    def test_all_governed_selected_catalog_properties_match_and_mutations_fail(self) -> None:
-        policy = dg.load_policy(ROOT / "eng/dependency-graph-policy.json")
-        expected = policy["profiles"]["frontcomposer-catalog-v1"]["selected_catalog_required_properties"]
+    @staticmethod
+    def _replace_catalog_property_element(catalog: bytes, property_name: str, replacement: bytes) -> bytes:
+        start = catalog.index(f"<{property_name}".encode("ascii"))
+        closing = f"</{property_name}>".encode("ascii")
+        end = catalog.index(closing, start) + len(closing)
+        return catalog[:start] + replacement + catalog[end:]
+
+    @classmethod
+    def _replace_catalog_property_value(cls, catalog: bytes, property_name: str, value: str) -> bytes:
+        start = catalog.index(f"<{property_name}".encode("ascii"))
+        opening_end = catalog.index(b">", start) + 1
+        closing_start = catalog.index(f"</{property_name}>".encode("ascii"), opening_end)
+        return catalog[:opening_end] + value.encode("ascii") + catalog[closing_start:]
+
+    def _evaluate_frontcomposer_profile(self, catalog: bytes) -> dict:
+        profile_name = "frontcomposer-catalog-v1"
+        with tempfile.TemporaryDirectory(dir=self.tmp_path) as fixture_directory:
+            fx = GraphFixture(pathlib.Path(fixture_directory))
+
+            frontcomposer = fx.add_repo("FrontComposer")
+            frontcomposer.write_text("Directory.Packages.props", OWNER_SHIM)
+
+            builds = fx.add_repo("Builds")
+            builds.write_text(".gitattributes", "Props/Directory.Packages.props text eol=crlf\n")
+            builds.write_bytes("Props/Directory.Packages.props", catalog)
+            builds_commit = builds.commit()
+
+            fx.link("FrontComposer", "references/Hexalith.Builds", "Builds", builds_commit)
+            frontcomposer_commit = frontcomposer.commit()
+            frontcomposer_identity = fx.identity("FrontComposer")
+            fx.policy["semantic_profiles"][frontcomposer_identity] = profile_name
+            fx.policy["profiles"][profile_name] = self._frontcomposer_profile()
+
+            envelope = dg.collect_graph(
+                frontcomposer.root,
+                frontcomposer_identity,
+                frontcomposer_commit,
+                fx.policy,
+            )
+            return dg.evaluate_semantics(frontcomposer.root, fx.policy, envelope)
+
+    def _assert_frontcomposer_profile_failure(self, catalog: bytes, expected_diagnostic: str) -> str:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_frontcomposer_profile(catalog)
+
+        message = str(ctx.exception)
+        self.assertIn("github.com/test/frontcomposer@", message)
+        self.assertIn("references/Hexalith.Builds", message)
+        self.assertIn("github.com/test/builds@", message)
+        self.assertIn(expected_diagnostic, message)
+        return message
+
+    def test_frontcomposer_profile_shape_contract_is_closed_and_value_independent(self) -> None:
+        profile = self._frontcomposer_profile()
+        property_names = [
+            "HexalithCommonsVersion",
+            "HexalithEventStoreVersion",
+            "HexalithMemoriesVersion",
+            "HexalithPartiesVersion",
+            "HexalithPolymorphicSerializationsVersion",
+            "HexalithTenantsVersion",
+        ]
+        self.assertEqual(
+            set(profile),
+            {
+                "owner_checks",
+                "selected_catalog_required_property_names",
+                "selected_catalog_required_properties",
+                "selected_catalog_required_packages",
+            },
+        )
+        self.assertEqual(profile["selected_catalog_required_property_names"], property_names)
+        self.assertEqual(profile["selected_catalog_required_properties"], {})
+        dg.assert_profiles_well_formed({"profiles": {"frontcomposer-catalog-v1": profile}})
+
+    def test_frontcomposer_profile_cross_module_versions_change_semantic_validation_passes(self) -> None:
+        property_names = (
+            "HexalithCommonsVersion",
+            "HexalithEventStoreVersion",
+            "HexalithMemoriesVersion",
+            "HexalithPartiesVersion",
+            "HexalithPolymorphicSerializationsVersion",
+            "HexalithTenantsVersion",
+        )
         catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
-        catalog = ET.fromstring(catalog_path.read_bytes())
-        self.assertEqual(len(expected), 6, "the full governed catalog property set must remain explicit")
-        for name, version in expected.items():
-            with self.subTest(name=name):
-                dg.assert_selected_catalog_property(catalog, name, version, "selected Builds catalog")
-                with self.assertRaises(dg.GraphError):
-                    dg.assert_selected_catalog_property(catalog, name, f"{version}-mutated", "mutation")
+        catalog = catalog_path.read_bytes()
+        for index, name in enumerate(property_names, start=1):
+            with self.subTest(property_name=name):
+                mutated_catalog = self._replace_catalog_property_value(
+                    catalog,
+                    name,
+                    f"999.0.{index}",
+                )
+                semantics = self._evaluate_frontcomposer_profile(mutated_catalog)
+                self.assertEqual(semantics["selectors_validated"], 1)
+
+    def test_frontcomposer_profile_missing_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        property_names = self._frontcomposer_profile()["selected_catalog_required_property_names"]
+        self.assertEqual(len(property_names), 6)
+        for property_name in property_names:
+            with self.subTest(property_name=property_name):
+                mutated_catalog = self._replace_catalog_property_element(catalog, property_name, b"")
+                self._assert_frontcomposer_profile_failure(
+                    mutated_catalog,
+                    f"{property_name} must define exactly one version property",
+                )
+
+    def test_frontcomposer_profile_duplicate_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        property_name = "HexalithMemoriesVersion"
+        start = catalog.index(f"<{property_name}".encode("ascii"))
+        closing = f"</{property_name}>".encode("ascii")
+        end = catalog.index(closing, start) + len(closing)
+        element = catalog[start:end]
+        mutated_catalog = self._replace_catalog_property_element(
+            catalog,
+            property_name,
+            element + b"\r\n    " + element,
+        )
+        message = self._assert_frontcomposer_profile_failure(
+            mutated_catalog,
+            f"{property_name} must define exactly one version property",
+        )
+        self.assertIn("found 2 values", message)
+
+    def test_frontcomposer_profile_empty_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        property_name = "HexalithMemoriesVersion"
+        mutated_catalog = self._replace_catalog_property_value(catalog, property_name, "")
+        self._assert_frontcomposer_profile_failure(
+            mutated_catalog,
+            f"{property_name} must contain a literal NuGet version, found ''",
+        )
+
+    def test_frontcomposer_profile_malformed_module_property_fails_with_owner_and_catalog_coordinates(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        property_name = "HexalithMemoriesVersion"
+        mutated_catalog = self._replace_catalog_property_value(catalog, property_name, "$(OtherVersion)")
+        self._assert_frontcomposer_profile_failure(
+            mutated_catalog,
+            f"{property_name} must contain a literal NuGet version",
+        )
+
+    def test_frontcomposer_profile_nested_module_property_value_fails_with_owner_and_catalog_coordinates(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        property_name = "HexalithMemoriesVersion"
+        start = catalog.index(f"<{property_name}".encode("ascii"))
+        opening_end = catalog.index(b">", start) + 1
+        closing = f"</{property_name}>".encode("ascii")
+        replacement = catalog[start:opening_end] + b"1.2.3<Unexpected />" + closing
+        mutated_catalog = self._replace_catalog_property_element(catalog, property_name, replacement)
+        self._assert_frontcomposer_profile_failure(
+            mutated_catalog,
+            f"{property_name} must contain a literal NuGet version",
+        )
+
+    def test_frontcomposer_profile_noncanonical_condition_fails_with_owner_and_catalog_coordinates(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        property_name = "HexalithMemoriesVersion"
+        canonical = f"Condition=\"'$({property_name})' == ''\"".encode("ascii")
+        noncanonical = b"Condition=\"'$(OtherVersion)' == ''\""
+        self.assertEqual(catalog.count(canonical), 1)
+        mutated_catalog = catalog.replace(canonical, noncanonical, 1)
+        self._assert_frontcomposer_profile_failure(mutated_catalog, "canonical self-default condition")
+
+    def test_frontcomposer_profile_unconditional_module_property_passes(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        property_name = "HexalithMemoriesVersion"
+        canonical = f" Condition=\"'$({property_name})' == ''\"".encode("ascii")
+        self.assertEqual(catalog.count(canonical), 1)
+        mutated_catalog = catalog.replace(canonical, b"", 1)
+        semantics = self._evaluate_frontcomposer_profile(mutated_catalog)
+        self.assertEqual(semantics["selectors_validated"], 1)
+
+    def test_frontcomposer_profile_conditional_ancestor_fails_with_owner_and_catalog_coordinates(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        property_name = "HexalithMemoriesVersion"
+        start = catalog.index(f"<{property_name}".encode("ascii"))
+        closing = f"</{property_name}>".encode("ascii")
+        end = catalog.index(closing, start) + len(closing)
+        element = catalog[start:end]
+        without_property = self._replace_catalog_property_element(catalog, property_name, b"")
+        conditional_group = (
+            b"  <PropertyGroup Condition=\"'$(Configuration)' == 'Release'\">\r\n"
+            b"    " + element + b"\r\n"
+            b"  </PropertyGroup>\r\n"
+        )
+        mutated_catalog = without_property.replace(b"</Project>", conditional_group + b"</Project>", 1)
+        self._assert_frontcomposer_profile_failure(mutated_catalog, "conditional group")
+
+    def test_frontcomposer_profile_choose_selected_property_fails_with_owner_and_catalog_coordinates(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        property_name = "HexalithMemoriesVersion"
+        start = catalog.index(f"<{property_name}".encode("ascii"))
+        closing = f"</{property_name}>".encode("ascii")
+        end = catalog.index(closing, start) + len(closing)
+        element = catalog[start:end]
+        without_property = self._replace_catalog_property_element(catalog, property_name, b"")
+        choose = (
+            b"  <Choose>\r\n"
+            b"    <When Condition=\"'$(Configuration)' == 'Release'\">\r\n"
+            b"      <PropertyGroup>\r\n"
+            b"        " + element + b"\r\n"
+            b"      </PropertyGroup>\r\n"
+            b"    </When>\r\n"
+            b"  </Choose>\r\n"
+        )
+        mutated_catalog = without_property.replace(b"</Project>", choose + b"</Project>", 1)
+        self._assert_frontcomposer_profile_failure(mutated_catalog, "Choose branch")
+
+    def test_frontcomposer_profile_target_scoped_property_fails_as_nonglobal(self) -> None:
+        catalog = (ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props").read_bytes()
+        property_name = "HexalithMemoriesVersion"
+        start = catalog.index(f"<{property_name}".encode("ascii"))
+        closing = f"</{property_name}>".encode("ascii")
+        end = catalog.index(closing, start) + len(closing)
+        element = catalog[start:end]
+        without_property = self._replace_catalog_property_element(catalog, property_name, b"")
+        target = (
+            b'  <Target Name="SetCatalogVersion">\r\n'
+            b"    <PropertyGroup>\r\n"
+            b"      " + element + b"\r\n"
+            b"    </PropertyGroup>\r\n"
+            b"  </Target>\r\n"
+        )
+        mutated_catalog = without_property.replace(b"</Project>", target + b"</Project>", 1)
+        self._assert_frontcomposer_profile_failure(
+            mutated_catalog,
+            "must be a global property declared directly in a top-level PropertyGroup",
+        )
+
+    def test_frontcomposer_profile_required_package_changes_semantic_validation_fails_closed(self) -> None:
+        profile = self._frontcomposer_profile()
+        package_id = "ModelContextProtocol.AspNetCore"
+        expected_version = profile["selected_catalog_required_packages"][package_id]
+        catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
+        catalog = catalog_path.read_bytes()
+        expected_row = f'<PackageVersion Include="{package_id}" Version="{expected_version}" />'.encode("utf-8")
+        changed_row = f'<PackageVersion Include="{package_id}" Version="999.0.0" />'.encode("utf-8")
+        self.assertEqual(catalog.count(expected_row), 1)
+
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_frontcomposer_profile(catalog.replace(expected_row, changed_row, 1))
+
+        message = str(ctx.exception)
+        self.assertIn(package_id, message)
+        self.assertIn(f"expected version {expected_version!r}", message)
+        self.assertIn("found '999.0.0'", message)
 
 
 if __name__ == "__main__":

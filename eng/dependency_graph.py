@@ -36,12 +36,19 @@ POLICY_PATH = "eng/dependency-graph-policy.json"
 
 # A shared-catalog property may carry only the canonical "default it if unset" condition.
 _SELF_DEFAULT_CONDITION = re.compile(r"^\s*'\$\((?P<name>[A-Za-z_][A-Za-z0-9_]*)\)'\s*==\s*''\s*$")
+_NUGET_VERSION = re.compile(
+    r"^(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*)){0,3}"
+    r"(?:-(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*)"
+    r"(?:\.(?:0|[1-9][0-9]*|[0-9A-Za-z-]*[A-Za-z-][0-9A-Za-z-]*))*)?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
+)
 
 # Every key a semantic profile may declare. An unknown key -- a rename or a typo in
 # selected_catalog_required_properties, say -- would otherwise silently validate nothing,
 # so load_policy rejects it instead of defaulting the missing key to an empty mapping.
 _PROFILE_KEYS = frozenset({
     "owner_checks",
+    "selected_catalog_required_property_names",
     "selected_catalog_required_properties",
     "selected_catalog_required_packages",
 })
@@ -1057,6 +1064,45 @@ def assert_selected_catalog_property(root: ET.Element, prop_name: str, expected_
         raise GraphError(f"{context}: {prop_name} expected {expected_value!r}, found {observed_text!r}")
 
 
+def assert_selected_catalog_property_shape(root: ET.Element, prop_name: str, context: str) -> None:
+    """Assert a shared version property is global, unique, canonical, and a literal NuGet version."""
+    matches = list(root.iter(prop_name))
+    if len(matches) != 1:
+        observed_values = [match.text or "" for match in matches]
+        observed = "<missing>" if not observed_values else repr(observed_values)
+        raise GraphError(
+            f"{context}: {prop_name} must define exactly one version property, "
+            f"found {len(matches)} values {observed}"
+        )
+
+    element = matches[0]
+    parents = _parent_map(root)
+    ancestors = _ancestors(element, parents)
+    if any(node.tag in ("Choose", "When", "Otherwise") for node in ancestors):
+        raise GraphError(f"{context}: {prop_name} must not be selected through an MSBuild Choose branch")
+    if any(node.get("Condition") is not None for node in ancestors):
+        raise GraphError(f"{context}: {prop_name} must not be declared under a conditional group in the shared catalog")
+    property_group = parents.get(element)
+    if property_group is None or property_group.tag != "PropertyGroup" or parents.get(property_group) is not root:
+        raise GraphError(
+            f"{context}: {prop_name} must be a global property declared directly in a top-level PropertyGroup"
+        )
+    condition = element.get("Condition")
+    if condition is not None:
+        match = _SELF_DEFAULT_CONDITION.match(condition)
+        if match is None or match.group("name") != prop_name:
+            raise GraphError(
+                f"{context}: {prop_name} must be unconditional or use the canonical self-default "
+                f"condition \"'$({prop_name})' == ''\", found {condition!r}"
+            )
+
+    observed_text = element.text or ""
+    if list(element) or _NUGET_VERSION.fullmatch(observed_text) is None:
+        raise GraphError(
+            f"{context}: {prop_name} must contain a literal NuGet version, found {observed_text!r}"
+        )
+
+
 def assert_authoritative_package_version(root: ET.Element, package_id: str, expected_version: str, context: str) -> None:
     ops = find_package_version_ops(root, package_id)
     if len(ops) != 1:
@@ -1247,6 +1293,7 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
         if not isinstance(owner_checks, dict):
             raise GraphError(f"{owner_identity}: owner_checks must be an object")
 
+        required_property_names = profile.get("selected_catalog_required_property_names", [])
         required_props = profile.get("selected_catalog_required_properties", {})
         required_packages = profile.get("selected_catalog_required_packages", {})
 
@@ -1303,6 +1350,9 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
                         builds_local,
                         f"{edge_context} [Builds checkout format; not blob provenance]",
                     )
+
+                for prop_name in required_property_names:
+                    assert_selected_catalog_property_shape(catalog_xml, prop_name, edge_context)
 
                 for prop_name, expected_value in required_props.items():
                     assert_selected_catalog_property(catalog_xml, prop_name, expected_value, edge_context)
@@ -1639,10 +1689,32 @@ def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
                         raise GraphError(
                             f"policy profile {profile_name!r}: owner_checks[{check_name!r}] must be a non-empty object"
                         )
+        has_required_property_names = "selected_catalog_required_property_names" in profile
+        required_property_names = profile.get("selected_catalog_required_property_names")
+        if has_required_property_names:
+            if not isinstance(required_property_names, list) or not required_property_names:
+                raise GraphError(
+                    f"policy profile {profile_name!r}: selected_catalog_required_property_names "
+                    "must be a non-empty list"
+                )
+            if not all(
+                isinstance(name, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name)
+                for name in required_property_names
+            ):
+                raise GraphError(
+                    f"policy profile {profile_name!r}: selected_catalog_required_property_names "
+                    "must contain only MSBuild property names"
+                )
+            if required_property_names != sorted(set(required_property_names)):
+                raise GraphError(
+                    f"policy profile {profile_name!r}: selected_catalog_required_property_names "
+                    "must be ordinally sorted and unique"
+                )
+
         for key in ("selected_catalog_required_properties", "selected_catalog_required_packages"):
-            required = profile.get(key)
-            if required is None:
+            if key not in profile:
                 continue
+            required = profile.get(key)
             if not isinstance(required, dict):
                 raise GraphError(f"policy profile {profile_name!r}: {key} must be an object")
             for name, expected in required.items():
@@ -1650,6 +1722,15 @@ def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
                     raise GraphError(
                         f"policy profile {profile_name!r}: {key}[{name!r}] must be a string, found {expected!r}"
                     )
+
+        if has_required_property_names:
+            literal_properties = profile.get("selected_catalog_required_properties", {})
+            overlap = sorted(set(required_property_names) & set(literal_properties))
+            if overlap:
+                raise GraphError(
+                    f"policy profile {profile_name!r}: required property names cannot also carry "
+                    f"literal requirements {overlap}"
+                )
 
 
 def build_arg_parser() -> argparse.ArgumentParser:

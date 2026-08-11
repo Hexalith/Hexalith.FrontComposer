@@ -127,9 +127,12 @@ Troubleshooting:
 `eng/dependency_graph.py` is the single canonical semantic-policy implementation for shared-catalog
 compatibility (FC-DEP-1/AD-6): it collects the bounded depth-1/depth-2 `hexalith.dependency-graph.v1`
 gitlink graph from an explicit FrontComposer commit and validates every Builds-selector edge against
-the exact catalog its gitlink actually selects — not a hard-coded commit allowlist. C# Governance
-(`InfrastructureGovernanceTests.cs`) invokes its machine-readable result rather than reimplementing
-catalog policy.
+the exact catalog its gitlink actually selects — not a hard-coded commit allowlist. FrontComposer's six
+governed `Hexalith*Version` requirements are presence, uniqueness, canonical-condition, and literal-version
+constraints rather than duplicated point values. Internal compatibility is decided by those authoritative
+catalog structures plus the exact affected-module Release/NuGet restore and build; graph/catalog hashes
+remain exact provenance. C# Governance (`InfrastructureGovernanceTests.cs`) invokes the machine-readable
+result once rather than reimplementing or rerunning catalog policy.
 
 ```bash
 # Synthetic committed-object graph, semantic-policy, exact diff, cascade, and bounded

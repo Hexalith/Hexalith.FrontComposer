@@ -230,7 +230,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: Hexalith/Hexalith.Builds
-          ref: a8a50859fa2f27f511a9470dfe1e3ae54d0ebc1a
+          ref: 0a3508b3e5685602dc13983c5371cab7fabaf015
           path: .hexalith/builds-execution
           persist-credentials: false
 

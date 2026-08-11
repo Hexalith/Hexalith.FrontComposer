@@ -232,7 +232,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Pacts:** CI **fails on a stale pact diff** (`tests/.../Shell.Tests/Pact`) — regenerate and commit
   intentional contract changes
 - **Shared-catalog Governance (GOV-1, 2026-07-19):** `Gate 2b`'s catalog-compatibility checks
-  (`InfrastructureGovernanceTests.CentralPackageVersions_*`/`PartiesPackageVersions_*`) no longer pin
+  (`InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds`)
+  no longer pin
   historical `Hexalith.Builds` commit SHAs. They shell out to `eng/dependency_graph.py validate`, the
   single canonical semantic-policy implementation, which collects the depth-1/2
   `hexalith.dependency-graph.v1` graph from the current commit and validates every Builds-selector
@@ -245,14 +246,24 @@ _This file contains critical rules and patterns that AI agents must follow when 
   the run/attempt, active base policy, and candidate graph; it does not fabricate an immutable closure
   for the shared CI workflow. Operator Release authenticates that proof for the exact current main SHA,
   enters the protected production environment, and invokes `domain-release.yml` at the approved literal
-  Builds commit `3ac633386faa2dc4c785bc1ffa06487974906d79` with the identical execution input.
-  Every Builds re-pin must move in lockstep: `references/Hexalith.Builds` gitlink,
-  `eng/dependency-graph-policy.json` selected-catalog properties for that Builds catalog,
-  `release.yml` `env.BUILDS_EXECUTION_SHA` / prepare-candidate checkout `ref` /
-  `HEXALITH_BUILDS_EXECUTION_SHA` / `uses:@` / `builds-execution-sha`, and the
-  `release-evidence.yml` Builds checkout `ref`. Push CI loads the active graph policy from
-  the previous tip (`event-base`); a gitlink-only bump leaves that base fail-closed until a
-  successor tip can use the repaired policy as event-base.
+  Builds commit `0a3508b3e5685602dc13983c5371cab7fabaf015` with the identical execution input.
+  FrontComposer does not mirror the selected Builds catalog's `Hexalith*Version` point values in
+  `selected_catalog_required_properties`; a Builds gitlink re-pin therefore needs no local
+  property-policy edit when retained package, structure, ownership, and affected-build checks pass.
+  Every name in `selected_catalog_required_property_names` is nevertheless mandatory and must occur
+  exactly once as a literal, global MSBuild property directly inside a top-level `PropertyGroup`.
+  Either an unconditional declaration or the canonical self-default condition (`'$(Name)' == ''`)
+  is allowed; properties under `Target`, `Choose`, conditional/nested groups, or other containers fail
+  closed.
+  The immutable Builds Release execution coordinate is a separate contract: whenever that approved
+  coordinate changes, update in lockstep `release.yml` `env.BUILDS_EXECUTION_SHA`, the
+  prepare-candidate checkout `ref`, `HEXALITH_BUILDS_EXECUTION_SHA`, `uses:@`, and
+  `builds-execution-sha`, plus the `release-evidence.yml` Builds checkout `ref`.
+  Because push evaluation intentionally uses the active-base policy, land catalog-policy/engine and
+  workflow-authorization bytes first while graph gitlinks and workflow bytes remain unchanged. That
+  first policy must authorize both the existing workflow closure and the exact future pinned closure.
+  Only after it is active may a later commit move the Builds/Memories gitlinks and workflow bytes;
+  verify that second candidate against the first committed policy object before landing it.
 - **Benchmarks** live ONLY in the separate `Shell.Tests.Bench` exe under
   `[Trait("Category","Performance")]`; use `FakeTimeProvider` for deterministic timer-driven tests
 - **e2e (a11y/visual):** Playwright workspace in `tests/e2e` (`nvm use` or Node `>=24` →

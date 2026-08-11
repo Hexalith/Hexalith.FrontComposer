@@ -2303,3 +2303,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-24-adopt-the-owner-approved-eventstore-runtime-identity.md`
   summary: EventStore supplies a real-loopback Pact provider verifier and separately reconciles the 19 FrontComposer consumer interactions with the provider wire contract.
   evidence: Neither approved nor current EventStore source contains the required provider-test project, while committed pacts conflict with real query envelopes, ETags, headers, and provider-state inputs.
+
+- source_spec: none
+  summary: Remove duplicate Governance execution from the Quality workflow while preserving its authoritative blocking lane.
+  evidence: Split from the CI/CD control audit because duplicate test execution is independently shippable from eliminating stale dependency-version mirrors.
+
+- source_spec: none
+  summary: Disable automatic Flaky Test Governance until CI produces validated mixed pass/fail evidence.
+  evidence: Split from the CI/CD control audit because the no-op workflow consumes runner time but does not cause the dependency-governance false-reds addressed first.
+
+- source_spec: none
+  summary: Repair permanently red or timing-out nightly benchmark, mutation, and CI-duration telemetry workflows.
+  evidence: Split from the CI/CD control audit because nightly reliability has separate inputs, failure modes, and acceptance evidence from push dependency governance.

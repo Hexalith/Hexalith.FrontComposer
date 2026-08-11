@@ -33,7 +33,7 @@ public sealed class InfrastructureGovernanceTests {
     }
 
     [Fact]
-    public void CentralPackageVersions_WhenCatalogIsMigrated_AreOwnedBySharedCatalog() {
+    public void CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds() {
         string root = RepositoryRoot();
         DependencyGraphValidationResult result = RunDependencyGraphValidate(root);
         result.Ok.ShouldBeTrue(result.Error ?? "dependency graph validation failed");
@@ -49,13 +49,6 @@ public sealed class InfrastructureGovernanceTests {
         result.Diagnostics.ShouldContain(
             diagnostic => diagnostic.Contains("github.com/hexalith/hexalith.memories", StringComparison.Ordinal)
                 && diagnostic.Contains("memories-catalog-v1", StringComparison.Ordinal));
-    }
-
-    [Fact]
-    public void PartiesPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds() {
-        string root = RepositoryRoot();
-        DependencyGraphValidationResult result = RunDependencyGraphValidate(root);
-        result.Ok.ShouldBeTrue(result.Error ?? "dependency graph validation failed");
         result.Diagnostics.ShouldContain(
             diagnostic => diagnostic.Contains("github.com/hexalith/hexalith.parties", StringComparison.Ordinal)
                 && diagnostic.Contains("parties-catalog-v1", StringComparison.Ordinal));

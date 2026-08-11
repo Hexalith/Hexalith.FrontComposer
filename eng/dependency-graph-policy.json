@@ -56,14 +56,15 @@
         "no_package_version_rows": true,
         "bom_crlf_on_selected_catalog": true
       },
-      "selected_catalog_required_properties": {
-        "HexalithCommonsVersion": "2.30.0",
-        "HexalithEventStoreVersion": "3.92.0",
-        "HexalithMemoriesVersion": "2.20.3",
-        "HexalithPartiesVersion": "1.0.0",
-        "HexalithPolymorphicSerializationsVersion": "1.19.2",
-        "HexalithTenantsVersion": "5.4.1"
-      },
+      "selected_catalog_required_property_names": [
+        "HexalithCommonsVersion",
+        "HexalithEventStoreVersion",
+        "HexalithMemoriesVersion",
+        "HexalithPartiesVersion",
+        "HexalithPolymorphicSerializationsVersion",
+        "HexalithTenantsVersion"
+      ],
+      "selected_catalog_required_properties": {},
       "selected_catalog_required_packages": {
         "BenchmarkDotNet": "0.15.8",
         "FsCheck.Xunit.v3": "3.3.4",
@@ -346,6 +347,95 @@
         "caller": {
           "repository": "github.com/hexalith/hexalith.frontcomposer",
           "workflow_path": ".github/workflows/ci.yml",
+          "blob_sha256": "1000f6af164eb3b0c17baec11f6853bf8eaf5730a95a8dc6f3e914f2d468d10a"
+        },
+        "reusable": {
+          "repository": "github.com/hexalith/hexalith.builds",
+          "workflow_path": ".github/workflows/domain-ci.yml",
+          "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+          "blob_sha256": "82488a9ecabd91654729d619c93bde26fad22029b2c6cd55f44b649f522e21ec"
+        },
+        "actions": [
+          {
+            "repository": "github.com/actions/cache",
+            "path": "action.yml",
+            "commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+            "blob_sha256": "c04edf35104c16c8944076df01561748bac9cd10941417e467a236e508e52dda"
+          },
+          {
+            "repository": "github.com/actions/checkout",
+            "path": "action.yml",
+            "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "blob_sha256": "d59219cb79590abdb877deaa14e3b65a00c05318bf5a6f3b989b9162b5d08c35"
+          },
+          {
+            "repository": "github.com/actions/checkout",
+            "path": "action.yml",
+            "commit": "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+            "blob_sha256": "d59219cb79590abdb877deaa14e3b65a00c05318bf5a6f3b989b9162b5d08c35"
+          },
+          {
+            "repository": "github.com/actions/setup-dotnet",
+            "path": "action.yml",
+            "commit": "a98b56852c35b8e3190ac28c8c2271da59106c68",
+            "blob_sha256": "75999c0bf863f23de88dad047ccf176b5089454cf7e3264c3fee5bc47eba4cf1"
+          },
+          {
+            "repository": "github.com/actions/upload-artifact",
+            "path": "action.yml",
+            "commit": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+            "blob_sha256": "c5979822866a72362e609844b6ebe77d4b7e759af68cc1c2c425dcf51481fab4"
+          },
+          {
+            "repository": "github.com/dapr/setup-dapr",
+            "path": "action.yml",
+            "commit": "8d980918fd43a2765c143ce7f687665b2d46a6b9",
+            "blob_sha256": "97c86f9b0bfe42b3c82bc9ea426228a76ea9b745499ed583fc0533a5e920e68e"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/dapr-init/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "0ca28c2baada41bc46276325be834cf1f404fc184c290927d5649c1090fa87c6"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/dapr-init/action.yml",
+            "commit": "345e0cecf02964d687bd53a82bebe94d784896c0",
+            "blob_sha256": "38f4912a6ee9511098dfd7162ef1bb1a540ab23bce6c33c19c8b02dcd45a0c38"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/governed-provenance/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "29ba25ec9bdc0b81a4953d8182dfb5fe7a204ab8cbac062e03c506626b1cf2d1"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/initialize-build/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "1b249e2dee86cbdc10cb517aea810566903ac7e5a443c348ff2e58fc9686cad0"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/initialize-build/action.yml",
+            "commit": "345e0cecf02964d687bd53a82bebe94d784896c0",
+            "blob_sha256": "1b249e2dee86cbdc10cb517aea810566903ac7e5a443c348ff2e58fc9686cad0"
+          },
+          {
+            "repository": "github.com/nick-fields/retry",
+            "path": "action.yml",
+            "commit": "ad984534de44a9489a53aefd81eb77f87c70dc60",
+            "blob_sha256": "c96eafd350981ad6ebc4319b11da2ee8baf397b491a247ab918f804970a0ee92"
+          }
+        ],
+        "closure_digest": "f60b982c013e8399d1ef9f27049da6be83b32430aaee37457cc841e5f302f628"
+      },
+      {
+        "stage": "ci",
+        "caller": {
+          "repository": "github.com/hexalith/hexalith.frontcomposer",
+          "workflow_path": ".github/workflows/ci.yml",
           "blob_sha256": "8208df33afd99e7991f9ead327835587c0ab2360b355d85be2b157f5375d2d0f"
         },
         "reusable": {
@@ -432,6 +522,113 @@
       }
     ],
     "release": [
+      {
+        "stage": "release",
+        "caller": {
+          "repository": "github.com/hexalith/hexalith.frontcomposer",
+          "workflow_path": ".github/workflows/release.yml",
+          "blob_sha256": "43cfde35991b3c3ef22e75408cc6da438ee581a64aab8ca9dd4ac8dab1f00b10"
+        },
+        "reusable": {
+          "repository": "github.com/hexalith/hexalith.builds",
+          "workflow_path": ".github/workflows/domain-release.yml",
+          "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+          "blob_sha256": "0b3a6a0b9382e2309af7079686ce6944271ac51c408df941860c8022f0abe041"
+        },
+        "actions": [
+          {
+            "repository": "github.com/actions/attest",
+            "path": "action.yml",
+            "commit": "a1948c3f048ba23858d222213b7c278aabede763",
+            "blob_sha256": "83b62b4e6b82709f3764532277e147282dc42ebe742c8f4e5ed88622a2938733"
+          },
+          {
+            "repository": "github.com/actions/attest-build-provenance",
+            "path": "action.yml",
+            "commit": "0f67c3f4856b2e3261c31976d6725780e5e4c373",
+            "blob_sha256": "06572fdd22e341ac7131b1c74b8a07004e03519566d07f344ee2ae4c2ecf6692"
+          },
+          {
+            "repository": "github.com/actions/cache",
+            "path": "action.yml",
+            "commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+            "blob_sha256": "c04edf35104c16c8944076df01561748bac9cd10941417e467a236e508e52dda"
+          },
+          {
+            "repository": "github.com/actions/checkout",
+            "path": "action.yml",
+            "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "blob_sha256": "d59219cb79590abdb877deaa14e3b65a00c05318bf5a6f3b989b9162b5d08c35"
+          },
+          {
+            "repository": "github.com/actions/checkout",
+            "path": "action.yml",
+            "commit": "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+            "blob_sha256": "d59219cb79590abdb877deaa14e3b65a00c05318bf5a6f3b989b9162b5d08c35"
+          },
+          {
+            "repository": "github.com/actions/setup-dotnet",
+            "path": "action.yml",
+            "commit": "a98b56852c35b8e3190ac28c8c2271da59106c68",
+            "blob_sha256": "75999c0bf863f23de88dad047ccf176b5089454cf7e3264c3fee5bc47eba4cf1"
+          },
+          {
+            "repository": "github.com/actions/setup-node",
+            "path": "action.yml",
+            "commit": "820762786026740c76f36085b0efc47a31fe5020",
+            "blob_sha256": "5d765941ab5d8bef27f08e81b0b041cdb2df2050ea0261dc925d157a2bafbd2b"
+          },
+          {
+            "repository": "github.com/actions/upload-artifact",
+            "path": "action.yml",
+            "commit": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+            "blob_sha256": "c5979822866a72362e609844b6ebe77d4b7e759af68cc1c2c425dcf51481fab4"
+          },
+          {
+            "repository": "github.com/dapr/setup-dapr",
+            "path": "action.yml",
+            "commit": "8d980918fd43a2765c143ce7f687665b2d46a6b9",
+            "blob_sha256": "97c86f9b0bfe42b3c82bc9ea426228a76ea9b745499ed583fc0533a5e920e68e"
+          },
+          {
+            "repository": "github.com/docker/setup-qemu-action",
+            "path": "action.yml",
+            "commit": "96fe6ef7f33517b61c61be40b68a1882f3264fb8",
+            "blob_sha256": "9c74c218c37b889976b0af59861f3fceaec87bd12da00bf6dc37ded77d8954f8"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/dapr-init/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "0ca28c2baada41bc46276325be834cf1f404fc184c290927d5649c1090fa87c6"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/governed-provenance/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "29ba25ec9bdc0b81a4953d8182dfb5fe7a204ab8cbac062e03c506626b1cf2d1"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/initialize-build/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "1b249e2dee86cbdc10cb517aea810566903ac7e5a443c348ff2e58fc9686cad0"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/publish-containers/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "d4b128f5b9668638c8e9aeb3fde53c5e5f81e0fbb5c8d42a24f87283a5e69c02"
+          },
+          {
+            "repository": "github.com/nick-fields/retry",
+            "path": "action.yml",
+            "commit": "ad984534de44a9489a53aefd81eb77f87c70dc60",
+            "blob_sha256": "c96eafd350981ad6ebc4319b11da2ee8baf397b491a247ab918f804970a0ee92"
+          }
+        ],
+        "closure_digest": "ed7815dcc89510749a5331a8c6e0bcaec908eab428be540e8b80660631c2cedb"
+      },
       {
         "stage": "release",
         "caller": {
@@ -647,6 +844,113 @@
           }
         ],
         "closure_digest": "2014fa8f4353972e8c684ef3f7de7ee9154c0cd4827c7327730bde95632aaf5e"
+      },
+      {
+        "stage": "post_release",
+        "caller": {
+          "repository": "github.com/hexalith/hexalith.frontcomposer",
+          "workflow_path": ".github/workflows/release-evidence.yml",
+          "blob_sha256": "8664cf1288c63298a40e033d6848de3fdafcc7727b70bd3af03ce02d473bb037"
+        },
+        "reusable": {
+          "repository": "github.com/hexalith/hexalith.builds",
+          "workflow_path": ".github/workflows/domain-release.yml",
+          "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+          "blob_sha256": "0b3a6a0b9382e2309af7079686ce6944271ac51c408df941860c8022f0abe041"
+        },
+        "actions": [
+          {
+            "repository": "github.com/actions/attest",
+            "path": "action.yml",
+            "commit": "a1948c3f048ba23858d222213b7c278aabede763",
+            "blob_sha256": "83b62b4e6b82709f3764532277e147282dc42ebe742c8f4e5ed88622a2938733"
+          },
+          {
+            "repository": "github.com/actions/attest-build-provenance",
+            "path": "action.yml",
+            "commit": "0f67c3f4856b2e3261c31976d6725780e5e4c373",
+            "blob_sha256": "06572fdd22e341ac7131b1c74b8a07004e03519566d07f344ee2ae4c2ecf6692"
+          },
+          {
+            "repository": "github.com/actions/cache",
+            "path": "action.yml",
+            "commit": "55cc8345863c7cc4c66a329aec7e433d2d1c52a9",
+            "blob_sha256": "c04edf35104c16c8944076df01561748bac9cd10941417e467a236e508e52dda"
+          },
+          {
+            "repository": "github.com/actions/checkout",
+            "path": "action.yml",
+            "commit": "3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "blob_sha256": "d59219cb79590abdb877deaa14e3b65a00c05318bf5a6f3b989b9162b5d08c35"
+          },
+          {
+            "repository": "github.com/actions/checkout",
+            "path": "action.yml",
+            "commit": "9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0",
+            "blob_sha256": "d59219cb79590abdb877deaa14e3b65a00c05318bf5a6f3b989b9162b5d08c35"
+          },
+          {
+            "repository": "github.com/actions/setup-dotnet",
+            "path": "action.yml",
+            "commit": "a98b56852c35b8e3190ac28c8c2271da59106c68",
+            "blob_sha256": "75999c0bf863f23de88dad047ccf176b5089454cf7e3264c3fee5bc47eba4cf1"
+          },
+          {
+            "repository": "github.com/actions/setup-node",
+            "path": "action.yml",
+            "commit": "820762786026740c76f36085b0efc47a31fe5020",
+            "blob_sha256": "5d765941ab5d8bef27f08e81b0b041cdb2df2050ea0261dc925d157a2bafbd2b"
+          },
+          {
+            "repository": "github.com/actions/upload-artifact",
+            "path": "action.yml",
+            "commit": "043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+            "blob_sha256": "c5979822866a72362e609844b6ebe77d4b7e759af68cc1c2c425dcf51481fab4"
+          },
+          {
+            "repository": "github.com/dapr/setup-dapr",
+            "path": "action.yml",
+            "commit": "8d980918fd43a2765c143ce7f687665b2d46a6b9",
+            "blob_sha256": "97c86f9b0bfe42b3c82bc9ea426228a76ea9b745499ed583fc0533a5e920e68e"
+          },
+          {
+            "repository": "github.com/docker/setup-qemu-action",
+            "path": "action.yml",
+            "commit": "96fe6ef7f33517b61c61be40b68a1882f3264fb8",
+            "blob_sha256": "9c74c218c37b889976b0af59861f3fceaec87bd12da00bf6dc37ded77d8954f8"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/dapr-init/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "0ca28c2baada41bc46276325be834cf1f404fc184c290927d5649c1090fa87c6"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/governed-provenance/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "29ba25ec9bdc0b81a4953d8182dfb5fe7a204ab8cbac062e03c506626b1cf2d1"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/initialize-build/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "1b249e2dee86cbdc10cb517aea810566903ac7e5a443c348ff2e58fc9686cad0"
+          },
+          {
+            "repository": "github.com/hexalith/hexalith.builds",
+            "path": "Github/publish-containers/action.yml",
+            "commit": "0a3508b3e5685602dc13983c5371cab7fabaf015",
+            "blob_sha256": "d4b128f5b9668638c8e9aeb3fde53c5e5f81e0fbb5c8d42a24f87283a5e69c02"
+          },
+          {
+            "repository": "github.com/nick-fields/retry",
+            "path": "action.yml",
+            "commit": "ad984534de44a9489a53aefd81eb77f87c70dc60",
+            "blob_sha256": "c96eafd350981ad6ebc4319b11da2ee8baf397b491a247ab918f804970a0ee92"
+          }
+        ],
+        "closure_digest": "831e31771b4409db30b8bd6deb2e13d2043a897d73fc9ddf70e6dc71885047c2"
       }
     ]
   }
