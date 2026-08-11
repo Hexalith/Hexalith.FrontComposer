@@ -1389,6 +1389,98 @@ class DiffAndMaterializationTests(unittest.TestCase):
             dg.validate_diff_evidence(self.tmp_path, evidence)
 
 
+class NetworkAcquisitionRetryTests(unittest.TestCase):
+    """Transient remote failures must retry; authoritative answers must still fail closed.
+
+    A hosted-runner TLS blip cloning an approved remote (observed 2026-08-11) aborted the CI
+    step before the graph gate ran. Retrying is safe because the requested commit is still
+    verified after every fetch, but retrying a governance answer -- unknown ref, missing
+    repository -- would weaken the gate, so only infrastructure-shaped stderr may retry.
+    """
+
+    def _completed(self, returncode: int, stderr: str) -> subprocess.CompletedProcess:
+        return subprocess.CompletedProcess([], returncode, stdout=b"", stderr=stderr.encode("utf-8"))
+
+    def test_transient_clone_failure_retries_and_succeeds(self) -> None:
+        flake = self._completed(
+            128,
+            "fatal: unable to access 'https://github.com/hexalith/hexalith.tenants.git/': "
+            "server certificate verification failed. CAfile: none CRLfile: none",
+        )
+        with (
+            mock.patch.object(dg.subprocess, "run", side_effect=(flake, self._completed(0, ""))) as run,
+            mock.patch.object(dg.time, "sleep") as sleep,
+        ):
+            proc, attempts = dg._run_git_network(["clone", "--quiet", "https://example.invalid/x.git", "dest"])
+
+        self.assertEqual(proc.returncode, 0)
+        self.assertEqual(attempts, 2)
+        self.assertEqual(run.call_count, 2)
+        sleep.assert_called_once_with(dg.NETWORK_RETRY_BACKOFF_SECONDS)
+
+    def test_transient_failure_stops_at_the_attempt_ceiling(self) -> None:
+        flake = self._completed(128, "fatal: unable to access: Could not resolve host: github.com")
+        with (
+            mock.patch.object(dg.subprocess, "run", return_value=flake) as run,
+            mock.patch.object(dg.time, "sleep"),
+        ):
+            proc, attempts = dg._run_git_network(["fetch", "--no-tags", "origin", "a" * 40])
+
+        self.assertEqual(proc.returncode, 128)
+        self.assertEqual(attempts, dg.NETWORK_RETRY_ATTEMPTS)
+        self.assertEqual(run.call_count, dg.NETWORK_RETRY_ATTEMPTS)
+
+    def test_authoritative_failure_fails_closed_without_retry(self) -> None:
+        missing_ref = self._completed(128, "fatal: couldn't find remote ref " + "a" * 40)
+        with (
+            mock.patch.object(dg.subprocess, "run", return_value=missing_ref) as run,
+            mock.patch.object(dg.time, "sleep") as sleep,
+        ):
+            proc, attempts = dg._run_git_network(["fetch", "--no-tags", "origin", "a" * 40])
+
+        self.assertEqual(proc.returncode, 128)
+        self.assertEqual(attempts, 1)
+        self.assertEqual(run.call_count, 1)
+        sleep.assert_not_called()
+
+    def test_retry_clears_a_partial_clone_destination(self) -> None:
+        destination = pathlib.Path(tempfile.mkdtemp()) / "partial-store"
+        destination.mkdir(parents=True)
+        (destination / "objects").mkdir()
+        flake = self._completed(128, "fatal: the remote end hung up unexpectedly")
+
+        def run_side_effect(*_args: object, **_kwargs: object) -> subprocess.CompletedProcess:
+            if run.call_count == 1:
+                return flake
+            self.assertFalse(destination.exists())
+            return self._completed(0, "")
+
+        with (
+            mock.patch.object(dg.subprocess, "run", side_effect=run_side_effect) as run,
+            mock.patch.object(dg.time, "sleep"),
+        ):
+            proc, attempts = dg._run_git_network(
+                ["clone", "--quiet", "https://example.invalid/x.git", str(destination)],
+                reset_before_retry=destination,
+            )
+
+        self.assertEqual(proc.returncode, 0)
+        self.assertEqual(attempts, 2)
+
+    def test_exhausted_retries_report_the_attempt_count(self) -> None:
+        flake = self._completed(128, "fatal: unable to access: Could not resolve host: github.com")
+        with (
+            mock.patch.object(dg.subprocess, "run", return_value=flake),
+            mock.patch.object(dg.time, "sleep"),
+            self.assertRaises(dg.GraphError) as ctx,
+        ):
+            dg._ensure_commit_available(pathlib.Path("/nonexistent-store"), "a" * 40)
+
+        message = str(ctx.exception)
+        self.assertIn(f"after {dg.NETWORK_RETRY_ATTEMPTS} attempts", message)
+        self.assertIn("Could not resolve host", message)
+
+
 class CanonicalDigestTests(unittest.TestCase):
     def test_canonical_bytes_are_compact_sorted_ascii(self) -> None:
         payload = {"b": 1, "a": [3, 2, 1], "c": "café"}

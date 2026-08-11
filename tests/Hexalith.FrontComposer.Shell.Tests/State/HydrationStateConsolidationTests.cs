@@ -130,12 +130,31 @@ public sealed class HydrationStateConsolidationTests {
         errors.ShouldBeEmpty(string.Join(Environment.NewLine, errors.Select(static diagnostic => diagnostic.ToString())));
     }
 
+    /// <summary>
+    /// The assemblies the representative consumer compiles against, forced into this process.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="AppDomain.CurrentDomain"/> reports only what has already been loaded, and no
+    /// method executed before this test forces the Shell assembly to load. In the full lane some
+    /// earlier test happened to load it; in the Governance-only lane the load order is not
+    /// guaranteed, so the compilation intermittently saw no Shell reference and failed with
+    /// CS0246 on every `using Hexalith...` line instead of proving the consumer contract.
+    /// </remarks>
+    private static Assembly[] AnchorAssemblies() =>
+    [
+        typeof(object).Assembly,
+        typeof(HydrationState).Assembly,
+        typeof(FrontComposerThemeState).Assembly,
+        typeof(FrontComposerNavigationState).Assembly,
+        typeof(PaletteHydratingAction).Assembly,
+    ];
+
     private static List<MetadataReference> GetMetadataReferences()
     {
         List<MetadataReference> references = new();
         HashSet<string> seenLocations = new(StringComparer.OrdinalIgnoreCase);
 
-        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+        foreach (Assembly assembly in AnchorAssemblies().Concat(AppDomain.CurrentDomain.GetAssemblies()))
         {
             try
             {

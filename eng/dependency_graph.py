@@ -21,8 +21,10 @@ import fnmatch
 import hashlib
 import json
 import re
+import shutil
 import subprocess
 import sys
+import time
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Any
@@ -104,6 +106,75 @@ def _git_ok(args: list[str], cwd: Path) -> bytes:
             f"git {' '.join(args)} failed in {cwd}: {proc.stderr.decode('utf-8', 'replace').strip()}"
         )
     return proc.stdout
+
+
+# Remote acquisition is this engine's only network-bound surface. A hosted-runner TLS, DNS,
+# or HTTP blip against an approved remote is transient infrastructure noise, not a governance
+# verdict, yet it aborts the CI step before the diff gate ever runs (observed 2026-08-11:
+# `server certificate verification failed` while cloning hexalith.tenants). Retrying the exact
+# same argv cannot widen what is accepted -- the requested commit is still verified by
+# `cat-file -e` after every fetch, and clone URLs are still reconstructed from policy identity
+# -- so a bounded retry keeps the fail-closed contract while surviving the blip.
+NETWORK_RETRY_ATTEMPTS = 3
+NETWORK_RETRY_BACKOFF_SECONDS = 2.0
+
+# Only infrastructure-shaped failures retry. Authoritative answers -- a missing repository, an
+# unknown ref, a rejected credential -- are governance facts and must fail closed immediately.
+_TRANSIENT_NETWORK_MARKERS = (
+    "could not resolve host",
+    "could not resolve proxy",
+    "connection reset by peer",
+    "connection timed out",
+    "early eof",
+    "failed to connect to",
+    "gnutls_handshake() failed",
+    "operation timed out",
+    "remote end hung up unexpectedly",
+    "rpc failed",
+    "server certificate verification failed",
+    "ssl connect error",
+    "ssl_error_syscall",
+    "the requested url returned error: 5",
+    "unexpected disconnect",
+)
+
+
+def _is_transient_network_failure(stderr: str) -> bool:
+    lowered = stderr.lower()
+    return any(marker in lowered for marker in _TRANSIENT_NETWORK_MARKERS)
+
+
+def _run_git_network(
+    args: list[str],
+    cwd: Path | None = None,
+    *,
+    reset_before_retry: Path | None = None,
+) -> tuple[subprocess.CompletedProcess[bytes], int]:
+    """Run one network-bound git argv, retrying only transient acquisition failures.
+
+    `reset_before_retry` names a clone destination to remove between attempts so a partially
+    written tree cannot turn a retryable blip into a hard "destination already exists" error.
+    """
+    attempt = 1
+    while True:
+        proc = subprocess.run(
+            ["git", *args],
+            cwd=None if cwd is None else str(cwd),
+            capture_output=True,
+            check=False,
+        )
+        if proc.returncode == 0 or attempt >= NETWORK_RETRY_ATTEMPTS:
+            return proc, attempt
+        if not _is_transient_network_failure(proc.stderr.decode("utf-8", "replace")):
+            return proc, attempt
+        if reset_before_retry is not None:
+            shutil.rmtree(reset_before_retry, ignore_errors=True)
+        time.sleep(NETWORK_RETRY_BACKOFF_SECONDS * attempt)
+        attempt += 1
+
+
+def _attempts_note(attempts: int) -> str:
+    return "" if attempts <= 1 else f" after {attempts} attempts"
 
 
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -731,10 +802,10 @@ def _ensure_commit_available(local_path: Path, commit: str) -> None:
     probe = _run_git(["cat-file", "-e", f"{commit}^{{commit}}"], local_path)
     if probe.returncode == 0:
         return
-    fetch = _run_git(["fetch", "--no-tags", "origin", commit], local_path)
+    fetch, attempts = _run_git_network(["fetch", "--no-tags", "origin", commit], local_path)
     if fetch.returncode != 0:
         raise GraphError(
-            f"failed to acquire exact approved commit {commit} in {local_path}: "
+            f"failed to acquire exact approved commit {commit} in {local_path}{_attempts_note(attempts)}: "
             f"{fetch.stderr.decode('utf-8', 'replace').strip()}"
         )
     _git_ok(["cat-file", "-e", f"{commit}^{{commit}}"], local_path)
@@ -781,14 +852,14 @@ def acquire_object_stores(
             continue
         local = destination / trusted["local_path"]
         local.parent.mkdir(parents=True, exist_ok=True)
-        clone = subprocess.run(
-            ["git", "clone", "--quiet", "--no-checkout", _canonical_clone_url(identity), str(local)],
-            capture_output=True,
-            check=False,
+        clone, attempts = _run_git_network(
+            ["clone", "--quiet", "--no-checkout", _canonical_clone_url(identity), str(local)],
+            reset_before_retry=local,
         )
         if clone.returncode != 0:
             raise GraphError(
-                f"failed to acquire approved repository {identity}: {clone.stderr.decode('utf-8', 'replace').strip()}"
+                f"failed to acquire approved repository {identity}{_attempts_note(attempts)}: "
+                f"{clone.stderr.decode('utf-8', 'replace').strip()}"
             )
 
     root_edges = base_root_edges + candidate_root_edges

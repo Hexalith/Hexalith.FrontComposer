@@ -122,7 +122,21 @@ jobs:
               source.extractall("artifacts/release-source/ci-handoff")
           PY
           handoff="artifacts/release-source/ci-handoff/dependency-release-handoff.json"
-          python3 eng/dependency_handoff.py verify-ci --handoff "$handoff" --live
+          # `--live` re-derives the exact candidate graph, which needs an object store for every
+          # root-declared dependency. This job checks out with `submodules: false` on purpose, so
+          # acquire those stores from active-policy-approved identities first -- the same
+          # acquisition push CI performs -- rather than trusting candidate `.gitmodules` URLs.
+          # Without it the re-derivation ran git inside an empty submodule directory, walked up to
+          # the superproject, and failed closed with `fatal: not a tree object`.
+          object_root="$RUNNER_TEMP/release-source-object-stores"
+          handoff_base="$(jq -er '.revisions.base' "$handoff")"
+          handoff_candidate="$(jq -er '.revisions.candidate' "$handoff")"
+          python3 eng/dependency_graph.py acquire \
+            --event-base "$handoff_base" \
+            --candidate "$handoff_candidate" \
+            --destination "$object_root" \
+            > artifacts/release-source/object-acquisition.json
+          python3 eng/dependency_handoff.py --root "$object_root" verify-ci --handoff "$handoff" --live
           jq -e \
             --arg sha "$DISPATCH_SHA" \
             --argjson run "$CI_RUN_ID" \
