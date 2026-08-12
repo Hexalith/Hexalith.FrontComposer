@@ -2315,3 +2315,14 @@ status: open
 - source_spec: none
   summary: Repair permanently red or timing-out nightly benchmark, mutation, and CI-duration telemetry workflows.
   evidence: Split from the CI/CD control audit because nightly reliability has separate inputs, failure modes, and acceptance evidence from push dependency governance.
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-93-0.md`
+  summary: Bind package-audit provenance to an existing Git revision whose catalog blob matches the audited selections.
+  evidence: The existing validator accepts any 40-character lowercase hexadecimal value and does not verify that `generatedFromRevision` exists or contains the audited catalog.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-93-0.md`
+  summary: Classify NuGet not-found responses by status rather than one diagnostic string and cover alternate 404 bodies with fixtures.
+  evidence: The existing audit generator can classify NuGet's `404 (The specified blob does not exist.)` response as unresolved instead of missing.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-93-0.md`
+  summary: Add a durable Release-mode assertion for the exact EventStore Aspire package identity and absence of its source-project edge.
+  evidence: This bump proved `Hexalith.EventStore.Aspire/3.93.0` through an isolated restore and asset inspection, but the existing CI governance tests do not assert the resolved package version.
