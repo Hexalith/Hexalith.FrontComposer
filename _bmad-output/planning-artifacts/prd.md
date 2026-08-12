@@ -102,11 +102,11 @@ Status labels are part of each requirement's downstream contract.
 | FR | Status | Owner / gate |
 | --- | --- | --- |
 | FR-1 to FR-12 | Baseline / release verification | Framework maintainer verifies generated projection, shell, grid, freshness, and realtime behavior do not regress. |
-| FR-13 | Active remediation / release gate | The approved FC-NIP base source remains valid, but the rejected Epic 9 retrospective found terminal-path, target-identity, invalidation, scope, and first-wins composition gaps. Stories 9.3-9.8 must pass before completion is restored. |
+| FR-13 | Active remediation / release gate | Story 9.3 approved explicit command target identity, but terminal-path, invalidation, scope, first-wins, and composed/live gaps remain. Stories 9.4-9.8 must pass before completion is restored. |
 | FR-14 to FR-23 | Baseline / release verification | Framework maintainer verifies command lifecycle, MCP, CLI, Testing, and documentation surfaces remain covered. |
 | FR-24 | Release governance / publication gate | Release Owner proves the exact NuGet/GitHub artifacts were inventory- and consumer-validated, signed, timestamped, verified, checksummed, and bound with the complete defined dependency graph, immutable dependency policy, and authenticated CI/release workflow provenance in a valid sealed v2 manifest before classification and publication. |
 | FR-25 | Baseline plus change-control gate | Framework maintainer owns public API, schema, CLI JSON, generated-output, diagnostic compatibility, and the staged built-in-analyzer policy/burn-down/activation evidence in Stories 11.20–11.23. |
-| FR-26 | Active remediation / release gate | Epic 9 is in progress. Stories 9.1-9.2 remain historical delivery records; Stories 9.3-9.8 own accepted remediation and composed/live regression evidence. |
+| FR-26 | Active remediation / release gate | Epic 9 is in progress. Stories 9.1-9.2 remain historical delivery records, Story 9.3 is the approved successor decision, and Stories 9.4-9.8 own implementation and composed/live regression evidence. |
 | FR-27 | Complete / release verification | Epic 10 is done; its tooling-governance and Testing-redaction evidence may be consumed by later remediation. |
 | FR-28 | Complete decision records | Epic 11.0 and 11.8 are done; completed dependent delivery retains the recorded contracts. |
 | FR-29 | Active release-readiness program | Epic 11 remains organized into four workstreams. Story 11.17a is done; 11.17b–d, 11.18a–c, and 11.19a–d are in review. The approved Story 11.19d decision materialized 11.20–11.23 as sequential, separately approval-gated backlog phases, with 11.23 required before v1.0 publication authorization. |
@@ -243,8 +243,8 @@ The product must not infer row-level fresh indicators from projection nudges tha
 
 **Consequences:**
 - `FcNewItemIndicator` remains a confirmed component.
-- Automatic row marking uses only the approved FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context.
-- Story 9.1 recorded the approved base payload source in `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md`. The 2026-08-11 retrospective rejected Story 9.2 evidence as proof of composed behavior; Stories 9.3-9.8 must prove explicit target identity, one terminal producer boundary, observable scope-safe state, atomic per-row first-wins behavior, and composed/live acceptance.
+- Automatic row marking uses only an immutable target snapshot captured before dispatch from an explicit command-to-projection declaration and typed `ICommandTargetIdentityProvider<TCommand>`, or from a declared `SameAsSource` source snapshot. Terminal `Material`, `NoOp`, or `Unknown` classification remains independent; unknown identity or materiality suppresses publication.
+- Story 9.1 recorded the approved base payload source in `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md`. Story 9.3 approved its successor in `_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md`. The 2026-08-11 retrospective rejected Story 9.2 evidence as proof of composed behavior; Stories 9.4-9.8 must implement one terminal producer boundary, observable scope-safe state, atomic per-row first-wins behavior, and composed/live acceptance.
 
 ### 5.4 Command Authoring, Lifecycle, And Safety
 
@@ -389,8 +389,8 @@ FrontComposer must complete row-level fresh-item producer/consumer composition o
 
 **Consequences:**
 - Fresh-row indicators are never inferred from SignalR nudges or unrelated projection refreshes.
-- The approved payload source is FrontComposer-owned pending-command row metadata populated from generated grid/command runtime context; EventStore status remains a lifecycle/status source by `MessageId`, not row identity.
-- Story 9.2 is historical implementation evidence, not accepted composition evidence. Stories 9.3-9.8 are the release regression gate.
+- The approved base source is FrontComposer-owned pending-command row metadata. The successor requires explicit command-to-projection declaration, typed target-provider resolution or declared `SameAsSource`, pre-dispatch capture, and independent typed terminal materiality; EventStore status remains a lifecycle/status source by `MessageId`, not row identity.
+- Story 9.2 is historical implementation evidence and Story 9.3 is the approved target-identity decision, not accepted composition evidence. Stories 9.4-9.8 are the release regression gate.
 
 #### FR-27: Complete tooling-governance follow-through
 
@@ -460,7 +460,7 @@ FrontComposer must complete the remaining Epic 11 release-readiness remediation 
 
 ### 8.2 Post-MVP Readiness Program Status
 
-- **Epic 9:** in progress after rejected retrospective acceptance; Stories 9.1-9.2 remain historical records and Stories 9.3-9.8 own remediation and final evidence.
+- **Epic 9:** in progress after rejected retrospective acceptance; Stories 9.1-9.2 remain historical records, Story 9.3 owns the approved successor decision, and Stories 9.4-9.8 own implementation and final evidence.
 - **Epic 10:** done; tooling-governance and Testing-redaction outcomes remain reusable evidence.
 - **Epic 11 runtime reliability/security:** baseline stories done; 11.18a is in review.
 - **Epic 11 adopter testing/route integrity:** done.
@@ -525,7 +525,7 @@ FrontComposer must complete the remaining Epic 11 release-readiness remediation 
 | D-1 | Canonical PRD path | Product Owner | Resolved: `_bmad-output/planning-artifacts/prd.md` is the readiness-discoverable canonical copy; `_bmad-output/planning-artifacts/prds/prd-frontcomposer-2026-07-05/prd.md` remains the BMad run copy. | None. |
 | D-2 | Architecture and UX discovery | Product Owner | Resolved: `_bmad-output/planning-artifacts/architecture.md` and `_bmad-output/planning-artifacts/ux-design.md` are canonical planning sources; `_bmad-output/project-docs` remains source depth. | None. |
 | D-3 | Generated command route family | Product + Architecture | Resolved 2026-07-05: canonical generated command route family is `/commands/{BoundedContext}/{CommandTypeName}`; contract recorded in `_bmad-output/contracts/fc-route-generated-command-route-contract-2026-07-05.md`. | Stories 11.0 and 11.7 are done; the contract and e2e pin remain regression evidence. |
-| D-4 | FC-NIP row identity payload source | Product + Architecture | The 2026-07-05 pending-command metadata decision remains the base source for row-context commands. The 2026-08-11 retrospective proved it incomplete for standalone create, cross-row, delete/no-op, and status-move targets and for composed delivery. Story 9.3 owns the successor target-identity decision. Contract: `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md`. | Stories 9.3-9.8 block FR-13/FR-26 completion and Epic 9 closure. |
+| D-4 | FC-NIP row identity payload source | Product + Architecture | Resolved 2026-08-12: the 2026-07-05 pending-command metadata decision remains the base source for row-context provenance. The approved successor requires an explicit command-to-projection declaration, typed `ICommandTargetIdentityProvider<TCommand>` or declared `SameAsSource`, one immutable target snapshot before dispatch, post-acceptance `MessageId`, and independent terminal `Material` / `NoOp` / `Unknown` classification. Contracts: `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md` and `_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md`. | D-4 is resolved; Stories 9.4-9.8 still block FR-13/FR-26 completion and Epic 9 closure. |
 | D-5 | Contracts kernel split release posture | Architecture + PM | Resolved and delivered: a netstandard2.0-clean `Contracts` kernel plus net10-only `Contracts.UI` for Blazor/Fluent rendering contracts, with package compatibility, public API, deprecation/migration, inventory, and docs evidence. | Stories 11.8 and 11.11–11.14 are done; regression evidence remains blocking for affected releases. |
 | D-6 | FR-24 release-evidence ownership | Release owner | Amended 2026-07-15: REL-2 delivered reusable CI/CD alignment and G1 post-publication evidence. Live v3.2.2 evidence proved G1 insufficient: published packages were unsigned, the manifest was invalid, and readiness was blocked while the evidence workflow succeeded. `REL-3` owns exact-artifact pre-publication enforcement and the affected-release ledger. Truth-state corrected 2026-08-02: REL-4's caller-side `release.yml` freeze guard remains mandatory and publication remains unauthorized. Hexalith.Builds issue 17 closed on 2026-07-20 without the GOV-1 amendment or a recorded qualifying immutable revision. FrontComposer-local GOV-1 work proceeds; a reopened issue 17 or successor request and its accepted revision gate reusable-workflow integration, end-to-end exact-candidate handoff/evaluator proof, GOV-1 completion, release eligibility, and unfreeze. REL-5 owns Release Owner enablement and REL-AI-1 closure. | Blocks the next NuGet or GitHub package publication and REL-AI-1 closure. |
 | D-7 | Success metric targets | Product Owner + Release owner | Resolved in §9 with minimum v1.0 evidence targets. | None unless targets are changed. |
@@ -539,7 +539,7 @@ FrontComposer must complete the remaining Epic 11 release-readiness remediation 
 All PRD open questions identified by the 2026-07-05 readiness follow-up are now resolved, routed, or explicitly accepted:
 
 - Canonical PRD path, architecture/UX discovery, generated command route family, Contracts split release posture, release-evidence ownership, success metric targets, and standalone UX source need are resolved in D-1, D-2, D-3, D-5, D-6, D-7, and D-8.
-- The FC-NIP base payload decision remains approved under D-4 and Story 9.1, but producer/consumer composition is in active remediation after the rejected 2026-08-11 Epic 9 retrospective. Stories 9.3–9.8 own the successor decision, implementation, and composed/live acceptance gate.
+- D-4 is resolved by the approved FC-NIP base payload decision and Story 9.3 successor target-identity decision. Producer/consumer composition remains in active remediation after the rejected 2026-08-11 Epic 9 retrospective; Stories 9.4–9.8 own implementation and the composed/live acceptance gate.
 - Final PRD status approval is resolved through D-9; Product approval promoted the PRD to `approved-for-v1-readiness`.
 - Built-in analyzer target and activation are resolved through D-10; sequential Stories 11.20–11.23 carry the separately approval-gated implementation, and 11.23 is required before v1.0 publication authorization.
 - Shared-catalog compatibility and dependency provenance decisions are resolved through D-11; GOV-1 carries implementation and BUILD-CAT-1 routes the semantic catalog marker. Hexalith.Builds issue 17 closed without a qualifying GOV-1 revision; a reopened issue or successor remains the explicit reusable-workflow integration/completion/unfreeze gate until its owner-accepted immutable revision is recorded, while FrontComposer-local work proceeds.
