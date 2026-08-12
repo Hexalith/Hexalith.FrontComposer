@@ -81,15 +81,17 @@ The focused FC-TBL public baseline currently covers these public types under
 | `FcNewItemIndicator` | Accessible fresh-row indicator component. | `Text`, `AriaLabelOverride`. |
 
 `FcNewItemIndicator` is a confirmed component and state primitive. Automatic row-level producer wiring
-is under active Epic 9 remediation. Story 9.3 approved the successor decision in
-`_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md`, building on the
-2026-07-05 row-context base contract. Projection nudges remain insufficient row identity. The approved
-target comes from an explicit command-to-projection declaration plus typed
-`ICommandTargetIdentityProvider<TCommand>`, or a declared `SameAsSource` snapshot, and is captured
-immutably before dispatch. Terminal `Material`, `NoOp`, or `Unknown` evidence is evaluated separately;
-unknown identity or materiality suppresses the indicator. Stories 9.4-9.8 still own the terminal
-producer boundary, generated-grid invalidation, scope-safe dismissal, atomic per-row first-wins
-behavior, and composed/live acceptance before the feature is documented as complete.
+is **not yet available** and remains under active remediation. Projection nudges remain insufficient
+row identity.
+
+The approved design — none of which ships today — resolves the indicator target from an explicit
+command-to-projection declaration plus a typed target-identity provider, or from a declared
+same-as-source snapshot, captured immutably before dispatch. Terminal material, no-op, or unknown
+evidence is evaluated separately; unknown identity or materiality suppresses the indicator. No public
+type for any of this is published yet, and none is covered by the FC-TBL baseline above. The terminal
+producer boundary, generated-grid invalidation, scope-safe dismissal, and atomic per-row first-wins
+behavior are still outstanding, and this section will be updated when the feature ships. Adopters
+should not build against the design described here until then.
 
 Reserved filter keys remain framework-owned: `__status` for status filters, `__search` for in-grid
 search, and `__hidden` for hidden-column persistence. Column filter keys beginning with `__` are

@@ -33,6 +33,23 @@ API, change EventStore, or implement generated/runtime behavior.
 
 ## Generated Command-Target Descriptor
 
+### Declaration Authoring Surface
+
+A command-to-projection declaration is an attribute applied to the command type and read by
+SourceTools through `ForAttributeWithMetadataName`, in the same parse stage that already consumes
+`[Projection]`, `[Command]`, and `[ProjectionTemplate]`. It is a compile-time generator input, not a
+runtime registration and not a public runtime API: the attribute names the target projection type and
+the resolution mode, and nothing else may introduce a target.
+
+Neither a DI registration, a configuration entry, a naming convention, nor a runtime call may act as
+a declaration. A command carrying no such attribute has no declared target, fails closed for FC-NIP,
+and is unaffected in every other respect. The attribute's exact name, namespace, and parameter shape
+are Story 9.4 implementation detail constrained by this contract; because the attribute is authored
+by adopters, publishing it is a public API surface change and still requires the explicit human
+approval named under Story 9.4 below.
+
+### Descriptor Contents
+
 The generated descriptor is immutable and contains:
 
 - the command type identity;
@@ -44,7 +61,9 @@ The generated descriptor is immutable and contains:
 SourceTools may generate registration from the declaration, but it may not discover a target through
 command-property names, generic reflection over command fields, routes, or component placement. A
 missing, duplicate, or incompatible declaration fails closed for FC-NIP and produces no
-indicator-eligible target.
+indicator-eligible target. Two or more registered `ICommandTargetIdentityProvider<TCommand>`
+implementations for the same `TCommand` are a duplicate registration: resolution fails closed rather
+than selecting a last-wins or first-wins winner.
 
 ## Immutable Target Snapshot
 
@@ -58,7 +77,25 @@ The pre-dispatch snapshot contains no `MessageId` and has these fields:
 | `ChangeKind` | Declaration-fixed or typed-provider value: `Create`, `Update`, `StatusMove`, or `Delete`. | Required and known. `NoOp` is terminal materiality, not a change kind. |
 | `PriorStatus` | Typed-provider value, or copied from the explicit source snapshot for `SameAsSource`. | Required for `StatusMove`; otherwise optional. |
 | `ExpectedStatus` | Typed-provider destination value, or a declaration-fixed destination validated for the target view. | Required for `StatusMove` and whenever lane eligibility depends on destination status; otherwise optional. |
+| `TenantId` | Framework-owned tenant accessor at target resolution. | Required and non-empty. It is never read from command fields or tool input. |
+| `UserId` | Framework-owned user accessor at target resolution. | Required and non-empty. It is never read from command fields or tool input. |
 | `CapturedAt` | FrontComposer `TimeProvider` at successful target resolution. | Required. It is never supplied by command fields or overwritten by a terminal timestamp. |
+
+`TenantId` and `UserId` are captured with the rest of the snapshot and are immutable thereafter.
+Publication requires that the active tenant and user at eligible terminal observation equal the
+captured pair; any inequality suppresses FC-NIP publication rather than republishing under the new
+scope. Story 9.5 owns enforcing this before state is read or rendered, but the captured pair is what
+that enforcement compares against, so it belongs in the snapshot rather than in indicator state.
+
+When the descriptor fixes a value that the typed provider also returns — `ChangeKind`,
+`ExpectedStatus`, or a canonical view/lane selection — the two must be equal. A disagreement is not
+resolved by precedence: it fails closed, makes the target unknown, and suppresses publication. This
+keeps the declaration and the provider mutually checking rather than letting either silently win.
+
+A declared `SameAsSource` mode is valid only with `ChangeKind = Update`. `SameAsSource` combined with
+`Create`, `StatusMove`, or `Delete` is an invalid declaration and fails closed: a create has no source
+row to copy, and a status move and a delete both require a destination or lifecycle target that a
+source snapshot cannot supply. Those three kinds require typed-provider mode.
 
 A standalone create is indicator-eligible under this contract only when its exact `EntityKey` is
 known before dispatch, including when a framework-owned preallocation mechanism supplies that key.
@@ -99,6 +136,8 @@ meaning:
 | `CapturedAt` | No historical field | This is a distinct new internal snapshot value and never aliases `CreatedAt` or `ObservedAt`. |
 | `ProjectionTypeName` | `ProjectionTypeName` | The existing name and target-projection disambiguation role are retained. |
 | `EntityKey` | `EntityKey` | The existing name and exact target projection-row identity role are retained. |
+| `TenantId` | `TenantId` | The existing framework-owned tenant scope is retained and is now captured pre-dispatch rather than only at publication. |
+| `UserId` | `UserId` | The existing framework-owned user scope is retained and is now captured pre-dispatch rather than only at publication. |
 | Accepted `MessageId` | `MessageId` | The existing accepted-command identity and terminal-correlation role are retained. |
 
 ## Capture And Observation Order
@@ -180,12 +219,61 @@ No implementation may infer or repair target identity or materiality from:
 
 Unknown identity or materiality always fails closed. There is no best-effort or source-row fallback.
 
+## Migration From The Historical Row Cascade
+
+FC-NIP is **opt-in per command**. This is a deliberate behavioural change, not an oversight, and it
+has a live regression surface that must be handled explicitly.
+
+Today `PendingCommandOutcomeResolver` publishes an indicator whenever a confirmed or
+idempotent-confirmed outcome carries a non-empty `ProjectionTypeName`, `LaneKey`, `EntityKey`, and
+`MessageId`, all of which arrive through the ambient `PendingCommandRowIdentity` cascade emitted by
+`CommandFormEmitter` and `RazorEmitter`. Every command launched from a generated projection grid row
+therefore publishes fresh-row indicators **with no declaration of any kind**. Under this contract
+those same commands resolve no target and publish nothing.
+
+No implicit or generated declaration closes that gap. Deriving a declaration from the fact that a
+command renders inside a generated grid row would be exactly the ambient source-row placement this
+contract forbids, so the historical cascade is not silently promoted into a `SameAsSource`
+declaration. The migration is explicit and adopter-visible instead:
+
+- Story 9.4 adds a **build-time SourceTools diagnostic** that fires when a command is rendered from a
+  generated projection row but declares no FC-NIP target, naming the command and pointing at the
+  declaration surface. Adopters get a compile-time signal rather than silently losing indicators.
+  Allocate the next free build-time identifier in `FcDiagnosticIds` (`HFC1070` is currently the
+  highest in sequence) and document it under `docs/diagnostics/`.
+- Story 9.4 also migrates this repository's own `[Command]` samples under `samples/Counter`,
+  `samples/Counter.Specimens.Domain`, and `samples/IdeParityCounter` to explicit `SameAsSource`
+  declarations, so the shipped reference apps demonstrate the migration rather than regressing.
+- Adopter-facing release notes must state that fresh-row indicators now require a declaration.
+
+Decision provenance: resolved 2026-08-12 at the Story 9.3 code-review decision gate, after the review
+established that the regression is live rather than theoretical.
+
 ## Downstream Ownership
 
 - **Story 9.4:** implement the internal/generated descriptor, typed provider resolution, immutable
   snapshot transport, accepted `MessageId` association, typed terminal materiality adapters, and the
   single `IPendingCommandOutcomeResolver` producer boundary. Any public API shape still requires
-  explicit human approval.
+  explicit human approval. Story 9.4 additionally owns and must resolve these seven behavioural rules,
+  which this decision deliberately routes forward rather than fixing here:
+  1. a bounded provider-resolution deadline, so a hanging provider cannot block the dispatch path
+     itself — expiry marks the target unknown and dispatch continues;
+  2. the disposition when accepted dispatch returns an empty or non-ULID `MessageId` — validation
+     failure discards the snapshot association and suppresses the indicator;
+  3. the snapshot-equality rule that separates a duplicate re-observation from a conflict, defined
+     over target fields only and excluding `CapturedAt`, so re-observation is not self-conflicting;
+  4. `ViewKey` and `EntityKey` canonicalization plus comparison ordinality, including the equality
+     rule backing `(ViewKey, EntityKey)` uniqueness;
+  5. a maximum `CapturedAt`-to-`ObservedAt` age and a clock-skew rule, so an adapter timestamp cannot
+     yield an already-expired or effectively permanent indicator;
+  6. the early-observation buffer's capacity, eviction policy, and overflow disposition, giving the
+     word "bounded" a concrete value; and
+  7. the invalidation events that discard a captured snapshot before terminal observation, such as
+     circuit disposal, navigation away, or scope transition.
+- **Story 9.9 (new, blocks Story 9.8):** own the framework-owned `EntityKey` preallocation mechanism
+  that standalone-create eligibility depends on. No such mechanism exists in `src/` today, so without
+  it every standalone create with a server-allocated key suppresses its indicator and the create-path
+  live browser evidence Epic 9 closure requires has no route to existing.
 - **Story 9.5:** make indicator mutations observable and enforce tenant/user scope before reads and
   renders.
 - **Story 9.6:** enforce atomic per-row first-wins behavior without replacing provenance or extending
