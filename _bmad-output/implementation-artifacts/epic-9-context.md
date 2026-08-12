@@ -31,7 +31,11 @@ Completion requires composition coverage across generated command handling, pend
 
 ## Technical Decisions
 
+FC-NIP owns the automatic row-level producer contract. FC-TBL owns the DataGrid component/state primitive surface, and FC-CMD owns command identity, lifecycle, pending state, and message/correlation semantics. That three-contract split is unchanged by Epic 9 remediation.
+
 `IPendingCommandOutcomeResolver` is the single owner of terminal pending-state application and eligible fresh-row publication. Generated lifecycle callbacks and infrastructure adapters emit observations to that boundary; they do not mutate terminal pending state directly. Bounded buffering and replay handle callbacks that arrive before durable pending registration while preserving cancellation, disposal, and `MessageId` matching.
+
+If EventStore or another upstream source is ever to supply row identity, it must publish a bounded typed payload. Generic `ResultPayload` must not become a hidden FC-NIP contract, and EventStore `AggregateId` is not automatically a FrontComposer generated-grid `EntityKey` — it qualifies only where a specific projection contract proves identity equivalence.
 
 Command target metadata is immutable, explicit, and independent of the UI row that launched a command. The established FrontComposer-owned pending-command metadata remains the base for row-context commands, but the successor target-identity contract must also cover commands with no existing row and commands whose target differs from the source row. This work stays within FrontComposer Shell, SourceTools, tests, and governance tooling; it does not authorize an EventStore contract change, dependency upgrade, package-boundary change, schema-fingerprint change, submodule edit, or deployment change.
 
@@ -41,7 +45,7 @@ Story evidence must mechanically reconcile the candidate commit range with story
 
 ## UX & Interaction Patterns
 
-Fresh-row indicators appear and disappear automatically in a grid that was rendered before the state change. They are restricted to the active view/lane, tenant, and user scope and use localized, useful, non-noisy announcements with `role="status"` and `aria-live="polite"`. Indicator meaning must remain accessible under keyboard use, reduced motion, and forced colors. Rejection and no-op outcomes must not create misleading freshness, and the UI must continue to distinguish accepted-but-waiting lifecycle state from projection-confirmed results.
+Fresh-row indicators appear and disappear automatically in a grid that was rendered before the state change. They are restricted to the active view/lane, tenant, and user scope and use localized, useful, non-noisy announcements. `FcNewItemIndicator` already renders `role="status"` and `aria-live="polite"` (`src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcNewItemIndicator.razor:4-5`); Epic 9 must not regress that, but it does not introduce a new announcement contract. Indicator meaning must remain accessible under keyboard use, reduced motion, and forced colors, per the NFR6 accessibility invariants that `prd.md` and `ux-design.md` already own. Rejection and no-op outcomes must not create misleading freshness, and the UI must continue to distinguish accepted-but-waiting lifecycle state from projection-confirmed results.
 
 ## Cross-Story Dependencies
 

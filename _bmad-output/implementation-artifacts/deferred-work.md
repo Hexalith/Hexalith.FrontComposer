@@ -1,5 +1,41 @@
 # Deferred Work
 
+## Deferred from: code review of spec-9-3-define-explicit-command-target-identity.md (2026-08-12)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: FC-NIP contract guards duplicate roughly forty literal fragments and two full markdown tables across the C# and Playwright suites with no shared source of truth.
+  evidence: `AssertTableRows` / `parseTableRows` demand cell-by-cell equality of the Immutable Target Snapshot and Complete Outcome Disposition Matrix, transcribed by hand into both languages; a single contract typo breaks both suites and the copies will drift. Pre-existing duplication pattern that Story 9.3 extended rather than introduced.
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: FC-NIP guard file and class names still say "row identity" although both now primarily guard command target identity.
+  evidence: `tests/e2e/specs/fc-nip-row-identity-contract.spec.ts` and `FcNipRowIdentityProducerContractTests` were retargeted in place, and the base contract header still reads "Story 9.1 - Confirm the FC-NIP row-identity producer contract". Renaming touches governance identifiers and the analyzer identifier inventory, so it belongs in an owned story.
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: Reconcile the dual dating of the FC-NIP base decision across the contract set.
+  evidence: The base file is named and dated `2026-07-04`, but the successor contract, `prd.md`, and the Story 9.3 spec all cite "the 2026-07-05 row-context decision" — the `Decision update:` date inside the 07-04 file. No document explains the relationship, so the set appears to reference a contract that does not exist. Second-pass code review, 2026-08-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: Unify the clock-abstraction naming in the successor contract.
+  evidence: `CapturedAt` is sourced from "FrontComposer `TimeProvider`" while the `ObservedAt` fallback is "the Shell `TimeProvider`", with no statement that these name the same seam. Cosmetic but load-bearing for a contract whose whole point is that the two timestamps stay distinct. Second-pass code review, 2026-08-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: Specify redaction, log category/level, and a suppression-rate signal for the FC-NIP target-failure diagnostic.
+  evidence: The contract emits a bounded diagnostic carrying `EntityKey`, `PriorStatus`, and `ExpectedStatus` — business data — with no redaction rule, and requires no suppression-rate observability. A fail-closed implementation suppressing 100% of indicators in production would be indistinguishable from a working one. Belongs with the Story 9.4 implementation. Second-pass code review, 2026-08-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: Record the retirement path for the gap-evidence prohibitions pinned on `EventStorePendingCommandStatusQuery.cs`.
+  evidence: The newly broadened `ShouldNotContain("EntityKey:")` makes the earlier `ShouldNotContain("EntityKey: status.AggregateId")` dead, and the broad form will block Story 9.4, which is expected to add target identity to that exact file. Nothing documents when or how these assertions retire. Owned by Story 9.4. Second-pass code review, 2026-08-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: RESOLVED 2026-08-12 — implement the FC-NIP opt-in migration in Story 9.4 (build-time diagnostic plus sample migration).
+  evidence: Decided at the Story 9.3 code-review decision gate. FC-NIP stays opt-in per command; the historical row cascade is NOT promoted into an implicit `SameAsSource` declaration, because that would reintroduce the ambient source-row placement the frozen Never-list forbids. Story 9.4 owns (a) a build-time SourceTools diagnostic when a command renders from a generated projection row without a target declaration — allocate the next free id in `FcDiagnosticIds`, `HFC1070` is currently highest — and (b) migrating `samples/Counter`, `samples/Counter.Specimens.Domain`, and `samples/IdeParityCounter` `[Command]` types to explicit declarations. Adopter release notes must state that fresh-row indicators now require a declaration. Recorded in the successor contract's "Migration From The Historical Row Cascade" section; remaining work is Story 9.4 implementation, not an open decision.
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: Decide whether one command may resolve more than one FC-NIP target.
+  evidence: The successor contract states "One command resolves at most one target; multi-target commands require a separate decision", and the spec's frozen Ask First repeats it. No story owns that decision, so a command that materially changes several rows has no defined indicator disposition. Contract-declared deferral filed by the second-pass code review, 2026-08-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: Decide whether a typed post-dispatch identity proof may make server-allocated keys indicator-eligible.
+  evidence: The successor contract suppresses the indicator whenever the server allocates the exact `EntityKey` only after dispatch, and states that a typed post-dispatch identity proof "is outside this pre-dispatch contract and requires a separately approved successor or amendment". Until that decision exists, Story 9.9's preallocation mechanism is the only route to create-path eligibility. Contract-declared deferral filed by the second-pass code review, 2026-08-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: Approve the public API shape for the command target-identity surface before Story 9.4 publishes it.
+  evidence: The successor contract defers "Any public API shape" to explicit human approval, but the declaration attribute is authored by adopters and `ICommandTargetIdentityProvider<TCommand>` is implemented by them, so both become public surface the moment Story 9.4 ships them. Requires a decision plus a `PublicAPI.Shipped.txt` baseline plan. Contract-declared deferral filed by the second-pass code review, 2026-08-12.
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-3-define-explicit-command-target-identity.md`
+  summary: Re-pin the projection-nudge-seam prohibition in the synchronized-truth guard.
+  evidence: "Fresh-row indicators are not produced from the projection nudge seam" still exists in `_bmad-output/project-docs/architecture.md`, but the deleted `FcNipContractReferences_WhenAuthored_NameEpicNineOwnershipInDocs` was its only assertion and the replacement `SynchronizedTruth_WhenReviewed_ResolvesDecisionAndKeepsCompositionOpen` does not re-pin it. Second-pass code review, 2026-08-12.
+
 ## Deferred from: code review of spec-11-23-recommended-analyzer-repository-activation.md (2026-08-08)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-11-23-recommended-analyzer-repository-activation.md`

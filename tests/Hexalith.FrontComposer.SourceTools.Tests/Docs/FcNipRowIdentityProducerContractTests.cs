@@ -8,12 +8,28 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Docs;
 /// Story 9.3 governance guard for the FC-NIP base and successor target-identity decisions.
 /// Assertions use whitespace-normalized content so benign Markdown reflow cannot weaken the
 /// decision contract.
+/// <para>
+/// Positive assertions run case-sensitively. Shouldly's <c>ShouldContain</c> defaults to
+/// <see cref="Case.Insensitive"/>, which would let prose satisfy a pin with the wrong casing and
+/// would silently disagree with the case-sensitive Playwright mirror in
+/// <c>tests/e2e/specs/fc-nip-row-identity-contract.spec.ts</c>. Negative assertions deliberately
+/// keep the case-insensitive default, because there the looser comparison rejects more.
+/// </para>
+/// <para>
+/// Story 9.4 owns retiring the <see cref="ExistingSourceEvidence_WhenReviewed_StillShowsTheHistoricalRowCascade"/>
+/// gap-evidence pins: that story replaces the historical row cascade these assertions require to
+/// exist, so it must update them in the same change rather than working around them.
+/// </para>
 /// </summary>
 [Trait("Category", "Governance")]
 public sealed class FcNipRowIdentityProducerContractTests
 {
     private const string BaseContractPath = "_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md";
     private const string SuccessorContractPath = "_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md";
+    private const string FcTblContractPath = "_bmad-output/contracts/fc-tbl-table-api-contract-2026-06-04.md";
+    private const string FcCmdContractPath = "_bmad-output/contracts/fc-cmd-pending-identity-correlation-contract-2026-06-04.md";
+    private const string StoryNineTwoPath = "_bmad-output/implementation-artifacts/9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer.md";
+    private const string IndicatorStateServicePath = "src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs";
 
     [Fact]
     public void BaseContract_WhenReviewed_PreservesHistoricalAuthorityAndLinksSuccessor()
@@ -43,6 +59,9 @@ public sealed class FcNipRowIdentityProducerContractTests
             "AggregateId is insufficient",
             "Do not use EventStore ResultPayload",
             "EventStore command status remains a lifecycle/status source by `MessageId`",
+            "ViewKey",
+            "EntityKey",
+            "ProjectionTypeName",
             "MessageId",
             "ExpectedStatusSlot",
             "PriorStatusSlot",
@@ -66,10 +85,7 @@ public sealed class FcNipRowIdentityProducerContractTests
             "before invoking asynchronous command dispatch",
             "Only after accepted dispatch",
             "MessageId",
-            "ObservedAt",
-            "Material",
-            "NoOp",
-            "Unknown");
+            "ObservedAt");
 
         AssertTableRows(
             ReadRaw(SuccessorContractPath),
@@ -80,6 +96,8 @@ public sealed class FcNipRowIdentityProducerContractTests
             ["`ChangeKind`", "Declaration-fixed or typed-provider value: `Create`, `Update`, `StatusMove`, or `Delete`.", "Required and known. `NoOp` is terminal materiality, not a change kind."],
             ["`PriorStatus`", "Typed-provider value, or copied from the explicit source snapshot for `SameAsSource`.", "Required for `StatusMove`; otherwise optional."],
             ["`ExpectedStatus`", "Typed-provider destination value, or a declaration-fixed destination validated for the target view.", "Required for `StatusMove` and whenever lane eligibility depends on destination status; otherwise optional."],
+            ["`TenantId`", "Framework-owned tenant accessor at target resolution.", "Required and non-empty. It is never read from command fields or tool input."],
+            ["`UserId`", "Framework-owned user accessor at target resolution.", "Required and non-empty. It is never read from command fields or tool input."],
             ["`CapturedAt`", "FrontComposer `TimeProvider` at successful target resolution.", "Required. It is never supplied by command fields or overwritten by a terminal timestamp."]);
 
         AssertContainsAll(
@@ -104,6 +122,85 @@ public sealed class FcNipRowIdentityProducerContractTests
             "Any unlisted outcome suppresses indicators by default",
             "Pre-accept failure, cancellation, timeout, malformed-message, unsupported, and future lifecycle outcomes",
             "approved at the human Story 9.3 `bmad-build` plan checkpoint on 2026-08-12");
+
+        // The declaration authoring surface is the sole legitimate target source, so its definition
+        // and its exclusions must both stay pinned. Story 9.4 implements from exactly this.
+        AssertContainsAll(
+            contract,
+            "Declaration Authoring Surface",
+            "is an attribute applied to the command type",
+            "Neither a DI registration, a configuration entry, a naming convention, nor a runtime call may act as a declaration",
+            "are a duplicate registration: resolution fails closed");
+
+        // Scope, precedence, and SameAsSource validity are the three rules Story 9.3 amended in.
+        AssertContainsAll(
+            contract,
+            "Publication requires that the active tenant and user at eligible terminal observation equal the",
+            "captured pair; any inequality suppresses FC-NIP publication",
+            "A disagreement is not resolved by precedence: it fails closed",
+            "A declared `SameAsSource` mode is valid only with `ChangeKind = Update`",
+            "`SameAsSource` combined with `Create`, `StatusMove`, or `Delete` is an invalid declaration and fails closed",
+            "| `TenantId` | `TenantId` |",
+            "| `UserId` | `UserId` |");
+
+        // Terminal materiality: assert the closed set as a phrase, plus each member's meaning.
+        // A bare ShouldContain("Material") is satisfied by the heading "Terminal Materiality" alone.
+        AssertContainsAll(
+            contract,
+            "`Material`, `NoOp`, or `Unknown`",
+            "`Material` means the typed terminal adapter has affirmative evidence",
+            "`NoOp` means the typed adapter has affirmative no-work evidence",
+            "`Unknown` means evidence is absent, malformed, unsupported, contradictory",
+            "Both `NoOp` and `Unknown` suppress the indicator",
+            "Lifecycle text is never parsed to determine materiality");
+
+        // Every forbidden identity/materiality source, pinned in the blocking lane rather than only
+        // in the Playwright spec that no workflow executes.
+        AssertContainsAll(
+            contract,
+            "ambient generated source-row placement or an undeclared cascading row context;",
+            "command-property names such as `Id`, `EntityId`, `AggregateId`, or `Status`;",
+            "current routes, query strings, selected tabs, visible rows, or virtualized-row instances;",
+            "visible-row diffs, projection nudges, unrelated refreshes, or broad lane marking;",
+            "EventStore `AggregateId` as universal projection `EntityKey`;",
+            "opaque or domain-defined result payloads; or",
+            "lifecycle/status text.");
+
+        // The seven behavioural rules routed to Story 9.4, and the new preallocation owner.
+        AssertContainsAll(
+            contract,
+            "a bounded provider-resolution deadline",
+            "empty or non-ULID `MessageId`",
+            "separates a duplicate re-observation from a conflict",
+            "canonicalization plus comparison ordinality",
+            "maximum `CapturedAt`-to-`ObservedAt` age and a clock-skew rule",
+            "capacity, eviction policy, and overflow disposition",
+            "invalidation events that discard a captured snapshot before terminal observation",
+            "Story 9.9 (new, blocks Story 9.8)");
+
+        // Opt-in migration: the live row-cascade regression and its explicit, adopter-visible
+        // handling. An implicit SameAsSource promotion here would reintroduce ambient placement.
+        AssertContainsAll(
+            contract,
+            "FC-NIP is **opt-in per command**",
+            "publishes fresh-row indicators **with no declaration of any kind**",
+            "No implicit or generated declaration closes that gap",
+            "the historical cascade is not silently promoted into a `SameAsSource`",
+            "build-time SourceTools diagnostic",
+            "migrates this repository's own `[Command]` samples",
+            "fresh-row indicators now require a declaration");
+
+        // The three sentences that a later edit could reverse to manufacture completion.
+        AssertContainsAll(
+            contract,
+            "FR-13, FR-26, and Epic 9 remain open through Story 9.8",
+            "This records approved semantics, not Story 9.3 completion",
+            "Story 9.3 does not add a public runtime API, change EventStore, or implement generated/runtime behavior");
+
+        // Bind the contract's ten-second prose to the constant that actually implements it.
+        contract.ShouldContain("ten-second TTL", Case.Sensitive);
+        ReadNormalized(IndicatorStateServicePath)
+            .ShouldContain("DefaultLifetime = TimeSpan.FromSeconds(10)", Case.Sensitive);
     }
 
     [Fact]
@@ -129,6 +226,8 @@ public sealed class FcNipRowIdentityProducerContractTests
         string planningArchitecture = ReadNormalized("_bmad-output/planning-artifacts/architecture.md");
         string publishedArchitecture = ReadNormalized("_bmad-output/project-docs/architecture.md");
         string dataGrid = ReadNormalized("docs/reference/components/datagrid.md");
+        string fcTbl = ReadNormalized(FcTblContractPath);
+        string fcCmd = ReadNormalized(FcCmdContractPath);
 
         AssertContainsAll(
             prd,
@@ -145,17 +244,36 @@ public sealed class FcNipRowIdentityProducerContractTests
                 "SameAsSource",
                 "CapturedAt",
                 "ObservedAt",
-                "Material",
-                "NoOp",
-                "Unknown");
+                "`Material`, `NoOp`, or `Unknown`");
         }
 
+        // The published DocFX site must not leak internal planning paths, and must not present the
+        // unshipped target-identity design as an available public surface.
         AssertContainsAll(
             dataGrid,
-            SuccessorContractPath,
-            "ICommandTargetIdentityProvider<TCommand>",
+            "Automatic row-level producer wiring",
+            "is **not yet available**",
+            "Projection nudges remain insufficient row identity",
             "unknown identity or materiality suppresses the indicator",
-            "Stories 9.4-9.8 still own");
+            "No public type for any of this is published yet",
+            "Adopters should not build against the design described here until then");
+        dataGrid.ShouldNotContain("_bmad-output");
+        dataGrid.ShouldNotContain("ICommandTargetIdentityProvider");
+
+        // Sibling FC-TBL / FC-CMD ownership wording must track the successor decision. These pins
+        // were dropped when the pre-remediation guard was deleted; both documents went stale.
+        foreach (string sibling in new[] { fcTbl, fcCmd })
+        {
+            AssertContainsAll(
+                sibling,
+                "Epic 9 / FC-NIP",
+                "fc-nip-command-target-identity-contract-2026-08-12.md",
+                "Stories 9.4-9.8 own implementation and composed/live acceptance");
+            sibling.ShouldNotContain("Story 9.1 confirms");
+            sibling.ShouldNotContain("Story 9.2 wires");
+        }
+
+        fcCmd.ShouldContain("Row-level `FcNewItemIndicator` producer wiring is out of scope for FC-CMD v1", Case.Sensitive);
     }
 
     [Fact]
@@ -165,6 +283,7 @@ public sealed class FcNipRowIdentityProducerContractTests
         string eventStoreStatusQuery = ReadNormalized("src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStorePendingCommandStatusQuery.cs");
         string commandFormEmitter = ReadNormalized("src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs");
         string razorEmitter = ReadNormalized("src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs");
+        string storyNineTwo = ReadNormalized(StoryNineTwoPath);
 
         AssertContainsAll(
             rowIdentity,
@@ -176,33 +295,45 @@ public sealed class FcNipRowIdentityProducerContractTests
             "MessageId: pendingCommand.MessageId",
             "string? AggregateId",
             "int? EventCount");
-        eventStoreStatusQuery.ShouldNotContain("EntityKey: status.AggregateId");
         eventStoreStatusQuery.ShouldNotContain("EntityKey:");
         eventStoreStatusQuery.ShouldNotContain("ProjectionTypeName:");
         eventStoreStatusQuery.ShouldNotContain("LaneKey:");
         eventStoreStatusQuery.ShouldNotContain("ExpectedStatusSlot:");
         eventStoreStatusQuery.ShouldNotContain("PriorStatusSlot:");
+
+        // Full slot bindings, not bare right-hand sides: a crossed binding must fail here too, not
+        // only in CommandFormEmitterTests.
         AssertContainsAll(
             commandFormEmitter,
             "CascadingParameter",
-            "PendingCommandRowIdentity?.ProjectionTypeName",
-            "PendingCommandRowIdentity?.LaneKey",
-            "PendingCommandRowIdentity?.EntityKey",
-            "PendingCommandRowIdentity?.ExpectedStatusSlot",
-            "PendingCommandRowIdentity?.PriorStatusSlot");
+            "CommandTypeName: typeof(",
+            "ProjectionTypeName: PendingCommandRowIdentity?.ProjectionTypeName",
+            "LaneKey: PendingCommandRowIdentity?.LaneKey",
+            "EntityKey: PendingCommandRowIdentity?.EntityKey",
+            "ExpectedStatusSlot: PendingCommandRowIdentity?.ExpectedStatusSlot",
+            "PriorStatusSlot: PendingCommandRowIdentity?.PriorStatusSlot");
         commandFormEmitter.ShouldNotContain("EntityKey: status.AggregateId");
         commandFormEmitter.ShouldNotContain("ResultPayload");
         AssertContainsAll(
             razorEmitter,
             "PendingCommandRowIdentityFor(row)",
             "CascadingValue<global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity?>");
+
+        // Story 9.2's delivery record stays pinned: its no-smuggling prohibition is the reason the
+        // emitter assertions above are worth making.
+        AssertContainsAll(
+            storyNineTwo,
+            "Status: done",
+            "FrontComposer-owned pending-command row metadata",
+            "Source-level wiring was proven",
+            "Do not hide FC-NIP row identity in optional EventStore/domain-defined `ResultPayload`");
     }
 
     private static void AssertContainsAll(string document, params string[] expectedFragments)
     {
         foreach (string fragment in expectedFragments)
         {
-            document.ShouldContain(fragment);
+            document.ShouldContain(fragment, Case.Sensitive);
         }
     }
 
@@ -220,22 +351,46 @@ public sealed class FcNipRowIdentityProducerContractTests
         }
     }
 
+    /// <summary>
+    /// Parses the first Markdown table that follows <paramref name="heading"/>, bounded to that
+    /// heading's own section. The scan stops at the next Markdown heading so a deleted table fails
+    /// instead of silently binding to a later section's table, and the separator row is verified
+    /// rather than assumed.
+    /// </summary>
     private static string[][] ParseTableRows(string document, string heading)
     {
         string[] lines = document.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         int headingIndex = Array.FindIndex(lines, line => string.Equals(line.Trim(), heading, StringComparison.Ordinal));
-        headingIndex.ShouldBeGreaterThanOrEqualTo(0);
-        int headerIndex = Array.FindIndex(lines, headingIndex + 1, line => line.TrimStart().StartsWith('|'));
-        headerIndex.ShouldBeGreaterThanOrEqualTo(0);
+        headingIndex.ShouldBeGreaterThanOrEqualTo(0, $"'{heading}' heading is missing.");
+
+        int sectionEnd = Array.FindIndex(lines, headingIndex + 1, line => line.TrimStart().StartsWith('#'));
+        if (sectionEnd < 0)
+        {
+            sectionEnd = lines.Length;
+        }
+
+        int headerIndex = Array.FindIndex(lines, headingIndex + 1, sectionEnd - headingIndex - 1, line => line.TrimStart().StartsWith('|'));
+        headerIndex.ShouldBeGreaterThanOrEqualTo(0, $"'{heading}' section contains no table.");
+        (headerIndex + 2).ShouldBeLessThanOrEqualTo(sectionEnd, $"'{heading}' table is truncated.");
+        Regex.IsMatch(lines[headerIndex + 1].Trim(), @"^\|[\s:|-]+\|$")
+            .ShouldBeTrue($"'{heading}' table is missing its separator row.");
 
         List<string[]> rows = [];
-        for (int index = headerIndex + 2; index < lines.Length && lines[index].TrimStart().StartsWith('|'); index++)
+        for (int index = headerIndex + 2; index < sectionEnd && lines[index].TrimStart().StartsWith('|'); index++)
         {
-            rows.Add(lines[index].Trim().Trim('|').Split('|').Select(static cell => cell.Trim()).ToArray());
+            rows.Add(StripEdgePipes(lines[index].Trim()).Split('|').Select(static cell => cell.Trim()).ToArray());
         }
 
         return [.. rows];
     }
+
+    /// <summary>
+    /// Strips exactly one leading and one trailing pipe, matching the Playwright mirror. Trimming
+    /// every edge pipe would silently drop an empty first or last cell and make the two guards
+    /// disagree on column counts.
+    /// </summary>
+    private static string StripEdgePipes(string line)
+        => Regex.Replace(line, @"^\||\|$", string.Empty);
 
     private static string ReadNormalized(string relative)
         => CollapseWhitespace(File.ReadAllText(Absolute(relative)));

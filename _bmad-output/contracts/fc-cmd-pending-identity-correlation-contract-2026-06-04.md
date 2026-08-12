@@ -83,7 +83,11 @@ Story 3.5 owns binding the concrete `GET /api/v1/commands/status/{id}` EventStor
 Story 3.6 owns numeric confirming, degraded, and polling budgets.
 
 Row-level `FcNewItemIndicator` producer wiring is out of scope for FC-CMD v1. Epic 9 / FC-NIP owns
-the later command outcome payload: Story 9.1 confirms row identity, and Story 9.2 wires the producer.
+the later command outcome payload. Stories 9.1 and 9.2 are retained as historical base-decision and
+implementation records; the 2026-08-11 retrospective rejected them as proof of composed behavior.
+Story 9.3 approved the successor explicit command target-identity decision at
+`fc-nip-command-target-identity-contract-2026-08-12.md`, and Stories 9.4-9.8 own implementation and
+composed/live acceptance.
 
 ## Escalations
 

@@ -475,6 +475,14 @@ jobs:
         working-directory: tests/e2e
         run: npm run typecheck
 
+      # Browserless FC-NIP contract guards. `typecheck` compiles this spec but never executes it,
+      # so before this step the whole Playwright half of the FC-NIP governance contract — including
+      # every forbidden identity/materiality source — was pinned in a lane no workflow ran. The
+      # spec touches the filesystem only (PLAYWRIGHT_SKIP_WEBSERVER=1), so it needs no host.
+      - name: Run FC-NIP contract guards (browserless)
+        working-directory: tests/e2e
+        run: npm run test:fc-nip
+
       - name: Run accessibility, keyboard, media, zoom, and visual specimen gate
         working-directory: tests/e2e
         env:
