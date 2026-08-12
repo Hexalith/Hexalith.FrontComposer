@@ -1,7 +1,8 @@
 # FC-NIP Row Identity Producer Contract
 
 Date: 2026-07-04
-Status: approved payload source for Story 9.2 implementation
+Status: approved base decision; delivery completion rejected 2026-08-11
+Successor gate: Story 9.3 explicit command target identity contract
 Owner: FrontComposer maintainers
 Story: 9.1 - Confirm the FC-NIP row-identity producer contract
 Decision update: 2026-07-05
@@ -21,6 +22,26 @@ framework-controlled runtime context before calling `INewItemIndicatorStateServi
 
 The implementation must not infer row identity by diffing visible grid rows, marking every row in a
 lane, or treating a projection nudge as row identity.
+
+## 2026-08-12 Remediation Amendment
+
+The 2026-07-05 decision remains the approved base source for commands launched from an existing
+generated projection row. The 2026-08-11 Epic 9 retrospective rejected Story 9.2 evidence as proof of
+composed delivery and established these successor requirements:
+
+- Ambient generated-row context covers only commands launched from an existing row. It cannot define
+  the target of a standalone create command or silently reuse the source row for a cross-row command.
+- Target projection, view/lane, `EntityKey`, material-change kind, prior status, expected status, and
+  capture time must be explicit and immutable before asynchronous dispatch or virtualized-row reuse.
+- Generated callbacks, EventStore polling, reconnect reconciliation, and every other terminal adapter
+  must converge on `IPendingCommandOutcomeResolver`; no adapter may mutate terminal pending state
+  directly.
+- Indicator state must notify already-rendered generated consumers and enforce tenant/user scope before
+  reads and renders, independently of the next producer add.
+- Active `(ViewKey, EntityKey)` entries use atomic first-wins behavior across duplicate and distinct
+  message IDs; later attempts do not replace provenance or extend expiry.
+- Stories 9.3-9.8 supersede Story 9.2 as delivery-completion evidence. Story 9.3 owns the explicit
+  target-identity decision, and Story 9.8 owns composed and live acceptance.
 
 ## Approved Payload Source
 
@@ -105,7 +126,10 @@ choose item identity from projection model conventions, and a projection row can
 model whose stable key is not necessarily the command aggregate id. FC-NIP therefore requires a typed
 producer payload that explicitly names the projection row key for the target generated grid.
 
-## Resolved Follow-Up
+## Historical Resolved Follow-Up
+
+This section records the 2026-07-05 Story 9.2 decision closure. The remediation amendment above adds
+the active Story 9.3 successor gate without erasing this historical decision.
 
 Story 9.2 is unblocked for implementation of the approved FrontComposer-owned pending-command row
 metadata source. This resolves the previous blocking follow-up at the contract level; implementation
@@ -124,6 +148,6 @@ future bounded typed EventStore payload is explicitly introduced and pinned.
 - FC-CMD owns command identity, lifecycle, pending state, and message/correlation semantics.
 - FC-NIP owns automatic row-level `FcNewItemIndicator` producer wiring and row-identity payloads.
 
-Story 9.1 confirmed this contract and recorded the original gap. The 2026-07-05 update approves the
-payload source so Story 9.2 can wire the producer and generated-grid consumer in a follow-up
-implementation pass.
+Story 9.1 confirmed this contract and recorded the original gap. The 2026-07-05 update approved the
+base payload source used by Story 9.2. The 2026-08-12 remediation amendment preserves that decision
+while routing explicit target identity and composed acceptance through Stories 9.3-9.8.

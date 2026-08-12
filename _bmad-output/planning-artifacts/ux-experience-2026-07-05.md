@@ -1,7 +1,7 @@
 ---
 name: Hexalith Common Application UX
 status: accepted-supplement
-updated: 2026-07-15
+updated: 2026-08-12
 sources:
   - _bmad-output/planning-artifacts/prd.md
   - _bmad-output/planning-artifacts/architecture.md
@@ -166,12 +166,15 @@ Failure: projection becomes stale during the edit. The edit action fails closed 
 
 Failure: the command is rejected as duplicate or invalid. The form preserves useful input and shows a structured rejection without exposing internal payloads.
 
+Story 9.8 owns the composed and live acceptance proof for this flow, including automatic scoped
+appearance and dismissal after the grid has already rendered.
+
 ## Brownfield Reconciliation
 
 - The one-entry-per-module rule supersedes older navigation patterns that expose individual projections or module UX pages as primary shell menu items.
 - Epic 8 projection flyout behavior is reconciled: every flyout is secondary and routes into module workspace tabs rather than becoming a second primary IA.
 - Stories 11.0 and 11.7 are done; palette/CTA activation uses `/commands/{BoundedContext}/{CommandTypeName}` and module tabs use `/{module}/{tab}`.
-- FC-NIP row identity and producer/consumer wiring are complete under Stories 9.1–9.2; broad row marking or diff-based inference remains forbidden.
+- Stories 9.1–9.2 retain the FC-NIP base decision and historical implementation, but the 2026-08-11 retrospective rejected composed acceptance. Stories 9.3–9.8 own target identity, terminal-path convergence, observable scope-safe state, atomic per-row first-wins behavior, and composed/live evidence. Broad row marking and diff-based inference remain forbidden.
 
 Default lifecycle evidence uses confirming-to-Degraded after `10_000` ms, polling every `1_000` ms
 for at most `120_000` ms, and one transient retry after `250` ms.

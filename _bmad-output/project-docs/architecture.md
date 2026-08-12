@@ -60,6 +60,10 @@ See [api-contracts.md](./api-contracts.md) for the full attribute→output contr
 
 ## 4. Runtime composition (Shell)
 
+> **FC-NIP remediation amendment (2026-08-12):** the 2026-08-11 Epic 9 retrospective rejected
+> composed acceptance. Story 9.3 owns the successor explicit target-identity contract, and Stories
+> 9.4-9.8 own implementation and composed/live proof of the invariants below.
+
 A consuming app reduces its layout to `<FrontComposerShell>@Body</FrontComposerShell>`. At startup:
 
 - `services.AddHexalithFrontComposerQuickstart()` registers Fluxor (scanning the Shell assembly for every state slice), `IStorageService` (scoped `LocalStorageService`), `IFrontComposerRegistry` (singleton), the command/query services (a stub wrapped by `AuthorizingCommandServiceDecorator`), badge/lifecycle/registry services, and projection slot/template/view-override registries.
@@ -70,7 +74,7 @@ These three calls are **order- and presence-validated at startup** (Story 1.1): 
 
 `FrontComposerShell` (`src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor`) mounts the Fluxor `StoreInitializer`, skip links, a `FluentLayout` with Header / Navigation / Content / Footer areas, global keyboard shortcuts (`Ctrl+,` settings, `Ctrl+K` palette), and `FluentProviders`. Generated projection pages render to `FluentDataGrid` with filter/expand/status components; generated commands render through `FcAuthorizedCommandRegion`, generated forms, and `FcLifecycleWrapper`, which surfaces Submitting, Acknowledged, Syncing, Confirmed, Rejected, idempotent-confirmed, and NeedsReview paths. Levels 2–4 customization (`ProjectionTemplate`, field-slot, full-view overrides) let external assemblies inject alternate render fragments. The generated body resolution order is deterministic: Level 4 full-view override → Level 2 projection template → generated default body; Level 3 field slots compose only inside whichever body explicitly delegates to the generated field/row/section/default renderers. Level 3 and Level 4 contract mismatches are registry/startup/runtime diagnostics today, while HFC1050-HFC1055 are build-time SourceTools accessibility analyzer warnings for statically inspectable override components. Development-only contract-mismatch panels render only in DEBUG + `IsDevelopment()`. The shell header's right cluster includes a framework-owned **account control** (`FcAccountMenu` — a `FluentAvatar` opening a Sign in / Sign out menu wired to the framework `/authentication/{challenge,sign-out}` endpoints, reading the principal from `AuthenticationStateProvider`), rendered **always** so it survives adopter `HeaderEnd` customization. The navigation hamburger (`FcHamburgerToggle`) is **always visible** and at Desktop toggles `SidebarCollapsed` (full nav ↔ 48px rail) via `SidebarToggledAction` — **superseding the earlier "D9 / no Desktop hamburger" decision (2026-06)**. The framework-owned sidebar (`FrontComposerNavigation`) keeps **exactly one active item**: the registered route that is the **longest segment-prefix** of the current URL renders with `NavLinkMatch.Prefix` and every other item with `NavLinkMatch.All` (which strips the query string before comparing), so a container route (e.g. a domain's `/{bc}` landing) no longer co-highlights with its sub-routes, query-string pages still resolve to their item, and detail pages keep their section ancestor lit (2026-06). The **server-side security wiring** that powers the account control is **framework-owned** (2026-06): a Blazor Server host calls `AddHexalithFrontComposerServerSecurity(...)` (or the granular `AddHexalithFrontComposerAuthentication` + `AddHexalithFrontComposerServerAuthenticationState` + `AddHexalithFrontComposerTokenRelay`) from `Hexalith.FrontComposer.Shell.Extensions`. These helpers replace the quickstart's fail-closed `NullAuthenticationStateProvider` with `ServerAuthenticationStateProvider`, add cascading authentication state, and register the circuit-safe per-user bearer-token relay (`FrontComposerUserTokenStore` / `FrontComposerGatewayAuthorizationHandler`). Domain modules supply only domain-specific security *configuration* (provider choice, claim mapping, authorization policies, which gateways to authorize) — this generic plumbing must not be duplicated per domain module.
 
-State is managed in Fluxor slices under `src/Hexalith.FrontComposer.Shell/State/` (Theme, Density, Navigation, CommandPalette, ETagCache, PendingCommands, ProjectionConnection, ReconnectionReconciliation, …) following a **single-writer discipline** (ADR-007): each action type has one dispatch source; effects own persistence and JS interop. EventStore-enabled hosts run command-status polling through a scoped `PendingCommandPollingDriver`; pending-state mutation remains centralized in `PendingCommandPollingCoordinator` and `PendingCommandOutcomeResolver`.
+State is managed in Fluxor slices under `src/Hexalith.FrontComposer.Shell/State/` (Theme, Density, Navigation, CommandPalette, ETagCache, PendingCommands, ProjectionConnection, ReconnectionReconciliation, …) following a **single-writer discipline** (ADR-007): each action type has one dispatch source; effects own persistence and JS interop. EventStore-enabled hosts run command-status polling through a scoped `PendingCommandPollingDriver`. `IPendingCommandOutcomeResolver` is the single owner of terminal pending-command application and eligible fresh-row publication; polling, generated callbacks, reconnect reconciliation, and other adapters emit observations through that boundary rather than mutating terminal pending state directly.
 
 #### 4.0.1 Shell sublayer declaration
 
@@ -96,7 +100,12 @@ the same `MessageId` and surfaces retry exhaustion as warning feedback, not as a
 state.
 
 Fresh-row indicators are not produced from the projection nudge seam. The current nudge carries only
-projection type and tenant id, while `FcNewItemIndicator` requires row identity. FC-NIP owns the post-MVP command outcome payload and producer wiring.
+projection type and tenant id, while `FcNewItemIndicator` requires row identity. FC-NIP target metadata
+is immutable and explicitly identifies projection, view/lane, target row, material-change kind, and
+status movement independently of the launching UI. Visible-row diffs, EventStore `AggregateId`, and
+untyped result payloads are not universal row identity. Indicator state is observable and enforces
+tenant/user scope before reads and renders. Active `(ViewKey, EntityKey)` entries use atomic first-wins
+semantics across duplicate and distinct message IDs without replacing provenance or extending expiry.
 
 ### 4.1 UI component policy (project-wide governance)
 

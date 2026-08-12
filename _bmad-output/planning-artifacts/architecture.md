@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-07-19
+updated: 2026-08-12
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -52,6 +52,18 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
   are sealed in the release dependency graph; deeper historical edges require a separately approved schema.
 - UX/layout policy is defined by the UX, IA, and route invariants below and projected into the
   canonical `ux-design.md` planning source.
+
+## FC-NIP Composition Invariants
+
+- `IPendingCommandOutcomeResolver` is the single owner of terminal pending-command application and eligible fresh-row publication. Generated callbacks and infrastructure adapters emit observations; they do not mutate terminal pending state directly.
+- Command target metadata is immutable and explicit. It identifies projection, view/lane, target row, material-change kind, and status movement independently of the UI surface that launched the command.
+- Projection nudges, visible-row diffs, EventStore `AggregateId`, and untyped result payloads are not universal row identity.
+- Indicator state is observable. Every effective add/dismiss/expiry/clear/scope mutation invalidates subscribed generated consumers; subscriptions are scoped and disposed.
+- Tenant/user scope is enforced before state is read or rendered, not only on the next producer add.
+- Active indicator identity is `(ViewKey, EntityKey)` and uses atomic first-wins semantics across duplicate and distinct message IDs; later attempts do not replace provenance or extend expiry.
+
+Story 9.3 owns the successor explicit target-identity contract. Stories 9.4-9.8 implement and prove
+these invariants without changing EventStore lifecycle/status ownership or the Shell dependency direction.
 
 ## UX, IA, And Route Invariants
 

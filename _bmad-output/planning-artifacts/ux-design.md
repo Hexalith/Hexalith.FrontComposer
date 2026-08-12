@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer UX Design Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-07-15
+updated: 2026-08-12
 sourceOfRecord:
   - _bmad-output/planning-artifacts/epics.md
   - _bmad-output/project-docs/architecture.md
@@ -65,6 +65,11 @@ Lifecycle UX distinguishes HTTP acceptance from projection/status confirmation a
 `IdempotentConfirmed`, `NeedsReview`, `Warning`, and `Degraded`. Default evidence budgets are
 confirming-to-Degraded at `10_000` ms, polling every `1_000` ms for up to `120_000` ms, and one
 transient retry after `250` ms.
+
+Fresh-row indicators must appear and disappear from an already-rendered generated grid when their
+state changes; they must not depend on an unrelated projection/Fluxor render. Indicator state is
+lane-, tenant-, and user-scoped, uses useful non-noisy live announcements, and clears before a
+previous scope can render.
 
 ### UX-DR6 - Accessibility Patterns
 

@@ -5,7 +5,7 @@ genre: reference
 audience: adopter
 ownerStory: 2-8-confirm-the-fc-tbl-table-api-contract
 status: published
-reviewed: 2026-06-04
+reviewed: 2026-08-12
 uid: frontcomposer.reference.components.datagrid
 slug: reference/components/datagrid/
 ---
@@ -81,7 +81,10 @@ The focused FC-TBL public baseline currently covers these public types under
 | `FcNewItemIndicator` | Accessible fresh-row indicator component. | `Text`, `AriaLabelOverride`. |
 
 `FcNewItemIndicator` is a confirmed component and state primitive. Automatic row-level producer wiring
-is tracked separately by Epic 9 / FC-NIP because the current projection nudge does not include row identity.
+is under active Epic 9 remediation. Projection nudges remain insufficient row identity. Stories 9.3-9.8
+require explicit target metadata, one terminal producer boundary, automatic generated-grid invalidation,
+scope-safe dismissal, atomic per-row first-wins behavior, and composed/live acceptance before the feature
+is documented as complete.
 
 Reserved filter keys remain framework-owned: `__status` for status filters, `__search` for in-grid
 search, and `__hidden` for hidden-column persistence. Column filter keys beginning with `__` are

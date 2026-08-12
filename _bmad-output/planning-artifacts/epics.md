@@ -185,7 +185,7 @@ This is the sole planning coverage map. Requirement semantics and identifiers co
 | FR-10 | Epic 2: Stories 2.2 and 2.7; Epic 8: Story 8.5; Epic 11: Stories 11.0 and 11.7 |
 | FR-11 | Epic 2: Stories 2.3–2.5; Epic 8: Stories 8.4 and 8.7 |
 | FR-12 | Epic 2: Story 2.6; Epic 11: Story 11.2 |
-| FR-13 | Epic 9: Stories 9.1 and 9.2; Story 2.6 preserves the ownership boundary |
+| FR-13 | Epic 9: historical Stories 9.1-9.2 plus remediation Stories 9.3-9.8; Story 2.6 preserves the ownership boundary |
 | FR-14 | Epic 3: Stories 3.1–3.3; Epic 4: Story 4.5 |
 | FR-15 | Epic 3: Stories 3.4–3.6 |
 | FR-16 | Epic 4: Stories 4.1–4.5 |
@@ -198,7 +198,7 @@ This is the sole planning coverage map. Requirement semantics and identifiers co
 | FR-23 | Stories 1.5, 5.3, 7.2–7.4, 10.2, 10.4, and 11.14 |
 | FR-24 | Release Governance Gate RG-1; REL-AI-1 remains open; REL-3 owns correction, REL-4 the technical freeze, REL-5 Release Owner enablement, and GOV-1 the complete defined depth-1/2 dependency/workflow provenance correction; REL-2 is completed evidence, not closure |
 | FR-25 | Epics 7 and 10; Epic 11: Stories 11.8, 11.11–11.14, the 11.19 children, and staged analyzer-policy/burn-down/activation Stories 11.20–11.23 |
-| FR-26 | Epic 9: Story 9.2; Story 2.6 preserves the ownership boundary |
+| FR-26 | Epic 9: remediation Stories 9.3-9.8; Story 9.2 remains historical delivery evidence only |
 | FR-27 | Epic 10: Stories 10.1–10.5 |
 | FR-28 | Epic 11: completed decision records 11.0 and 11.8 |
 | FR-29 | Epic 11: Stories 11.1–11.23, with 11.17–11.19 represented only through their materialized children |
@@ -357,6 +357,10 @@ framework-controlled row identity payload and the confirmed `FcNewItemIndicator`
 **ARs:** AR11 (FC-NIP)
 **Standalone:** post-MVP enhancement; builds on Epics 2 and 3, and does not reopen the projection nudge seam.
 **Source of record:** `sprint-change-proposal-2026-07-01.md` (Correct Course, 2026-07-01).
+**Current state:** in progress after the 2026-08-11 retrospective rejected composed acceptance. Stories
+9.1 and 9.2 remain done historical records. Stories 9.3-9.8 own remediation; the epic closes only after
+Story 9.8 records composed and live acceptance evidence. Remediation source:
+`sprint-change-proposal-2026-08-12.md`.
 
 ### Epic 10: Tooling Governance Follow-Through *(post-MVP quality hardening)*
 An **adopter developer** can trust FrontComposer's authoring-tooling evidence because story file
@@ -651,8 +655,9 @@ without marking individual rows as new. *(PRD FR-12, UX-DR5)*
 **When** it reconnects,
 **Then** `FcProjectionConnectionStatus` surfaces reconnect/reconciliation state and the grid reconciles missed changes. *(UX-DR5)*
 
-**Historical delivery dependency:** Epic 9 / Story 9.2, now done, supplied the row-level producer and
-consumer evidence. This is delivery provenance, not acceptance work owned by Story 2.6.
+**Historical delivery dependency:** Epic 9 / Story 9.2 delivered the row-level implementation, but the
+2026-08-11 retrospective rejected it as composed acceptance proof. Stories 9.3-9.8 own the active
+dependency. This remains outside Story 2.6 acceptance ownership.
 
 ### Story 2.7: Command palette discovery and global search
 
@@ -1333,8 +1338,10 @@ question; warning/info extensions) emitted by the generator (`[ProjectionBadge]`
 > backlog home. It does not reopen completed Epics 2 or 3, and it must not fabricate row identity from the
 > current projection nudge seam.
 > Story 9.1 is done as of 2026-07-05: the approved source is FrontComposer-owned pending-command row
-> metadata populated from generated grid/command runtime context. Story 9.2 is also done; its
-> implementation evidence remains the release regression baseline.
+> metadata populated from generated grid/command runtime context. Story 9.2 is also done as a historical
+> delivery record, but the 2026-08-11 retrospective rejected its evidence as proof of composed behavior.
+> Stories 9.3-9.8 own remediation, and Story 9.8 is the release regression gate. Approved remediation:
+> `sprint-change-proposal-2026-08-12.md` (Correct Course, 2026-08-12).
 
 ### Story 9.1: FC-NIP row-identity producer decision record
 
@@ -1361,13 +1368,15 @@ projection type, and any status-slot metadata needed to avoid ambiguity.
 projection nudges must not be diffed or used for broad row marking.
 
 **Given** the closed decision record,
-**Then** the contract artifact and completed Story 9.2 evidence remain the authority; this story has no
-open decision branch and must not return to implementation status.
+**Then** the contract artifact remains the approved base authority; Story 9.2 remains historical delivery
+evidence, Story 9.3 owns the successor target-identity decision, and this story does not return to
+implementation status.
 
 ### Story 9.2: Wire `FcNewItemIndicator` producer and generated-grid consumer
 
-Delivery status: **done**. Retained as the completed producer/consumer acceptance and release
-regression contract; it is not a queue candidate.
+Delivery status: **done**. Retained as historical producer/consumer implementation evidence; the
+2026-08-11 retrospective rejected composed acceptance, which is now owned by Stories 9.3-9.8. Story
+9.2 is not a queue candidate.
 
 As an operator,
 I want rows created or materially changed by a confirmed command outcome to be marked as new,
@@ -1390,6 +1399,146 @@ view/lane, `EntityKey`, `MessageId`, and timestamp.
 
 **Given** SourceTools output changes,
 **Then** generated Verify snapshots and FC-TBL public-surface tests are updated intentionally.
+
+### Story 9.3: Define explicit command target identity
+
+As a FrontComposer maintainer,
+I want every material command outcome to carry immutable target projection-row metadata,
+So that fresh-row behavior works for create, same-row, cross-row, and status-move commands without ambient guesses.
+
+**Acceptance Criteria:**
+
+**Given** a command can create or materially change projection rows,
+**When** Architect + Product approve the successor FC-NIP contract,
+**Then** it names the authoritative source for projection type, view/lane, target `EntityKey`, material-change kind, prior status, expected status, and capture time.
+
+**Given** a standalone create command has no existing row context,
+**When** pending metadata is registered,
+**Then** its target identity comes from an explicit framework-owned command-to-projection contract, not an existing-row cascade, EventStore `AggregateId`, projection nudge, visible-row diff, or untyped result payload.
+
+**Given** a cross-row, status-move, delete, idempotent, rejected, or no-op outcome,
+**When** target semantics are evaluated,
+**Then** the intended target and indicator/no-indicator disposition are explicit and the source row is never silently reused as the target.
+
+**Given** the decision is not approved,
+**Then** Stories 9.4-9.6 remain blocked and no best-effort identity is implemented.
+
+### Story 9.4: Converge terminal outcomes on one producer boundary
+
+As an operator,
+I want every confirmed command path to use the same terminal-outcome boundary,
+So that callback and polling confirmations produce identical pending and fresh-row behavior.
+
+**Acceptance Criteria:**
+
+**Given** generated lifecycle callbacks, EventStore polling, reconnect reconciliation, or any other terminal adapter,
+**When** a terminal observation arrives,
+**Then** it routes through `IPendingCommandOutcomeResolver`; generated adapters do not call `PendingCommandState.ResolveTerminal(...)` directly.
+
+**Given** a lifecycle callback arrives before accepted pending registration is durable,
+**When** registration completes,
+**Then** the bounded callback is buffered and replayed exactly once through the resolver, preserving cancellation, disposal, and `MessageId` matching.
+
+**Given** the stub callback path and EventStore status path confirm the same contract,
+**When** composed tests run,
+**Then** each produces one eligible lane entry and duplicate terminal observations do not create another publication.
+
+**Given** SourceTools emits terminal adapters,
+**When** Governance scans generated output,
+**Then** direct terminal mutation outside the approved owner boundary fails the test.
+
+### Story 9.5: Make indicator state observable and scope-safe
+
+As an operator,
+I want fresh-row indicators to appear and disappear immediately in my active scope,
+So that the UI never waits for an unrelated render or exposes a previous tenant/user entry.
+
+**Acceptance Criteria:**
+
+**Given** add, materialization, filter/re-query dismissal, TTL expiry, explicit clear, or scope transition mutates indicator state,
+**When** the mutation completes,
+**Then** generated grids receive one change notification, marshal rendering through `InvokeAsync(StateHasChanged)`, and unsubscribe/dispose safely.
+
+**Given** a generated grid rendered before the mutation,
+**When** each mutation scenario occurs,
+**Then** bUnit proves automatic DOM appearance/removal without calling `cut.Render()` manually.
+
+**Given** tenant or user scope changes before another producer mutation,
+**When** state is read or rendered,
+**Then** previous-scope entries are cleared or rejected before `Snapshot` returns and cannot render.
+
+**Given** concurrent timer, clear, and disposal operations,
+**When** tests run,
+**Then** notification delivery remains race-safe, bounded, and free of disposed-component callbacks.
+
+### Story 9.6: Enforce atomic per-row first-wins
+
+As an operator,
+I want one stable fresh-row indication for each row,
+So that later confirmations cannot replace its provenance or extend its lifetime unexpectedly.
+
+**Acceptance Criteria:**
+
+**Given** duplicate terminal observations for one `MessageId`,
+**When** they reach the producer boundary,
+**Then** only the first eligible observation can publish.
+
+**Given** distinct confirmed message IDs target the same `(ViewKey, EntityKey)` while an entry is active,
+**When** publication races or occurs sequentially,
+**Then** the first entry, `MessageId`, `CreatedAt`, and original expiry win atomically; later attempts do not replace data or reset TTL.
+
+**Given** the first entry expires or is dismissed,
+**When** a later material command targets the row,
+**Then** a new entry may be accepted under a newly defined active-entry window.
+
+**Given** concurrent publication tests,
+**Then** one active entry and one original timer/provenance pair are observed.
+
+### Story 9.7: Add story-ID and commit-scope evidence
+
+As a QA automation maintainer,
+I want review completion to prove which commits and files belong to a story,
+So that future epic evidence is auditable, bisectable, and isolated from unrelated work.
+
+**Acceptance Criteria:**
+
+**Given** a story baseline and candidate head,
+**When** artifact validation runs before review completion,
+**Then** it reports every non-merge commit, story-ID match, changed path, File List disposition, and unrelated/interleaved commit.
+
+**Given** implementation, review, or done-transition commits do not map to the story,
+**When** the report is evaluated,
+**Then** review completion fails until scope is corrected or an explicit shared/process disposition is recorded; published history is not rewritten.
+
+**Given** pre-existing unrelated workspace changes,
+**When** validation runs,
+**Then** they remain separately reported and are not forced into story ownership.
+
+**Given** the validator changes,
+**Then** fixture coverage includes subject-less, wrong-story, shared-process, merge, and interleaved ranges.
+
+### Story 9.8: Prove composed and live Epic 9 acceptance
+
+As an operator and release owner,
+I want generated create/update paths proven through a running FrontComposer system,
+So that Epic 9 closes on observable behavior rather than isolated implementation tests.
+
+**Acceptance Criteria:**
+
+**Given** Stories 9.3-9.7 are done,
+**When** automated composition tests run,
+**Then** standalone create, row-context update, cross-row/status move, callback confirmation, and status polling traverse generated command, pending registration, resolver, indicator service, and generated grid boundaries with the intended indicator/no-indicator result.
+
+**Given** a grid is already rendered,
+**When** add, materialization, filter/re-query, TTL, clear, or tenant/user transition occurs,
+**Then** the DOM updates automatically, remains lane/scoped, preserves first-wins provenance, and retains accessible localized `role="status"`/`aria-live="polite"` behavior.
+
+**Given** the FrontComposer AppHost can build without shared-output locks,
+**When** the browser acceptance run executes,
+**Then** a durable command log and browser artifact record the repaired scenarios against a running system without stopping unrelated AppHosts.
+
+**Given** live verification is environment-blocked,
+**Then** the exact command and blocker are recorded and this story, Epic 9, FR-13, and FR-26 remain open; passing unit lanes are not substituted.
 
 ## Epic 10: Tooling Governance Follow-Through
 
