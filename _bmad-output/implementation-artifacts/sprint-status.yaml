@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '2026-07-05T17:13:53+02:00'
-last_updated: 08-10-2026 07:06
+last_updated: 08-11-2026 23:02
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -124,7 +124,7 @@ development_status:
   epic-9: done
   9-1-fc-nip-row-identity-producer-decision-record: done
   9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: done
-  epic-9-retrospective: optional
+  epic-9-retrospective: done
 
   epic-10: done
   10-1-mechanical-story-evidence-reconciliation: done
@@ -553,3 +553,45 @@ action_items:
         off 2026-07-05."
     closure_rule: "Closed: Product/UX recorded final answers (open questions 1-4)
       and Story 11.7 references the decision."
+  - id: "E9-AI-1"
+    epic: 9
+    action: "Route every generated-command terminal path through IPendingCommandOutcomeResolver
+      and buffer early callbacks until pending registration is durable"
+    owner: "Shell + SourceTools maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-9-retro-2026-08-11.md"
+  - id: "E9-AI-2"
+    epic: 9
+    action: "Approve and implement a framework-owned target identity contract for
+      standalone create, cross-row, delete/no-op, and status-move commands"
+    owner: "Architect + Product Owner"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-9-retro-2026-08-11.md"
+  - id: "E9-AI-3"
+    epic: 9
+    action: "Make indicator mutations observable by generated grids and enforce tenant/user
+      clearing independently of the next Add"
+    owner: "Shell + SourceTools maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-9-retro-2026-08-11.md"
+  - id: "E9-AI-4"
+    epic: 9
+    action: "Enforce atomic first-wins behavior for each ViewKey and EntityKey across
+      distinct message IDs"
+    owner: "Shell maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-9-retro-2026-08-11.md"
+  - id: "E9-AI-5"
+    epic: 9
+    action: "Add a mechanical story-id and commit-scope report before review completion
+      and keep unrelated work outside story delivery ranges"
+    owner: "QA automation maintainer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-9-retro-2026-08-11.md"
+  - id: "E9-AI-6"
+    epic: 9
+    action: "Capture a live FrontComposer AppHost and browser acceptance record for
+      all repaired Epic 9 producer, rendering, and dismissal paths"
+    owner: "QA Engineer"
+    status: open
+    ref: "_bmad-output/implementation-artifacts/epic-9-retro-2026-08-11.md"
