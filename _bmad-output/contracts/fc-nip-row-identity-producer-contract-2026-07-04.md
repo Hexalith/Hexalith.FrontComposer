@@ -2,7 +2,7 @@
 
 Date: 2026-07-04
 Status: approved base decision; delivery completion rejected 2026-08-11
-Successor gate: Story 9.3 explicit command target identity contract
+Approved successor: `fc-nip-command-target-identity-contract-2026-08-12.md`
 Owner: FrontComposer maintainers
 Story: 9.1 - Confirm the FC-NIP row-identity producer contract
 Decision update: 2026-07-05
@@ -42,6 +42,13 @@ composed delivery and established these successor requirements:
   message IDs; later attempts do not replace provenance or extend expiry.
 - Stories 9.3-9.8 supersede Story 9.2 as delivery-completion evidence. Story 9.3 owns the explicit
   target-identity decision, and Story 9.8 owns composed and live acceptance.
+
+The approved successor is
+`fc-nip-command-target-identity-contract-2026-08-12.md`. It defines the explicit
+command-to-projection declaration, typed `ICommandTargetIdentityProvider<TCommand>`, immutable
+pre-dispatch target snapshot, independent terminal materiality, and complete outcome disposition
+matrix. This base contract remains historical authority for row-context provenance; where target
+identity or outcome disposition is concerned, the successor is authoritative.
 
 ## Approved Payload Source
 

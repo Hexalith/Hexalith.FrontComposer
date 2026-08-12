@@ -124,7 +124,7 @@ development_status:
   epic-9: in-progress
   9-1-fc-nip-row-identity-producer-decision-record: done
   9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: done
-  9-3-define-explicit-command-target-identity: backlog
+  9-3-define-explicit-command-target-identity: review
   9-4-converge-terminal-outcomes-on-one-producer-boundary: backlog
   9-5-make-indicator-state-observable-and-scope-safe: backlog
   9-6-enforce-atomic-per-row-first-wins: backlog

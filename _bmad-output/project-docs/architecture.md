@@ -61,8 +61,9 @@ See [api-contracts.md](./api-contracts.md) for the full attribute→output contr
 ## 4. Runtime composition (Shell)
 
 > **FC-NIP remediation amendment (2026-08-12):** the 2026-08-11 Epic 9 retrospective rejected
-> composed acceptance. Story 9.3 owns the successor explicit target-identity contract, and Stories
-> 9.4-9.8 own implementation and composed/live proof of the invariants below.
+> composed acceptance. Story 9.3 approved the successor explicit target-identity contract at
+> `_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md`; Stories 9.4-9.8
+> own implementation and composed/live proof of the invariants below.
 
 A consuming app reduces its layout to `<FrontComposerShell>@Body</FrontComposerShell>`. At startup:
 
@@ -101,11 +102,19 @@ state.
 
 Fresh-row indicators are not produced from the projection nudge seam. The current nudge carries only
 projection type and tenant id, while `FcNewItemIndicator` requires row identity. FC-NIP target metadata
-is immutable and explicitly identifies projection, view/lane, target row, material-change kind, and
-status movement independently of the launching UI. Visible-row diffs, EventStore `AggregateId`, and
-untyped result payloads are not universal row identity. Indicator state is observable and enforces
-tenant/user scope before reads and renders. Active `(ViewKey, EntityKey)` entries use atomic first-wins
-semantics across duplicate and distinct message IDs without replacing provenance or extending expiry.
+comes from a generated descriptor backed by an explicit command-to-projection declaration. Dynamic
+values resolve only through typed `ICommandTargetIdentityProvider<TCommand>`; declared
+`SameAsSource` may copy one immutable generated source snapshot, but source-row placement is never an
+ambient fallback. Before asynchronous dispatch, the runtime validates exactly one snapshot containing
+`ProjectionTypeName`, canonical `ViewKey`, exact `EntityKey`, `ChangeKind`, applicable `PriorStatus` /
+`ExpectedStatus`, and framework-stamped `CapturedAt`. The accepted `MessageId` is associated afterward.
+Terminal adapters keep `ObservedAt` separate and classify materiality as `Material`, `NoOp`, or
+`Unknown`; no-op and unknown evidence fail closed, as do unknown target identity and incomplete status
+moves. Visible-row diffs, EventStore `AggregateId`, routes, property-name conventions, projection
+nudges, and untyped result payloads are not universal row identity or materiality. Indicator state is
+observable and enforces tenant/user scope before reads and renders. Active `(ViewKey, EntityKey)`
+entries use atomic first-wins semantics across duplicate and distinct message IDs without replacing
+provenance or extending the accepted ten-second expiry.
 
 ### 4.1 UI component policy (project-wide governance)
 

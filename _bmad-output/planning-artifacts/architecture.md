@@ -56,14 +56,18 @@ The Shell source architecture guard enforces namespace/folder agreement, the Sta
 ## FC-NIP Composition Invariants
 
 - `IPendingCommandOutcomeResolver` is the single owner of terminal pending-command application and eligible fresh-row publication. Generated callbacks and infrastructure adapters emit observations; they do not mutate terminal pending state directly.
-- Command target metadata is immutable and explicit. It identifies projection, view/lane, target row, material-change kind, and status movement independently of the UI surface that launched the command.
+- Command target metadata is immutable and explicit. A generated descriptor comes only from an explicit command-to-projection declaration; dynamic values resolve through typed `ICommandTargetIdentityProvider<TCommand>`, while an explicitly declared `SameAsSource` mode may copy one pre-dispatch generated source snapshot. There is no ambient-row fallback.
+- Exactly one target snapshot is validated before asynchronous dispatch. It records `ProjectionTypeName`, canonical `ViewKey`, exact `EntityKey`, `ChangeKind`, applicable `PriorStatus` / `ExpectedStatus`, and framework-stamped `CapturedAt`. Accepted `MessageId` is associated afterward, and terminal `ObservedAt` never overwrites capture time.
+- Terminal materiality is independent of target intent and is closed to `Material`, `NoOp`, or `Unknown`. `NoOp`, `Unknown`, delete, rejected, and needs-review outcomes suppress the indicator; material idempotent confirmation retains the existing eligible ten-second TTL disposition.
 - Projection nudges, visible-row diffs, EventStore `AggregateId`, and untyped result payloads are not universal row identity.
 - Indicator state is observable. Every effective add/dismiss/expiry/clear/scope mutation invalidates subscribed generated consumers; subscriptions are scoped and disposed.
 - Tenant/user scope is enforced before state is read or rendered, not only on the next producer add.
 - Active indicator identity is `(ViewKey, EntityKey)` and uses atomic first-wins semantics across duplicate and distinct message IDs; later attempts do not replace provenance or extend expiry.
 
-Story 9.3 owns the successor explicit target-identity contract. Stories 9.4-9.8 implement and prove
-these invariants without changing EventStore lifecycle/status ownership or the Shell dependency direction.
+Story 9.3 approved the successor explicit target-identity contract at
+`_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md`; the 2026-07-05
+row-context contract remains its historical base authority. Stories 9.4-9.8 implement and prove these
+invariants without changing EventStore lifecycle/status ownership or the Shell dependency direction.
 
 ## UX, IA, And Route Invariants
 

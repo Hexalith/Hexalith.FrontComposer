@@ -5,78 +5,243 @@ using Shouldly;
 namespace Hexalith.FrontComposer.SourceTools.Tests.Docs;
 
 /// <summary>
-/// Story 9.1 guard for the FC-NIP row-identity producer contract. The story is a
-/// contract/documentation confirmation, so this test pins the decision artifact instead of
-/// asserting generated output. Assertions read whitespace-normalized content so a benign markdown
-/// reflow (line-wrapping, LF/CRLF) cannot silently break the governance guard.
+/// Story 9.3 governance guard for the FC-NIP base and successor target-identity decisions.
+/// Assertions use whitespace-normalized content so benign Markdown reflow cannot weaken the
+/// decision contract.
 /// </summary>
 [Trait("Category", "Governance")]
-public sealed class FcNipRowIdentityProducerContractTests {
-    private const string ContractPath = "_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md";
+public sealed class FcNipRowIdentityProducerContractTests
+{
+    private const string BaseContractPath = "_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md";
+    private const string SuccessorContractPath = "_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md";
 
     [Fact]
-    public void FcNipContract_WhenAuthored_RecordsMinimumPayloadAndBlockingGap() {
-        string contract = ReadNormalized(ContractPath);
+    public void BaseContract_WhenReviewed_PreservesHistoricalAuthorityAndLinksSuccessor()
+    {
+        string contract = ReadNormalized(BaseContractPath);
 
-        foreach (string candidate in new[] {
+        AssertContainsAll(
+            contract,
+            "Status: approved base decision; delivery completion rejected 2026-08-11",
             "EventStore command status",
             "Submit result payload",
             "Projection nudge",
             "Projection detail nudge metadata",
             "Pending-command registration metadata",
             "Generated command metadata",
-        }) {
-            contract.ShouldContain(candidate);
-        }
-
-        foreach (string payloadField in new[] {
-            "ViewKey",
-            "EntityKey",
+            "Approved Payload Source",
+            "FrontComposer-owned pending-command row metadata",
+            "Story 9.2 is unblocked",
+            "Resolution date:",
+            "Approved successor: `fc-nip-command-target-identity-contract-2026-08-12.md`",
+            "where target identity or outcome disposition is concerned, the successor is authoritative",
+            "must not infer row identity by diffing visible grid rows",
+            "marking every row in a lane",
+            "treating a projection nudge as row identity",
+            "The nudge can refresh a lane, but it carries no row key",
+            "FrontComposer deliberately treats metadata as opaque",
+            "AggregateId is insufficient",
+            "Do not use EventStore ResultPayload",
+            "EventStore command status remains a lifecycle/status source by `MessageId`",
             "MessageId",
-            "ProjectionTypeName",
             "ExpectedStatusSlot",
+            "PriorStatusSlot",
             "CreatedAt",
             "TenantId",
             "UserId",
-            "first-wins",
-        }) {
-            contract.ShouldContain(payloadField);
-        }
-
-        contract.ShouldContain("approved payload source");
-        contract.ShouldContain("Approved Payload Source");
-        contract.ShouldContain("FrontComposer-owned pending-command row metadata");
-        contract.ShouldContain("Story 9.2 is unblocked");
-        contract.ShouldContain("Resolution date:");
-        contract.ShouldContain("Do not use EventStore ResultPayload");
-        contract.ShouldContain("AggregateId is insufficient");
-        contract.ShouldContain("EventStore command status remains a lifecycle/status source by `MessageId`");
+            "first-wins");
     }
 
     [Fact]
-    public void FcNipContractReferences_WhenAuthored_NameEpicNineOwnershipInDocs() {
-        string fcTbl = ReadNormalized("_bmad-output/contracts/fc-tbl-table-api-contract-2026-06-04.md");
-        string fcCmd = ReadNormalized("_bmad-output/contracts/fc-cmd-pending-identity-correlation-contract-2026-06-04.md");
-        string architecture = ReadNormalized("_bmad-output/project-docs/architecture.md");
+    public void SuccessorContract_WhenReviewed_PinsProviderSnapshotAndMateriality()
+    {
+        string contract = ReadNormalized(SuccessorContractPath);
+
+        AssertContainsAll(
+            contract,
+            "Status: approved successor decision",
+            "explicit command-to-projection declaration",
+            "ICommandTargetIdentityProvider<TCommand>",
+            "SameAsSource",
+            "before invoking asynchronous command dispatch",
+            "Only after accepted dispatch",
+            "MessageId",
+            "ObservedAt",
+            "Material",
+            "NoOp",
+            "Unknown");
+
+        AssertTableRows(
+            ReadRaw(SuccessorContractPath),
+            "## Immutable Target Snapshot",
+            ["`ProjectionTypeName`", "Exact projection named by the generated command-target descriptor.", "Required; must resolve to that registered projection."],
+            ["`ViewKey`", "Canonical generated view/lane identity selected by the descriptor and, when dynamic, returned through the typed provider then validated against the declared projection.", "Required and non-empty. A route or visible grid is not a view-key source."],
+            ["`EntityKey`", "Exact target key returned by the typed provider, or copied from the generated projection key snapshot only in declared `SameAsSource` mode.", "Required and non-empty; EventStore `AggregateId` is not a substitute unless a later projection contract explicitly proves identity."],
+            ["`ChangeKind`", "Declaration-fixed or typed-provider value: `Create`, `Update`, `StatusMove`, or `Delete`.", "Required and known. `NoOp` is terminal materiality, not a change kind."],
+            ["`PriorStatus`", "Typed-provider value, or copied from the explicit source snapshot for `SameAsSource`.", "Required for `StatusMove`; otherwise optional."],
+            ["`ExpectedStatus`", "Typed-provider destination value, or a declaration-fixed destination validated for the target view.", "Required for `StatusMove` and whenever lane eligibility depends on destination status; otherwise optional."],
+            ["`CapturedAt`", "FrontComposer `TimeProvider` at successful target resolution.", "Required. It is never supplied by command fields or overwritten by a terminal timestamp."]);
+
+        AssertContainsAll(
+            contract,
+            "Provider failure, cancellation, missing registration",
+            "Unknown identity or materiality always fails closed",
+            "There is no ambient-source fallback",
+            "There is no best-effort or source-row fallback",
+            "server allocates the exact key only after dispatch, FC-NIP suppresses the indicator",
+            "typed post-dispatch identity proof",
+            "must be available and copied exactly once during target resolution immediately before dispatch",
+            "never re-read from or revalidated against a mutable or virtualized row",
+            "command dispatch, transport acceptance, and command lifecycle continue under their existing semantics",
+            "`LaneKey` carries the canonical target view/lane and becomes `NewItemIndicatorEntry.ViewKey`",
+            "`PriorStatus` | `PriorStatusSlot`",
+            "`ExpectedStatus` | `ExpectedStatusSlot`",
+            "`ObservedAt` | `NewItemIndicatorEntry.CreatedAt`",
+            "`CapturedAt` | No historical field",
+            "bounded early-observation buffer/replay path",
+            "different snapshot is a conflict",
+            "including after that indicator is dismissed or expires",
+            "Any unlisted outcome suppresses indicators by default",
+            "Pre-accept failure, cancellation, timeout, malformed-message, unsupported, and future lifecycle outcomes",
+            "approved at the human Story 9.3 `bmad-build` plan checkpoint on 2026-08-12");
+    }
+
+    [Fact]
+    public void SuccessorContract_WhenMatrixReviewed_PinsAllEightDispositions()
+    {
+        AssertTableRows(
+            ReadRaw(SuccessorContractPath),
+            "## Complete Outcome Disposition Matrix",
+            ["Standalone create", "Typed provider resolves a valid `Create` snapshot before dispatch.", "Confirmed + `Material`.", "Publish only for the declared target view and entity. Missing or unknown target suppresses."],
+            ["Same-row update", "Descriptor explicitly selects `SameAsSource`; the named pre-dispatch source snapshot is copied as an `Update` target.", "Confirmed + `Material`.", "Publish for that copied target. Never fall back to ambient source-row placement."],
+            ["Cross-row update", "Typed provider resolves an `Update` target whose `EntityKey` may differ from the source.", "Confirmed + `Material`.", "Publish only for the provider-resolved target. Undeclared source reuse is invalid and suppresses."],
+            ["Status move", "Typed provider resolves the target, `PriorStatus`, destination `ExpectedStatus`, and destination `ViewKey`.", "Confirmed + `Material`.", "Publish only in the destination lane and preserve both statuses. Missing destination status suppresses."],
+            ["Delete", "Typed provider resolves a valid `Delete` target.", "Confirmed + `Material`.", "Preserve target metadata for lifecycle/audit; never publish a fresh-row indicator."],
+            ["Idempotent confirmation", "A valid non-delete target was captured before dispatch.", "`IdempotentConfirmed` + `Material`.", "Apply the same eligibility and existing ten-second TTL disposition as material confirmation; duplicate observation handling does not extend TTL. `NoOp` or `Unknown` suppresses."],
+            ["Rejected / needs review", "Any valid or invalid declared target.", "`Rejected` or `NeedsReview`.", "Never publish an indicator; preserve the lifecycle state."],
+            ["No-op", "Any declared target.", "Typed `NoOp`, including `EventCount == 0`, or `Unknown`.", "Never publish an indicator. Status text and opaque payloads cannot upgrade it to `Material`."]);
+    }
+
+    [Fact]
+    public void SynchronizedTruth_WhenReviewed_ResolvesDecisionAndKeepsCompositionOpen()
+    {
+        string prd = ReadNormalized("_bmad-output/planning-artifacts/prd.md");
+        string planningArchitecture = ReadNormalized("_bmad-output/planning-artifacts/architecture.md");
+        string publishedArchitecture = ReadNormalized("_bmad-output/project-docs/architecture.md");
         string dataGrid = ReadNormalized("docs/reference/components/datagrid.md");
 
-        fcTbl.ShouldContain("Epic 9 / FC-NIP");
-        fcTbl.ShouldContain("Story 9.1 confirms the row-identity payload");
-        fcTbl.ShouldContain("Story 9.2 wires the producer");
+        AssertContainsAll(
+            prd,
+            "Resolved 2026-08-12",
+            SuccessorContractPath,
+            "D-4 is resolved; Stories 9.4-9.8 still block FR-13/FR-26 completion and Epic 9 closure");
 
-        fcCmd.ShouldContain("Row-level `FcNewItemIndicator` producer wiring is out of scope for FC-CMD v1");
-        fcCmd.ShouldContain("Epic 9 / FC-NIP owns");
+        foreach (string architecture in new[] { planningArchitecture, publishedArchitecture })
+        {
+            AssertContainsAll(
+                architecture,
+                SuccessorContractPath,
+                "ICommandTargetIdentityProvider<TCommand>",
+                "SameAsSource",
+                "CapturedAt",
+                "ObservedAt",
+                "Material",
+                "NoOp",
+                "Unknown");
+        }
 
-        architecture.ShouldContain("Fresh-row indicators are not produced from the projection nudge seam");
-        architecture.ShouldContain("FC-NIP owns the post-MVP command outcome payload and producer wiring");
+        AssertContainsAll(
+            dataGrid,
+            SuccessorContractPath,
+            "ICommandTargetIdentityProvider<TCommand>",
+            "unknown identity or materiality suppresses the indicator",
+            "Stories 9.4-9.8 still own");
+    }
 
-        dataGrid.ShouldContain("Automatic row-level producer wiring");
-        dataGrid.ShouldContain("Epic 9 / FC-NIP");
-        dataGrid.ShouldContain("current projection nudge does not include row identity");
+    [Fact]
+    public void ExistingSourceEvidence_WhenReviewed_StillShowsTheHistoricalRowCascade()
+    {
+        string rowIdentity = ReadNormalized("src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRowIdentity.cs");
+        string eventStoreStatusQuery = ReadNormalized("src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStorePendingCommandStatusQuery.cs");
+        string commandFormEmitter = ReadNormalized("src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs");
+        string razorEmitter = ReadNormalized("src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs");
+
+        AssertContainsAll(
+            rowIdentity,
+            "projection row identity cascaded to generated command forms",
+            "It must not be populated from raw",
+            "command payloads or user-editable form values");
+        AssertContainsAll(
+            eventStoreStatusQuery,
+            "MessageId: pendingCommand.MessageId",
+            "string? AggregateId",
+            "int? EventCount");
+        eventStoreStatusQuery.ShouldNotContain("EntityKey: status.AggregateId");
+        eventStoreStatusQuery.ShouldNotContain("EntityKey:");
+        eventStoreStatusQuery.ShouldNotContain("ProjectionTypeName:");
+        eventStoreStatusQuery.ShouldNotContain("LaneKey:");
+        eventStoreStatusQuery.ShouldNotContain("ExpectedStatusSlot:");
+        eventStoreStatusQuery.ShouldNotContain("PriorStatusSlot:");
+        AssertContainsAll(
+            commandFormEmitter,
+            "CascadingParameter",
+            "PendingCommandRowIdentity?.ProjectionTypeName",
+            "PendingCommandRowIdentity?.LaneKey",
+            "PendingCommandRowIdentity?.EntityKey",
+            "PendingCommandRowIdentity?.ExpectedStatusSlot",
+            "PendingCommandRowIdentity?.PriorStatusSlot");
+        commandFormEmitter.ShouldNotContain("EntityKey: status.AggregateId");
+        commandFormEmitter.ShouldNotContain("ResultPayload");
+        AssertContainsAll(
+            razorEmitter,
+            "PendingCommandRowIdentityFor(row)",
+            "CascadingValue<global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity?>");
+    }
+
+    private static void AssertContainsAll(string document, params string[] expectedFragments)
+    {
+        foreach (string fragment in expectedFragments)
+        {
+            document.ShouldContain(fragment);
+        }
+    }
+
+    private static void AssertTableRows(string document, string heading, params string[][] expectedRows)
+    {
+        string[][] actualRows = ParseTableRows(document, heading);
+        actualRows.Length.ShouldBe(expectedRows.Length);
+        for (int rowIndex = 0; rowIndex < expectedRows.Length; rowIndex++)
+        {
+            actualRows[rowIndex].Length.ShouldBe(expectedRows[rowIndex].Length);
+            for (int columnIndex = 0; columnIndex < expectedRows[rowIndex].Length; columnIndex++)
+            {
+                actualRows[rowIndex][columnIndex].ShouldBe(expectedRows[rowIndex][columnIndex]);
+            }
+        }
+    }
+
+    private static string[][] ParseTableRows(string document, string heading)
+    {
+        string[] lines = document.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
+        int headingIndex = Array.FindIndex(lines, line => string.Equals(line.Trim(), heading, StringComparison.Ordinal));
+        headingIndex.ShouldBeGreaterThanOrEqualTo(0);
+        int headerIndex = Array.FindIndex(lines, headingIndex + 1, line => line.TrimStart().StartsWith('|'));
+        headerIndex.ShouldBeGreaterThanOrEqualTo(0);
+
+        List<string[]> rows = [];
+        for (int index = headerIndex + 2; index < lines.Length && lines[index].TrimStart().StartsWith('|'); index++)
+        {
+            rows.Add(lines[index].Trim().Trim('|').Split('|').Select(static cell => cell.Trim()).ToArray());
+        }
+
+        return [.. rows];
     }
 
     private static string ReadNormalized(string relative)
         => CollapseWhitespace(File.ReadAllText(Absolute(relative)));
+
+    private static string ReadRaw(string relative)
+        => File.ReadAllText(Absolute(relative));
 
     private static string CollapseWhitespace(string value)
         => Regex.Replace(value, @"\s+", " ");
@@ -84,9 +249,11 @@ public sealed class FcNipRowIdentityProducerContractTests {
     private static string Absolute(string relative)
         => Path.Combine(ProjectRoot(), relative.Replace('/', Path.DirectorySeparatorChar));
 
-    private static string ProjectRoot() {
+    private static string ProjectRoot()
+    {
         DirectoryInfo directory = new(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx"))) {
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx")))
+        {
             directory = directory.Parent!;
         }
 

@@ -81,10 +81,15 @@ The focused FC-TBL public baseline currently covers these public types under
 | `FcNewItemIndicator` | Accessible fresh-row indicator component. | `Text`, `AriaLabelOverride`. |
 
 `FcNewItemIndicator` is a confirmed component and state primitive. Automatic row-level producer wiring
-is under active Epic 9 remediation. Projection nudges remain insufficient row identity. Stories 9.3-9.8
-require explicit target metadata, one terminal producer boundary, automatic generated-grid invalidation,
-scope-safe dismissal, atomic per-row first-wins behavior, and composed/live acceptance before the feature
-is documented as complete.
+is under active Epic 9 remediation. Story 9.3 approved the successor decision in
+`_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md`, building on the
+2026-07-05 row-context base contract. Projection nudges remain insufficient row identity. The approved
+target comes from an explicit command-to-projection declaration plus typed
+`ICommandTargetIdentityProvider<TCommand>`, or a declared `SameAsSource` snapshot, and is captured
+immutably before dispatch. Terminal `Material`, `NoOp`, or `Unknown` evidence is evaluated separately;
+unknown identity or materiality suppresses the indicator. Stories 9.4-9.8 still own the terminal
+producer boundary, generated-grid invalidation, scope-safe dismissal, atomic per-row first-wins
+behavior, and composed/live acceptance before the feature is documented as complete.
 
 Reserved filter keys remain framework-owned: `__status` for status filters, `__search` for in-grid
 search, and `__hidden` for hidden-column persistence. Column filter keys beginning with `__` are
