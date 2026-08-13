@@ -2,7 +2,7 @@
 title: 'Fix Release Builds execution SHA drift after gitlink advance'
 type: 'bugfix'
 created: '2026-08-13'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 1
 baseline_commit: 'd35548251aefad8e235b2fe69a4f9611fb741173'
 context:
@@ -89,3 +89,34 @@ Phase 1 must ship and become the non-zero push base before Phase 2. Do not open 
 - `python3 eng/dependency_graph.py --root . validate --commit 6888761f83d55485b60e330060d8ec7599bc7954` → exit 0
 - `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate"` → pass
 - `git ls-tree 6888761f83d55485b60e330060d8ec7599bc7954 references/Hexalith.Builds` → still `99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38`
+
+## Suggested Review Order
+
+**Phase 1 AD-13 pre-authorization**
+
+- Future `99d5a46…` caller closures land while workflows stay on `0a3508…`.
+  [`dependency-graph-policy.json:439`](../../eng/dependency-graph-policy.json#L439)
+
+**Phase 2 Builds execution lockstep**
+
+- Env approved SHA drives `verify-source` Builds gate.
+  [`release.yml:17`](../../.github/workflows/release.yml#L17)
+
+- Reusable pin and input stay identical literals.
+  [`release.yml:321`](../../.github/workflows/release.yml#L321)
+
+- CI reusable pin advances with the same approved coordinate.
+  [`ci.yml:25`](../../.github/workflows/ci.yml#L25)
+
+- Evidence checkout uses the same Builds ref.
+  [`release-evidence.yml:233`](../../.github/workflows/release-evidence.yml#L233)
+
+**Governance hardening**
+
+- All release/CI/evidence Builds pins must equal the gitlink.
+  [`CiGovernanceTests.cs:585`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs#L585)
+
+**Operator docs**
+
+- Documented identity and catalog companions at the new pin.
+  [`deployment-guide.md:6`](../project-docs/deployment-guide.md#L6)
