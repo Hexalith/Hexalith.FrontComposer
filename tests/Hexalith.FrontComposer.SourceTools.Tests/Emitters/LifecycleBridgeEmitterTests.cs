@@ -40,8 +40,24 @@ public class LifecycleBridgeEmitterTests {
         string source = CommandLifecycleBridgeEmitter.Emit(BuildFluxor());
 
         source.ShouldContain("_subscriber.SubscribeToAction<IncrementCommandActions.RejectedAction>(this,");
-        source.ShouldContain("a => _service.Transition(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected, null));");
-        source.Split("CommandLifecycleState.Rejected").Length.ShouldBe(2);
+        source.ShouldContain("a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected, null));");
+        source.ShouldContain("_dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(transition.CorrelationId");
+    }
+
+    [Fact]
+    public void Emit_ResolverLifecycleTransitionsDispatchTerminalFluxorActionsWithoutFeedbackLoops() {
+        string source = CommandLifecycleBridgeEmitter.Emit(BuildFluxor());
+
+        source.ShouldContain("_service.Subscribe(correlationId, OnLifecycleTransition)");
+        source.ShouldContain("_forwardingActions.ContainsKey((transition.CorrelationId, transition.NewState))");
+        source.ShouldContain("Dictionary<(string CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState State), int>");
+        source.ShouldContain("_dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(transition.CorrelationId))");
+        source.ShouldContain("_dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(transition.CorrelationId");
+        source.ShouldContain("_lifecycleSubscriptions.Remove(transition.CorrelationId, out terminalSubscription)");
+        source.ShouldContain("terminalSubscription?.Dispose();");
+        source.ShouldContain("RemoveLifecycleSubscriptionsExcept(action.CorrelationId)");
+        source.ShouldContain("|| !_lifecycleSubscriptions.ContainsKey(transition.CorrelationId)) return;");
+        source.ShouldContain("subscription?.Dispose();");
     }
 
     [Fact]

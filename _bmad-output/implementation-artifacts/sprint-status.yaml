@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-08-12
+# last_updated: 2026-08-13
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 08-12-2026 18:05
+last_updated: 08-13-2026 07:27
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -125,7 +125,7 @@ development_status:
   9-1-fc-nip-row-identity-producer-decision-record: done
   9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: done
   9-3-define-explicit-command-target-identity: done
-  9-4-converge-terminal-outcomes-on-one-producer-boundary: backlog
+  9-4-converge-terminal-outcomes-on-one-producer-boundary: in-progress
   9-5-make-indicator-state-observable-and-scope-safe: backlog
   9-6-enforce-atomic-per-row-first-wins: backlog
   9-7-add-story-id-and-commit-scope-evidence: backlog

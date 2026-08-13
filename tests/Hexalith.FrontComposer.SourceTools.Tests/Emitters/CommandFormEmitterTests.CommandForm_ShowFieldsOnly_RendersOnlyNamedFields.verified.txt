@@ -48,16 +48,15 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     /// <summary>Story 2-5 Task 5.3: fired once after the form's EditContext is constructed so the renderer can wire validation gates and abandonment protection.</summary>
     [Parameter] public EventCallback<EditContext> OnEditContextReady { get; set; }
 
-    [CascadingParameter] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentity { get; set; }
-
     [Inject] private IState<IncrementCommandLifecycleState> LifecycleState { get; set; } = default!;
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
     [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleBridgeRegistry LifecycleBridgeRegistry { get; set; } = default!;
     [Inject] private ICommandService CommandService { get; set; } = default!;
     [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
-    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService PendingCommandState { get; set; } = default!;
+    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandOutcomeCoordinator PendingCommandOutcomeResolver { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate CommandExecutionAdmissionGate { get; set; } = default!;
+    [Inject] private global::Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Shell.Options.FcShellOptions> ShellOptions { get; set; } = default!;
     [Inject] private IStringLocalizer<Counter.Domain.IncrementCommand> Localizer { get; set; } = default!;
     [Inject] private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> ShellLocalizer { get; set; } = default!;
     [Inject] private ILogger<IncrementCommandForm>? Logger { get; set; }
@@ -74,6 +73,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     private bool _externalSubmitRegistered;
     private bool _interactiveReady;
     private string? _submittedCorrelationId;
+    private int _acceptedAssociationSucceeded;
     private static readonly global::Hexalith.FrontComposer.Contracts.Communication.ICommandValidationFieldAllowlist _serverValidationAllowlist = new global::Hexalith.FrontComposer.Shell.Services.Validation.ReflectionCommandValidationFieldAllowlist<Counter.Domain.IncrementCommand>();
     /// <summary>Indicates the form has been modified since creation. Used by later stories to warn on navigation.</summary>
     public bool IsDirty { get; private set; }
@@ -204,6 +204,38 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         return !string.IsNullOrEmpty(_AmountParseError);
     }
 
+    private void DiscardUnacceptedTerminalObservations(
+        string ownerId,
+        System.Collections.Generic.HashSet<string> messageIds,
+        System.Collections.Generic.Queue<string> messageIdOrder)
+    {
+        PendingCommandOutcomeResolver.DiscardBufferedByOwner(ownerId);
+        messageIds.Clear();
+        messageIdOrder.Clear();
+    }
+
+    private void TrackUnacceptedTerminalObservation(
+        string messageId,
+        System.Collections.Generic.HashSet<string> messageIds,
+        System.Collections.Generic.Queue<string> messageIdOrder)
+    {
+        if (!messageIds.Add(messageId)) return;
+        messageIdOrder.Enqueue(messageId);
+        int capacity = Math.Max(1, ShellOptions.Value.MaxPendingCommandEntries);
+        while (messageIds.Count > capacity
+            && messageIdOrder.TryDequeue(out string? oldest))
+        {
+            if (messageIds.Remove(oldest))
+            {
+                // The coordinator owns the authoritative bounded buffer; this queue only
+                // bounds producer-local bookkeeping until owner-scoped cleanup.
+            }
+        }
+    }
+
+    private static string? CanonicalCommandMessageId(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();
+
     private async Task OnValidSubmitAsync()
     {
         // Story 2-2 code-review P35 — guard against invocation via RegisterExternalSubmit after form disposal.
@@ -265,6 +297,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
         var correlationId = UlidFactory.NewUlid();
         _submittedCorrelationId = correlationId;
+        System.Threading.Interlocked.Exchange(ref _acceptedAssociationSucceeded, 0);
         var cts = _cts;
 
         // Story 2-3 D5 — lazily activate the lifecycle bridge so ILifecycleStateService receives
@@ -277,80 +310,211 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         await InvokeAsync(StateHasChanged);
         if (Logger is not null) { LogCommandSubmitted(Logger, correlationId); }
 
+        // One owner per dispatch prevents callbacks retained by an earlier service invocation
+        // from observing or mutating a later submit's lifecycle.
+        object lifecycleCallbackGate = new();
+        var unacceptedTerminalMessageIds = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);
+        var unacceptedTerminalMessageIdOrder = new System.Collections.Generic.Queue<string>();
+        int lifecycleCallbackClosed = 0;
+        int acceptedTerminalAssociation = 0;
+        string? acceptedTerminalMessageId = null;
+        bool acceptedAssociationSucceeded = false;
+
         try
         {
-            var result = await CommandService.DispatchAsync(
-                _model,
-                onLifecycleChange: (state, messageId) =>
+            var commandForDispatch = _model;
+            global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandTargetSnapshot? commandTarget = null;
+            cts.Token.ThrowIfCancellationRequested();
+            var result = await CommandService.DispatchWithLifecycleObservationsAsync(
+                commandForDispatch,
+                onLifecycleObservation: observation =>
                 {
+                    if (System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1) return;
+                    bool dispatchTerminalAction = false;
+                    bool terminalApplied = false;
+                    if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected)
+                    {
+                        lock (lifecycleCallbackGate)
+                        {
+                            if (System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1) return;
+                            string? observationMessageId = CanonicalCommandMessageId(observation.MessageId);
+                            if (System.Threading.Volatile.Read(ref acceptedTerminalAssociation) == 1
+                                && !string.Equals(observationMessageId, acceptedTerminalMessageId, StringComparison.Ordinal))
+                            {
+                                return;
+                            }
+                            var pendingOutcomeObservation = new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeObservation(
+                            global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeSource.LiveNudgeRefresh,
+                            observation.State == CommandLifecycleState.Confirmed
+                                ? global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Confirmed
+                                : global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Rejected,
+                            MessageId: observation.MessageId,
+                            ObservedAt: observation.ObservedAt)
+                        {
+                            Materiality = observation.Materiality,
+                            };
+                            var outcomeResolution = System.Threading.Volatile.Read(ref acceptedTerminalAssociation) == 0
+                                ? PendingCommandOutcomeResolver.BufferBeforeAccepted(correlationId, pendingOutcomeObservation)
+                                : PendingCommandOutcomeResolver.Resolve(pendingOutcomeObservation);
+                            if (System.Threading.Volatile.Read(ref acceptedTerminalAssociation) == 0
+                                && observationMessageId is not null
+                                && outcomeResolution.Status == global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeResolutionStatus.Buffered)
+                            {
+                                TrackUnacceptedTerminalObservation(
+                                    observationMessageId,
+                                    unacceptedTerminalMessageIds,
+                                    unacceptedTerminalMessageIdOrder);
+                            }
+                            terminalApplied = System.Threading.Volatile.Read(ref acceptedTerminalAssociation) == 1
+                                && outcomeResolution.Status is
+                                    global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeResolutionStatus.Resolved
+                                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeResolutionStatus.LifecycleDispatchFailed;
+                            dispatchTerminalAction = terminalApplied && LifecycleState.Value.State != observation.State;
+                            if (terminalApplied)
+                            {
+                                System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);
+                            }
+                        }
+                    }
+                    if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected
+                        && !terminalApplied) return;
                     // Guard against callbacks arriving after form disposal or cancellation (patch P10).
-                    if (_disposed || cts.IsCancellationRequested) return;
+                    if (_disposed || cts.IsCancellationRequested
+                        || (!dispatchTerminalAction && System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1)) return;
                     _ = InvokeAsync(() =>
                     {
-                        if (_disposed || cts.IsCancellationRequested) return;
-                        switch (state)
+                        if (_disposed || cts.IsCancellationRequested
+                            || (!dispatchTerminalAction && System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1)) return;
+                        switch (observation.State)
                         {
                             case CommandLifecycleState.Syncing:
                                 Dispatcher.Dispatch(new IncrementCommandActions.SyncingAction(correlationId));
                                 break;
                             case CommandLifecycleState.Confirmed:
-                                if (!string.IsNullOrWhiteSpace(messageId))
-                                {
-                                    _ = PendingCommandState.ResolveTerminal(global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalObservation.Confirmed(messageId));
-                                }
                                 Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));
+                                break;
+                            case CommandLifecycleState.Rejected:
+                                Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, "Command rejected.", "Review the command and retry.", null, null, null, null));
                                 break;
                         }
                     });
                 },
                 cancellationToken: cts.Token);
-
-            // Story 9.2 — form-emit-time metadata remains limited to CorrelationId, MessageId,
-            // and CommandTypeName. Row identity is registered only when a generated/runtime row
-            // context cascades PendingCommandRowIdentity; raw command payloads and form values
-            // must not populate ProjectionTypeName / LaneKey / EntityKey / status slots.
+            // Story 9.4 — only accepted dispatch associates the immutable pre-dispatch target.
             global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationResult? pendingRegistration = null;
-            if (string.Equals(result.Status, "Accepted", StringComparison.OrdinalIgnoreCase))
+            bool accepted = string.Equals(result.Status, "Accepted", StringComparison.OrdinalIgnoreCase);
+            if (accepted)
             {
-                pendingRegistration = PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(
-                    CorrelationId: correlationId,
-                    MessageId: result.MessageId,
-                    CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand),
-                    ProjectionTypeName: PendingCommandRowIdentity?.ProjectionTypeName,
-                    LaneKey: PendingCommandRowIdentity?.LaneKey,
-                    EntityKey: PendingCommandRowIdentity?.EntityKey,
-                    ExpectedStatusSlot: PendingCommandRowIdentity?.ExpectedStatusSlot,
-                    PriorStatusSlot: PendingCommandRowIdentity?.PriorStatusSlot));
-                if (pendingRegistration.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId
+                lock (lifecycleCallbackGate)
+                {
+                    try
+                    {
+                        pendingRegistration = PendingCommandOutcomeResolver.AssociateAccepted(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(
+                            CorrelationId: correlationId,
+                            MessageId: result.MessageId,
+                            CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand))
+                        {
+                            ProjectionTypeName = commandTarget?.ProjectionTypeName,
+                            LaneKey = commandTarget?.ViewKey,
+                            EntityKey = commandTarget?.EntityKey,
+                            ExpectedStatusSlot = commandTarget?.ExpectedStatus,
+                            PriorStatusSlot = commandTarget?.PriorStatus,
+                            TargetSnapshot = commandTarget,
+                        });
+                    }
+                    catch (Exception)
+                    {
+                        pendingRegistration = null;
+                    }
+                    // Associate first so the accepted observation can replay, then discard
+                    // every other early observation owned by this producer.
+                    DiscardUnacceptedTerminalObservations(
+                        correlationId,
+                        unacceptedTerminalMessageIds,
+                        unacceptedTerminalMessageIdOrder);
+                    acceptedAssociationSucceeded = pendingRegistration?.Status is
+                        global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.Registered
+                        or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.Merged
+                        or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal;
+                    if (acceptedAssociationSucceeded)
+                    {
+                        System.Threading.Interlocked.Exchange(ref _acceptedAssociationSucceeded, 1);
+                        acceptedTerminalMessageId = CanonicalCommandMessageId(result.MessageId);
+                        System.Threading.Interlocked.Exchange(ref acceptedTerminalAssociation, 1);
+                        if (pendingRegistration?.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal)
+                        {
+                            System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);
+                        }
+                        unacceptedTerminalMessageIds.Clear();
+                        unacceptedTerminalMessageIdOrder.Clear();
+                    }
+                    else
+                    {
+                        System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);
+                    }
+                }
+                if (pendingRegistration?.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId
                     or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidCorrelationId
-                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata)
+                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata
+                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.Disposed)
                 {
                     if (Logger is not null) { LogPendingRegistrationSkipped(Logger, correlationId, pendingRegistration.Status); }
                 }
             }
 
-            // Story 3.3 P17 / P18 / P2-P2 / P2-P3 — skip duplicate AcknowledgedAction dispatch only when:
-            //   - InvalidMessageId/InvalidCorrelationId: pending registry rejected malformed identity; lifecycle has nothing to acknowledge.
-            //   - ConflictingMetadata: the registration was rejected because metadata conflicts with an existing entry; the new correlationId is unknown to the pending state.
-            //   - MergedTerminal with the SAME correlationId: re-mount of the original form on a terminal entry; would re-acknowledge a known-terminal lifecycle.
-            // MergedTerminal with a DIFFERENT correlationId means a second form submission for the same MessageId; the new correlationId must advance through Acknowledged so its Fluxor state does not stay in Submitting.
-            bool skipAcknowledged = pendingRegistration is { Status:
-                global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId
-                or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidCorrelationId
-                or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata };
-            if (!skipAcknowledged && pendingRegistration is { Status: global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal, Entry: { } mergedEntry } && string.Equals(mergedEntry.CorrelationId, correlationId, System.StringComparison.Ordinal))
+            if (!accepted)
             {
-                skipAcknowledged = true;
+                lock (lifecycleCallbackGate)
+                {
+                    System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);
+                    DiscardUnacceptedTerminalObservations(
+                        correlationId,
+                        unacceptedTerminalMessageIds,
+                        unacceptedTerminalMessageIdOrder);
+                }
+                if (_disposed || cts.IsCancellationRequested) return;
+                if (string.Equals(result.Status, "Rejected", StringComparison.OrdinalIgnoreCase))
+                {
+                    Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, "Command rejected.", "Review the command and retry.", null, null, null, null));
+                }
+                else
+                {
+                    Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
+                }
+                return;
             }
-            if (!skipAcknowledged)
+            if (!acceptedAssociationSucceeded)
             {
-                Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId));
-                if (Logger is not null) { LogCommandAcknowledged(Logger, correlationId, result.MessageId); }
-            }
-            else
-            {
+                if (!_disposed && !cts.IsCancellationRequested)
+                {
+                    Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
+                }
                 if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration?.Status, correlationId); }
+                return;
             }
+            if (_disposed || cts.IsCancellationRequested) return;
+            if (pendingRegistration is { Status: global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal, Entry: { } mergedEntry })
+            {
+                if (mergedEntry.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Confirmed
+                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.IdempotentConfirmed)
+                {
+                    if (LifecycleState.Value.State != CommandLifecycleState.Confirmed)
+                    {
+                        Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));
+                    }
+                }
+                else
+                {
+                    if (LifecycleState.Value.State != CommandLifecycleState.Rejected)
+                    {
+                        Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, "Command rejected.", "Review the command and retry.", null, null, null, null));
+                    }
+                }
+                if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration.Status, correlationId); }
+                return;
+            }
+            Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId));
+            if (Logger is not null) { LogCommandAcknowledged(Logger, correlationId, result.MessageId); }
         }
         catch (CommandValidationException ex)
         {
@@ -407,6 +571,20 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         }
         finally
         {
+            // Dispatch has now settled. Non-accepted and exceptional paths close retained
+            // callbacks and discard their buffered observations; accepted callbacks remain
+            // resolver-capable after navigation or component disposal.
+            if (!acceptedAssociationSucceeded)
+            {
+                lock (lifecycleCallbackGate)
+                {
+                    System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);
+                    DiscardUnacceptedTerminalObservations(
+                        correlationId,
+                        unacceptedTerminalMessageIds,
+                        unacceptedTerminalMessageIdOrder);
+                }
+            }
             admission.Dispose();
         }
     }
@@ -417,6 +595,12 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         // Idempotent dispose (patch P18). Blazor can invoke Dispose more than once on teardown.
         if (_disposed) return;
         _disposed = true;
+        if (System.Threading.Volatile.Read(ref _acceptedAssociationSucceeded) == 0
+            && !string.IsNullOrWhiteSpace(_submittedCorrelationId))
+        {
+            try { Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(_submittedCorrelationId)); }
+            catch (ObjectDisposedException) { }
+        }
         try { _cts?.Cancel(); } catch (ObjectDisposedException) { }
         _cts?.Dispose();
         _cts = null;

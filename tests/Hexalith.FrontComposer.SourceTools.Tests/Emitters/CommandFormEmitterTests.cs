@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 
+using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.SourceTools.Emitters;
 using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
@@ -28,14 +29,16 @@ public class CommandFormEmitterTests {
         IEnumerable<FormFieldModel> fields,
         string typeName = "IncrementCommand",
         string @namespace = "Counter.Domain",
-        string? authorizationPolicyName = null) => new(
+        string? authorizationPolicyName = null,
+        CommandTargetModel? commandTarget = null) => new(
             typeName,
             @namespace,
             null,
             @namespace + "." + typeName,
             "Send " + typeName,
             new EquatableArray<FormFieldModel>(fields.ToImmutableArray()),
-            authorizationPolicyName);
+            authorizationPolicyName,
+            commandTarget);
 
     [Fact]
     public void Emit_ProducesValidCSharp() {
@@ -120,17 +123,25 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
-    public void Emit_TerminalLifecycleCallbackResolvesPendingCommandState() {
+    public void Emit_TerminalLifecycleCallbackUsesOnlyPendingOutcomeResolver() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        source.ShouldContain("if (!string.IsNullOrWhiteSpace(messageId))");
-        source.ShouldContain("PendingCommandState.ResolveTerminal(global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalObservation.Confirmed(messageId));");
+        source.ShouldContain("PendingCommandOutcomeResolver.BufferBeforeAccepted(correlationId, pendingOutcomeObservation)");
+        source.ShouldContain("PendingCommandOutcomeResolver.Resolve(pendingOutcomeObservation)");
+        source.ShouldContain("Materiality = observation.Materiality");
+        source.ShouldContain("terminalApplied = System.Threading.Volatile.Read(ref acceptedTerminalAssociation) == 1");
+        source.ShouldContain("dispatchTerminalAction = terminalApplied && LifecycleState.Value.State != observation.State;");
+        source.ShouldContain("&& !terminalApplied) return;");
+        source.ShouldContain("if (terminalApplied)");
+        source.ShouldContain("System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);");
+        source.ShouldContain("(!dispatchTerminalAction && System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1)");
+        source.ShouldNotContain("PendingCommandState.ResolveTerminal");
 
         int resolveIndex = source.IndexOf(
-            "PendingCommandState.ResolveTerminal(global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalObservation.Confirmed(messageId));",
+            "PendingCommandOutcomeResolver.Resolve(pendingOutcomeObservation)",
             StringComparison.Ordinal);
         int dispatchIndex = source.IndexOf(
             "Dispatcher.Dispatch(new IncrementCommandActions.ConfirmedAction(correlationId));",
@@ -243,7 +254,7 @@ public class CommandFormEmitterTests {
         int beforeSubmitIndex = source.IndexOf("await BeforeSubmit().ConfigureAwait(false);", StringComparison.Ordinal);
         int secondAuthorizationIndex = source.IndexOf("var authorizationPostBeforeSubmit = await CommandAuthorizationEvaluator.EvaluateAsync", StringComparison.Ordinal);
         int correlationIndex = source.IndexOf("var correlationId = UlidFactory.NewUlid();", StringComparison.Ordinal);
-        int dispatchIndex = source.IndexOf("CommandService.DispatchAsync", StringComparison.Ordinal);
+        int dispatchIndex = source.IndexOf("CommandService.DispatchWithLifecycleObservationsAsync", StringComparison.Ordinal);
 
         firstAuthorizationIndex.ShouldBeGreaterThan(0);
         beforeSubmitIndex.ShouldBeGreaterThan(firstAuthorizationIndex);
@@ -259,15 +270,20 @@ public class CommandFormEmitterTests {
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        source.ShouldContain("[Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService PendingCommandState { get; set; } = default!;");
-        source.ShouldContain("if (string.Equals(result.Status, \"Accepted\", StringComparison.OrdinalIgnoreCase))");
-        source.ShouldContain("PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(");
+        source.ShouldContain("[Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandOutcomeCoordinator PendingCommandOutcomeResolver { get; set; } = default!;");
+        source.ShouldContain("bool accepted = string.Equals(result.Status, \"Accepted\", StringComparison.OrdinalIgnoreCase);");
+        source.ShouldContain("PendingCommandOutcomeResolver.AssociateAccepted(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(");
         source.ShouldContain("CorrelationId: correlationId,");
         source.ShouldContain("MessageId: result.MessageId,");
-        source.ShouldContain("CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand),");
+        source.ShouldContain("CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand))");
+        source.ShouldContain("ProjectionTypeName = commandTarget?.ProjectionTypeName,");
+        source.ShouldContain("LaneKey = commandTarget?.ViewKey,");
+        source.ShouldContain("EntityKey = commandTarget?.EntityKey,");
+        source.ShouldContain("ExpectedStatusSlot = commandTarget?.ExpectedStatus,");
+        source.ShouldContain("PriorStatusSlot = commandTarget?.PriorStatus,");
 
-        int dispatchResultIndex = source.IndexOf("var result = await CommandService.DispatchAsync(", StringComparison.Ordinal);
-        int registerIndex = source.IndexOf("PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(", StringComparison.Ordinal);
+        int dispatchResultIndex = source.IndexOf("var result = await CommandService.DispatchWithLifecycleObservationsAsync(", StringComparison.Ordinal);
+        int registerIndex = source.IndexOf("PendingCommandOutcomeResolver.AssociateAccepted(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(", StringComparison.Ordinal);
         int acknowledgedIndex = source.IndexOf("IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId)", StringComparison.Ordinal);
 
         registerIndex.ShouldBeGreaterThan(dispatchResultIndex);
@@ -275,19 +291,15 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
-    public void Emit_PendingRegistrationDoesNotFabricateRuntimeRowIdentityMetadata() {
+    public void Emit_UndeclaredCommandDoesNotConsumeAmbientRowIdentity() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
         ]);
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        source.ShouldContain("[CascadingParameter] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentity { get; set; }");
-        source.ShouldContain("Row identity is registered only when a generated/runtime row");
-        source.ShouldContain("ProjectionTypeName: PendingCommandRowIdentity?.ProjectionTypeName,");
-        source.ShouldContain("LaneKey: PendingCommandRowIdentity?.LaneKey,");
-        source.ShouldContain("EntityKey: PendingCommandRowIdentity?.EntityKey,");
-        source.ShouldContain("ExpectedStatusSlot: PendingCommandRowIdentity?.ExpectedStatusSlot,");
-        source.ShouldContain("PriorStatusSlot: PendingCommandRowIdentity?.PriorStatusSlot));");
+        source.ShouldNotContain("PendingCommandRowIdentity");
+        source.ShouldContain("CommandTargetSnapshot? commandTarget = null;");
+        source.ShouldContain("TargetSnapshot = commandTarget");
         source.ShouldNotContain("ProjectionTypeName: typeof(");
         source.ShouldNotContain("EntityKey: _model");
     }
@@ -301,7 +313,7 @@ public class CommandFormEmitterTests {
 
         int warningCatchIndex = source.IndexOf("catch (CommandWarningException ex)", StringComparison.Ordinal);
         int resetIndex = source.IndexOf("ResetToIdleAction(correlationId)", warningCatchIndex, StringComparison.Ordinal);
-        int registerIndex = source.IndexOf("PendingCommandState.Register", warningCatchIndex, StringComparison.Ordinal);
+        int registerIndex = source.IndexOf("PendingCommandOutcomeResolver.AssociateAccepted", warningCatchIndex, StringComparison.Ordinal);
         int acknowledgedIndex = source.IndexOf("AcknowledgedAction", warningCatchIndex, StringComparison.Ordinal);
 
         source.ShouldContain("CommandWarningKind.RetryableDispatchFailed");
@@ -335,14 +347,151 @@ public class CommandFormEmitterTests {
         int admissionIndex = source.IndexOf("CommandExecutionAdmissionGate.TryAcquire", StringComparison.Ordinal);
         int correlationIndex = source.IndexOf("var correlationId = UlidFactory.NewUlid();", StringComparison.Ordinal);
         int submittedIndex = source.IndexOf("IncrementCommandActions.SubmittedAction(correlationId, _model)", StringComparison.Ordinal);
-        int dispatchIndex = source.IndexOf("CommandService.DispatchAsync", StringComparison.Ordinal);
-        int registerIndex = source.IndexOf("PendingCommandState.Register", StringComparison.Ordinal);
+        int dispatchIndex = source.IndexOf("CommandService.DispatchWithLifecycleObservationsAsync", StringComparison.Ordinal);
+        int registerIndex = source.IndexOf("PendingCommandOutcomeResolver.AssociateAccepted", StringComparison.Ordinal);
 
         admissionIndex.ShouldBeGreaterThan(beforeSubmitIndex);
         correlationIndex.ShouldBeGreaterThan(admissionIndex);
         submittedIndex.ShouldBeGreaterThan(admissionIndex);
         dispatchIndex.ShouldBeGreaterThan(admissionIndex);
         registerIndex.ShouldBeGreaterThan(dispatchIndex);
+    }
+
+    [Fact]
+    public void Emit_SameAsSourceTargetCapturesBeforeDispatchWithoutFallback() {
+        CommandFormModel form = BuildForm(
+            [new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)],
+            commandTarget: new CommandTargetModel(
+                "global::Counter.Domain.CounterProjection",
+                CommandTargetResolutionMode.SameAsSource,
+                CommandTargetChangeKind.Update,
+                "counter-counts",
+                null));
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        int capture = source.IndexOf("var targetResolution = await ResolveCommandTargetAsync(_model, cts.Token)", StringComparison.Ordinal);
+        int dispatch = source.IndexOf("var result = await CommandService.DispatchWithLifecycleObservationsAsync(", StringComparison.Ordinal);
+        capture.ShouldBeGreaterThan(0);
+        dispatch.ShouldBeGreaterThan(capture);
+        source.ShouldContain("PendingCommandRowIdentity");
+        source.ShouldContain("CommandTargetChangeKind.Update");
+        source.ShouldNotContain("PendingCommandState.ResolveTerminal");
+    }
+
+    [Fact]
+    public void Emit_ProviderTargetClonesAndInvokesOffThreadWithHardDeadlineAndCallerCancellation() {
+        CommandFormModel form = BuildForm(
+            [new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)],
+            commandTarget: new CommandTargetModel(
+                "global::Counter.Domain.CounterProjection",
+                CommandTargetResolutionMode.Provider,
+                CommandTargetChangeKind.Create,
+                "counter-counts",
+                null));
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("return await ResolveCommandTargetCoreAsync(command, cancellationToken).ConfigureAwait(false);");
+        source.ShouldContain("catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)");
+        source.ShouldContain("throw;");
+        source.ShouldContain("catch (Exception)");
+        source.ShouldContain("return (command, FailCommandTargetResolution(\"target-failed\"))");
+        source.ShouldContain("[Inject] private global::System.IServiceProvider CommandTargetServiceProvider");
+        source.ShouldNotContain("CommandTargetIdentityProviders { get; set; }");
+        source.ShouldContain("CommandTargetServiceProvider.GetService(typeof(");
+        source.ShouldContain("var transportCommand = CloneCommandForTargetProvider(command);");
+        source.ShouldContain("var providerCommand = CloneCommandForTargetProvider(transportCommand);");
+        source.ShouldContain("ConditionalWeakTable<global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate, CommandTargetProviderWorkerState>");
+        source.ShouldContain("_commandTargetProviderWorkers.GetValue(CommandExecutionAdmissionGate");
+        source.ShouldContain("Interlocked.CompareExchange(ref providerWorker.Active, 1, 0)");
+        source.ShouldContain("return new Counter.Domain.IncrementCommand");
+        source.ShouldContain("Amount = command.Amount,");
+        source.ShouldNotContain("JsonSerializer");
+        source.ShouldNotContain("System.Reflection");
+        source.ShouldContain("resolution = Task.Run(");
+        source.ShouldContain("providers[0].ResolveAsync(providerCommand, deadline.Token)");
+        source.ShouldContain("CancellationToken.None);");
+        source.ShouldContain("_ = resolution.ContinueWith(");
+        source.ShouldContain("_ = task.Exception;");
+        source.ShouldContain("Interlocked.Exchange(ref providerWorker.Active, 0)");
+        source.ShouldNotContain("_commandTargetProviderWorkerActive");
+        source.ShouldContain("TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously");
+        source.ShouldContain("var providerResult = await resolution.WaitAsync(");
+        source.ShouldContain("identity = providerResult.Identity;");
+        source.ShouldContain("TimeSpan.FromMilliseconds(timeoutMs)");
+        source.ShouldContain("cancellationToken).ConfigureAwait(false);");
+        source.ShouldContain("try { deadline.Cancel(); } catch (ObjectDisposedException) { }");
+
+        int workerIndex = source.IndexOf("resolution = Task.Run(", StringComparison.Ordinal);
+        int providerResolutionIndex = source.IndexOf("CommandTargetServiceProvider.GetService(typeof(", StringComparison.Ordinal);
+        int cloneIndex = source.IndexOf("var transportCommand = CloneCommandForTargetProvider(command);", StringComparison.Ordinal);
+        providerResolutionIndex.ShouldBeGreaterThan(workerIndex);
+        cloneIndex.ShouldBeGreaterThan(workerIndex);
+        source.ShouldContain("var commandForDispatch = targetResolution.Command;");
+        source.ShouldContain("var commandTarget = targetResolution.Target;");
+        source.ShouldContain("CommandService.DispatchWithLifecycleObservationsAsync(\n                commandForDispatch,");
+        source.ShouldContain("PendingCommandOutcomeResolver.DiscardBufferedByOwner(ownerId);");
+        source.ShouldNotContain("PendingCommandOutcomeResolver.DiscardBuffered(oldest);");
+    }
+
+    [Fact]
+    public void Emit_ProviderTargetWithReadOnlyDerivedPropertyFailsTargetResolutionWithoutInvalidCloneAssignment() {
+        const string commandSource = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace Counter.Domain;
+            [Projection]
+            public sealed class CounterProjection { }
+            [Command]
+            [CommandTarget(typeof(CounterProjection), CommandTargetResolutionMode.Provider, CommandTargetChangeKind.Create)]
+            public sealed class CreateCounterCommand
+            {
+                [DerivedFrom(DerivedFromSource.Context)]
+                public string TenantId { get; } = string.Empty;
+                public string Name { get; set; } = string.Empty;
+            }
+            """;
+        CommandModel command = CompilationHelper.ParseCommand(
+            commandSource,
+            "Counter.Domain.CreateCounterCommand").Model.ShouldNotBeNull();
+        CommandFormModel form = CommandFormTransform.Transform(command);
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor("CreateCounterCommand"));
+
+        command.DerivableProperties.Single(property => property.Name == "TenantId").IsWritable.ShouldBeFalse();
+        source.ShouldContain("Command target provider cloning requires supported assignable field types.");
+        source.ShouldNotContain("TenantId = command.TenantId,");
+        source.ShouldNotContain("JsonSerializer");
+        source.ShouldNotContain("System.Reflection");
+    }
+
+    [Fact]
+    public void Emit_ProviderTargetWithInitOnlyDerivedPropertyUsesObjectInitializerClone() {
+        const string commandSource = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace Counter.Domain;
+            [Projection]
+            [BoundedContext("Counter")]
+            public sealed class CounterProjection { }
+            [Command]
+            [CommandTarget(typeof(CounterProjection), CommandTargetResolutionMode.Provider, CommandTargetChangeKind.Create)]
+            public sealed class CreateCounterCommand
+            {
+                [DerivedFrom(DerivedFromSource.MessageId)]
+                public string MessageId { get; init; } = string.Empty;
+                public string Name { get; set; } = string.Empty;
+            }
+            """;
+        CommandModel command = CompilationHelper.ParseCommand(
+            commandSource,
+            "Counter.Domain.CreateCounterCommand").Model.ShouldNotBeNull();
+        CommandFormModel form = CommandFormTransform.Transform(command);
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor("CreateCounterCommand"));
+
+        command.DerivableProperties.Single(property => property.Name == "MessageId").IsWritable.ShouldBeTrue();
+        source.ShouldContain("MessageId = command.MessageId,");
+        source.ShouldNotContain("Command target provider cloning requires supported assignable field types.");
     }
 
     [Fact]
@@ -392,6 +541,16 @@ public class CommandFormEmitterTests {
 
         source.ShouldContain("_cts?.Cancel();");
         source.ShouldContain("_cts?.Dispose();");
+    }
+
+    [Fact]
+    public void Emit_DisposalPreservesAcceptedResolverOwnedLifecycle() {
+        CommandFormModel form = BuildForm(System.Array.Empty<FormFieldModel>());
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("private int _acceptedAssociationSucceeded;");
+        source.ShouldContain("System.Threading.Interlocked.Exchange(ref _acceptedAssociationSucceeded, 1);");
+        source.ShouldContain("if (System.Threading.Volatile.Read(ref _acceptedAssociationSucceeded) == 0");
     }
 
     [Fact]

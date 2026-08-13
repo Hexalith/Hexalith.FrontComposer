@@ -562,7 +562,8 @@ public static class AttributeParser {
             fieldGroup,
             description,
             displayFormat,
-            relativeTimeWindowDays);
+            relativeTimeWindowDays,
+            propertySymbol.SetMethod is { DeclaredAccessibility: Accessibility.Public });
     }
 
     /// <summary>

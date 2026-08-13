@@ -7,31 +7,183 @@ using System;
 
 namespace Counter.Domain;
 
-/// <summary>Story 2-3 Decision D4: per-command lifecycle bridge forwarding Fluxor actions to <see cref="global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleStateService"/>.</summary>
+/// <summary>Per-command bridge converging Fluxor actions and resolver-owned lifecycle transitions.</summary>
 public sealed class ConfigureCounterCommandLifecycleBridge : global::System.IDisposable
 {
     private readonly global::Fluxor.IActionSubscriber _subscriber;
+    private readonly global::Fluxor.IDispatcher _dispatcher;
     private readonly global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleStateService _service;
+    private readonly object _gate = new();
+    private readonly global::System.Collections.Generic.Dictionary<string, global::System.IDisposable> _lifecycleSubscriptions = new(global::System.StringComparer.Ordinal);
+    private readonly global::System.Collections.Generic.Dictionary<(string CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState State), int> _forwardingActions = new();
+    private bool _disposed;
 
     public ConfigureCounterCommandLifecycleBridge(
         global::Fluxor.IActionSubscriber subscriber,
+        global::Fluxor.IDispatcher dispatcher,
         global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleStateService service)
     {
         _subscriber = subscriber ?? throw new global::System.ArgumentNullException(nameof(subscriber));
+        _dispatcher = dispatcher ?? throw new global::System.ArgumentNullException(nameof(dispatcher));
         _service = service ?? throw new global::System.ArgumentNullException(nameof(service));
         _subscriber.SubscribeToAction<ConfigureCounterCommandActions.SubmittedAction>(this,
-            a => _service.Transition(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Submitting, null));
+            OnSubmitted);
         _subscriber.SubscribeToAction<ConfigureCounterCommandActions.AcknowledgedAction>(this,
-            a => _service.Transition(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged, a.MessageId));
+            a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged, a.MessageId));
         _subscriber.SubscribeToAction<ConfigureCounterCommandActions.SyncingAction>(this,
-            a => _service.Transition(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing, null));
+            a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing, null));
         _subscriber.SubscribeToAction<ConfigureCounterCommandActions.ConfirmedAction>(this,
-            a => _service.Transition(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed, null));
+            a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed, null));
         _subscriber.SubscribeToAction<ConfigureCounterCommandActions.RejectedAction>(this,
-            a => _service.Transition(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected, null));
+            a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected, null));
         _subscriber.SubscribeToAction<ConfigureCounterCommandActions.ResetToIdleAction>(this,
-            a => _service.Transition(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Idle, null));
+            OnResetToIdle);
     }
 
-    public void Dispose() => _subscriber.UnsubscribeFromAllActions(this);
+    private void OnSubmitted(ConfigureCounterCommandActions.SubmittedAction action)
+    {
+        RemoveLifecycleSubscriptionsExcept(action.CorrelationId);
+        EnsureLifecycleSubscription(action.CorrelationId);
+        ForwardAction(action.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Submitting, null);
+    }
+
+    private void OnResetToIdle(ConfigureCounterCommandActions.ResetToIdleAction action)
+    {
+        ForwardAction(action.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Idle, null);
+        RemoveLifecycleSubscription(action.CorrelationId);
+    }
+
+    private void ForwardAction(string correlationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState state, string? messageId)
+    {
+        bool closesSubscription = state is global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed
+            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected
+            or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Idle;
+        global::System.IDisposable? subscription = null;
+        lock (_gate)
+        {
+            if (_disposed) return;
+            var forwardingKey = (correlationId, state);
+            _forwardingActions.TryGetValue(forwardingKey, out int forwardingCount);
+            _forwardingActions[forwardingKey] = forwardingCount + 1;
+        }
+        try
+        {
+            _service.Transition(correlationId, state, messageId);
+        }
+        finally
+        {
+            lock (_gate)
+            {
+                var forwardingKey = (correlationId, state);
+                if (_forwardingActions.TryGetValue(forwardingKey, out int forwardingCount) && forwardingCount > 1)
+                {
+                    _forwardingActions[forwardingKey] = forwardingCount - 1;
+                }
+                else
+                {
+                    _ = _forwardingActions.Remove(forwardingKey);
+                }
+                if (closesSubscription)
+                {
+                    _ = _lifecycleSubscriptions.Remove(correlationId, out subscription);
+                }
+            }
+            subscription?.Dispose();
+        }
+    }
+
+    private void EnsureLifecycleSubscription(string correlationId)
+    {
+        lock (_gate)
+        {
+            if (_disposed || _lifecycleSubscriptions.ContainsKey(correlationId)) return;
+        }
+        global::System.IDisposable subscription = _service.Subscribe(correlationId, OnLifecycleTransition);
+        lock (_gate)
+        {
+            if (_disposed || !_lifecycleSubscriptions.TryAdd(correlationId, subscription))
+            {
+                subscription.Dispose();
+            }
+        }
+    }
+
+    private void OnLifecycleTransition(global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleTransition transition)
+    {
+        global::System.IDisposable? terminalSubscription = null;
+        lock (_gate)
+        {
+            if (_disposed
+                || _forwardingActions.ContainsKey((transition.CorrelationId, transition.NewState))
+                || !_lifecycleSubscriptions.ContainsKey(transition.CorrelationId)) return;
+            if (transition.NewState is global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed
+                or global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected)
+            {
+                // Claim terminal delivery while holding the gate. Removing before dispatch makes
+                // duplicate/re-entrant callbacks no-ops; disposal happens outside the gate.
+                _ = _lifecycleSubscriptions.Remove(transition.CorrelationId, out terminalSubscription);
+            }
+        }
+        try
+        {
+            switch (transition.NewState)
+            {
+            case global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed:
+                _dispatcher.Dispatch(new ConfigureCounterCommandActions.ConfirmedAction(transition.CorrelationId));
+                break;
+            case global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected:
+                _dispatcher.Dispatch(new ConfigureCounterCommandActions.RejectedAction(transition.CorrelationId, "Command rejected.", "Review the command and retry.", null, null, null, null));
+                break;
+            }
+        }
+        finally
+        {
+            terminalSubscription?.Dispose();
+        }
+    }
+
+    private void RemoveLifecycleSubscriptionsExcept(string correlationId)
+    {
+        global::System.IDisposable[] stale;
+        lock (_gate)
+        {
+            stale = global::System.Linq.Enumerable.ToArray(
+                global::System.Linq.Enumerable.Select(
+                    global::System.Linq.Enumerable.Where(_lifecycleSubscriptions, pair => !string.Equals(pair.Key, correlationId, global::System.StringComparison.Ordinal)),
+                    pair => pair.Value));
+            foreach (string key in global::System.Linq.Enumerable.ToArray(
+                global::System.Linq.Enumerable.Where(_lifecycleSubscriptions.Keys, key => !string.Equals(key, correlationId, global::System.StringComparison.Ordinal))))
+            {
+                _ = _lifecycleSubscriptions.Remove(key);
+            }
+            foreach (var forwardingKey in global::System.Linq.Enumerable.ToArray(
+                global::System.Linq.Enumerable.Where(_forwardingActions.Keys, key => !string.Equals(key.CorrelationId, correlationId, global::System.StringComparison.Ordinal))))
+            {
+                _ = _forwardingActions.Remove(forwardingKey);
+            }
+        }
+        foreach (global::System.IDisposable subscription in stale) { subscription.Dispose(); }
+    }
+
+    private void RemoveLifecycleSubscription(string correlationId)
+    {
+        global::System.IDisposable? subscription;
+        lock (_gate) { _ = _lifecycleSubscriptions.Remove(correlationId, out subscription); }
+        subscription?.Dispose();
+    }
+
+    public void Dispose()
+    {
+        global::System.IDisposable[] subscriptions;
+        lock (_gate)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            subscriptions = global::System.Linq.Enumerable.ToArray(_lifecycleSubscriptions.Values);
+            _lifecycleSubscriptions.Clear();
+            _forwardingActions.Clear();
+        }
+        _subscriber.UnsubscribeFromAllActions(this);
+        foreach (global::System.IDisposable subscription in subscriptions) { subscription.Dispose(); }
+    }
 }

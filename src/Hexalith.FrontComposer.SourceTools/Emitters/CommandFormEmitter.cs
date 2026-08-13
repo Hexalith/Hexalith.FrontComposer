@@ -1,5 +1,6 @@
 using System.Text;
 
+using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 namespace Hexalith.FrontComposer.SourceTools.Emitters;
@@ -88,22 +89,33 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    /// <summary>Story 2-5 Task 5.3: fired once after the form's EditContext is constructed so the renderer can wire validation gates and abandonment protection.</summary>");
         _ = sb.AppendLine("    [Parameter] public EventCallback<EditContext> OnEditContextReady { get; set; }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    [CascadingParameter] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentity { get; set; }");
-        _ = sb.AppendLine();
+        if (form.CommandTarget?.ResolutionMode == CommandTargetResolutionMode.SameAsSource) {
+            _ = sb.AppendLine("    [CascadingParameter] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity? PendingCommandRowIdentity { get; set; }");
+            _ = sb.AppendLine();
+        }
         _ = sb.AppendLine("    [Inject] private IState<" + fluxor.StateName + "> LifecycleState { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IDispatcher Dispatcher { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleBridgeRegistry LifecycleBridgeRegistry { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ICommandService CommandService { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;");
-        _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService PendingCommandState { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandOutcomeCoordinator PendingCommandOutcomeResolver { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate CommandExecutionAdmissionGate { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private global::Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Shell.Options.FcShellOptions> ShellOptions { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IStringLocalizer<" + commandFqn + "> Localizer { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> ShellLocalizer { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILogger<" + componentName + ">? Logger { get; set; }");
         // Story 5-2 T5 — server-driven warning publication + auth-redirect seam (validation is applied via a stateless static helper).
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Feedback.ICommandFeedbackPublisher CommandFeedbackPublisher { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector AuthRedirector { get; set; } = default!;");
+        if (form.CommandTarget is not null) {
+            _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor UserContextAccessor { get; set; } = default!;");
+            _ = sb.AppendLine("    [Inject] private global::System.TimeProvider TimeProvider { get; set; } = default!;");
+        }
+
+        if (form.CommandTarget?.ResolutionMode == CommandTargetResolutionMode.Provider) {
+            _ = sb.AppendLine("    [Inject] private global::System.IServiceProvider CommandTargetServiceProvider { get; set; } = default!;");
+        }
         if (hasAuthorizationPolicy) {
             _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Authorization.ICommandAuthorizationEvaluator CommandAuthorizationEvaluator { get; set; } = default!;");
             _ = sb.AppendLine("    [Inject] private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> CommandAuthorizationLocalizer { get; set; } = default!;");
@@ -120,6 +132,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private bool _externalSubmitRegistered;");
         _ = sb.AppendLine("    private bool _interactiveReady;");
         _ = sb.AppendLine("    private string? _submittedCorrelationId;");
+        _ = sb.AppendLine("    private int _acceptedAssociationSucceeded;");
         if (hasAuthorizationPolicy) {
             _ = sb.AppendLine("    private bool _authorizationPresentationReady;");
             _ = sb.AppendLine("    private bool _authorizationPresentationAllowed;");
@@ -134,6 +147,10 @@ public static class CommandFormEmitter {
         }
         // Story 5-2 — per-command static allowlist (reflection default, stateless, safely cached).
         _ = sb.AppendLine("    private static readonly global::Hexalith.FrontComposer.Contracts.Communication.ICommandValidationFieldAllowlist _serverValidationAllowlist = new global::Hexalith.FrontComposer.Shell.Services.Validation.ReflectionCommandValidationFieldAllowlist<" + commandFqn + ">();");
+        if (form.CommandTarget?.ResolutionMode == CommandTargetResolutionMode.Provider) {
+            _ = sb.AppendLine("    private static readonly global::System.Runtime.CompilerServices.ConditionalWeakTable<global::Hexalith.FrontComposer.Shell.State.PendingCommands.ICommandExecutionAdmissionGate, CommandTargetProviderWorkerState> _commandTargetProviderWorkers = new();");
+            _ = sb.AppendLine("    private sealed class CommandTargetProviderWorkerState { public int Active; }");
+        }
         _ = sb.AppendLine("    /// <summary>Indicates the form has been modified since creation. Used by later stories to warn on navigation.</summary>");
         _ = sb.AppendLine("    public bool IsDirty { get; private set; }");
         _ = sb.AppendLine();
@@ -407,13 +424,14 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
 
         EmitClientParseErrorHelper(sb, form);
+        EmitCommandTargetResolutionHelper(sb, form);
         EmitSubmitMethod(sb, form, fluxor, escapedButtonLabel);
-        EmitDispose(sb, hasAuthorizationPolicy);
+        EmitDispose(sb, fluxor, hasAuthorizationPolicy);
         EmitBuildRenderTree(sb, form, fluxor, escapedButtonLabel);
         EmitRejectionCopyHelpers(sb, escapedButtonLabel);
         EmitNumericConverters(sb, form);
         _ = sb.AppendLine();
-        EmitLogMethods(sb, hasAuthorizationPolicy);
+        EmitLogMethods(sb, hasAuthorizationPolicy, form.CommandTarget is not null);
 
         _ = sb.AppendLine("}");
 
@@ -438,7 +456,7 @@ public static class CommandFormEmitter {
     /// </remarks>
     /// <param name="sb">Target buffer, positioned inside the generated class body.</param>
     /// <param name="hasAuthorizationPolicy">Whether the authorization-gated call sites were emitted.</param>
-    private static void EmitLogMethods(StringBuilder sb, bool hasAuthorizationPolicy) {
+    private static void EmitLogMethods(StringBuilder sb, bool hasAuthorizationPolicy, bool hasCommandTarget) {
         const string authorizationReasonType = "global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason";
         const string admissionDenialReasonType = "global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandExecutionAdmissionDenialReason";
         const string registrationStatusType = "global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus";
@@ -568,6 +586,17 @@ public static class CommandFormEmitter {
             hasException: false,
             ("string", "correlationId"),
             ("string", "reason"));
+        if (hasCommandTarget) {
+            GeneratedLogMethodEmitter.Emit(
+                sb,
+                "LogCommandTargetResolutionFailed",
+                5912,
+                "CommandFormTargetResolutionFailed",
+                "Warning",
+                "Command target resolution failed closed. Category={Category}",
+                hasException: false,
+                ("string", "category"));
+        }
     }
 
     private static void EmitFieldBackingFields(StringBuilder sb, CommandFormModel form) {
@@ -619,9 +648,290 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
     }
 
+    private static void EmitCommandTargetResolutionHelper(StringBuilder sb, CommandFormModel form) {
+        if (form.CommandTarget is not { } target) {
+            return;
+        }
+
+        string snapshotType = "global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandTargetSnapshot";
+        string escapedProjection = target.ProjectionFullyQualifiedName;
+        string escapedProjectionViewKey = target.ProjectionViewKey is null
+            ? "null"
+            : "\"" + EscapeString(target.ProjectionViewKey) + "\"";
+        string escapedViewKey = target.ViewKey is null ? "null" : "\"" + EscapeString(target.ViewKey) + "\"";
+        string escapedExpectedStatus = target.ExpectedStatus is null ? "null" : "\"" + EscapeString(target.ExpectedStatus) + "\"";
+        string changeKind = "global::Hexalith.FrontComposer.Contracts.Attributes.CommandTargetChangeKind." + target.ChangeKind;
+
+        string resolutionType = "(" + form.CommandFullyQualifiedName + " Command, " + snapshotType + "? Target)";
+        _ = sb.AppendLine("    private async Task<" + resolutionType + "> ResolveCommandTargetAsync(" + form.CommandFullyQualifiedName + " command, CancellationToken cancellationToken)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        try");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return await ResolveCommandTargetCoreAsync(command, cancellationToken).ConfigureAwait(false);");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            throw;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        catch (Exception)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return (command, FailCommandTargetResolution(\"target-failed\"));");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+
+        if (target.ResolutionMode == CommandTargetResolutionMode.SameAsSource) {
+            _ = sb.AppendLine("    private Task<" + resolutionType + "> ResolveCommandTargetCoreAsync(" + form.CommandFullyQualifiedName + " command, CancellationToken cancellationToken)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        cancellationToken.ThrowIfCancellationRequested();");
+            _ = sb.AppendLine("        var source = PendingCommandRowIdentity;");
+            _ = sb.AppendLine("        string? tenantId = NormalizeCommandTargetValue(UserContextAccessor.TenantId);");
+            _ = sb.AppendLine("        string? userId = NormalizeCommandTargetValue(UserContextAccessor.UserId);");
+            _ = sb.AppendLine("        string? viewKey = NormalizeCommandTargetValue(source?.LaneKey);");
+            _ = sb.AppendLine("        string? entityKey = NormalizeCommandTargetValue(source?.EntityKey);");
+            _ = sb.AppendLine("        string? priorStatus = NormalizeCommandTargetValue(source?.PriorStatusSlot);");
+            _ = sb.AppendLine("        string? sourceExpectedStatus = NormalizeCommandTargetValue(source?.ExpectedStatusSlot);");
+            _ = sb.AppendLine("        if (source is null");
+            _ = sb.AppendLine("            || !string.Equals(source.ProjectionTypeName, typeof(" + escapedProjection + ").FullName, StringComparison.Ordinal)");
+            _ = sb.AppendLine("            || " + (target.ProjectionViewKey is null
+                ? "true"
+                : "!string.Equals(viewKey, " + escapedProjectionViewKey + ", StringComparison.Ordinal)"));
+            _ = sb.AppendLine("            || viewKey is null || entityKey is null || tenantId is null || userId is null)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return Task.FromResult((command, FailCommandTargetResolution(\"same-source-unavailable\")));");
+            _ = sb.AppendLine("        }");
+            if (target.ViewKey is not null) {
+                _ = sb.AppendLine("        if (!string.Equals(viewKey, " + escapedViewKey + ", StringComparison.Ordinal))");
+                _ = sb.AppendLine("        {");
+                _ = sb.AppendLine("            return Task.FromResult((command, FailCommandTargetResolution(\"view-mismatch\")));");
+                _ = sb.AppendLine("        }");
+            }
+
+            if (target.ExpectedStatus is not null) {
+                _ = sb.AppendLine("        if (sourceExpectedStatus is not null && !string.Equals(sourceExpectedStatus, " + escapedExpectedStatus + ", StringComparison.Ordinal))");
+                _ = sb.AppendLine("        {");
+                _ = sb.AppendLine("            return Task.FromResult((command, FailCommandTargetResolution(\"status-mismatch\")));");
+                _ = sb.AppendLine("        }");
+            }
+
+            _ = sb.AppendLine("        return Task.FromResult((command, (" + snapshotType + "?)new " + snapshotType + "(");
+            _ = sb.AppendLine("            typeof(" + escapedProjection + ").FullName ?? typeof(" + escapedProjection + ").Name,");
+            _ = sb.AppendLine("            viewKey,");
+            _ = sb.AppendLine("            entityKey,");
+            _ = sb.AppendLine("            " + changeKind + ",");
+            _ = sb.AppendLine("            priorStatus,");
+            _ = sb.AppendLine("            " + (target.ExpectedStatus is null ? "sourceExpectedStatus" : escapedExpectedStatus) + ",");
+            _ = sb.AppendLine("            tenantId,");
+            _ = sb.AppendLine("            userId,");
+            _ = sb.AppendLine("            TimeProvider.GetUtcNow())));");
+            _ = sb.AppendLine("    }");
+        }
+        else {
+            string providerType = "global::Hexalith.FrontComposer.Contracts.Rendering.ICommandTargetIdentityProvider<" + form.CommandFullyQualifiedName + ">";
+            _ = sb.AppendLine("    private async Task<" + resolutionType + "> ResolveCommandTargetCoreAsync(" + form.CommandFullyQualifiedName + " command, CancellationToken cancellationToken)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        global::Hexalith.FrontComposer.Contracts.Rendering.CommandTargetIdentity? identity;");
+            _ = sb.AppendLine("        " + form.CommandFullyQualifiedName + "? frozenCommand = null;");
+            _ = sb.AppendLine("        var providerWorker = _commandTargetProviderWorkers.GetValue(CommandExecutionAdmissionGate, static _ => new CommandTargetProviderWorkerState());");
+            _ = sb.AppendLine("        if (System.Threading.Interlocked.CompareExchange(ref providerWorker.Active, 1, 0) != 0)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return (command, FailCommandTargetResolution(\"provider-busy\"));");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        using (var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            int timeoutMs = ShellOptions.Value.CommandTargetResolutionTimeoutMs;");
+            _ = sb.AppendLine("            deadline.CancelAfter(timeoutMs);");
+            _ = sb.AppendLine("            Task<(" + form.CommandFullyQualifiedName + " Command, global::Hexalith.FrontComposer.Contracts.Rendering.CommandTargetIdentity? Identity, string? FailureCategory)>? resolution = null;");
+            _ = sb.AppendLine("            try");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                // Clone and invoke adopter code inside one bounded worker so blocking getters or a");
+            _ = sb.AppendLine("                // synchronous provider cannot freeze the renderer or bypass the deadline.");
+            _ = sb.AppendLine("                resolution = Task.Run(");
+            _ = sb.AppendLine("                    async () =>");
+            _ = sb.AppendLine("                    {");
+            _ = sb.AppendLine("                        try");
+            _ = sb.AppendLine("                        {");
+            _ = sb.AppendLine("                            // Freeze transport input before constructing adopter providers. A second clone");
+            _ = sb.AppendLine("                            // isolates transport from a provider that mutates its input.");
+            _ = sb.AppendLine("                            var transportCommand = CloneCommandForTargetProvider(command);");
+            _ = sb.AppendLine("                            System.Threading.Volatile.Write(ref frozenCommand, transportCommand);");
+            _ = sb.AppendLine("                            var providerCommand = CloneCommandForTargetProvider(transportCommand);");
+            _ = sb.AppendLine("                            // Resolve the provider collection only on submit and inside the bounded worker.");
+            _ = sb.AppendLine("                            // Provider constructors are adopter code and may block or throw.");
+            _ = sb.AppendLine("                            var providerEnumerable = CommandTargetServiceProvider.GetService(typeof(global::System.Collections.Generic.IEnumerable<" + providerType + ">))");
+            _ = sb.AppendLine("                                as global::System.Collections.Generic.IEnumerable<" + providerType + ">;");
+            _ = sb.AppendLine("                            var providers = providerEnumerable?.Take(2).ToArray() ?? System.Array.Empty<" + providerType + ">();");
+            _ = sb.AppendLine("                            if (providers.Length != 1)");
+            _ = sb.AppendLine("                            {");
+            _ = sb.AppendLine("                                return (Command: transportCommand, Identity: (global::Hexalith.FrontComposer.Contracts.Rendering.CommandTargetIdentity?)null,");
+            _ = sb.AppendLine("                                    FailureCategory: providers.Length == 0 ? \"provider-missing\" : \"provider-duplicate\");");
+            _ = sb.AppendLine("                            }");
+            _ = sb.AppendLine("                            var providerIdentity = await providers[0].ResolveAsync(providerCommand, deadline.Token).ConfigureAwait(false);");
+            _ = sb.AppendLine("                            return (Command: transportCommand, Identity: providerIdentity, FailureCategory: (string?)null);");
+            _ = sb.AppendLine("                        }");
+            _ = sb.AppendLine("                        finally");
+            _ = sb.AppendLine("                        {");
+            _ = sb.AppendLine("                            System.Threading.Interlocked.Exchange(ref providerWorker.Active, 0);");
+            _ = sb.AppendLine("                        }");
+            _ = sb.AppendLine("                    },");
+            _ = sb.AppendLine("                    CancellationToken.None);");
+            _ = sb.AppendLine("                _ = resolution.ContinueWith(");
+            _ = sb.AppendLine("                    static task =>");
+            _ = sb.AppendLine("                    {");
+            _ = sb.AppendLine("                        _ = task.Exception;");
+            _ = sb.AppendLine("                    },");
+            _ = sb.AppendLine("                    CancellationToken.None,");
+            _ = sb.AppendLine("                    TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,");
+            _ = sb.AppendLine("                    TaskScheduler.Default);");
+            _ = sb.AppendLine("                var providerResult = await resolution.WaitAsync(");
+            _ = sb.AppendLine("                    TimeSpan.FromMilliseconds(timeoutMs),");
+            _ = sb.AppendLine("                    cancellationToken).ConfigureAwait(false);");
+            _ = sb.AppendLine("                frozenCommand = providerResult.Command;");
+            _ = sb.AppendLine("                if (providerResult.FailureCategory is not null)");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    return (frozenCommand, FailCommandTargetResolution(providerResult.FailureCategory));");
+            _ = sb.AppendLine("                }");
+            _ = sb.AppendLine("                identity = providerResult.Identity;");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            catch (TimeoutException)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                cancellationToken.ThrowIfCancellationRequested();");
+            _ = sb.AppendLine("                return (System.Threading.Volatile.Read(ref frozenCommand) ?? command, FailCommandTargetResolution(\"provider-timeout\"));");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                return (System.Threading.Volatile.Read(ref frozenCommand) ?? command, FailCommandTargetResolution(\"provider-timeout\"));");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            catch (Exception ex) when (ex is not OperationCanceledException)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                if (resolution is null)");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    System.Threading.Interlocked.Exchange(ref providerWorker.Active, 0);");
+            _ = sb.AppendLine("                }");
+            _ = sb.AppendLine("                return (System.Threading.Volatile.Read(ref frozenCommand) ?? command, FailCommandTargetResolution(\"provider-failed\"));");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            finally");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                try { deadline.Cancel(); } catch (ObjectDisposedException) { }");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        string? tenantId = NormalizeCommandTargetValue(UserContextAccessor.TenantId);");
+            _ = sb.AppendLine("        string? userId = NormalizeCommandTargetValue(UserContextAccessor.UserId);");
+            _ = sb.AppendLine("        string? viewKey = NormalizeCommandTargetValue(identity?.ViewKey);");
+            _ = sb.AppendLine("        string? entityKey = NormalizeCommandTargetValue(identity?.EntityKey);");
+            _ = sb.AppendLine("        string? priorStatus = NormalizeCommandTargetValue(identity?.PriorStatus);");
+            _ = sb.AppendLine("        string? providerExpectedStatus = NormalizeCommandTargetValue(identity?.ExpectedStatus);");
+            _ = sb.AppendLine("        if (identity is null || viewKey is null || entityKey is null || tenantId is null || userId is null)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return (frozenCommand ?? command, FailCommandTargetResolution(\"provider-invalid\"));");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        if (" + (target.ProjectionViewKey is null
+                ? "true"
+                : "!string.Equals(viewKey, " + escapedProjectionViewKey + ", StringComparison.Ordinal)") + ")");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return (frozenCommand ?? command, FailCommandTargetResolution(\"projection-view-mismatch\"));");
+            _ = sb.AppendLine("        }");
+            if (target.ViewKey is not null) {
+                _ = sb.AppendLine("        if (!string.Equals(viewKey, " + escapedViewKey + ", StringComparison.Ordinal))");
+                _ = sb.AppendLine("        {");
+                _ = sb.AppendLine("            return (frozenCommand ?? command, FailCommandTargetResolution(\"view-mismatch\"));");
+                _ = sb.AppendLine("        }");
+            }
+
+            if (target.ExpectedStatus is not null) {
+                _ = sb.AppendLine("        if (providerExpectedStatus is not null && !string.Equals(providerExpectedStatus, " + escapedExpectedStatus + ", StringComparison.Ordinal))");
+                _ = sb.AppendLine("        {");
+                _ = sb.AppendLine("            return (frozenCommand ?? command, FailCommandTargetResolution(\"status-mismatch\"));");
+                _ = sb.AppendLine("        }");
+            }
+
+            if (target.ChangeKind == CommandTargetChangeKind.StatusMove) {
+                _ = sb.AppendLine(target.ExpectedStatus is null
+                    ? "        if (priorStatus is null || providerExpectedStatus is null)"
+                    : "        if (priorStatus is null)");
+                _ = sb.AppendLine("        {");
+                _ = sb.AppendLine("            return (frozenCommand ?? command, FailCommandTargetResolution(\"status-move-incomplete\"));");
+                _ = sb.AppendLine("        }");
+            }
+
+            _ = sb.AppendLine("        return (frozenCommand ?? command, new " + snapshotType + "(");
+            _ = sb.AppendLine("            typeof(" + escapedProjection + ").FullName ?? typeof(" + escapedProjection + ").Name,");
+            _ = sb.AppendLine("            viewKey,");
+            _ = sb.AppendLine("            entityKey,");
+            _ = sb.AppendLine("            " + changeKind + ",");
+            _ = sb.AppendLine("            priorStatus,");
+            _ = sb.AppendLine("            " + (target.ExpectedStatus is null ? "providerExpectedStatus" : escapedExpectedStatus) + ",");
+            _ = sb.AppendLine("            tenantId,");
+            _ = sb.AppendLine("            userId,");
+            _ = sb.AppendLine("            TimeProvider.GetUtcNow()));");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private static " + form.CommandFullyQualifiedName + " CloneCommandForTargetProvider(" + form.CommandFullyQualifiedName + " command)");
+            _ = sb.AppendLine("    {");
+            if (form.ProviderCloneFields.Any(field => field.TypeCategory == FormFieldTypeCategory.Placeholder || !field.IsProviderCloneAssignable)) {
+                _ = sb.AppendLine("        throw new NotSupportedException(\"Command target provider cloning requires supported assignable field types.\");");
+            }
+            else {
+                _ = sb.AppendLine("        return new " + form.CommandFullyQualifiedName);
+                _ = sb.AppendLine("        {");
+                foreach (FormFieldModel field in form.ProviderCloneFields) {
+                    _ = sb.AppendLine("            " + field.PropertyName + " = command." + field.PropertyName + ",");
+                }
+
+                _ = sb.AppendLine("        };");
+            }
+            _ = sb.AppendLine("    }");
+        }
+
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private " + snapshotType + "? FailCommandTargetResolution(string category)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        try { if (Logger is not null) { LogCommandTargetResolutionFailed(Logger, category); } }");
+        _ = sb.AppendLine("        catch (Exception) { }");
+        _ = sb.AppendLine("        return null;");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private static string? NormalizeCommandTargetValue(string? value) =>");
+        _ = sb.AppendLine("        string.IsNullOrWhiteSpace(value) ? null : value.Trim();");
+        _ = sb.AppendLine();
+    }
+
     private static void EmitSubmitMethod(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor, string escapedButtonLabel) {
         string commandFqn = form.CommandFullyQualifiedName;
         bool hasAuthorizationPolicy = !string.IsNullOrWhiteSpace(form.AuthorizationPolicyName);
+
+        _ = sb.AppendLine("    private void DiscardUnacceptedTerminalObservations(");
+        _ = sb.AppendLine("        string ownerId,");
+        _ = sb.AppendLine("        System.Collections.Generic.HashSet<string> messageIds,");
+        _ = sb.AppendLine("        System.Collections.Generic.Queue<string> messageIdOrder)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        PendingCommandOutcomeResolver.DiscardBufferedByOwner(ownerId);");
+        _ = sb.AppendLine("        messageIds.Clear();");
+        _ = sb.AppendLine("        messageIdOrder.Clear();");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void TrackUnacceptedTerminalObservation(");
+        _ = sb.AppendLine("        string messageId,");
+        _ = sb.AppendLine("        System.Collections.Generic.HashSet<string> messageIds,");
+        _ = sb.AppendLine("        System.Collections.Generic.Queue<string> messageIdOrder)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (!messageIds.Add(messageId)) return;");
+        _ = sb.AppendLine("        messageIdOrder.Enqueue(messageId);");
+        _ = sb.AppendLine("        int capacity = Math.Max(1, ShellOptions.Value.MaxPendingCommandEntries);");
+        _ = sb.AppendLine("        while (messageIds.Count > capacity");
+        _ = sb.AppendLine("            && messageIdOrder.TryDequeue(out string? oldest))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            if (messageIds.Remove(oldest))");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                // The coordinator owns the authoritative bounded buffer; this queue only");
+        _ = sb.AppendLine("                // bounds producer-local bookkeeping until owner-scoped cleanup.");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private static string? CanonicalCommandMessageId(string? value) =>");
+        _ = sb.AppendLine("        string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToUpperInvariant();");
+        _ = sb.AppendLine();
 
         _ = sb.AppendLine("    private async Task OnValidSubmitAsync()");
         _ = sb.AppendLine("    {");
@@ -732,6 +1042,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("        var correlationId = UlidFactory.NewUlid();");
         _ = sb.AppendLine("        _submittedCorrelationId = correlationId;");
+        _ = sb.AppendLine("        System.Threading.Interlocked.Exchange(ref _acceptedAssociationSucceeded, 0);");
         _ = sb.AppendLine("        var cts = _cts;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        // Story 2-3 D5 — lazily activate the lifecycle bridge so ILifecycleStateService receives");
@@ -744,80 +1055,220 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
         _ = sb.AppendLine("        if (Logger is not null) { LogCommandSubmitted(Logger, correlationId); }");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("        // One owner per dispatch prevents callbacks retained by an earlier service invocation");
+        _ = sb.AppendLine("        // from observing or mutating a later submit's lifecycle.");
+        _ = sb.AppendLine("        object lifecycleCallbackGate = new();");
+        _ = sb.AppendLine("        var unacceptedTerminalMessageIds = new System.Collections.Generic.HashSet<string>(StringComparer.Ordinal);");
+        _ = sb.AppendLine("        var unacceptedTerminalMessageIdOrder = new System.Collections.Generic.Queue<string>();");
+        _ = sb.AppendLine("        int lifecycleCallbackClosed = 0;");
+        _ = sb.AppendLine("        int acceptedTerminalAssociation = 0;");
+        _ = sb.AppendLine("        string? acceptedTerminalMessageId = null;");
+        _ = sb.AppendLine("        bool acceptedAssociationSucceeded = false;");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            var result = await CommandService.DispatchAsync(");
-        _ = sb.AppendLine("                _model,");
-        _ = sb.AppendLine("                onLifecycleChange: (state, messageId) =>");
+        if (form.CommandTarget is not null) {
+            _ = sb.AppendLine("            // Story 9.4 — resolve and freeze the explicit target immediately before dispatch.");
+            _ = sb.AppendLine("            var targetResolution = await ResolveCommandTargetAsync(_model, cts.Token).ConfigureAwait(false);");
+            _ = sb.AppendLine("            var commandForDispatch = targetResolution.Command;");
+            _ = sb.AppendLine("            var commandTarget = targetResolution.Target;");
+        }
+        else {
+            _ = sb.AppendLine("            var commandForDispatch = _model;");
+            _ = sb.AppendLine("            global::Hexalith.FrontComposer.Shell.State.PendingCommands.CommandTargetSnapshot? commandTarget = null;");
+        }
+
+        _ = sb.AppendLine("            cts.Token.ThrowIfCancellationRequested();");
+        _ = sb.AppendLine("            var result = await CommandService.DispatchWithLifecycleObservationsAsync(");
+        _ = sb.AppendLine("                commandForDispatch,");
+        _ = sb.AppendLine("                onLifecycleObservation: observation =>");
         _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    if (System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1) return;");
+        _ = sb.AppendLine("                    bool dispatchTerminalAction = false;");
+        _ = sb.AppendLine("                    bool terminalApplied = false;");
+        _ = sb.AppendLine("                    if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected)");
+        _ = sb.AppendLine("                    {");
+        _ = sb.AppendLine("                        lock (lifecycleCallbackGate)");
+        _ = sb.AppendLine("                        {");
+        _ = sb.AppendLine("                            if (System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1) return;");
+        _ = sb.AppendLine("                            string? observationMessageId = CanonicalCommandMessageId(observation.MessageId);");
+        _ = sb.AppendLine("                            if (System.Threading.Volatile.Read(ref acceptedTerminalAssociation) == 1");
+        _ = sb.AppendLine("                                && !string.Equals(observationMessageId, acceptedTerminalMessageId, StringComparison.Ordinal))");
+        _ = sb.AppendLine("                            {");
+        _ = sb.AppendLine("                                return;");
+        _ = sb.AppendLine("                            }");
+        _ = sb.AppendLine("                            var pendingOutcomeObservation = new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeObservation(");
+        _ = sb.AppendLine("                            global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeSource.LiveNudgeRefresh,");
+        _ = sb.AppendLine("                            observation.State == CommandLifecycleState.Confirmed");
+        _ = sb.AppendLine("                                ? global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Confirmed");
+        _ = sb.AppendLine("                                : global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalOutcome.Rejected,");
+        _ = sb.AppendLine("                            MessageId: observation.MessageId,");
+        _ = sb.AppendLine("                            ObservedAt: observation.ObservedAt)");
+        _ = sb.AppendLine("                        {");
+        _ = sb.AppendLine("                            Materiality = observation.Materiality,");
+        _ = sb.AppendLine("                            };");
+        _ = sb.AppendLine("                            var outcomeResolution = System.Threading.Volatile.Read(ref acceptedTerminalAssociation) == 0");
+        _ = sb.AppendLine("                                ? PendingCommandOutcomeResolver.BufferBeforeAccepted(correlationId, pendingOutcomeObservation)");
+        _ = sb.AppendLine("                                : PendingCommandOutcomeResolver.Resolve(pendingOutcomeObservation);");
+        _ = sb.AppendLine("                            if (System.Threading.Volatile.Read(ref acceptedTerminalAssociation) == 0");
+        _ = sb.AppendLine("                                && observationMessageId is not null");
+        _ = sb.AppendLine("                                && outcomeResolution.Status == global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeResolutionStatus.Buffered)");
+        _ = sb.AppendLine("                            {");
+        _ = sb.AppendLine("                                TrackUnacceptedTerminalObservation(");
+        _ = sb.AppendLine("                                    observationMessageId,");
+        _ = sb.AppendLine("                                    unacceptedTerminalMessageIds,");
+        _ = sb.AppendLine("                                    unacceptedTerminalMessageIdOrder);");
+        _ = sb.AppendLine("                            }");
+        _ = sb.AppendLine("                            terminalApplied = System.Threading.Volatile.Read(ref acceptedTerminalAssociation) == 1");
+        _ = sb.AppendLine("                                && outcomeResolution.Status is");
+        _ = sb.AppendLine("                                    global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeResolutionStatus.Resolved");
+        _ = sb.AppendLine("                                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandOutcomeResolutionStatus.LifecycleDispatchFailed;");
+        _ = sb.AppendLine("                            dispatchTerminalAction = terminalApplied && LifecycleState.Value.State != observation.State;");
+        _ = sb.AppendLine("                            if (terminalApplied)");
+        _ = sb.AppendLine("                            {");
+        _ = sb.AppendLine("                                System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);");
+        _ = sb.AppendLine("                            }");
+        _ = sb.AppendLine("                        }");
+        _ = sb.AppendLine("                    }");
+        _ = sb.AppendLine("                    if (observation.State is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected");
+        _ = sb.AppendLine("                        && !terminalApplied) return;");
         _ = sb.AppendLine("                    // Guard against callbacks arriving after form disposal or cancellation (patch P10).");
-        _ = sb.AppendLine("                    if (_disposed || cts.IsCancellationRequested) return;");
+        _ = sb.AppendLine("                    if (_disposed || cts.IsCancellationRequested");
+        _ = sb.AppendLine("                        || (!dispatchTerminalAction && System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1)) return;");
         _ = sb.AppendLine("                    _ = InvokeAsync(() =>");
         _ = sb.AppendLine("                    {");
-        _ = sb.AppendLine("                        if (_disposed || cts.IsCancellationRequested) return;");
-        _ = sb.AppendLine("                        switch (state)");
+        _ = sb.AppendLine("                        if (_disposed || cts.IsCancellationRequested");
+        _ = sb.AppendLine("                            || (!dispatchTerminalAction && System.Threading.Volatile.Read(ref lifecycleCallbackClosed) == 1)) return;");
+        _ = sb.AppendLine("                        switch (observation.State)");
         _ = sb.AppendLine("                        {");
         _ = sb.AppendLine("                            case CommandLifecycleState.Syncing:");
         _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SyncingAction(correlationId));");
         _ = sb.AppendLine("                                break;");
         _ = sb.AppendLine("                            case CommandLifecycleState.Confirmed:");
-        _ = sb.AppendLine("                                if (!string.IsNullOrWhiteSpace(messageId))");
-        _ = sb.AppendLine("                                {");
-        _ = sb.AppendLine("                                    _ = PendingCommandState.ResolveTerminal(global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandTerminalObservation.Confirmed(messageId));");
-        _ = sb.AppendLine("                                }");
         _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ConfirmedAction(correlationId));");
+        _ = sb.AppendLine("                                break;");
+        _ = sb.AppendLine("                            case CommandLifecycleState.Rejected:");
+        _ = sb.AppendLine("                                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, \"Command rejected.\", \"Review the command and retry.\", null, null, null, null));");
         _ = sb.AppendLine("                                break;");
         _ = sb.AppendLine("                        }");
         _ = sb.AppendLine("                    });");
         _ = sb.AppendLine("                },");
         _ = sb.AppendLine("                cancellationToken: cts.Token);");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("            // Story 9.2 — form-emit-time metadata remains limited to CorrelationId, MessageId,");
-        _ = sb.AppendLine("            // and CommandTypeName. Row identity is registered only when a generated/runtime row");
-        _ = sb.AppendLine("            // context cascades PendingCommandRowIdentity; raw command payloads and form values");
-        _ = sb.AppendLine("            // must not populate ProjectionTypeName / LaneKey / EntityKey / status slots.");
+        _ = sb.AppendLine("            // Story 9.4 — only accepted dispatch associates the immutable pre-dispatch target.");
         _ = sb.AppendLine("            global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationResult? pendingRegistration = null;");
-        _ = sb.AppendLine("            if (string.Equals(result.Status, \"Accepted\", StringComparison.OrdinalIgnoreCase))");
+        _ = sb.AppendLine("            bool accepted = string.Equals(result.Status, \"Accepted\", StringComparison.OrdinalIgnoreCase);");
+        _ = sb.AppendLine("            if (accepted)");
         _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                pendingRegistration = PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(");
-        _ = sb.AppendLine("                    CorrelationId: correlationId,");
-        _ = sb.AppendLine("                    MessageId: result.MessageId,");
-        _ = sb.AppendLine("                    CommandTypeName: typeof(" + commandFqn + ").FullName ?? nameof(" + commandFqn + "),");
-        _ = sb.AppendLine("                    ProjectionTypeName: PendingCommandRowIdentity?.ProjectionTypeName,");
-        _ = sb.AppendLine("                    LaneKey: PendingCommandRowIdentity?.LaneKey,");
-        _ = sb.AppendLine("                    EntityKey: PendingCommandRowIdentity?.EntityKey,");
-        _ = sb.AppendLine("                    ExpectedStatusSlot: PendingCommandRowIdentity?.ExpectedStatusSlot,");
-        _ = sb.AppendLine("                    PriorStatusSlot: PendingCommandRowIdentity?.PriorStatusSlot));");
-        _ = sb.AppendLine("                if (pendingRegistration.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId");
+        _ = sb.AppendLine("                lock (lifecycleCallbackGate)");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    try");
+        _ = sb.AppendLine("                    {");
+        _ = sb.AppendLine("                        pendingRegistration = PendingCommandOutcomeResolver.AssociateAccepted(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(");
+        _ = sb.AppendLine("                            CorrelationId: correlationId,");
+        _ = sb.AppendLine("                            MessageId: result.MessageId,");
+        _ = sb.AppendLine("                            CommandTypeName: typeof(" + commandFqn + ").FullName ?? nameof(" + commandFqn + "))");
+        _ = sb.AppendLine("                        {");
+        _ = sb.AppendLine("                            ProjectionTypeName = commandTarget?.ProjectionTypeName,");
+        _ = sb.AppendLine("                            LaneKey = commandTarget?.ViewKey,");
+        _ = sb.AppendLine("                            EntityKey = commandTarget?.EntityKey,");
+        _ = sb.AppendLine("                            ExpectedStatusSlot = commandTarget?.ExpectedStatus,");
+        _ = sb.AppendLine("                            PriorStatusSlot = commandTarget?.PriorStatus,");
+        _ = sb.AppendLine("                            TargetSnapshot = commandTarget,");
+        _ = sb.AppendLine("                        });");
+        _ = sb.AppendLine("                    }");
+        _ = sb.AppendLine("                    catch (Exception)");
+        _ = sb.AppendLine("                    {");
+        _ = sb.AppendLine("                        pendingRegistration = null;");
+        _ = sb.AppendLine("                    }");
+        _ = sb.AppendLine("                    // Associate first so the accepted observation can replay, then discard");
+        _ = sb.AppendLine("                    // every other early observation owned by this producer.");
+        _ = sb.AppendLine("                    DiscardUnacceptedTerminalObservations(");
+        _ = sb.AppendLine("                        correlationId,");
+        _ = sb.AppendLine("                        unacceptedTerminalMessageIds,");
+        _ = sb.AppendLine("                        unacceptedTerminalMessageIdOrder);");
+        _ = sb.AppendLine("                    acceptedAssociationSucceeded = pendingRegistration?.Status is");
+        _ = sb.AppendLine("                        global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.Registered");
+        _ = sb.AppendLine("                        or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.Merged");
+        _ = sb.AppendLine("                        or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal;");
+        _ = sb.AppendLine("                    if (acceptedAssociationSucceeded)");
+        _ = sb.AppendLine("                    {");
+        _ = sb.AppendLine("                        System.Threading.Interlocked.Exchange(ref _acceptedAssociationSucceeded, 1);");
+        _ = sb.AppendLine("                        acceptedTerminalMessageId = CanonicalCommandMessageId(result.MessageId);");
+        _ = sb.AppendLine("                        System.Threading.Interlocked.Exchange(ref acceptedTerminalAssociation, 1);");
+        _ = sb.AppendLine("                        if (pendingRegistration?.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal)");
+        _ = sb.AppendLine("                        {");
+        _ = sb.AppendLine("                            System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);");
+        _ = sb.AppendLine("                        }");
+        _ = sb.AppendLine("                        unacceptedTerminalMessageIds.Clear();");
+        _ = sb.AppendLine("                        unacceptedTerminalMessageIdOrder.Clear();");
+        _ = sb.AppendLine("                    }");
+        _ = sb.AppendLine("                    else");
+        _ = sb.AppendLine("                    {");
+        _ = sb.AppendLine("                        System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);");
+        _ = sb.AppendLine("                    }");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("                if (pendingRegistration?.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId");
         _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidCorrelationId");
-        _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata)");
+        _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata");
+        _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.Disposed)");
         _ = sb.AppendLine("                {");
         _ = sb.AppendLine("                    if (Logger is not null) { LogPendingRegistrationSkipped(Logger, correlationId, pendingRegistration.Status); }");
         _ = sb.AppendLine("                }");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("            // Story 3.3 P17 / P18 / P2-P2 / P2-P3 — skip duplicate AcknowledgedAction dispatch only when:");
-        _ = sb.AppendLine("            //   - InvalidMessageId/InvalidCorrelationId: pending registry rejected malformed identity; lifecycle has nothing to acknowledge.");
-        _ = sb.AppendLine("            //   - ConflictingMetadata: the registration was rejected because metadata conflicts with an existing entry; the new correlationId is unknown to the pending state.");
-        _ = sb.AppendLine("            //   - MergedTerminal with the SAME correlationId: re-mount of the original form on a terminal entry; would re-acknowledge a known-terminal lifecycle.");
-        _ = sb.AppendLine("            // MergedTerminal with a DIFFERENT correlationId means a second form submission for the same MessageId; the new correlationId must advance through Acknowledged so its Fluxor state does not stay in Submitting.");
-        _ = sb.AppendLine("            bool skipAcknowledged = pendingRegistration is { Status:");
-        _ = sb.AppendLine("                global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId");
-        _ = sb.AppendLine("                or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidCorrelationId");
-        _ = sb.AppendLine("                or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata };");
-        _ = sb.AppendLine("            if (!skipAcknowledged && pendingRegistration is { Status: global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal, Entry: { } mergedEntry } && string.Equals(mergedEntry.CorrelationId, correlationId, System.StringComparison.Ordinal))");
+        _ = sb.AppendLine("            if (!accepted)");
         _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                skipAcknowledged = true;");
+        _ = sb.AppendLine("                lock (lifecycleCallbackGate)");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);");
+        _ = sb.AppendLine("                    DiscardUnacceptedTerminalObservations(");
+        _ = sb.AppendLine("                        correlationId,");
+        _ = sb.AppendLine("                        unacceptedTerminalMessageIds,");
+        _ = sb.AppendLine("                        unacceptedTerminalMessageIdOrder);");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("                if (_disposed || cts.IsCancellationRequested) return;");
+        _ = sb.AppendLine("                if (string.Equals(result.Status, \"Rejected\", StringComparison.OrdinalIgnoreCase))");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, \"Command rejected.\", \"Review the command and retry.\", null, null, null, null));");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("                else");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("                return;");
         _ = sb.AppendLine("            }");
-        _ = sb.AppendLine("            if (!skipAcknowledged)");
+        _ = sb.AppendLine("            if (!acceptedAssociationSucceeded)");
         _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".AcknowledgedAction(correlationId, result.MessageId));");
-        _ = sb.AppendLine("                if (Logger is not null) { LogCommandAcknowledged(Logger, correlationId, result.MessageId); }");
-        _ = sb.AppendLine("            }");
-        _ = sb.AppendLine("            else");
-        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                if (!_disposed && !cts.IsCancellationRequested)");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
+        _ = sb.AppendLine("                }");
         _ = sb.AppendLine("                if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration?.Status, correlationId); }");
+        _ = sb.AppendLine("                return;");
         _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            if (_disposed || cts.IsCancellationRequested) return;");
+        _ = sb.AppendLine("            if (pendingRegistration is { Status: global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal, Entry: { } mergedEntry })");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                if (mergedEntry.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.Confirmed");
+        _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandStatus.IdempotentConfirmed)");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    if (LifecycleState.Value.State != CommandLifecycleState.Confirmed)");
+        _ = sb.AppendLine("                    {");
+        _ = sb.AppendLine("                        Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ConfirmedAction(correlationId));");
+        _ = sb.AppendLine("                    }");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("                else");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    if (LifecycleState.Value.State != CommandLifecycleState.Rejected)");
+        _ = sb.AppendLine("                    {");
+        _ = sb.AppendLine("                        Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, \"Command rejected.\", \"Review the command and retry.\", null, null, null, null));");
+        _ = sb.AppendLine("                    }");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("                if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration.Status, correlationId); }");
+        _ = sb.AppendLine("                return;");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".AcknowledgedAction(correlationId, result.MessageId));");
+        _ = sb.AppendLine("            if (Logger is not null) { LogCommandAcknowledged(Logger, correlationId, result.MessageId); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (CommandValidationException ex)");
         _ = sb.AppendLine("        {");
@@ -874,19 +1325,39 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        finally");
         _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            // Dispatch has now settled. Non-accepted and exceptional paths close retained");
+        _ = sb.AppendLine("            // callbacks and discard their buffered observations; accepted callbacks remain");
+        _ = sb.AppendLine("            // resolver-capable after navigation or component disposal.");
+        _ = sb.AppendLine("            if (!acceptedAssociationSucceeded)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                lock (lifecycleCallbackGate)");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    System.Threading.Interlocked.Exchange(ref lifecycleCallbackClosed, 1);");
+        _ = sb.AppendLine("                    DiscardUnacceptedTerminalObservations(");
+        _ = sb.AppendLine("                        correlationId,");
+        _ = sb.AppendLine("                        unacceptedTerminalMessageIds,");
+        _ = sb.AppendLine("                        unacceptedTerminalMessageIdOrder);");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            admission.Dispose();");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
     }
 
-    private static void EmitDispose(StringBuilder sb, bool hasAuthorizationPolicy) {
+    private static void EmitDispose(StringBuilder sb, CommandFluxorModel fluxor, bool hasAuthorizationPolicy) {
         _ = sb.AppendLine("    /// <inheritdoc />");
         _ = sb.AppendLine("    public void Dispose()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        // Idempotent dispose (patch P18). Blazor can invoke Dispose more than once on teardown.");
         _ = sb.AppendLine("        if (_disposed) return;");
         _ = sb.AppendLine("        _disposed = true;");
+        _ = sb.AppendLine("        if (System.Threading.Volatile.Read(ref _acceptedAssociationSucceeded) == 0");
+        _ = sb.AppendLine("            && !string.IsNullOrWhiteSpace(_submittedCorrelationId))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            try { Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(_submittedCorrelationId)); }");
+        _ = sb.AppendLine("            catch (ObjectDisposedException) { }");
+        _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        try { _cts?.Cancel(); } catch (ObjectDisposedException) { }");
         _ = sb.AppendLine("        _cts?.Dispose();");
         _ = sb.AppendLine("        _cts = null;");

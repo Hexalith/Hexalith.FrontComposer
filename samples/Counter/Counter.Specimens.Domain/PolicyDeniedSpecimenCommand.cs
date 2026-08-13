@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 namespace Counter.Specimens.Domain;
 
 [Command]
+[CommandTarget(typeof(SpecimenStatusProjection), CommandTargetResolutionMode.SameAsSource, CommandTargetChangeKind.Update)]
 [RequiresPolicy("Specimens.PolicyDenied")]
 [Display(Name = "Policy Denied Specimen")]
 [BoundedContext("Specimens")]

@@ -13,8 +13,9 @@ namespace Hexalith.FrontComposer.Shell.Services.Authorization;
 /// they wire it through <c>AddHexalithFrontComposer*</c>.
 /// </summary>
 internal sealed class AuthorizingCommandServiceDecorator(
-    ICommandServiceWithLifecycle inner,
-    ICommandDispatchAuthorizationGate gate) : ICommandServiceWithLifecycle {
+    ICommandService inner,
+    ICommandDispatchAuthorizationGate gate,
+    TimeProvider? timeProvider = null) : ICommandServiceWithLifecycle, ICommandServiceWithLifecycleObservations {
     /// <inheritdoc />
     public async Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
         where TCommand : class {
@@ -31,6 +32,35 @@ internal sealed class AuthorizingCommandServiceDecorator(
         where TCommand : class {
         ArgumentNullException.ThrowIfNull(command);
         await gate.EnsureAuthorizedAsync(command, cancellationToken).ConfigureAwait(false);
-        return await inner.DispatchAsync(command, onLifecycleChange, cancellationToken).ConfigureAwait(false);
+        if (inner is not ICommandServiceWithLifecycle lifecycleAware) {
+            throw new NotSupportedException($"The inner command service does not implement {nameof(ICommandServiceWithLifecycle)}.");
+        }
+
+        return await lifecycleAware.DispatchAsync(command, onLifecycleChange, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<CommandResult> DispatchAsync<TCommand>(
+        TCommand command,
+        Action<CommandLifecycleObservation>? onLifecycleObservation,
+        CancellationToken cancellationToken = default)
+        where TCommand : class {
+        ArgumentNullException.ThrowIfNull(command);
+        await gate.EnsureAuthorizedAsync(command, cancellationToken).ConfigureAwait(false);
+        if (inner is ICommandServiceWithLifecycleObservations observationAware) {
+            return await observationAware.DispatchAsync(command, onLifecycleObservation, cancellationToken).ConfigureAwait(false);
+        }
+
+        if (inner is ICommandServiceWithLifecycle lifecycleAware) {
+            var adapter = new LegacyLifecycleObservationCommandServiceAdapter(
+                lifecycleAware,
+                timeProvider ?? TimeProvider.System);
+            return await adapter.DispatchAsync(
+                command,
+                onLifecycleObservation,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        return await inner.DispatchAsync(command, cancellationToken).ConfigureAwait(false);
     }
 }

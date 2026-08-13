@@ -7,6 +7,7 @@ namespace Counter.Domain;
 /// runtime fallback (Decision D34) when the icon cannot be resolved.
 /// </summary>
 [Command]
+[CommandTarget(typeof(CounterProjection), CommandTargetResolutionMode.SameAsSource, CommandTargetChangeKind.Update)]
 [Icon("Regular.Size20.Settings")]
 [BoundedContext("Counter")]
 public class ConfigureCounterCommand {

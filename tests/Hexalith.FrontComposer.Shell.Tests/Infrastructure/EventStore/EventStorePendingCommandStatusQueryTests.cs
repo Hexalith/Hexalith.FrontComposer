@@ -3,6 +3,7 @@ using System.Text;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
@@ -103,6 +104,24 @@ public sealed class EventStorePendingCommandStatusQueryTests {
     }
 
     [Theory]
+    [InlineData(1, CommandMateriality.Material)]
+    [InlineData(0, CommandMateriality.NoOp)]
+    [InlineData(-1, CommandMateriality.Unknown)]
+    [InlineData(null, CommandMateriality.Unknown)]
+    public async Task QueryAsync_CompletedStatus_MapsTypedEventCountMateriality(
+        int? eventCount,
+        CommandMateriality expected) {
+        RecordingHandler handler = new(_ => JsonResponse("Completed", 4, eventCount: eventCount));
+        EventStorePendingCommandStatusQuery sut = CreateSut(handler);
+
+        PendingCommandOutcomeObservation? observation = await sut.QueryAsync(
+            Pending(),
+            TestContext.Current.CancellationToken);
+
+        observation.ShouldNotBeNull().Materiality.ShouldBe(expected);
+    }
+
+    [Theory]
     [InlineData(HttpStatusCode.BadRequest, typeof(HttpRequestException))]
     [InlineData(HttpStatusCode.Unauthorized, typeof(AuthRedirectRequiredException))]
     [InlineData(HttpStatusCode.Forbidden, typeof(QueryFailureException))]
@@ -195,7 +214,8 @@ public sealed class EventStorePendingCommandStatusQueryTests {
         int statusCode,
         bool retryAfter = false,
         string? rejectionEventType = null,
-        string? failureReason = null) {
+        string? failureReason = null,
+        int? eventCount = 1) {
         HttpResponseMessage response = new(HttpStatusCode.OK) {
             Content = new StringContent(
                 $$"""
@@ -205,7 +225,7 @@ public sealed class EventStorePendingCommandStatusQueryTests {
                   "statusCode": {{statusCode}},
                   "timestamp": "2026-06-04T00:00:00Z",
                   "aggregateId": "counter-1",
-                  "eventCount": 1,
+                  "eventCount": {{(eventCount is null ? "null" : eventCount.Value.ToString(System.Globalization.CultureInfo.InvariantCulture))}},
                   "rejectionEventType": {{JsonString(rejectionEventType)}},
                   "failureReason": {{JsonString(failureReason)}},
                   "timeoutDuration": "PT30S"

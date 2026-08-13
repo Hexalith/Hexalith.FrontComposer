@@ -177,6 +177,7 @@ public static class ServiceCollectionExtensions {
     public static IServiceCollection AddHexalithFrontComposer(
         this IServiceCollection services,
         Action<FluxorOptions>? configureFluxor = null) {
+        ArgumentNullException.ThrowIfNull(services);
         _ = services.AddLogging();
 
         // Story 1.1 AC2 — bootstrap fail-fast guard. Append the foundational ordering marker and
@@ -230,7 +231,15 @@ public static class ServiceCollectionExtensions {
         services.TryAddScoped<ICommandServiceWithLifecycle>(sp =>
             new AuthorizingCommandServiceDecorator(
                 sp.GetRequiredService<StubCommandService>(),
-                sp.GetRequiredService<ICommandDispatchAuthorizationGate>()));
+                sp.GetRequiredService<ICommandDispatchAuthorizationGate>(),
+                sp.GetRequiredService<TimeProvider>()));
+        services.TryAddScoped<ICommandServiceWithLifecycleObservations>(sp => {
+            ICommandServiceWithLifecycle service = sp.GetRequiredService<ICommandServiceWithLifecycle>();
+            return service as ICommandServiceWithLifecycleObservations
+                ?? new LegacyLifecycleObservationCommandServiceAdapter(
+                    service,
+                    sp.GetRequiredService<TimeProvider>());
+        });
         services.TryAddScoped<ICommandService>(sp =>
             sp.GetRequiredService<ICommandServiceWithLifecycle>());
         _ = services.Configure<StubCommandServiceOptions>(_ => { });
@@ -413,10 +422,16 @@ public static class ServiceCollectionExtensions {
         services.TryAddScoped<IReconnectionReconciliationCoordinator, ReconnectionReconciliationCoordinator>();
         services.TryAddScoped<IPendingCommandStateService, PendingCommandStateService>();
         services.TryAddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
-        services.TryAddScoped<IPendingCommandOutcomeResolver, PendingCommandOutcomeResolver>();
+        RegisterPendingCommandOutcomeServices(services);
         services.TryAddScoped<INewItemIndicatorStateService, NewItemIndicatorStateService>();
         services.TryAddScoped<IPendingCommandStatusQuery, NullPendingCommandStatusQuery>();
-        services.TryAddScoped<IPendingCommandPollingCoordinator, PendingCommandPollingCoordinator>();
+        services.TryAddScoped<IPendingCommandPollingCoordinator>(sp => new PendingCommandPollingCoordinator(
+            sp.GetRequiredService<IPendingCommandStateService>(),
+            sp.GetRequiredService<IPendingCommandOutcomeCoordinator>(),
+            sp.GetRequiredService<IPendingCommandStatusQuery>(),
+            sp.GetRequiredService<IOptions<FcShellOptions>>(),
+            sp.GetService<ILogger<PendingCommandPollingCoordinator>>(),
+            sp.GetService<TimeProvider>()));
         services.TryAddScoped<PendingCommandPollingDriver>();
 
         // Story 5-2 D8 — fail-fast default IAuthRedirector. Scoped because adopter
@@ -475,6 +490,120 @@ public static class ServiceCollectionExtensions {
 
         return services;
     }
+
+    private static void RegisterPendingCommandOutcomeServices(IServiceCollection services) {
+        PendingCommandOutcomeRegistrationMarker[] markers = [.. services
+            .Where(static descriptor => descriptor.ServiceType == typeof(PendingCommandOutcomeRegistrationMarker))
+            .Select(static descriptor => descriptor.ImplementationInstance)
+            .OfType<PendingCommandOutcomeRegistrationMarker>()];
+        if (markers.Length > 0) {
+            if (markers.Length != 1) {
+                throw InvalidPendingOutcomeRegistration("the framework registration marker is duplicated");
+            }
+
+            PendingCommandOutcomeRegistrationMarker marker = markers[0];
+            ValidateTrackedDescriptor(services, marker.ResolverDescriptor, nameof(IPendingCommandOutcomeResolver));
+            ValidateTrackedDescriptor(services, marker.CoordinatorDescriptor, nameof(IPendingCommandOutcomeCoordinator));
+            if (marker.ConcreteDescriptor is not null) {
+                ValidateTrackedDescriptor(services, marker.ConcreteDescriptor, nameof(PendingCommandOutcomeResolver));
+            }
+
+            return;
+        }
+
+        ServiceDescriptor[] resolverDescriptors = [.. services.Where(static descriptor =>
+            descriptor.ServiceType == typeof(IPendingCommandOutcomeResolver))];
+        ServiceDescriptor[] coordinatorDescriptors = [.. services.Where(static descriptor =>
+            descriptor.ServiceType == typeof(IPendingCommandOutcomeCoordinator))];
+        int customCount = resolverDescriptors.Length + coordinatorDescriptors.Length;
+        if (customCount > 1) {
+            throw InvalidPendingOutcomeRegistration(
+                $"found {customCount} custom interface registrations; register exactly one of "
+                + $"{nameof(IPendingCommandOutcomeResolver)} or {nameof(IPendingCommandOutcomeCoordinator)}");
+        }
+
+        ServiceDescriptor? custom = resolverDescriptors.SingleOrDefault() ?? coordinatorDescriptors.SingleOrDefault();
+        if (custom is not null) {
+            ValidateScopedOutcomeDescriptor(custom);
+        }
+
+        ServiceDescriptor resolverDescriptor;
+        ServiceDescriptor coordinatorDescriptor;
+        ServiceDescriptor? concreteDescriptor = null;
+        if (custom is null) {
+            ServiceDescriptor[] existingConcrete = [.. services.Where(static descriptor =>
+                descriptor.ServiceType == typeof(PendingCommandOutcomeResolver))];
+            if (existingConcrete.Length > 1) {
+                throw InvalidPendingOutcomeRegistration($"found {existingConcrete.Length} {nameof(PendingCommandOutcomeResolver)} registrations");
+            }
+
+            if (existingConcrete.Length == 0) {
+                concreteDescriptor = ServiceDescriptor.Scoped<PendingCommandOutcomeResolver, PendingCommandOutcomeResolver>();
+                services.Add(concreteDescriptor);
+            }
+            else {
+                concreteDescriptor = existingConcrete[0];
+                ValidateScopedOutcomeDescriptor(concreteDescriptor);
+            }
+
+            coordinatorDescriptor = ServiceDescriptor.Scoped<IPendingCommandOutcomeCoordinator>(sp =>
+                sp.GetRequiredService<PendingCommandOutcomeResolver>());
+            resolverDescriptor = ServiceDescriptor.Scoped<IPendingCommandOutcomeResolver>(sp =>
+                sp.GetRequiredService<IPendingCommandOutcomeCoordinator>());
+            services.Add(coordinatorDescriptor);
+            services.Add(resolverDescriptor);
+        }
+        else if (custom.ServiceType == typeof(IPendingCommandOutcomeCoordinator)) {
+            coordinatorDescriptor = custom;
+            resolverDescriptor = ServiceDescriptor.Scoped<IPendingCommandOutcomeResolver>(sp =>
+                sp.GetRequiredService<IPendingCommandOutcomeCoordinator>());
+            services.Add(resolverDescriptor);
+        }
+        else {
+            resolverDescriptor = custom;
+            coordinatorDescriptor = ServiceDescriptor.Scoped<IPendingCommandOutcomeCoordinator>(sp =>
+                sp.GetRequiredService<IPendingCommandOutcomeResolver>() is IPendingCommandOutcomeCoordinator compatible
+                    ? compatible
+                    : new PendingCommandOutcomeResolver(
+                        sp.GetRequiredService<IPendingCommandOutcomeResolver>(),
+                        sp.GetRequiredService<IPendingCommandStateService>(),
+                        sp.GetService<ILogger<PendingCommandOutcomeResolver>>(),
+                        sp.GetService<INewItemIndicatorStateService>(),
+                        sp.GetService<TimeProvider>(),
+                        sp.GetService<IOptions<FcShellOptions>>(),
+                        sp.GetService<IUserContextAccessor>()));
+            services.Add(coordinatorDescriptor);
+        }
+
+        _ = services.AddSingleton(new PendingCommandOutcomeRegistrationMarker(
+            resolverDescriptor,
+            coordinatorDescriptor,
+            concreteDescriptor));
+    }
+
+    private static void ValidateTrackedDescriptor(
+        IServiceCollection services,
+        ServiceDescriptor expected,
+        string serviceName) {
+        ServiceDescriptor[] current = [.. services.Where(descriptor => descriptor.ServiceType == expected.ServiceType)];
+        if (current.Length != 1 || !ReferenceEquals(current[0], expected)) {
+            throw InvalidPendingOutcomeRegistration(
+                $"{serviceName} was replaced or duplicated after FrontComposer established the producer boundary");
+        }
+
+        ValidateScopedOutcomeDescriptor(expected);
+    }
+
+    private static void ValidateScopedOutcomeDescriptor(ServiceDescriptor descriptor) {
+        if (descriptor.IsKeyedService || descriptor.Lifetime != ServiceLifetime.Scoped) {
+            throw InvalidPendingOutcomeRegistration(
+                $"{descriptor.ServiceType.Name} must have exactly one non-keyed Scoped registration (found: {descriptor.Lifetime})");
+        }
+    }
+
+    private static InvalidOperationException InvalidPendingOutcomeRegistration(string detail) =>
+        new($"Invalid pending-command outcome producer registration: {detail}. "
+            + "A single scoped instance must own accepted association, terminal resolution, and publication.");
 
     /// <summary>
     /// Chains Shell request-localization defaults into the adopter's DI pipeline (Story 3-1

@@ -158,7 +158,45 @@ public sealed class CommandModel : IEquatable<CommandModel> {
         string? authorizationPolicyName = null,
         string? sourceFilePath = null,
         int sourceLine = -1,
-        int sourceColumn = -1) {
+        int sourceColumn = -1)
+        : this(
+            typeName,
+            @namespace,
+            boundedContext,
+            boundedContextDisplayLabel,
+            displayName,
+            properties,
+            derivableProperties,
+            nonDerivableProperties,
+            iconName,
+            isDestructive,
+            destructiveConfirmTitle,
+            destructiveConfirmBody,
+            authorizationPolicyName,
+            sourceFilePath,
+            sourceLine,
+            sourceColumn,
+            null) {
+    }
+
+    internal CommandModel(
+        string typeName,
+        string @namespace,
+        string? boundedContext,
+        string? boundedContextDisplayLabel,
+        string? displayName,
+        EquatableArray<PropertyModel> properties,
+        EquatableArray<PropertyModel> derivableProperties,
+        EquatableArray<PropertyModel> nonDerivableProperties,
+        string? iconName,
+        bool isDestructive,
+        string? destructiveConfirmTitle,
+        string? destructiveConfirmBody,
+        string? authorizationPolicyName,
+        string? sourceFilePath,
+        int sourceLine,
+        int sourceColumn,
+        CommandTargetModel? commandTarget) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -175,6 +213,7 @@ public sealed class CommandModel : IEquatable<CommandModel> {
         SourceFilePath = sourceFilePath ?? string.Empty;
         SourceLine = sourceLine;
         SourceColumn = sourceColumn;
+        CommandTarget = commandTarget;
         Density = ComputeDensity(nonDerivableProperties.Count);
     }
 
@@ -249,6 +288,9 @@ public sealed class CommandModel : IEquatable<CommandModel> {
     /// </summary>
     public string? AuthorizationPolicyName { get; }
 
+    /// <summary>Gets the explicit FC-NIP target descriptor, or null when the command is undeclared or invalid.</summary>
+    public CommandTargetModel? CommandTarget { get; }
+
     public bool Equals(CommandModel? other) {
         if (other is null) {
             return false;
@@ -271,7 +313,8 @@ public sealed class CommandModel : IEquatable<CommandModel> {
             && IsDestructive == other.IsDestructive
             && DestructiveConfirmTitle == other.DestructiveConfirmTitle
             && DestructiveConfirmBody == other.DestructiveConfirmBody
-            && AuthorizationPolicyName == other.AuthorizationPolicyName;
+            && AuthorizationPolicyName == other.AuthorizationPolicyName
+            && Equals(CommandTarget, other.CommandTarget);
     }
 
     public override bool Equals(object? obj) => Equals(obj as CommandModel);
@@ -293,6 +336,7 @@ public sealed class CommandModel : IEquatable<CommandModel> {
             hash = (hash * 31) + (DestructiveConfirmTitle?.GetHashCode() ?? 0);
             hash = (hash * 31) + (DestructiveConfirmBody?.GetHashCode() ?? 0);
             hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (CommandTarget?.GetHashCode() ?? 0);
             return hash;
         }
     }
@@ -371,7 +415,41 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         string? fieldGroup = null,
         string? description = null,
         FieldDisplayFormat displayFormat = FieldDisplayFormat.Default,
-        int? relativeTimeWindowDays = null) {
+        int? relativeTimeWindowDays = null)
+        : this(
+            name,
+            typeName,
+            isNullable,
+            isUnsupported,
+            displayName,
+            badgeMappings,
+            enumFullyQualifiedName,
+            unsupportedTypeFullyQualifiedName,
+            enumMemberNames,
+            columnPriority,
+            fieldGroup,
+            description,
+            displayFormat,
+            relativeTimeWindowDays,
+            isWritable: true) {
+    }
+
+    internal PropertyModel(
+        string name,
+        string typeName,
+        bool isNullable,
+        bool isUnsupported,
+        string? displayName,
+        EquatableArray<BadgeMappingEntry> badgeMappings,
+        string? enumFullyQualifiedName,
+        string? unsupportedTypeFullyQualifiedName,
+        EquatableArray<string> enumMemberNames,
+        int? columnPriority,
+        string? fieldGroup,
+        string? description,
+        FieldDisplayFormat displayFormat,
+        int? relativeTimeWindowDays,
+        bool isWritable) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
@@ -386,6 +464,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         Description = description;
         DisplayFormat = displayFormat;
         RelativeTimeWindowDays = displayFormat == FieldDisplayFormat.RelativeTime ? relativeTimeWindowDays ?? 7 : null;
+        IsWritable = isWritable;
     }
 
     public string Name { get; }
@@ -454,6 +533,13 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
     /// </summary>
     public int? RelativeTimeWindowDays { get; }
 
+    /// <summary>
+    /// Gets a value indicating whether generated code may assign this property while cloning a
+    /// command for an adopter-provided target resolver. Kept internal because it is generator IR,
+    /// not contract metadata.
+    /// </summary>
+    internal bool IsWritable { get; }
+
     public bool Equals(PropertyModel? other) {
         if (other is null) {
             return false;
@@ -476,7 +562,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             && FieldGroup == other.FieldGroup
             && Description == other.Description
             && DisplayFormat == other.DisplayFormat
-            && RelativeTimeWindowDays == other.RelativeTimeWindowDays;
+            && RelativeTimeWindowDays == other.RelativeTimeWindowDays
+            && IsWritable == other.IsWritable;
     }
 
     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
@@ -498,6 +585,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             hash = (hash * 31) + (Description?.GetHashCode() ?? 0);
             hash = (hash * 31) + DisplayFormat.GetHashCode();
             hash = (hash * 31) + (RelativeTimeWindowDays?.GetHashCode() ?? 0);
+            hash = (hash * 31) + IsWritable.GetHashCode();
             return hash;
         }
     }

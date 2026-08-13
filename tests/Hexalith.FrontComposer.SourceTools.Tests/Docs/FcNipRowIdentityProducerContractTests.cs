@@ -22,8 +22,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Docs;
 /// </para>
 /// </summary>
 [Trait("Category", "Governance")]
-public sealed class FcNipRowIdentityProducerContractTests
-{
+public sealed class FcNipRowIdentityProducerContractTests {
     private const string BaseContractPath = "_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md";
     private const string SuccessorContractPath = "_bmad-output/contracts/fc-nip-command-target-identity-contract-2026-08-12.md";
     private const string FcTblContractPath = "_bmad-output/contracts/fc-tbl-table-api-contract-2026-06-04.md";
@@ -32,8 +31,7 @@ public sealed class FcNipRowIdentityProducerContractTests
     private const string IndicatorStateServicePath = "src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs";
 
     [Fact]
-    public void BaseContract_WhenReviewed_PreservesHistoricalAuthorityAndLinksSuccessor()
-    {
+    public void BaseContract_WhenReviewed_PreservesHistoricalAuthorityAndLinksSuccessor() {
         string contract = ReadNormalized(BaseContractPath);
 
         AssertContainsAll(
@@ -72,8 +70,7 @@ public sealed class FcNipRowIdentityProducerContractTests
     }
 
     [Fact]
-    public void SuccessorContract_WhenReviewed_PinsProviderSnapshotAndMateriality()
-    {
+    public void SuccessorContract_WhenReviewed_PinsProviderSnapshotAndMateriality() {
         string contract = ReadNormalized(SuccessorContractPath);
 
         AssertContainsAll(
@@ -204,8 +201,7 @@ public sealed class FcNipRowIdentityProducerContractTests
     }
 
     [Fact]
-    public void SuccessorContract_WhenMatrixReviewed_PinsAllEightDispositions()
-    {
+    public void SuccessorContract_WhenMatrixReviewed_PinsAllEightDispositions() {
         AssertTableRows(
             ReadRaw(SuccessorContractPath),
             "## Complete Outcome Disposition Matrix",
@@ -220,8 +216,7 @@ public sealed class FcNipRowIdentityProducerContractTests
     }
 
     [Fact]
-    public void SynchronizedTruth_WhenReviewed_ResolvesDecisionAndKeepsCompositionOpen()
-    {
+    public void SynchronizedTruth_WhenReviewed_ResolvesDecisionAndKeepsCompositionOpen() {
         string prd = ReadNormalized("_bmad-output/planning-artifacts/prd.md");
         string planningArchitecture = ReadNormalized("_bmad-output/planning-artifacts/architecture.md");
         string publishedArchitecture = ReadNormalized("_bmad-output/project-docs/architecture.md");
@@ -235,8 +230,7 @@ public sealed class FcNipRowIdentityProducerContractTests
             SuccessorContractPath,
             "D-4 is resolved; Stories 9.4-9.8 still block FR-13/FR-26 completion and Epic 9 closure");
 
-        foreach (string architecture in new[] { planningArchitecture, publishedArchitecture })
-        {
+        foreach (string architecture in new[] { planningArchitecture, publishedArchitecture }) {
             AssertContainsAll(
                 architecture,
                 SuccessorContractPath,
@@ -247,23 +241,20 @@ public sealed class FcNipRowIdentityProducerContractTests
                 "`Material`, `NoOp`, or `Unknown`");
         }
 
-        // The published DocFX site must not leak internal planning paths, and must not present the
-        // unshipped target-identity design as an available public surface.
+        // The published DocFX site must not leak internal planning paths and must describe the
+        // explicit target producer boundary now shipped by Story 9.4.
         AssertContainsAll(
             dataGrid,
-            "Automatic row-level producer wiring",
-            "is **not yet available**",
-            "Projection nudges remain insufficient row identity",
-            "unknown identity or materiality suppresses the indicator",
-            "No public type for any of this is published yet",
-            "Adopters should not build against the design described here until then");
+            "producer wiring uses an explicit command-to-projection `[CommandTarget]`",
+            "`SameAsSource` is valid only for `Update`",
+            "Only a confirmed or idempotent-confirmed `Material` terminal observation",
+            "ambient row placement are never target");
         dataGrid.ShouldNotContain("_bmad-output");
-        dataGrid.ShouldNotContain("ICommandTargetIdentityProvider");
+        dataGrid.ShouldContain("ICommandTargetIdentityProvider<TCommand>");
 
         // Sibling FC-TBL / FC-CMD ownership wording must track the successor decision. These pins
         // were dropped when the pre-remediation guard was deleted; both documents went stale.
-        foreach (string sibling in new[] { fcTbl, fcCmd })
-        {
+        foreach (string sibling in new[] { fcTbl, fcCmd }) {
             AssertContainsAll(
                 sibling,
                 "Epic 9 / FC-NIP",
@@ -277,8 +268,7 @@ public sealed class FcNipRowIdentityProducerContractTests
     }
 
     [Fact]
-    public void ExistingSourceEvidence_WhenReviewed_StillShowsTheHistoricalRowCascade()
-    {
+    public void ExistingSourceEvidence_WhenReviewed_ShowsTheConvergedProducerBoundary() {
         string rowIdentity = ReadNormalized("src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRowIdentity.cs");
         string eventStoreStatusQuery = ReadNormalized("src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStorePendingCommandStatusQuery.cs");
         string commandFormEmitter = ReadNormalized("src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs");
@@ -301,17 +291,19 @@ public sealed class FcNipRowIdentityProducerContractTests
         eventStoreStatusQuery.ShouldNotContain("ExpectedStatusSlot:");
         eventStoreStatusQuery.ShouldNotContain("PriorStatusSlot:");
 
-        // Full slot bindings, not bare right-hand sides: a crossed binding must fail here too, not
-        // only in CommandFormEmitterTests.
+        // The form emitter may read the row cascade only inside an explicit SameAsSource branch;
+        // all terminal mutation and accepted association go through the resolver.
         AssertContainsAll(
             commandFormEmitter,
             "CascadingParameter",
             "CommandTypeName: typeof(",
-            "ProjectionTypeName: PendingCommandRowIdentity?.ProjectionTypeName",
-            "LaneKey: PendingCommandRowIdentity?.LaneKey",
-            "EntityKey: PendingCommandRowIdentity?.EntityKey",
-            "ExpectedStatusSlot: PendingCommandRowIdentity?.ExpectedStatusSlot",
-            "PriorStatusSlot: PendingCommandRowIdentity?.PriorStatusSlot");
+            "form.CommandTarget?.ResolutionMode == CommandTargetResolutionMode.SameAsSource",
+            "ResolveCommandTargetAsync(_model, cts.Token)",
+            "var commandForDispatch = targetResolution.Command",
+            "PendingCommandOutcomeResolver.AssociateAccepted",
+            "PendingCommandOutcomeResolver.Resolve");
+        commandFormEmitter.ShouldNotContain("PendingCommandState.ResolveTerminal");
+        commandFormEmitter.ShouldNotContain("PendingCommandState.Register");
         commandFormEmitter.ShouldNotContain("EntityKey: status.AggregateId");
         commandFormEmitter.ShouldNotContain("ResultPayload");
         AssertContainsAll(
@@ -329,23 +321,18 @@ public sealed class FcNipRowIdentityProducerContractTests
             "Do not hide FC-NIP row identity in optional EventStore/domain-defined `ResultPayload`");
     }
 
-    private static void AssertContainsAll(string document, params string[] expectedFragments)
-    {
-        foreach (string fragment in expectedFragments)
-        {
+    private static void AssertContainsAll(string document, params string[] expectedFragments) {
+        foreach (string fragment in expectedFragments) {
             document.ShouldContain(fragment, Case.Sensitive);
         }
     }
 
-    private static void AssertTableRows(string document, string heading, params string[][] expectedRows)
-    {
+    private static void AssertTableRows(string document, string heading, params string[][] expectedRows) {
         string[][] actualRows = ParseTableRows(document, heading);
         actualRows.Length.ShouldBe(expectedRows.Length);
-        for (int rowIndex = 0; rowIndex < expectedRows.Length; rowIndex++)
-        {
+        for (int rowIndex = 0; rowIndex < expectedRows.Length; rowIndex++) {
             actualRows[rowIndex].Length.ShouldBe(expectedRows[rowIndex].Length);
-            for (int columnIndex = 0; columnIndex < expectedRows[rowIndex].Length; columnIndex++)
-            {
+            for (int columnIndex = 0; columnIndex < expectedRows[rowIndex].Length; columnIndex++) {
                 actualRows[rowIndex][columnIndex].ShouldBe(expectedRows[rowIndex][columnIndex]);
             }
         }
@@ -357,15 +344,13 @@ public sealed class FcNipRowIdentityProducerContractTests
     /// instead of silently binding to a later section's table, and the separator row is verified
     /// rather than assumed.
     /// </summary>
-    private static string[][] ParseTableRows(string document, string heading)
-    {
+    private static string[][] ParseTableRows(string document, string heading) {
         string[] lines = document.Replace("\r\n", "\n", StringComparison.Ordinal).Split('\n');
         int headingIndex = Array.FindIndex(lines, line => string.Equals(line.Trim(), heading, StringComparison.Ordinal));
         headingIndex.ShouldBeGreaterThanOrEqualTo(0, $"'{heading}' heading is missing.");
 
         int sectionEnd = Array.FindIndex(lines, headingIndex + 1, line => line.TrimStart().StartsWith('#'));
-        if (sectionEnd < 0)
-        {
+        if (sectionEnd < 0) {
             sectionEnd = lines.Length;
         }
 
@@ -376,8 +361,7 @@ public sealed class FcNipRowIdentityProducerContractTests
             .ShouldBeTrue($"'{heading}' table is missing its separator row.");
 
         List<string[]> rows = [];
-        for (int index = headerIndex + 2; index < sectionEnd && lines[index].TrimStart().StartsWith('|'); index++)
-        {
+        for (int index = headerIndex + 2; index < sectionEnd && lines[index].TrimStart().StartsWith('|'); index++) {
             rows.Add(StripEdgePipes(lines[index].Trim()).Split('|').Select(static cell => cell.Trim()).ToArray());
         }
 
@@ -404,11 +388,9 @@ public sealed class FcNipRowIdentityProducerContractTests
     private static string Absolute(string relative)
         => Path.Combine(ProjectRoot(), relative.Replace('/', Path.DirectorySeparatorChar));
 
-    private static string ProjectRoot()
-    {
+    private static string ProjectRoot() {
         DirectoryInfo directory = new(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx")))
-        {
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx"))) {
             directory = directory.Parent!;
         }
 

@@ -53,11 +53,56 @@ public class CommandServiceExtensionsTests {
         observedStates.ShouldBe([CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed]);
     }
 
+    [Fact]
+    public async Task DispatchAsync_TypedObservationOverload_ThrowsWhenBasicServiceWouldLoseCallback() {
+        BasicCommandService service = new();
+        List<CommandLifecycleObservation> observations = [];
+
+        NotSupportedException exception = await Should.ThrowAsync<NotSupportedException>(
+            () => service.DispatchWithLifecycleObservationsAsync(
+                new object(),
+                onLifecycleObservation: observations.Add,
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        exception.Message.ShouldContain(nameof(ICommandServiceWithLifecycleObservations));
+        service.DispatchCount.ShouldBe(0);
+        observations.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task DispatchAsync_TypedObservationOverload_AllowsBasicServiceWhenCallbackIsNull() {
+        BasicCommandService service = new();
+
+        CommandResult result = await service.DispatchWithLifecycleObservationsAsync(
+            new object(),
+            onLifecycleObservation: null,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        result.MessageId.ShouldBe("basic-message");
+        service.DispatchCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_TypedObservationOverload_AdaptsLegacyLifecycleAsUnknownMateriality() {
+        LifecycleAwareCommandService service = new();
+        List<CommandLifecycleObservation> observations = [];
+
+        _ = await ((ICommandService)service).DispatchWithLifecycleObservationsAsync(
+            new object(),
+            onLifecycleObservation: observations.Add,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        observations.Count.ShouldBe(2);
+        observations.ShouldAllBe(observation => observation.Materiality == CommandMateriality.Unknown);
+    }
+
     private sealed class BasicCommandService : ICommandService {
         public CancellationToken ObservedToken { get; private set; }
+        public int DispatchCount { get; private set; }
 
         public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
             where TCommand : class {
+            DispatchCount++;
             ObservedToken = cancellationToken;
             return Task.FromResult(new CommandResult("basic-message", "Accepted"));
         }

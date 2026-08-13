@@ -101,7 +101,16 @@ public static class EventStoreServiceExtensions {
         services.TryAddScoped<ICommandServiceWithLifecycle>(sp =>
             new AuthorizingCommandServiceDecorator(
                 sp.GetRequiredService<EventStoreCommandClient>(),
-                sp.GetRequiredService<ICommandDispatchAuthorizationGate>()));
+                sp.GetRequiredService<ICommandDispatchAuthorizationGate>(),
+                sp.GetRequiredService<TimeProvider>()));
+        services.TryAddScoped<ICommandServiceWithLifecycleObservations>(sp =>
+        {
+            ICommandServiceWithLifecycle service = sp.GetRequiredService<ICommandServiceWithLifecycle>();
+            return service as ICommandServiceWithLifecycleObservations
+                ?? new LegacyLifecycleObservationCommandServiceAdapter(
+                    service,
+                    sp.GetRequiredService<TimeProvider>());
+        });
         services.TryAddScoped<ICommandService>(sp =>
             sp.GetRequiredService<ICommandServiceWithLifecycle>());
         services.TryAddScoped<IQueryService>(sp => sp.GetRequiredService<EventStoreQueryClient>());
@@ -152,6 +161,7 @@ public static class EventStoreServiceExtensions {
             ServiceDescriptor descriptor = services[i];
             if (descriptor.ServiceType == typeof(ICommandService)
                 || descriptor.ServiceType == typeof(ICommandServiceWithLifecycle)
+                || descriptor.ServiceType == typeof(ICommandServiceWithLifecycleObservations)
                 || descriptor.ServiceType == typeof(StubCommandService)) {
                 services.RemoveAt(i);
             }

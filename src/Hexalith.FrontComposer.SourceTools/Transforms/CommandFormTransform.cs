@@ -25,6 +25,11 @@ public static class CommandFormTransform {
             fields.Add(MapField(property));
         }
 
+        ImmutableArray<FormFieldModel>.Builder providerCloneFields = ImmutableArray.CreateBuilder<FormFieldModel>();
+        foreach (PropertyModel property in model.Properties) {
+            providerCloneFields.Add(MapField(property));
+        }
+
         string commandFqn = string.IsNullOrEmpty(model.Namespace)
             ? model.TypeName
             : model.Namespace + "." + model.TypeName;
@@ -38,7 +43,9 @@ public static class CommandFormTransform {
             commandFqn,
             buttonLabel,
             new EquatableArray<FormFieldModel>(fields.ToImmutable()),
-            model.AuthorizationPolicyName);
+            new EquatableArray<FormFieldModel>(providerCloneFields.ToImmutable()),
+            model.AuthorizationPolicyName,
+            model.CommandTarget);
     }
 
     private static FormFieldModel MapField(PropertyModel property) {
@@ -55,7 +62,8 @@ public static class CommandFormTransform {
             property.IsNullable,
             isRequired,
             property.EnumFullyQualifiedName,
-            hasExplicitDisplay);
+            hasExplicitDisplay,
+            property.IsWritable);
     }
 
     private static FormFieldTypeCategory MapCategory(PropertyModel property) {

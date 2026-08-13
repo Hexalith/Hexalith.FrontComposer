@@ -14,6 +14,7 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 
+[Collection(AnalyzerPolicyGovernanceTestGroup.Name)]
 [Trait("Category", "Governance")]
 public sealed class AnalyzerPolicyGovernanceTests
 {

@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 using Shouldly;
 
@@ -108,7 +109,7 @@ public class StubCommandServiceTests {
     }
 
     [Fact]
-    public async Task DispatchAsync_CancellationToken_StopsCallbackInvocation() {
+    public async Task LegacyDispatchAsync_AfterAcceptance_CallbackHonorsCallerCancellation() {
         StubCommandServiceOptions options = new() {
             AcknowledgeDelayMs = 0,
             SyncingDelayMs = 200,
@@ -129,9 +130,37 @@ public class StubCommandServiceTests {
 
         result.MessageId.ShouldNotBeNullOrEmpty();
         cts.Cancel();
-        await Task.Delay(300, TestContext.Current.CancellationToken);
+        await Task.Delay(500, TestContext.Current.CancellationToken);
 
-        observed.ShouldNotContain(CommandLifecycleState.Confirmed);
+        observed.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TypedDispatchAsync_AfterAcceptance_CallbackSurvivesCallerCancellation() {
+        StubCommandServiceOptions options = new() {
+            AcknowledgeDelayMs = 0,
+            SyncingDelayMs = 100,
+            ConfirmDelayMs = 100,
+        };
+        StubCommandService service = BuildService(options);
+        using CancellationTokenSource cts = new();
+        List<CommandLifecycleObservation> observed = [];
+
+        CommandResult result = await ((ICommandServiceWithLifecycleObservations)service).DispatchAsync(
+            new object(),
+            observation => {
+                lock (observed) {
+                    observed.Add(observation);
+                }
+            },
+            cts.Token);
+
+        result.MessageId.ShouldNotBeNullOrEmpty();
+        cts.Cancel();
+
+        SpinWait.SpinUntil(
+            () => observed.Any(item => item.State == CommandLifecycleState.Confirmed),
+            TimeSpan.FromSeconds(2)).ShouldBeTrue();
     }
 
     [Fact]
@@ -163,6 +192,62 @@ public class StubCommandServiceTests {
         }
 
         _ = caught.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task TypedObservations_UseInjectedClockAndMaterialConfirmation() {
+        DateTimeOffset now = new(2026, 8, 13, 12, 0, 0, TimeSpan.Zero);
+        FakeTimeProvider time = new(now);
+        StubCommandService service = new(new OptionsSnapshotStub(ZeroDelays()), new UlidFactory(), logger: null, timeProvider: time);
+        List<CommandLifecycleObservation> observations = [];
+
+        _ = await ((ICommandServiceWithLifecycleObservations)service).DispatchAsync(
+            new object(),
+            observation => {
+                lock (observations) {
+                    observations.Add(observation);
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        SpinWait.SpinUntil(() => observations.Count == 2, TimeSpan.FromSeconds(2)).ShouldBeTrue();
+        observations[0].Materiality.ShouldBe(CommandMateriality.Unknown);
+        observations[1].Materiality.ShouldBe(CommandMateriality.Material);
+        observations.ShouldAllBe(observation => observation.ObservedAt == now);
+    }
+
+    [Fact]
+    public async Task TypedObservations_ThrowingSyncingCallbackDoesNotSuppressConfirmed() {
+        StubCommandService service = BuildService(ZeroDelays());
+        List<CommandLifecycleState> observed = [];
+
+        CommandResult result = await ((ICommandServiceWithLifecycleObservations)service).DispatchAsync(
+            new object(),
+            observation => {
+                if (observation.State == CommandLifecycleState.Syncing) {
+                    throw new InvalidOperationException("sync observer unavailable");
+                }
+
+                lock (observed) {
+                    observed.Add(observation.State);
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        SpinWait.SpinUntil(
+            () => observed.Contains(CommandLifecycleState.Confirmed),
+            TimeSpan.FromSeconds(2)).ShouldBeTrue();
+        observed.ShouldBe([CommandLifecycleState.Confirmed]);
+    }
+
+    [Fact]
+    public async Task ConcreteNullCallback_RemainsSourceCompatibleWithLegacyOverload() {
+        StubCommandService service = BuildService(ZeroDelays());
+
+        CommandResult result = await service.DispatchAsync(new object(), null, TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe("Accepted");
     }
 
     private sealed class OptionsSnapshotStub : IOptionsSnapshot<StubCommandServiceOptions> {

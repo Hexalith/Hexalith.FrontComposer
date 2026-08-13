@@ -2,7 +2,9 @@ using System.Net;
 using System.Text;
 
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
@@ -211,6 +213,98 @@ public sealed class PendingCommandPollingCoordinatorTests {
         state.GetByMessageId("01ARZ3NDEKTSV4RRFFQ69G5FAV")!.Status.ShouldBe(PendingCommandStatus.Confirmed);
         handler.Requests.Single().RequestUri!.PathAndQuery.ShouldBe("/api/v1/commands/status/01ARZ3NDEKTSV4RRFFQ69G5FAV");
         lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Confirmed, "01ARZ3NDEKTSV4RRFFQ69G5FAV", false);
+    }
+
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(-1, false)]
+    public async Task PollOnce_EventStoreCompletionPublishesOnlyKnownMaterialTarget(
+        int eventCount,
+        bool expectIndicator) {
+        DateTimeOffset now = new(2026, 6, 4, 12, 0, 0, TimeSpan.Zero);
+        FakeTimeProvider time = new(now);
+        FcShellOptions options = new() { MaxPendingCommandPollingPerTick = 5 };
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        PendingCommandStateService state = new(
+            Microsoft.Extensions.Options.Options.Create(options),
+            lifecycle,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
+        CommandTargetSnapshot target = new(
+            "Counter.Count",
+            "counter-counts",
+            "counter-1",
+            CommandTargetChangeKind.Update,
+            "Draft",
+            "Approved",
+            "tenant-1",
+            "user-1",
+            now.AddSeconds(-1));
+        PendingCommandRegistration registration = Registration(
+            CorrelationId,
+            "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+            now) with { TargetSnapshot = target };
+        state.Register(registration).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK) {
+            Content = new StringContent(
+                $$"""
+                {
+                  "correlationId": "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+                  "status": "Completed",
+                  "statusCode": 4,
+                  "timestamp": "2026-06-04T12:00:00Z",
+                  "aggregateId": "counter-1",
+                  "eventCount": {{eventCount}},
+                  "rejectionEventType": null,
+                  "failureReason": null,
+                  "timeoutDuration": null
+                }
+                """,
+                Encoding.UTF8,
+                "application/json"),
+        });
+        EventStorePendingCommandStatusQuery query = new(
+            new SingleClientFactory(handler),
+            Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+            }),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStorePendingCommandStatusQuery>.Instance);
+        using NewItemIndicatorStateService indicators = new(time);
+        IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
+        _ = userContext.TenantId.Returns("tenant-1");
+        _ = userContext.UserId.Returns("user-1");
+        PendingCommandOutcomeResolver resolver = new(
+            state,
+            NullLogger<PendingCommandOutcomeResolver>.Instance,
+            indicators,
+            time,
+            Microsoft.Extensions.Options.Options.Create(options),
+            userContext);
+        PendingCommandPollingCoordinator sut = new(
+            state,
+            resolver,
+            query,
+            Microsoft.Extensions.Options.Options.Create(options),
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
+
+        int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
+
+        processed.ShouldBe(1);
+        state.GetByMessageId("01ARZ3NDEKTSV4RRFFQ69G5FAV")!.Status
+            .ShouldBe(PendingCommandStatus.Confirmed);
+        if (expectIndicator) {
+            NewItemIndicatorEntry indicator = indicators.Snapshot("counter-counts").Single();
+            indicator.ViewKey.ShouldBe("counter-counts");
+            indicator.EntityKey.ShouldBe("counter-1");
+            indicator.MessageId.ShouldBe("01ARZ3NDEKTSV4RRFFQ69G5FAV");
+            indicator.CreatedAt.ShouldBe(now);
+        }
+        else {
+            indicators.Snapshot("counter-counts").ShouldBeEmpty();
+        }
     }
 
     [Fact]

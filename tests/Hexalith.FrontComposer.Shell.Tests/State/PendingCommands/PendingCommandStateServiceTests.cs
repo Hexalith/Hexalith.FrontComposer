@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
@@ -35,6 +36,7 @@ public sealed class PendingCommandStateServiceTests {
     [Theory]
     [InlineData("not-a-ulid")]
     [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FAI")]
+    [InlineData("Z1ARZ3NDEKTSV4RRFFQ69G5FAV")]
     [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FAVEXTRA")]
     public void Register_MalformedMessageId_FailsClosed(string badMessageId) {
         PendingCommandStateService sut = Create();
@@ -52,6 +54,7 @@ public sealed class PendingCommandStateServiceTests {
     [Theory]
     [InlineData("not-a-ulid")]
     [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FAI")]
+    [InlineData("Z1CPZ3NDEKTSV4RRFFQ69G5FAV")]
     [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FAVEXTRA")]
     public void Register_MalformedCorrelationId_FailsClosedWithoutStateMutation(string badCorrelationId) {
         PendingCommandStateService sut = Create();
@@ -86,6 +89,53 @@ public sealed class PendingCommandStateServiceTests {
 
         result.Status.ShouldBe(PendingCommandRegistrationStatus.ConflictingMetadata);
         sut.GetByMessageId(MessageId)!.EntityKey.ShouldBe("counter-1");
+    }
+
+    [Fact]
+    public void Register_DuplicateTargetDifferingOnlyByCapturedAt_Merges() {
+        PendingCommandStateService sut = Create();
+        DateTimeOffset capturedAt = new(2026, 8, 13, 10, 0, 0, TimeSpan.Zero);
+        PendingCommandRegistration first = Registration() with { TargetSnapshot = Target(capturedAt) };
+        PendingCommandRegistration duplicate = Registration() with { TargetSnapshot = Target(capturedAt.AddHours(1)) };
+        sut.Register(first).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+
+        PendingCommandRegistrationResult result = sut.Register(duplicate);
+
+        result.Status.ShouldBe(PendingCommandRegistrationStatus.Merged);
+        result.Entry.ShouldNotBeNull().TargetSnapshot.ShouldBe(first.TargetSnapshot);
+    }
+
+    [Theory]
+    [InlineData("projection")]
+    [InlineData("view")]
+    [InlineData("entity")]
+    [InlineData("change")]
+    [InlineData("prior")]
+    [InlineData("expected")]
+    [InlineData("tenant")]
+    [InlineData("user")]
+    public void Register_DuplicateWithAnyMaterialTargetDifferenceConflictsAndRetainsOriginal(string difference) {
+        PendingCommandStateService sut = Create();
+        DateTimeOffset capturedAt = new(2026, 8, 13, 10, 0, 0, TimeSpan.Zero);
+        CommandTargetSnapshot original = Target(capturedAt);
+        CommandTargetSnapshot changed = difference switch {
+            "projection" => Target(capturedAt, projectionTypeName: "Counter.Other"),
+            "view" => Target(capturedAt, viewKey: "other-counts"),
+            "entity" => Target(capturedAt, entityKey: "counter-2"),
+            "change" => Target(capturedAt, changeKind: CommandTargetChangeKind.Delete),
+            "prior" => Target(capturedAt, priorStatus: "Pending"),
+            "expected" => Target(capturedAt, expectedStatus: "Published"),
+            "tenant" => Target(capturedAt, tenantId: "tenant-2"),
+            "user" => Target(capturedAt, userId: "user-2"),
+            _ => throw new InvalidOperationException(difference),
+        };
+        sut.Register(Registration() with { TargetSnapshot = original }).Status
+            .ShouldBe(PendingCommandRegistrationStatus.Registered);
+
+        PendingCommandRegistrationResult result = sut.Register(Registration() with { TargetSnapshot = changed });
+
+        result.Status.ShouldBe(PendingCommandRegistrationStatus.ConflictingMetadata);
+        sut.GetByMessageId(MessageId).ShouldNotBeNull().TargetSnapshot.ShouldBeSameAs(original);
     }
 
     [Fact]
@@ -298,4 +348,25 @@ public sealed class PendingCommandStateServiceTests {
             EntityKey: entityKey,
             ExpectedStatusSlot: "Approved",
             PriorStatusSlot: "Draft");
+
+    private static CommandTargetSnapshot Target(
+        DateTimeOffset capturedAt,
+        string projectionTypeName = "Counter.Count",
+        string viewKey = "counter-counts",
+        string entityKey = "counter-1",
+        CommandTargetChangeKind changeKind = CommandTargetChangeKind.Update,
+        string? priorStatus = "Draft",
+        string? expectedStatus = "Approved",
+        string tenantId = "tenant-1",
+        string userId = "user-1") =>
+        new(
+            projectionTypeName,
+            viewKey,
+            entityKey,
+            changeKind,
+            priorStatus,
+            expectedStatus,
+            tenantId,
+            userId,
+            capturedAt);
 }

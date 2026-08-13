@@ -33,17 +33,50 @@ public sealed class EventStoreCommandClient(
     IUserContextAccessor userContextAccessor,
     EventStoreResponseClassifier classifier,
     ILogger<EventStoreCommandClient> logger,
-    IOptions<FcShellOptions>? shellOptions = null) : ICommandServiceWithLifecycle {
+    IOptions<FcShellOptions>? shellOptions = null,
+    TimeProvider? timeProvider = null) : ICommandServiceWithLifecycle, ICommandServiceWithLifecycleObservations {
     internal const string HttpClientName = "Hexalith.FrontComposer.EventStore.Commands";
+
+    /// <summary>Initializes the EventStore command client using the system clock.</summary>
+    public EventStoreCommandClient(
+        IHttpClientFactory httpClientFactory,
+        IOptions<EventStoreOptions> options,
+        IUlidFactory ulidFactory,
+        IUserContextAccessor userContextAccessor,
+        EventStoreResponseClassifier classifier,
+        ILogger<EventStoreCommandClient> logger,
+        IOptions<FcShellOptions>? shellOptions)
+        : this(httpClientFactory, options, ulidFactory, userContextAccessor, classifier, logger, shellOptions, null)
+    {
+    }
 
     public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
         where TCommand : class
-        => DispatchAsync(command, null, cancellationToken);
+        => DispatchWithObservationsAsync(command, null, cancellationToken);
 
     public async Task<CommandResult> DispatchAsync<TCommand>(
         TCommand command,
         Action<CommandLifecycleState, string?>? onLifecycleChange,
         CancellationToken cancellationToken = default)
+        where TCommand : class {
+        return await DispatchWithObservationsAsync(
+            command,
+            observation => onLifecycleChange?.Invoke(observation.State, observation.MessageId),
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    Task<CommandResult> ICommandServiceWithLifecycleObservations.DispatchAsync<TCommand>(
+        TCommand command,
+        Action<CommandLifecycleObservation>? onLifecycleObservation,
+        CancellationToken cancellationToken)
+        where TCommand : class =>
+        DispatchWithObservationsAsync(command, onLifecycleObservation, cancellationToken);
+
+    private async Task<CommandResult> DispatchWithObservationsAsync<TCommand>(
+        TCommand command,
+        Action<CommandLifecycleObservation>? onLifecycleObservation,
+        CancellationToken cancellationToken)
         where TCommand : class {
         ArgumentNullException.ThrowIfNull(command);
 
@@ -147,7 +180,19 @@ public sealed class EventStoreCommandClient(
                     classification.Location,
                     classification.RetryAfter);
 
-                onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, result.CorrelationId ?? result.MessageId);
+                try
+                {
+                    onLifecycleObservation?.Invoke(new CommandLifecycleObservation(
+                        CommandLifecycleState.Syncing,
+                        result.MessageId,
+                        CommandMateriality.Unknown,
+                        (timeProvider ?? TimeProvider.System).GetUtcNow()));
+                }
+                catch (Exception ex)
+                {
+                    FrontComposerWarningLog.EventStoreLifecycleCallbackFailed(logger, result.MessageId, ex);
+                }
+
                 FrontComposerTelemetry.SetOutcome(activity, "accepted");
                 return result;
             }

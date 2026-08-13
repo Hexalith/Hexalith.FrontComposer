@@ -770,6 +770,23 @@ internal static partial class FrontComposerWarningLog
             ExceptionType(exception));
     }
 
+    /// <summary>Emits an isolated EventStore lifecycle observer failure.</summary>
+    public static void EventStoreLifecycleCallbackFailed(
+        ILogger? logger,
+        object? messageId,
+        Exception exception)
+    {
+        if (logger is null || !logger.IsEnabled(LogLevel.Error))
+        {
+            return;
+        }
+
+        LogEventStoreLifecycleCallbackFailed(
+            logger,
+            Digest(messageId),
+            ExceptionType(exception));
+    }
+
     /// <summary>Emits the <c>StubBackgroundTaskFaulted</c> residual warning-and-above event.</summary>
     public static void StubBackgroundTaskFaulted(
         ILogger? logger,
@@ -1377,8 +1394,12 @@ internal static partial class FrontComposerWarningLog
     private static partial void LogProjectionViewOverrideDuplicate(ILogger logger, string diagnosticId, string projectionTypeDigest, string roleCategory, string componentADigest, string sourceADigest, string componentBDigest, string sourceBDigest);
 
     [LoggerMessage(EventId = 5835, EventName = "StubLifecycleCallbackFailed", Level = LogLevel.Error,
-        Message = "Stub command lifecycle callback threw; Syncing and Confirmed notifications were skipped. MessageIdDigest={MessageIdDigest} ExceptionType={ExceptionType}.")]
+        Message = "Stub command lifecycle callback threw; the individual observation was skipped. MessageIdDigest={MessageIdDigest} ExceptionType={ExceptionType}.")]
     private static partial void LogStubLifecycleCallbackFailed(ILogger logger, string messageIdDigest, string exceptionType);
+
+    [LoggerMessage(EventId = 5854, EventName = "EventStoreLifecycleCallbackFailed", Level = LogLevel.Error,
+        Message = "EventStore accepted a command but its lifecycle observer failed. MessageIdDigest={MessageIdDigest} ExceptionType={ExceptionType}.")]
+    private static partial void LogEventStoreLifecycleCallbackFailed(ILogger logger, string messageIdDigest, string exceptionType);
 
     [LoggerMessage(EventId = 5836, EventName = "StubBackgroundTaskFaulted", Level = LogLevel.Error,
         Message = "StubCommandService background task faulted. ExceptionType={ExceptionType}.")]

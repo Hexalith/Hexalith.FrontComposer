@@ -14,38 +14,71 @@ namespace Hexalith.FrontComposer.Shell.Services;
 /// <remarks>
 /// The initial <see cref="Task.Delay(int, CancellationToken)"/> models the HTTP round-trip and returns a
 /// <see cref="CommandResult"/>; subsequent <see cref="CommandLifecycleState.Syncing"/> and
-/// <see cref="CommandLifecycleState.Confirmed"/> callbacks are raised from a fire-and-forget task that observes
-/// the provided <see cref="CancellationToken"/> so the form can cancel in-flight callbacks on dispose
-/// (Decisions D5, D6, D8, ADR-010).
+/// <see cref="CommandLifecycleState.Confirmed"/> callbacks are raised from a fire-and-forget task. Once dispatch
+/// has been accepted, the continuation is owned by the command lifecycle rather than the form cancellation token
+/// so navigation cannot discard the accepted outcome (Decisions D5, D6, D8, ADR-010).
 /// Story 7-3 Pass 4 DN-7-3-4-2: authorization is wired via <c>AuthorizingCommandServiceDecorator</c>
 /// at the DI seam; this concrete impl no longer takes a gate parameter so test factories cannot
 /// silently bypass authorization by constructing the impl without the gate.
 /// </remarks>
-public sealed class StubCommandService : ICommandServiceWithLifecycle {
+public sealed class StubCommandService : ICommandServiceWithLifecycle, ICommandServiceWithLifecycleObservations {
     private readonly IOptionsSnapshot<StubCommandServiceOptions> _options;
     private readonly IUlidFactory _ulidFactory;
     private readonly ILogger<StubCommandService> _logger;
+    private readonly TimeProvider _timeProvider;
 
     /// <summary>Initializes a new instance of the <see cref="StubCommandService"/> class.</summary>
     public StubCommandService(
         IOptionsSnapshot<StubCommandServiceOptions> options,
         IUlidFactory ulidFactory,
-        ILogger<StubCommandService>? logger = null) {
+        ILogger<StubCommandService>? logger = null)
+        : this(options, ulidFactory, logger, null)
+    {
+    }
+
+    /// <summary>Initializes a new instance using the specified framework clock.</summary>
+    public StubCommandService(
+        IOptionsSnapshot<StubCommandServiceOptions> options,
+        IUlidFactory ulidFactory,
+        ILogger<StubCommandService>? logger,
+        TimeProvider? timeProvider) {
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _ulidFactory = ulidFactory ?? throw new ArgumentNullException(nameof(ulidFactory));
         _logger = logger ?? NullLogger<StubCommandService>.Instance;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <inheritdoc />
     public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
         where TCommand : class
-        => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
+        => DispatchWithObservationsAsync(command, onLifecycleObservation: null, survivePostAcceptCancellation: false, cancellationToken);
 
     /// <inheritdoc />
     public async Task<CommandResult> DispatchAsync<TCommand>(
         TCommand command,
         Action<CommandLifecycleState, string?>? onLifecycleChange,
         CancellationToken cancellationToken = default)
+        where TCommand : class {
+        return await DispatchWithObservationsAsync(
+            command,
+            observation => onLifecycleChange?.Invoke(observation.State, observation.MessageId),
+            survivePostAcceptCancellation: false,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    Task<CommandResult> ICommandServiceWithLifecycleObservations.DispatchAsync<TCommand>(
+        TCommand command,
+        Action<CommandLifecycleObservation>? onLifecycleObservation,
+        CancellationToken cancellationToken)
+        where TCommand : class =>
+        DispatchWithObservationsAsync(command, onLifecycleObservation, survivePostAcceptCancellation: true, cancellationToken);
+
+    private async Task<CommandResult> DispatchWithObservationsAsync<TCommand>(
+        TCommand command,
+        Action<CommandLifecycleObservation>? onLifecycleObservation,
+        bool survivePostAcceptCancellation,
+        CancellationToken cancellationToken)
         where TCommand : class {
         ArgumentNullException.ThrowIfNull(command);
 
@@ -69,6 +102,9 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
         }
 
         string messageId = _ulidFactory.NewUlid();
+        CancellationToken lifecycleToken = survivePostAcceptCancellation
+            ? CancellationToken.None
+            : cancellationToken;
 
         // Fire-and-forget continuation. We observe the task via ContinueWith so an unhandled
         // exception inside the user-supplied onLifecycleChange (e.g., disposed Fluxor dispatcher)
@@ -77,33 +113,34 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
             async () => {
                 try {
                     if (opts.SyncingDelayMs > 0) {
-                        await Task.Delay(opts.SyncingDelayMs, cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(opts.SyncingDelayMs, lifecycleToken).ConfigureAwait(false);
                     }
 
-                    if (cancellationToken.IsCancellationRequested) {
-                        return;
-                    }
+                    lifecycleToken.ThrowIfCancellationRequested();
 
-                    onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, messageId);
+                    TryNotifyLifecycleObservation(
+                        onLifecycleObservation,
+                        CommandLifecycleState.Syncing,
+                        CommandMateriality.Unknown,
+                        messageId);
 
                     if (opts.ConfirmDelayMs > 0) {
-                        await Task.Delay(opts.ConfirmDelayMs, cancellationToken).ConfigureAwait(false);
+                        await Task.Delay(opts.ConfirmDelayMs, lifecycleToken).ConfigureAwait(false);
                     }
 
-                    if (cancellationToken.IsCancellationRequested) {
-                        return;
-                    }
+                    lifecycleToken.ThrowIfCancellationRequested();
 
-                    onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, messageId);
+                    TryNotifyLifecycleObservation(
+                        onLifecycleObservation,
+                        CommandLifecycleState.Confirmed,
+                        CommandMateriality.Material,
+                        messageId);
                 }
                 catch (OperationCanceledException) {
                     // Form disposed during the callback sequence. Nothing to do.
                 }
-                catch (Exception ex) {
-                    FrontComposerWarningLog.StubLifecycleCallbackFailed(_logger, messageId, ex);
-                }
             },
-            cancellationToken);
+            lifecycleToken);
 
         _ = continuation.ContinueWith(
             static (t, state) => {
@@ -119,5 +156,25 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
             TaskScheduler.Default);
 
         return new CommandResult(messageId, CommandResultStatus.Accepted);
+    }
+
+    private void TryNotifyLifecycleObservation(
+        Action<CommandLifecycleObservation>? observer,
+        CommandLifecycleState state,
+        CommandMateriality materiality,
+        string messageId)
+    {
+        try
+        {
+            observer?.Invoke(new CommandLifecycleObservation(
+                state,
+                messageId,
+                materiality,
+                _timeProvider.GetUtcNow()));
+        }
+        catch (Exception ex)
+        {
+            FrontComposerWarningLog.StubLifecycleCallbackFailed(_logger, messageId, ex);
+        }
     }
 }

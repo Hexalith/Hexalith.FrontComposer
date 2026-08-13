@@ -1,5 +1,7 @@
 using System.Collections.Immutable;
 
+using Hexalith.FrontComposer.Contracts.Attributes;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -31,6 +33,8 @@ public static class CommandParser {
     private const string DefaultValueAttributeName = "System.ComponentModel.DefaultValueAttribute";
     private const string DestructiveAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.DestructiveAttribute";
     private const string RequiresPolicyAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.RequiresPolicyAttribute";
+    private const string CommandTargetAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.CommandTargetAttribute";
+    private const string ProjectionAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionAttribute";
 
     /// <summary>
     /// Story 2-5 D20 / ADR-026 — commands whose TypeName matches this pattern AND lack
@@ -146,6 +150,7 @@ public static class CommandParser {
         string? displayName = ParseDisplayAttribute(typeSymbol);
         string? iconName = ParseIconAttribute(typeSymbol);
         string? authorizationPolicyName = ParseRequiresPolicyAttribute(typeSymbol, diagnostics, filePath, linePos);
+        CommandTargetModel? commandTarget = ParseCommandTarget(typeSymbol, diagnostics, filePath, linePos);
         if (diagnostics.Any(d => d.Id is "HFC1056" or "HFC1057")) {
             return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>([.. diagnostics]));
         }
@@ -350,12 +355,94 @@ public static class CommandParser {
             authorizationPolicyName,
             filePath,
             linePos.Line,
-            linePos.Character);
+            linePos.Character,
+            commandTarget);
 
         return new CommandParseResult(
             model,
             new EquatableArray<DiagnosticInfo>(diagnostics.ToImmutableArray()));
     }
+
+    private static CommandTargetModel? ParseCommandTarget(
+        INamedTypeSymbol typeSymbol,
+        List<DiagnosticInfo> diagnostics,
+        string filePath,
+        Microsoft.CodeAnalysis.Text.LinePosition linePos) {
+        AttributeData? attribute = typeSymbol.GetAttributes().FirstOrDefault(
+            candidate => candidate.AttributeClass?.ToDisplayString() == CommandTargetAttributeName);
+        if (attribute is null) {
+            return null;
+        }
+
+        if (attribute.ConstructorArguments.Length != 3
+            || attribute.ConstructorArguments[0].Value is not INamedTypeSymbol projectionType
+            || attribute.ConstructorArguments[1].Value is not int resolutionValue
+            || attribute.ConstructorArguments[2].Value is not int changeValue
+            || !Enum.IsDefined(typeof(CommandTargetResolutionMode), resolutionValue)
+            || !Enum.IsDefined(typeof(CommandTargetChangeKind), changeValue)
+            || !projectionType.GetAttributes().Any(
+                candidate => candidate.AttributeClass?.ToDisplayString() == ProjectionAttributeName)) {
+            AddInvalidCommandTargetDiagnostic(typeSymbol, diagnostics, filePath, linePos);
+            return null;
+        }
+
+        var resolutionMode = (CommandTargetResolutionMode)resolutionValue;
+        var changeKind = (CommandTargetChangeKind)changeValue;
+        if (resolutionMode == CommandTargetResolutionMode.SameAsSource
+            && changeKind != CommandTargetChangeKind.Update) {
+            AddInvalidCommandTargetDiagnostic(typeSymbol, diagnostics, filePath, linePos);
+            return null;
+        }
+
+        string? viewKey = NormalizeNamedString(attribute, nameof(CommandTargetAttribute.ViewKey));
+        string? expectedStatus = NormalizeNamedString(attribute, nameof(CommandTargetAttribute.ExpectedStatus));
+        return new CommandTargetModel(
+            projectionType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
+            resolutionMode,
+            changeKind,
+            viewKey,
+            expectedStatus,
+            ResolveProjectionViewKey(projectionType));
+    }
+
+    private static string ResolveProjectionViewKey(INamedTypeSymbol projectionType) {
+        string projectionName = projectionType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+        const string GlobalPrefix = "global::";
+        if (projectionName.StartsWith(GlobalPrefix, StringComparison.Ordinal)) {
+            projectionName = projectionName.Substring(GlobalPrefix.Length);
+        }
+
+        string? boundedContext = ParseBoundedContext(projectionType, out _);
+        string namespaceName = projectionType.ContainingNamespace?.IsGlobalNamespace == false
+            ? projectionType.ContainingNamespace.ToDisplayString()
+            : string.Empty;
+        return (boundedContext ?? namespaceName) + ":" + projectionName;
+    }
+
+    private static string? NormalizeNamedString(AttributeData attribute, string name) {
+        foreach (KeyValuePair<string, TypedConstant> argument in attribute.NamedArguments) {
+            if (argument.Key == name && argument.Value.Value is string value) {
+                return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+            }
+        }
+
+        return null;
+    }
+
+    private static void AddInvalidCommandTargetDiagnostic(
+        INamedTypeSymbol typeSymbol,
+        List<DiagnosticInfo> diagnostics,
+        string filePath,
+        Microsoft.CodeAnalysis.Text.LinePosition linePos) =>
+        diagnostics.Add(new DiagnosticInfo(
+            "HFC1005",
+            string.Format(
+                "Command '{0}' has an invalid CommandTarget declaration. The projection must be [Projection], enum values must be known, and SameAsSource is valid only with Update.",
+                typeSymbol.Name),
+            "Warning",
+            filePath,
+            linePos.Line,
+            linePos.Character));
 
     private static bool HasPublicParameterlessConstructor(INamedTypeSymbol typeSymbol) {
         foreach (IMethodSymbol ctor in typeSymbol.InstanceConstructors) {

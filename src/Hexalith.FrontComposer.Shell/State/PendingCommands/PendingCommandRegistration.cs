@@ -10,6 +10,7 @@ namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 /// rather than deeper in the resolver.
 /// </remarks>
 public sealed record PendingCommandRegistration {
+    /// <summary>Initializes registration metadata using the pre-Story-9.4 public shape.</summary>
     public PendingCommandRegistration(
         string CorrelationId,
         string MessageId,
@@ -51,4 +52,7 @@ public sealed record PendingCommandRegistration {
     public string? PriorStatusSlot { get; init; }
 
     public DateTimeOffset? SubmittedAt { get; init; }
+
+    /// <summary>Gets the explicit pre-dispatch target snapshot associated with acceptance.</summary>
+    public CommandTargetSnapshot? TargetSnapshot { get; init; }
 }

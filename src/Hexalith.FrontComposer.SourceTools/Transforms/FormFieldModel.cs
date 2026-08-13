@@ -14,7 +14,29 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
         bool isNullable,
         bool isRequired,
         string? enumFullyQualifiedName,
-        bool hasExplicitDisplayName = false) {
+        bool hasExplicitDisplayName = false)
+        : this(
+            propertyName,
+            typeName,
+            typeCategory,
+            staticLabel,
+            isNullable,
+            isRequired,
+            enumFullyQualifiedName,
+            hasExplicitDisplayName,
+            isProviderCloneAssignable: true) {
+    }
+
+    internal FormFieldModel(
+        string propertyName,
+        string typeName,
+        FormFieldTypeCategory typeCategory,
+        string staticLabel,
+        bool isNullable,
+        bool isRequired,
+        string? enumFullyQualifiedName,
+        bool hasExplicitDisplayName,
+        bool isProviderCloneAssignable) {
         PropertyName = propertyName;
         TypeName = typeName;
         TypeCategory = typeCategory;
@@ -23,6 +45,7 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
         IsRequired = isRequired;
         EnumFullyQualifiedName = enumFullyQualifiedName;
         HasExplicitDisplayName = hasExplicitDisplayName;
+        IsProviderCloneAssignable = isProviderCloneAssignable;
     }
 
     /// <summary>Gets the .NET property name (e.g., <c>Amount</c>).</summary>
@@ -64,6 +87,8 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
     /// </summary>
     public bool HasExplicitDisplayName { get; }
 
+    internal bool IsProviderCloneAssignable { get; }
+
     public bool Equals(FormFieldModel? other) {
         if (other is null) {
             return false;
@@ -80,7 +105,8 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
             && IsNullable == other.IsNullable
             && IsRequired == other.IsRequired
             && EnumFullyQualifiedName == other.EnumFullyQualifiedName
-            && HasExplicitDisplayName == other.HasExplicitDisplayName;
+            && HasExplicitDisplayName == other.HasExplicitDisplayName
+            && IsProviderCloneAssignable == other.IsProviderCloneAssignable;
     }
 
     public override bool Equals(object? obj) => Equals(obj as FormFieldModel);
@@ -96,6 +122,7 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
             hash = (hash * 31) + IsRequired.GetHashCode();
             hash = (hash * 31) + (EnumFullyQualifiedName?.GetHashCode() ?? 0);
             hash = (hash * 31) + HasExplicitDisplayName.GetHashCode();
+            hash = (hash * 31) + IsProviderCloneAssignable.GetHashCode();
             return hash;
         }
     }
@@ -113,14 +140,59 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
         string commandFullyQualifiedName,
         string buttonLabel,
         EquatableArray<FormFieldModel> fields,
-        string? authorizationPolicyName = null) {
+        string? authorizationPolicyName = null)
+        : this(
+            typeName,
+            @namespace,
+            boundedContext,
+            commandFullyQualifiedName,
+            buttonLabel,
+            fields,
+            fields,
+            authorizationPolicyName,
+            null) {
+    }
+
+    internal CommandFormModel(
+        string typeName,
+        string @namespace,
+        string? boundedContext,
+        string commandFullyQualifiedName,
+        string buttonLabel,
+        EquatableArray<FormFieldModel> fields,
+        string? authorizationPolicyName,
+        CommandTargetModel? commandTarget)
+        : this(
+            typeName,
+            @namespace,
+            boundedContext,
+            commandFullyQualifiedName,
+            buttonLabel,
+            fields,
+            fields,
+            authorizationPolicyName,
+            commandTarget) {
+    }
+
+    internal CommandFormModel(
+        string typeName,
+        string @namespace,
+        string? boundedContext,
+        string commandFullyQualifiedName,
+        string buttonLabel,
+        EquatableArray<FormFieldModel> fields,
+        EquatableArray<FormFieldModel> providerCloneFields,
+        string? authorizationPolicyName,
+        CommandTargetModel? commandTarget = null) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
         CommandFullyQualifiedName = commandFullyQualifiedName;
         ButtonLabel = buttonLabel;
         Fields = fields;
+        ProviderCloneFields = providerCloneFields;
         AuthorizationPolicyName = authorizationPolicyName;
+        CommandTarget = commandTarget;
     }
 
     public string TypeName { get; }
@@ -135,7 +207,11 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
 
     public EquatableArray<FormFieldModel> Fields { get; }
 
+    internal EquatableArray<FormFieldModel> ProviderCloneFields { get; }
+
     public string? AuthorizationPolicyName { get; }
+
+    public CommandTargetModel? CommandTarget { get; }
 
     public bool Equals(CommandFormModel? other) {
         if (other is null) {
@@ -152,7 +228,9 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
             && CommandFullyQualifiedName == other.CommandFullyQualifiedName
             && ButtonLabel == other.ButtonLabel
             && Fields == other.Fields
-            && AuthorizationPolicyName == other.AuthorizationPolicyName;
+            && ProviderCloneFields == other.ProviderCloneFields
+            && AuthorizationPolicyName == other.AuthorizationPolicyName
+            && Equals(CommandTarget, other.CommandTarget);
     }
 
     public override bool Equals(object? obj) => Equals(obj as CommandFormModel);
@@ -166,7 +244,9 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
             hash = (hash * 31) + (CommandFullyQualifiedName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ButtonLabel?.GetHashCode() ?? 0);
             hash = (hash * 31) + Fields.GetHashCode();
+            hash = (hash * 31) + ProviderCloneFields.GetHashCode();
             hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (CommandTarget?.GetHashCode() ?? 0);
             return hash;
         }
     }

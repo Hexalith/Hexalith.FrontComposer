@@ -382,7 +382,16 @@ public partial class SharedProjection
     [Fact]
     public void RunGenerators_GlobalNamespaceProjection_HintNameHasNoNamespacePrefix() {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.GlobalNamespaceProjection);
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            [Projection]
+            public partial class GlobalProjection
+            {
+                public string Name { get; set; } = string.Empty;
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
 
@@ -399,6 +408,13 @@ public partial class SharedProjection
         fileNames.ShouldContain("GlobalProjectionActions.g.cs");
         fileNames.ShouldContain("GlobalProjectionReducers.g.cs");
         fileNames.ShouldContain("GlobalProjectionRegistration.g.cs");
+
+        string razorSource = result.GeneratedTrees
+            .Single(tree => System.IO.Path.GetFileName(tree.FilePath) == "GlobalProjection.g.razor.cs")
+            .GetText(ct)
+            .ToString();
+        razorSource.ShouldContain("separator >= 0 && separator < _viewKey.Length - 1");
+        razorSource.ShouldContain("private const string _viewKey = \":GlobalProjection\"");
 
         // Verify generated code compiles
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(

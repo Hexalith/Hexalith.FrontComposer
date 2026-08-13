@@ -14,6 +14,29 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Incremental;
 /// cache-equality test.
 /// </summary>
 public class IncrementalGeneratorCacheHitTests {
+    public static TheoryData<string, string, string> CommandTargetChanges => new() {
+        {
+            BuildTargetCommand("Provider", "Update", "view-a", "Approved"),
+            BuildTargetCommand("Provider", "Update", "view-b", "Approved"),
+            "view-b"
+        },
+        {
+            BuildTargetCommand("Provider", "Update", "view-b", "Draft"),
+            BuildTargetCommand("Provider", "Update", "view-b", "Approved"),
+            "Approved"
+        },
+        {
+            BuildTargetCommand("Provider", "Update", "view-b", "Approved"),
+            BuildTargetCommand("SameAsSource", "Update", "view-b", "Approved"),
+            "PendingCommandRowIdentity"
+        },
+        {
+            BuildTargetCommand("Provider", "Update", "view-b", "Approved"),
+            BuildTargetCommand("Provider", "StatusMove", "view-b", "Approved"),
+            "CommandTargetChangeKind.StatusMove"
+        },
+    };
+
     [Fact]
     public void SameInputTwiceProducesCachedSteps() {
         CancellationToken ct = TestContext.Current.CancellationToken;
@@ -85,6 +108,38 @@ public class IncrementalGeneratorCacheHitTests {
         secondGeneratedOutput.ShouldContain("Submitted");
     }
 
+    [Theory]
+    [MemberData(nameof(CommandTargetChanges))]
+    public void EditingCommandTargetDescriptor_InvalidatesCacheAndUpdatesGeneratedForm(
+        string initialSource,
+        string changedSource,
+        string expectedGeneratedFragment) {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation initialCompilation = CompilationHelper.CreateCompilation(initialSource);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [new FrontComposerGenerator().AsSourceGenerator()],
+            driverOptions: new GeneratorDriverOptions(
+                disabledOutputs: IncrementalGeneratorOutputKind.None,
+                trackIncrementalGeneratorSteps: true));
+        driver = driver.RunGenerators(initialCompilation, ct);
+
+        CSharpCompilation changedCompilation = initialCompilation.ReplaceSyntaxTree(
+            initialCompilation.SyntaxTrees.First(),
+            CSharpSyntaxTree.ParseText(changedSource, cancellationToken: ct));
+        driver = driver.RunGenerators(changedCompilation, ct);
+        GeneratorRunResult result = driver.GetRunResult().Results[0];
+
+        bool targetParseChanged = result.TrackedSteps["Parse"]
+            .SelectMany(step => step.Outputs)
+            .Any(output => output.Reason is IncrementalStepRunReason.Modified or IncrementalStepRunReason.New);
+        targetParseChanged.ShouldBeTrue();
+        result.GeneratedSources.Single(source => source.HintName.EndsWith(
+                "MoveCommand.CommandForm.g.razor.cs",
+                StringComparison.Ordinal))
+            .SourceText.ToString()
+            .ShouldContain(expectedGeneratedFragment);
+    }
+
     private static string SerializeGeneratedSources(GeneratorRunResult result) {
         StringBuilder sb = new();
         foreach (GeneratedSourceResult source in result.GeneratedSources.OrderBy(s => s.HintName, StringComparer.Ordinal)) {
@@ -115,4 +170,29 @@ public enum OrderStatus
     Submitted,
     Approved,
 }}";
+
+    private static string BuildTargetCommand(
+        string resolutionMode,
+        string changeKind,
+        string viewKey,
+        string expectedStatus) => $$"""
+        using Hexalith.FrontComposer.Contracts.Attributes;
+
+        namespace TestDomain;
+
+        [Projection]
+        public sealed class TargetProjection { }
+
+        [Command]
+        [CommandTarget(
+            typeof(TargetProjection),
+            CommandTargetResolutionMode.{{resolutionMode}},
+            CommandTargetChangeKind.{{changeKind}},
+            ViewKey = "{{viewKey}}",
+            ExpectedStatus = "{{expectedStatus}}")]
+        public sealed class MoveCommand
+        {
+            public string MessageId { get; set; } = string.Empty;
+        }
+        """;
 }

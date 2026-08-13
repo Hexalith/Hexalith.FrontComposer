@@ -1,5 +1,6 @@
 using System.Collections.Immutable;
 
+using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
 
@@ -24,6 +25,105 @@ public class CommandParserTests {
     private static readonly string[] ExpectedPayloadProperty = ["Payload"];
     private static readonly string[] ExpectedPlaceOrderDerivableProperties = ["MessageId", "TenantId"];
     private static readonly string[] ExpectedPlaceOrderProperties = ["CustomerName", "Quantity", "TotalAmount", "Expedited", "OrderedAt"];
+
+    [Fact]
+    public void Parse_ExplicitSameSourceUpdate_ProducesPureTargetDescriptor() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [Projection]
+            public sealed class CounterProjection { }
+            [Command]
+            [CommandTarget(typeof(CounterProjection), CommandTargetResolutionMode.SameAsSource, CommandTargetChangeKind.Update, ViewKey = " counter-counts ")]
+            public sealed class IncrementCommand
+            {
+                public string MessageId { get; set; } = string.Empty;
+            }
+            """;
+
+        CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.IncrementCommand");
+
+        CommandTargetModel target = result.Model.ShouldNotBeNull().CommandTarget.ShouldNotBeNull();
+        target.ProjectionFullyQualifiedName.ShouldBe("global::TestDomain.CounterProjection");
+        target.ProjectionViewKey.ShouldBe("TestDomain:TestDomain.CounterProjection");
+        target.ResolutionMode.ShouldBe(CommandTargetResolutionMode.SameAsSource);
+        target.ChangeKind.ShouldBe(CommandTargetChangeKind.Update);
+        target.ViewKey.ShouldBe("counter-counts");
+    }
+
+    [Fact]
+    public void Parse_CommandTargetTypeWithoutProjection_ClearsDescriptorAndEmitsHFC1005() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            public sealed class PlainReadModel { }
+            [Command]
+            [CommandTarget(typeof(PlainReadModel), CommandTargetResolutionMode.Provider, CommandTargetChangeKind.Create)]
+            public sealed class CreateCommand
+            {
+                public string MessageId { get; set; } = string.Empty;
+            }
+            """;
+
+        CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.CreateCommand");
+
+        result.Model.ShouldNotBeNull().CommandTarget.ShouldBeNull();
+        result.Diagnostics.ShouldContain(d => d.Id == "HFC1005");
+    }
+
+    [Theory]
+    [InlineData(CommandTargetChangeKind.Create)]
+    [InlineData(CommandTargetChangeKind.StatusMove)]
+    [InlineData(CommandTargetChangeKind.Delete)]
+    public void Parse_SameAsSourceWithNonUpdateChange_ClearsDescriptorAndEmitsHFC1005(
+        CommandTargetChangeKind changeKind) {
+        string source = $$"""
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [Projection]
+            public sealed class CounterProjection { }
+            [Command]
+            [CommandTarget(typeof(CounterProjection), CommandTargetResolutionMode.SameAsSource, CommandTargetChangeKind.{{changeKind}})]
+            public sealed class InvalidSameSourceCommand
+            {
+                public string MessageId { get; set; } = string.Empty;
+            }
+            """;
+
+        CommandParseResult result = CompilationHelper.ParseCommand(
+            source,
+            "TestDomain.InvalidSameSourceCommand");
+
+        result.Model.ShouldNotBeNull().CommandTarget.ShouldBeNull();
+        result.Diagnostics.ShouldContain(diagnostic => diagnostic.Id == "HFC1005");
+    }
+
+    [Theory]
+    [InlineData("(CommandTargetResolutionMode)99", "CommandTargetChangeKind.Update")]
+    [InlineData("CommandTargetResolutionMode.Provider", "(CommandTargetChangeKind)99")]
+    public void Parse_CommandTargetWithUnknownEnumValue_ClearsDescriptorAndEmitsOneHFC1005(
+        string resolutionMode,
+        string changeKind) {
+        string source = $$"""
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [Projection]
+            public sealed class CounterProjection { }
+            [Command]
+            [CommandTarget(typeof(CounterProjection), {{resolutionMode}}, {{changeKind}})]
+            public sealed class InvalidEnumCommand
+            {
+                public string MessageId { get; set; } = string.Empty;
+            }
+            """;
+
+        CommandParseResult result = CompilationHelper.ParseCommand(
+            source,
+            "TestDomain.InvalidEnumCommand");
+
+        result.Model.ShouldNotBeNull().CommandTarget.ShouldBeNull();
+        result.Diagnostics.Count(diagnostic => diagnostic.Id == "HFC1005").ShouldBe(1);
+    }
 
     [Fact]
     public void Parse_SingleStringFieldCommand_SeparatesMessageIdFromName() {

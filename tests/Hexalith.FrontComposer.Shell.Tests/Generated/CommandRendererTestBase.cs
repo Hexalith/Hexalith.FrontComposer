@@ -73,6 +73,10 @@ public abstract class CommandRendererTestBase : BunitContext {
         _ = Services.AddScoped<ICommandFeedbackPublisher, CommandFeedbackPublisher>();
         _ = Services.AddScoped<IAuthRedirector, NoOpAuthRedirector>();
         _ = Services.AddScoped<IPendingCommandStateService, PendingCommandStateService>();
+        _ = Services.AddScoped<INewItemIndicatorStateService, NewItemIndicatorStateService>();
+        _ = Services.AddScoped<PendingCommandOutcomeResolver>();
+        _ = Services.AddScoped<IPendingCommandOutcomeResolver>(sp => sp.GetRequiredService<PendingCommandOutcomeResolver>());
+        _ = Services.AddScoped<IPendingCommandOutcomeCoordinator>(sp => sp.GetRequiredService<PendingCommandOutcomeResolver>());
         _ = Services.AddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
 
         Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => UserContext));

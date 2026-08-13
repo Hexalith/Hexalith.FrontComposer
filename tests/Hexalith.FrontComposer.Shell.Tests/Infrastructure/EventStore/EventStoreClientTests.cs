@@ -11,12 +11,84 @@ using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 
 public sealed class EventStoreClientTests {
+    [Fact]
+    public async Task CommandClient_AcceptedTypedDispatchEmitsExactlyOneSyncingObservationUsingInjectedClock() {
+        DateTimeOffset now = new(2026, 8, 13, 12, 0, 0, TimeSpan.Zero);
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted));
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            shellOptions: null,
+            timeProvider: new FakeTimeProvider(now));
+        List<CommandLifecycleObservation> observations = [];
+
+        CommandResult result = await ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(),
+            observations.Add,
+            TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        CommandLifecycleObservation observation = observations.Single();
+        observation.State.ShouldBe(CommandLifecycleState.Syncing);
+        observation.MessageId.ShouldBe(result.MessageId);
+        observation.Materiality.ShouldBe(CommandMateriality.Unknown);
+        observation.ObservedAt.ShouldBe(now);
+    }
+
+    [Fact]
+    public async Task CommandClient_AcceptedTypedDispatchSurvivesThrowingObserver() {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted));
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance);
+
+        CommandResult result = await ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(),
+            _ => throw new InvalidOperationException("observer unavailable"),
+            TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        result.MessageId.ShouldBe("01HVTESTULID");
+    }
+
+    [Fact]
+    public async Task CommandClient_AcceptedTypedDispatchSurvivesThrowingClock() {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted));
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            shellOptions: null,
+            timeProvider: new ThrowingTimeProvider());
+        int callbacks = 0;
+
+        CommandResult result = await ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new ShipOrderCommand(),
+            _ => callbacks++,
+            TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        callbacks.ShouldBe(0);
+    }
+
     [Fact]
     public async Task CommandClient_PostsCamelCaseAcceptedRequest_ToDefaultCommandPath() {
         RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted) {
@@ -561,6 +633,10 @@ public sealed class EventStoreClientTests {
     private sealed class SingleClientFactory(HttpMessageHandler handler) : IHttpClientFactory {
         public HttpClient CreateClient(string name)
             => new(handler, disposeHandler: false) { BaseAddress = new Uri("https://eventstore.test") };
+    }
+
+    private sealed class ThrowingTimeProvider : TimeProvider {
+        public override DateTimeOffset GetUtcNow() => throw new InvalidOperationException("clock unavailable");
     }
 
     private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler {

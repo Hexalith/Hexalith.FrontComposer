@@ -17,6 +17,9 @@ public sealed record PendingCommandEntry(
     string? RejectionDataImpact = null,
     DateTimeOffset? TerminalAt = null,
     int DuplicateTerminalObservations = 0) {
+    /// <summary>Gets the explicit pre-dispatch target snapshot associated with acceptance.</summary>
+    public CommandTargetSnapshot? TargetSnapshot { get; init; }
+
     internal bool HasSameFrameworkMetadata(PendingCommandRegistration registration) =>
         string.Equals(CorrelationId, registration.CorrelationId, StringComparison.Ordinal)
         && string.Equals(CommandTypeName, registration.CommandTypeName, StringComparison.Ordinal)
@@ -24,5 +27,9 @@ public sealed record PendingCommandEntry(
         && string.Equals(LaneKey, registration.LaneKey, StringComparison.Ordinal)
         && string.Equals(EntityKey, registration.EntityKey, StringComparison.Ordinal)
         && string.Equals(ExpectedStatusSlot, registration.ExpectedStatusSlot, StringComparison.Ordinal)
-        && string.Equals(PriorStatusSlot, registration.PriorStatusSlot, StringComparison.Ordinal);
+        && string.Equals(PriorStatusSlot, registration.PriorStatusSlot, StringComparison.Ordinal)
+        && TargetMatches(registration.TargetSnapshot);
+
+    private bool TargetMatches(CommandTargetSnapshot? other) =>
+        TargetSnapshot is null ? other is null : TargetSnapshot.HasSameTarget(other);
 }

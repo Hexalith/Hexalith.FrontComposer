@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
@@ -63,7 +64,13 @@ public sealed class EventStorePendingCommandStatusQuery(
                 Source: PendingCommandOutcomeSource.IdempotencyStatusQuery,
                 Outcome: PendingCommandTerminalOutcome.Confirmed,
                 MessageId: pendingCommand.MessageId,
-                ObservedAt: status.Timestamp),
+                ObservedAt: status.Timestamp) {
+                Materiality = status.EventCount switch {
+                    > 0 => CommandMateriality.Material,
+                    0 => CommandMateriality.NoOp,
+                    _ => CommandMateriality.Unknown,
+                },
+            },
             EventStoreCommandStatus.Rejected => new PendingCommandOutcomeObservation(
                 Source: PendingCommandOutcomeSource.IdempotencyStatusQuery,
                 Outcome: PendingCommandTerminalOutcome.Rejected,

@@ -124,3 +124,78 @@ public class DeleteWidgetCommand {
 
     public string WidgetId { get; set; } = string.Empty;
 }
+
+[Command]
+[BoundedContext("TestCommands")]
+[CommandTarget(
+    typeof(Counter.Domain.CounterProjection),
+    CommandTargetResolutionMode.SameAsSource,
+    CommandTargetChangeKind.Update)]
+public class SameSourceTargetCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public int Amount { get; set; }
+}
+
+[Command]
+[BoundedContext("TestCommands")]
+[CommandTarget(
+    typeof(Counter.Domain.CounterProjection),
+    CommandTargetResolutionMode.Provider,
+    CommandTargetChangeKind.Create,
+    ViewKey = "Counter:Counter.Domain.CounterProjection")]
+public class ProviderTargetCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+}
+
+[Command]
+[BoundedContext("TestCommands")]
+[CommandTarget(
+    typeof(Counter.Domain.CounterProjection),
+    CommandTargetResolutionMode.Provider,
+    CommandTargetChangeKind.Create,
+    ViewKey = "Counter:Counter.Domain.CounterProjection")]
+public class BlockingCloneProviderTargetCommand {
+    private string _messageId = string.Empty;
+
+    public static Action? MessageIdRead { get; set; }
+
+    public string MessageId {
+        get {
+            MessageIdRead?.Invoke();
+            return _messageId;
+        }
+
+        set => _messageId = value;
+    }
+
+    public string Name { get; set; } = string.Empty;
+}
+
+[Command]
+[BoundedContext("TestCommands")]
+[CommandTarget(
+    typeof(Counter.Domain.CounterProjection),
+    CommandTargetResolutionMode.Provider,
+    CommandTargetChangeKind.Update,
+    ViewKey = "Counter:Counter.Domain.CounterProjection",
+    ExpectedStatus = "Approved")]
+public class ExpectedStatusProviderTargetCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+}
+
+[Command]
+[BoundedContext("TestCommands")]
+[CommandTarget(
+    typeof(Counter.Domain.CounterProjection),
+    CommandTargetResolutionMode.Provider,
+    CommandTargetChangeKind.StatusMove)]
+public class StatusMoveProviderTargetCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+}

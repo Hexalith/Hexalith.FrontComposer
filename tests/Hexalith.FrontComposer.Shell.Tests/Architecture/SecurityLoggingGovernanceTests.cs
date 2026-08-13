@@ -180,6 +180,7 @@ public sealed class SecurityLoggingGovernanceTests
         "src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionTemplateHost.cs:RenderFailure:60:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionViewOverrideHost.cs:RenderFailure:150:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerBootstrapValidationGate.cs:StartAsync:48:LogError",
+        "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs:DispatchWithObservationsAsync:168:LogError",
         "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs:ReadProblemDetailsAsync:189:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs:ReadProblemDetailsAsync:207:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs:ReadProblemDetailsAsync:223:LogWarning",
@@ -201,8 +202,8 @@ public sealed class SecurityLoggingGovernanceTests
         "src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideRegistry.cs:Register:132:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideRegistry.cs:Register:188:LogWarning",
         "src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideRegistry.cs:Register:232:LogError",
-        "src/Hexalith.FrontComposer.Shell/Services/StubCommandService.cs:continuation:102:LogError",
-        "src/Hexalith.FrontComposer.Shell/Services/StubCommandService.cs:DispatchAsync:113:LogError",
+        "src/Hexalith.FrontComposer.Shell/Services/StubCommandService.cs:DispatchWithObservationsAsync:102:LogError",
+        "src/Hexalith.FrontComposer.Shell/Services/StubCommandService.cs:TryNotifyLifecycleObservation:148:LogError",
         "src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:TryInvokeBindingAsync:225:LogWarning",
         "src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryEffects.cs:HandleCapabilityVisited:174:LogWarning",
         "src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryEffects.cs:HydrateSeenSetAsync:218:LogWarning",
@@ -303,7 +304,7 @@ public sealed class SecurityLoggingGovernanceTests
         }
 
         LoggerEvent[] hotPathEvents = [.. events.Where(static entry => entry.Path.EndsWith("/FrontComposerHotPathLog.cs", StringComparison.Ordinal))];
-        hotPathEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(5700, 81));
+        hotPathEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(5700, 84));
         foreach (LoggerEvent entry in hotPathEvents)
         {
             entry.EventName.ShouldNotBeNullOrWhiteSpace($"{entry.Location} must declare an explicit EventName");
@@ -311,9 +312,9 @@ public sealed class SecurityLoggingGovernanceTests
         }
 
         LoggerEvent[] warningEvents = [.. events.Where(static entry => entry.Path.EndsWith("/FrontComposerWarningLog.cs", StringComparison.Ordinal))];
-        warningEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(5800, 54));
+        warningEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(5800, 55));
         warningEvents.Count(static entry => entry.Level == "Warning").ShouldBe(49);
-        warningEvents.Count(static entry => entry.Level == "Error").ShouldBe(5);
+        warningEvents.Count(static entry => entry.Level == "Error").ShouldBe(6);
         foreach (LoggerEvent entry in warningEvents)
         {
             entry.EventName.ShouldNotBeNullOrWhiteSpace($"{entry.Location} must declare an explicit EventName");
@@ -491,11 +492,11 @@ public sealed class SecurityLoggingGovernanceTests
             .SelectMany(FindLoggerEvents)
             .Where(static entry => entry.Path.EndsWith("/FrontComposerWarningLog.cs", StringComparison.Ordinal))];
 
-        ExpectedResidualWarningAndAboveLocations.Length.ShouldBe(54);
+        ExpectedResidualWarningAndAboveLocations.Length.ShouldBe(55);
         ExpectedResidualWarningAndAboveLocations.Count(static location =>
             location.EndsWith("LogWarning", StringComparison.Ordinal)).ShouldBe(49);
         ExpectedResidualWarningAndAboveLocations.Count(static location =>
-            location.EndsWith("LogError", StringComparison.Ordinal)).ShouldBe(5);
+            location.EndsWith("LogError", StringComparison.Ordinal)).ShouldBe(6);
         ExpectedResidualWarningAndAboveLocations.Count(static location =>
             location.EndsWith("LogCritical", StringComparison.Ordinal)).ShouldBe(0);
         sites.ShouldBeEmpty(
@@ -503,10 +504,10 @@ public sealed class SecurityLoggingGovernanceTests
         generatedSites.Select(static site => site.MemberKey).Order(StringComparer.Ordinal).ShouldBe(
             ExpectedResidualWarningAndAboveLocations.Select(GetMemberKey).Order(StringComparer.Ordinal),
             "each frozen production branch must retain exactly one generated warning wrapper call");
-        generatedSites.Select(static site => site.MethodName).Distinct(StringComparer.Ordinal).Count().ShouldBe(54);
+        generatedSites.Select(static site => site.MethodName).Distinct(StringComparer.Ordinal).Count().ShouldBe(55);
         generatedSites.Select(static site => site.MethodName).Order(StringComparer.Ordinal).ShouldBe(
             warningEvents.Select(static entry => entry.EventName).OfType<string>().Order(StringComparer.Ordinal),
-            "all 54 generated warning events must each have one production call site");
+            "all 55 generated warning events must each have one production call site");
     }
 
     private static IEnumerable<DirectLogSite> FindDirectLogSites(SourceFile source)

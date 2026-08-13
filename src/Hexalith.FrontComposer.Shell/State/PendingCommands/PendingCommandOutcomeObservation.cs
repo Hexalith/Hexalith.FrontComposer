@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Contracts.Lifecycle;
+
 namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 /// <summary>
@@ -15,4 +17,7 @@ public sealed record PendingCommandOutcomeObservation(
     string? RejectionTitle = null,
     string? RejectionDetail = null,
     string? RejectionDataImpact = null,
-    DateTimeOffset? ObservedAt = null);
+    DateTimeOffset? ObservedAt = null) {
+    /// <summary>Gets typed evidence about whether the terminal command changed projection material.</summary>
+    public CommandMateriality Materiality { get; init; } = CommandMateriality.Unknown;
+}

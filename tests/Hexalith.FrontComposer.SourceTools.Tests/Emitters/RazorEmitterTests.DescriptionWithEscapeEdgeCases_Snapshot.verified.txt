@@ -475,7 +475,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     private static string ProjectionTypeFromViewKey()
     {
         int separator = _viewKey.IndexOf(':');
-        return separator > 0 && separator < _viewKey.Length - 1 ? _viewKey[(separator + 1)..] : _viewKey;
+        return separator >= 0 && separator < _viewKey.Length - 1 ? _viewKey[(separator + 1)..] : _viewKey;
     }
 
     private static string? EntityKeyFromItem(OrderProjection row)

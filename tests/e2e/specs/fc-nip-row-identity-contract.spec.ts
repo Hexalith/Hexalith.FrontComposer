@@ -227,18 +227,16 @@ test.describe('Story 9.3: FC-NIP explicit command target identity', () => {
       ]);
     }
 
-    // The published DocFX site must not leak internal planning paths, and must not present the
-    // unshipped target-identity design as an available public surface.
+    // The published DocFX site must not leak internal planning paths and must describe the
+    // explicit target producer boundary now shipped by Story 9.4.
     assertContainsAll(dataGrid, [
-      'Automatic row-level producer wiring',
-      'is **not yet available**',
-      'Projection nudges remain insufficient row identity',
-      'unknown identity or materiality suppresses the indicator',
-      'No public type for any of this is published yet',
-      'Adopters should not build against the design described here until then',
+      'producer wiring uses an explicit command-to-projection `[CommandTarget]`',
+      '`SameAsSource` is valid only for `Update`',
+      'Only a confirmed or idempotent-confirmed `Material` terminal observation',
+      'ambient row placement are never target',
     ]);
     expect(dataGrid).not.toContain('_bmad-output');
-    expect(dataGrid).not.toContain('ICommandTargetIdentityProvider');
+    expect(dataGrid).toContain('ICommandTargetIdentityProvider<TCommand>');
 
     // Sibling FC-TBL / FC-CMD ownership wording must track the successor decision.
     for (const sibling of [fcTbl, fcCmd]) {
@@ -256,7 +254,7 @@ test.describe('Story 9.3: FC-NIP explicit command target identity', () => {
     );
   });
 
-  test('retains the existing row-cascade implementation as later-story gap evidence', async () => {
+  test('pins the converged producer boundary while retaining the explicit row cascade', async () => {
     const rowIdentity = await readRepoFile(
       'src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandRowIdentity.cs',
     );
@@ -287,16 +285,18 @@ test.describe('Story 9.3: FC-NIP explicit command target identity', () => {
     expect(eventStoreStatusQuery).not.toContain('ExpectedStatusSlot:');
     expect(eventStoreStatusQuery).not.toContain('PriorStatusSlot:');
 
-    // Full slot bindings, not bare right-hand sides: a crossed binding must fail here too.
+    // The form emitter may read the row cascade only inside an explicit SameAsSource branch;
+    // all terminal mutation and accepted association go through the resolver.
     assertContainsAll(commandFormEmitter, [
       'CascadingParameter',
       'CommandTypeName: typeof(',
-      'ProjectionTypeName: PendingCommandRowIdentity?.ProjectionTypeName',
-      'LaneKey: PendingCommandRowIdentity?.LaneKey',
-      'EntityKey: PendingCommandRowIdentity?.EntityKey',
-      'ExpectedStatusSlot: PendingCommandRowIdentity?.ExpectedStatusSlot',
-      'PriorStatusSlot: PendingCommandRowIdentity?.PriorStatusSlot',
+      'form.CommandTarget?.ResolutionMode == CommandTargetResolutionMode.SameAsSource',
+      'ResolveCommandTargetAsync(_model, cts.Token)',
+      'PendingCommandOutcomeResolver.AssociateAccepted',
+      'PendingCommandOutcomeResolver.Resolve',
     ]);
+    expect(commandFormEmitter).not.toContain('PendingCommandState.ResolveTerminal');
+    expect(commandFormEmitter).not.toContain('PendingCommandState.Register');
     expect(commandFormEmitter).not.toContain('EntityKey: status.AggregateId');
     expect(commandFormEmitter).not.toContain('ResultPayload');
     assertContainsAll(razorEmitter, [

@@ -962,4 +962,19 @@ internal static partial class FrontComposerHotPathLog
     [LoggerMessage(EventId = 5780, EventName = "ReconciliationStateSubscriberFailed", Level = LogLevel.Warning,
         Message = "Reconnection reconciliation state subscriber threw. FailureCategory={FailureCategory}")]
     public static partial void ReconciliationStateSubscriberFailed(ILogger logger, string failureCategory);
+
+    /// <summary>Emits the bounded early-terminal buffer overflow event.</summary>
+    [LoggerMessage(EventId = 5781, EventName = "PendingOutcomeBufferOverflow", Level = LogLevel.Warning,
+        Message = "Pending command early-terminal buffer reached capacity; the oldest observation was suppressed.")]
+    public static partial void PendingOutcomeBufferOverflow(ILogger logger);
+
+    /// <summary>Emits the invalid terminal-observation timestamp event.</summary>
+    [LoggerMessage(EventId = 5782, EventName = "PendingOutcomeTimestampRejected", Level = LogLevel.Warning,
+        Message = "Pending command terminal observation timestamp was outside the bounded eligibility window.")]
+    public static partial void PendingOutcomeTimestampRejected(ILogger logger);
+
+    /// <summary>Emits a fail-closed terminal-outcome publication failure.</summary>
+    [LoggerMessage(EventId = 5783, EventName = "PendingOutcomePublicationFailed", Level = LogLevel.Warning,
+        Message = "Pending command terminal state resolved but indicator publication failed. FailureCategory={FailureCategory}")]
+    public static partial void PendingOutcomePublicationFailed(ILogger logger, string failureCategory);
 }

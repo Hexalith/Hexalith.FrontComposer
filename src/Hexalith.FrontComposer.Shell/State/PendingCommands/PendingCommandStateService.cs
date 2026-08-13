@@ -108,7 +108,9 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 ExpectedStatusSlot: normalized.ExpectedStatusSlot,
                 PriorStatusSlot: normalized.PriorStatusSlot,
                 SubmittedAt: normalized.SubmittedAt ?? _time.GetUtcNow(),
-                Status: PendingCommandStatus.Pending);
+                Status: PendingCommandStatus.Pending) {
+                TargetSnapshot = normalized.TargetSnapshot,
+            };
 
             _byMessageId.Add(entry.MessageId, entry);
             _insertionOrder.Enqueue(entry.MessageId);
@@ -435,7 +437,16 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         lock (_gate) {
             // P2-P8 — read tenant/user inside the lock so a concurrent transition cannot mutate
             // the values between the read and the snapshot comparison.
-            (string? Tenant, string? User) current = (_userContext.TenantId, _userContext.UserId);
+            (string? Tenant, string? User) current;
+            try {
+                current = (_userContext.TenantId, _userContext.UserId);
+            }
+            catch (Exception) {
+                // Scope access is an FC-NIP eligibility seam, not a transport/lifecycle gate.
+                // Treat an unavailable accessor like an unknown scope so an accepted command can
+                // still be registered and resolved without carrying a target into publication.
+                current = (null, null);
+            }
 
             // P2-P7 — fail-closed on missing tenant/user. (null, null) must NEVER be cached as a
             // baseline; otherwise the first real (tenant, user) value looks like a "transition"
@@ -504,9 +515,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         };
 
     /// <summary>
-    /// DN7 — accept the entire 32-symbol Crockford alphabet, including the lower-case range. The
-    /// canonical form stored in <c>_byMessageId</c> is uppercase so duplicate observations under
-    /// either casing collapse to the same entry.
+    /// DN7 — delegate ULID validation to NUlid so Crockford overflow encodings are rejected. The
+    /// canonical form stored in <c>_byMessageId</c> collapses equivalent input casing.
     /// </summary>
     private static bool TryNormalizeUlid(
         [NotNullWhen(true)] string? value,
@@ -518,32 +528,20 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             return false;
         }
 
-        if (value.Length != 26) {
+        string candidate = value.ToUpperInvariant();
+        if (!NUlid.Ulid.TryParse(candidate, out NUlid.Ulid parsed)) {
             canonical = null;
-            reason = "invalid-length";
+            reason = "invalid-ulid";
             return false;
         }
 
-        Span<char> upper = stackalloc char[26];
-        for (int i = 0; i < 26; i++) {
-            char c = value[i];
-            char normalized = c switch {
-                >= 'a' and <= 'z' => (char)(c - 32),
-                _ => c,
-            };
-
-            bool valid = normalized is (>= '0' and <= '9') or (>= 'A' and <= 'H') or (>= 'J' and <= 'K') or (>= 'M' and <= 'N') or (>= 'P' and <= 'T') or (>= 'V' and <= 'Z');
-
-            if (!valid) {
-                canonical = null;
-                reason = "invalid-character";
-                return false;
-            }
-
-            upper[i] = normalized;
+        canonical = parsed.ToString();
+        if (!string.Equals(candidate, canonical, StringComparison.Ordinal)) {
+            canonical = null;
+            reason = "non-canonical-ulid";
+            return false;
         }
 
-        canonical = new string(upper);
         reason = null;
         return true;
     }

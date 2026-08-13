@@ -100,6 +100,9 @@ public sealed class FrontComposerHotPathLogTests
         "ReconciliationStateResetFailed",
         "ReconciliationSweepCleanupFailed",
         "ReconciliationStateSubscriberFailed",
+        "PendingOutcomeBufferOverflow",
+        "PendingOutcomeTimestampRejected",
+        "PendingOutcomePublicationFailed",
     ];
 
     private static readonly LogLevel[] ExpectedLevels =
@@ -185,6 +188,9 @@ public sealed class FrontComposerHotPathLogTests
         LogLevel.Warning, // 5778
         LogLevel.Warning, // 5779
         LogLevel.Warning, // 5780
+        LogLevel.Warning, // 5781
+        LogLevel.Warning, // 5782
+        LogLevel.Warning, // 5783
     ];
 
     [Fact]
@@ -195,8 +201,8 @@ public sealed class FrontComposerHotPathLogTests
             .SelectMany(static method => method.GetCustomAttributes<LoggerMessageAttribute>())
             .OrderBy(static attribute => attribute.EventId)];
 
-        attributes.Length.ShouldBe(81);
-        attributes.Select(static attribute => attribute.EventId).ShouldBe(Enumerable.Range(5700, 81));
+        attributes.Length.ShouldBe(84);
+        attributes.Select(static attribute => attribute.EventId).ShouldBe(Enumerable.Range(5700, 84));
         attributes.Select(static attribute => attribute.EventName).ShouldBe(ExpectedEventNames);
         attributes.Select(static attribute => attribute.Level).ShouldBe(ExpectedLevels);
     }

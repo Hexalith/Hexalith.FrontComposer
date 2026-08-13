@@ -7,6 +7,59 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// </summary>
 public static class CommandServiceExtensions {
     /// <summary>
+    /// Dispatches a command and forwards typed lifecycle observations when the implementation
+    /// supports <see cref="ICommandServiceWithLifecycleObservations"/>.
+    /// </summary>
+    /// <typeparam name="TCommand">The command type.</typeparam>
+    /// <param name="commandService">The command service.</param>
+    /// <param name="command">The command to dispatch.</param>
+    /// <param name="onLifecycleObservation">Optional typed lifecycle observation callback.</param>
+    /// <param name="cancellationToken">A token to observe for cancellation.</param>
+    /// <returns>The acknowledgement result for the dispatch.</returns>
+    /// <exception cref="NotSupportedException">
+    /// Thrown when a non-null callback is supplied but the service cannot report typed observations.
+    /// </exception>
+    public static Task<CommandResult> DispatchWithLifecycleObservationsAsync<TCommand>(
+        this ICommandService commandService,
+        TCommand command,
+        Action<CommandLifecycleObservation>? onLifecycleObservation,
+        CancellationToken cancellationToken = default)
+        where TCommand : class {
+#if NET10_0_OR_GREATER
+        ArgumentNullException.ThrowIfNull(commandService);
+#else
+        if (commandService is null) {
+            throw new ArgumentNullException(nameof(commandService));
+        }
+#endif
+
+        if (commandService is ICommandServiceWithLifecycleObservations observationAware) {
+            return observationAware.DispatchAsync(command, onLifecycleObservation, cancellationToken);
+        }
+
+        if (commandService is ICommandServiceWithLifecycle lifecycleAware) {
+            return lifecycleAware.DispatchAsync(
+                command,
+                onLifecycleObservation is null
+                    ? null
+                    : (state, messageId) => onLifecycleObservation(new CommandLifecycleObservation(
+                        state,
+                        messageId,
+                        CommandMateriality.Unknown)),
+                cancellationToken);
+        }
+
+        if (onLifecycleObservation is not null) {
+            throw new NotSupportedException(
+                $"The registered {nameof(ICommandService)} implementation '{commandService.GetType().FullName}' "
+                + $"does not implement {nameof(ICommandServiceWithLifecycle)} or {nameof(ICommandServiceWithLifecycleObservations)}; "
+                + "typed lifecycle observations cannot be forwarded.");
+        }
+
+        return commandService.DispatchAsync(command, cancellationToken);
+    }
+
+    /// <summary>
     /// Dispatches a command and forwards lifecycle notifications when the implementation supports
     /// <see cref="ICommandServiceWithLifecycle"/>. When <paramref name="onLifecycleChange"/> is
     /// <see langword="null"/>, any <see cref="ICommandService"/> implementation is accepted.

@@ -1369,7 +1369,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    private static string ProjectionTypeFromViewKey()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        int separator = _viewKey.IndexOf(':');");
-        _ = sb.AppendLine("        return separator > 0 && separator < _viewKey.Length - 1 ? _viewKey[(separator + 1)..] : _viewKey;");
+        _ = sb.AppendLine("        return separator >= 0 && separator < _viewKey.Length - 1 ? _viewKey[(separator + 1)..] : _viewKey;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         bool hasStableRowKey = RoleBodyHelpers.ResolveItemKeyAccessorExpression(model) != "(object)x";

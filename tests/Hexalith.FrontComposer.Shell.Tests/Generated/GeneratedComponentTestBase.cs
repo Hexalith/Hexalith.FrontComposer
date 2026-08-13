@@ -128,7 +128,14 @@ public abstract class GeneratedComponentTestBase : BunitContext {
             Hexalith.FrontComposer.Shell.Services.Auth.NoOpAuthRedirector>();
         _ = Services.AddScoped<IPendingCommandStateService, PendingCommandStateService>();
         _ = Services.AddScoped<INewItemIndicatorStateService, NewItemIndicatorStateService>();
+        _ = Services.AddScoped<PendingCommandOutcomeResolver>();
+        _ = Services.AddScoped<IPendingCommandOutcomeResolver>(sp => sp.GetRequiredService<PendingCommandOutcomeResolver>());
+        _ = Services.AddScoped<IPendingCommandOutcomeCoordinator>(sp => sp.GetRequiredService<PendingCommandOutcomeResolver>());
         _ = Services.AddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
+        IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
+        _ = userContext.TenantId.Returns("test-tenant");
+        _ = userContext.UserId.Returns("test-user");
+        _ = Services.AddSingleton(userContext);
 
         // Story 6-2 T4 — generated views inject IProjectionTemplateRegistry; bUnit tests use the
         // empty registry by default so DefaultBody is always selected.

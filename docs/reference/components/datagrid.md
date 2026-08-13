@@ -80,18 +80,16 @@ The focused FC-TBL public baseline currently covers these public types under
 | `FcMaxItemsCapNotice` | Max-items cap notice. | `ViewKey`, `ItemsCount`, `AnyRealFilterActive`, `Visible`. |
 | `FcNewItemIndicator` | Accessible fresh-row indicator component. | `Text`, `AriaLabelOverride`. |
 
-`FcNewItemIndicator` is a confirmed component and state primitive. Automatic row-level producer wiring
-is **not yet available** and remains under active remediation. Projection nudges remain insufficient
-row identity.
+`FcNewItemIndicator` producer wiring uses an explicit command-to-projection `[CommandTarget]`
+declaration. `SameAsSource` is valid only for `Update` and copies the generated row snapshot once
+immediately before dispatch. `Provider` resolves create, cross-row update, status-move, and delete
+identity through exactly one `ICommandTargetIdentityProvider<TCommand>`.
 
-The approved design — none of which ships today — resolves the indicator target from an explicit
-command-to-projection declaration plus a typed target-identity provider, or from a declared
-same-as-source snapshot, captured immutably before dispatch. Terminal material, no-op, or unknown
-evidence is evaluated separately; unknown identity or materiality suppresses the indicator. No public
-type for any of this is published yet, and none is covered by the FC-TBL baseline above. The terminal
-producer boundary, generated-grid invalidation, scope-safe dismissal, and atomic per-row first-wins
-behavior are still outstanding, and this section will be updated when the feature ships. Adopters
-should not build against the design described here until then.
+Only a confirmed or idempotent-confirmed `Material` terminal observation can publish an indicator.
+Delete, rejection, `NoOp`, `Unknown`, invalid time/scope, or unresolved/conflicting identity suppresses
+publication without changing command dispatch or lifecycle. Every terminal adapter routes through the
+single pending-outcome resolver boundary; projection nudges and ambient row placement are never target
+or materiality evidence.
 
 Reserved filter keys remain framework-owned: `__status` for status filters, `__search` for in-grid
 search, and `__hidden` for hidden-column persistence. Column filter keys beginning with `__` are

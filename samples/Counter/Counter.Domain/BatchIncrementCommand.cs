@@ -6,6 +6,7 @@ namespace Counter.Domain;
 /// 3 non-derivable fields → CompactInline density (Story 2-2 AC10).
 /// </summary>
 [Command]
+[CommandTarget(typeof(CounterProjection), CommandTargetResolutionMode.SameAsSource, CommandTargetChangeKind.Update)]
 [BoundedContext("Counter")]
 public class BatchIncrementCommand {
     public string MessageId { get; set; } = string.Empty;

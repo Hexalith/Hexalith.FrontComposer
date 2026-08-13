@@ -255,6 +255,13 @@ public sealed class FcShellOptions {
     public int MaxPendingCommandPollingDurationMs { get; set; } = 120_000;
 
     /// <summary>
+    /// Maximum time in milliseconds that generated forms wait for an explicit typed command-target
+    /// provider before dispatch continues without FC-NIP eligibility. Default: 500 ms.
+    /// </summary>
+    [Range(1, 10_000, ErrorMessage = "CommandTargetResolutionTimeoutMs must be between 1 and 10000.")]
+    public int CommandTargetResolutionTimeoutMs { get; set; } = 500;
+
+    /// <summary>
     /// Number of retry attempts after the initial EventStore command dispatch attempt for retryable
     /// pre-accept transport faults. Default: 1 retry.
     /// </summary>

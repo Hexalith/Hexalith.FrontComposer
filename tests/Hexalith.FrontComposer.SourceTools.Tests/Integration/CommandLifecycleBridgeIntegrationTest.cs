@@ -37,6 +37,9 @@ public class CommandLifecycleBridgeIntegrationTest {
         subscribeCount.ShouldBe(6, "bridge must subscribe to exactly the 6 lifecycle actions");
 
         int transitionCallCount = System.Text.RegularExpressions.Regex.Count(bridgeSource, "_service\\.Transition\\(");
-        transitionCallCount.ShouldBe(6, "each subscription must forward via _service.Transition");
+        transitionCallCount.ShouldBe(1, "all six actions must converge through the guarded ForwardAction helper");
+        bridgeSource.ShouldContain("_service.Subscribe(correlationId, OnLifecycleTransition)");
+        bridgeSource.ShouldContain("_dispatcher.Dispatch(new PlaceOrderCommandActions.ConfirmedAction");
+        bridgeSource.ShouldContain("_dispatcher.Dispatch(new PlaceOrderCommandActions.RejectedAction");
     }
 }
