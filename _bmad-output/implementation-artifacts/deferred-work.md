@@ -2378,3 +2378,7 @@ status: open
 - source_spec: none
   summary: Make FC-NIP Playwright contract guards cross-platform by fixing PLAYWRIGHT_SKIP_WEBSERVER env syntax that fails on Windows runners.
   evidence: Split from CI run 31715693323 because the accessibility-visual Windows npm failure is independently shippable from the Linux Gate 2b CA1707 identifier-inventory seal drift.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-31723965027-fix-cicd.md`
+  summary: Document NightlyProperty as an advisory/ungoverned trait and add a quality.yml lane if it should stay excluded from blocking CI and release.
+  evidence: Gate 3a and now release `phase_tests()` exclude `NightlyProperty`, but project-context lists only palette/perf/quarantine as advisory and quality.yml has no NightlyProperty lane.
