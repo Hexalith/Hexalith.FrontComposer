@@ -1,6 +1,6 @@
 ---
 created: 2026-07-15
-updated: 2026-08-04
+updated: 2026-08-13
 baseline_commit: 874fe13ba4d2a979898fc9b10451827bab94988c
 owner: Release Owner (executes) + Developer (verification tooling/evidence assistance)
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md
@@ -89,10 +89,10 @@ entry introduced by NuGet.org.
         evidence without exposing secrets (AC6, AC10).
   - [x] Reconcile every publish-capable run during the enabled window across GitHub Releases and
         every configured package registry; record any partial side effect (AC10).
-- [ ] T1 — Owner prerequisites.
+- [x] T1 — Owner prerequisites.
   - [x] Record the decision that author signing, certificate custody, and author timestamping are
         not production prerequisites (AC2, AC3).
-  - [ ] Confirm the NuGet.org owner signer policy for all eight package IDs permits unsigned
+  - [x] Confirm the NuGet.org owner signer policy for all eight package IDs permits unsigned
         uploads; do not dispatch until this external setting is confirmed (AC3).
   - [x] File BUILD-REL-1 upstream with the full governed contract; record the URL in the G2
         request (AC4). *Filed 2026-07-18 under Release Owner directive:
@@ -139,7 +139,7 @@ entry introduced by NuGet.org.
 
 ## Definition of Done
 
-- [ ] ACs 1-4 recorded, including the external NuGet.org signer-policy confirmation.
+- [x] ACs 1-4 recorded, including the external NuGet.org signer-policy confirmation.
 - [x] Approved immutable Builds workflow identity recorded.
 - [ ] First governed release authorized, published, and byte-verified from NuGet and GitHub.
 - [x] Coarse execution switch reset and the enabled-window containment audit recorded.
@@ -160,6 +160,26 @@ The filename is retained for historical link stability. The active story above s
 certificate-oriented requirements recorded before 2026-08-04.
 
 ## Dev Agent Record
+
+### REL-5 T1 Release Owner Attestation (2026-08-13)
+
+Administrator, acting as Release Owner, confirmed that the NuGet.org package-owner signer policy
+permits unsigned uploads for all eight governed package IDs:
+
+- `Hexalith.FrontComposer.Cli`
+- `Hexalith.FrontComposer.Contracts`
+- `Hexalith.FrontComposer.Contracts.UI`
+- `Hexalith.FrontComposer.Mcp`
+- `Hexalith.FrontComposer.Schema`
+- `Hexalith.FrontComposer.Shell`
+- `Hexalith.FrontComposer.SourceTools`
+- `Hexalith.FrontComposer.Testing`
+
+This attestation completes T1 and the remaining AC3 prerequisite. It does not itself dispatch,
+approve inside GitHub, publish, or verify a production release. T4 remains open until the actual
+Release and automatically triggered Release Evidence runs provide their exact source SHA, run
+URLs, conclusions, immutable GitHub Release URL, manifest result, byte-comparison result, NuGet.org
+repository-signature result, and compliant ledger record.
 
 > Historical/superseded record: the 2026-08-03 certificate and timestamp investigation below is
 > retained as an audit trail. It is not a current release prerequisite or operator action.
@@ -226,6 +246,9 @@ certificate-oriented requirements recorded before 2026-08-04.
 - 2026-08-03: Completed the four-release historical byte/evidence reconciliation. Governed
   preflight failed closed before candidate generation; no version, manifest, authorization, or
   publication action was created.
+- 2026-08-13: Release Owner confirmed that all eight governed NuGet.org package-owner signer
+  policies permit unsigned uploads. T1 and the AC1-4 evidence gate are complete; T4 remains open
+  pending an actual protected production run and its automatically generated verification evidence.
 
 ### REL-5 T1/T2 Release Owner Execution Record (2026-08-03)
 
@@ -341,10 +364,10 @@ Historical correction list recorded on 2026-08-03 (superseded on 2026-08-04):
    publication;
 4. authorize GOV-1 evaluators and pass both exact-candidate handoffs end to end.
 
-Current remaining operator action: confirm that the NuGet.org owner signer policy for all eight
-packages permits unsigned uploads, then dispatch the release from the exact current `main` SHA and
-approve that bounded attempt in the protected `production` environment. No signing certificate or
-timestamp authority is required.
+Current remaining operator action: dispatch the release from the exact current `main` SHA and
+approve that bounded attempt in the protected `production` environment, then retain the Release,
+Release Evidence, and immutable GitHub Release URLs. No signing certificate or timestamp authority
+is required.
 
 ## Suggested Review Order
 

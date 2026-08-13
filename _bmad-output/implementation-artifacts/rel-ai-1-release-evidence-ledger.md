@@ -346,7 +346,8 @@ open and a future release still requires the complete FR24 prepublication and pu
 | Entry point | Manual `workflow_dispatch` from the exact current `main` SHA, gated by a successful completed push CI run for that SHA before the protected job starts. |
 | Package inventory | `tools/release-packages.json` declares exactly eight NuGet packages and no containers. |
 | Post-publication trust | Exact GitHub candidate checksums plus `dotnet nuget verify --all`, a NuGet.org Repository-signature transcript bound to `https://api.nuget.org/v3/index.json`, and normalized package-content equality excluding only root `.signature.p7s`. |
-| Required owner action | Confirm that the NuGet.org package-owner signer policy for all eight package IDs permits unsigned uploads; then explicitly dispatch and approve one bounded production release. |
+| NuGet.org owner policy | **Confirmed 2026-08-13 by Administrator acting as Release Owner:** unsigned uploads are permitted for all eight package IDs declared by `tools/release-packages.json`. |
+| Required owner action | Explicitly dispatch and approve one bounded production release, then retain the Release, Release Evidence, and immutable GitHub Release URLs for the compliant record. |
 
 The certificate, timestamp-authority, secret-presence, and rotation observations previously recorded
 in this section are superseded requirements. Their source evidence remains in the dated historical
