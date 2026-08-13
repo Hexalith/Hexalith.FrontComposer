@@ -83,9 +83,9 @@ Phase 1 must ship and become the non-zero push base before Phase 2. Do not open 
 **Commands:**
 - Phase 1: `python3 eng/dependency_handoff.py draft-evaluator` for `ci`/`release`/`post_release` with `--policy-commit 3bc18056946d27b7a0a358fad77625110ff335cd` against future caller trees → `authorized_draft: true`; and against current `0a3508…` workflows → still authorized under Phase 1.
 - Phase 2: `python3 eng/release_contract.py builds --root . --commit 18eea2cdcd375d4e5047b729de4dc0ffc6a982a1 --approved 99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38` → exit 0
-- Review tip `e8d35ea80aacee9b1d1c6291af936418866df06a`: `python3 eng/release_contract.py builds --root . --commit e8d35ea80aacee9b1d1c6291af936418866df06a --approved 99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38` → exit 0
+- Review tip `6888761f83d55485b60e330060d8ec7599bc7954`: `python3 eng/release_contract.py builds --root . --commit 6888761f83d55485b60e330060d8ec7599bc7954 --approved 99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38` → exit 0
 - `python3 eng/release_contract.py manifest --root . --manifest tools/release-packages.json --expected-count 8` → exit 0
 - `python3 -m unittest tests.eng.test_release_contract -v` → all pass
-- `python3 eng/dependency_graph.py --root . validate --commit e8d35ea80aacee9b1d1c6291af936418866df06a` → exit 0
+- `python3 eng/dependency_graph.py --root . validate --commit 6888761f83d55485b60e330060d8ec7599bc7954` → exit 0
 - `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate"` → pass
-- `git ls-tree e8d35ea80aacee9b1d1c6291af936418866df06a references/Hexalith.Builds` → still `99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38`
+- `git ls-tree 6888761f83d55485b60e330060d8ec7599bc7954 references/Hexalith.Builds` → still `99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38`
