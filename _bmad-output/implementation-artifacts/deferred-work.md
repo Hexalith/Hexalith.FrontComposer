@@ -2370,3 +2370,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-31716385563-fix-cicd.md`
   summary: Document the two-phase AD-13 Builds pin pre-authorization pattern in architecture/project-context so future pin bumps do not soft-defer create-ci.
   evidence: Review of the 31716385563 fix noted architecture.md/project-context.md only swap the SHA and omit the active-base policy pre-auth lesson that this incident required.
+
+- source_spec: none
+  summary: Fix Hexalith.Memories integration-fast failures in AccessTelemetry Aspire Dapr clock sidecar startup and OpenBao sidecar secret readiness (CI run 31719611315).
+  evidence: Added from https://github.com/Hexalith/Hexalith.Memories/actions/runs/31719611315 during FrontComposer CA1707 seal planning; independently shippable in Hexalith.Memories and out of scope for FrontComposer ledger reseal.
+
+- source_spec: none
+  summary: Make FC-NIP Playwright contract guards cross-platform by fixing PLAYWRIGHT_SKIP_WEBSERVER env syntax that fails on Windows runners.
+  evidence: Split from CI run 31715693323 because the accessibility-visual Windows npm failure is independently shippable from the Linux Gate 2b CA1707 identifier-inventory seal drift.
