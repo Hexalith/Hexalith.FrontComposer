@@ -2362,3 +2362,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-package-to-3-93-0.md`
   summary: Add a durable Release-mode assertion for the exact EventStore Aspire package identity and absence of its source-project edge.
   evidence: This bump proved `Hexalith.EventStore.Aspire/3.93.0` through an isolated restore and asset inspection, but the existing CI governance tests do not assert the resolved package version.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-31716385563-fix-cicd.md`
+  summary: Fail closed when AD-13 create-ci soft-defers (exit 2) so push CI cannot stay green without an AD-13 handoff artifact.
+  evidence: `.github/workflows/ci.yml` treats create-ci exit 2 as success (`created=false`); reviewer verification-gap demonstrated wrong/missing evaluator rows leave CI green while Release fails with zero AD-13 artifacts.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-31716385563-fix-cicd.md`
+  summary: Document the two-phase AD-13 Builds pin pre-authorization pattern in architecture/project-context so future pin bumps do not soft-defer create-ci.
+  evidence: Review of the 31716385563 fix noted architecture.md/project-context.md only swap the SHA and omit the active-base policy pre-auth lesson that this incident required.
