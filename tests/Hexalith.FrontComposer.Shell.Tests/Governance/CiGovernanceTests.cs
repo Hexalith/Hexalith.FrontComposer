@@ -591,12 +591,51 @@ public sealed class CiGovernanceTests {
             @"uses: Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@(?<sha>[0-9a-f]{40})\b");
         domainReleasePin.Success.ShouldBeTrue(
             "release.yml must pin domain-release.yml to an exact 40-hex lowercase Builds commit SHA (not @main or a tag).");
+        Match buildsExecutionEnv = Regex.Match(
+            workflow,
+            @"(?m)^  BUILDS_EXECUTION_SHA: (?<sha>[0-9a-f]{40})\s*$");
+        buildsExecutionEnv.Success.ShouldBeTrue(
+            "release.yml must declare env.BUILDS_EXECUTION_SHA as an exact 40-hex lowercase Builds commit.");
+        Match hexalithBuildsExecutionEnv = Regex.Match(
+            workflow,
+            @"(?m)^          HEXALITH_BUILDS_EXECUTION_SHA: (?<sha>[0-9a-f]{40})\s*$");
+        hexalithBuildsExecutionEnv.Success.ShouldBeTrue(
+            "release.yml must declare HEXALITH_BUILDS_EXECUTION_SHA as an exact 40-hex lowercase Builds commit.");
+        Match prepareBuildsRef = Regex.Match(
+            workflow,
+            @"(?ms)repository: Hexalith/Hexalith\.Builds\r?\n\s+ref: (?<sha>[0-9a-f]{40})\r?\n\s+path: \.hexalith/builds-execution");
+        prepareBuildsRef.Success.ShouldBeTrue(
+            "release.yml prepare-candidate must check out Hexalith.Builds at an exact 40-hex ref into .hexalith/builds-execution.");
         MatchCollection buildsExecutionShas = Regex.Matches(
             workflow,
             @"builds-execution-sha: (?<sha>[0-9a-f]{40})\b");
         buildsExecutionShas.Count.ShouldBeGreaterThanOrEqualTo(1);
-        buildsExecutionShas.Cast<Match>().ShouldAllBe(match =>
-            match.Groups["sha"].Value == domainReleasePin.Groups["sha"].Value);
+        string approvedBuildsSha = domainReleasePin.Groups["sha"].Value;
+        string[] releaseBuildsCoordinates =
+        [
+            buildsExecutionEnv.Groups["sha"].Value,
+            hexalithBuildsExecutionEnv.Groups["sha"].Value,
+            prepareBuildsRef.Groups["sha"].Value,
+            approvedBuildsSha,
+            .. buildsExecutionShas.Cast<Match>().Select(match => match.Groups["sha"].Value),
+        ];
+        releaseBuildsCoordinates.ShouldAllBe(sha => sha == approvedBuildsSha);
+
+        ProcessResult buildsGitlink = RunProcess(root, "git", [
+            "ls-tree",
+            "HEAD",
+            "references/Hexalith.Builds",
+        ]);
+        buildsGitlink.ExitCode.ShouldBe(0, buildsGitlink.Error);
+        Match gitlinkSha = Regex.Match(
+            buildsGitlink.Output,
+            @"^160000 commit (?<sha>[0-9a-f]{40})\treferences/Hexalith\.Builds\s*$",
+            RegexOptions.Multiline);
+        gitlinkSha.Success.ShouldBeTrue(
+            $"git ls-tree HEAD references/Hexalith.Builds must report a 160000 gitlink, got: {buildsGitlink.Output}");
+        gitlinkSha.Groups["sha"].Value.ShouldBe(
+            approvedBuildsSha,
+            "release.yml Builds coordinates must equal the references/Hexalith.Builds gitlink at HEAD.");
 
         // The reusable workflow requires actions: read to validate the successful exact-source CI
         // run. Assert it on the release job itself: a workflow-level or sibling-job occurrence
