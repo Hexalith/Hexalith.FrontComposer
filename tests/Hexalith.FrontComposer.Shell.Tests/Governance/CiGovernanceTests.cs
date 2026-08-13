@@ -143,7 +143,7 @@ public sealed class CiGovernanceTests {
         // supplemental quality.yml; the release path no longer re-runs tests (the reusable
         // domain-release.yml publishes and CI already gated the head). REL-3 (2026-07-18): the
         // release-lane test run moved from the supplemental evidence workflow into the
-        // pre-publication orchestrator, which runs the release tests (excluding Quarantined)
+        // pre-publication orchestrator, which runs the release tests (Gate 3a filter)
         // against the exact candidates before any publication side effect.
         string root = RepositoryRoot();
         string quality = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
@@ -160,8 +160,13 @@ public sealed class CiGovernanceTests {
 
         // Review VG (2026-07-18): pin the executable `--filter` argument pair in the
         // orchestrator's dotnet-test invocation, not the bare trait string — a comment
-        // containing `Category!=Quarantined` must not satisfy this contract.
-        orchestrator.ShouldContain("\"--filter\", \"Category!=Quarantined\",");
+        // containing the Gate 3a filter must not satisfy this contract.
+        orchestrator.ShouldContain("\"--filter\", \"Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined\",");
+        orchestrator.ShouldNotContain("\"--filter\", \"Category!=Quarantined\",");
+
+        string performanceLane = ExtractNamedStep(quality, "Gate 3c: Performance bench (Performance lane)");
+        performanceLane.ShouldContain("continue-on-error: true");
+        performanceLane.ShouldContain("Category=Performance");
     }
 
     [Fact]

@@ -142,6 +142,27 @@ class ReleasePrepublishTests(unittest.TestCase):
         self.assertIn('_validate_unsigned_candidates(base, "restore")', source[descriptor_start:restore_start])
         self.assertIn("_validate_candidate_descriptor", source[restore_start:verify_start])
 
+    def test_phase_tests_uses_gate_3a_filter_and_fail_closed_run(self) -> None:
+        source = (ROOT / "eng" / "release_prepublish.py").read_text(encoding="utf-8")
+        tests_start = source.index("def phase_tests")
+        tests_end = source.index("\ndef ", tests_start + 1)
+        tests_section = source[tests_start:tests_end]
+        self.assertIn('run("tests"', tests_section)
+        self.assertIn(
+            '"--filter", "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined",',
+            tests_section,
+        )
+        self.assertNotIn(
+            '"--filter", "Category!=Quarantined",',
+            tests_section,
+        )
+        self.assertNotIn("tolerate_failure=True", tests_section)
+        run_start = source.index("def run(")
+        run_end = source.index("\ndef ", run_start + 1)
+        run_section = source[run_start:run_end]
+        self.assertIn("raise PhaseFailure", run_section)
+        self.assertIn("not tolerate_failure", run_section)
+
 
 if __name__ == "__main__":
     unittest.main()

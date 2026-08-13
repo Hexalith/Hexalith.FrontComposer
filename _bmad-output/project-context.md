@@ -218,7 +218,8 @@ _This file contains critical rules and patterns that AI agents must follow when 
   mismatch launches a diff tool and hangs CI/local runs
 - **Trait categories:** `Governance`, `Contract`, `Performance`, `e2e-palette`, `NightlyProperty`,
   `Quarantined`. CI runs Governance + the default lane as **blocking**; palette/perf/quarantine are
-  advisory/warning-only
+  advisory/warning-only. Release prepare-candidate `phase_tests()` uses the same Gate 3a filter
+  (`Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined`)
 - **Naming:** test files are **plural `{Class}Tests.cs`** (matches Tenants, not Commons' singular);
   methods are three-part **`Subject_Scenario_Expectation`**
 - **Generator tests** go through `CompilationHelper.CreateCompilation()`; **Blazor component tests**
@@ -387,4 +388,4 @@ _This file contains critical rules and patterns that AI agents must follow when 
   canonicalization, test lanes, or release pipeline change.
 - Remove rules that become obvious over time.
 
-Last Updated: 2026-07-19
+Last Updated: 2026-08-13

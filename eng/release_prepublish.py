@@ -69,7 +69,8 @@ EXPECTED_PACKAGE_COUNT = 8
 SOLUTION = "Hexalith.FrontComposer.slnx"
 
 # Mirrors the release test lane previously hosted by release-evidence.yml (G1):
-# the seven CI-authoritative test projects, Quarantined excluded.
+# the seven CI-authoritative test projects, Gate 3a filter
+# (Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined).
 TEST_PROJECTS = [
     "tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj",
     "tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj",
@@ -255,7 +256,7 @@ def phase_tests() -> None:
         run("tests", [
             "dotnet", "test", project,
             "--configuration", "Release", "--no-build",
-            "--filter", "Category!=Quarantined",
+            "--filter", "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined",
             "--results-directory", str(TEST_RESULTS_DIR / name),
             "--logger", f"trx;LogFileName={name}.trx",
         ], env=test_env)
