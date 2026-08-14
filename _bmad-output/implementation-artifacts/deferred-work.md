@@ -2402,3 +2402,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/rel-5-provision-signing-identity-and-first-governed-release.md`
   summary: Restore or replace REL-5 `baseline_commit` `874fe13ba4d2a979898fc9b10451827bab94988c` so later reviews can diff against the declared baseline.
   evidence: `git diff` against that object fails with `bad object` in this clone; the 2026-08-14 review used a best-effort working-tree diff versus HEAD instead.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29643539939-fix-cicd.md`
+  summary: Align reusable Release workflow pins with current Builds HEAD `606d9f1` (tests still expect `99d5a46`).
+  evidence: `CiGovernanceTests.ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate` fails on later main; this restore-close did not change workflows or gitlinks.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-29643539939-fix-cicd.md`
+  summary: Reseal the analyzer-policy identifier inventory for later-main drift (`6824` / `af8a8d24…` vs sealed `6820` / `6c099739…`).
+  evidence: `AnalyzerPolicyGovernanceTests.AnalyzerPolicy_IdentifierInventory_MatchesSeal` fails on later main; the July `6188` ledger refresh in this spec is historical and was not re-opened.

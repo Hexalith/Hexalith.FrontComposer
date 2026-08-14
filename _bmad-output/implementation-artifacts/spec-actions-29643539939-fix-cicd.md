@@ -2,7 +2,7 @@
 title: 'Fix CI restore catalog compatibility for current FrontComposer dependencies'
 type: 'bugfix'
 created: '2026-07-18'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 0
 baseline_commit: 'd8ea9c32fb7bba3ab26da7a6b87b7edb947f5714'
 context: []
@@ -67,6 +67,8 @@ context: []
 - Given the accepted Memories submodule head, when the infrastructure-governance test reads its nested Builds gitlink, then it expects `437c4c02619cfb3fff7792796e5d76d25c7521ad`, independently from the unchanged Parties and EventStore pins.
 - Given the FrontComposer fix commit, when its parent gitlinks are inspected, then the accepted Builds and Tenants heads plus the reviewed Parties correction are retained without unrelated pointer changes.
 
+**Later-main close (2026-08-14):** The human waived the July-literal pins still written above and in the frozen block. Binding evidence is restore without `NU1102`/`NU1010`, no Parties MinVer configuration, and a version-free root catalog shim. Waived literals: Builds `8fd1b07`, Tenants `5f16001`, `Hexalith.Tenants.Client` `3.2.18`, Parties local CustomElements `10.0.9`, Parties local MCP `1.4.0`, Memories nested Builds `437c4c02619cfb3fff7792796e5d76d25c7521ad`. `Hexalith.Tenants.Client` now tracks shared `HexalithTenantsVersion` `5.4.1`. The July analyzer-ledger hash refresh (`6188`) is historical; later-main inventory drift is deferred.
+
 ## Spec Change Log
 
 - 2026-07-18: Governance verification found that the same Parties cleanup had also removed its required lower `ModelContextProtocol` and `ModelContextProtocol.AspNetCore` overrides. Restored those `1.4.0` overrides with the Picker package version; this avoids a passing Restore followed by a deterministic governance failure. KEEP: MinVer remains removed per the human semantic-release decision.
@@ -75,10 +77,11 @@ context: []
 - 2026-07-18: Refreshed the analyzer-policy ledger's test-source hash after that intentional governance-test update changed the deterministic identifier inventory (the token count remains `6188`). This preserves the guard's closed-world detection of subsequent unreviewed test-source drift.
 - 2026-08-14: Re-drove the remaining Parties gitlink task on current `main`. The parent already records Parties `356a6f7` (MinVer-removal commit `c3827eb` is an ancestor) without resetting Builds `606d9f1` or Tenants `acab0b51`. Did not re-apply Parties `CustomElements` `10.0.9` or MCP `1.4.0` local rows: `parties-catalog-v1` now forbids local overrides, and the selected Builds catalog already supplies `CustomElements` `10.0.10` plus MCP `1.4.1`. Did not replace those later heads with July pins `8fd1b07` / `5f16001` (Ask First).
 - 2026-08-14: Human closed this spec as already satisfied by later `main`. Keep current heads (Builds `606d9f1`, Tenants `acab0b51`, Parties `356a6f7`, Memories `30104162`) and the current shared catalog (Tenants `5.4.1`, CustomElements `10.0.10`, MCP `1.4.1`). Do not rewind to the July pins. The original restore/`NU1102`/`NU1010`/MinVer/root-shim intent is the acceptance bar.
+- 2026-08-14: Review patches recorded the waived July-literal ACs, replaced the stale Design Notes MCP `1.4.0` local-pin claim, and narrowed Verification to the restore plus catalog-ownership commands that prove the close. KEEP: frozen July pins stay unreadited; full `Category=Governance` remains out of this close because of later-main Builds lockstep and analyzer-inventory drift.
 
 ## Design Notes
 
-The accepted Builds update corrects the original unavailable-Tenants catalog value. The current Parties failure is a separate packaging cleanup error: CustomElements remains a direct Picker dependency and the project intentionally preserves lower MCP `1.4.0` compatibility pins, while MinVer must be removed entirely because semantic-release calculates package release versions. This is narrower and more durable than moving CI to source references, which would violate the repository's CI/package-validation contract and conceal future release incompatibilities.
+The original unavailable-Tenants catalog value was corrected on the accepted Builds line and later superseded by shared `HexalithTenantsVersion` `5.4.1` (`Hexalith.Tenants.Client` tracks that property). Parties no longer ships MinVer or local CustomElements/MCP overrides; those versions come from the selected Builds catalog (`10.0.10` / `1.4.1`). This remains narrower than moving CI to source references, which would violate the repository's CI/package-validation contract and conceal future release incompatibilities.
 
 ## Verification
 
@@ -86,4 +89,28 @@ The accepted Builds update corrects the original unavailable-Tenants catalog val
 
 - `dotnet restore Hexalith.FrontComposer.slnx --force-evaluate` -- expected: CI-equivalent Restore succeeds with no `NU1102` or `NU1010` diagnostics.
 - `dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:EnableFrontComposerPackageValidation=true --force-evaluate` -- expected: the Release/package restore succeeds against the same catalog.
-- `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category=Governance"` -- expected: the central-package ownership guard passes and the root shim remains version-free.
+- `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-restore --filter "FullyQualifiedName~CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds|FullyQualifiedName~SyntheticCentralPackageVersion_FailsEvenWithoutProjectReference|FullyQualifiedName~CentralPackageVersionOwnership_InvalidOperations_AreRejected"` -- expected: the central-package ownership guard passes and the root shim remains version-free.
+- `python3 eng/dependency_graph.py validate --commit <HEAD>` -- expected: `ok: true`, including `parties-catalog-v1` `no_minver`.
+
+## Suggested Review Order
+
+**Close decision**
+
+- Human waiver of July pins; later-main restore intent is the bar
+  [`spec-actions-29643539939-fix-cicd.md:70`](spec-actions-29643539939-fix-cicd.md#L70)
+
+- Recorded current heads and catalog versions that replace the July pins
+  [`spec-actions-29643539939-fix-cicd.md:79`](spec-actions-29643539939-fix-cicd.md#L79)
+
+**Verification**
+
+- Restore, catalog-ownership, and parties-catalog `no_minver` commands that prove the close
+  [`spec-actions-29643539939-fix-cicd.md:86`](spec-actions-29643539939-fix-cicd.md#L86)
+
+**Deferred later-main governance**
+
+- Release workflow still expects Builds `99d5a46` while HEAD is `606d9f1`
+  [`deferred-work.md:2406`](deferred-work.md#L2406)
+
+- Analyzer-policy inventory seal drifted after the July `6188` refresh
+  [`deferred-work.md:2410`](deferred-work.md#L2410)
