@@ -2,7 +2,7 @@
 title: 'Fix CI restore catalog compatibility for current FrontComposer dependencies'
 type: 'bugfix'
 created: '2026-07-18'
-status: 'in-progress'
+status: 'in-review'
 review_loop_iteration: 0
 baseline_commit: 'd8ea9c32fb7bba3ab26da7a6b87b7edb947f5714'
 context: []
@@ -54,7 +54,7 @@ context: []
 - [x] `references/Hexalith.Parties/Directory.Build.props` -- remove the MinVer override, tag/pre-release configuration, and private `PackageReference` -- semantic-release, rather than MinVer, owns release version calculation and Restore no longer needs a MinVer central package version.
 - [x] `references/Hexalith.Parties/Directory.Packages.props` -- restore the unconditional `Microsoft.AspNetCore.Components.CustomElements` package version `10.0.9` and the existing `ModelContextProtocol`/`ModelContextProtocol.AspNetCore` `1.4.0` overrides -- satisfies the existing Picker dependency and the governed Parties MCP compatibility contract under central package management.
 - [x] `tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs` -- split the former shared Memories/Parties nested Builds expectation, pin Memories to its accepted `437c4c02` advance, and prove the published Tenants/Parties package configuration -- keeps the governance invariants aligned with the separately versioned submodules and guards the complete restore fix.
-- [ ] `references/Hexalith.Parties` gitlink -- record the reviewed Parties correction alongside the accepted Builds and Tenants heads without resetting any of those three submodules -- makes the complete restore-compatible set reproducible in CI.
+- [x] `references/Hexalith.Parties` gitlink -- record the reviewed Parties correction alongside the accepted Builds and Tenants heads without resetting any of those three submodules -- makes the complete restore-compatible set reproducible in CI.
 - [x] `Directory.Packages.props` -- inspect without modifying it -- proves the remedy did not bypass the import-only catalog boundary.
 - [x] `_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json` -- refresh the test-source inventory hash for the intentional governance-test update -- keeps the analyzer-policy gate fail-closed without masking source drift.
 
@@ -73,6 +73,8 @@ context: []
 - 2026-07-18: The next governance assertion exposed a stale shared Memories/Parties nested-Builds constant after the accepted Memories advance. Split the constants and pinned Memories to `437c4c02`; this avoids rejecting a valid accepted gitlink while retaining independent checks for all three nested dependencies.
 - 2026-07-18: Hardened the same governance test to assert `HexalithTenantsVersion=3.2.18`, the restored Parties CustomElements/MCP entries, and absent MinVer integration. This gives each CI-failure matrix row a passing automated guard in addition to the actual Restore command.
 - 2026-07-18: Refreshed the analyzer-policy ledger's test-source hash after that intentional governance-test update changed the deterministic identifier inventory (the token count remains `6188`). This preserves the guard's closed-world detection of subsequent unreviewed test-source drift.
+- 2026-08-14: Re-drove the remaining Parties gitlink task on current `main`. The parent already records Parties `356a6f7` (MinVer-removal commit `c3827eb` is an ancestor) without resetting Builds `606d9f1` or Tenants `acab0b51`. Did not re-apply Parties `CustomElements` `10.0.9` or MCP `1.4.0` local rows: `parties-catalog-v1` now forbids local overrides, and the selected Builds catalog already supplies `CustomElements` `10.0.10` plus MCP `1.4.1`. Did not replace those later heads with July pins `8fd1b07` / `5f16001` (Ask First).
+- 2026-08-14: Human closed this spec as already satisfied by later `main`. Keep current heads (Builds `606d9f1`, Tenants `acab0b51`, Parties `356a6f7`, Memories `30104162`) and the current shared catalog (Tenants `5.4.1`, CustomElements `10.0.10`, MCP `1.4.1`). Do not rewind to the July pins. The original restore/`NU1102`/`NU1010`/MinVer/root-shim intent is the acceptance bar.
 
 ## Design Notes
 
