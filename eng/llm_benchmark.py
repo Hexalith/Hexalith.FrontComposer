@@ -23,6 +23,12 @@ def read_json(path: pathlib.Path) -> Any:
         raise SystemExit(f"invalid JSON evidence {path}: {exc}") from exc
 
 
+def read_json_or_default(path: pathlib.Path | None, default: Any) -> Any:
+    if path is None or not path.is_file():
+        return default
+    return read_json(path)
+
+
 def write_json(path: pathlib.Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
@@ -73,7 +79,7 @@ def load_prompt_contract(root: pathlib.Path) -> tuple[dict[str, Any], list[dict[
 
 
 def budget_status(args: argparse.Namespace) -> int:
-    data = read_json(pathlib.Path(args.budget)) if args.budget else None
+    data = read_json_or_default(pathlib.Path(args.budget) if args.budget else None, None)
     now = dt.datetime.fromisoformat(args.now.replace("Z", "+00:00")) if args.now else dt.datetime.now(dt.timezone.utc)
     status = "budget-unknown"
     if isinstance(data, dict):
@@ -96,7 +102,10 @@ def budget_status(args: argparse.Namespace) -> int:
 def run_benchmark(args: argparse.Namespace) -> int:
     root = pathlib.Path(args.root)
     data, prompts, ids = load_prompt_contract(root)
-    budget = read_json(pathlib.Path(args.budget_artifact)) if args.budget_artifact else {}
+    budget = read_json_or_default(
+        pathlib.Path(args.budget_artifact) if args.budget_artifact else None,
+        {},
+    )
     budget_status_value = str(budget.get("status", "budget-unknown"))
     api_spend_allowed = bool(budget.get("api_spend_allowed", False))
     provider_payload = read_json(pathlib.Path(args.provider_results)) if args.provider_results else None

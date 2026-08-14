@@ -1,0 +1,7 @@
+{
+  "consumed": 0,
+  "expires_at": "1970-01-01T00:00:00Z",
+  "monthly_cap": 0,
+  "provider_cost_metadata_available": false,
+  "retry_storm_detected": false
+}
