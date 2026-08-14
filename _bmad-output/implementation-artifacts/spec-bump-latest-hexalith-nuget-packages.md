@@ -57,7 +57,7 @@ context:
 **Execution:**
 - [x] `references/Hexalith.Builds/Props/Directory.Packages.props` -- set `HexalithEventStoreVersion` to `3.94.1` and `HexalithMemoriesVersion` to `2.21.1` -- these are the only Hexalith families behind nuget.org stable.
 - [x] `references/Hexalith.Builds/Tools/package-version-audit.json` -- refresh EventStore and Memories internal rows so `selectedVersion` equals the new catalog pins and records listed nuget.org evidence -- the validator requires exact catalog↔audit match and already rejects EventStore `3.94.0` vs audit `3.93.0`.
-- [ ] HALT for a human-created or human-approved Builds commit, then advance the root `references/Hexalith.Builds` gitlink to that exact commit -- FrontComposer CI reads the gitlink, not a dirty submodule tree.
+- [x] HALT for a human-created or human-approved Builds commit, then advance the root `references/Hexalith.Builds` gitlink to that exact commit -- FrontComposer CI reads the gitlink, not a dirty submodule tree.
 - [x] Confirm FrontComposer-owned catalog/policy/workflow files stay version-free and keep execution SHA `99d5a46…` -- a compatible catalog re-pin must not reintroduce local mirrors.
 
 **Acceptance Criteria:**
