@@ -15,6 +15,7 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
     private readonly object _gate = new();
     private readonly Dictionary<string, PendingCommandOutcomeObservation> _earlyByOwner = new(StringComparer.Ordinal);
     private readonly Queue<string> _earlyOrder = new();
+    private readonly HashSet<string> _indicatorDecisions = new(StringComparer.Ordinal);
     private readonly IPendingCommandStateService _pendingCommands;
     private readonly INewItemIndicatorStateService? _newItemIndicators;
     private readonly TimeProvider _timeProvider;
@@ -146,7 +147,25 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             }
 
             EnforceScopeBoundaryLocked();
-            PendingCommandRegistrationResult result = _pendingCommands.Register(registration);
+            PendingCommandRegistrationResult result;
+            try {
+                result = _pendingCommands.Register(registration);
+            }
+            catch (Exception ex) {
+                PendingCommandEntry? committed = TryGetCommittedRegistration(registration);
+                if (committed is null) {
+                    throw;
+                }
+
+                FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
+                    _logger,
+                    "AssociationReconciled",
+                    committed.MessageId,
+                    ex.GetType().Name);
+                result = committed.Status == PendingCommandStatus.Pending
+                    ? PendingCommandRegistrationResult.Merged(committed)
+                    : PendingCommandRegistrationResult.MergedTerminal(committed);
+            }
             bool hasBufferKey = TryBuildCurrentBufferKey(
                 registration.MessageId,
                 registration.CorrelationId,
@@ -170,9 +189,26 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
 
             if (_earlyByOwner.Remove(key!, out PendingCommandOutcomeObservation? early)) {
                 PurgeEarlyOrderLocked(key!);
-                PendingCommandOutcomeResolutionResult replay = ApplyObservation(early);
-                if (replay.Entry is { Status: not PendingCommandStatus.Pending } terminal) {
-                    return PendingCommandRegistrationResult.MergedTerminal(terminal);
+                try {
+                    PendingCommandOutcomeResolutionResult replay = ApplyObservation(early);
+                    if (replay.Entry is { Status: not PendingCommandStatus.Pending } terminal) {
+                        return PendingCommandRegistrationResult.MergedTerminal(terminal);
+                    }
+                }
+                catch (Exception ex) {
+                    PendingCommandEntry? committed = TryGetCommittedRegistration(registration);
+                    if (committed is null) {
+                        throw;
+                    }
+
+                    FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
+                        _logger,
+                        "AssociationReplayReconciled",
+                        committed.MessageId,
+                        ex.GetType().Name);
+                    return committed.Status == PendingCommandStatus.Pending
+                        ? result
+                        : PendingCommandRegistrationResult.MergedTerminal(committed);
                 }
             }
 
@@ -251,22 +287,11 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             _disposed = true;
             _earlyByOwner.Clear();
             _earlyOrder.Clear();
+            _indicatorDecisions.Clear();
         }
     }
 
     private PendingCommandOutcomeResolutionResult ApplyObservation(PendingCommandOutcomeObservation observation) {
-        if (_terminalResolver is not null) {
-            PendingCommandOutcomeResolutionResult delegated = _terminalResolver.Resolve(observation);
-            try {
-                PublishNewItemIndicatorIfEligible(observation, delegated);
-            }
-            catch (Exception ex) {
-                FrontComposerHotPathLog.PendingOutcomePublicationFailed(_logger, ex.GetType().Name);
-            }
-
-            return delegated;
-        }
-
         if (string.IsNullOrWhiteSpace(observation.MessageId)) {
             FrontComposerHotPathLog.PendingOutcomeMissingIdentity(
                 _logger,
@@ -275,10 +300,39 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
         }
 
+        if (!TryCanonicalUlid(observation.MessageId, out string? canonicalMessageId)) {
+            return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.InvalidMessageId);
+        }
+
+        PendingCommandOutcomeObservation canonicalObservation = observation with { MessageId = canonicalMessageId };
+        if (_terminalResolver is not null) {
+            PendingCommandOutcomeResolutionResult delegated = _terminalResolver.Resolve(canonicalObservation);
+            if (delegated.Status is PendingCommandOutcomeResolutionStatus.Resolved
+                    or PendingCommandOutcomeResolutionStatus.LifecycleDispatchFailed
+                && delegated.Entry is null) {
+                return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
+            }
+
+            if (delegated.Entry is { } delegatedEntry
+                && (!TryCanonicalUlid(delegatedEntry.MessageId, out string? delegatedMessageId)
+                    || !string.Equals(delegatedMessageId, canonicalMessageId, StringComparison.Ordinal))) {
+                return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
+            }
+
+            try {
+                DecideNewItemIndicator(canonicalObservation, delegated);
+            }
+            catch (Exception ex) {
+                FrontComposerHotPathLog.PendingOutcomePublicationFailed(_logger, ex.GetType().Name);
+            }
+
+            return delegated;
+        }
+
         PendingCommandOutcomeResolutionResult result = PendingCommandOutcomeResolutionResult.From(
-            _pendingCommands.ResolveTerminal(ToTerminalObservation(observation, observation.MessageId)));
+            _pendingCommands.ResolveTerminal(ToTerminalObservation(canonicalObservation, canonicalMessageId!)));
         try {
-            PublishNewItemIndicatorIfEligible(observation, result);
+            DecideNewItemIndicator(canonicalObservation, result);
         }
         catch (Exception ex) {
             FrontComposerHotPathLog.PendingOutcomePublicationFailed(_logger, ex.GetType().Name);
@@ -297,15 +351,17 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             observation.RejectionDetail,
             observation.RejectionDataImpact);
 
-    private void PublishNewItemIndicatorIfEligible(
+    private void DecideNewItemIndicator(
         PendingCommandOutcomeObservation observation,
         PendingCommandOutcomeResolutionResult result) {
-        if (_newItemIndicators is null
-            || result is not {
-                Status: PendingCommandOutcomeResolutionStatus.Resolved
+        if (result is not {
+            Status: PendingCommandOutcomeResolutionStatus.Resolved
                     or PendingCommandOutcomeResolutionStatus.LifecycleDispatchFailed,
-                Entry: { TargetSnapshot: { } target } entry,
-            }
+            Entry: { } entry,
+        }
+            || !_indicatorDecisions.Add(entry.MessageId)
+            || _newItemIndicators is null
+            || entry.TargetSnapshot is not { } target
             || observation.Materiality != CommandMateriality.Material
             || !IsConfirmedOutcome(observation.Outcome)
             || target.ChangeKind == CommandTargetChangeKind.Delete
@@ -377,6 +433,7 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
                 _scopeLost = true;
                 _earlyByOwner.Clear();
                 _earlyOrder.Clear();
+                _indicatorDecisions.Clear();
             }
 
             return;
@@ -389,6 +446,7 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
                     || !string.Equals(_scopeSnapshot.Value.User, current.User, StringComparison.Ordinal)))) {
             _earlyByOwner.Clear();
             _earlyOrder.Clear();
+            _indicatorDecisions.Clear();
         }
 
         _scopeSnapshot = current;
@@ -478,6 +536,23 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
                 && _earlyByOwner.ContainsKey(candidate)) {
                 _earlyOrder.Enqueue(candidate);
             }
+        }
+    }
+
+    private PendingCommandEntry? TryGetCommittedRegistration(PendingCommandRegistration registration) {
+        try {
+            PendingCommandEntry? committed = _pendingCommands.GetByMessageId(registration.MessageId);
+            return committed is not null && committed.HasSameFrameworkMetadata(registration)
+                ? committed
+                : null;
+        }
+        catch (Exception ex) {
+            FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
+                _logger,
+                "AssociationReconciliationFailed",
+                registration.MessageId,
+                ex.GetType().Name);
+            return null;
         }
     }
 

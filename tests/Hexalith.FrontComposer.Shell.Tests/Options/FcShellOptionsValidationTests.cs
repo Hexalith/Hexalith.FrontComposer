@@ -27,6 +27,7 @@ public sealed class FcShellOptionsValidationTests {
         options.MaxPendingCommandEntries.ShouldBe(100);
         options.CommandDispatchRetryAttempts.ShouldBe(1);
         options.CommandDispatchRetryDelayMs.ShouldBe(250);
+        options.CommandTargetResolutionTimeoutMs.ShouldBe(500);
         options.AppTitle.ShouldBeNull();
 
         ValidateDataAnnotations(options).ShouldBeEmpty();
@@ -151,6 +152,8 @@ public sealed class FcShellOptionsValidationTests {
     [InlineData(nameof(FcShellOptions.CommandDispatchRetryAttempts), 4)]
     [InlineData(nameof(FcShellOptions.CommandDispatchRetryDelayMs), 0)]
     [InlineData(nameof(FcShellOptions.CommandDispatchRetryDelayMs), 60_001)]
+    [InlineData(nameof(FcShellOptions.CommandTargetResolutionTimeoutMs), 0)]
+    [InlineData(nameof(FcShellOptions.CommandTargetResolutionTimeoutMs), 10_001)]
     public void Range_annotations_enforce_min_max_bounds_on_each_threshold_property(string propertyName, int outOfRangeValue) {
         FcShellOptions options = new();
         typeof(FcShellOptions).GetProperty(propertyName)!.SetValue(options, outOfRangeValue);

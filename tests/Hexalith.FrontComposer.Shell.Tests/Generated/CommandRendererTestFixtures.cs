@@ -130,7 +130,8 @@ public class DeleteWidgetCommand {
 [CommandTarget(
     typeof(Counter.Domain.CounterProjection),
     CommandTargetResolutionMode.SameAsSource,
-    CommandTargetChangeKind.Update)]
+    CommandTargetChangeKind.Update,
+    ExpectedStatus = "Approved")]
 public class SameSourceTargetCommand {
     public string MessageId { get; set; } = string.Empty;
 

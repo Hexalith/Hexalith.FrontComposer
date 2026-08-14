@@ -102,14 +102,15 @@ public static class EventStoreServiceExtensions {
             new AuthorizingCommandServiceDecorator(
                 sp.GetRequiredService<EventStoreCommandClient>(),
                 sp.GetRequiredService<ICommandDispatchAuthorizationGate>(),
-                sp.GetRequiredService<TimeProvider>()));
-        services.TryAddScoped<ICommandServiceWithLifecycleObservations>(sp =>
-        {
+                sp.GetRequiredService<TimeProvider>(),
+                sp.GetRequiredService<IOptions<FcShellOptions>>()));
+        services.TryAddScoped<ICommandServiceWithLifecycleObservations>(sp => {
             ICommandServiceWithLifecycle service = sp.GetRequiredService<ICommandServiceWithLifecycle>();
             return service as ICommandServiceWithLifecycleObservations
                 ?? new LegacyLifecycleObservationCommandServiceAdapter(
                     service,
-                    sp.GetRequiredService<TimeProvider>());
+                    sp.GetRequiredService<TimeProvider>(),
+                    sp.GetRequiredService<IOptions<FcShellOptions>>());
         });
         services.TryAddScoped<ICommandService>(sp =>
             sp.GetRequiredService<ICommandServiceWithLifecycle>());

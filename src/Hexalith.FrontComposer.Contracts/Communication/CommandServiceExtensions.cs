@@ -42,10 +42,18 @@ public static class CommandServiceExtensions {
                 command,
                 onLifecycleObservation is null
                     ? null
-                    : (state, messageId) => onLifecycleObservation(new CommandLifecycleObservation(
-                        state,
-                        messageId,
-                        CommandMateriality.Unknown)),
+                    : (state, messageId) => {
+                        try {
+                            onLifecycleObservation(new CommandLifecycleObservation(
+                                state,
+                                messageId,
+                                CommandMateriality.Unknown));
+                        }
+                        catch (Exception ex) when (!IsFatal(ex)) {
+                            // The observer is downstream of an accepted legacy dispatch and must
+                            // not replace its transport result.
+                        }
+                    },
                 cancellationToken);
         }
 
@@ -105,4 +113,10 @@ public static class CommandServiceExtensions {
 
         return commandService.DispatchAsync(command, cancellationToken);
     }
+
+    private static bool IsFatal(Exception exception)
+        => exception is OutOfMemoryException
+            or StackOverflowException
+            or System.Threading.ThreadAbortException
+            or AccessViolationException;
 }

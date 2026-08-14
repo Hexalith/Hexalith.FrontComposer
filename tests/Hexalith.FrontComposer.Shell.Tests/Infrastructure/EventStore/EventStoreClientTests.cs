@@ -90,6 +90,42 @@ public sealed class EventStoreClientTests {
     }
 
     [Fact]
+    public async Task CommandClient_AcceptedTypedDispatchPropagatesFatalObserverFailure() {
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.Accepted))),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance);
+
+        _ = await Should.ThrowAsync<OutOfMemoryException>(() =>
+            ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+                new ShipOrderCommand(),
+                _ => ThrowFatal<object?>(),
+                TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task CommandClient_AcceptedTypedDispatchPropagatesFatalClockFailure() {
+        EventStoreCommandClient sut = new(
+            new SingleClientFactory(new RecordingHandler(_ => new HttpResponseMessage(HttpStatusCode.Accepted))),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance,
+            shellOptions: null,
+            timeProvider: new FatalThrowingTimeProvider());
+
+        _ = await Should.ThrowAsync<OutOfMemoryException>(() =>
+            ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+                new ShipOrderCommand(),
+                _ => { },
+                TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
     public async Task CommandClient_PostsCamelCaseAcceptedRequest_ToDefaultCommandPath() {
         RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.Accepted) {
             Content = new StringContent("""{"correlationId":"corr-1"}""", Encoding.UTF8, "application/json"),
@@ -216,10 +252,8 @@ public sealed class EventStoreClientTests {
     }
 
     [Fact]
-    public async Task QueryClient_CanonicalCriteria_MapToUnchangedEventStorePayload()
-    {
-        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK)
-        {
+    public async Task QueryClient_CanonicalCriteria_MapToUnchangedEventStorePayload() {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK) {
             Content = new StringContent("""{"payload":[]}""", Encoding.UTF8, "application/json"),
         });
         EventStoreQueryClient sut = new(
@@ -637,6 +671,19 @@ public sealed class EventStoreClientTests {
 
     private sealed class ThrowingTimeProvider : TimeProvider {
         public override DateTimeOffset GetUtcNow() => throw new InvalidOperationException("clock unavailable");
+    }
+
+    private sealed class FatalThrowingTimeProvider : TimeProvider {
+        public override DateTimeOffset GetUtcNow() => ThrowFatal<DateTimeOffset>();
+    }
+
+    private static T ThrowFatal<T>() {
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo
+            .Capture((Exception)Activator.CreateInstance(
+                typeof(OutOfMemoryException),
+                "fatal test exception")!)
+            .Throw();
+        return default!;
     }
 
     private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler {

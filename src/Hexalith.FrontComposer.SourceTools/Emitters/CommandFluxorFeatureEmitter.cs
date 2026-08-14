@@ -72,6 +72,7 @@ public static class CommandFluxorFeatureEmitter {
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + state + " OnAcknowledged(" + state + " state, " + actions + ".AcknowledgedAction action)");
         _ = sb.AppendLine("        => state.CorrelationId != action.CorrelationId");
+        _ = sb.AppendLine("            || state.State is CommandLifecycleState.Syncing or CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected");
         _ = sb.AppendLine("            ? state");
         _ = sb.AppendLine("            : state with { State = CommandLifecycleState.Acknowledged, MessageId = action.MessageId };");
         _ = sb.AppendLine();

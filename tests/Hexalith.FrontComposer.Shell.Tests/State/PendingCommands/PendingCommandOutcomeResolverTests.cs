@@ -648,6 +648,7 @@ public sealed class PendingCommandOutcomeResolverTests {
     [Fact]
     public void Resolve_TimeProviderFailurePreservesResolvedTerminalAndSuppressesIndicator() {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ConfigureLifecycleReadback(lifecycle);
         FakeTimeProvider stateTime = new(s_observedAt);
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
@@ -802,7 +803,7 @@ public sealed class PendingCommandOutcomeResolverTests {
     [Fact]
     public void Resolve_LegacyResolverAdapterPublishesEligibleIndicatorOnce() {
         FakeTimeProvider time = new(s_observedAt);
-        using NewItemIndicatorStateService indicators = new(time);
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
         IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
         PendingCommandEntry resolvedEntry = new(
             CorrelationId,
@@ -838,9 +839,130 @@ public sealed class PendingCommandOutcomeResolverTests {
         sut.Resolve(Outcome(MessageId, s_observedAt)).Status
             .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
 
-        NewItemIndicatorEntry entry = indicators.Snapshot("counter-counts").Single();
-        entry.EntityKey.ShouldBe("counter-1");
-        entry.MessageId.ShouldBe(MessageId);
+        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry =>
+            entry != null && entry.EntityKey == "counter-1" && entry.MessageId == MessageId));
+    }
+
+    [Fact]
+    public void Resolve_DelegatedResultWithDifferentMessageIdFailsClosedBeforePublication() {
+        IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
+        PendingCommandEntry mismatchedEntry = new(
+            CorrelationId,
+            "01BRZ3NDEKTSV4RRFFQ69G5FAV",
+            "Counter.Increment",
+            "Counter.Count",
+            "counter-counts",
+            "counter-1",
+            "Approved",
+            "Draft",
+            s_observedAt.AddMinutes(-1),
+            PendingCommandStatus.Confirmed) {
+            TargetSnapshot = Target(),
+        };
+        legacy.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(
+            new PendingCommandOutcomeResolutionResult(
+                PendingCommandOutcomeResolutionStatus.Resolved,
+                mismatchedEntry));
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
+        PendingCommandOutcomeResolver sut = new(
+            legacy,
+            Substitute.For<IPendingCommandStateService>(),
+            NullLogger<PendingCommandOutcomeResolver>.Instance,
+            indicators,
+            new FakeTimeProvider(s_observedAt),
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            userContext: null);
+
+        PendingCommandOutcomeResolutionResult result = sut.Resolve(Outcome(MessageId, s_observedAt));
+
+        result.Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Unknown);
+        indicators.DidNotReceiveWithAnyArgs().Add(default!);
+    }
+
+    [Fact]
+    public void Resolve_DelegatedTerminalWithoutEntryFailsClosedBeforePublication() {
+        IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
+        legacy.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(
+            new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Resolved));
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
+        PendingCommandOutcomeResolver sut = new(
+            legacy,
+            Substitute.For<IPendingCommandStateService>(),
+            NullLogger<PendingCommandOutcomeResolver>.Instance,
+            indicators,
+            new FakeTimeProvider(s_observedAt),
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            userContext: null);
+
+        PendingCommandOutcomeResolutionResult result = sut.Resolve(Outcome(MessageId, s_observedAt));
+
+        result.Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Unknown);
+        indicators.DidNotReceiveWithAnyArgs().Add(default!);
+    }
+
+    [Fact]
+    public void AssociateAccepted_RegisterThrowsAfterCommit_ReconcilesCommittedMetadata() {
+        PendingCommandRegistration registration = Registration();
+        PendingCommandEntry committed = new(
+            registration.CorrelationId,
+            registration.MessageId,
+            registration.CommandTypeName,
+            registration.ProjectionTypeName,
+            registration.LaneKey,
+            registration.EntityKey,
+            registration.ExpectedStatusSlot,
+            registration.PriorStatusSlot,
+            s_observedAt,
+            PendingCommandStatus.Pending) {
+            TargetSnapshot = registration.TargetSnapshot,
+        };
+        IPendingCommandStateService state = Substitute.For<IPendingCommandStateService>();
+        state.Register(registration).Returns(_ => throw new InvalidOperationException("post-commit notification failed"));
+        state.GetByMessageId(MessageId).Returns(committed);
+        PendingCommandOutcomeResolver sut = new(state);
+
+        PendingCommandRegistrationResult result = sut.AssociateAccepted(registration);
+
+        result.Status.ShouldBe(PendingCommandRegistrationStatus.Merged);
+        result.Entry.ShouldBeSameAs(committed);
+    }
+
+    [Fact]
+    public void AssociateAccepted_ReplayThrowsAfterTerminalCommit_ReconcilesTerminalEntry() {
+        PendingCommandRegistration registration = Registration();
+        PendingCommandEntry pending = new(
+            registration.CorrelationId,
+            registration.MessageId,
+            registration.CommandTypeName,
+            registration.ProjectionTypeName,
+            registration.LaneKey,
+            registration.EntityKey,
+            registration.ExpectedStatusSlot,
+            registration.PriorStatusSlot,
+            s_observedAt,
+            PendingCommandStatus.Pending) {
+            TargetSnapshot = registration.TargetSnapshot,
+        };
+        PendingCommandEntry terminal = pending with {
+            Status = PendingCommandStatus.Confirmed,
+            TerminalAt = s_observedAt,
+        };
+        bool terminalCommitted = false;
+        IPendingCommandStateService state = Substitute.For<IPendingCommandStateService>();
+        state.Register(registration).Returns(PendingCommandRegistrationResult.Registered(pending));
+        state.GetByMessageId(MessageId).Returns(_ => terminalCommitted ? terminal : pending);
+        state.ResolveTerminal(Arg.Any<PendingCommandTerminalObservation>()).Returns(_ => {
+            terminalCommitted = true;
+            throw new InvalidOperationException("post-commit replay notification failed");
+        });
+        PendingCommandOutcomeResolver sut = new(state);
+        sut.BufferBeforeAccepted(CorrelationId, Outcome(MessageId, s_observedAt)).Status
+            .ShouldBe(PendingCommandOutcomeResolutionStatus.Buffered);
+
+        PendingCommandRegistrationResult result = sut.AssociateAccepted(registration);
+
+        result.Status.ShouldBe(PendingCommandRegistrationStatus.MergedTerminal);
+        result.Entry.ShouldBeSameAs(terminal);
     }
 
     [Fact]
@@ -893,6 +1015,7 @@ public sealed class PendingCommandOutcomeResolverTests {
         FcShellOptions? options = null,
         string tenantId = "tenant-1",
         string userId = "user-1") {
+        ConfigureLifecycleReadback(lifecycle);
         TimeProvider stateTime = resolverTime ?? new FakeTimeProvider(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero));
         FcShellOptions effectiveOptions = options ?? new FcShellOptions();
         state = new PendingCommandStateService(
@@ -912,6 +1035,27 @@ public sealed class PendingCommandOutcomeResolverTests {
             resolverTime,
             Microsoft.Extensions.Options.Options.Create(effectiveOptions),
             userContext);
+    }
+
+    private static void ConfigureLifecycleReadback(ILifecycleStateService lifecycle) {
+        Dictionary<string, (CommandLifecycleState State, string? MessageId)> values = new(StringComparer.Ordinal);
+        lifecycle.GetState(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0)!, out var value)
+                ? value.State
+                : CommandLifecycleState.Idle);
+        lifecycle.GetMessageId(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0)!, out var value)
+                ? value.MessageId
+                : null);
+        lifecycle
+            .When(x => x.Transition(
+                Arg.Any<string>(),
+                Arg.Any<CommandLifecycleState>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>()))
+            .Do(call => values[call.ArgAt<string>(0)] = (
+                call.ArgAt<CommandLifecycleState>(1),
+                call.ArgAt<string?>(2)));
     }
 
     private static PendingCommandRegistration Registration(

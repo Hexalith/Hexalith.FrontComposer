@@ -33,6 +33,7 @@ public class LifecycleBridgeEmitterTests {
         source.ShouldContain(".SubscribeToAction<IncrementCommandActions.ConfirmedAction>");
         source.ShouldContain(".SubscribeToAction<IncrementCommandActions.RejectedAction>");
         source.ShouldContain(".SubscribeToAction<IncrementCommandActions.ResetToIdleAction>");
+        source.ShouldContain("try { _subscriber.UnsubscribeFromAllActions(this); } catch { }");
     }
 
     [Fact]
@@ -58,6 +59,8 @@ public class LifecycleBridgeEmitterTests {
         source.ShouldContain("RemoveLifecycleSubscriptionsExcept(action.CorrelationId)");
         source.ShouldContain("|| !_lifecycleSubscriptions.ContainsKey(transition.CorrelationId)) return;");
         source.ShouldContain("subscription?.Dispose();");
+        source.ShouldContain("_lifecycleSubscriptions.Add(correlationId, null);");
+        source.ShouldContain("if (disposeSubscription) { subscription.Dispose(); }");
     }
 
     [Fact]

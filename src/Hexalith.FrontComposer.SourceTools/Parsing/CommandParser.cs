@@ -396,13 +396,20 @@ public static class CommandParser {
 
         string? viewKey = NormalizeNamedString(attribute, nameof(CommandTargetAttribute.ViewKey));
         string? expectedStatus = NormalizeNamedString(attribute, nameof(CommandTargetAttribute.ExpectedStatus));
+        string projectionViewKey = ResolveProjectionViewKey(projectionType);
+        if (viewKey is not null
+            && !string.Equals(viewKey, projectionViewKey, StringComparison.Ordinal)) {
+            AddInvalidCommandTargetDiagnostic(typeSymbol, diagnostics, filePath, linePos);
+            return null;
+        }
+
         return new CommandTargetModel(
             projectionType.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             resolutionMode,
             changeKind,
             viewKey,
             expectedStatus,
-            ResolveProjectionViewKey(projectionType));
+            projectionViewKey);
     }
 
     private static string ResolveProjectionViewKey(INamedTypeSymbol projectionType) {

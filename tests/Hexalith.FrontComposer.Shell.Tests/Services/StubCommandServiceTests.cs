@@ -242,6 +242,60 @@ public class StubCommandServiceTests {
     }
 
     [Fact]
+    public async Task TypedObservations_ClockFailureStillDeliversNullObservedAt() {
+        StubCommandService service = new(
+            new OptionsSnapshotStub(ZeroDelays()),
+            new UlidFactory(),
+            logger: null,
+            timeProvider: new ThrowingTimeProvider());
+        List<CommandLifecycleObservation> observations = [];
+
+        CommandResult result = await ((ICommandServiceWithLifecycleObservations)service).DispatchAsync(
+            new object(),
+            observation => {
+                lock (observations) {
+                    observations.Add(observation);
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        SpinWait.SpinUntil(() => observations.Count == 2, TimeSpan.FromSeconds(2)).ShouldBeTrue();
+        observations.ShouldAllBe(observation => observation.ObservedAt == null);
+    }
+
+    [Fact]
+    public void TypedObservations_FatalClockFailureEscapesIsolationCatch() {
+        StubCommandService service = new(
+            new OptionsSnapshotStub(ZeroDelays()),
+            new UlidFactory(),
+            logger: null,
+            timeProvider: new FatalThrowingTimeProvider());
+        System.Reflection.MethodInfo notify = typeof(StubCommandService)
+            .GetMethod("TryNotifyLifecycleObservation", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .ShouldNotBeNull();
+
+        System.Reflection.TargetInvocationException exception = Should.Throw<System.Reflection.TargetInvocationException>(() =>
+            notify.Invoke(service, [null, CommandLifecycleState.Syncing, CommandMateriality.Unknown, "message-id"]));
+
+        exception.InnerException.ShouldBeOfType<OutOfMemoryException>();
+    }
+
+    [Fact]
+    public void TypedObservations_FatalObserverFailureEscapesIsolationCatch() {
+        StubCommandService service = BuildService(ZeroDelays());
+        System.Reflection.MethodInfo notify = typeof(StubCommandService)
+            .GetMethod("TryNotifyLifecycleObservation", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .ShouldNotBeNull();
+        Action<CommandLifecycleObservation> observer = _ => ThrowFatal<object?>();
+
+        System.Reflection.TargetInvocationException exception = Should.Throw<System.Reflection.TargetInvocationException>(() =>
+            notify.Invoke(service, [observer, CommandLifecycleState.Syncing, CommandMateriality.Unknown, "message-id"]));
+
+        exception.InnerException.ShouldBeOfType<OutOfMemoryException>();
+    }
+
+    [Fact]
     public async Task ConcreteNullCallback_RemainsSourceCompatibleWithLegacyOverload() {
         StubCommandService service = BuildService(ZeroDelays());
 
@@ -254,5 +308,22 @@ public class StubCommandServiceTests {
         public OptionsSnapshotStub(StubCommandServiceOptions value) => Value = value;
         public StubCommandServiceOptions Value { get; }
         public StubCommandServiceOptions Get(string? name) => Value;
+    }
+
+    private sealed class ThrowingTimeProvider : TimeProvider {
+        public override DateTimeOffset GetUtcNow() => throw new InvalidOperationException("clock failed");
+    }
+
+    private sealed class FatalThrowingTimeProvider : TimeProvider {
+        public override DateTimeOffset GetUtcNow() => ThrowFatal<DateTimeOffset>();
+    }
+
+    private static T ThrowFatal<T>() {
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo
+            .Capture((Exception)Activator.CreateInstance(
+                typeof(OutOfMemoryException),
+                "fatal test exception")!)
+            .Throw();
+        return default!;
     }
 }

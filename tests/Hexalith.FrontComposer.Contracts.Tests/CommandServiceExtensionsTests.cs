@@ -96,6 +96,34 @@ public class CommandServiceExtensionsTests {
         observations.ShouldAllBe(observation => observation.Materiality == CommandMateriality.Unknown);
     }
 
+    [Fact]
+    public async Task DispatchAsync_TypedObservationOverload_IsolatesNonFatalLegacyObserverFailure() {
+        LifecycleAwareCommandService service = new();
+        int observationCount = 0;
+
+        CommandResult result = await ((ICommandService)service).DispatchWithLifecycleObservationsAsync(
+            new object(),
+            onLifecycleObservation: _ => {
+                observationCount++;
+                throw new InvalidOperationException("observer-failed");
+            },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        observationCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_TypedObservationOverload_PropagatesFatalLegacyObserverFailure() {
+        LifecycleAwareCommandService service = new();
+
+        _ = await Should.ThrowAsync<OutOfMemoryException>(() =>
+            ((ICommandService)service).DispatchWithLifecycleObservationsAsync(
+                new object(),
+                onLifecycleObservation: _ => ThrowFatal<object?>(),
+                cancellationToken: TestContext.Current.CancellationToken));
+    }
+
     private sealed class BasicCommandService : ICommandService {
         public CancellationToken ObservedToken { get; private set; }
         public int DispatchCount { get; private set; }
@@ -127,5 +155,14 @@ public class CommandServiceExtensionsTests {
             onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, "lifecycle-message");
             return Task.FromResult(new CommandResult("lifecycle-message", "Accepted"));
         }
+    }
+
+    private static T ThrowFatal<T>() {
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo
+            .Capture((Exception)Activator.CreateInstance(
+                typeof(OutOfMemoryException),
+                "fatal test exception")!)
+            .Throw();
+        return default!;
     }
 }

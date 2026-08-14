@@ -20,6 +20,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     private readonly object _gate = new();
     private readonly Dictionary<string, PendingCommandEntry> _byMessageId = new(StringComparer.Ordinal);
     private readonly Queue<string> _insertionOrder = new();
+    private readonly Dictionary<string, DateTimeOffset> _lifecycleConvergenceDeadlines = new(StringComparer.Ordinal);
+    private readonly Queue<string> _lifecycleConvergenceOrder = new();
     private readonly FcShellOptions _options;
     private readonly ILifecycleStateService _lifecycle;
     private readonly IUserContextAccessor? _userContext;
@@ -197,6 +199,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 terminal.MessageId,
                 terminal.CorrelationId);
             FrontComposerTelemetry.SetOutcome(duplicateActivity, "duplicate_ignored");
+            _ = TryConvergeLifecycle(canonicalMessageId);
             NotifyChanged();
             return PendingCommandResolutionResult.DuplicateIgnored(terminal);
         }
@@ -207,22 +210,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             terminal.CommandTypeName,
             terminal.MessageId,
             terminal.CorrelationId);
-        try {
-            CommandLifecycleState lifecycleState = terminal.Status is PendingCommandStatus.Rejected or PendingCommandStatus.NeedsReview
-                ? CommandLifecycleState.Rejected
-                : CommandLifecycleState.Confirmed;
-            // P8 — flag IdempotentConfirmed terminals as already-applied so the lifecycle
-            // wrapper can render the Info bar instead of the success celebration.
-            bool idempotencyResolved = terminal.Status == PendingCommandStatus.IdempotentConfirmed;
-            _lifecycle.Transition(terminal.CorrelationId, lifecycleState, terminal.MessageId, idempotencyResolved);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException) {
-            FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
-            FrontComposerLog.PendingCommandLifecycleTerminalDispatchFailed(
-                _logger,
-                terminal.MessageId,
-                terminal.Status.ToString(),
-                ex.GetType().Name);
+        if (!TryDispatchTerminalLifecycle(terminal, activity)) {
+            EnqueueLifecycleConvergence(terminal);
             return PendingCommandResolutionResult.LifecycleDispatchFailed(terminal);
         }
 
@@ -260,6 +249,54 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         }
     }
 
+    internal (int Attempts, int Converged) ConvergeLifecycle(int maximumAttempts) {
+        if (maximumAttempts <= 0) {
+            return (0, 0);
+        }
+
+        List<string> candidates = SnapshotLifecycleConvergenceMessageIds(maximumAttempts);
+        int attempts = 0;
+        int converged = 0;
+        foreach (string messageId in candidates) {
+            if (!TryTakeLifecycleConvergence(messageId, out PendingCommandEntry? terminal, out DateTimeOffset deadline)) {
+                continue;
+            }
+
+            attempts++;
+            DateTimeOffset now;
+            try {
+                now = _time.GetUtcNow();
+            }
+            catch (Exception ex) {
+                FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
+                    _logger,
+                    "ConvergenceClock",
+                    terminal.MessageId,
+                    ex.GetType().Name);
+                RequeueLifecycleConvergence(terminal.MessageId, deadline);
+                continue;
+            }
+
+            if (now > deadline) {
+                FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
+                    _logger,
+                    "ConvergenceExpired",
+                    terminal.MessageId,
+                    "DeadlineExceeded");
+                continue;
+            }
+
+            if (TryDispatchTerminalLifecycle(terminal, activity: null)) {
+                converged++;
+            }
+            else {
+                RequeueLifecycleConvergence(terminal.MessageId, deadline);
+            }
+        }
+
+        return (attempts, converged);
+    }
+
     /// <inheritdoc />
     public void Clear(string reason) {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
@@ -275,6 +312,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             outstanding = [.. _byMessageId.Values.Where(static e => e.Status == PendingCommandStatus.Pending)];
             _byMessageId.Clear();
             _insertionOrder.Clear();
+            _lifecycleConvergenceDeadlines.Clear();
+            _lifecycleConvergenceOrder.Clear();
         }
 
         // Dispatch lifecycle transitions OUTSIDE the gate to avoid deadlocking with subscribers
@@ -306,6 +345,8 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             outstanding = [.. _byMessageId.Values.Where(static e => e.Status == PendingCommandStatus.Pending)];
             _byMessageId.Clear();
             _insertionOrder.Clear();
+            _lifecycleConvergenceDeadlines.Clear();
+            _lifecycleConvergenceOrder.Clear();
         }
 
         foreach (PendingCommandEntry entry in outstanding) {
@@ -426,7 +467,184 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         }
     }
 
-    private void NotifyChanged() => Changed?.Invoke(this, EventArgs.Empty);
+    private void EnqueueLifecycleConvergence(PendingCommandEntry terminal) {
+        DateTimeOffset terminalAt = terminal.TerminalAt ?? terminal.SubmittedAt;
+        DateTimeOffset deadline = AddMillisecondsSaturating(
+            terminalAt,
+            _options.MaxPendingCommandPollingDurationMs);
+        RequeueLifecycleConvergence(terminal.MessageId, deadline);
+    }
+
+    private static DateTimeOffset AddMillisecondsSaturating(DateTimeOffset value, int milliseconds) {
+        long deltaTicks = TimeSpan.FromMilliseconds(milliseconds).Ticks;
+        long remainingTicks = Math.Min(
+            DateTimeOffset.MaxValue.Ticks - value.Ticks,
+            DateTimeOffset.MaxValue.UtcTicks - value.UtcTicks);
+        return deltaTicks > remainingTicks
+            ? DateTimeOffset.MaxValue
+            : value.AddTicks(deltaTicks);
+    }
+
+    private void RequeueLifecycleConvergence(string messageId, DateTimeOffset deadline) {
+        lock (_gate) {
+            if (_disposed || _lifecycleConvergenceDeadlines.ContainsKey(messageId)) {
+                return;
+            }
+
+            int capacity = Math.Max(1, _options.MaxPendingCommandEntries);
+            while (_lifecycleConvergenceDeadlines.Count >= capacity
+                && _lifecycleConvergenceOrder.TryDequeue(out string? oldest)) {
+                if (_lifecycleConvergenceDeadlines.Remove(oldest)) {
+                    FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
+                        _logger,
+                        "ConvergenceOverflow",
+                        oldest,
+                        "CapacityExceeded");
+                    break;
+                }
+            }
+
+            _lifecycleConvergenceDeadlines.Add(messageId, deadline);
+            _lifecycleConvergenceOrder.Enqueue(messageId);
+        }
+    }
+
+    private bool TryConvergeLifecycle(string messageId) {
+        if (!TryTakeLifecycleConvergence(messageId, out PendingCommandEntry? terminal, out DateTimeOffset deadline)) {
+            return false;
+        }
+
+        DateTimeOffset now;
+        try {
+            now = _time.GetUtcNow();
+        }
+        catch (Exception ex) {
+            FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
+                _logger,
+                "ConvergenceClock",
+                messageId,
+                ex.GetType().Name);
+            RequeueLifecycleConvergence(messageId, deadline);
+            return false;
+        }
+
+        if (now > deadline) {
+            FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
+                _logger,
+                "ConvergenceExpired",
+                messageId,
+                "DeadlineExceeded");
+            return false;
+        }
+
+        if (TryDispatchTerminalLifecycle(terminal, activity: null)) {
+            return true;
+        }
+
+        RequeueLifecycleConvergence(messageId, deadline);
+        return false;
+    }
+
+    private List<string> SnapshotLifecycleConvergenceMessageIds(int maximumAttempts) {
+        lock (_gate) {
+            if (_disposed) {
+                return [];
+            }
+
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var candidates = new List<string>(Math.Min(maximumAttempts, _lifecycleConvergenceDeadlines.Count));
+            foreach (string messageId in _lifecycleConvergenceOrder) {
+                if (!_lifecycleConvergenceDeadlines.ContainsKey(messageId) || !seen.Add(messageId)) {
+                    continue;
+                }
+
+                candidates.Add(messageId);
+                if (candidates.Count == maximumAttempts) {
+                    break;
+                }
+            }
+
+            return candidates;
+        }
+    }
+
+    private bool TryTakeLifecycleConvergence(
+        string messageId,
+        [NotNullWhen(true)] out PendingCommandEntry? terminal,
+        out DateTimeOffset deadline) {
+        lock (_gate) {
+            if (!_lifecycleConvergenceDeadlines.Remove(messageId, out deadline)
+                || !_byMessageId.TryGetValue(messageId, out terminal)
+                || terminal.Status == PendingCommandStatus.Pending) {
+                terminal = null;
+                deadline = default;
+                return false;
+            }
+
+            PurgeLifecycleConvergenceOrderLocked(messageId);
+            return true;
+        }
+    }
+
+    private bool TryDispatchTerminalLifecycle(PendingCommandEntry terminal, Activity? activity) {
+        CommandLifecycleState lifecycleState = terminal.Status is PendingCommandStatus.Rejected or PendingCommandStatus.NeedsReview
+            ? CommandLifecycleState.Rejected
+            : CommandLifecycleState.Confirmed;
+        bool idempotencyResolved = terminal.Status == PendingCommandStatus.IdempotentConfirmed;
+        try {
+            if (LifecycleMatches(terminal, lifecycleState)) {
+                return true;
+            }
+
+            _lifecycle.Transition(terminal.CorrelationId, lifecycleState, terminal.MessageId, idempotencyResolved);
+            if (LifecycleMatches(terminal, lifecycleState)) {
+                return true;
+            }
+
+            FrontComposerLog.PendingCommandLifecycleTerminalDispatchFailed(
+                _logger,
+                terminal.MessageId,
+                terminal.Status.ToString(),
+                "StateNotConverged");
+            return false;
+        }
+        catch (Exception ex) {
+            FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+            FrontComposerLog.PendingCommandLifecycleTerminalDispatchFailed(
+                _logger,
+                terminal.MessageId,
+                terminal.Status.ToString(),
+                ex.GetType().Name);
+            return false;
+        }
+    }
+
+    private bool LifecycleMatches(PendingCommandEntry terminal, CommandLifecycleState lifecycleState) =>
+        _lifecycle.GetState(terminal.CorrelationId) == lifecycleState
+        && string.Equals(
+            _lifecycle.GetMessageId(terminal.CorrelationId),
+            terminal.MessageId,
+            StringComparison.Ordinal);
+
+    private void NotifyChanged() {
+        EventHandler? changed = Changed;
+        if (changed is null) {
+            return;
+        }
+
+        foreach (EventHandler handler in changed.GetInvocationList().Cast<EventHandler>()) {
+            try {
+                handler(this, EventArgs.Empty);
+            }
+            catch (Exception ex) {
+                FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
+                    _logger,
+                    "StateNotification",
+                    "redacted",
+                    ex.GetType().Name);
+            }
+        }
+    }
 
     private void EnforceScopeBoundary() {
         if (_userContext is null) {
@@ -502,6 +720,20 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             }
 
             _insertionOrder.Enqueue(candidate);
+        }
+    }
+
+    private void PurgeLifecycleConvergenceOrderLocked(string messageId) {
+        int original = _lifecycleConvergenceOrder.Count;
+        for (int i = 0; i < original; i++) {
+            if (!_lifecycleConvergenceOrder.TryDequeue(out string? candidate)) {
+                break;
+            }
+
+            if (!string.Equals(candidate, messageId, StringComparison.Ordinal)
+                && _lifecycleConvergenceDeadlines.ContainsKey(candidate)) {
+                _lifecycleConvergenceOrder.Enqueue(candidate);
+            }
         }
     }
 

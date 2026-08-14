@@ -108,6 +108,60 @@ public sealed class FrontComposerServiceGraphTests {
     }
 
     [Fact]
+    public void Quickstart_RetainsExactlyOnePreRegisteredScopedAdmissionGate() {
+        ServiceCollection services = [];
+        services.AddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
+
+        _ = services.AddHexalithFrontComposerQuickstart();
+
+        ServiceDescriptor descriptor = services.Single(static descriptor =>
+            descriptor.ServiceType == typeof(ICommandExecutionAdmissionGate));
+        descriptor.IsKeyedService.ShouldBeFalse();
+        descriptor.Lifetime.ShouldBe(ServiceLifetime.Scoped);
+        descriptor.ImplementationType.ShouldBe(typeof(CommandExecutionAdmissionGate));
+    }
+
+    [Theory]
+    [InlineData(ServiceLifetime.Singleton)]
+    [InlineData(ServiceLifetime.Transient)]
+    public void Quickstart_RejectsPreRegisteredNonScopedAdmissionGate(ServiceLifetime lifetime) {
+        ServiceCollection services = [];
+        services.Add(new ServiceDescriptor(
+            typeof(ICommandExecutionAdmissionGate),
+            typeof(CommandExecutionAdmissionGate),
+            lifetime));
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+            services.AddHexalithFrontComposerQuickstart());
+
+        exception.Message.ShouldContain(nameof(ICommandExecutionAdmissionGate));
+        exception.Message.ShouldContain("non-keyed Scoped");
+    }
+
+    [Fact]
+    public void Quickstart_RejectsDuplicatePreRegisteredAdmissionGates() {
+        ServiceCollection services = [];
+        services.AddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
+        services.AddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+            services.AddHexalithFrontComposerQuickstart());
+
+        exception.Message.ShouldContain("exactly one");
+    }
+
+    [Fact]
+    public void Quickstart_RejectsKeyedPreRegisteredAdmissionGate() {
+        ServiceCollection services = [];
+        services.AddKeyedScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>("custom");
+
+        InvalidOperationException exception = Should.Throw<InvalidOperationException>(() =>
+            services.AddHexalithFrontComposerQuickstart());
+
+        exception.Message.ShouldContain("non-keyed");
+    }
+
+    [Fact]
     public void Quickstart_CustomCoordinatorOnlyRegistrationMapsResolverToSameInstance() {
         ServiceCollection services = [];
         services.AddScoped<IPendingCommandOutcomeCoordinator, CustomOutcomeCoordinator>();

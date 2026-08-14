@@ -37,12 +37,21 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
             return 0;
         }
 
+        int processed = 0;
+        if (_pendingCommands is PendingCommandStateService concreteState) {
+            (int attempts, int converged) = concreteState.ConvergeLifecycle(budget);
+            budget -= attempts;
+            processed += converged;
+            if (budget == 0) {
+                return processed;
+            }
+        }
+
         PendingCommandEntry[] pending = [.. _pendingCommands.Snapshot()
             .Where(static entry => entry.Status == PendingCommandStatus.Pending)
             .OrderBy(static entry => entry.SubmittedAt)
             .Take(budget)];
 
-        int processed = 0;
         foreach (PendingCommandEntry entry in pending) {
             cancellationToken.ThrowIfCancellationRequested();
 

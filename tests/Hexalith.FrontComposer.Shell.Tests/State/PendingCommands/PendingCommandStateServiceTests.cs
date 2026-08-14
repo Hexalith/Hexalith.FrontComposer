@@ -140,7 +140,7 @@ public sealed class PendingCommandStateServiceTests {
 
     [Fact]
     public void ResolveTerminal_FirstOutcomeWins_AndTransitionsLifecycleOnce() {
-        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService sut = Create(lifecycle: lifecycle);
         sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
 
@@ -156,7 +156,7 @@ public sealed class PendingCommandStateServiceTests {
 
     [Fact]
     public void ResolveTerminal_IdempotentConfirmed_PreservesAlreadyAppliedOutcome() {
-        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService sut = Create(lifecycle: lifecycle);
         sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
 
@@ -172,7 +172,7 @@ public sealed class PendingCommandStateServiceTests {
 
     [Fact]
     public void ResolveTerminal_NeedsReview_TransitionsLifecycleToRejectedReviewSurface() {
-        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService sut = Create(lifecycle: lifecycle);
         sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
 
@@ -185,8 +185,111 @@ public sealed class PendingCommandStateServiceTests {
     }
 
     [Fact]
-    public void ResolveTerminal_UnknownMessageId_IsIgnoredWithoutLifecycleMutation() {
+    public void ResolveTerminal_LifecycleFailure_DuplicateConvergesFromImmutableStoredTruth() {
+        CommandLifecycleState state = CommandLifecycleState.Idle;
+        string? lifecycleMessageId = null;
+        int attempts = 0;
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(CorrelationId).Returns(_ => state);
+        lifecycle.GetMessageId(CorrelationId).Returns(_ => lifecycleMessageId);
+        lifecycle
+            .When(x => x.Transition(CorrelationId, Arg.Any<CommandLifecycleState>(), Arg.Any<string?>(), Arg.Any<bool>()))
+            .Do(call => {
+                attempts++;
+                if (attempts == 1) {
+                    throw new InvalidOperationException("transient lifecycle failure");
+                }
+
+                state = call.ArgAt<CommandLifecycleState>(1);
+                lifecycleMessageId = call.ArgAt<string?>(2);
+            });
+        PendingCommandStateService sut = Create(lifecycle: lifecycle);
+        sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+
+        PendingCommandResolutionResult first = sut.ResolveTerminal(
+            PendingCommandTerminalObservation.Confirmed(MessageId));
+        PendingCommandResolutionResult duplicate = sut.ResolveTerminal(
+            PendingCommandTerminalObservation.Rejected(MessageId, "late", "ignored"));
+
+        first.Status.ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        duplicate.Status.ShouldBe(PendingCommandResolutionStatus.DuplicateIgnored);
+        duplicate.Entry.ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Confirmed);
+        duplicate.Entry.DuplicateTerminalObservations.ShouldBe(1);
+        state.ShouldBe(CommandLifecycleState.Confirmed);
+        lifecycleMessageId.ShouldBe(MessageId);
+        attempts.ShouldBe(2);
+    }
+
+    [Fact]
+    public void LifecycleConvergence_CapacityOneEvictsOldestAndRetainsNewestWork() {
+        const string secondMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        bool convergeSecond = false;
+        Dictionary<string, (CommandLifecycleState State, string? MessageId)> values = new(StringComparer.Ordinal);
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0), out var value) ? value.State : CommandLifecycleState.Idle);
+        lifecycle.GetMessageId(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0), out var value) ? value.MessageId : null);
+        lifecycle.When(service => service.Transition(
+                SecondCorrelationId,
+                Arg.Any<CommandLifecycleState>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>()))
+            .Do(call => {
+                if (convergeSecond) {
+                    values[SecondCorrelationId] = (
+                        call.ArgAt<CommandLifecycleState>(1),
+                        call.ArgAt<string?>(2));
+                }
+            });
+        PendingCommandStateService sut = Create(maxEntries: 1, lifecycle: lifecycle);
+        sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        sut.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(MessageId)).Status
+            .ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        sut.Register(Registration(
+            correlationId: SecondCorrelationId,
+            messageId: secondMessageId,
+            entityKey: "counter-2"));
+        sut.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(secondMessageId)).Status
+            .ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        convergeSecond = true;
+
+        (int attempts, int converged) = sut.ConvergeLifecycle(10);
+
+        attempts.ShouldBe(1);
+        converged.ShouldBe(1);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, false);
+        lifecycle.Received(2).Transition(SecondCorrelationId, CommandLifecycleState.Confirmed, secondMessageId, false);
+    }
+
+    [Fact]
+    public void ResolveTerminal_MaxValueClockSaturatesConvergenceDeadline() {
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(Arg.Any<string>()).Returns(CommandLifecycleState.Idle);
+        lifecycle.GetMessageId(Arg.Any<string>()).Returns((string?)null);
+        FakeTimeProvider time = new(DateTimeOffset.MaxValue);
+        PendingCommandStateService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions {
+                MaxPendingCommandPollingDurationMs = 120_000,
+            }),
+            lifecycle,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
+        sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+
+        PendingCommandResolutionResult result = sut.ResolveTerminal(
+            PendingCommandTerminalObservation.Confirmed(MessageId));
+        (int attempts, int converged) = sut.ConvergeLifecycle(1);
+
+        result.Status.ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        attempts.ShouldBe(1);
+        converged.ShouldBe(0);
+        sut.GetByMessageId(MessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Confirmed);
+    }
+
+    [Fact]
+    public void ResolveTerminal_UnknownMessageId_IsIgnoredWithoutLifecycleMutation() {
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService sut = Create(lifecycle: lifecycle);
 
         PendingCommandResolutionResult result = sut.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(MessageId));
@@ -267,7 +370,7 @@ public sealed class PendingCommandStateServiceTests {
     // P20 — out-of-order then duplicate observations: rejected wins after pending, second confirmed is a no-op.
     [Fact]
     public void ResolveTerminal_OutOfOrderAndDuplicate_FirstWinsOnly() {
-        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService sut = Create(lifecycle: lifecycle);
         sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
 
@@ -330,10 +433,33 @@ public sealed class PendingCommandStateServiceTests {
         ILifecycleStateService? lifecycle = null) =>
         new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandEntries = maxEntries }),
-            lifecycle ?? Substitute.For<ILifecycleStateService>(),
+            lifecycle ?? CreateLifecycle(),
             userContext: null,
             new FakeTimeProvider(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero)),
             NullLogger<PendingCommandStateService>.Instance);
+
+    private static ILifecycleStateService CreateLifecycle() {
+        Dictionary<string, (CommandLifecycleState State, string? MessageId)> values = new(StringComparer.Ordinal);
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0)!, out var value)
+                ? value.State
+                : CommandLifecycleState.Idle);
+        lifecycle.GetMessageId(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0)!, out var value)
+                ? value.MessageId
+                : null);
+        lifecycle
+            .When(x => x.Transition(
+                Arg.Any<string>(),
+                Arg.Any<CommandLifecycleState>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>()))
+            .Do(call => values[call.ArgAt<string>(0)] = (
+                call.ArgAt<CommandLifecycleState>(1),
+                call.ArgAt<string?>(2)));
+        return lifecycle;
+    }
 
     private static PendingCommandRegistration Registration(
         string correlationId = CorrelationId,

@@ -1,5 +1,8 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Options;
+
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.Services.Authorization;
 
@@ -15,7 +18,8 @@ namespace Hexalith.FrontComposer.Shell.Services.Authorization;
 internal sealed class AuthorizingCommandServiceDecorator(
     ICommandService inner,
     ICommandDispatchAuthorizationGate gate,
-    TimeProvider? timeProvider = null) : ICommandServiceWithLifecycle, ICommandServiceWithLifecycleObservations {
+    TimeProvider? timeProvider = null,
+    IOptions<FcShellOptions>? shellOptions = null) : ICommandServiceWithLifecycle, ICommandServiceWithLifecycleObservations {
     /// <inheritdoc />
     public async Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
         where TCommand : class {
@@ -54,11 +58,18 @@ internal sealed class AuthorizingCommandServiceDecorator(
         if (inner is ICommandServiceWithLifecycle lifecycleAware) {
             var adapter = new LegacyLifecycleObservationCommandServiceAdapter(
                 lifecycleAware,
-                timeProvider ?? TimeProvider.System);
+                timeProvider ?? TimeProvider.System,
+                shellOptions ?? Microsoft.Extensions.Options.Options.Create(new FcShellOptions()));
             return await adapter.DispatchAsync(
                 command,
                 onLifecycleObservation,
                 cancellationToken).ConfigureAwait(false);
+        }
+
+        if (onLifecycleObservation is not null) {
+            throw new NotSupportedException(
+                $"The inner command service does not implement {nameof(ICommandServiceWithLifecycle)} or "
+                + $"{nameof(ICommandServiceWithLifecycleObservations)}; typed lifecycle observations cannot be forwarded.");
         }
 
         return await inner.DispatchAsync(command, cancellationToken).ConfigureAwait(false);

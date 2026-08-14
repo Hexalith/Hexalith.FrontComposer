@@ -209,10 +209,26 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         System.Collections.Generic.HashSet<string> messageIds,
         System.Collections.Generic.Queue<string> messageIdOrder)
     {
-        PendingCommandOutcomeResolver.DiscardBufferedByOwner(ownerId);
-        messageIds.Clear();
-        messageIdOrder.Clear();
+        try
+        {
+            PendingCommandOutcomeResolver.DiscardBufferedByOwner(ownerId);
+        }
+        catch (Exception ex) when (!IsFatalCommandCleanupException(ex))
+        {
+            // Coordinator cleanup is best-effort on a non-accepted dispatch.
+        }
+        finally
+        {
+            messageIds.Clear();
+            messageIdOrder.Clear();
+        }
     }
+
+    private static bool IsFatalCommandCleanupException(Exception exception) =>
+        exception is global::System.OutOfMemoryException
+            or global::System.StackOverflowException
+            or global::System.Threading.ThreadAbortException
+            or global::System.AccessViolationException;
 
     private void TrackUnacceptedTerminalObservation(
         string messageId,
@@ -295,6 +311,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             return;
         }
 
+        try
+        {
         var correlationId = UlidFactory.NewUlid();
         _submittedCorrelationId = correlationId;
         System.Threading.Interlocked.Exchange(ref _acceptedAssociationSucceeded, 0);
@@ -585,6 +603,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                         unacceptedTerminalMessageIdOrder);
                 }
             }
+        }
+        }
+        finally
+        {
             admission.Dispose();
         }
     }
@@ -595,21 +617,27 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         // Idempotent dispose (patch P18). Blazor can invoke Dispose more than once on teardown.
         if (_disposed) return;
         _disposed = true;
-        if (System.Threading.Volatile.Read(ref _acceptedAssociationSucceeded) == 0
-            && !string.IsNullOrWhiteSpace(_submittedCorrelationId))
+        try
         {
-            try { Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(_submittedCorrelationId)); }
-            catch (ObjectDisposedException) { }
+            if (System.Threading.Volatile.Read(ref _acceptedAssociationSucceeded) == 0
+                && !string.IsNullOrWhiteSpace(_submittedCorrelationId))
+            {
+                try { Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(_submittedCorrelationId)); }
+                catch (ObjectDisposedException) { }
+            }
         }
-        try { _cts?.Cancel(); } catch (ObjectDisposedException) { }
-        _cts?.Dispose();
-        _cts = null;
-        if (_editContext is not null)
+        finally
         {
-            _editContext.OnFieldChanged -= OnEditContextFieldChanged;
+            try { _cts?.Cancel(); } catch (ObjectDisposedException) { }
+            _cts?.Dispose();
+            _cts = null;
+            if (_editContext is not null)
+            {
+                _editContext.OnFieldChanged -= OnEditContextFieldChanged;
+            }
+            LifecycleState.StateChanged -= OnStateChanged;
+            System.GC.SuppressFinalize(this);
         }
-        LifecycleState.StateChanged -= OnStateChanged;
-        System.GC.SuppressFinalize(this);
     }
 
     /// <inheritdoc />
