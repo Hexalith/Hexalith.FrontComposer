@@ -87,21 +87,23 @@
         "no_local_override_for_selected_catalog_packages": true
       },
       "selected_catalog_required_properties": {},
-      "selected_catalog_required_packages": {
-        "Microsoft.Extensions.TimeProvider.Testing": "10.8.0",
-        "System.CommandLine": "2.0.10",
-        "ModelContextProtocol": "1.4.1"
-      }
+      "selected_catalog_required_package_names": [
+        "Microsoft.Extensions.TimeProvider.Testing",
+        "ModelContextProtocol",
+        "System.CommandLine"
+      ],
+      "selected_catalog_required_packages": {}
     },
     "memories-catalog-v1": {
       "owner_checks": {
         "no_local_override_for_selected_catalog_packages": true
       },
       "selected_catalog_required_properties": {},
-      "selected_catalog_required_packages": {
-        "ModelContextProtocol.AspNetCore": "1.4.1",
-        "Microsoft.Extensions.TimeProvider.Testing": "10.8.0"
-      }
+      "selected_catalog_required_package_names": [
+        "Microsoft.Extensions.TimeProvider.Testing",
+        "ModelContextProtocol.AspNetCore"
+      ],
+      "selected_catalog_required_packages": {}
     },
     "parties-catalog-v1": {
       "owner_checks": {
@@ -135,11 +137,12 @@
         }
       },
       "selected_catalog_required_properties": {},
-      "selected_catalog_required_packages": {
-        "Microsoft.AspNetCore.Components.CustomElements": "10.0.10",
-        "ModelContextProtocol": "1.4.1",
-        "ModelContextProtocol.AspNetCore": "1.4.1"
-      }
+      "selected_catalog_required_package_names": [
+        "Microsoft.AspNetCore.Components.CustomElements",
+        "ModelContextProtocol",
+        "ModelContextProtocol.AspNetCore"
+      ],
+      "selected_catalog_required_packages": {}
     },
     "shared-catalog-baseline-v1": {
       "owner_checks": {
