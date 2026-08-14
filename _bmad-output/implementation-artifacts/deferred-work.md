@@ -2412,12 +2412,12 @@ status: open
   evidence: `AnalyzerPolicyGovernanceTests.AnalyzerPolicy_IdentifierInventory_MatchesSeal` fails on later main; the July `6188` ledger refresh in this spec is historical and was not re-opened.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages.md`
-  summary: Refresh Builds audit selectedVersion rows for the four Dependabot-advanced external packages so validate-package-version-audit.ps1 can pass.
-  evidence: Catalog at 3f0e359 already selects Roslynator 4.16.0, SonarAnalyzer 10.32.0.713, and System.CommandLine 2.0.11 while the audit still records the previous floors; this story was forbidden from changing external pins.
+  summary: RESOLVED 2026-08-14 — Refresh Builds audit selectedVersion rows for the four Dependabot-advanced external packages so validate-package-version-audit.ps1 can pass.
+  evidence: Builds `58987900cff1e1f67c7f66966023789a104bc349` sets Roslynator, SonarAnalyzer, and System.CommandLine audit floors to the already-landed catalog pins; `validate-package-version-audit.ps1` now passes.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages.md`
-  summary: Land evaluator_authorizations for 3f0e359 before the workflow pin-move commit so AD-13 create-ci is authorized on the pin push.
-  evidence: Policy rows and pin edits are in one working tree; push evaluation loads policy from the push base, so a same-commit pin+auth bump soft-defers create-ci.
+  summary: RESOLVED 2026-08-14 — Land evaluator_authorizations for 3f0e359 before the workflow pin-move commit so AD-13 create-ci is authorized on the pin push.
+  evidence: Combined pin+policy commit `e787690f` is already on origin/main, so that push could only soft-defer. The follow-up commit keeps workflow blobs unchanged while `e787690f` is the push base; `draft-evaluator` for ci/release/post_release reports `authorized_draft: true` against that policy.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages.md`
   summary: Add a test that live ci.yml / release.yml / release-evidence.yml SHA-256 blobs match the new evaluator_authorizations caller rows.

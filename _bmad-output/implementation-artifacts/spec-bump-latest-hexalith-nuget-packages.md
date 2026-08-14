@@ -71,7 +71,7 @@ context:
 ## Verification
 
 **Commands:**
-- `pwsh -File references/Hexalith.Builds/Tools/validate-central-package-versions.ps1` plus `pwsh -File references/Hexalith.Builds/Tools/validate-package-version-audit.ps1` plus `pwsh -File references/Hexalith.Builds/Tools/test-authoritative-package-catalog.ps1` -- expected: pass after the catalog and audit agree.
+- `pwsh -File references/Hexalith.Builds/Tools/validate-central-package-versions.ps1` plus `pwsh -File references/Hexalith.Builds/Tools/validate-package-version-audit.ps1` plus `pwsh -File references/Hexalith.Builds/Tools/test-authoritative-package-catalog.ps1` -- expected: pass after EventStore/Memories and the four Dependabot external audit floors match the catalog.
 - `python3 eng/dependency_graph.py --root . validate --commit HEAD` -- expected: `ok=true` after the Builds gitlink is updated.
 - `DiffEngine_Disabled=true dotnet restore Hexalith.FrontComposer.slnx` then `DiffEngine_Disabled=true dotnet build Hexalith.FrontComposer.slnx --configuration Release` -- expected: restore uses EventStore `3.94.1` and Memories `2.21.1`; build is warning-free.
 
