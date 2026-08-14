@@ -41,7 +41,7 @@
 # - Retrospective appends its action items to action_items; sprint-status surfaces open ones
 
 generated: '07-05-2026 17:13'
-last_updated: 08-14-2026 10:58
+last_updated: 08-14-2026 11:15
 project: frontcomposer
 project_key: NOKEY
 tracking_system: file-system
@@ -293,9 +293,10 @@ action_items:
       SHA after successful push CI for that SHA and approval in the protected production
       environment. The transitional workflow_run and HEXALITH_RELEASE_PUBLISH_ENABLED
       path is
-      retired. Author signing is not required; the first attempt remains pending NuGet.org
-      owner
-      signer-policy confirmation and explicit operator authorization.
+      retired. Author signing is not required. NuGet.org owner signer-policy confirmation
+      was recorded 2026-08-13. The first published-byte record is v4.1.1
+      (published-byte-verified / fallback-approved; pending owner FR24 sign-off);
+      REL-AI-1 remains open for Release Owner hash confirmation and sign-off.
     progress:
       - "2026-08-03: REL-4's guard and REL-3's local evidence implementation exist
         and remain under review; frozen run 29703682203 proves the default skip path."
@@ -336,6 +337,16 @@ action_items:
         and protected production approval. Author signing and timestamp secrets are
         not required. NuGet.org owner signer-policy confirmation and the first real
         release evidence remain open."
+      - "2026-08-13: Release Owner confirmed unsigned uploads are permitted for all
+        eight governed package IDs."
+      - "2026-08-14 REL-5 T4: developer-assisted downloaded-byte verification recorded
+        v4.1.0 as published-with-failed Release conclusion (run 31107597159) and v4.1.1
+        as published-byte-verified / fallback-approved pending owner FR24 sign-off
+        (run 31116045352, CI 31113655691, immutable GitHub Release). Automatic Evidence
+        31119445480 failed on Actions service unavailable; no nuget.org version newer
+        than 4.1.1. REL-AI-1 stays open for owner hash confirmation and sign-off.
+        Current main has no successful completed push CI. Further publication remains
+        unauthorized."
     trigger_evidence:
       - "v3.2.1 runs: CI 29368280737, Release 29368461177, Evidence 29368682294; source
         e0a56f81d07024097db976ab20371ca8e3ca6394; release/tag d5935b833bc641475568aee573c584f0043afc83"
@@ -359,6 +370,12 @@ action_items:
       - "REL-5 T0 enabled-window audit 2026-08-02T08:27:15Z..2026-08-03T06:24:13Z:
         Release runs 30743463963, 30757806987, 30757835682, 30757956331, 30758637451,
         30760188983, and 30785942090; no partial GitHub/NuGet publication observed"
+      - "v4.1.0 runs: CI 31082846751, Release 31107597159, Evidence 31108951693 failed;
+        source/tag ac6a9ae82eb94f72fa71280a216def7f971399aa; Builds
+        3ac633386faa2dc4c785bc1ffa06487974906d79"
+      - "v4.1.1 runs: CI 31113655691, Release 31116045352, Evidence 31119445480 failed;
+        source/tag 4a3e44f08308d9147ea797849451414af369551d; Builds
+        3ac633386faa2dc4c785bc1ffa06487974906d79"
     evidence_required:
       - "exact expected package inventory (8 packable + 2 explicit non-packable)"
       - "tests and package-consumer validation against the release candidates"

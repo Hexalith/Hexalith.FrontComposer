@@ -2398,3 +2398,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-31783283241-fix-cicd.md`
   summary: Amend FC-DEP-1 / architecture spine so sibling catalogs are presence-only instead of exact required-package version fail-closed.
   evidence: Planning architecture still says a changed required package version fails closed for every selected catalog; only project-context was updated.
+
+- source_spec: `_bmad-output/implementation-artifacts/rel-5-provision-signing-identity-and-first-governed-release.md`
+  summary: Restore or replace REL-5 `baseline_commit` `874fe13ba4d2a979898fc9b10451827bab94988c` so later reviews can diff against the declared baseline.
+  evidence: `git diff` against that object fails with `bad object` in this clone; the 2026-08-14 review used a best-effort working-tree diff versus HEAD instead.

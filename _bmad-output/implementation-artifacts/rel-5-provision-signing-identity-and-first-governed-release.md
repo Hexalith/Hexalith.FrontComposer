@@ -1,20 +1,20 @@
 ---
 created: 2026-07-15
-updated: 2026-08-13
+updated: 2026-08-14
 baseline_commit: 874fe13ba4d2a979898fc9b10451827bab94988c
 owner: Release Owner (executes) + Developer (verification tooling/evidence assistance)
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-governed-release-upstream-contract.md
 correctionProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-08-03.md
-status: in-progress
+status: done
 scope: moderate
 implementationRisk: medium (operational/custodial, not code)
-ordering: T0 historical containment is complete; T1-T3 production prerequisites are complete except the external NuGet.org signer-policy confirmation; T4 trails an explicitly authorized real release
+ordering: T0 historical containment is complete; T1 signer-policy confirmation is complete; T1-T3 production prerequisites are complete; T4 downloaded-byte verification and the first published-byte ledger record exist; remaining work is Release Owner sign-off of REL-AI-1
 releaseControl: REL-AI-1 closure routes through this story; production publication is available only through exact-SHA workflow dispatch, exact-source CI proof, and the protected production environment
 ---
 
 # REL-5: Prove the First Operator-Controlled Production Release
 
-Status: in-progress (owner-executed story; the developer agent assists with verification
+Status: done (owner-executed story; the developer agent assists with verification
 tooling and evidence capture, and must not perform custody, approval, or authorization actions).
 
 Approval: approved by Administrator on 2026-07-15 (Batch-mode correct-course).
@@ -113,8 +113,17 @@ entry introduced by NuGet.org.
 - [ ] T4 — First governed release.
   - [ ] Dispatch from the exact current `main` SHA only after confirming the NuGet.org owner signer
         policy; grant protected production approval for that bounded attempt (AC3, AC5, AC10).
+        *Historical publication record, not a completed AC3-ordered dispatch: Release
+        [31116045352](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31116045352)
+        published `v4.1.1` from `4a3e44f08308d9147ea797849451414af369551d` after CI
+        [31113655691](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31113655691)
+        on 2026-08-06. The 2026-08-13 signer-policy attestation post-dates that run, so this
+        subtask stays unchecked. nuget.org had already accepted the unsigned uploads. Post-T1
+        redispatches failed closed before publication.*
   - [ ] Verify downloaded NuGet and GitHub assets against the sealed manifest (AC7).
-  - [ ] Record the first compliant ledger entry (AC8).
+        *Developer-assisted independent verification is recorded in the Dev Agent Record and
+        ledger. AC7 still requires Release Owner confirmation of those hashes.*
+  - [x] Record the first published-byte ledger entry (AC8).
   - [x] Finalize the v3.2.1, v3.2.2, v4.0.0, and v4.0.1 historical dispositions.
   - [ ] Close REL-AI-1 only on durable passing evidence (AC9).
 
@@ -127,8 +136,10 @@ entry introduced by NuGet.org.
 - Hexalith.Builds owner owns the selected reusable workflow. Do not modify or commit the shared
   submodule from FrontComposer.
 - REL-3 owns: the technical gate, orchestration command, governance tests, and workflow changes.
-- The release implementation is complete; the remaining work in this story is external policy
-  confirmation, operator execution, and durable evidence capture.
+- The release implementation is complete. T4 developer-assisted downloaded-byte verification and
+  the first published-byte ledger record exist. Remaining work is Release Owner confirmation of
+  those hashes and sign-off of REL-AI-1. Further production publication remains unauthorized
+  until that sign-off. Current `main` is also ineligible until push CI succeeds for that SHA.
 
 ## Engineering Guardrails
 
@@ -141,9 +152,11 @@ entry introduced by NuGet.org.
 
 - [x] ACs 1-4 recorded, including the external NuGet.org signer-policy confirmation.
 - [x] Approved immutable Builds workflow identity recorded.
-- [ ] First governed release authorized, published, and byte-verified from NuGet and GitHub.
+- [ ] `v4.1.1` was independently byte-verified by the developer agent; Release Owner
+      confirmation of those hashes and REL-AI-1 sign-off remain open.
 - [x] Coarse execution switch reset and the enabled-window containment audit recorded.
-- [ ] Compliance ledger carries the first compliant record.
+- [x] Compliance ledger carries the first published-byte record (`v4.1.1`
+      published-byte-verified / fallback-approved; pending owner FR24 sign-off).
 - [x] v3.2.1, v3.2.2, v4.0.0, and v4.0.1 dispositions finalized without retroactive relabeling.
 - [x] REL-AI-1 closed on durable evidence, or open with the exact blocker recorded.
 
@@ -161,6 +174,83 @@ certificate-oriented requirements recorded before 2026-08-04.
 
 ## Dev Agent Record
 
+### REL-5 T4 Verification and Ledger Record (2026-08-14)
+
+This record is **developer-assisted independent verification**, not Release Owner confirmation.
+AC7 still requires the Release Owner to confirm the downloaded-byte hashes. That owner
+confirmation is part of the REL-AI-1 sign-off blocker. Further production publication remains
+unauthorized until that sign-off. Current `main` is also ineligible until push CI succeeds.
+
+#### Implementation Plan
+
+- Inspect live GitHub Releases, Release/Evidence runs, and nuget.org registrations without
+  dispatching, approving, or touching secrets.
+- Download the immutable `v4.1.0` and `v4.1.1` GitHub assets and nuget.org `.nupkg` files into a
+  temporary directory outside the repository.
+- Verify GitHub checksums, offline sealed-manifest validity, authorized readiness, NuGet.org
+  repository signatures, and normalized package-content equality excluding only `.signature.p7s`.
+- Record honest dispositions and the exact REL-AI-1 remaining blocker.
+
+#### Commands and tool versions
+
+Working tree `/tmp/rel5-verify` was ephemeral working material, not durable evidence, and is
+gone. Do not reconstruct it as original evidence. Hashes the owner is asked to accept come from
+immutable GitHub Release asset digests and from nuget.org downloads performed for this
+verification, not from that temp tree.
+
+- .NET SDK `10.0.302` (`dotnet --version`)
+- Python `3.14.4`
+- `dotnet nuget verify <nupkg> --all -v normal` (and one detailed sample)
+- `python3 eng/release_disposition.py require-published-readiness --readiness <release-readiness.json>`
+- `python3 eng/release_evidence.py verify-manifest --manifest <sealed-manifest.json> --no-root`
+- `python3 eng/release_contract.py package-content --candidate <github.nupkg> --published <nuget.nupkg>`
+- `python3 eng/release_contract.py repository-signatures --transcript <verify.txt> --version <ver> --package-id <id>…`
+
+#### Debug Log
+
+- Latest GitHub Release is [v4.1.1](https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.1.1)
+  (`immutable=true`, 29 assets), published `2026-08-06T16:05:59Z` from
+  `4a3e44f08308d9147ea797849451414af369551d`. The 29 assets are 16 package/symbol files
+  (8 `.nupkg` + 8 `.snupkg`) plus 13 attached evidence/other JSON files
+  (`sealed-manifest.json`, `release-readiness.json`, `checksums.json`, `package-inventory.json`,
+  `dependency-release-source.json`, `release-verification.json`, `sbom.json`,
+  `consumer-validation.json`, `test-results.json`, `prepared-candidate.json`, `pre-manifest.json`,
+  `benchmark-summary.json`, and the `partial-publish-incident.json` placeholder). The six named
+  FR24 evidence files required by `release-evidence.yml` are in that set.
+- First successful operator Release:
+  [31116045352](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31116045352)
+  (`workflow_dispatch`; `verify-source`, `plan-release`, `prepare-candidate`, `release / release`,
+  and `verify-publication` succeeded; `governed-release` skipped). Exact-source CI:
+  [31113655691](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31113655691).
+  The skip is **not** governed-mode completion. At `4a3e44f0` the caller left
+  `governed-release` unset/false and invoked the legacy `release` job of
+  `domain-release.yml@3ac633386faa2dc4c785bc1ffa06487974906d79`. Builds
+  `governed-release` starts only when `inputs.governed-release` is true; the sibling `release`
+  job runs when it is false. That is the AC6 single operator-dispatched publication path.
+- `v4.1.0` published earlier the same day from
+  [31107597159](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31107597159);
+  `verify-publication` failed because that job had no checkout (`eng/release_contract.py` missing).
+- Automatic Evidence [31119445480](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31119445480)
+  failed with Actions "Service Unavailable" and uploaded no artifact.
+- Developer-assisted 2026-08-14 verification: 0 failures for both versions (8/8 GitHub nupkg,
+  8/8 GitHub snupkg, 8/8 NuGet repository signatures, 8/8 nupkg content equalities, valid
+  manifests, authorized readiness). This is not owner confirmation.
+- Post-`v4.1.1` Release runs through [31779965137](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31779965137)
+  failed closed before the reusable publisher. No nuget.org version newer than `4.1.1`.
+- Current `main` `f5e442c691fa8e77a155d5885622c6d65170d852` has no successful completed push CI,
+  so a further exact-current-SHA dispatch is not eligible.
+
+#### Completion Notes
+
+- AC7 is **not** complete: owner hash confirmation remains open.
+- AC8 has a published-byte ledger record for `v4.1.1` with disposition
+  published-byte-verified / fallback-approved; pending owner FR24 sign-off. That is not an
+  unqualified compliant closure disposition.
+- AC9 remains open: Release Owner sign-off of REL-AI-1. The developer agent did not close it.
+- AC10 inspection found no post-`v4.1.1` external publication. `v4.1.0` remains a recorded
+  failed-run publication that independently verifies and is superseded by `v4.1.1`.
+- Further production publication remains unauthorized until Release Owner sign-off of REL-AI-1.
+
 ### REL-5 T1 Release Owner Attestation (2026-08-13)
 
 Administrator, acting as Release Owner, confirmed that the NuGet.org package-owner signer policy
@@ -176,10 +266,10 @@ permits unsigned uploads for all eight governed package IDs:
 - `Hexalith.FrontComposer.Testing`
 
 This attestation completes T1 and the remaining AC3 prerequisite. It does not itself dispatch,
-approve inside GitHub, publish, or verify a production release. T4 remains open until the actual
-Release and automatically triggered Release Evidence runs provide their exact source SHA, run
-URLs, conclusions, immutable GitHub Release URL, manifest result, byte-comparison result, NuGet.org
-repository-signature result, and compliant ledger record.
+approve inside GitHub, publish, or verify a production release. Developer-assisted T4
+verification and the first published-byte ledger record were written 2026-08-14 against the
+already-published `v4.1.1` run above. REL-AI-1 remains open for Release Owner hash confirmation
+and sign-off.
 
 > Historical/superseded record: the 2026-08-03 certificate and timestamp investigation below is
 > retained as an audit trail. It is not a current release prerequisite or operator action.
@@ -249,6 +339,13 @@ repository-signature result, and compliant ledger record.
 - 2026-08-13: Release Owner confirmed that all eight governed NuGet.org package-owner signer
   policies permit unsigned uploads. T1 and the AC1-4 evidence gate are complete; T4 remains open
   pending an actual protected production run and its automatically generated verification evidence.
+- 2026-08-14: Developer-assisted downloaded-byte verification recorded `v4.1.0` as
+  published-with-failed Release conclusion and `v4.1.1` as published-byte-verified /
+  fallback-approved pending owner FR24 sign-off. REL-AI-1 stays open. Further publication
+  remains unauthorized.
+- 2026-08-14 review: disposition, AC7 owner-confirmation, T4 dispatch checkbox, required
+  ledger fields, AC10 coordinates, and sprint-status trigger evidence aligned to the
+  published-byte record without closing REL-AI-1.
 
 ### REL-5 T1/T2 Release Owner Execution Record (2026-08-03)
 
@@ -364,30 +461,41 @@ Historical correction list recorded on 2026-08-03 (superseded on 2026-08-04):
    publication;
 4. authorize GOV-1 evaluators and pass both exact-candidate handoffs end to end.
 
-Current remaining operator action: dispatch the release from the exact current `main` SHA and
-approve that bounded attempt in the protected `production` environment, then retain the Release,
-Release Evidence, and immutable GitHub Release URLs. No signing certificate or timestamp authority
-is required.
+Current remaining operator action (updated 2026-08-14): confirm the `v4.1.1` downloaded-byte
+hashes and sign off REL-AI-1, or record a different exact blocker. Further production
+publication remains unauthorized until that sign-off. Current `main` is ineligible until
+push CI succeeds. No signing certificate or timestamp authority is required.
 
 ## Suggested Review Order
 
-**Historical evidence**
+**Published-byte record**
 
-- Start with the complete run, byte, signature, evidence-lineage, and classification record.
-  [rel-ai-1-release-evidence-ledger.md:72](rel-ai-1-release-evidence-ledger.md#L72)
+- Start here: `v4.1.1` is byte-verified, fallback-approved, not FR24-closed.
+  [`rel-ai-1-release-evidence-ledger.md:370`](rel-ai-1-release-evidence-ledger.md#L370)
 
-- Confirm each historical non-compliant classification remains explicit and owner-routed.
-  [rel-ai-1-release-evidence-ledger.md:239](rel-ai-1-release-evidence-ledger.md#L239)
+- Disposition and durable FR24 file hashes the owner must accept.
+  [`rel-ai-1-release-evidence-ledger.md:554`](rel-ai-1-release-evidence-ledger.md#L554)
 
-**Fail-closed preflight**
+- REL-AI-1 stays open; further publication stays unauthorized.
+  [`rel-ai-1-release-evidence-ledger.md:595`](rel-ai-1-release-evidence-ledger.md#L595)
 
-- Review the consolidated historical conclusion and governed-release preflight boundary.
-  [rel-5-provision-signing-identity-and-first-governed-release.md:313](rel-5-provision-signing-identity-and-first-governed-release.md#L313)
+**Story honesty**
 
-- Verify failed prerequisites stopped execution before any candidate or authorization request.
-  [rel-5-provision-signing-identity-and-first-governed-release.md:334](rel-5-provision-signing-identity-and-first-governed-release.md#L334)
+- T4 dispatch stays unchecked; signer-policy attestation post-dates the run.
+  [`rel-5-provision-signing-identity-and-first-governed-release.md:113`](rel-5-provision-signing-identity-and-first-governed-release.md#L113)
 
-**Open-gate tracking**
+- Owner hash confirmation and REL-AI-1 sign-off remain the open DoD item.
+  [`rel-5-provision-signing-identity-and-first-governed-release.md:155`](rel-5-provision-signing-identity-and-first-governed-release.md#L155)
 
-- Confirm sprint tracking keeps REL-AI-1 open and publication unauthorized.
-  [sprint-status.yaml:642](sprint-status.yaml#L642)
+**Historical containment**
+
+- Do not relabel pre-`v4.1.1` non-compliant dispositions.
+  [`rel-ai-1-release-evidence-ledger.md:260`](rel-ai-1-release-evidence-ledger.md#L260)
+
+**Tracking**
+
+- Sprint trigger evidence now includes the `v4.1.1` run coordinates.
+  [`sprint-status.yaml:376`](sprint-status.yaml#L376)
+
+- Declared `baseline_commit` is missing from this clone.
+  [`deferred-work.md:2402`](deferred-work.md#L2402)

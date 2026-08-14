@@ -2,7 +2,7 @@
 title: REL-AI-1 Release Evidence Compliance Ledger
 project: frontcomposer
 created: 2026-07-15
-updated: 2026-08-04
+updated: 2026-08-14
 owner: Release Owner
 decisionContract: frontcomposer.release-compliance-ledger.v1
 sourceProposal: _bmad-output/planning-artifacts/sprint-change-proposal-2026-07-15-rel-ai-1-prepublish-enforcement.md
@@ -16,8 +16,9 @@ This controlled ledger records whether released FrontComposer package bytes sati
 success is not a compliance disposition. A release is compliant only when it was authorized before
 publication and independently verified afterward against the same sealed manifest.
 
-Historical records are not REL-AI-1 closure evidence. They document affected releases and why the
-next compliant disposition requires a real operator-dispatched production release.
+Historical records are not REL-AI-1 closure evidence. They document affected releases and why a
+later record cannot relabel those dispositions. The current remaining blocker is in the
+2026-08-14 status note.
 
 Status note (2026-07-18): REL-4's fail-closed freeze gate and REL-3's exact-artifact pre-publication
 enforcement (pack-once orchestration in `eng/release_prepublish.py`, authorized-bytes publish,
@@ -54,6 +55,17 @@ repository. The certificate-oriented 2026-08-03 note and prerequisite table rema
 audit evidence only. REL-AI-1 remains open pending confirmation that the NuGet.org owner signer
 policy permits unsigned uploads and the first real operator-approved release evidence.
 
+Status note (2026-08-14 REL-5 T4): developer-assisted independent downloaded-byte
+verification of the operator-dispatched immutable GitHub Releases `v4.1.0` and `v4.1.1`
+matched each sealed manifest, verified all eight NuGet.org repository signatures against
+`https://api.nuget.org/v3/index.json`, and proved normalized package-content equality
+after excluding only root `.signature.p7s`. `v4.1.1` is
+**published-byte-verified / fallback-approved; pending owner FR24 sign-off**. That is not
+an unqualified compliant disposition and does not close REL-AI-1. The current remaining
+blocker is Release Owner confirmation of the downloaded-byte hashes and sign-off of this
+ledger entry. Further production publication remains unauthorized until that sign-off.
+Current `main` is also ineligible until push CI succeeds for that SHA.
+
 ## Required Fields
 
 Each release record carries:
@@ -75,6 +87,8 @@ Each release record carries:
 | v3.2.2 | exact 8 `.nupkg` + 8 `.snupkg` | GitHub: unsigned; NuGet: repository-signed only | invalid; rebuilt bytes | blocked; `publish_authorized=false` | passed on different `0.0.0-ci-test` bytes | no FR24 set on Release; expiring Actions artifact | **non-compliant / affected G1 release** |
 | v4.0.0 | exact 8 `.nupkg` + 8 `.snupkg` | GitHub: unsigned; NuGet: repository-signed only | invalid; rebuilt bytes | blocked; `publish_authorized=false` | passed on different `0.0.0-ci-test` bytes | no FR24 set on Release; expiring Actions artifact | **non-compliant / affected pre-REL-4 release** |
 | v4.0.1 | exact 8 `.nupkg` + 8 `.snupkg` | GitHub: unsigned; NuGet: repository-signed only | invalid; rebuilt bytes | blocked; `publish_authorized=false` | passed on different `0.0.0-ci-test` bytes | no FR24 set on Release; expiring Actions artifact | **non-compliant / affected pre-REL-4 release** |
+| v4.1.0 | exact 8 `.nupkg` + 8 `.snupkg` | GitHub: unsigned; NuGet: repository-signed only; content equal excluding `.signature.p7s` | valid `hexalith.release-evidence.v3`; seal `c1c9285ce970cf51…` | `fallback-approved`; `publish_authorized=true` | passed on sealed `nupkgs` candidates | immutable GitHub Release FR24 set | **non-compliant / published with failed Release conclusion** |
+| v4.1.1 | exact 8 `.nupkg` + 8 `.snupkg` | GitHub: unsigned; NuGet: repository-signed only; content equal excluding `.signature.p7s` | valid `hexalith.release-evidence.v3`; seal `26c370411114470d…` | `fallback-approved`; `publish_authorized=true` | passed on sealed `nupkgs` candidates | immutable GitHub Release FR24 set | **published-byte-verified / fallback-approved; pending owner FR24 sign-off** |
 
 ## Complete Historical Reconciliation (2026-08-03)
 
@@ -347,26 +361,242 @@ open and a future release still requires the complete FR24 prepublication and pu
 | Package inventory | `tools/release-packages.json` declares exactly eight NuGet packages and no containers. |
 | Post-publication trust | Exact GitHub candidate checksums plus `dotnet nuget verify --all`, a NuGet.org Repository-signature transcript bound to `https://api.nuget.org/v3/index.json`, and normalized package-content equality excluding only root `.signature.p7s`. |
 | NuGet.org owner policy | **Confirmed 2026-08-13 by Administrator acting as Release Owner:** unsigned uploads are permitted for all eight package IDs declared by `tools/release-packages.json`. |
-| Required owner action | Explicitly dispatch and approve one bounded production release, then retain the Release, Release Evidence, and immutable GitHub Release URLs for the compliant record. |
+| Required owner action | Confirm the `v4.1.1` downloaded-byte hashes and sign off REL-AI-1 against the published-byte-verified / fallback-approved record below, or record the exact remaining blocker. This does not close REL-AI-1 by itself. |
 
 The certificate, timestamp-authority, secret-presence, and rotation observations previously recorded
 in this section are superseded requirements. Their source evidence remains in the dated historical
 record in the REL-5 story and does not block the current release contract.
 
-## Next Compliant Release Record
+## First Governed Releases (2026-08-06), Independently Verified 2026-08-14
 
-Do not populate a passing disposition from a dry run or reconstructed evidence. The next record may be
-marked compliant only after all of the following are durable:
+These records use independently downloaded GitHub Release and nuget.org `.nupkg` bytes. They are
+not reconstructed candidates. Automatic Release Evidence did not produce a durable workflow
+artifact for either release; the GitHub Release evidence set is the durable FR24 path. Working
+copy `/tmp/rel5-verify` was ephemeral and is gone; do not reconstruct it as original evidence.
+Hashes below for GitHub assets are the immutable Release `digest` values. NuGet `.nupkg`
+SHA-256s are from the 2026-08-14 developer-assisted download. This verification is not Release
+Owner confirmation.
 
-- valid expected inventory, tests, and package-consumer validation against the release candidates;
-- verified NuGet.org repository signatures on every downloaded `.nupkg` and normalized content
-  equality with each exact unsigned GitHub candidate;
-- required symbols and SBOM bound by complete checksums;
-- valid sealed manifest over the exact candidate paths;
-- `classify-release --require-publishable` with `classification=ready` and
-  `publish_authorized=true` before publication;
-- initial GitHub Release evidence assets;
-- downloaded NuGet and GitHub bytes matching the authorized hashes;
-- no unreconciled partial-publication incident.
+`attestation=approved-unsupported` means GitHub artifact attestations were unavailable, so the
+sealed owner-approved fallback path was used instead of `attestation_status=attested` plus an
+attestation bundle. Combined with `classification=fallback-approved` and
+`publish_authorized=true`, that authorizes the fallback publication model. It is not an
+unqualified compliant disposition and does not close REL-AI-1.
 
-REL-AI-1 remains open until the Release Owner records and signs off that real-release evidence.
+Each GitHub Release has **29 assets**: 16 package/symbol files (8 `.nupkg` + 8 `.snupkg`) plus
+13 attached evidence/other JSON files (`sealed-manifest.json`, `release-readiness.json`,
+`checksums.json`, `package-inventory.json`, `dependency-release-source.json`,
+`release-verification.json`, `sbom.json`, `consumer-validation.json`, `test-results.json`,
+`prepared-candidate.json`, `pre-manifest.json`, `benchmark-summary.json`, and the
+`partial-publish-incident.json` placeholder `frontcomposer.partial-publish-placeholder.v1`,
+`classification=none`). The six named FR24 files required by `release-evidence.yml` are
+`sealed-manifest.json`, `release-readiness.json`, `checksums.json`, `package-inventory.json`,
+`dependency-release-source.json`, and `release-verification.json`.
+
+`governed-release` was **skipped** on Release
+[31116045352](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31116045352).
+That skip is not governed-mode completion. At `4a3e44f08308d9147ea797849451414af369551d` the
+caller left `governed-release` unset/false and invoked the legacy `release` job of
+`domain-release.yml@3ac633386faa2dc4c785bc1ffa06487974906d79`. Builds `governed-release` starts
+only when `inputs.governed-release` is true; the sibling `release` job runs when it is false.
+That is the AC6 single operator-dispatched publication path (retired transitional
+`governed-release` input).
+
+**NuGet.org `.snupkg` gap (both versions):** `v3-flatcontainer` returns HTTP 404 for every
+symbol package. `https://www.nuget.org/api/v2/symbolpackage/{id}/{version}` returned HTTP 302;
+the redirect was not followed, so no NuGet.org symbol bytes were persisted. NuGet.org `.snupkg`
+SHA-256s and symbol content-equality are **not obtained**. GitHub `.snupkg` SHA-256s below are
+the durable GitHub Release digests.
+
+**`dotnet nuget verify` signer/timestamp summary (both versions):** all eight nuget.org
+`.nupkg` files verified as Signature type Repository; subject
+`CN=NuGet.org Repository by Microsoft, O=NuGet.org Repository by Microsoft, L=Redmond,
+S=Washington, C=US`; issued by DigiCert Trusted G4 Code Signing RSA4096 SHA384 2021 CA1;
+timestamp responder DigiCert SHA256 RSA4096 Timestamp Responder 2025 1; no Author signature.
+`release_contract.py repository-signatures` bound each transcript to
+`https://api.nuget.org/v3/index.json`. Retained detailed timestamp sample: Contracts `4.1.1`
+`08/06/2026 18:05:45` (Europe/Paris). Per-package verify timestamps for the other nuget.org
+`.nupkg` files were not retained after `/tmp/rel5-verify` was deleted and are not reconstructed.
+
+### Run and source topology
+
+Both tags are lightweight (`object.type=commit`), so Release/tag SHA equals Source SHA.
+
+| Release | GitHub Release URL | Release id | Source / tag SHA | CI | Release | Release Evidence | Builds execution SHA |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| [v4.1.0](https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.1.0) | https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.1.0 | 366265698 | `ac6a9ae82eb94f72fa71280a216def7f971399aa` | [31082846751](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31082846751) | [31107597159](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31107597159) | [31108951693](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31108951693) failed | `3ac633386faa2dc4c785bc1ffa06487974906d79` |
+| [v4.1.1](https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.1.1) | https://github.com/Hexalith/Hexalith.FrontComposer/releases/tag/v4.1.1 | 366336857 | `4a3e44f08308d9147ea797849451414af369551d` | [31113655691](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31113655691) | [31116045352](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31116045352) | [31119445480](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31119445480) failed (Actions service unavailable) | `3ac633386faa2dc4c785bc1ffa06487974906d79` |
+
+Both GitHub Releases are non-draft and `immutable=true`. Published
+`2026-08-06T14:02:47Z` (`v4.1.0`) and `2026-08-06T16:05:59Z` (`v4.1.1`).
+
+### nuget.org registrations and published timestamps (UTC)
+
+Registration index:
+`https://api.nuget.org/v3/registration5-gz-semver2/hexalith.frontcomposer.{id}/index.json`.
+
+| Package ID | Registration | 4.1.0 published | 4.1.1 published |
+| --- | --- | --- | --- |
+| Hexalith.FrontComposer.Cli | [cli](https://api.nuget.org/v3/registration5-gz-semver2/hexalith.frontcomposer.cli/index.json) | 2026-08-06T14:02:00.017Z | 2026-08-06T16:05:17.1Z |
+| Hexalith.FrontComposer.Contracts | [contracts](https://api.nuget.org/v3/registration5-gz-semver2/hexalith.frontcomposer.contracts/index.json) | 2026-08-06T14:02:03.63Z | 2026-08-06T16:05:20.343Z |
+| Hexalith.FrontComposer.Contracts.UI | [contracts.ui](https://api.nuget.org/v3/registration5-gz-semver2/hexalith.frontcomposer.contracts.ui/index.json) | 2026-08-06T14:02:01.707Z | 2026-08-06T16:05:18.737Z |
+| Hexalith.FrontComposer.Mcp | [mcp](https://api.nuget.org/v3/registration5-gz-semver2/hexalith.frontcomposer.mcp/index.json) | 2026-08-06T14:02:05.497Z | 2026-08-06T16:05:21.947Z |
+| Hexalith.FrontComposer.Schema | [schema](https://api.nuget.org/v3/registration5-gz-semver2/hexalith.frontcomposer.schema/index.json) | 2026-08-06T14:02:07.267Z | 2026-08-06T16:05:23.61Z |
+| Hexalith.FrontComposer.Shell | [shell](https://api.nuget.org/v3/registration5-gz-semver2/hexalith.frontcomposer.shell/index.json) | 2026-08-06T14:02:12.453Z | 2026-08-06T16:05:25.27Z |
+| Hexalith.FrontComposer.SourceTools | [sourcetools](https://api.nuget.org/v3/registration5-gz-semver2/hexalith.frontcomposer.sourcetools/index.json) | 2026-08-06T14:02:14.267Z | 2026-08-06T16:05:27.06Z |
+| Hexalith.FrontComposer.Testing | [testing](https://api.nuget.org/v3/registration5-gz-semver2/hexalith.frontcomposer.testing/index.json) | 2026-08-06T14:02:15.97Z | 2026-08-06T16:05:28.52Z |
+
+### v4.1.0 assets
+
+Sealed manifest `hexalith.release-evidence.v3`, seal
+`c1c9285ce970cf513662343e8361d7f0f4996921749893b7c7ec70667bc7337f`,
+file SHA-256 `8ecd260cea2de7b19427c3822ae4c8ba0af32218965fb77d35fddfb795ab327b`,
+`sbom_hash=e58646b42085a3c5c834ae5dfbae1cda6eef9d176b73fa9351f297ab8cb4c82f`.
+Readiness `classification=fallback-approved`, `publish_authorized=true`, attestation
+`approved-unsupported`. Consumer validation `valid` against the sealed `nupkgs` directory.
+Tests: **4226 passed, 0 failed**. Offline `verify-manifest` valid.
+`require-published-readiness` ok. `dotnet nuget verify --all` plus
+`release_contract.py repository-signatures` accepted all eight packages against
+`https://api.nuget.org/v3/index.json`.
+
+| Package ID | GitHub nupkg SHA-256 | NuGet nupkg SHA-256 | Content equal excl. `.signature.p7s` | GitHub snupkg SHA-256 | NuGet snupkg SHA-256 |
+| --- | --- | --- | --- | --- | --- |
+| Hexalith.FrontComposer.Cli | `9dad3d0e5192e7a8ea57ff8f491c143cec7f8def1923601b890e826ac52f1e02` | `94cc6be58e8a75f08140e64eb482c2b6ac37e27e2c43da16bcb5c71583756329` | yes | `06ff9e3ef7b52803e95a7bd8c75a24e19b89f69000433ceb4c3b47f081b1aabf` | not obtained (see gap) |
+| Hexalith.FrontComposer.Contracts | `51ebddcf47c11686c2ea53a2e436c8c4b175b84a46b540d64aedd87fa3b8887e` | `1836ad44b51596e743d6c3a59ace6d5ca8d3a9d2a51c42156b7cb3f6b5b9ddcd` | yes | `9345f16bd4969e60cbbbc3553e9e9a12280fc58ade44cc8c44ac9ecff204959a` | not obtained (see gap) |
+| Hexalith.FrontComposer.Contracts.UI | `a2ee65100d6ca26330a2e4ca216c4aad302964c2647d1ad34edbc6b57bad8f94` | `131bc545ef9b15d02a99778436046af05a80925d168d035126e693c7eeff80f9` | yes | `7a28dec51e9df5f0a9c1cf0961ff8458a86ce8bcbd2c82a251ce1092225f3d43` | not obtained (see gap) |
+| Hexalith.FrontComposer.Mcp | `e73027e51dbc764924a6022338c5382201885106383182b0d6e85084e24a0a17` | `6cf5cb5b3a250b6ff2ec2b46f84a09d9568e3e19a216f8eb3d1307d7d8b80417` | yes | `0c57644fb8bc514cc8047cde05b2a036e9295e19e5d5a5660a0f266864afc525` | not obtained (see gap) |
+| Hexalith.FrontComposer.Schema | `21bb626af99d55f1870db314db3164929ba5f232e952c112ff40d584fc4820be` | `4f34791b1b93efe2dbbfab181e30504f6bccd86ecd884961389a53cac7c0bfba` | yes | `c08a46988ba4fbb5ca725736a05130398d45f219d39fb40608b96805bbf55fc0` | not obtained (see gap) |
+| Hexalith.FrontComposer.Shell | `7f579c0d9e1dcb7e75facd0ff183e1fe47477d6e2c43c7d564445a035b6c3c78` | `04d1e5353cff599085a233f693539a0ff3d3bbb34147aaf0dc34e7e7a1855cd1` | yes | `03c5f8fdd1bdf4582d6b19a2931205ab9f345f1c63d6d99f8d02893f9f1be603` | not obtained (see gap) |
+| Hexalith.FrontComposer.SourceTools | `36ff12d87cf0d99271928abccc9f5a6b86c69758b9ada84734167d816595a344` | `fc5831a9876d87e27ea214f984d3ead2658252df1274d3a152be8ee5ade44221` | yes | `32f1da9624d221a00d20dbba6ed70b98c157e5ed97149a88d74c176fc121226b` | not obtained (see gap) |
+| Hexalith.FrontComposer.Testing | `8a16b96263965ea07e25cf74e351cb5ccbf70b225042196f7a91c109f8a1f60d` | `aedba6e29bac85243817ef09b78a23c0b6718520b678f1b2064ffbaa05281055` | yes | `819c3a45cfca77b30eeb9c1b479d9c2636a511311c95380da4a8d310ef0f7f46` | not obtained (see gap) |
+
+Durable GitHub package URLs:
+`https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/<filename>`.
+
+#### v4.1.0 FR24 evidence files (owner asked to accept)
+
+| File | SHA-256 | Durable URL |
+| --- | --- | --- |
+| sealed-manifest.json | `8ecd260cea2de7b19427c3822ae4c8ba0af32218965fb77d35fddfb795ab327b` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/sealed-manifest.json |
+| release-readiness.json | `153c85b1504dc95b1f747a59bbb888c208a99745b1a3294ffa9ef44186499dd6` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/release-readiness.json |
+| checksums.json | `7421808299519746245d9d1edd2df3282bebf41ad75f8453c8a73e979a8e7898` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/checksums.json |
+| package-inventory.json | `c1e6662f6042c6ec72165a666a51935a626867a5c2e259382a822b2530d30f0a` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/package-inventory.json |
+| dependency-release-source.json | `a39d64f3c92080b31eaf708aaaf5e8b8edd7c033a6b3435d54b9ab94371a73dd` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/dependency-release-source.json |
+| release-verification.json | `989ca997b87301f6a9faa7b8a34bef463d1b1e7dae8c3d8f0b0650f70530bde6` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/release-verification.json |
+| sbom.json | `e58646b42085a3c5c834ae5dfbae1cda6eef9d176b73fa9351f297ab8cb4c82f` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/sbom.json |
+| consumer-validation.json | `87a652c54cab11a1e2dedc1c70c1b8417bfcc3d3d79b4ce8bcedcb8571a9868c` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/consumer-validation.json |
+| test-results.json | `bbe02ce00d61092bddc20c889d566161579fb54d971e2a2e97a461e069bdc257` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/test-results.json |
+| prepared-candidate.json | `65213e326195b5c7ee030f8affacea20c550f3b9f6cd41ab862478f2785657f0` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/prepared-candidate.json |
+| pre-manifest.json | `8ba30b774c56236901219cdfb4f1e37cce48e6d2c6be3785321b7abd4eb19e8c` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/pre-manifest.json |
+| benchmark-summary.json | `639ca21a413e9cb4312f7d9f29e1cf83008b787116983fa8b2d0509f2e15d09c` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/benchmark-summary.json |
+| partial-publish-incident.json | `7684cc6a6778126f7918226d885a4c72ba95bc2dddfbfa957b67003907059c81` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.0/partial-publish-incident.json |
+
+### v4.1.1 assets
+
+Sealed manifest `hexalith.release-evidence.v3`, seal
+`26c370411114470d6a711fc637a3604d158e94f40adcdb8e07863f2cb84128f0`,
+file SHA-256 `1f5d022a98f1d294449931b0a8f685926a76f64e8c1fde4e4bdce2056c9f389c`,
+`sbom_hash=a9bc844bf67674e2b136e05768d2b7969dc7646b2040cb44f4f395e1c8ce378c`.
+Readiness `classification=fallback-approved`, `publish_authorized=true`, attestation
+`approved-unsupported`. Consumer validation `valid` against the sealed `nupkgs` directory.
+Tests: **4226 passed, 0 failed**. Offline `verify-manifest` valid.
+`require-published-readiness` ok. `dotnet nuget verify --all` plus
+`release_contract.py repository-signatures` accepted all eight packages against
+`https://api.nuget.org/v3/index.json`.
+
+| Package ID | GitHub nupkg SHA-256 | NuGet nupkg SHA-256 | Content equal excl. `.signature.p7s` | GitHub snupkg SHA-256 | NuGet snupkg SHA-256 |
+| --- | --- | --- | --- | --- | --- |
+| Hexalith.FrontComposer.Cli | `f5c308fdbd52cf799b87031662f333f26dc1626f327da7c15ebb0cc40948b1d1` | `2d2b24b81b86b04b0bb61d7f45c2a2851a68eb7843b97f781332b45f7bc2c871` | yes | `5a3f372129b97b39b579df9c1ce5c9232197fecdae17cea512dcc71b308c59a4` | not obtained (see gap) |
+| Hexalith.FrontComposer.Contracts | `a4a10876cf841e8abc1693ae1b81a873af045a0d0cd5255e18b41c3c66c723bd` | `54057fb4d2bfbdca5e8302704a7173c01bcba95177addba4bf84bbf1b6dca35f` | yes | `f83dc0cdefcf3550c4ef5ced53e879a37147656ddae1f22b9394a79d955ecaf0` | not obtained (see gap) |
+| Hexalith.FrontComposer.Contracts.UI | `f129e61f5e916a7617a1e969427ef1d851374301c6d0d4746e98f58d8a7e8a3a` | `08a4c6aa6fa1dfafb3da7aaee721cc1cfd60ec83b4e5af759120522de46c247e` | yes | `3a94f3af3fbcb9ea3c5411de12be423e008ad08a37a15de10f07283ae1f3ebd2` | not obtained (see gap) |
+| Hexalith.FrontComposer.Mcp | `25124f898b8ab5249130e7e8a0d6e567597cca0b6a8b98879d38378eb4033dd8` | `4e1369be558b0a2b343ed4c6695ced354cb7aacbfd4d267813363d825f42318f` | yes | `b5be3a89102591e30f5390a79cc67b8d8bd3b791fbe4152421410e6371016c17` | not obtained (see gap) |
+| Hexalith.FrontComposer.Schema | `2f5a54a9e51eb4cac8e0a79d338a46254ec721b1b01a78aa1c2971aadd76da93` | `f836df5202689fad77a178beb684c7a33a17dbd6c03b04b3dd9f4b10ee583577` | yes | `af6de404c731b319c32e80d8201aaf6d022e5f1b00d4a4514f528348fa79fb66` | not obtained (see gap) |
+| Hexalith.FrontComposer.Shell | `46694aec97c1e1c7ba876cc01dd4f4682c8f5f353ceaea4b41e037aa88caa9df` | `ed728b7a1b0a3de4e8d7e1a171ec2a04dc10ba7c39e75d3557bb4b5e047ec2e9` | yes | `7c24ac2c014c72974a24b34a7a95788693b060dc468e35a18ddc82e9e0c97af3` | not obtained (see gap) |
+| Hexalith.FrontComposer.SourceTools | `db3d853d1cb5c7e28c8f30b285574312cd2812bf4fa823622d0fe4ed89b7cc32` | `96ae223e0ad0183e1ab89aacb73d3bbc5adfd25d210cbc1b76e973a5d17bd22f` | yes | `bd4b7fc5b856516662a1eeb9561f4a49b71b208a1ebbe5fc415447577e26bfbb` | not obtained (see gap) |
+| Hexalith.FrontComposer.Testing | `1e026f736f60b219d9398b8c705a9eaeb7857bea756907a56448166957c0994e` | `e946761862c1511305f9bd83ed501d956d6f828f9e54878fdc41dab9a013fdd7` | yes | `a00a51b09664f52e0e6dd55d939ca4188c4993bac24b8c338b4ebebd79419814` | not obtained (see gap) |
+
+Durable GitHub package URLs:
+`https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/<filename>`.
+
+#### v4.1.1 FR24 evidence files (owner asked to accept)
+
+| File | SHA-256 | Durable URL |
+| --- | --- | --- |
+| sealed-manifest.json | `1f5d022a98f1d294449931b0a8f685926a76f64e8c1fde4e4bdce2056c9f389c` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/sealed-manifest.json |
+| release-readiness.json | `040175007d6719598d2f87e412ac8ba429e859d9961989c6d9d0ee76a547409a` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/release-readiness.json |
+| checksums.json | `59146695d109976a593192c4c09d91a3b01fdfa1d8cff908ec02a18037b5d3af` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/checksums.json |
+| package-inventory.json | `c1e6662f6042c6ec72165a666a51935a626867a5c2e259382a822b2530d30f0a` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/package-inventory.json |
+| dependency-release-source.json | `aaad2ebd5e8cb74a63377c12d940bbb1cffb4fcdde1a9ad8f3d9838405600585` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/dependency-release-source.json |
+| release-verification.json | `989ca997b87301f6a9faa7b8a34bef463d1b1e7dae8c3d8f0b0650f70530bde6` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/release-verification.json |
+| sbom.json | `a9bc844bf67674e2b136e05768d2b7969dc7646b2040cb44f4f395e1c8ce378c` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/sbom.json |
+| consumer-validation.json | `87a652c54cab11a1e2dedc1c70c1b8417bfcc3d3d79b4ce8bcedcb8571a9868c` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/consumer-validation.json |
+| test-results.json | `bbe02ce00d61092bddc20c889d566161579fb54d971e2a2e97a461e069bdc257` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/test-results.json |
+| prepared-candidate.json | `015c098c87308933d5701dd6fb16b96a85e31e422bfa58615b45ad74d1741a8c` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/prepared-candidate.json |
+| pre-manifest.json | `24ef5f45dc12eb5f41a538d7248293b8c232a233fd2a54ce268648d2862e1fc3` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/pre-manifest.json |
+| benchmark-summary.json | `639ca21a413e9cb4312f7d9f29e1cf83008b787116983fa8b2d0509f2e15d09c` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/benchmark-summary.json |
+| partial-publish-incident.json | `7684cc6a6778126f7918226d885a4c72ba95bc2dddfbfa957b67003907059c81` | https://github.com/Hexalith/Hexalith.FrontComposer/releases/download/v4.1.1/partial-publish-incident.json |
+
+### Per-release dispositions
+
+#### v4.1.0
+
+**Non-compliant / published with failed Release conclusion.** Operator `workflow_dispatch` from
+exact source `ac6a9ae82eb94f72fa71280a216def7f971399aa` after successful push CI published all
+eight packages to nuget.org (per-package timestamps above) and created the immutable GitHub
+Release. `prepare-candidate` and `release / release` succeeded; `verify-publication` failed
+because that job had no checkout and could not open `eng/release_contract.py`. Automatic
+Release Evidence
+[31108951693](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31108951693)
+failed. Developer-assisted 2026-08-14 verification matches the sealed manifest and NuGet.org
+repository signatures. Owner/remediation: Release Owner; retain this disclosure; do not use the
+failed Release conclusion as REL-AI-1 closure; superseded by `v4.1.1`. Verified 2026-08-14.
+
+#### v4.1.1
+
+**published-byte-verified / fallback-approved; pending owner FR24 sign-off.** Operator
+`workflow_dispatch` from exact source `4a3e44f08308d9147ea797849451414af369551d` after
+successful push CI
+[31113655691](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31113655691),
+protected `production` approval, and successful `verify-source` / `plan-release` /
+`prepare-candidate` / `release / release` / `verify-publication` on
+[31116045352](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31116045352).
+`governed-release` skipped as the retired transitional path (not governed-mode completion).
+Published to nuget.org at the per-package timestamps above. Developer-assisted 2026-08-14
+verification: 8/8 GitHub nupkg checksums, 8/8 GitHub snupkg checksums, 8/8 NuGet.org
+repository signatures, 8/8 normalized nupkg content equalities, valid sealed manifest,
+`fallback-approved` readiness, and durable GitHub Release evidence. This is not owner
+confirmation and does not close REL-AI-1. Automatic Release Evidence
+[31119445480](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31119445480)
+failed with GitHub Actions "Service Unavailable" and uploaded no artifact; that
+infrastructure failure is independently superseded by the downloaded-byte record above.
+Owner: Release Owner. Remediation: owner hash confirmation and REL-AI-1 sign-off remain
+open. Verification date: 2026-08-14 (developer-assisted).
+
+### Post-v4.1.1 bounded attempts (AC10)
+
+No nuget.org version newer than `4.1.1` exists on any of the eight package IDs. Later operator
+`workflow_dispatch` Release runs failed closed before the reusable publisher. `n/a` / `skipped`
+means a later stage did not run. Protected-approval reviewer identities are not recorded here.
+
+| Release run | Created (UTC) | Head SHA | Exact-source CI | Protected approval | Publication result | Verification result |
+| --- | --- | --- | --- | --- | --- | --- |
+| [31457030532](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31457030532) | 2026-08-11T03:58:52Z | `36be4518fecbb334129288b863c015e788ddeb0c` | [31400882296](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31400882296) success | skipped (`verify-source` failed) | skipped | skipped |
+| [31538688047](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31538688047) | 2026-08-11T21:36:37Z | `39303e30b143627fd4fa0ce01626915a98022c5f` | [31535696684](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31535696684) success | skipped (`verify-source` failed) | skipped | skipped |
+| [31579355332](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31579355332) | 2026-08-12T08:39:55Z | `efa1c18f4cbc3ea060e169dcdc48e336e5b7e573` | [31568463789](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31568463789) success | skipped (`verify-source` failed) | skipped | skipped |
+| [31716385563](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31716385563) | 2026-08-13T15:37:13Z | `d35548251aefad8e235b2fe69a4f9611fb741173` | [31715694001](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31715694001) success | skipped (`verify-source` failed) | skipped | skipped |
+| [31723965027](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31723965027) | 2026-08-13T17:05:30Z | `7e7bd4c2af841e6d7fb0fdd41b8494336b37ab17` | [31723434672](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31723434672) success | production job started; then `prepare-candidate` failed | skipped | skipped |
+| [31779965137](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31779965137) | 2026-08-14T07:26:59Z | `d31679c1855ccec94d82ce862ffb3a11917bab8e` | [31733278477](https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/31733278477) success | production job started; then `prepare-candidate` failed | skipped | skipped |
+
+`verify-source` / `plan-release` / `prepare-candidate` / `release` / `verify-publication` on
+the first four runs: failure / skipped / skipped / skipped / skipped. On the last two:
+success / success / failure / skipped / skipped. `emit-verification-handoff` succeeded on
+these runs.
+
+### REL-AI-1 remaining blocker
+
+REL-AI-1 stays **open**. `v4.1.1` is published-byte-verified / fallback-approved; pending
+owner FR24 sign-off. Closure requires Release Owner confirmation of the downloaded-byte
+hashes and sign-off of this ledger entry. The developer agent cannot authorize that
+sign-off. Further production publication remains unauthorized until that sign-off. Current
+`main` (`f5e442c691fa8e77a155d5885622c6d65170d852` on 2026-08-14) has no successful
+completed push CI, so a further dispatch from the exact current SHA is not eligible.
