@@ -2,7 +2,7 @@
 title: 'Eliminate stale dependency version mirror failures'
 type: 'bugfix'
 created: '2026-08-11'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 1
 baseline_commit: '984b459e5cd4fc6d2625cd21f4d8219d4f0f4d1d'
 context:
@@ -77,3 +77,37 @@ This removes duplicated approval data, not dependency governance. The shared Bui
 - `python3 -m unittest tests/eng/test_dependency_graph.py` passed: 83 tests.
 - `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category=Governance"` passed: 221 tests.
 - `git diff --check` passed with no whitespace errors.
+
+## Suggested Review Order
+
+**Profile contract**
+
+- Closed FrontComposer profile lists the six names and keeps the value map empty.
+  [`dependency-graph-policy.json:59`](../../eng/dependency-graph-policy.json#L59)
+
+**Shape-only evaluator**
+
+- Unique global property, canonical condition, and literal NuGet version — no point value.
+  [`dependency_graph.py:1139`](../../eng/dependency_graph.py#L1139)
+
+- Names take the shape path; leftover literal map stays for real compatibility pins.
+  [`dependency_graph.py:1438`](../../eng/dependency_graph.py#L1438)
+
+- Schema rejects empty, unsorted, or overlapping name-plus-literal property contracts.
+  [`dependency_graph.py:1784`](../../eng/dependency_graph.py#L1784)
+
+**Contributor guidance**
+
+- Builds re-pins do not mirror `Hexalith*Version`; Release SHA lockstep stays separate.
+  [`project-context.md:251`](../project-context.md#L251)
+
+**Regression coverage**
+
+- Landed profile stays closed and value-independent.
+  [`test_dependency_graph.py:1880`](../../tests/eng/test_dependency_graph.py#L1880)
+
+- Each of the six properties can move without a local policy edit.
+  [`test_dependency_graph.py:1903`](../../tests/eng/test_dependency_graph.py#L1903)
+
+- Missing, duplicate, empty, malformed, nested, conditional, and Choose cases fail closed.
+  [`test_dependency_graph.py:1924`](../../tests/eng/test_dependency_graph.py#L1924)
