@@ -2382,3 +2382,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-31723965027-fix-cicd.md`
   summary: Document NightlyProperty as an advisory/ungoverned trait and add a quality.yml lane if it should stay excluded from blocking CI and release.
   evidence: Gate 3a and now release `phase_tests()` exclude `NightlyProperty`, but project-context lists only palette/perf/quarantine as advisory and quality.yml has no NightlyProperty lane.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-31779965137-fix-cicd.md`
+  summary: Quality Gate 2b on current main fails CentralPackageVersions catalog inheritance and ReleaseWorkflow Builds gitlink SHA checks.
+  evidence: Quality run 31781816546 on `4ccd7727` failed `InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds` and `CiGovernanceTests.ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate`; those Facts are outside this inventory-seal confirm.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-31779965137-fix-cicd.md`
+  summary: Re-dispatch Release on a later release-ready main tip after remaining Gate 2b failures are fixed.
+  evidence: Failed Release 31779965137 targeted ancestor SHA `d31679c1` and cannot turn green; `release.yml` prepare requires live main, and current tip still fails other Gate 2b Facts.
