@@ -390,6 +390,11 @@ public partial class SharedProjection
             {
                 public string Name { get; set; } = string.Empty;
             }
+
+            public partial class GlobalProjectionView
+            {
+                public static string ReadGeneratedProjectionType() => ProjectionTypeFromViewKey();
+            }
             """;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
@@ -422,6 +427,29 @@ public partial class SharedProjection
         outputCompilation.GetDiagnostics(ct)
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ShouldBeEmpty("Global namespace projection should compile without errors");
+
+        using MemoryStream assemblyStream = new();
+        outputCompilation.Emit(assemblyStream, cancellationToken: ct).Success.ShouldBeTrue();
+        assemblyStream.Position = 0;
+        var loadContext = new System.Runtime.Loader.AssemblyLoadContext(
+            $"global-projection-{Guid.NewGuid():N}",
+            isCollectible: true);
+        loadContext.Resolving += static (_, name) => AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(assembly => assembly.GetName().Name == name.Name);
+        try {
+            System.Reflection.Assembly assembly = loadContext.LoadFromStream(assemblyStream);
+            object? constructedProjectionType = assembly
+                .GetType("GlobalProjectionView", throwOnError: true)
+                .ShouldNotBeNull()
+                .GetMethod("ReadGeneratedProjectionType", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
+                .ShouldNotBeNull()
+                .Invoke(null, null);
+
+            constructedProjectionType.ShouldBe("GlobalProjection");
+        }
+        finally {
+            loadContext.Unload();
+        }
     }
 
     [Fact]

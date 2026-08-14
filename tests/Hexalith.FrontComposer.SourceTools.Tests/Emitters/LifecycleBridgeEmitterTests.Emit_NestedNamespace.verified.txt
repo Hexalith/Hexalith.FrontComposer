@@ -14,7 +14,7 @@ public sealed class BulkIncrementCommandLifecycleBridge : global::System.IDispos
     private readonly global::Fluxor.IDispatcher _dispatcher;
     private readonly global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleStateService _service;
     private readonly object _gate = new();
-    private readonly global::System.Collections.Generic.Dictionary<string, global::System.IDisposable> _lifecycleSubscriptions = new(global::System.StringComparer.Ordinal);
+    private readonly global::System.Collections.Generic.Dictionary<string, global::System.IDisposable?> _lifecycleSubscriptions = new(global::System.StringComparer.Ordinal);
     private readonly global::System.Collections.Generic.Dictionary<(string CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState State), int> _forwardingActions = new();
     private bool _disposed;
 
@@ -26,18 +26,26 @@ public sealed class BulkIncrementCommandLifecycleBridge : global::System.IDispos
         _subscriber = subscriber ?? throw new global::System.ArgumentNullException(nameof(subscriber));
         _dispatcher = dispatcher ?? throw new global::System.ArgumentNullException(nameof(dispatcher));
         _service = service ?? throw new global::System.ArgumentNullException(nameof(service));
-        _subscriber.SubscribeToAction<BulkIncrementCommandActions.SubmittedAction>(this,
-            OnSubmitted);
-        _subscriber.SubscribeToAction<BulkIncrementCommandActions.AcknowledgedAction>(this,
-            a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged, a.MessageId));
-        _subscriber.SubscribeToAction<BulkIncrementCommandActions.SyncingAction>(this,
-            a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing, null));
-        _subscriber.SubscribeToAction<BulkIncrementCommandActions.ConfirmedAction>(this,
-            a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed, null));
-        _subscriber.SubscribeToAction<BulkIncrementCommandActions.RejectedAction>(this,
-            a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected, null));
-        _subscriber.SubscribeToAction<BulkIncrementCommandActions.ResetToIdleAction>(this,
-            OnResetToIdle);
+        try
+        {
+            _subscriber.SubscribeToAction<BulkIncrementCommandActions.SubmittedAction>(this,
+                OnSubmitted);
+            _subscriber.SubscribeToAction<BulkIncrementCommandActions.AcknowledgedAction>(this,
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Acknowledged, a.MessageId));
+            _subscriber.SubscribeToAction<BulkIncrementCommandActions.SyncingAction>(this,
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Syncing, null));
+            _subscriber.SubscribeToAction<BulkIncrementCommandActions.ConfirmedAction>(this,
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Confirmed, null));
+            _subscriber.SubscribeToAction<BulkIncrementCommandActions.RejectedAction>(this,
+                a => ForwardAction(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected, null));
+            _subscriber.SubscribeToAction<BulkIncrementCommandActions.ResetToIdleAction>(this,
+                OnResetToIdle);
+        }
+        catch
+        {
+            try { _subscriber.UnsubscribeFromAllActions(this); } catch { }
+            throw;
+        }
     }
 
     private void OnSubmitted(BulkIncrementCommandActions.SubmittedAction action)
@@ -97,15 +105,30 @@ public sealed class BulkIncrementCommandLifecycleBridge : global::System.IDispos
         lock (_gate)
         {
             if (_disposed || _lifecycleSubscriptions.ContainsKey(correlationId)) return;
+            _lifecycleSubscriptions.Add(correlationId, null);
         }
-        global::System.IDisposable subscription = _service.Subscribe(correlationId, OnLifecycleTransition);
+        global::System.IDisposable subscription;
+        try
+        {
+            subscription = _service.Subscribe(correlationId, OnLifecycleTransition);
+        }
+        catch
+        {
+            lock (_gate) { _ = _lifecycleSubscriptions.Remove(correlationId); }
+            throw;
+        }
+        bool disposeSubscription;
         lock (_gate)
         {
-            if (_disposed || !_lifecycleSubscriptions.TryAdd(correlationId, subscription))
+            disposeSubscription = _disposed
+                || !_lifecycleSubscriptions.TryGetValue(correlationId, out global::System.IDisposable? current)
+                || current is not null;
+            if (!disposeSubscription)
             {
-                subscription.Dispose();
+                _lifecycleSubscriptions[correlationId] = subscription;
             }
         }
+        if (disposeSubscription) { subscription.Dispose(); }
     }
 
     private void OnLifecycleTransition(global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleTransition transition)
@@ -149,8 +172,8 @@ public sealed class BulkIncrementCommandLifecycleBridge : global::System.IDispos
         {
             stale = global::System.Linq.Enumerable.ToArray(
                 global::System.Linq.Enumerable.Select(
-                    global::System.Linq.Enumerable.Where(_lifecycleSubscriptions, pair => !string.Equals(pair.Key, correlationId, global::System.StringComparison.Ordinal)),
-                    pair => pair.Value));
+                    global::System.Linq.Enumerable.Where(_lifecycleSubscriptions, pair => !string.Equals(pair.Key, correlationId, global::System.StringComparison.Ordinal) && pair.Value is not null),
+                    pair => pair.Value!));
             foreach (string key in global::System.Linq.Enumerable.ToArray(
                 global::System.Linq.Enumerable.Where(_lifecycleSubscriptions.Keys, key => !string.Equals(key, correlationId, global::System.StringComparison.Ordinal))))
             {
@@ -179,7 +202,7 @@ public sealed class BulkIncrementCommandLifecycleBridge : global::System.IDispos
         {
             if (_disposed) return;
             _disposed = true;
-            subscriptions = global::System.Linq.Enumerable.ToArray(_lifecycleSubscriptions.Values);
+            subscriptions = global::System.Linq.Enumerable.ToArray(global::System.Linq.Enumerable.Select(global::System.Linq.Enumerable.Where(_lifecycleSubscriptions.Values, subscription => subscription is not null), subscription => subscription!));
             _lifecycleSubscriptions.Clear();
             _forwardingActions.Clear();
         }

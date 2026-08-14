@@ -15,6 +15,12 @@ const STORY_9_2 =
   '_bmad-output/implementation-artifacts/9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer.md';
 const INDICATOR_STATE_SERVICE =
   'src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs';
+const PENDING_STATE_SERVICE =
+  'src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs';
+const PENDING_POLLING_COORDINATOR =
+  'src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandPollingCoordinator.cs';
+const PENDING_OUTCOME_RESOLVER =
+  'src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs';
 
 // These checks read the filesystem only — they never open a page. The `--project=chromium` flag in
 // the `test:fc-nip` npm script already pins execution to a single project, so a browserName guard
@@ -234,6 +240,11 @@ test.describe('Story 9.3: FC-NIP explicit command target identity', () => {
       '`SameAsSource` is valid only for `Update`',
       'Only a confirmed or idempotent-confirmed `Material` terminal observation',
       'ambient row placement are never target',
+      'must equal the declared projection\'s canonical generated view key',
+      'at most once per accepted `MessageId`',
+      'queues bounded circuit-local convergence work',
+      'retry runs before status transport polling',
+      'never re-queries command status, changes the outcome, or retries the indicator decision',
     ]);
     expect(dataGrid).not.toContain('_bmad-output');
     expect(dataGrid).toContain('ICommandTargetIdentityProvider<TCommand>');
@@ -268,6 +279,9 @@ test.describe('Story 9.3: FC-NIP explicit command target identity', () => {
       'src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs',
     );
     const storyNineTwo = await readRepoFile(STORY_9_2);
+    const pendingState = await readRepoFile(PENDING_STATE_SERVICE);
+    const pollingCoordinator = await readRepoFile(PENDING_POLLING_COORDINATOR);
+    const outcomeResolver = await readRepoFile(PENDING_OUTCOME_RESOLVER);
 
     assertContainsAll(rowIdentity, [
       'projection row identity cascaded to generated command forms',
@@ -299,6 +313,23 @@ test.describe('Story 9.3: FC-NIP explicit command target identity', () => {
     expect(commandFormEmitter).not.toContain('PendingCommandState.Register');
     expect(commandFormEmitter).not.toContain('EntityKey: status.AggregateId');
     expect(commandFormEmitter).not.toContain('ResultPayload');
+    assertContainsAll(pendingState, [
+      '_lifecycleConvergenceDeadlines',
+      'TryConvergeLifecycle(canonicalMessageId)',
+      'ConvergeLifecycle(int maximumAttempts)',
+      'LifecycleMatches(terminal, lifecycleState)',
+    ]);
+    assertContainsAll(outcomeResolver, [
+      '_indicatorDecisions.Add(entry.MessageId)',
+      'TryGetCommittedRegistration(registration)',
+      '!string.Equals(delegatedMessageId, canonicalMessageId, StringComparison.Ordinal)',
+    ]);
+    const convergenceIndex = pollingCoordinator.indexOf('concreteState.ConvergeLifecycle(budget)');
+    const snapshotIndex = pollingCoordinator.indexOf('_pendingCommands.Snapshot()');
+    const transportIndex = pollingCoordinator.indexOf('_statusQuery', snapshotIndex);
+    expect(convergenceIndex).toBeGreaterThanOrEqual(0);
+    expect(snapshotIndex).toBeGreaterThan(convergenceIndex);
+    expect(transportIndex).toBeGreaterThan(snapshotIndex);
     assertContainsAll(razorEmitter, [
       'PendingCommandRowIdentityFor(row)',
       'CascadingValue<global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity?>',

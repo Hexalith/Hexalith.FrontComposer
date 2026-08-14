@@ -29,6 +29,40 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
     private IgnoringCancellationProvider? _ignoringCancellationProvider;
 
     [Fact]
+    public void LifecycleBridge_LaterConstructorSubscriptionFailureUnsubscribesEarlierActions() {
+        IActionSubscriber subscriber = Substitute.For<IActionSubscriber>();
+        subscriber.When(instance => instance.SubscribeToAction<SameSourceTargetCommandActions.AcknowledgedAction>(
+                Arg.Any<object>(),
+                Arg.Any<Action<SameSourceTargetCommandActions.AcknowledgedAction>>()))
+            .Do(_ => throw new InvalidOperationException("later subscription failed"));
+
+        _ = Should.Throw<InvalidOperationException>(() => new SameSourceTargetCommandLifecycleBridge(
+            subscriber,
+            Substitute.For<IDispatcher>(),
+            Substitute.For<ILifecycleStateService>()));
+
+        subscriber.Received(1).UnsubscribeFromAllActions(Arg.Any<SameSourceTargetCommandLifecycleBridge>());
+    }
+
+    [Fact]
+    public void LifecycleBridge_SynchronousTerminalReplayDispatchesAndDisposesReturnedSubscription() {
+        const string correlationId = "01ERZ3NDEKTSV4RRFFQ69G5FAV";
+        IActionSubscriber subscriber = Substitute.For<IActionSubscriber>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        SynchronousTerminalReplayLifecycleService lifecycle = new(correlationId);
+        using SameSourceTargetCommandLifecycleBridge bridge = new(subscriber, dispatcher, lifecycle);
+
+        typeof(SameSourceTargetCommandLifecycleBridge)
+            .GetMethod("EnsureLifecycleSubscription", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .ShouldNotBeNull()
+            .Invoke(bridge, [correlationId]);
+
+        dispatcher.Received(1).Dispatch(Arg.Is<SameSourceTargetCommandActions.ConfirmedAction>(
+            action => action != null && action.CorrelationId == correlationId));
+        lifecycle.SubscriptionDisposed.ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task LifecycleBridge_ConcurrentDifferentTerminalIsNotSuppressedByForwardedAcknowledgement() {
         const string correlationId = "01ERZ3NDEKTSV4RRFFQ69G5FAV";
         LifecycleStateService lifecycle = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()));
@@ -192,6 +226,43 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             entry.PriorStatusSlot.ShouldBeNull();
             indicators.Snapshot("counter-counts").ShouldBeEmpty();
         });
+    }
+
+    [Fact]
+    public async Task SameAsSourceTarget_WithMissingFixedExpectedStatusFailsClosed() {
+        EarlyTerminalCommandService service = new(AcceptedMessageId);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        PendingCommandRowIdentity row = new(
+            typeof(Counter.Domain.CounterProjection).FullName!,
+            "Counter:Counter.Domain.CounterProjection",
+            "counter-42",
+            expectedStatusSlot: null,
+            priorStatusSlot: "Draft");
+        IRenderedComponent<CascadingValue<PendingCommandRowIdentity?>> host =
+            Render<CascadingValue<PendingCommandRowIdentity?>>(parameters => parameters
+                .Add(component => component.Value, row)
+                .Add(component => component.IsFixed, true)
+                .AddChildContent<SameSourceTargetCommandForm>());
+
+        host.Find("form").Submit();
+
+        host.WaitForAssertion(() =>
+            pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull().TargetSnapshot.ShouldBeNull());
+    }
+
+    [Fact]
+    public async Task SynchronousSyncingBeforeAcceptedAcknowledgement_RemainsSyncing() {
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => new SynchronousSyncingCommandService()));
+        await InitializeStoreAsync();
+        IState<TwoFieldCompactCommandLifecycleState> state =
+            Services.GetRequiredService<IState<TwoFieldCompactCommandLifecycleState>>();
+        IRenderedComponent<TwoFieldCompactCommandForm> cut = Render<TwoFieldCompactCommandForm>();
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => state.Value.State.ShouldBe(CommandLifecycleState.Syncing));
     }
 
     [Fact]
@@ -488,6 +559,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
     [Theory]
     [InlineData(ProviderContractFailureMode.FixedViewMismatch)]
     [InlineData(ProviderContractFailureMode.ExpectedStatusMismatch)]
+    [InlineData(ProviderContractFailureMode.ExpectedStatusMissing)]
     [InlineData(ProviderContractFailureMode.InvalidIdentity)]
     [InlineData(ProviderContractFailureMode.IncompleteStatusMove)]
     public async Task ProviderContractFailure_DispatchesWithNullTargetAndNoIndicator(
@@ -987,6 +1059,10 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
                 Services.AddScoped<ICommandTargetIdentityProvider<ExpectedStatusProviderTargetCommand>>(
                     _ => new ExpectedStatusMismatchProvider());
                 break;
+            case ProviderContractFailureMode.ExpectedStatusMissing:
+                Services.AddScoped<ICommandTargetIdentityProvider<ExpectedStatusProviderTargetCommand>>(
+                    _ => new ExpectedStatusMissingProvider());
+                break;
             case ProviderContractFailureMode.InvalidIdentity:
                 Services.AddScoped<ICommandTargetIdentityProvider<ProviderTargetCommand>>(
                     _ => new InvalidIdentityProvider());
@@ -1007,6 +1083,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
                 Render<ProviderTargetCommandForm>().Find("form").Submit();
                 break;
             case ProviderContractFailureMode.ExpectedStatusMismatch:
+            case ProviderContractFailureMode.ExpectedStatusMissing:
                 Render<ExpectedStatusProviderTargetCommandForm>().Find("form").Submit();
                 break;
             case ProviderContractFailureMode.IncompleteStatusMove:
@@ -1027,6 +1104,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
     public enum ProviderContractFailureMode {
         FixedViewMismatch,
         ExpectedStatusMismatch,
+        ExpectedStatusMissing,
         InvalidIdentity,
         IncompleteStatusMove,
     }
@@ -1106,6 +1184,14 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             CancellationToken cancellationToken) =>
             ValueTask.FromResult<CommandTargetIdentity?>(
                 new("Counter:Counter.Domain.CounterProjection", "counter-provider", ExpectedStatus: "Rejected"));
+    }
+
+    private sealed class ExpectedStatusMissingProvider : ICommandTargetIdentityProvider<ExpectedStatusProviderTargetCommand> {
+        public ValueTask<CommandTargetIdentity?> ResolveAsync(
+            ExpectedStatusProviderTargetCommand command,
+            CancellationToken cancellationToken) =>
+            ValueTask.FromResult<CommandTargetIdentity?>(
+                new("Counter:Counter.Domain.CounterProjection", "counter-provider"));
     }
 
     private sealed class InvalidIdentityProvider : ICommandTargetIdentityProvider<ProviderTargetCommand> {
@@ -1429,6 +1515,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
         }
 
         public void DiscardBufferedByOwner(string ownerId) {
+            throw new InvalidOperationException("cleanup failed");
         }
 
         public PendingCommandOutcomeResolutionResult Resolve(PendingCommandOutcomeObservation observation) =>
@@ -1506,6 +1593,67 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             AcceptedMessageId,
             CommandMateriality.Unknown,
             TimeProvider.System.GetUtcNow()));
+    }
+
+    private sealed class SynchronousSyncingCommandService : ICommandServiceWithLifecycleObservations {
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            CancellationToken cancellationToken = default)
+            where TCommand : class => DispatchAsync(command, null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleObservation>? onLifecycleObservation,
+            CancellationToken cancellationToken = default)
+            where TCommand : class {
+            onLifecycleObservation?.Invoke(new CommandLifecycleObservation(
+                CommandLifecycleState.Syncing,
+                AcceptedMessageId,
+                CommandMateriality.Unknown,
+                TimeProvider.System.GetUtcNow()));
+            return Task.FromResult(new CommandResult(AcceptedMessageId, CommandResultStatus.Accepted));
+        }
+    }
+
+    private sealed class SynchronousTerminalReplayLifecycleService(string correlationId) : ILifecycleStateService {
+        private sealed class Subscription(Action onDispose) : IDisposable {
+            public void Dispose() => onDispose();
+        }
+
+        public bool SubscriptionDisposed { get; private set; }
+
+        public IDisposable Subscribe(string subscribedCorrelationId, Action<CommandLifecycleTransition> onTransition) {
+            subscribedCorrelationId.ShouldBe(correlationId);
+            DateTimeOffset now = TimeProvider.System.GetUtcNow();
+            onTransition(new CommandLifecycleTransition(
+                correlationId,
+                CommandLifecycleState.Acknowledged,
+                CommandLifecycleState.Confirmed,
+                AcceptedMessageId,
+                now,
+                now,
+                IdempotencyResolved: false));
+            return new Subscription(() => SubscriptionDisposed = true);
+        }
+
+        public CommandLifecycleState GetState(string requestedCorrelationId) => CommandLifecycleState.Confirmed;
+
+        public string? GetMessageId(string requestedCorrelationId) => AcceptedMessageId;
+
+        public IEnumerable<string> GetActiveCorrelationIds() => [correlationId];
+
+        public void Transition(string requestedCorrelationId, CommandLifecycleState newState, string? messageId = null) {
+        }
+
+        public void Transition(
+            string requestedCorrelationId,
+            CommandLifecycleState newState,
+            string? messageId,
+            bool idempotencyResolved) {
+        }
+
+        public void Dispose() {
+        }
     }
 
     private static CommandLifecycleObservation MaterialConfirmed(string messageId) =>

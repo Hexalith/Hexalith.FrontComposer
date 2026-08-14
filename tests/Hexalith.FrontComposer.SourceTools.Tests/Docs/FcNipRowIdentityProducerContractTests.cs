@@ -248,7 +248,12 @@ public sealed class FcNipRowIdentityProducerContractTests {
             "producer wiring uses an explicit command-to-projection `[CommandTarget]`",
             "`SameAsSource` is valid only for `Update`",
             "Only a confirmed or idempotent-confirmed `Material` terminal observation",
-            "ambient row placement are never target");
+            "ambient row placement are never target",
+            "must equal the declared projection's canonical generated view key",
+            "at most once per accepted `MessageId`",
+            "queues bounded circuit-local convergence work",
+            "retry runs before status transport polling",
+            "never re-queries command status, changes the outcome, or retries the indicator decision");
         dataGrid.ShouldNotContain("_bmad-output");
         dataGrid.ShouldContain("ICommandTargetIdentityProvider<TCommand>");
 

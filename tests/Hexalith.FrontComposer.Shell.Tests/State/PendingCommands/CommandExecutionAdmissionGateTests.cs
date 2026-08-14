@@ -92,7 +92,25 @@ public sealed class CommandExecutionAdmissionGateTests {
         new(commandTypeName, "Submit command");
 
     private static PendingCommandStateService CreatePendingState() {
+        Dictionary<string, (CommandLifecycleState State, string? MessageId)> values = new(StringComparer.Ordinal);
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0)!, out var value)
+                ? value.State
+                : CommandLifecycleState.Idle);
+        lifecycle.GetMessageId(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0)!, out var value)
+                ? value.MessageId
+                : null);
+        lifecycle
+            .When(x => x.Transition(
+                Arg.Any<string>(),
+                Arg.Any<CommandLifecycleState>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>()))
+            .Do(call => values[call.ArgAt<string>(0)] = (
+                call.ArgAt<CommandLifecycleState>(1),
+                call.ArgAt<string?>(2)));
         return new PendingCommandStateService(
             global::Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
             lifecycle,

@@ -34,7 +34,7 @@ public class CommandParserTests {
             [Projection]
             public sealed class CounterProjection { }
             [Command]
-            [CommandTarget(typeof(CounterProjection), CommandTargetResolutionMode.SameAsSource, CommandTargetChangeKind.Update, ViewKey = " counter-counts ")]
+            [CommandTarget(typeof(CounterProjection), CommandTargetResolutionMode.SameAsSource, CommandTargetChangeKind.Update, ViewKey = " TestDomain:TestDomain.CounterProjection ")]
             public sealed class IncrementCommand
             {
                 public string MessageId { get; set; } = string.Empty;
@@ -48,7 +48,25 @@ public class CommandParserTests {
         target.ProjectionViewKey.ShouldBe("TestDomain:TestDomain.CounterProjection");
         target.ResolutionMode.ShouldBe(CommandTargetResolutionMode.SameAsSource);
         target.ChangeKind.ShouldBe(CommandTargetChangeKind.Update);
-        target.ViewKey.ShouldBe("counter-counts");
+        target.ViewKey.ShouldBe("TestDomain:TestDomain.CounterProjection");
+    }
+
+    [Fact]
+    public void Parse_FixedViewKeyDifferentFromProjectionCanonicalView_ClearsDescriptorAndEmitsHFC1005() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [Projection]
+            public sealed class CounterProjection { }
+            [Command]
+            [CommandTarget(typeof(CounterProjection), CommandTargetResolutionMode.SameAsSource, CommandTargetChangeKind.Update, ViewKey = "counter-counts")]
+            public sealed class IncrementCommand { }
+            """;
+
+        CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.IncrementCommand");
+
+        result.Model.ShouldNotBeNull().CommandTarget.ShouldBeNull();
+        result.Diagnostics.Count(diagnostic => diagnostic.Id == "HFC1005").ShouldBe(1);
     }
 
     [Fact]

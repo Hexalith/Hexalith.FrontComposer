@@ -83,13 +83,24 @@ The focused FC-TBL public baseline currently covers these public types under
 `FcNewItemIndicator` producer wiring uses an explicit command-to-projection `[CommandTarget]`
 declaration. `SameAsSource` is valid only for `Update` and copies the generated row snapshot once
 immediately before dispatch. `Provider` resolves create, cross-row update, status-move, and delete
-identity through exactly one `ICommandTargetIdentityProvider<TCommand>`.
+identity through exactly one `ICommandTargetIdentityProvider<TCommand>`. A fixed declaration
+`ViewKey`, and every provider-returned view key, must equal the declared projection's canonical
+generated view key; mismatches fail closed with no fallback to a route or visible lane.
 
 Only a confirmed or idempotent-confirmed `Material` terminal observation can publish an indicator.
 Delete, rejection, `NoOp`, `Unknown`, invalid time/scope, or unresolved/conflicting identity suppresses
 publication without changing command dispatch or lifecycle. Every terminal adapter routes through the
 single pending-outcome resolver boundary; projection nudges and ambient row placement are never target
-or materiality evidence.
+or materiality evidence. The resolver makes the indicator publication or non-publication decision at
+most once per accepted `MessageId`.
+
+If lifecycle delivery fails after the first terminal outcome is committed, FrontComposer preserves
+that immutable terminal truth and queues bounded circuit-local convergence work. A duplicate terminal
+observation or the polling coordinator can retry the lifecycle state from the stored terminal entry;
+the retry runs before status transport polling and never re-queries command status, changes the
+outcome, or retries the indicator decision. Convergence completes only when both lifecycle state and
+`MessageId` match the stored terminal entry, and it remains bounded by the configured pending-entry
+capacity, polling duration, and per-tick polling budget.
 
 Reserved filter keys remain framework-owned: `__status` for status filters, `__search` for in-grid
 search, and `__hidden` for hidden-column persistence. Column filter keys beginning with `__` are

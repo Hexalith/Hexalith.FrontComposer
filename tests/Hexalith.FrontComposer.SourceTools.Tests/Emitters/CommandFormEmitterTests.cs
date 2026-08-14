@@ -345,12 +345,14 @@ public class CommandFormEmitterTests {
 
         int beforeSubmitIndex = source.IndexOf("await BeforeSubmit().ConfigureAwait(false);", StringComparison.Ordinal);
         int admissionIndex = source.IndexOf("CommandExecutionAdmissionGate.TryAcquire", StringComparison.Ordinal);
+        int cleanupTryIndex = source.IndexOf("try\n        {\n        var correlationId", StringComparison.Ordinal);
         int correlationIndex = source.IndexOf("var correlationId = UlidFactory.NewUlid();", StringComparison.Ordinal);
         int submittedIndex = source.IndexOf("IncrementCommandActions.SubmittedAction(correlationId, _model)", StringComparison.Ordinal);
         int dispatchIndex = source.IndexOf("CommandService.DispatchWithLifecycleObservationsAsync", StringComparison.Ordinal);
         int registerIndex = source.IndexOf("PendingCommandOutcomeResolver.AssociateAccepted", StringComparison.Ordinal);
 
         admissionIndex.ShouldBeGreaterThan(beforeSubmitIndex);
+        cleanupTryIndex.ShouldBeGreaterThan(admissionIndex);
         correlationIndex.ShouldBeGreaterThan(admissionIndex);
         submittedIndex.ShouldBeGreaterThan(admissionIndex);
         dispatchIndex.ShouldBeGreaterThan(admissionIndex);
@@ -377,6 +379,52 @@ public class CommandFormEmitterTests {
         source.ShouldContain("PendingCommandRowIdentity");
         source.ShouldContain("CommandTargetChangeKind.Update");
         source.ShouldNotContain("PendingCommandState.ResolveTerminal");
+    }
+
+    [Fact]
+    public void Emit_FixedExpectedStatusRequiresExactNonNullSourceAndProviderValues() {
+        CommandTargetModel sameSourceTarget = new(
+            "global::Counter.Domain.CounterProjection",
+            CommandTargetResolutionMode.SameAsSource,
+            CommandTargetChangeKind.Update,
+            "counter-counts",
+            "Approved");
+        CommandTargetModel providerTarget = new(
+            "global::Counter.Domain.CounterProjection",
+            CommandTargetResolutionMode.Provider,
+            CommandTargetChangeKind.Update,
+            "counter-counts",
+            "Approved");
+
+        string sameSource = CommandFormEmitter.Emit(
+            BuildForm([], commandTarget: sameSourceTarget),
+            BuildFluxor());
+        string provider = CommandFormEmitter.Emit(
+            BuildForm([], commandTarget: providerTarget),
+            BuildFluxor());
+
+        sameSource.ShouldContain("if (!string.Equals(sourceExpectedStatus, \"Approved\", StringComparison.Ordinal))");
+        sameSource.ShouldNotContain("sourceExpectedStatus is not null &&");
+        provider.ShouldContain("if (!string.Equals(providerExpectedStatus, \"Approved\", StringComparison.Ordinal))");
+        provider.ShouldNotContain("providerExpectedStatus is not null &&");
+    }
+
+    [Fact]
+    public void Emit_UnacceptedCleanupClearsLocalsFinallyAndContainsOnlyNonFatalCoordinatorFailures() {
+        string source = CommandFormEmitter.Emit(BuildForm([]), BuildFluxor());
+
+        int discard = source.IndexOf("PendingCommandOutcomeResolver.DiscardBufferedByOwner(ownerId);", StringComparison.Ordinal);
+        int filter = source.IndexOf("catch (Exception ex) when (!IsFatalCommandCleanupException(ex))", discard, StringComparison.Ordinal);
+        int finallyIndex = source.IndexOf("finally", filter, StringComparison.Ordinal);
+        int clearIds = source.IndexOf("messageIds.Clear();", finallyIndex, StringComparison.Ordinal);
+        int clearOrder = source.IndexOf("messageIdOrder.Clear();", finallyIndex, StringComparison.Ordinal);
+
+        discard.ShouldBeGreaterThan(0);
+        filter.ShouldBeGreaterThan(discard);
+        finallyIndex.ShouldBeGreaterThan(filter);
+        clearIds.ShouldBeGreaterThan(finallyIndex);
+        clearOrder.ShouldBeGreaterThan(clearIds);
+        source.ShouldContain("exception is global::System.OutOfMemoryException");
     }
 
     [Fact]
@@ -422,6 +470,8 @@ public class CommandFormEmitterTests {
         source.ShouldContain("TimeSpan.FromMilliseconds(timeoutMs)");
         source.ShouldContain("cancellationToken).ConfigureAwait(false);");
         source.ShouldContain("try { deadline.Cancel(); } catch (ObjectDisposedException) { }");
+        source.ShouldContain("if (resolution is null)");
+        source.ShouldContain("return (frozenCommand ?? command, FailCommandTargetResolution(\"target-failed\"));");
 
         int workerIndex = source.IndexOf("resolution = Task.Run(", StringComparison.Ordinal);
         int providerResolutionIndex = source.IndexOf("CommandTargetServiceProvider.GetService(typeof(", StringComparison.Ordinal);
@@ -541,6 +591,21 @@ public class CommandFormEmitterTests {
 
         source.ShouldContain("_cts?.Cancel();");
         source.ShouldContain("_cts?.Dispose();");
+    }
+
+    [Fact]
+    public void Emit_DisposeCleansLifetimeAndHandlersInFinallyAfterResetDispatch() {
+        string source = CommandFormEmitter.Emit(BuildForm([]), BuildFluxor());
+        int dispose = source.IndexOf("public void Dispose()", StringComparison.Ordinal);
+        int reset = source.IndexOf("ResetToIdleAction(_submittedCorrelationId)", dispose, StringComparison.Ordinal);
+        int finallyIndex = source.IndexOf("finally", reset, StringComparison.Ordinal);
+        int ctsDispose = source.IndexOf("_cts?.Dispose();", finallyIndex, StringComparison.Ordinal);
+        int unsubscribe = source.IndexOf("LifecycleState.StateChanged -= OnStateChanged;", finallyIndex, StringComparison.Ordinal);
+
+        reset.ShouldBeGreaterThan(dispose);
+        finallyIndex.ShouldBeGreaterThan(reset);
+        ctsDispose.ShouldBeGreaterThan(finallyIndex);
+        unsubscribe.ShouldBeGreaterThan(ctsDispose);
     }
 
     [Fact]

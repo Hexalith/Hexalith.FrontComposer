@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -46,8 +47,7 @@ public sealed class EventStoreCommandClient(
         EventStoreResponseClassifier classifier,
         ILogger<EventStoreCommandClient> logger,
         IOptions<FcShellOptions>? shellOptions)
-        : this(httpClientFactory, options, ulidFactory, userContextAccessor, classifier, logger, shellOptions, null)
-    {
+        : this(httpClientFactory, options, ulidFactory, userContextAccessor, classifier, logger, shellOptions, null) {
     }
 
     public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
@@ -180,16 +180,14 @@ public sealed class EventStoreCommandClient(
                     classification.Location,
                     classification.RetryAfter);
 
-                try
-                {
+                try {
                     onLifecycleObservation?.Invoke(new CommandLifecycleObservation(
                         CommandLifecycleState.Syncing,
                         result.MessageId,
                         CommandMateriality.Unknown,
                         (timeProvider ?? TimeProvider.System).GetUtcNow()));
                 }
-                catch (Exception ex)
-                {
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                     FrontComposerWarningLog.EventStoreLifecycleCallbackFailed(logger, result.MessageId, ex);
                 }
 

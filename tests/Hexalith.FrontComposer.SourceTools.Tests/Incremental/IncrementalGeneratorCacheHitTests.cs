@@ -16,23 +16,23 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Incremental;
 public class IncrementalGeneratorCacheHitTests {
     public static TheoryData<string, string, string> CommandTargetChanges => new() {
         {
-            BuildTargetCommand("Provider", "Update", "view-a", "Approved"),
-            BuildTargetCommand("Provider", "Update", "view-b", "Approved"),
-            "view-b"
+            BuildTargetCommand("Provider", "Update", "TargetProjectionA", "Approved"),
+            BuildTargetCommand("Provider", "Update", "TargetProjectionB", "Approved"),
+            "TestDomain:TestDomain.TargetProjectionB"
         },
         {
-            BuildTargetCommand("Provider", "Update", "view-b", "Draft"),
-            BuildTargetCommand("Provider", "Update", "view-b", "Approved"),
+            BuildTargetCommand("Provider", "Update", "TargetProjection", "Draft"),
+            BuildTargetCommand("Provider", "Update", "TargetProjection", "Approved"),
             "Approved"
         },
         {
-            BuildTargetCommand("Provider", "Update", "view-b", "Approved"),
-            BuildTargetCommand("SameAsSource", "Update", "view-b", "Approved"),
+            BuildTargetCommand("Provider", "Update", "TargetProjection", "Approved"),
+            BuildTargetCommand("SameAsSource", "Update", "TargetProjection", "Approved"),
             "PendingCommandRowIdentity"
         },
         {
-            BuildTargetCommand("Provider", "Update", "view-b", "Approved"),
-            BuildTargetCommand("Provider", "StatusMove", "view-b", "Approved"),
+            BuildTargetCommand("Provider", "Update", "TargetProjection", "Approved"),
+            BuildTargetCommand("Provider", "StatusMove", "TargetProjection", "Approved"),
             "CommandTargetChangeKind.StatusMove"
         },
     };
@@ -174,21 +174,21 @@ public enum OrderStatus
     private static string BuildTargetCommand(
         string resolutionMode,
         string changeKind,
-        string viewKey,
+        string projectionName,
         string expectedStatus) => $$"""
         using Hexalith.FrontComposer.Contracts.Attributes;
 
         namespace TestDomain;
 
         [Projection]
-        public sealed class TargetProjection { }
+        public sealed class {{projectionName}} { }
 
         [Command]
         [CommandTarget(
-            typeof(TargetProjection),
+            typeof({{projectionName}}),
             CommandTargetResolutionMode.{{resolutionMode}},
             CommandTargetChangeKind.{{changeKind}},
-            ViewKey = "{{viewKey}}",
+            ViewKey = "TestDomain:TestDomain.{{projectionName}}",
             ExpectedStatus = "{{expectedStatus}}")]
         public sealed class MoveCommand
         {

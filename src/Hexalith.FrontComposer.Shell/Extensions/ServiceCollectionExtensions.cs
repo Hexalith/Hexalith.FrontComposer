@@ -232,13 +232,15 @@ public static class ServiceCollectionExtensions {
             new AuthorizingCommandServiceDecorator(
                 sp.GetRequiredService<StubCommandService>(),
                 sp.GetRequiredService<ICommandDispatchAuthorizationGate>(),
-                sp.GetRequiredService<TimeProvider>()));
+                sp.GetRequiredService<TimeProvider>(),
+                sp.GetRequiredService<IOptions<FcShellOptions>>()));
         services.TryAddScoped<ICommandServiceWithLifecycleObservations>(sp => {
             ICommandServiceWithLifecycle service = sp.GetRequiredService<ICommandServiceWithLifecycle>();
             return service as ICommandServiceWithLifecycleObservations
                 ?? new LegacyLifecycleObservationCommandServiceAdapter(
                     service,
-                    sp.GetRequiredService<TimeProvider>());
+                    sp.GetRequiredService<TimeProvider>(),
+                    sp.GetRequiredService<IOptions<FcShellOptions>>());
         });
         services.TryAddScoped<ICommandService>(sp =>
             sp.GetRequiredService<ICommandServiceWithLifecycle>());
@@ -421,6 +423,7 @@ public static class ServiceCollectionExtensions {
         services.TryAddScoped<IReconnectionReconciliationState, ReconnectionReconciliationStateService>();
         services.TryAddScoped<IReconnectionReconciliationCoordinator, ReconnectionReconciliationCoordinator>();
         services.TryAddScoped<IPendingCommandStateService, PendingCommandStateService>();
+        ValidateCommandExecutionAdmissionGateRegistration(services);
         services.TryAddScoped<ICommandExecutionAdmissionGate, CommandExecutionAdmissionGate>();
         RegisterPendingCommandOutcomeServices(services);
         services.TryAddScoped<INewItemIndicatorStateService, NewItemIndicatorStateService>();
@@ -579,6 +582,22 @@ public static class ServiceCollectionExtensions {
             resolverDescriptor,
             coordinatorDescriptor,
             concreteDescriptor));
+    }
+
+    private static void ValidateCommandExecutionAdmissionGateRegistration(IServiceCollection services) {
+        ServiceDescriptor[] descriptors = [.. services.Where(static descriptor =>
+            descriptor.ServiceType == typeof(ICommandExecutionAdmissionGate))];
+        if (descriptors.Length == 0) {
+            return;
+        }
+
+        if (descriptors.Length != 1
+            || descriptors[0].IsKeyedService
+            || descriptors[0].Lifetime != ServiceLifetime.Scoped) {
+            throw new InvalidOperationException(
+                $"A pre-registered {nameof(ICommandExecutionAdmissionGate)} topology must contain exactly one "
+                + "non-keyed Scoped registration.");
+        }
     }
 
     private static void ValidateTrackedDescriptor(

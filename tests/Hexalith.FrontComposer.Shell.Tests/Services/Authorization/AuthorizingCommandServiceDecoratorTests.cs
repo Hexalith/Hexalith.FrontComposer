@@ -1,12 +1,10 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
-using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services;
-
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using NSubstitute;
-
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Services.Authorization;
@@ -164,6 +162,40 @@ public sealed class AuthorizingCommandServiceDecoratorTests {
             Arg.Any<Action<CommandLifecycleObservation>?>(),
             Arg.Any<CancellationToken>());
         observations.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TypedDispatch_PlainInnerWithObserverFailsLoudly() {
+        ICommandService inner = Substitute.For<ICommandService>();
+        ICommandDispatchAuthorizationGate gate = Substitute.For<ICommandDispatchAuthorizationGate>();
+        AuthorizingCommandServiceDecorator sut = new(inner, gate);
+
+        await Should.ThrowAsync<NotSupportedException>(() =>
+            ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+                new SampleCommand(),
+                _ => { },
+                TestContext.Current.CancellationToken));
+
+        await inner.DidNotReceiveWithAnyArgs().DispatchAsync(
+            Arg.Any<SampleCommand>(),
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TypedDispatch_PlainInnerWithoutObserverUsesPlainDispatch() {
+        ICommandService inner = Substitute.For<ICommandService>();
+        ICommandDispatchAuthorizationGate gate = Substitute.For<ICommandDispatchAuthorizationGate>();
+        CommandResult expected = new("01ARZ3NDEKTSV4RRFFQ69G5FAV", CommandResultStatus.Accepted);
+        inner.DispatchAsync(Arg.Any<SampleCommand>(), Arg.Any<CancellationToken>()).Returns(expected);
+        AuthorizingCommandServiceDecorator sut = new(inner, gate);
+
+        CommandResult result = await ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
+            new SampleCommand(),
+            onLifecycleObservation: null,
+            TestContext.Current.CancellationToken);
+
+        result.ShouldBe(expected);
+        await inner.Received(1).DispatchAsync(Arg.Any<SampleCommand>(), Arg.Any<CancellationToken>());
     }
 
     private sealed class OptionsSnapshotStub(StubCommandServiceOptions value) : IOptionsSnapshot<StubCommandServiceOptions> {

@@ -25,7 +25,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
     [Fact]
     public async Task PollOnce_ProcessesPendingCommandsOldestFirstWithinCap() {
         FakeTimeProvider time = new(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero));
-        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 1 }),
             lifecycle,
@@ -67,7 +67,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
     public async Task PollOnce_ZeroCapDisablesPendingPolling() {
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 0 }),
-            Substitute.For<ILifecycleStateService>(),
+            CreateLifecycle(),
             new FakeTimeProvider(),
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", DateTimeOffset.UtcNow));
@@ -88,11 +88,153 @@ public sealed class PendingCommandPollingCoordinatorTests {
     }
 
     [Fact]
+    public async Task PollOnce_LifecycleConvergenceRunsBeforeAndWithoutStatusTransport() {
+        FakeTimeProvider time = new(new DateTimeOffset(2026, 8, 14, 12, 0, 0, TimeSpan.Zero));
+        CommandLifecycleState lifecycleState = CommandLifecycleState.Idle;
+        string? lifecycleMessageId = null;
+        bool applyTransition = false;
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(CorrelationId).Returns(_ => lifecycleState);
+        lifecycle.GetMessageId(CorrelationId).Returns(_ => lifecycleMessageId);
+        lifecycle
+            .When(x => x.Transition(CorrelationId, Arg.Any<CommandLifecycleState>(), Arg.Any<string?>(), Arg.Any<bool>()))
+            .Do(call => {
+                if (!applyTransition) {
+                    return;
+                }
+
+                lifecycleState = call.ArgAt<CommandLifecycleState>(1);
+                lifecycleMessageId = call.ArgAt<string?>(2);
+            });
+        FcShellOptions options = new() { MaxPendingCommandPollingPerTick = 1 };
+        PendingCommandStateService state = new(
+            Microsoft.Extensions.Options.Options.Create(options),
+            lifecycle,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
+        state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed("01ARZ3NDEKTSV4RRFFQ69G5FAV")).Status
+            .ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        applyTransition = true;
+        IPendingCommandStatusQuery query = Substitute.For<IPendingCommandStatusQuery>();
+        PendingCommandPollingCoordinator sut = new(
+            state,
+            new PendingCommandOutcomeResolver(state),
+            query,
+            Microsoft.Extensions.Options.Options.Create(options),
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
+
+        int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
+
+        processed.ShouldBe(1);
+        lifecycleState.ShouldBe(CommandLifecycleState.Confirmed);
+        lifecycleMessageId.ShouldBe("01ARZ3NDEKTSV4RRFFQ69G5FAV");
+        await query.DidNotReceiveWithAnyArgs().QueryAsync(default!, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task PollOnce_FailingConvergenceItemIsAttemptedOnceAndDoesNotStarveTransport() {
+        const string failedMessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const string pendingMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        FakeTimeProvider time = new(new DateTimeOffset(2026, 8, 14, 12, 0, 0, TimeSpan.Zero));
+        Dictionary<string, (CommandLifecycleState State, string? MessageId)> values = new(StringComparer.Ordinal);
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0), out var value) ? value.State : CommandLifecycleState.Idle);
+        lifecycle.GetMessageId(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0), out var value) ? value.MessageId : null);
+        lifecycle.When(service => service.Transition(
+                SecondCorrelationId,
+                Arg.Any<CommandLifecycleState>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>()))
+            .Do(call => values[SecondCorrelationId] = (
+                call.ArgAt<CommandLifecycleState>(1),
+                call.ArgAt<string?>(2)));
+        FcShellOptions options = new() { MaxPendingCommandPollingPerTick = 2 };
+        PendingCommandStateService state = new(
+            Microsoft.Extensions.Options.Options.Create(options),
+            lifecycle,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration(CorrelationId, failedMessageId, time.GetUtcNow()));
+        state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(failedMessageId)).Status
+            .ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        state.Register(Registration(SecondCorrelationId, pendingMessageId, time.GetUtcNow()));
+        RecordingFixedStatusQuery query = new(pendingMessageId);
+        PendingCommandPollingCoordinator sut = new(
+            state,
+            new PendingCommandOutcomeResolver(state),
+            query,
+            Microsoft.Extensions.Options.Options.Create(options),
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
+
+        int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
+
+        processed.ShouldBe(1);
+        state.GetByMessageId(pendingMessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Confirmed);
+        lifecycle.Received(2).Transition(CorrelationId, CommandLifecycleState.Confirmed, failedMessageId, false);
+        query.MessageIds.ShouldBe([pendingMessageId]);
+    }
+
+    [Fact]
+    public async Task PollOnce_ExpiredConvergenceDropsWithoutRequeueAndPermitsTransport() {
+        const string expiredMessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const string pendingMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        FakeTimeProvider time = new(new DateTimeOffset(2026, 8, 14, 12, 0, 0, TimeSpan.Zero));
+        Dictionary<string, (CommandLifecycleState State, string? MessageId)> values = new(StringComparer.Ordinal);
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0), out var value) ? value.State : CommandLifecycleState.Idle);
+        lifecycle.GetMessageId(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0), out var value) ? value.MessageId : null);
+        lifecycle.When(service => service.Transition(
+                SecondCorrelationId,
+                Arg.Any<CommandLifecycleState>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>()))
+            .Do(call => values[SecondCorrelationId] = (
+                call.ArgAt<CommandLifecycleState>(1),
+                call.ArgAt<string?>(2)));
+        FcShellOptions options = new() {
+            MaxPendingCommandPollingPerTick = 2,
+            MaxPendingCommandPollingDurationMs = 1_000,
+        };
+        PendingCommandStateService state = new(
+            Microsoft.Extensions.Options.Options.Create(options),
+            lifecycle,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration(CorrelationId, expiredMessageId, time.GetUtcNow()));
+        state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(expiredMessageId)).Status
+            .ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        time.Advance(TimeSpan.FromMilliseconds(1_001));
+        state.Register(Registration(SecondCorrelationId, pendingMessageId, time.GetUtcNow()));
+        RecordingFixedStatusQuery query = new(pendingMessageId);
+        PendingCommandPollingCoordinator sut = new(
+            state,
+            new PendingCommandOutcomeResolver(state),
+            query,
+            Microsoft.Extensions.Options.Options.Create(options),
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
+
+        int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
+        _ = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
+
+        processed.ShouldBe(1);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Confirmed, expiredMessageId, false);
+        query.MessageIds.ShouldBe([pendingMessageId]);
+    }
+
+    [Fact]
     public async Task PollOnce_SkipsAlreadyResolvedEntriesMidTick() {
         // P16 — live nudge resolves entries between snapshot capture and per-entry query; coordinator
         // should re-check the entry status to skip wasted HTTP calls.
         FakeTimeProvider time = new(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero));
-        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 5 }),
             lifecycle,
@@ -123,7 +265,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         // P9 — polling-coordinator catch should preserve stack trace in the log and not swallow
         // OperationCanceledException issued from the user-supplied cancellation.
         FakeTimeProvider time = new(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero));
-        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 5 }),
             lifecycle,
@@ -165,7 +307,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
     [Fact]
     public async Task PollOnce_EventStoreStatusProvider_ResolvesPendingByMessageId() {
         FakeTimeProvider time = new(new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero));
-        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingPerTick = 5 }),
             lifecycle,
@@ -224,7 +366,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         DateTimeOffset now = new(2026, 6, 4, 12, 0, 0, TimeSpan.Zero);
         FakeTimeProvider time = new(now);
         FcShellOptions options = new() { MaxPendingCommandPollingPerTick = 5 };
-        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(options),
             lifecycle,
@@ -310,7 +452,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
     [Fact]
     public async Task PollOnce_ExpiredPendingCommand_ResolvesNeedsReviewWithoutQueryingProvider() {
         FakeTimeProvider time = new(new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero));
-        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        ILifecycleStateService lifecycle = CreateLifecycle();
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
             lifecycle,
@@ -345,7 +487,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
         FakeTimeProvider time = new(new DateTimeOffset(2026, 6, 4, 12, 0, 0, TimeSpan.Zero));
         PendingCommandStateService state = new(
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
-            Substitute.For<ILifecycleStateService>(),
+            CreateLifecycle(),
             time,
             NullLogger<PendingCommandStateService>.Instance);
         state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
@@ -382,6 +524,29 @@ public sealed class PendingCommandPollingCoordinatorTests {
             PriorStatusSlot: "Draft",
             SubmittedAt: submittedAt);
 
+    private static ILifecycleStateService CreateLifecycle() {
+        Dictionary<string, (CommandLifecycleState State, string? MessageId)> values = new(StringComparer.Ordinal);
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0)!, out var value)
+                ? value.State
+                : CommandLifecycleState.Idle);
+        lifecycle.GetMessageId(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0)!, out var value)
+                ? value.MessageId
+                : null);
+        lifecycle
+            .When(x => x.Transition(
+                Arg.Any<string>(),
+                Arg.Any<CommandLifecycleState>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>()))
+            .Do(call => values[call.ArgAt<string>(0)] = (
+                call.ArgAt<CommandLifecycleState>(1),
+                call.ArgAt<string?>(2)));
+        return lifecycle;
+    }
+
     private sealed class SingleClientFactory(HttpMessageHandler handler) : IHttpClientFactory {
         public HttpClient CreateClient(string name)
             => new(handler, disposeHandler: false) { BaseAddress = new Uri("https://eventstore.test") };
@@ -393,6 +558,20 @@ public sealed class PendingCommandPollingCoordinatorTests {
         protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
             Requests.Add(request);
             return Task.FromResult(responseFactory(request));
+        }
+    }
+
+    private sealed class RecordingFixedStatusQuery(string terminalMessageId) : IPendingCommandStatusQuery {
+        public List<string> MessageIds { get; } = [];
+
+        public ValueTask<PendingCommandOutcomeObservation?> QueryAsync(
+            PendingCommandEntry pendingCommand,
+            CancellationToken cancellationToken = default) {
+            MessageIds.Add(pendingCommand.MessageId);
+            return ValueTask.FromResult<PendingCommandOutcomeObservation?>(new(
+                PendingCommandOutcomeSource.FallbackPolling,
+                PendingCommandTerminalOutcome.Confirmed,
+                terminalMessageId));
         }
     }
 }

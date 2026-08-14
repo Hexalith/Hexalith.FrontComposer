@@ -32,8 +32,7 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle, ICommandS
         IOptionsSnapshot<StubCommandServiceOptions> options,
         IUlidFactory ulidFactory,
         ILogger<StubCommandService>? logger = null)
-        : this(options, ulidFactory, logger, null)
-    {
+        : this(options, ulidFactory, logger, null) {
     }
 
     /// <summary>Initializes a new instance using the specified framework clock.</summary>
@@ -162,19 +161,30 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle, ICommandS
         Action<CommandLifecycleObservation>? observer,
         CommandLifecycleState state,
         CommandMateriality materiality,
-        string messageId)
-    {
-        try
-        {
+        string messageId) {
+        Exception? callbackFailure = null;
+        DateTimeOffset? observedAt;
+        try {
+            observedAt = _timeProvider.GetUtcNow();
+        }
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            observedAt = null;
+            callbackFailure = ex;
+        }
+
+        try {
             observer?.Invoke(new CommandLifecycleObservation(
                 state,
                 messageId,
                 materiality,
-                _timeProvider.GetUtcNow()));
+                observedAt));
         }
-        catch (Exception ex)
-        {
-            FrontComposerWarningLog.StubLifecycleCallbackFailed(_logger, messageId, ex);
+        catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+            callbackFailure ??= ex;
+        }
+
+        if (callbackFailure is not null) {
+            FrontComposerWarningLog.StubLifecycleCallbackFailed(_logger, messageId, callbackFailure);
         }
     }
 }
