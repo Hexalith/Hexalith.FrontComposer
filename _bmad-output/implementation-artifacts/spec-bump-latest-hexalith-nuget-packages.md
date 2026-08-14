@@ -2,7 +2,7 @@
 title: 'Bump Latest Hexalith Module NuGet Packages'
 type: 'refactor'
 created: '2026-08-14'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '7100bd52493846e93303b355ea8cae1ae23ea875'
 review_loop_iteration: 0
 context:
@@ -40,7 +40,7 @@ context:
 
 ## Code Map
 
-- `references/Hexalith.Builds/Props/Directory.Packages.props:6-13,40-52,67-69` -- family properties and EventStore/Memories `PackageVersion` rows. Current defaults: EventStore `3.94.0`, Memories `2.20.7`.
+- `references/Hexalith.Builds/Props/Directory.Packages.props:6-13,40-52,67-69` -- family properties and EventStore/Memories `PackageVersion` rows. Current defaults: EventStore `3.94.1`, Memories `2.21.1`.
 - `references/Hexalith.Builds/Directory.Packages.props:1-3` -- thin re-export; do not add versions here.
 - `references/Hexalith.Builds/Hexalith.Package.props` -- packaging metadata only; not version authority.
 - `references/Hexalith.Builds/Tools/package-version-audit.json` -- EventStore rows still `selectedVersion` `3.93.0` (e.g. `Hexalith.EventStore.Contracts` ~4360); Memories rows still `2.20.7` (~4889). Must match the new catalog pins.
@@ -49,8 +49,8 @@ context:
 - `references/Hexalith.Builds/Tools/validate-central-package-versions.ps1` and `Tools/test-authoritative-package-catalog.ps1` -- structural catalog checks; they do not pin literals.
 - `Directory.Packages.props:6-13` -- FrontComposer version-free import shim. Read-only for this change.
 - `eng/dependency-graph-policy.json:54-83` -- shape-only `Hexalith*Version` names; empty `selected_catalog_required_properties`. Do not mirror the new point values.
-- `.github/workflows/ci.yml:25`, `release.yml:17,321,329`, `release-evidence.yml:233` -- execution SHA `99d5a46…`. Leave unless the human advances that coordinate.
-- Current Builds gitlink: `606d9f119965c273104d707b9cc8c179fe648237`.
+- `.github/workflows/ci.yml:25`, `release.yml:17,321,329`, `release-evidence.yml:233` -- execution SHA now `3f0e3595be693fce56a37648c0bd0f89390f5fd3` after human approval.
+- Current Builds gitlink: `3f0e3595be693fce56a37648c0bd0f89390f5fd3`.
 
 ## Tasks & Acceptance
 
@@ -59,6 +59,7 @@ context:
 - [x] `references/Hexalith.Builds/Tools/package-version-audit.json` -- refresh EventStore and Memories internal rows so `selectedVersion` equals the new catalog pins and records listed nuget.org evidence -- the validator requires exact catalog↔audit match and already rejects EventStore `3.94.0` vs audit `3.93.0`.
 - [x] HALT for a human-created or human-approved Builds commit, then advance the root `references/Hexalith.Builds` gitlink to that exact commit -- FrontComposer CI reads the gitlink, not a dirty submodule tree.
 - [x] Confirm FrontComposer-owned catalog/policy/workflow files stay version-free and keep execution SHA `99d5a46…` -- a compatible catalog re-pin must not reintroduce local mirrors.
+- [x] After human approval, move CI/Release/release-evidence Builds coordinates and append `evaluator_authorizations` rows for `3f0e3595be693fce56a37648c0bd0f89390f5fd3` -- `CiGovernanceTests` requires those pins to equal the Builds gitlink.
 
 **Acceptance Criteria:**
 - Given nuget.org lists EventStore `3.94.1` and Memories `2.21.1`, when Builds evaluates the catalog, then those families are aligned on those versions and every other Hexalith family property is unchanged.
@@ -73,3 +74,41 @@ context:
 - `pwsh -File references/Hexalith.Builds/Tools/validate-central-package-versions.ps1` plus `pwsh -File references/Hexalith.Builds/Tools/validate-package-version-audit.ps1` plus `pwsh -File references/Hexalith.Builds/Tools/test-authoritative-package-catalog.ps1` -- expected: pass after the catalog and audit agree.
 - `python3 eng/dependency_graph.py --root . validate --commit HEAD` -- expected: `ok=true` after the Builds gitlink is updated.
 - `DiffEngine_Disabled=true dotnet restore Hexalith.FrontComposer.slnx` then `DiffEngine_Disabled=true dotnet build Hexalith.FrontComposer.slnx --configuration Release` -- expected: restore uses EventStore `3.94.1` and Memories `2.21.1`; build is warning-free.
+
+## Suggested Review Order
+
+**Catalog authority**
+
+- Family pins that pull every EventStore and Memories package row
+  [`Directory.Packages.props:8`](../../references/Hexalith.Builds/Props/Directory.Packages.props#L8)
+
+- Memories family pin at the same property group
+  [`Directory.Packages.props:10`](../../references/Hexalith.Builds/Props/Directory.Packages.props#L10)
+
+**Execution lockstep**
+
+- Shared Release execution SHA that every later pin must equal
+  [`release.yml:17`](../../.github/workflows/release.yml#L17)
+
+- Reusable domain-ci pin now matching the Builds gitlink
+  [`ci.yml:25`](../../.github/workflows/ci.yml#L25)
+
+- Reusable domain-release pin and builds-execution-sha input
+  [`release.yml:321`](../../.github/workflows/release.yml#L321)
+
+- Prepare-candidate Builds checkout ref
+  [`release.yml:233`](../../.github/workflows/release.yml#L233)
+
+- Release Evidence Builds checkout ref
+  [`release-evidence.yml:233`](../../.github/workflows/release-evidence.yml#L233)
+
+**Evaluator authorization**
+
+- New CI closure for the 3f0e359 reusable workflow
+  [`dependency-graph-policy.json:714`](../../eng/dependency-graph-policy.json#L714)
+
+**Docs**
+
+- Operator-facing catalog companions at the new Builds identity
+  [`deployment-guide.md:6`](../project-docs/deployment-guide.md#L6)
+

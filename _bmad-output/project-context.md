@@ -247,7 +247,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
   the run/attempt, active base policy, and candidate graph; it does not fabricate an immutable closure
   for the shared CI workflow. Operator Release authenticates that proof for the exact current main SHA,
   enters the protected production environment, and invokes `domain-release.yml` at the approved literal
-  Builds commit `99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38` with the identical execution input.
+  Builds commit `3f0e3595be693fce56a37648c0bd0f89390f5fd3` with the identical execution input.
   FrontComposer does not mirror the selected Builds catalog's `Hexalith*Version` point values in
   `selected_catalog_required_properties`; a Builds gitlink re-pin therefore needs no local
   property-policy edit when retained package, structure, ownership, and affected-build checks pass.

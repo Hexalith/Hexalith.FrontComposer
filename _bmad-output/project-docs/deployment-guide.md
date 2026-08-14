@@ -3,7 +3,7 @@
 > Updated 2026-08-13 for the operator-controlled, exact-source production release model.
 > FrontComposer ships NuGet packages, not a deployed service or container image.
 > Approved Builds execution identity is the current `references/Hexalith.Builds` gitlink
-> (`99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38`, EventStore 3.94.0 / Memories 2.20.7 / Tenants 5.4.1).
+> (`3f0e3595be693fce56a37648c0bd0f89390f5fd3`, EventStore 3.94.1 / Memories 2.21.1 / Tenants 5.4.1).
 
 ## Published package set
 
@@ -40,10 +40,10 @@ advances, the operator must wait for successful push CI on the new tip and dispa
 
 Release concurrency is the repository-wide `release-production` group with cancellation disabled. The
 protected jobs use the `production` environment. The reusable publisher is selected at the exact
-Hexalith.Builds commit `99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38`; the identical value is passed as
+Hexalith.Builds commit `3f0e3595be693fce56a37648c0bd0f89390f5fd3`; the identical value is passed as
 `builds-execution-sha`. The candidate's `references/Hexalith.Builds` gitlink must also resolve to that
 identity. Mutable workflow references are not accepted at the release boundary. Catalog companions at
-this Builds identity are EventStore `3.94.0`, Memories `2.20.7`, and Tenants `5.4.1`.
+this Builds identity are EventStore `3.94.1`, Memories `2.21.1`, and Tenants `5.4.1`.
 
 ## Operator procedure
 

@@ -2410,3 +2410,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-29643539939-fix-cicd.md`
   summary: Reseal the analyzer-policy identifier inventory for later-main drift (`6824` / `af8a8d24…` vs sealed `6820` / `6c099739…`).
   evidence: `AnalyzerPolicyGovernanceTests.AnalyzerPolicy_IdentifierInventory_MatchesSeal` fails on later main; the July `6188` ledger refresh in this spec is historical and was not re-opened.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages.md`
+  summary: Refresh Builds audit selectedVersion rows for the four Dependabot-advanced external packages so validate-package-version-audit.ps1 can pass.
+  evidence: Catalog at 3f0e359 already selects Roslynator 4.16.0, SonarAnalyzer 10.32.0.713, and System.CommandLine 2.0.11 while the audit still records the previous floors; this story was forbidden from changing external pins.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages.md`
+  summary: Land evaluator_authorizations for 3f0e359 before the workflow pin-move commit so AD-13 create-ci is authorized on the pin push.
+  evidence: Policy rows and pin edits are in one working tree; push evaluation loads policy from the push base, so a same-commit pin+auth bump soft-defers create-ci.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages.md`
+  summary: Add a test that live ci.yml / release.yml / release-evidence.yml SHA-256 blobs match the new evaluator_authorizations caller rows.
+  evidence: CiGovernanceTests only compares pin SHAs to the gitlink; an unauthorized or mistyped caller blob still leaves those tests and dependency_graph validate green.
