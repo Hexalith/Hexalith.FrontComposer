@@ -304,6 +304,7 @@ public sealed class CiGovernanceTests {
         ci.ShouldContain("eng/dependency_graph.py acquire");
         ci.ShouldContain("--destination \"$object_root\"");
         ci.ShouldContain("eng/dependency_graph.py --root \"$object_root\" diff");
+        ci.ShouldContain("payload.get(\"error\")");
         ci.ShouldContain("eng/dependency_graph.py --root \"${{ steps.dependency-diff.outputs.object-root }}\" run-affected");
         ci.ShouldContain("dependency-graph-evidence-${{ github.run_id }}-${{ github.run_attempt }}");
         ci.ShouldContain("dependency_handoff.py --root \"$OBJECT_ROOT\" draft-evaluator");
@@ -343,6 +344,62 @@ public sealed class CiGovernanceTests {
         architecture.ShouldContain("eng/dependency-graph-policy.json");
         architecture.ShouldNotContain("\"restore_argv\"");
         architecture.ShouldNotContain("\"build_argv\"");
+    }
+
+    [Fact]
+    public void DependencyGovernance_CollectAndEnforceStepsPrintGraphErrorOnFailure() {
+        string root = RepositoryRoot();
+        string ci = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
+        string collect = ExtractNamedStep(ci, "Collect exact graph diff and affected-module proof");
+        string enforce = ExtractNamedStep(ci, "Enforce dependency-governance result");
+
+        collect.ShouldContain("payload.get(\"error\")");
+        collect.ShouldContain("::error::{error}");
+        enforce.ShouldContain("payload.get(\"error\")");
+        enforce.ShouldContain("::error::{error}");
+        enforce.ShouldContain("exit 1");
+
+        const string errorText = "EventStore System.CommandLine expected 2.0.10 found 2.0.11";
+        string workDir = Path.Combine(Path.GetTempPath(), $"fc-gov-graph-error-{Guid.NewGuid():N}");
+        string artifactDir = Path.Combine(workDir, "artifacts", "dependency-governance");
+        Directory.CreateDirectory(artifactDir);
+        try {
+            File.WriteAllText(
+                Path.Combine(artifactDir, "dependency-graph-diff.json"),
+                """{"ok":false,"error":"EventStore System.CommandLine expected 2.0.10 found 2.0.11"}""");
+            File.WriteAllText(Path.Combine(workDir, "collect-printer.py"), ExtractPythonHeredoc(collect));
+            File.WriteAllText(
+                Path.Combine(workDir, "enforce.sh"),
+                ExtractRunScript(ci, "Enforce dependency-governance result"));
+
+            Dictionary<string, string> collectEnvironment = new() {
+                ["WORK_DIR"] = workDir,
+            };
+            ProcessResult collectResult = RunProcess(root, "bash", [
+                "-c",
+                "cd \"$WORK_DIR\" && python3 collect-printer.py",
+            ], collectEnvironment);
+            collectResult.ExitCode.ShouldBe(0, $"stdout={collectResult.Output} stderr={collectResult.Error}");
+            collectResult.Output.ShouldContain("::error::");
+            collectResult.Output.ShouldContain(errorText);
+
+            Dictionary<string, string> enforceEnvironment = new() {
+                ["WORK_DIR"] = workDir,
+                ["DIFF_EXIT_CODE"] = "1",
+            };
+            ProcessResult enforceResult = RunProcess(root, "bash", [
+                "-c",
+                "cd \"$WORK_DIR\" && bash enforce.sh",
+            ], enforceEnvironment);
+            enforceResult.ExitCode.ShouldBe(1, $"stdout={enforceResult.Output} stderr={enforceResult.Error}");
+            enforceResult.Output.ShouldContain("::error::");
+            enforceResult.Output.ShouldContain(errorText);
+        }
+        finally {
+            if (Directory.Exists(workDir)) {
+                Directory.Delete(workDir, recursive: true);
+            }
+        }
     }
 
     [Fact]
@@ -2860,6 +2917,20 @@ public sealed class CiGovernanceTests {
 
     private static string Sha256Text(string text) =>
         Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
+
+    private static string ExtractPythonHeredoc(string stepBlock) {
+        Match match = Regex.Match(
+            stepBlock,
+            @"python3 - <<'PY'\r?\n(?<body>.*?)\r?\n[ \t]*PY\b",
+            RegexOptions.Singleline);
+        match.Success.ShouldBeTrue("step must contain a python3 <<'PY' printer heredoc.");
+        return string.Join(
+            '\n',
+            match.Groups["body"].Value.Split('\n').Select(line => {
+                string trimmed = line.TrimEnd('\r');
+                return trimmed.StartsWith("          ", StringComparison.Ordinal) ? trimmed[10..] : trimmed;
+            }));
+    }
 
     private static string ExtractRunScript(string workflow, string stepName) {
         int stepStart = workflow.IndexOf($"      - name: {stepName}", StringComparison.Ordinal);

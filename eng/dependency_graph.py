@@ -52,6 +52,7 @@ _PROFILE_KEYS = frozenset({
     "owner_checks",
     "selected_catalog_required_property_names",
     "selected_catalog_required_properties",
+    "selected_catalog_required_package_names",
     "selected_catalog_required_packages",
 })
 
@@ -1174,7 +1175,8 @@ def assert_selected_catalog_property_shape(root: ET.Element, prop_name: str, con
         )
 
 
-def assert_authoritative_package_version(root: ET.Element, package_id: str, expected_version: str, context: str) -> None:
+def assert_authoritative_package_presence(root: ET.Element, package_id: str, context: str) -> ET.Element:
+    """Assert the selected catalog has exactly one authoritative Include row with a literal NuGet version."""
     ops = find_package_version_ops(root, package_id)
     if len(ops) != 1:
         raise GraphError(f"{context}: {package_id} must have exactly one unmasked shared operation (found {len(ops)})")
@@ -1192,6 +1194,16 @@ def assert_authoritative_package_version(root: ET.Element, package_id: str, expe
         raise GraphError(f"{context}: {package_id} must be unconditional in the shared catalog")
     if any(node.tag in ("Choose", "When", "Otherwise") for node in ancestors):
         raise GraphError(f"{context}: {package_id} must not be selected through an MSBuild Choose branch")
+    version = el.get("Version")
+    if not version or _NUGET_VERSION.fullmatch(version) is None:
+        raise GraphError(
+            f"{context}: {package_id} must declare a nonempty literal NuGet version, found {version!r}"
+        )
+    return el
+
+
+def assert_authoritative_package_version(root: ET.Element, package_id: str, expected_version: str, context: str) -> None:
+    el = assert_authoritative_package_presence(root, package_id, context)
     version = el.get("Version")
     if version != expected_version:
         raise GraphError(f"{context}: {package_id} expected version {expected_version!r}, found {version!r}")
@@ -1366,6 +1378,7 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
 
         required_property_names = profile.get("selected_catalog_required_property_names", [])
         required_props = profile.get("selected_catalog_required_properties", {})
+        required_package_names = profile.get("selected_catalog_required_package_names", [])
         required_packages = profile.get("selected_catalog_required_packages", {})
 
         # Each distinct owner_commit pin of this identity must run owner_checks against
@@ -1427,6 +1440,14 @@ def evaluate_semantics(root_dir: Path, policy: dict[str, Any], envelope: dict[st
 
                 for prop_name, expected_value in required_props.items():
                     assert_selected_catalog_property(catalog_xml, prop_name, expected_value, edge_context)
+
+                for package_id in required_package_names:
+                    assert_authoritative_package_presence(catalog_xml, package_id, edge_context)
+                    if owner_checks.get("no_local_override_for_selected_catalog_packages") and own_xml is not None:
+                        if find_package_version_ops(own_xml, package_id):
+                            raise GraphError(
+                                f"{edge_context}: must inherit {package_id} from the shared catalog without local override"
+                            )
 
                 for package_id, expected_version in required_packages.items():
                     assert_authoritative_package_version(catalog_xml, package_id, expected_version, edge_context)
@@ -1782,6 +1803,28 @@ def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
                     "must be ordinally sorted and unique"
                 )
 
+        has_required_package_names = "selected_catalog_required_package_names" in profile
+        required_package_names = profile.get("selected_catalog_required_package_names")
+        if has_required_package_names:
+            if not isinstance(required_package_names, list) or not required_package_names:
+                raise GraphError(
+                    f"policy profile {profile_name!r}: selected_catalog_required_package_names "
+                    "must be a non-empty list"
+                )
+            if not all(
+                isinstance(name, str) and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", name)
+                for name in required_package_names
+            ):
+                raise GraphError(
+                    f"policy profile {profile_name!r}: selected_catalog_required_package_names "
+                    "must contain only NuGet package ids"
+                )
+            if required_package_names != sorted(set(required_package_names)):
+                raise GraphError(
+                    f"policy profile {profile_name!r}: selected_catalog_required_package_names "
+                    "must be ordinally sorted and unique"
+                )
+
         for key in ("selected_catalog_required_properties", "selected_catalog_required_packages"):
             if key not in profile:
                 continue
@@ -1801,6 +1844,15 @@ def assert_profiles_well_formed(policy: dict[str, Any]) -> None:
                 raise GraphError(
                     f"policy profile {profile_name!r}: required property names cannot also carry "
                     f"literal requirements {overlap}"
+                )
+
+        if has_required_package_names:
+            literal_packages = profile.get("selected_catalog_required_packages", {})
+            package_overlap = sorted(set(required_package_names) & set(literal_packages))
+            if package_overlap:
+                raise GraphError(
+                    f"policy profile {profile_name!r}: required package names cannot also carry "
+                    f"literal requirements {package_overlap}"
                 )
 
 

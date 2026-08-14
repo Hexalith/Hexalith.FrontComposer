@@ -256,6 +256,10 @@ _This file contains critical rules and patterns that AI agents must follow when 
   Either an unconditional declaration or the canonical self-default condition (`'$(Name)' == ''`)
   is allowed; properties under `Target`, `Choose`, conditional/nested groups, or other containers fail
   closed.
+  EventStore, Memories, and Parties catalogs use presence-only
+  `selected_catalog_required_package_names` plus the existing no-local-override owner check; they do
+  not pin sibling package versions. `frontcomposer-catalog-v1` keeps exact
+  `selected_catalog_required_packages` pins.
   The immutable Builds Release execution coordinate is a separate contract: whenever that approved
   coordinate changes, update in lockstep `release.yml` `env.BUILDS_EXECUTION_SHA`, the
   prepare-candidate checkout `ref`, `HEXALITH_BUILDS_EXECUTION_SHA`, `uses:@`, and

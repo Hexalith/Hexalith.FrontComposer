@@ -2390,3 +2390,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-actions-31779965137-fix-cicd.md`
   summary: Re-dispatch Release on a later release-ready main tip after remaining Gate 2b failures are fixed.
   evidence: Failed Release 31779965137 targeted ancestor SHA `d31679c1` and cannot turn green; `release.yml` prepare requires live main, and current tip still fails other Gate 2b Facts.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-31783283241-fix-cicd.md`
+  summary: Document that the first push/PR after a semantic-policy change still evaluates under the event-base exact-pin policy (AD-10 delayed activation).
+  evidence: `diff` loads policy at event-base; current main already fails EventStore `System.CommandLine` `2.0.10` vs `2.0.11`, so the landing change can stay red once until the new presence-only policy is the push base.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-31783283241-fix-cicd.md`
+  summary: Amend FC-DEP-1 / architecture spine so sibling catalogs are presence-only instead of exact required-package version fail-closed.
+  evidence: Planning architecture still says a changed required package version fails closed for every selected catalog; only project-context was updated.

@@ -127,7 +127,10 @@ jobs:
 
           payload = json.loads(Path("artifacts/dependency-governance/dependency-graph-diff.json").read_text())
           evidence = payload.get("evidence", {})
+          error = payload.get("error")
           print(f"graph diff ok={payload.get('ok')} changes={len(evidence.get('changes', []))} affected={len(evidence.get('affected_modules', []))}")
+          if payload.get("ok") is False and error:
+              print(f"::error::{error}")
           PY
 
       - name: Build policy-authorized affected modules
@@ -231,5 +234,16 @@ jobs:
           set -euo pipefail
           if [ "$DIFF_EXIT_CODE" != "0" ]; then
             echo "::error::dependency graph diff/affected-module gate failed closed (exit=$DIFF_EXIT_CODE)"
+            python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("artifacts/dependency-governance/dependency-graph-diff.json")
+          if path.is_file():
+              payload = json.loads(path.read_text())
+              error = payload.get("error")
+              if error:
+                  print(f"::error::{error}")
+          PY
             exit 1
           fi

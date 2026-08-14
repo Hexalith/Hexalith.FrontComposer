@@ -398,6 +398,13 @@ REQUIRED_PACKAGE_PROFILE = {
     "selected_catalog_required_packages": {"Some.Package": "1.0.0"},
 }
 
+REQUIRED_PACKAGE_NAMES_PROFILE = {
+    "owner_checks": {"no_local_override_for_selected_catalog_packages": True},
+    "selected_catalog_required_properties": {},
+    "selected_catalog_required_package_names": ["Some.Package"],
+    "selected_catalog_required_packages": {},
+}
+
 REQUIRED_PROPERTY_PROFILE = {
     "owner_checks": {},
     "selected_catalog_required_properties": {"SomeVersion": "1.0.0"},
@@ -648,6 +655,118 @@ class SemanticEvaluationTests(unittest.TestCase):
         with self.assertRaises(dg.GraphError) as ctx:
             dg.evaluate_semantics(root.root, fx.policy, envelope)
         self.assertIn("import shim", str(ctx.exception))
+
+    def test_sibling_presence_required_package_version_may_move(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        _owner, owner_commit = self._build(
+            fx,
+            "Owner",
+            self._catalog_at("2.0.11"),
+            "presence-profile",
+            REQUIRED_PACKAGE_NAMES_PROFILE,
+        )
+        fx.link("Root", "references/Owner", "Owner", owner_commit)
+        root_commit = root.commit()
+
+        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        semantics = dg.evaluate_semantics(root.root, fx.policy, envelope)
+        self.assertEqual(semantics["selectors_validated"], 1)
+
+    def test_sibling_presence_required_package_missing_fails_with_coordinates(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        empty_catalog = b"\xef\xbb\xbf<Project>\r\n  <ItemGroup>\r\n  </ItemGroup>\r\n</Project>\r\n"
+        _owner, owner_commit = self._build(
+            fx,
+            "Owner",
+            empty_catalog,
+            "presence-profile",
+            REQUIRED_PACKAGE_NAMES_PROFILE,
+        )
+        fx.link("Root", "references/Owner", "Owner", owner_commit)
+        root_commit = root.commit()
+
+        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        with self.assertRaises(dg.GraphError) as ctx:
+            dg.evaluate_semantics(root.root, fx.policy, envelope)
+        message = str(ctx.exception)
+        self.assertIn("github.com/test/owner@", message)
+        self.assertIn("references/Builds", message)
+        self.assertIn("github.com/test/builds@", message)
+        self.assertIn("Some.Package", message)
+        self.assertIn("exactly one unmasked shared operation", message)
+
+    def test_sibling_presence_required_package_nonliteral_version_fails_with_coordinates(self) -> None:
+        rows = {
+            "missing": b'    <PackageVersion Include="Some.Package" />\r\n',
+            "empty": b'    <PackageVersion Include="Some.Package" Version="" />\r\n',
+            "non-literal": b'    <PackageVersion Include="Some.Package" Version="$(SomeVersion)" />\r\n',
+        }
+        for name, row in rows.items():
+            with self.subTest(name=name):
+                catalog = (
+                    b"\xef\xbb\xbf<Project>\r\n"
+                    b"  <ItemGroup>\r\n"
+                    + row
+                    + b"  </ItemGroup>\r\n"
+                    b"</Project>\r\n"
+                )
+                fx = GraphFixture(self.tmp_path / name)
+                root = fx.add_repo("Root")
+                root.write_text("Directory.Packages.props", OWNER_SHIM)
+                _owner, owner_commit = self._build(
+                    fx,
+                    "Owner",
+                    catalog,
+                    "presence-profile",
+                    REQUIRED_PACKAGE_NAMES_PROFILE,
+                )
+                fx.link("Root", "references/Owner", "Owner", owner_commit)
+                root_commit = root.commit()
+
+                envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+                with self.assertRaises(dg.GraphError) as ctx:
+                    dg.evaluate_semantics(root.root, fx.policy, envelope)
+                message = str(ctx.exception)
+                self.assertIn("github.com/test/owner@", message)
+                self.assertIn("references/Builds", message)
+                self.assertIn("github.com/test/builds@", message)
+                self.assertIn("Some.Package", message)
+                self.assertIn("literal NuGet version", message)
+
+    def test_sibling_presence_required_package_local_override_fails_with_coordinates(self) -> None:
+        fx = GraphFixture(self.tmp_path)
+        root = fx.add_repo("Root")
+        root.write_text("Directory.Packages.props", OWNER_SHIM)
+        builds = fx.add_repo("Builds")
+        builds.write_bytes("Props/Directory.Packages.props", self._catalog_at("2.0.11"))
+        builds_commit = builds.commit()
+
+        owner = fx.add_repo("Owner")
+        owner.write_text(
+            "Directory.Packages.props",
+            '<Project><ItemGroup><PackageVersion Update="Some.Package" Version="2.0.11" /></ItemGroup></Project>',
+        )
+        fx.link("Owner", "references/Builds", "Builds", builds_commit)
+        owner_commit = owner.commit()
+
+        fx.policy["semantic_profiles"][fx.identity("Owner")] = "presence-profile"
+        fx.policy["profiles"]["presence-profile"] = REQUIRED_PACKAGE_NAMES_PROFILE
+        fx.link("Root", "references/Owner", "Owner", owner_commit)
+        root_commit = root.commit()
+
+        envelope = dg.collect_graph(root.root, fx.identity("Root"), root_commit, fx.policy)
+        with self.assertRaises(dg.GraphError) as ctx:
+            dg.evaluate_semantics(root.root, fx.policy, envelope)
+        message = str(ctx.exception)
+        self.assertIn("github.com/test/owner@", message)
+        self.assertIn("references/Builds", message)
+        self.assertIn("github.com/test/builds@", message)
+        self.assertIn("Some.Package", message)
+        self.assertIn("without local override", message)
 
     def test_no_local_override_violation_fails(self) -> None:
         fx = GraphFixture(self.tmp_path)
@@ -1524,11 +1643,16 @@ class PolicyShapeTests(unittest.TestCase):
             "owner_checks": {},
             "selected_catalog_required_property_names": ["SomeVersion"],
             "selected_catalog_required_properties": {},
+            "selected_catalog_required_package_names": ["Some.Package"],
             "selected_catalog_required_packages": {},
         })
         self.assertEqual(
             policy["profiles"]["some-profile"]["selected_catalog_required_property_names"],
             ["SomeVersion"],
+        )
+        self.assertEqual(
+            policy["profiles"]["some-profile"]["selected_catalog_required_package_names"],
+            ["Some.Package"],
         )
 
     def test_misspelled_required_properties_key_fails_closed(self) -> None:
@@ -1557,6 +1681,27 @@ class PolicyShapeTests(unittest.TestCase):
             })
         self.assertIn("cannot also carry literal requirements", str(ctx.exception))
 
+    def test_required_package_names_must_be_non_empty_sorted_unique_ids(self) -> None:
+        for value in (
+            [],
+            "Some.Package",
+            ["Some.Package", "Some.Package"],
+            ["Z.Package", "A.Package"],
+            ["not a package"],
+            [1],
+        ):
+            with self.subTest(value=value):
+                with self.assertRaises(dg.GraphError):
+                    self._load({"selected_catalog_required_package_names": value})
+
+    def test_required_package_names_cannot_duplicate_literal_requirements(self) -> None:
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._load({
+                "selected_catalog_required_package_names": ["Some.Package"],
+                "selected_catalog_required_packages": {"Some.Package": "1.0.0"},
+            })
+        self.assertIn("cannot also carry literal requirements", str(ctx.exception))
+
     def test_non_dict_required_properties_fails_closed(self) -> None:
         with self.assertRaises(dg.GraphError) as ctx:
             self._load({"selected_catalog_required_properties": ["SomeVersion"]})
@@ -1566,6 +1711,7 @@ class PolicyShapeTests(unittest.TestCase):
         for key in (
             "selected_catalog_required_property_names",
             "selected_catalog_required_properties",
+            "selected_catalog_required_package_names",
             "selected_catalog_required_packages",
         ):
             with self.subTest(key=key):
@@ -1928,6 +2074,95 @@ class PolicyShapeTests(unittest.TestCase):
         self.assertIn(package_id, message)
         self.assertIn(f"expected version {expected_version!r}", message)
         self.assertIn("found '999.0.0'", message)
+
+    @staticmethod
+    def _sibling_profile(profile_name: str) -> dict:
+        policy = json.loads(
+            (ROOT / "eng" / "dependency-graph-policy.json").read_text(encoding="utf-8-sig")
+        )
+        return copy.deepcopy(policy["profiles"][profile_name])
+
+    def test_sibling_profiles_are_presence_only_for_required_packages(self) -> None:
+        expected = {
+            "eventstore-catalog-v1": [
+                "Microsoft.Extensions.TimeProvider.Testing",
+                "ModelContextProtocol",
+                "System.CommandLine",
+            ],
+            "memories-catalog-v1": [
+                "Microsoft.Extensions.TimeProvider.Testing",
+                "ModelContextProtocol.AspNetCore",
+            ],
+            "parties-catalog-v1": [
+                "Microsoft.AspNetCore.Components.CustomElements",
+                "ModelContextProtocol",
+                "ModelContextProtocol.AspNetCore",
+            ],
+        }
+        for profile_name, package_names in expected.items():
+            with self.subTest(profile=profile_name):
+                profile = self._sibling_profile(profile_name)
+                self.assertIn("selected_catalog_required_package_names", profile)
+                self.assertEqual(profile["selected_catalog_required_package_names"], package_names)
+                self.assertEqual(profile["selected_catalog_required_packages"], {})
+                dg.assert_profiles_well_formed({"profiles": {profile_name: profile}})
+
+    def _evaluate_eventstore_profile(self, catalog: bytes) -> dict:
+        profile_name = "eventstore-catalog-v1"
+        with tempfile.TemporaryDirectory(dir=self.tmp_path) as fixture_directory:
+            fx = GraphFixture(pathlib.Path(fixture_directory))
+
+            eventstore = fx.add_repo("EventStore")
+            eventstore.write_text("Directory.Packages.props", OWNER_SHIM)
+
+            builds = fx.add_repo("Builds")
+            builds.write_bytes("Props/Directory.Packages.props", catalog)
+            builds_commit = builds.commit()
+
+            fx.link("EventStore", "references/Hexalith.Builds", "Builds", builds_commit)
+            eventstore_commit = eventstore.commit()
+            eventstore_identity = fx.identity("EventStore")
+            fx.policy["semantic_profiles"][eventstore_identity] = profile_name
+            fx.policy["profiles"][profile_name] = self._sibling_profile(profile_name)
+
+            envelope = dg.collect_graph(
+                eventstore.root,
+                eventstore_identity,
+                eventstore_commit,
+                fx.policy,
+            )
+            return dg.evaluate_semantics(eventstore.root, fx.policy, envelope)
+
+    def test_eventstore_profile_system_commandline_version_may_move(self) -> None:
+        catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
+        catalog = catalog_path.read_bytes()
+        current_row = b'<PackageVersion Include="System.CommandLine" Version="2.0.10" />'
+        moved_row = b'<PackageVersion Include="System.CommandLine" Version="2.0.11" />'
+        if catalog.count(current_row) != 1:
+            current_row = b'<PackageVersion Include="System.CommandLine" Version="2.0.11" />'
+            moved_row = b'<PackageVersion Include="System.CommandLine" Version="2.0.10" />'
+        self.assertEqual(catalog.count(current_row), 1)
+        semantics = self._evaluate_eventstore_profile(catalog.replace(current_row, moved_row, 1))
+        self.assertEqual(semantics["selectors_validated"], 1)
+
+    def test_eventstore_profile_missing_system_commandline_fails_with_coordinates(self) -> None:
+        catalog_path = ROOT / "references/Hexalith.Builds/Props/Directory.Packages.props"
+        catalog = catalog_path.read_bytes()
+        for version in (b"2.0.10", b"2.0.11"):
+            row = b'<PackageVersion Include="System.CommandLine" Version="' + version + b'" />'
+            if catalog.count(row) == 1:
+                catalog = catalog.replace(row, b"", 1)
+                break
+        else:
+            self.fail("System.CommandLine PackageVersion row missing from selected catalog fixture")
+
+        with self.assertRaises(dg.GraphError) as ctx:
+            self._evaluate_eventstore_profile(catalog)
+        message = str(ctx.exception)
+        self.assertIn("github.com/test/eventstore@", message)
+        self.assertIn("references/Hexalith.Builds", message)
+        self.assertIn("github.com/test/builds@", message)
+        self.assertIn("System.CommandLine", message)
 
 
 if __name__ == "__main__":

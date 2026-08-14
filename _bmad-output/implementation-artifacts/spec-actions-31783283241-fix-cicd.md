@@ -2,7 +2,7 @@
 title: 'Fix dependency-governance System.CommandLine mirror and restore Builds pin lockstep'
 type: 'bugfix'
 created: '2026-08-14'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '9a3d14b8460ff05ea74d7adbba1547ea9d1ba0b0'
 review_loop_iteration: 0
 context:
@@ -52,10 +52,10 @@ context:
 ## Tasks & Acceptance
 
 **Execution:**
-- [ ] Parent `references/Hexalith.Builds` gitlink -- restore recorded commit to `99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38` without editing submodule files -- `/pushall` left catalog and execution SHA split.
-- [ ] `eng/dependency-graph-policy.json` and `eng/dependency_graph.py` -- sibling profiles use presence-only required package names (plus existing no-local-override); FrontComposer exact pins and all other closed checks stay -- stops EventStore Dependabot from failing every FrontComposer push.
-- [ ] `tests/eng/test_dependency_graph.py` -- prove sibling version movement passes and missing/override/FrontComposer pin regressions still fail.
-- [ ] `.github/workflows/ci.yml` -- collect and enforce steps emit the JSON `error` field on `ok=false`.
+- [x] Parent `references/Hexalith.Builds` gitlink -- restore recorded commit to `99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38` without editing submodule files -- `/pushall` left catalog and execution SHA split.
+- [x] `eng/dependency-graph-policy.json` and `eng/dependency_graph.py` -- sibling profiles use presence-only required package names (plus existing no-local-override); FrontComposer exact pins and all other closed checks stay -- stops EventStore Dependabot from failing every FrontComposer push.
+- [x] `tests/eng/test_dependency_graph.py` -- prove sibling version movement passes and missing/override/FrontComposer pin regressions still fail.
+- [x] `.github/workflows/ci.yml` -- collect and enforce steps emit the JSON `error` field on `ok=false`.
 
 **Acceptance Criteria:**
 - Given EventStore's selected Builds catalog has `System.CommandLine` `2.0.11` and the package is still present without a local override, when `validate` or push `diff` runs, then the run is not rejected for a FrontComposer `2.0.10` literal.
@@ -72,3 +72,32 @@ context:
 - `git ls-tree HEAD references/Hexalith.Builds` -- expected: `160000 commit 99d5a46c3d0db007b2d2f9c5e277a7d2c32b9a38`
 - `python3 -m unittest tests/eng/test_dependency_graph.py -v` -- expected: all pass, including new sibling presence cases
 - `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~InfrastructureGovernanceTests.CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds|FullyQualifiedName~CiGovernanceTests.ReleaseWorkflow_DelegatesToReusableDomainReleaseAfterCiGate"` -- expected: both pass
+
+## Suggested Review Order
+
+**Sibling presence contract**
+
+- EventStore/Memories/Parties drop exact version mirrors for presence-only names.
+  [`dependency-graph-policy.json:90`](../../eng/dependency-graph-policy.json#L90)
+
+- Presence requires an authoritative Include and a literal NuGet version, not a pin.
+  [`dependency_graph.py:1178`](../../eng/dependency_graph.py#L1178)
+
+- Semantics apply presence names, then keep FrontComposer exact package pins.
+  [`dependency_graph.py:1439`](../../eng/dependency_graph.py#L1439)
+
+**CI observability**
+
+- Collect prints the hidden GraphError instead of only `changes=0`.
+  [`ci.yml:130`](../../.github/workflows/ci.yml#L130)
+
+- Enforce repeats that `error` and still fails closed.
+  [`ci.yml:237`](../../.github/workflows/ci.yml#L237)
+
+**Peripherals**
+
+- Executable collect/enforce printer proof against `{ok:false,error}`.
+  [`CiGovernanceTests.cs:350`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs#L350)
+
+- Contributor note: sibling catalogs are presence-only; FrontComposer pins stay exact.
+  [`project-context.md:259`](../project-context.md#L259)
