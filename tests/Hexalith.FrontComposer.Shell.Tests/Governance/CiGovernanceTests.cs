@@ -548,6 +548,21 @@ public sealed class CiGovernanceTests {
         workflow.ShouldNotContain("tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release --filter FullyQualifiedName~BenchmarkHarnessTests");
         workflow.ShouldContain("candidate evidence only");
         workflow.ShouldContain("28-day ratchet");
+        workflow.ShouldContain("--budget .github/benchmark-budget.json");
+        workflow.ShouldNotContain("--provider-results");
+
+        string budgetStep = ExtractNamedStep(workflow, "Check monthly LLM budget before provider spend");
+        budgetStep.ShouldContain("continue-on-error: true");
+        budgetStep.ShouldContain("--budget .github/benchmark-budget.json");
+
+        string runBenchmarkStep = ExtractNamedStep(workflow, "Run 20-prompt LLM benchmark gate");
+        runBenchmarkStep.ShouldContain("continue-on-error: true");
+        runBenchmarkStep.ShouldContain("eng/llm_benchmark.py run-benchmark");
+        runBenchmarkStep.ShouldNotContain("--provider-results");
+
+        string requireSummaryStep = ExtractNamedStep(workflow, "Require benchmark run-summary artifact");
+        requireSummaryStep.ShouldContain("test -f artifacts/benchmark/run-summary.json");
+        requireSummaryStep.ShouldNotContain("continue-on-error: true");
 
         string budget = Path.Combine(Path.GetTempPath(), $"fc-budget-{Guid.NewGuid():N}.json");
         string output = Path.Combine(Path.GetTempPath(), $"fc-benchmark-run-{Guid.NewGuid():N}.json");
@@ -563,6 +578,73 @@ public sealed class CiGovernanceTests {
         using var doc = JsonDocument.Parse(File.ReadAllText(output));
         doc.RootElement.GetProperty("prompt_count").GetInt32().ShouldBe(20);
         doc.RootElement.GetProperty("classification").GetString().ShouldBe("budget-blocked");
+    }
+
+    [Fact]
+    public void NightlyBenchmarkWorkflow_MissingBudgetFile_WritesUnknownNoSpendArtifact() {
+        string root = RepositoryRoot();
+        string missingBudget = Path.Combine(Path.GetTempPath(), $"fc-missing-budget-{Guid.NewGuid():N}.json");
+        string output = Path.Combine(Path.GetTempPath(), $"fc-budget-unknown-{Guid.NewGuid():N}.json");
+
+        File.Exists(missingBudget).ShouldBeFalse();
+        ProcessResult result = RunPython(root, [
+            "eng/llm_benchmark.py",
+            "budget-status",
+            "--budget", missingBudget,
+            "--output", output,
+        ]);
+
+        result.ExitCode.ShouldBe(2, result.Error);
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
+        doc.RootElement.GetProperty("status").GetString().ShouldBe("budget-unknown");
+        doc.RootElement.GetProperty("api_spend_allowed").GetBoolean().ShouldBeFalse();
+    }
+
+    [Fact]
+    public void NightlyBenchmarkWorkflow_FailClosedPlaceholder_DeniesSpendAndWritesArtifact() {
+        string root = RepositoryRoot();
+        string budgetPath = Path.Combine(root, ".github/benchmark-budget.json");
+        string output = Path.Combine(Path.GetTempPath(), $"fc-committed-budget-{Guid.NewGuid():N}.json");
+
+        File.Exists(budgetPath).ShouldBeTrue();
+        using (var budgetDoc = JsonDocument.Parse(File.ReadAllText(budgetPath))) {
+            budgetDoc.RootElement.GetProperty("monthly_cap").GetInt32().ShouldBe(0);
+            budgetDoc.RootElement.GetProperty("provider_cost_metadata_available").GetBoolean().ShouldBeFalse();
+        }
+
+        ProcessResult result = RunPython(root, [
+            "eng/llm_benchmark.py",
+            "budget-status",
+            "--budget", ".github/benchmark-budget.json",
+            "--output", output,
+        ]);
+
+        result.ExitCode.ShouldBe(2, result.Error);
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
+        doc.RootElement.GetProperty("status").GetString().ShouldBe("budget-unknown");
+        doc.RootElement.GetProperty("api_spend_allowed").GetBoolean().ShouldBeFalse();
+    }
+
+    [Fact]
+    public void NightlyBenchmarkWorkflow_MissingBudgetArtifact_WritesBudgetBlockedSummary() {
+        string root = RepositoryRoot();
+        string missingArtifact = Path.Combine(Path.GetTempPath(), $"fc-missing-artifact-{Guid.NewGuid():N}.json");
+        string output = Path.Combine(Path.GetTempPath(), $"fc-run-summary-{Guid.NewGuid():N}.json");
+
+        File.Exists(missingArtifact).ShouldBeFalse();
+        ProcessResult run = RunPython(root, [
+            "eng/llm_benchmark.py",
+            "run-benchmark",
+            "--root", ".",
+            "--budget-artifact", missingArtifact,
+            "--output", output,
+        ]);
+
+        run.ExitCode.ShouldBe(2, run.Error);
+        using var doc = JsonDocument.Parse(File.ReadAllText(output));
+        doc.RootElement.GetProperty("prompt_count").GetInt32().ShouldBe(20);
+        doc.RootElement.GetProperty("classification").GetString().ShouldBe("budget-blocked");
+        doc.RootElement.GetProperty("provider_results_supplied").GetBoolean().ShouldBeFalse();
     }
 
     [Fact]

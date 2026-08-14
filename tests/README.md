@@ -100,6 +100,7 @@ still required, name the CI lane, owner, and expected artifact path.
 python eng/llm_benchmark.py validate-prompt-set --root . --output artifacts/benchmark/prompt-set.json
 
 # Check monthly provider budget metadata. Non-zero exit means no API spend is allowed.
+# A missing or fail-closed budget file still writes the artifact with api_spend_allowed=false.
 python eng/llm_benchmark.py budget-status --budget .github/benchmark-budget.json --output artifacts/benchmark/budget.json
 
 # Run the repository-maintainer benchmark contract tests from the non-packable Bench executable.
