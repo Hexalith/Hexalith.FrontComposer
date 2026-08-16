@@ -187,7 +187,8 @@ proof/materialization, handoff schemas, and manifest verification are implemente
 closed repository-owned source proof consumed by manual Release; this is the approved replacement for
 the unrealized AD-16 evaluator handoff. It does not fabricate an immutable identity for the shared CI
 workflow. Release separately pins the reusable Builds workflow and its execution SHA to the same
-approved commit.
+approved commit. The `references/Hexalith.Builds` catalog gitlink is an independent development
+dependency and need not equal that execution SHA.
 
 ### Playwright E2E
 

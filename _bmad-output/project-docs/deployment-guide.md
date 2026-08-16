@@ -1,9 +1,10 @@
 # Hexalith.FrontComposer — Deployment / Release Guide
 
-> Updated 2026-08-13 for the operator-controlled, exact-source production release model.
+> Updated 2026-08-16 for the operator-controlled, exact-source production release model.
 > FrontComposer ships NuGet packages, not a deployed service or container image.
-> Approved Builds execution identity is the current `references/Hexalith.Builds` gitlink
-> (`3f0e3595be693fce56a37648c0bd0f89390f5fd3`, EventStore 3.94.1 / Memories 2.21.1 / Tenants 5.4.1).
+> Approved Builds execution identity is `3f0e3595be693fce56a37648c0bd0f89390f5fd3` and is independent
+> of the catalog gitlink (`7867d8fc7bcc3c906b16f0867f6555d8bec5432d`, EventStore 3.95.0 /
+> Memories 2.21.3 / Tenants 5.4.1).
 
 ## Published package set
 
@@ -41,9 +42,11 @@ advances, the operator must wait for successful push CI on the new tip and dispa
 Release concurrency is the repository-wide `release-production` group with cancellation disabled. The
 protected jobs use the `production` environment. The reusable publisher is selected at the exact
 Hexalith.Builds commit `3f0e3595be693fce56a37648c0bd0f89390f5fd3`; the identical value is passed as
-`builds-execution-sha`. The candidate's `references/Hexalith.Builds` gitlink must also resolve to that
-identity. Mutable workflow references are not accepted at the release boundary. Catalog companions at
-this Builds identity are EventStore `3.94.1`, Memories `2.21.1`, and Tenants `5.4.1`.
+`builds-execution-sha`. The candidate's `references/Hexalith.Builds` gitlink is an independent catalog
+identity: it must be a real `160000` lowercase 40-hex SHA and need not equal the execution pin.
+Mutable workflow references are not accepted at the release boundary. The working-tree catalog gitlink
+is `7867d8fc7bcc3c906b16f0867f6555d8bec5432d`; catalog companions there are EventStore `3.95.0`,
+Memories `2.21.3`, and Tenants `5.4.1`.
 
 ## Operator procedure
 

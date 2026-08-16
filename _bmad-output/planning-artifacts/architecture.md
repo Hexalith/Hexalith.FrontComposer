@@ -2,7 +2,7 @@
 title: Hexalith.FrontComposer Architecture Planning Source
 status: canonical-planning-source
 created: 2026-07-05
-updated: 2026-08-12
+updated: 2026-08-16
 sourceOfRecord:
   - _bmad-output/project-docs/architecture.md
   - _bmad-output/project-docs/architecture-quality-review-2026-07-04.md
@@ -241,12 +241,14 @@ It fetches only the run/attempt-named source proof through read-only Actions API
 truncated, paginated, duplicated, or malformed responses fail before the protected job. No tag,
 ambient checkout, default-branch value, or later workflow-run head may replace the dispatched candidate.
 
-The production preparation job recomputes the live graph, requires the candidate Builds gitlink to equal
-the approved Builds execution commit, and emits `hexalith.release-evidence.v3`. V3 provenance binds the
-raw CI source-proof hash, exact Release caller workflow bytes at the candidate, exact reusable
-`domain-release.yml` bytes at the Builds commit, and the identical `builds-execution-sha`. The approved
-Builds identity is `3f0e3595be693fce56a37648c0bd0f89390f5fd3`; the reusable workflow call and input
-must remain identical literal 40-hex coordinates.
+The production preparation job recomputes the live graph, requires a real `160000` candidate Builds
+gitlink as catalog identity, and emits `hexalith.release-evidence.v3`. That catalog gitlink is an
+independent development dependency and need not equal the approved execution commit. V3 provenance
+binds the raw CI source-proof hash, exact Release caller workflow bytes at the candidate, exact
+reusable `domain-release.yml` bytes at the Builds execution commit, and the identical
+`builds-execution-sha`. The approved Builds execution identity is
+`3f0e3595be693fce56a37648c0bd0f89390f5fd3`; the reusable workflow call and input must remain identical
+literal 40-hex coordinates.
 
 The pack-once prepared candidate is sealed to the Release run ID/attempt and uploaded only after
 production approval. The pinned reusable publisher restores and authenticates those exact bytes inside

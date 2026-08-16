@@ -2422,3 +2422,15 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages.md`
   summary: Add a test that live ci.yml / release.yml / release-evidence.yml SHA-256 blobs match the new evaluator_authorizations caller rows.
   evidence: CiGovernanceTests only compares pin SHAs to the gitlink; an unauthorized or mistyped caller blob still leaves those tests and dependency_graph validate green.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-split-builds-catalog-gitlink-from-ci-cd-execution-sha.md`
+  summary: Close or rewrite leftover `spec-bump-latest-hexalith-nuget-packages-2.md`, which still requires moving every execution pin onto the catalog gitlink.
+  evidence: That in-progress spec's frozen boundaries still bind catalog gitlink and execution SHA; this correction forbids completing that lockstep rewrite, but the leftover spec can restore it if resumed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-split-builds-catalog-gitlink-from-ci-cd-execution-sha.md`
+  summary: Reconcile the production Release handoff/evaluator path with the v3 source-provenance manifest schema and its living documentation.
+  evidence: `.github/workflows/release.yml` supplies `DEPENDENCY_RELEASE_HANDOFF` plus `RELEASE_EVALUATOR`, so `eng/release_evidence.py` builds evaluator-style provenance while labeling the manifest `hexalith.release-evidence.v3`; the v3 validator expects source-proof provenance and the current focused success fixture exercises only `--source-proof`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-split-builds-catalog-gitlink-from-ci-cd-execution-sha.md`
+  summary: Harden Builds execution-coordinate extraction against commented, duplicated, misplaced, or mutable YAML values.
+  evidence: `eng/release_contract.py` and `CiGovernanceTests.cs` still use unanchored raw-text regular expressions, so an approved literal in a comment can mask an active mutable or mismatched coordinate; this parser behavior predates the catalog/execution split.

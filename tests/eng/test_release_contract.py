@@ -146,20 +146,110 @@ class ReleaseContractTests(unittest.TestCase):
                     ])
                     self.assertEqual(1, status)
 
-    def test_builds_identity_rejects_mismatched_workflow_input_or_gitlink(self) -> None:
+    def test_builds_identity_accepts_diverged_gitlink_and_rejects_pin_mismatch(self) -> None:
         approved = "a" * 40
+        catalog = "b" * 40
         workflow = (
             "uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@" + approved + "\n"
             "      builds-execution-sha: " + approved + "\n"
         )
         rc.validate_builds_identity(workflow, approved, approved)
-        for changed_workflow, gitlink in (
-            (workflow.replace(approved, "b" * 40, 1), approved),
-            (workflow.replace(approved, "b" * 40), approved),
-            (workflow, "b" * 40),
+        rc.validate_builds_identity(workflow, catalog, approved)
+        for changed_workflow in (
+            workflow.replace(approved, catalog, 1),
+            workflow.replace(approved, catalog),
         ):
             with self.assertRaises(rc.ContractError):
-                rc.validate_builds_identity(changed_workflow, gitlink, approved)
+                rc.validate_builds_identity(changed_workflow, catalog, approved)
+
+    def test_builds_identity_rejects_malformed_catalog_or_execution_sha(self) -> None:
+        approved = "a" * 40
+        workflow = (
+            "uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@" + approved + "\n"
+            "      builds-execution-sha: " + approved + "\n"
+        )
+        for catalog, execution in (("b" * 39, approved), ("B" * 40, approved), ("b" * 40, "A" * 40)):
+            with self.subTest(catalog=catalog, execution=execution):
+                with self.assertRaises(rc.ContractError):
+                    rc.validate_builds_identity(workflow, catalog, execution)
+
+    def test_builds_cli_reports_distinct_catalog_and_execution_sha(self) -> None:
+        approved = "a" * 40
+        catalog = "b" * 40
+        workflow = (
+            "uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@" + approved + "\n"
+            "      builds-execution-sha: " + approved + "\n"
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.email", "builds-identity@example.test"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.name", "Builds Identity Fixture"], cwd=root, check=True)
+            workflow_path = root / ".github" / "workflows" / "release.yml"
+            workflow_path.parent.mkdir(parents=True, exist_ok=True)
+            workflow_path.write_text(workflow, encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "update-index", "--add", "--cacheinfo", f"160000,{catalog},references/Hexalith.Builds"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "test: seed divergent Builds identities"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            stdout = io.StringIO()
+            with contextlib.redirect_stdout(stdout):
+                status = rc.main(["builds", "--root", str(root), "--commit", commit, "--approved", approved])
+            self.assertEqual(0, status)
+            self.assertEqual(
+                {"ok": True, "builds_catalog_sha": catalog, "builds_execution_sha": approved},
+                json.loads(stdout.getvalue()),
+            )
+
+    def test_builds_cli_rejects_missing_gitlink(self) -> None:
+        approved = "a" * 40
+        workflow = (
+            "uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@" + approved + "\n"
+            "      builds-execution-sha: " + approved + "\n"
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, capture_output=True)
+            subprocess.run(["git", "config", "user.email", "builds-identity@example.test"], cwd=root, check=True)
+            subprocess.run(["git", "config", "user.name", "Builds Identity Fixture"], cwd=root, check=True)
+            workflow_path = root / ".github" / "workflows" / "release.yml"
+            workflow_path.parent.mkdir(parents=True, exist_ok=True)
+            workflow_path.write_text(workflow, encoding="utf-8")
+            subprocess.run(["git", "add", "."], cwd=root, check=True, capture_output=True)
+            subprocess.run(
+                ["git", "commit", "-q", "-m", "test: seed release workflow without Builds gitlink"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+            )
+            commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            stderr = io.StringIO()
+            with contextlib.redirect_stderr(stderr):
+                status = rc.main(["builds", "--root", str(root), "--commit", commit, "--approved", approved])
+            self.assertEqual(1, status)
+            self.assertIn("cannot resolve the candidate Builds gitlink", stderr.getvalue())
 
     def test_nuget_content_accepts_only_repository_signature_difference(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

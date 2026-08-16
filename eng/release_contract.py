@@ -318,8 +318,10 @@ def validate_publication(
 
 
 def validate_builds_identity(workflow_text: str, selected_gitlink: str, approved: str) -> None:
-    if SHA_RE.fullmatch(approved) is None or selected_gitlink != approved:
-        raise ContractError("selected Builds gitlink must equal the approved exact execution SHA")
+    if SHA_RE.fullmatch(approved) is None:
+        raise ContractError("approved Builds execution SHA must be an exact lowercase 40-hex commit")
+    if SHA_RE.fullmatch(selected_gitlink) is None:
+        raise ContractError("cannot resolve the candidate Builds gitlink")
     workflow_pins = re.findall(
         r"uses:\s*Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@([0-9a-f]{40})\b",
         workflow_text,
@@ -404,7 +406,11 @@ def main(argv: list[str] | None = None) -> int:
             if workflow_bytes.returncode != 0:
                 raise ContractError("cannot resolve the exact candidate release workflow")
             validate_builds_identity(workflow_bytes.stdout.decode("utf-8-sig"), fields[2], args.approved)
-            print(json.dumps({"ok": True, "builds_execution_sha": args.approved}, sort_keys=True))
+            print(json.dumps({
+                "ok": True,
+                "builds_catalog_sha": fields[2],
+                "builds_execution_sha": args.approved,
+            }, sort_keys=True))
         elif args.command == "package-content":
             comparison = compare_nuget_package_content(
                 pathlib.Path(args.candidate),

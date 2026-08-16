@@ -789,6 +789,45 @@ def _exact_workflow_bytes(repository: pathlib.Path, commit: str, workflow_path: 
     return result.stdout
 
 
+def _repository_resolves_exact_commit(repository: pathlib.Path, commit: str) -> bool:
+    if not repository.is_dir() or not os.path.lexists(repository / ".git"):
+        return False
+    top_level = subprocess.run(
+        ["git", "-C", str(repository), "rev-parse", "--show-toplevel"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if top_level.returncode != 0 or not top_level.stdout.strip():
+        return False
+    if pathlib.Path(top_level.stdout.strip()).resolve() != repository.resolve():
+        return False
+    object_type = subprocess.run(
+        ["git", "-C", str(repository), "cat-file", "-t", commit],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return object_type.returncode == 0 and object_type.stdout.strip() == "commit"
+
+
+def _builds_execution_repository(graph_root: pathlib.Path, builds_execution_sha: str) -> pathlib.Path:
+    execution_checkout = graph_root / ".hexalith/builds-execution"
+    if os.path.lexists(execution_checkout):
+        if _repository_resolves_exact_commit(execution_checkout, builds_execution_sha):
+            return execution_checkout
+        raise ValueError(
+            "cannot resolve exact Builds execution commit from .hexalith/builds-execution"
+        )
+    catalog_checkout = graph_root / "references/Hexalith.Builds"
+    if _repository_resolves_exact_commit(catalog_checkout, builds_execution_sha):
+        return catalog_checkout
+    raise ValueError(
+        "cannot resolve exact Builds execution commit from .hexalith/builds-execution "
+        "or references/Hexalith.Builds"
+    )
+
+
 def _source_workflow_provenance(
     proof: dict[str, Any],
     proof_sha256: str,
@@ -806,10 +845,10 @@ def _source_workflow_provenance(
         check=False,
     )
     fields = gitlink.stdout.strip().split()
-    if gitlink.returncode != 0 or len(fields) < 3 or fields[0] != "160000" or fields[2] != builds_execution_sha:
-        raise ValueError("exact candidate Builds gitlink does not match builds-execution-sha")
+    if gitlink.returncode != 0 or len(fields) < 3 or fields[0] != "160000" or not _valid_commit(fields[2]):
+        raise ValueError("cannot resolve the candidate Builds gitlink")
     caller_bytes = _exact_workflow_bytes(graph_root, candidate, ".github/workflows/release.yml")
-    builds_root = graph_root / "references/Hexalith.Builds"
+    builds_root = _builds_execution_repository(graph_root, builds_execution_sha)
     reusable_bytes = _exact_workflow_bytes(
         builds_root,
         builds_execution_sha,
@@ -1501,11 +1540,12 @@ def _live_manifest_v2_diagnostics(
             )
             fields = gitlink.stdout.strip().split()
             builds_sha = release["builds_execution_sha"]
-            if gitlink.returncode != 0 or len(fields) < 3 or fields[2] != builds_sha:
-                diagnostics.append("exact candidate Builds gitlink differs from sealed Builds identity")
+            if gitlink.returncode != 0 or len(fields) < 3 or fields[0] != "160000" or not _valid_commit(fields[2]):
+                diagnostics.append("cannot resolve the candidate Builds gitlink")
             else:
+                builds_root = _builds_execution_repository(graph_root, builds_sha)
                 reusable_bytes = _exact_workflow_bytes(
-                    graph_root / "references/Hexalith.Builds",
+                    builds_root,
                     builds_sha,
                     release["reusable"]["workflow_path"],
                 )
