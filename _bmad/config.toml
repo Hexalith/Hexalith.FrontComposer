@@ -34,10 +34,14 @@ tea_capability_probe = true
 test_stack_type = "auto"
 ci_platform = "auto"
 test_framework = "auto"
-risk_threshold = "p2"
+risk_threshold = "p1"
 test_design_output = "_bmad-output/test-artifacts/test-design"
 test_review_output = "_bmad-output/test-artifacts/test-reviews"
 trace_output = "_bmad-output/test-artifacts/traceability"
+
+[modules.bmb]
+bmad_builder_output_folder = "{project-root}/skills"
+bmad_builder_reports = "{project-root}/skills/reports"
 
 [agents.bmad-agent-analyst]
 module = "bmm"
