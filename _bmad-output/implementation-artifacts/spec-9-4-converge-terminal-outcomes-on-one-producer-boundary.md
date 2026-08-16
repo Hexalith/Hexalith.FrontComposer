@@ -63,6 +63,12 @@ context:
 - Given generated commands, when governance runs, then valid declarations compile, invalid declarations fail closed with HFC1005, undeclared commands remain lifecycle-neutral, and direct `ResolveTerminal`/forbidden inference is absent.
 - Given a committed terminal whose lifecycle delivery fails, when a duplicate arrives or polling runs, then stored terminal truth converges idempotently without querying status transport, altering the outcome, or repeating the indicator decision.
 
+### Review Findings
+
+- [x] [Review][Patch] Check `!string.IsNullOrWhiteSpace(result.MessageId)` before marking accepted result in `LegacyLifecycleObservationCommandServiceAdapter` [`src/Hexalith.FrontComposer.Shell/Services/LegacyLifecycleObservationCommandServiceAdapter.cs:203`]
+- [x] [Review][Patch] Add XML documentation comments to `PendingCommandOutcomeRegistrationMarker` class and properties [`src/Hexalith.FrontComposer.Shell/Extensions/PendingCommandOutcomeRegistrationMarker.cs:5`]
+
+
 ## Spec Change Log
 
 - **Review iteration 1 (2026-08-13):** The verification-gap review found that the solution-level `dotnet test` command contradicted the repository baseline requiring test projects to run individually. The blocking lane below now enumerates every test project separately. Avoid the known-bad state where analyzer-governance tests require product-test serialization solely to keep a solution-wide test host alive. **KEEP:** the approved Contracts shapes; pure/equatable target IR; pre-dispatch capture and post-accept association; resolver-only terminal mutation/publication; bounded first-terminal replay and fail-closed eligibility; typed EventStore/stub/auth adapters; sample migration; docs, generated snapshots, IDE hashes, analyzer-ledger reseal, and matrix/governance coverage.
@@ -146,3 +152,41 @@ Keys trim once and compare Ordinal; snapshot equality excludes `CapturedAt`. Mis
 
 - Global-namespace execution proves canonical projection identity without textual ambiguity.
   [`GeneratorDriverTests.cs:383`](../../tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/GeneratorDriverTests.cs#L383)
+
+## Suggested Review Order
+
+**Fair and scope-safe convergence**
+
+- Reserve transport capacity before bounded lifecycle convergence consumes the shared polling budget.
+  [`PendingCommandPollingCoordinator.cs:34`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandPollingCoordinator.cs#L34)
+
+- Clear prior-scope state atomically, then deliver fail-safe lifecycle notifications outside the gate.
+  [`PendingCommandStateService.cs:633`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs#L633)
+
+**Accepted producer boundaries**
+
+- Preserve accepted EventStore truth when observation timestamps or callbacks fail nonfatally.
+  [`EventStoreCommandClient.cs:180`](../../src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs#L180)
+
+- Validate accepted identities and isolate every retained-callback cleanup operation independently.
+  [`LegacyLifecycleObservationCommandServiceAdapter.cs:32`](../../src/Hexalith.FrontComposer.Shell/Services/LegacyLifecycleObservationCommandServiceAdapter.cs#L32)
+
+- Treat nonfatal timer setup failure as closed observation lifetime, never failed acceptance.
+  [`LegacyLifecycleObservationCommandServiceAdapter.cs:243`](../../src/Hexalith.FrontComposer.Shell/Services/LegacyLifecycleObservationCommandServiceAdapter.cs#L243)
+
+- Continue generated stale-subscription cleanup while preserving fatal exception propagation.
+  [`CommandLifecycleBridgeEmitter.cs:212`](../../src/Hexalith.FrontComposer.SourceTools/Emitters/CommandLifecycleBridgeEmitter.cs#L212)
+
+**Focused proof**
+
+- Minimum-budget saturation proves lifecycle convergence cannot starve status transport.
+  [`PendingCommandPollingCoordinatorTests.cs:183`](../../tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPollingCoordinatorTests.cs#L183)
+
+- Reentrant scope transition proves new-scope registrations survive the atomic clear.
+  [`PendingCommandStateServiceTests.cs:433`](../../tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandStateServiceTests.cs#L433)
+
+- Delete-provider coverage pins target association without eligible indicator publication.
+  [`CommandTargetGeneratedFormTests.cs:380`](../../tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandTargetGeneratedFormTests.cs#L380)
+
+- Browser contract pins reservation, convergence, polling, and transport ordering.
+  [`fc-nip-row-identity-contract.spec.ts:268`](../../tests/e2e/specs/fc-nip-row-identity-contract.spec.ts#L268)

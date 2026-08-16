@@ -156,6 +156,19 @@ public class ProviderTargetCommand {
 [CommandTarget(
     typeof(Counter.Domain.CounterProjection),
     CommandTargetResolutionMode.Provider,
+    CommandTargetChangeKind.Delete,
+    ViewKey = "Counter:Counter.Domain.CounterProjection")]
+public class DeleteProviderTargetCommand {
+    public string MessageId { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+}
+
+[Command]
+[BoundedContext("TestCommands")]
+[CommandTarget(
+    typeof(Counter.Domain.CounterProjection),
+    CommandTargetResolutionMode.Provider,
     CommandTargetChangeKind.Create,
     ViewKey = "Counter:Counter.Domain.CounterProjection")]
 public class BlockingCloneProviderTargetCommand {

@@ -78,15 +78,19 @@ public sealed class EventStoreClientTests {
             NullLogger<EventStoreCommandClient>.Instance,
             shellOptions: null,
             timeProvider: new ThrowingTimeProvider());
-        int callbacks = 0;
+        List<CommandLifecycleObservation> observations = [];
 
         CommandResult result = await ((ICommandServiceWithLifecycleObservations)sut).DispatchAsync(
             new ShipOrderCommand(),
-            _ => callbacks++,
+            observations.Add,
             TestContext.Current.CancellationToken);
 
         result.Status.ShouldBe(CommandResultStatus.Accepted);
-        callbacks.ShouldBe(0);
+        CommandLifecycleObservation observation = observations.Single();
+        observation.State.ShouldBe(CommandLifecycleState.Syncing);
+        observation.MessageId.ShouldBe(result.MessageId);
+        observation.Materiality.ShouldBe(CommandMateriality.Unknown);
+        observation.ObservedAt.ShouldBeNull();
     }
 
     [Fact]

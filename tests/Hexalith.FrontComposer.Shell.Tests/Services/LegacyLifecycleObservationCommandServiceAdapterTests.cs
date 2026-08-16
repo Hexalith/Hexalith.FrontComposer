@@ -143,6 +143,52 @@ public sealed class LegacyLifecycleObservationCommandServiceAdapterTests {
     }
 
     [Fact]
+    public async Task AcceptedDispatch_TimerCreationFailureClosesLifetimeAndReturnsAcceptedResult() {
+        RetainedCallbackService inner = new();
+        LegacyLifecycleObservationCommandServiceAdapter sut = new(inner, new ThrowingTimerTimeProvider());
+        List<CommandLifecycleObservation> observations = [];
+
+        CommandResult result = await sut.DispatchAsync(
+            new object(),
+            observations.Add,
+            TestContext.Current.CancellationToken);
+        inner.Callback.ShouldNotBeNull()(CommandLifecycleState.Confirmed, MessageId);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        observations.ShouldBeEmpty();
+        Should.Throw<ObjectDisposedException>(() => _ = inner.ObservedToken.WaitHandle);
+    }
+
+    [Fact]
+    public async Task AcceptedDispatch_FatalTimerCreationFailurePropagates() {
+        LegacyLifecycleObservationCommandServiceAdapter sut = new(
+            new RetainedCallbackService(),
+            new FatalThrowingTimerTimeProvider());
+
+        _ = await Should.ThrowAsync<OutOfMemoryException>(() =>
+            sut.DispatchAsync(new object(), _ => { }, TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task AcceptedDispatch_ThrowingCancellationCallbackStillDisposesLifetimeOnExpiry() {
+        FakeTimeProvider time = new(new DateTimeOffset(2026, 8, 14, 10, 0, 0, TimeSpan.Zero));
+        ThrowingCancellationCallbackService inner = new();
+        LegacyLifecycleObservationCommandServiceAdapter sut = new(
+            inner,
+            time,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandPollingDurationMs = 1_000 }));
+
+        CommandResult result = await sut.DispatchAsync(
+            new object(),
+            _ => { },
+            TestContext.Current.CancellationToken);
+        Should.NotThrow(() => time.Advance(TimeSpan.FromSeconds(1)));
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        Should.Throw<ObjectDisposedException>(() => _ = inner.ObservedToken.WaitHandle);
+    }
+
+    [Fact]
     public async Task FatalClockFailure_Propagates() {
         LegacyLifecycleObservationCommandServiceAdapter sut = new(
             new SynchronousTerminalService(),
@@ -181,6 +227,26 @@ public sealed class LegacyLifecycleObservationCommandServiceAdapterTests {
         observations.ShouldBeEmpty();
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" ")]
+    public async Task AcceptedDispatch_InvalidMessageId_ClosesRetainedCallback(string? messageId) {
+        RetainedCallbackService inner = new(messageId: messageId);
+        LegacyLifecycleObservationCommandServiceAdapter sut = new(inner, TimeProvider.System);
+        List<CommandLifecycleObservation> observations = [];
+
+        CommandResult result = await sut.DispatchAsync(
+            new object(),
+            observations.Add,
+            TestContext.Current.CancellationToken);
+        inner.Callback.ShouldNotBeNull()(CommandLifecycleState.Confirmed, MessageId);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        observations.ShouldBeEmpty();
+        Should.Throw<ObjectDisposedException>(() => _ = inner.ObservedToken.WaitHandle);
+    }
+
     [Fact]
     public async Task FaultedDispatch_ClosesRetainedCallback() {
         FaultedRetainedCallbackService inner = new();
@@ -207,7 +273,9 @@ public sealed class LegacyLifecycleObservationCommandServiceAdapterTests {
         Should.Throw<ObjectDisposedException>(() => _ = inner.ObservedToken.WaitHandle);
     }
 
-    private sealed class RetainedCallbackService(string status = CommandResultStatus.Accepted) : ICommandServiceWithLifecycle {
+    private sealed class RetainedCallbackService(
+        string status = CommandResultStatus.Accepted,
+        string? messageId = MessageId) : ICommandServiceWithLifecycle {
         public Action<CommandLifecycleState, string?>? Callback { get; private set; }
 
         public CancellationToken ObservedToken { get; private set; }
@@ -224,7 +292,7 @@ public sealed class LegacyLifecycleObservationCommandServiceAdapterTests {
             where TCommand : class {
             Callback = onLifecycleChange;
             ObservedToken = cancellationToken;
-            return Task.FromResult(new CommandResult(MessageId, status));
+            return Task.FromResult(new CommandResult(messageId!, status));
         }
     }
 
@@ -243,6 +311,25 @@ public sealed class LegacyLifecycleObservationCommandServiceAdapterTests {
             where TCommand : class {
             Callback = onLifecycleChange;
             return Task.FromException<CommandResult>(new InvalidOperationException("dispatch failed"));
+        }
+    }
+
+    private sealed class ThrowingCancellationCallbackService : ICommandServiceWithLifecycle {
+        public CancellationToken ObservedToken { get; private set; }
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            CancellationToken cancellationToken = default)
+            where TCommand : class => DispatchAsync(command, null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class {
+            ObservedToken = cancellationToken;
+            _ = cancellationToken.Register(static () => throw new InvalidOperationException("cleanup callback failed"));
+            return Task.FromResult(new CommandResult(MessageId, CommandResultStatus.Accepted));
         }
     }
 
@@ -332,6 +419,24 @@ public sealed class LegacyLifecycleObservationCommandServiceAdapterTests {
 
     private sealed class FatalThrowingTimeProvider : TimeProvider {
         public override DateTimeOffset GetUtcNow() => ThrowFatal<DateTimeOffset>();
+    }
+
+    private sealed class ThrowingTimerTimeProvider : TimeProvider {
+        public override ITimer CreateTimer(
+            TimerCallback callback,
+            object? state,
+            TimeSpan dueTime,
+            TimeSpan period) =>
+            throw new InvalidOperationException("timer unavailable");
+    }
+
+    private sealed class FatalThrowingTimerTimeProvider : TimeProvider {
+        public override ITimer CreateTimer(
+            TimerCallback callback,
+            object? state,
+            TimeSpan dueTime,
+            TimeSpan period) =>
+            ThrowFatal<ITimer>();
     }
 
     private static T ThrowFatal<T>() {

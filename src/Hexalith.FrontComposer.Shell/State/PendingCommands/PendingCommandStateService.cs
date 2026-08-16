@@ -309,26 +309,10 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 return;
             }
 
-            outstanding = [.. _byMessageId.Values.Where(static e => e.Status == PendingCommandStatus.Pending)];
-            _byMessageId.Clear();
-            _insertionOrder.Clear();
-            _lifecycleConvergenceDeadlines.Clear();
-            _lifecycleConvergenceOrder.Clear();
+            outstanding = ClearLocked();
         }
 
-        // Dispatch lifecycle transitions OUTSIDE the gate to avoid deadlocking with subscribers
-        // who synchronously call back into this service.
-        foreach (PendingCommandEntry entry in outstanding) {
-            if (!DispatchNeedsReviewLifecycle(entry, "Clear")) {
-                break;
-            }
-        }
-
-        FrontComposerHotPathLog.PendingStateCleared(
-            _logger,
-            reason,
-            outstanding.Count);
-        NotifyChanged();
+        CompleteClear(outstanding, reason);
     }
 
     /// <inheritdoc />
@@ -651,8 +635,12 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             return;
         }
 
-        bool needsClear;
+        List<PendingCommandEntry>? outstanding = null;
         lock (_gate) {
+            if (_disposed) {
+                return;
+            }
+
             // P2-P8 — read tenant/user inside the lock so a concurrent transition cannot mutate
             // the values between the read and the snapshot comparison.
             (string? Tenant, string? User) current;
@@ -673,28 +661,55 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 && !string.IsNullOrWhiteSpace(current.User);
             if (!currentIsValid) {
                 // If we previously held a valid scope, this is a transition out — flush.
-                needsClear = _scopeSnapshot is not null;
+                bool needsClear = _scopeSnapshot is not null;
                 _scopeSnapshot = null;
+                if (needsClear) {
+                    outstanding = ClearLocked();
+                }
             }
             else if (_scopeSnapshot is null) {
                 _scopeSnapshot = current;
                 return;
             }
             else {
-                needsClear = !ScopeMatches(_scopeSnapshot.Value, current);
+                bool needsClear = !ScopeMatches(_scopeSnapshot.Value, current);
                 if (needsClear) {
                     _scopeSnapshot = current;
+                    outstanding = ClearLocked();
                 }
             }
         }
 
-        if (needsClear) {
-            // The gate is released before Clear() reacquires it; this preserves the rule that
-            // lifecycle dispatch happens off the lock. Tenant/user transition is rare in the
-            // scoped circuit but must fail-closed when it does occur.
+        if (outstanding is not null) {
             FrontComposerHotPathLog.PendingScopeTransition(_logger);
-            Clear("TenantOrUserTransition");
+            CompleteClear(outstanding, "TenantOrUserTransition");
         }
+    }
+
+    private List<PendingCommandEntry> ClearLocked() {
+        List<PendingCommandEntry> outstanding =
+            [.. _byMessageId.Values.Where(static entry => entry.Status == PendingCommandStatus.Pending)];
+        _byMessageId.Clear();
+        _insertionOrder.Clear();
+        _lifecycleConvergenceDeadlines.Clear();
+        _lifecycleConvergenceOrder.Clear();
+        return outstanding;
+    }
+
+    private void CompleteClear(List<PendingCommandEntry> outstanding, string reason) {
+        // Dispatch lifecycle transitions OUTSIDE the gate to avoid deadlocking with subscribers
+        // who synchronously call back into this service.
+        foreach (PendingCommandEntry entry in outstanding) {
+            if (!DispatchNeedsReviewLifecycle(entry, "Clear")) {
+                break;
+            }
+        }
+
+        FrontComposerHotPathLog.PendingStateCleared(
+            _logger,
+            reason,
+            outstanding.Count);
+        NotifyChanged();
     }
 
     private static bool ScopeMatches((string? Tenant, string? User) a, (string? Tenant, string? User) b)

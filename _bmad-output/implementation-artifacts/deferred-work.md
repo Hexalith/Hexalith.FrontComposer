@@ -2441,3 +2441,73 @@ status: open
   summary: Add JSDoc `@type` annotation to `commitlint.config.mjs` for IDE autocompletion and schema validation.
   evidence: Review of `commitlint.config.mjs` identified missing `@type {import('@commitlint/types').UserConfig}` JSDoc annotation.
 
+## Deferred from: code review of 9-4-converge-terminal-outcomes-on-one-producer-boundary (2026-08-16)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Execute the Release prepublish `phase_tests` path in an automated regression instead of validating it only through source-text assertions.
+  evidence: `eng/release_prepublish.py` defines the blocking test phase, while the current governance coverage inspects its command text and cannot detect runtime orchestration failures.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Add executable commitlint boundary coverage proving 200-character header, body, and footer lines pass while 201-character lines fail.
+  evidence: `commitlint.config.mjs` sets all three limits to 200, but no repository test invokes the pinned CLI at both boundary values.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Make the nightly LLM benchmark gate reject missing, failed, zero-run, or otherwise invalid benchmark results before accepting candidate evidence.
+  evidence: Review of `eng/llm_benchmark.py` and `eng/release_prepublish.py` found that artifact presence can satisfy the handoff without proving a successful non-empty benchmark run.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Constrain setup-skill scaffold output and replacement paths to the intended skill root before deleting or replacing any directory.
+  evidence: `.agents/skills/bmad-module-builder/scripts/scaffold-setup-skill.py` accepts derived target paths without a resolved-path containment gate, so traversal-shaped identifiers can escape the scaffold root.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Make setup-skill scaffold replacement atomic so a generation or move failure cannot destroy the previously valid skill.
+  evidence: `.agents/skills/bmad-module-builder/scripts/scaffold-setup-skill.py` removes the existing target before the replacement is durably installed.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Constrain cleanup-legacy removal candidates to the configured BMad and skills roots before performing deletion.
+  evidence: `.agents/skills/bmad-bmb-setup/scripts/cleanup-legacy.py` derives deletion targets from caller-controlled path arguments without a resolved containment check.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Identify legacy cleanup targets by validated module ownership rather than leaf-directory name alone.
+  evidence: `.agents/skills/bmad-bmb-setup/scripts/cleanup-legacy.py` can select unrelated directories whose final path component collides with a legacy module name.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Preserve and merge an existing standalone-module marketplace instead of overwriting unrelated registrations.
+  evidence: `.agents/skills/bmad-module-builder/scripts/scaffold-standalone-module.py` writes the marketplace artifact as a replacement, so pre-existing entries can be lost.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Repair or fail an incomplete existing agent sanctum instead of reporting initialization success based on directory existence alone.
+  evidence: `.agents/skills/bmad-agent-builder/assets/init-sanctum-template.py` treats an existing sanctum directory as initialized without verifying all required memory files.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Reject eval fixture paths that resolve outside the selected skill or evaluation root.
+  evidence: `.agents/skills/bmad-eval-runner/scripts/run_evals.py` resolves fixture values without enforcing containment, allowing traversal or absolute-path escape.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Constrain eval adapter `skill_dir` values to the selected skill root before loading files or invoking adapters.
+  evidence: `.agents/skills/bmad-eval-runner/scripts/run_evals.py` trusts adapter-provided skill directories without a resolved-path containment gate.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Require unique, path-safe evaluation case identifiers before using them in result or artifact paths.
+  evidence: `.agents/skills/bmad-eval-runner/scripts/run_evals.py` does not reject duplicate or traversal-shaped case IDs, allowing result collisions or path escape.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Replace substring-based trigger detection with exact structured matching so incidental prose cannot satisfy trigger expectations.
+  evidence: `.agents/skills/bmad-eval-runner/scripts/run_triggers.py` can classify a query as triggered when the skill name appears only as an unrelated substring.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Constrain trigger adapter `skill_dir` and cleanup targets to the selected skill root.
+  evidence: `.agents/skills/bmad-eval-runner/scripts/run_triggers.py` trusts adapter-provided directories and later cleanup paths without a resolved containment gate.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Fail trigger evaluation when execution fails, produces zero runs, or supplies incomplete evidence, including negative-query cases.
+  evidence: `.agents/skills/bmad-eval-runner/scripts/run_triggers.py` can score a negative query as passing without proving a successful evaluator run.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Validate trigger score thresholds are finite values within the closed interval from zero to one.
+  evidence: `.agents/skills/bmad-eval-runner/scripts/run_triggers.py` accepts out-of-range threshold values, making pass/fail semantics nonsensical.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-4-converge-terminal-outcomes-on-one-producer-boundary.md`
+  summary: Align nested-projection generated grid identity with the configured view key and entity projection type.
+  evidence: Review of generated nested-projection output found the grid lookup identity and target snapshot view key can diverge; the behavior predates Story 9.4 and needs a dedicated generator contract change.
+

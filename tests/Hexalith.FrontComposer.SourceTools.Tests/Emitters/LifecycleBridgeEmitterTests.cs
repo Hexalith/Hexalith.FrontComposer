@@ -61,6 +61,9 @@ public class LifecycleBridgeEmitterTests {
         source.ShouldContain("subscription?.Dispose();");
         source.ShouldContain("_lifecycleSubscriptions.Add(correlationId, null);");
         source.ShouldContain("if (disposeSubscription) { subscription.Dispose(); }");
+        source.ShouldContain("catch (global::System.Exception exception) when (!IsFatal(exception))");
+        source.ShouldContain("A stale subscription must not block the remaining sweep or the new submission.");
+        source.ShouldContain("exception is global::System.OutOfMemoryException");
     }
 
     [Fact]

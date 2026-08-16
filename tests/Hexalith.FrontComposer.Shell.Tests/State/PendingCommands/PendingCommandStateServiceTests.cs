@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
@@ -428,6 +429,40 @@ public sealed class PendingCommandStateServiceTests {
         lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId);
     }
 
+    [Fact]
+    public void EnforceScopeBoundary_ConcurrentNewScopeRegistrationDuringTransitionSurvivesAtomicClear() {
+        const string nestedMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        const string outerMessageId = "01CRZ3NDEKTSV4RRFFQ69G5FAV";
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns("tenant-a");
+        accessor.UserId.Returns("user-1");
+        CallbackLogger<PendingCommandStateService> logger = new();
+        PendingCommandStateService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            CreateLifecycle(),
+            accessor,
+            new FakeTimeProvider(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero)),
+            logger);
+        sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        PendingCommandRegistrationResult? nestedResult = null;
+        accessor.TenantId.Returns("tenant-b");
+        logger.Callback = () => nestedResult = sut.Register(Registration(
+            correlationId: SecondCorrelationId,
+            messageId: nestedMessageId,
+            entityKey: "counter-2"));
+
+        PendingCommandRegistrationResult outerResult = sut.Register(Registration(
+            correlationId: "01EPZ3NDEKTSV4RRFFQ69G5FAV",
+            messageId: outerMessageId,
+            entityKey: "counter-3"));
+
+        nestedResult.ShouldNotBeNull().Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        outerResult.Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        sut.GetByMessageId(MessageId).ShouldBeNull();
+        sut.GetByMessageId(nestedMessageId).ShouldNotBeNull();
+        sut.GetByMessageId(outerMessageId).ShouldNotBeNull();
+    }
+
     private static PendingCommandStateService Create(
         int maxEntries = 64,
         ILifecycleStateService? lifecycle = null) =>
@@ -495,4 +530,26 @@ public sealed class PendingCommandStateServiceTests {
             tenantId,
             userId,
             capturedAt);
+
+    private sealed class CallbackLogger<T> : ILogger<T> {
+        private Action? _callback;
+
+        public Action? Callback {
+            get => Volatile.Read(ref _callback);
+            set => Volatile.Write(ref _callback, value);
+        }
+
+        public IDisposable? BeginScope<TState>(TState state)
+            where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) =>
+            Interlocked.Exchange(ref _callback, null)?.Invoke();
+    }
 }

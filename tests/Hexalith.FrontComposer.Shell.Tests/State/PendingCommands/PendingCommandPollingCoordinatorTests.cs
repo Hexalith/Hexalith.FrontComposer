@@ -180,6 +180,52 @@ public sealed class PendingCommandPollingCoordinatorTests {
     }
 
     [Fact]
+    public async Task PollOnce_SaturatedConvergenceWithMinimumBudget_ReservesTransportCapacity() {
+        const string failedMessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        const string pendingMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        FakeTimeProvider time = new(new DateTimeOffset(2026, 8, 14, 12, 0, 0, TimeSpan.Zero));
+        Dictionary<string, (CommandLifecycleState State, string? MessageId)> values = new(StringComparer.Ordinal);
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0), out var value) ? value.State : CommandLifecycleState.Idle);
+        lifecycle.GetMessageId(Arg.Any<string>()).Returns(call =>
+            values.TryGetValue(call.ArgAt<string>(0), out var value) ? value.MessageId : null);
+        lifecycle.When(service => service.Transition(
+                SecondCorrelationId,
+                Arg.Any<CommandLifecycleState>(),
+                Arg.Any<string?>(),
+                Arg.Any<bool>()))
+            .Do(call => values[SecondCorrelationId] = (
+                call.ArgAt<CommandLifecycleState>(1),
+                call.ArgAt<string?>(2)));
+        FcShellOptions options = new() { MaxPendingCommandPollingPerTick = 1 };
+        PendingCommandStateService state = new(
+            Microsoft.Extensions.Options.Options.Create(options),
+            lifecycle,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
+        state.Register(Registration(CorrelationId, failedMessageId, time.GetUtcNow()));
+        state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(failedMessageId)).Status
+            .ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        state.Register(Registration(SecondCorrelationId, pendingMessageId, time.GetUtcNow()));
+        RecordingFixedStatusQuery query = new(pendingMessageId);
+        PendingCommandPollingCoordinator sut = new(
+            state,
+            new PendingCommandOutcomeResolver(state),
+            query,
+            Microsoft.Extensions.Options.Options.Create(options),
+            NullLogger<PendingCommandPollingCoordinator>.Instance,
+            time);
+
+        int processed = await sut.PollOnceAsync(TestContext.Current.CancellationToken);
+
+        processed.ShouldBe(1);
+        state.GetByMessageId(pendingMessageId).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Confirmed);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Confirmed, failedMessageId, false);
+        query.MessageIds.ShouldBe([pendingMessageId]);
+    }
+
+    [Fact]
     public async Task PollOnce_ExpiredConvergenceDropsWithoutRequeueAndPermitsTransport() {
         const string expiredMessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
         const string pendingMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";

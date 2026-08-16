@@ -3,6 +3,7 @@ using Bunit;
 
 using Fluxor;
 
+using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -100,6 +101,62 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             await forwardedAcknowledgement.ConfigureAwait(true);
             await lifecycle.DisposeAsync().ConfigureAwait(true);
         }
+    }
+
+    [Fact]
+    public void LifecycleBridge_ThrowingStaleSubscriptionContinuesSweepAndNewSubmission() {
+        const string firstStale = "01ERZ3NDEKTSV4RRFFQ69G5FAV";
+        const string secondStale = "01FRZ3NDEKTSV4RRFFQ69G5FAV";
+        const string current = "01GRZ3NDEKTSV4RRFFQ69G5FAV";
+        IActionSubscriber subscriber = Substitute.For<IActionSubscriber>();
+        Action<SameSourceTargetCommandActions.SubmittedAction>? onSubmitted = null;
+        subscriber.When(instance => instance.SubscribeToAction<SameSourceTargetCommandActions.SubmittedAction>(
+                Arg.Any<object>(),
+                Arg.Any<Action<SameSourceTargetCommandActions.SubmittedAction>>()))
+            .Do(call => onSubmitted = call.ArgAt<Action<SameSourceTargetCommandActions.SubmittedAction>>(1));
+        ThrowingStaleSubscriptionLifecycleService lifecycle = new(firstStale);
+        using SameSourceTargetCommandLifecycleBridge bridge = new(
+            subscriber,
+            Substitute.For<IDispatcher>(),
+            lifecycle);
+        System.Reflection.MethodInfo ensure = typeof(SameSourceTargetCommandLifecycleBridge)
+            .GetMethod("EnsureLifecycleSubscription", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .ShouldNotBeNull();
+        _ = ensure.Invoke(bridge, [firstStale]);
+        _ = ensure.Invoke(bridge, [secondStale]);
+
+        onSubmitted.ShouldNotBeNull().Invoke(new(
+            current,
+            new SameSourceTargetCommand()));
+
+        lifecycle.Disposed.ShouldContain(firstStale);
+        lifecycle.Disposed.ShouldContain(secondStale);
+        lifecycle.Subscribed.ShouldContain(current);
+        lifecycle.Transitions.ShouldContain((current, CommandLifecycleState.Submitting));
+    }
+
+    [Fact]
+    public void LifecycleBridge_FatalStaleSubscriptionFailurePropagates() {
+        const string stale = "01ERZ3NDEKTSV4RRFFQ69G5FAV";
+        IActionSubscriber subscriber = Substitute.For<IActionSubscriber>();
+        Action<SameSourceTargetCommandActions.SubmittedAction>? onSubmitted = null;
+        subscriber.When(instance => instance.SubscribeToAction<SameSourceTargetCommandActions.SubmittedAction>(
+                Arg.Any<object>(),
+                Arg.Any<Action<SameSourceTargetCommandActions.SubmittedAction>>()))
+            .Do(call => onSubmitted = call.ArgAt<Action<SameSourceTargetCommandActions.SubmittedAction>>(1));
+        ThrowingStaleSubscriptionLifecycleService lifecycle = new(stale, fatal: true);
+        using SameSourceTargetCommandLifecycleBridge bridge = new(
+            subscriber,
+            Substitute.For<IDispatcher>(),
+            lifecycle);
+        _ = typeof(SameSourceTargetCommandLifecycleBridge)
+            .GetMethod("EnsureLifecycleSubscription", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            .ShouldNotBeNull()
+            .Invoke(bridge, [stale]);
+
+        _ = Should.Throw<OutOfMemoryException>(() => onSubmitted.ShouldNotBeNull().Invoke(new(
+            "01GRZ3NDEKTSV4RRFFQ69G5FAV",
+            new SameSourceTargetCommand())));
     }
 
     [Fact]
@@ -316,6 +373,31 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             target.ViewKey.ShouldBe("Counter:Counter.Domain.CounterProjection");
             target.EntityKey.ShouldBe("counter-provider");
             indicators.Snapshot("Counter:Counter.Domain.CounterProjection").Single().EntityKey.ShouldBe("counter-provider");
+        });
+    }
+
+    [Fact]
+    public async Task DeleteProviderTarget_AssociatesDeleteSnapshotAndNeverPublishesIndicator() {
+        EarlyTerminalCommandService service = new(AcceptedMessageId);
+        Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
+        Services.AddScoped<ICommandTargetIdentityProvider<DeleteProviderTargetCommand>>(
+            _ => new SuccessfulDeleteProvider());
+        await InitializeStoreAsync();
+        IPendingCommandStateService pending = Services.GetRequiredService<IPendingCommandStateService>();
+        INewItemIndicatorStateService indicators = Services.GetRequiredService<INewItemIndicatorStateService>();
+        IRenderedComponent<DeleteProviderTargetCommandForm> cut = Render<DeleteProviderTargetCommandForm>();
+
+        cut.Find("form").Submit();
+
+        cut.WaitForAssertion(() => {
+            service.DispatchCount.ShouldBe(1);
+            PendingCommandEntry entry = pending.GetByMessageId(AcceptedMessageId).ShouldNotBeNull();
+            entry.Status.ShouldBe(PendingCommandStatus.Confirmed);
+            CommandTargetSnapshot target = entry.TargetSnapshot.ShouldNotBeNull();
+            target.ChangeKind.ShouldBe(CommandTargetChangeKind.Delete);
+            target.ViewKey.ShouldBe("Counter:Counter.Domain.CounterProjection");
+            target.EntityKey.ShouldBe("counter-provider-delete");
+            indicators.Snapshot("Counter:Counter.Domain.CounterProjection").ShouldBeEmpty();
         });
     }
 
@@ -1116,6 +1198,14 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
             ValueTask.FromResult<CommandTargetIdentity?>(new("Counter:Counter.Domain.CounterProjection", "counter-provider"));
     }
 
+    private sealed class SuccessfulDeleteProvider : ICommandTargetIdentityProvider<DeleteProviderTargetCommand> {
+        public ValueTask<CommandTargetIdentity?> ResolveAsync(
+            DeleteProviderTargetCommand command,
+            CancellationToken cancellationToken) =>
+            ValueTask.FromResult<CommandTargetIdentity?>(
+                new("Counter:Counter.Domain.CounterProjection", "counter-provider-delete"));
+    }
+
     private sealed class MutatingProvider : ICommandTargetIdentityProvider<ProviderTargetCommand> {
         public ValueTask<CommandTargetIdentity?> ResolveAsync(
             ProviderTargetCommand command,
@@ -1654,6 +1744,62 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
 
         public void Dispose() {
         }
+    }
+
+    private sealed class ThrowingStaleSubscriptionLifecycleService(
+        string throwingCorrelationId,
+        bool fatal = false) : ILifecycleStateService {
+        private sealed class Subscription(Action dispose) : IDisposable {
+            public void Dispose() => dispose();
+        }
+
+        public List<string> Disposed { get; } = [];
+
+        public List<string> Subscribed { get; } = [];
+
+        public List<(string CorrelationId, CommandLifecycleState State)> Transitions { get; } = [];
+
+        public IDisposable Subscribe(string correlationId, Action<CommandLifecycleTransition> onTransition) {
+            Subscribed.Add(correlationId);
+            return new Subscription(() => {
+                Disposed.Add(correlationId);
+                if (string.Equals(correlationId, throwingCorrelationId, StringComparison.Ordinal)) {
+                    if (fatal) {
+                        _ = ThrowFatal<object?>();
+                    }
+
+                    throw new InvalidOperationException("subscription cleanup failed");
+                }
+            });
+        }
+
+        public CommandLifecycleState GetState(string correlationId) => CommandLifecycleState.Idle;
+
+        public string? GetMessageId(string correlationId) => null;
+
+        public IEnumerable<string> GetActiveCorrelationIds() => [];
+
+        public void Transition(string correlationId, CommandLifecycleState newState, string? messageId = null) =>
+            Transitions.Add((correlationId, newState));
+
+        public void Transition(
+            string correlationId,
+            CommandLifecycleState newState,
+            string? messageId,
+            bool idempotencyResolved) =>
+            Transitions.Add((correlationId, newState));
+
+        public void Dispose() {
+        }
+    }
+
+    private static T ThrowFatal<T>() {
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo
+            .Capture((Exception)Activator.CreateInstance(
+                typeof(OutOfMemoryException),
+                "fatal test exception")!)
+            .Throw();
+        return default!;
     }
 
     private static CommandLifecycleObservation MaterialConfirmed(string messageId) =>

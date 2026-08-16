@@ -185,8 +185,24 @@ public sealed class BulkIncrementCommandLifecycleBridge : global::System.IDispos
                 _ = _forwardingActions.Remove(forwardingKey);
             }
         }
-        foreach (global::System.IDisposable subscription in stale) { subscription.Dispose(); }
+        foreach (global::System.IDisposable subscription in stale)
+        {
+            try
+            {
+                subscription.Dispose();
+            }
+            catch (global::System.Exception exception) when (!IsFatal(exception))
+            {
+                // A stale subscription must not block the remaining sweep or the new submission.
+            }
+        }
     }
+
+    private static bool IsFatal(global::System.Exception exception) =>
+        exception is global::System.OutOfMemoryException
+            or global::System.StackOverflowException
+            or global::System.Threading.ThreadAbortException
+            or global::System.AccessViolationException;
 
     private void RemoveLifecycleSubscription(string correlationId)
     {

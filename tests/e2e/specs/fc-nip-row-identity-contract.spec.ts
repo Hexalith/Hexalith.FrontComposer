@@ -324,12 +324,21 @@ test.describe('Story 9.3: FC-NIP explicit command target identity', () => {
       'TryGetCommittedRegistration(registration)',
       '!string.Equals(delegatedMessageId, canonicalMessageId, StringComparison.Ordinal)',
     ]);
-    const convergenceIndex = pollingCoordinator.indexOf('concreteState.ConvergeLifecycle(budget)');
-    const snapshotIndex = pollingCoordinator.indexOf('_pendingCommands.Snapshot()');
-    const transportIndex = pollingCoordinator.indexOf('_statusQuery', snapshotIndex);
-    expect(convergenceIndex).toBeGreaterThanOrEqual(0);
-    expect(snapshotIndex).toBeGreaterThan(convergenceIndex);
-    expect(transportIndex).toBeGreaterThan(snapshotIndex);
+    const reservationSnapshotIndex = pollingCoordinator.indexOf('_pendingCommands.Snapshot()');
+    const convergenceIndex = pollingCoordinator.indexOf(
+      'concreteState.ConvergeLifecycle(convergenceBudget)',
+      reservationSnapshotIndex,
+    );
+    const pollingSnapshotIndex = pollingCoordinator.indexOf(
+      '_pendingCommands.Snapshot()',
+      convergenceIndex,
+    );
+    const transportIndex = pollingCoordinator.indexOf('_statusQuery', pollingSnapshotIndex);
+    expect(reservationSnapshotIndex).toBeGreaterThanOrEqual(0);
+    expect(convergenceIndex).toBeGreaterThan(reservationSnapshotIndex);
+    expect(pollingSnapshotIndex).toBeGreaterThan(convergenceIndex);
+    expect(transportIndex).toBeGreaterThan(pollingSnapshotIndex);
+    expect(pollingCoordinator).toContain('hasPendingTransport ? Math.Max(0, budget - 1) : budget');
     assertContainsAll(razorEmitter, [
       'PendingCommandRowIdentityFor(row)',
       'CascadingValue<global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRowIdentity?>',

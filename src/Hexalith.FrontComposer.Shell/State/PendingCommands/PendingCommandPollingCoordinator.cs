@@ -38,8 +38,11 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
         }
 
         int processed = 0;
+        bool hasPendingTransport = _pendingCommands.Snapshot()
+            .Any(static entry => entry.Status == PendingCommandStatus.Pending);
         if (_pendingCommands is PendingCommandStateService concreteState) {
-            (int attempts, int converged) = concreteState.ConvergeLifecycle(budget);
+            int convergenceBudget = hasPendingTransport ? Math.Max(0, budget - 1) : budget;
+            (int attempts, int converged) = concreteState.ConvergeLifecycle(convergenceBudget);
             budget -= attempts;
             processed += converged;
             if (budget == 0) {

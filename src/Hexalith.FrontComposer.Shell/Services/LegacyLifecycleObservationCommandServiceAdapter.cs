@@ -46,6 +46,21 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
         ITimer? expiryTimer = null;
         CancellationTokenRegistration callerCancellation = default;
 
+        static bool IsFatalCleanup(Exception exception) =>
+            ExceptionGuard.IsFatal(exception)
+            || exception is AggregateException aggregate
+                && aggregate.Flatten().InnerExceptions.Any(ExceptionGuard.IsFatal);
+
+        static void RunCleanup(Action cleanup) {
+            try {
+                cleanup();
+            }
+            catch (Exception ex) when (!IsFatalCleanup(ex)) {
+                // Cleanup is best-effort after the adapter has already fixed its terminal state.
+                // One failing token callback or disposable must not retain the remaining resources.
+            }
+        }
+
         void DisposeLifetime(bool cancel) {
             ITimer? timer;
             CancellationTokenRegistration registration;
@@ -62,17 +77,15 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
             }
 
             if (cancel) {
-                try {
-                    dispatchLifetime.Cancel();
-                }
-                catch (ObjectDisposedException) {
-                    // A terminal callback may have won the lifetime race.
-                }
+                RunCleanup(dispatchLifetime.Cancel);
             }
 
-            timer?.Dispose();
-            registration.Dispose();
-            dispatchLifetime.Dispose();
+            if (timer is not null) {
+                RunCleanup(timer.Dispose);
+            }
+
+            RunCleanup(registration.Dispose);
+            RunCleanup(dispatchLifetime.Dispose);
         }
 
         CommandLifecycleObservation CreateObservation(CommandLifecycleState state, string? messageId) {
@@ -124,12 +137,7 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
             }
 
             if (cancel) {
-                try {
-                    dispatchLifetime.Cancel();
-                }
-                catch (ObjectDisposedException) {
-                    // A dispatch failure may have closed the lifetime concurrently.
-                }
+                RunCleanup(dispatchLifetime.Cancel);
             }
         });
 
@@ -201,7 +209,8 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
         lock (gate) {
             canceledBeforeAcceptance = preAcceptCancellation;
             accepted = !canceledBeforeAcceptance
-                && string.Equals(result.Status, CommandResultStatus.Accepted, StringComparison.OrdinalIgnoreCase);
+                && string.Equals(result.Status, CommandResultStatus.Accepted, StringComparison.OrdinalIgnoreCase)
+                && !string.IsNullOrWhiteSpace(result.MessageId);
             acceptedMessageId = accepted ? result.MessageId : null;
             if (accepted) {
                 while (preAcceptTerminals.TryDequeue(out CommandLifecycleObservation? candidate)) {
@@ -234,7 +243,7 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
             }
         }
         else {
-            ITimer timer;
+            ITimer? timer = null;
             try {
                 timer = _timeProvider.CreateTimer(
                     static state => ((Action)state!).Invoke(),
@@ -242,25 +251,26 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
                     TimeSpan.FromMilliseconds(_options.MaxPendingCommandPollingDurationMs),
                     Timeout.InfiniteTimeSpan);
             }
-            catch {
+            catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
                 lock (gate) {
                     callbackClosed = true;
                 }
 
                 DisposeLifetime(cancel: true);
-                throw;
             }
 
-            bool disposeTimer;
-            lock (gate) {
-                disposeTimer = callbackClosed || lifetimeDisposed;
-                if (!disposeTimer) {
-                    expiryTimer = timer;
+            if (timer is not null) {
+                bool disposeTimer;
+                lock (gate) {
+                    disposeTimer = callbackClosed || lifetimeDisposed;
+                    if (!disposeTimer) {
+                        expiryTimer = timer;
+                    }
                 }
-            }
 
-            if (disposeTimer) {
-                timer.Dispose();
+                if (disposeTimer) {
+                    RunCleanup(timer.Dispose);
+                }
             }
         }
 

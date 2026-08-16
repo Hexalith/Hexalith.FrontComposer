@@ -180,15 +180,34 @@ public sealed class EventStoreCommandClient(
                     classification.Location,
                     classification.RetryAfter);
 
+                DateTimeOffset? observedAt;
+                Exception? lifecycleObservationFailure = null;
+                try {
+                    observedAt = (timeProvider ?? TimeProvider.System).GetUtcNow();
+                }
+                catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
+                    lifecycleObservationFailure = ex;
+                    observedAt = null;
+                }
+
                 try {
                     onLifecycleObservation?.Invoke(new CommandLifecycleObservation(
                         CommandLifecycleState.Syncing,
                         result.MessageId,
                         CommandMateriality.Unknown,
-                        (timeProvider ?? TimeProvider.System).GetUtcNow()));
+                        observedAt));
                 }
                 catch (Exception ex) when (!ExceptionGuard.IsFatal(ex)) {
-                    FrontComposerWarningLog.EventStoreLifecycleCallbackFailed(logger, result.MessageId, ex);
+                    lifecycleObservationFailure = lifecycleObservationFailure is null
+                        ? ex
+                        : new AggregateException(lifecycleObservationFailure, ex);
+                }
+
+                if (lifecycleObservationFailure is not null) {
+                    FrontComposerWarningLog.EventStoreLifecycleCallbackFailed(
+                        logger,
+                        result.MessageId,
+                        lifecycleObservationFailure);
                 }
 
                 FrontComposerTelemetry.SetOutcome(activity, "accepted");
