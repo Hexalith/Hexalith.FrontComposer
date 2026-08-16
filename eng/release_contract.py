@@ -318,8 +318,10 @@ def validate_publication(
 
 
 def validate_builds_identity(workflow_text: str, selected_gitlink: str, approved: str) -> None:
-    if SHA_RE.fullmatch(approved) is None or selected_gitlink != approved:
-        raise ContractError("selected Builds gitlink must equal the approved exact execution SHA")
+    if SHA_RE.fullmatch(approved) is None:
+        raise ContractError("approved Builds execution SHA must be an exact lowercase 40-hex commit")
+    if SHA_RE.fullmatch(selected_gitlink) is None:
+        raise ContractError("cannot resolve the candidate Builds gitlink")
     workflow_pins = re.findall(
         r"uses:\s*Hexalith/Hexalith\.Builds/\.github/workflows/domain-release\.yml@([0-9a-f]{40})\b",
         workflow_text,

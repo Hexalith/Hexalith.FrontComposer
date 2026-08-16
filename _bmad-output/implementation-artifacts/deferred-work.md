@@ -2422,3 +2422,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages.md`
   summary: Add a test that live ci.yml / release.yml / release-evidence.yml SHA-256 blobs match the new evaluator_authorizations caller rows.
   evidence: CiGovernanceTests only compares pin SHAs to the gitlink; an unauthorized or mistyped caller blob still leaves those tests and dependency_graph validate green.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-actions-31933295965-fix-cicd.md`
+  summary: Close or rewrite leftover `spec-bump-latest-hexalith-nuget-packages-2.md`, which still requires moving every execution pin onto the new catalog gitlink.
+  evidence: That in-progress spec's frozen Never/Always still bind gitlink==execution; this story forbids completing that lockstep rewrite, but the leftover spec can restore it if resumed.

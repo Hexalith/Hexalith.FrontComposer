@@ -263,12 +263,14 @@ _This file contains critical rules and patterns that AI agents must follow when 
   The immutable Builds Release execution coordinate is a separate contract: whenever that approved
   coordinate changes, update in lockstep `release.yml` `env.BUILDS_EXECUTION_SHA`, the
   prepare-candidate checkout `ref`, `HEXALITH_BUILDS_EXECUTION_SHA`, `uses:@`, and
-  `builds-execution-sha`, plus the `release-evidence.yml` Builds checkout `ref`.
+  `builds-execution-sha`, plus the `release-evidence.yml` Builds checkout `ref`. The catalog gitlink
+  may advance without rewriting those execution pins.
   Because push evaluation intentionally uses the active-base policy, land catalog-policy/engine and
-  workflow-authorization bytes first while graph gitlinks and workflow bytes remain unchanged. That
-  first policy must authorize both the existing workflow closure and the exact future pinned closure.
-  Only after it is active may a later commit move the Builds/Memories gitlinks and workflow bytes;
-  verify that second candidate against the first committed policy object before landing it.
+  workflow-authorization bytes first while graph gitlinks and workflow execution pins remain unchanged.
+  That first policy must authorize both the existing workflow closure and the exact future pinned
+  closure. Only after it is active may a later commit move workflow execution pins; verify that second
+  candidate against the first committed policy object before landing it. A catalog-only Builds gitlink
+  advance does not rewrite `uses:@` or `builds-execution-sha`.
 - **Benchmarks** live ONLY in the separate `Shell.Tests.Bench` exe under
   `[Trait("Category","Performance")]`; use `FakeTimeProvider` for deterministic timer-driven tests
 - **e2e (a11y/visual):** Playwright workspace in `tests/e2e` (`nvm use` or Node `>=24` →

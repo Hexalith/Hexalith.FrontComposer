@@ -218,6 +218,32 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         self.assertEqual(0, result.returncode, result.stderr)
         return result
 
+    def _advance_builds_catalog_gitlink(self) -> str:
+        extra = self.builds_root / ".github/workflows/domain-release.yml"
+        extra.write_text("name: fixture domain release catalog bump\n", encoding="utf-8")
+        self.assertEqual(0, _run("git", "add", ".", cwd=self.builds_root).returncode)
+        self.assertEqual(
+            0,
+            _run("git", "commit", "-q", "-m", "test: catalog-only Builds commit", cwd=self.builds_root).returncode,
+        )
+        catalog_sha = _run("git", "rev-parse", "HEAD", cwd=self.builds_root).stdout.strip()
+        self.assertNotEqual(self.builds_commit, catalog_sha)
+        self._git("add", "references/Hexalith.Builds")
+        self._git("commit", "-q", "-m", "test: advance Builds catalog gitlink")
+        self.commit = self._git("rev-parse", "HEAD").stdout.strip()
+        engine = HELPER._load_dependency_graph_engine()
+        loaded_policy = json.loads((self.root / HELPER.POLICY_PATH).read_text(encoding="utf-8"))
+        self.graph = engine.collect_graph(self.root, ROOT_IDENTITY, self.commit, loaded_policy)
+        self.ci_evaluator["caller"]["commit"] = self.commit
+        self.ci_evaluator["definition_digest"] = HELPER.canonical_sha256(
+            {key: self.ci_evaluator[key] for key in ("caller", "reusable", "actions")}
+        )
+        self.handoff["run"]["candidate"] = self.commit
+        self.handoff["revisions"]["candidate"] = self.commit
+        self.handoff["evaluator"] = self.ci_evaluator
+        self.handoff["dependency_graph"] = self.graph
+        return catalog_sha
+
     def _prepare(self) -> tuple[pathlib.Path, pathlib.Path]:
         package_id = "Hexalith.FrontComposer.Contracts"
         version = "2.0.0"
@@ -337,6 +363,7 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         self.assertIn("signing_status", result.stdout)
 
     def test_current_prepare_uses_unsigned_candidate_without_author_signing_input(self) -> None:
+        catalog_sha = self._advance_builds_catalog_gitlink()
         package_id = "Hexalith.FrontComposer.Contracts"
         version = "2.0.0"
         package = self.root / f"nupkgs/{package_id}.{version}.nupkg"
@@ -405,6 +432,8 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
 
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
         payload = json.loads(output.read_text(encoding="utf-8"))
+        self.assertEqual(self.builds_commit, payload["workflow_provenance"]["release"]["builds_execution_sha"])
+        self.assertNotEqual(catalog_sha, self.builds_commit)
         self.assertEqual(HELPER.CURRENT_MANIFEST_SCHEMA, payload["manifest_schema"])
         self.assertEqual(f"nupkgs/{package_id}.{version}.nupkg", payload["packages"][0]["artifact_path"])
         self.assertNotIn("signing_status", payload["packages"][0])
@@ -422,16 +451,27 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
             cwd=REPOSITORY_ROOT,
         )
         self.assertEqual(0, seal.returncode, seal.stdout + seal.stderr)
-        for mode in (("--no-root",), ("--root", str(self.root), "--graph-root", str(self.root))):
-            verified = _run(
-                "python3",
-                str(REPOSITORY_ROOT / "eng/release_evidence.py"),
-                "verify-manifest",
-                "--manifest", str(sealed),
-                *mode,
-                cwd=REPOSITORY_ROOT,
-            )
-            self.assertEqual(0, verified.returncode, verified.stdout + verified.stderr)
+        offline = _run(
+            "python3",
+            str(REPOSITORY_ROOT / "eng/release_evidence.py"),
+            "verify-manifest",
+            "--manifest", str(sealed),
+            "--no-root",
+            cwd=REPOSITORY_ROOT,
+        )
+        self.assertEqual(0, offline.returncode, offline.stdout + offline.stderr)
+        live = _run(
+            "python3",
+            str(REPOSITORY_ROOT / "eng/release_evidence.py"),
+            "verify-manifest",
+            "--manifest", str(sealed),
+            "--root", str(self.root),
+            "--graph-root", str(self.root),
+            cwd=REPOSITORY_ROOT,
+        )
+        self.assertEqual(0, live.returncode, live.stdout + live.stderr)
+        self.assertNotIn("cannot resolve the candidate Builds gitlink", live.stdout + live.stderr)
+        self.assertNotIn("differs from sealed Builds identity", live.stdout + live.stderr)
 
     def test_offline_accepts_structural_graph_but_live_rejects_exact_graph_drift(self) -> None:
         _, sealed = self._prepare()
@@ -543,6 +583,26 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         drifted["workflow_provenance"]["release"]["builds_execution_sha"] = "f" * 40
         diagnostics = HELPER._manifest_v2_diagnostics(drifted, require_seal=False)
         self.assertTrue(any("Builds identity mismatch" in item for item in diagnostics), diagnostics)
+
+    def test_source_provenance_accepts_catalog_gitlink_distinct_from_execution_sha(self) -> None:
+        extra = self.builds_root / ".github/workflows/domain-release.yml"
+        extra.write_text("name: fixture domain release catalog bump\n", encoding="utf-8")
+        self.assertEqual(0, _run("git", "add", ".", cwd=self.builds_root).returncode)
+        self.assertEqual(
+            0,
+            _run("git", "commit", "-q", "-m", "test: catalog-only Builds commit", cwd=self.builds_root).returncode,
+        )
+        execution_sha = _run("git", "rev-parse", "HEAD", cwd=self.builds_root).stdout.strip()
+        self.assertNotEqual(self.builds_commit, execution_sha)
+        proof = {"run": self.handoff["run"]}
+        provenance = HELPER._source_workflow_provenance(proof, "e" * 64, self.root, execution_sha)
+        self.assertEqual(execution_sha, provenance["release"]["builds_execution_sha"])
+        self.assertEqual(execution_sha, provenance["release"]["reusable"]["commit"])
+
+    def test_source_provenance_rejects_missing_builds_gitlink(self) -> None:
+        proof = {"run": {**self.handoff["run"], "candidate": self.base}}
+        with self.assertRaisesRegex(ValueError, "cannot resolve the candidate Builds gitlink"):
+            HELPER._source_workflow_provenance(proof, "e" * 64, self.root, self.builds_commit)
 
     def test_sealed_but_unapproved_release_evaluator_fails_preparation(self) -> None:
         unauthorized = copy.deepcopy(RELEASE_EVALUATOR)

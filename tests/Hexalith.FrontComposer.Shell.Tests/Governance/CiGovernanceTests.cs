@@ -781,10 +781,6 @@ public sealed class CiGovernanceTests {
             RegexOptions.Multiline);
         gitlinkSha.Success.ShouldBeTrue(
             $"git ls-tree HEAD references/Hexalith.Builds must report a 160000 gitlink, got: {buildsGitlink.Output}");
-        string buildsGitlinkSha = gitlinkSha.Groups["sha"].Value;
-        buildsGitlinkSha.ShouldBe(
-            approvedBuildsSha,
-            "release.yml Builds coordinates must equal the references/Hexalith.Builds gitlink at HEAD.");
 
         string ciWorkflow = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
         MatchCollection domainCiPins = Regex.Matches(
@@ -794,7 +790,7 @@ public sealed class CiGovernanceTests {
             1,
             "ci.yml must pin domain-ci.yml to an exact 40-hex lowercase Builds commit SHA (never @main).");
         domainCiPins.Cast<Match>().ShouldAllBe(match =>
-            match.Groups["sha"].Value == buildsGitlinkSha);
+            match.Groups["sha"].Value == approvedBuildsSha);
 
         string releaseEvidence = File.ReadAllText(Path.Combine(root, ".github/workflows/release-evidence.yml"));
         MatchCollection evidenceBuildsRefs = Regex.Matches(
@@ -804,7 +800,7 @@ public sealed class CiGovernanceTests {
             1,
             "release-evidence.yml must check out Hexalith.Builds at an exact 40-hex ref into .hexalith/builds-execution.");
         evidenceBuildsRefs.Cast<Match>().ShouldAllBe(match =>
-            match.Groups["sha"].Value == buildsGitlinkSha);
+            match.Groups["sha"].Value == approvedBuildsSha);
         // The reusable workflow requires actions: read to validate the successful exact-source CI
         // run. Assert it on the release job itself: a workflow-level or sibling-job occurrence
         // cannot satisfy reusable-workflow permission validation. BUILD-REL-1 also declares a

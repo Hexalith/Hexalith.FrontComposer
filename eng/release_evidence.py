@@ -806,8 +806,8 @@ def _source_workflow_provenance(
         check=False,
     )
     fields = gitlink.stdout.strip().split()
-    if gitlink.returncode != 0 or len(fields) < 3 or fields[0] != "160000" or fields[2] != builds_execution_sha:
-        raise ValueError("exact candidate Builds gitlink does not match builds-execution-sha")
+    if gitlink.returncode != 0 or len(fields) < 3 or fields[0] != "160000" or not _valid_commit(fields[2]):
+        raise ValueError("cannot resolve the candidate Builds gitlink")
     caller_bytes = _exact_workflow_bytes(graph_root, candidate, ".github/workflows/release.yml")
     builds_root = graph_root / "references/Hexalith.Builds"
     reusable_bytes = _exact_workflow_bytes(
@@ -1501,8 +1501,8 @@ def _live_manifest_v2_diagnostics(
             )
             fields = gitlink.stdout.strip().split()
             builds_sha = release["builds_execution_sha"]
-            if gitlink.returncode != 0 or len(fields) < 3 or fields[2] != builds_sha:
-                diagnostics.append("exact candidate Builds gitlink differs from sealed Builds identity")
+            if gitlink.returncode != 0 or len(fields) < 3 or fields[0] != "160000" or not _valid_commit(fields[2]):
+                diagnostics.append("cannot resolve the candidate Builds gitlink")
             else:
                 reusable_bytes = _exact_workflow_bytes(
                     graph_root / "references/Hexalith.Builds",
