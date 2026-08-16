@@ -2434,3 +2434,10 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-split-builds-catalog-gitlink-from-ci-cd-execution-sha.md`
   summary: Harden Builds execution-coordinate extraction against commented, duplicated, misplaced, or mutable YAML values.
   evidence: `eng/release_contract.py` and `CiGovernanceTests.cs` still use unanchored raw-text regular expressions, so an approved literal in a comment can mask an active mutable or mismatched coordinate; this parser behavior predates the catalog/execution split.
+
+## Deferred from: code review of set-commitlint-max-lines-to-200 (2026-08-16)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-set-commitlint-max-lines-to-200.md`
+  summary: Add JSDoc `@type` annotation to `commitlint.config.mjs` for IDE autocompletion and schema validation.
+  evidence: Review of `commitlint.config.mjs` identified missing `@type {import('@commitlint/types').UserConfig}` JSDoc annotation.
+
