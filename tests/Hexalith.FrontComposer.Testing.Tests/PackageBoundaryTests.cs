@@ -11,8 +11,8 @@ namespace Hexalith.FrontComposer.Testing.Tests;
 
 public sealed class PackageBoundaryTests {
     private const string FluentV5Version = "5.0.0-rc.4-26180.1";
-    private const string LocalizationAbstractionsVersion = "10.0.10";
-    private const string MicrosoftNetTestSdkVersion = "18.8.1";
+    private const string LocalizationAbstractionsVersion = "10.0.11";
+    private const string MicrosoftNetTestSdkVersion = "18.9.0";
 
     [Fact]
     public void PublicApi_ExportedTypes_MatchIntentionalBaseline() {
