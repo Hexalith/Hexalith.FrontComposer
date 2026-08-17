@@ -2,7 +2,7 @@
 title: 'Story 9.4: Converge terminal outcomes on one producer boundary'
 type: 'feature'
 created: '2026-08-12'
-status: 'done'
+status: 'in-progress'
 baseline_commit: '677b5e287bc0e60afc3fc6f27737ed8cb9697db8'
 review_loop_iteration: 8
 review_cap_override: 'Human-authorized on 2026-08-14 for iteration 8 and the completion loops required by this decision.'
@@ -67,6 +67,11 @@ context:
 
 - [x] [Review][Patch] Check `!string.IsNullOrWhiteSpace(result.MessageId)` before marking accepted result in `LegacyLifecycleObservationCommandServiceAdapter` [`src/Hexalith.FrontComposer.Shell/Services/LegacyLifecycleObservationCommandServiceAdapter.cs:203`]
 - [x] [Review][Patch] Add XML documentation comments to `PendingCommandOutcomeRegistrationMarker` class and properties [`src/Hexalith.FrontComposer.Shell/Extensions/PendingCommandOutcomeRegistrationMarker.cs:5`]
+- [ ] [Review][Patch] Evicting entries from _indicatorDecisions permits duplicate indicator publication on subsequent observations [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:378-388`]
+- [ ] [Review][Patch] Deferring _indicatorDecisions.Add below eligibility guards prevents recording non-publication decisions for non-material/unconfirmed outcomes [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:359-371`]
+- [ ] [Review][Patch] Premature _indicatorDecisions.Add before timestamp resolution and indicator state Add execution [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:383`]
+- [ ] [Review][Patch] Missing unit test coverage for _indicatorDecisions capacity bounding and eviction [`tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandOutcomeResolverTests.cs`]
+- [ ] [Review][Patch] Missing unit test coverage for AggregateException unwrapping in CommandServiceExtensions.IsFatal [`tests/Hexalith.FrontComposer.Contracts.Tests/Communication/CommandServiceExtensionsTests.cs`]
 
 
 ## Spec Change Log

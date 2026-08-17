@@ -16,6 +16,7 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
     private readonly Dictionary<string, PendingCommandOutcomeObservation> _earlyByOwner = new(StringComparer.Ordinal);
     private readonly Queue<string> _earlyOrder = new();
     private readonly HashSet<string> _indicatorDecisions = new(StringComparer.Ordinal);
+    private readonly Queue<string> _indicatorDecisionOrder = new();
     private readonly IPendingCommandStateService _pendingCommands;
     private readonly INewItemIndicatorStateService? _newItemIndicators;
     private readonly TimeProvider _timeProvider;
@@ -288,6 +289,7 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             _earlyByOwner.Clear();
             _earlyOrder.Clear();
             _indicatorDecisions.Clear();
+            _indicatorDecisionOrder.Clear();
         }
     }
 
@@ -357,17 +359,32 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
         if (result is not {
             Status: PendingCommandOutcomeResolutionStatus.Resolved
                     or PendingCommandOutcomeResolutionStatus.LifecycleDispatchFailed,
-            Entry: { } entry,
+            Entry: { TargetSnapshot: { } target } entry,
         }
-            || !_indicatorDecisions.Add(entry.MessageId)
             || _newItemIndicators is null
-            || entry.TargetSnapshot is not { } target
             || observation.Materiality != CommandMateriality.Material
             || !IsConfirmedOutcome(observation.Outcome)
             || target.ChangeKind == CommandTargetChangeKind.Delete
             || target.ChangeKind == CommandTargetChangeKind.StatusMove && string.IsNullOrWhiteSpace(target.ExpectedStatus)
             || !ScopeMatches(target)) {
             return;
+        }
+
+        lock (_gate) {
+            if (_disposed) {
+                return;
+            }
+
+            int capacity = Math.Max(1, _options.MaxPendingCommandEntries);
+            while (_indicatorDecisions.Count >= capacity && _indicatorDecisionOrder.TryDequeue(out string? oldest)) {
+                _indicatorDecisions.Remove(oldest);
+            }
+
+            if (!_indicatorDecisions.Add(entry.MessageId)) {
+                return;
+            }
+
+            _indicatorDecisionOrder.Enqueue(entry.MessageId);
         }
 
         if (!TryResolveObservedAt(target, observation.ObservedAt, out DateTimeOffset observedAt)) {
@@ -434,6 +451,7 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
                 _earlyByOwner.Clear();
                 _earlyOrder.Clear();
                 _indicatorDecisions.Clear();
+                _indicatorDecisionOrder.Clear();
             }
 
             return;
@@ -447,6 +465,7 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             _earlyByOwner.Clear();
             _earlyOrder.Clear();
             _indicatorDecisions.Clear();
+            _indicatorDecisionOrder.Clear();
         }
 
         _scopeSnapshot = current;

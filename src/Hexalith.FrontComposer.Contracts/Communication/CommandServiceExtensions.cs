@@ -115,8 +115,10 @@ public static class CommandServiceExtensions {
     }
 
     private static bool IsFatal(Exception exception)
-        => exception is OutOfMemoryException
-            or StackOverflowException
-            or System.Threading.ThreadAbortException
-            or AccessViolationException;
+        => exception is AggregateException aggregate
+            ? aggregate.Flatten().InnerExceptions.Any(IsFatal)
+            : exception is OutOfMemoryException
+                or StackOverflowException
+                or System.Threading.ThreadAbortException
+                or AccessViolationException;
 }
