@@ -2,7 +2,7 @@
 title: 'Story 9.5: Make indicator state observable and scope-safe'
 type: 'feature'
 created: '2026-08-16'
-status: 'in-review'
+status: 'done'
 baseline_commit: '9e212f17914a214717028f6047642083ea8012c9'
 review_loop_iteration: 0
 context:
@@ -76,3 +76,50 @@ Use a view-key subscription over the shared publisher mechanics with replay disa
 - `python3 eng/pack_release_packages.py --version 4.0.0-ci.story9-5 --output /tmp/frontcomposer-story-9-5-release-pack` -- eight-package/API compatibility passes.
 - `DiffEngine_Disabled=true dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --no-restore --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` -- blocking test lane passes.
 - `git diff --check` -- no whitespace errors.
+
+## Suggested Review Order
+
+**Observable state boundary**
+
+- Start with lane-scoped subscriptions, atomic scope enforcement, and effective mutation fan-out.
+  [`NewItemIndicatorStateService.cs:43`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs#L43)
+
+- See the compatible default interface seam retained for existing custom implementations.
+  [`INewItemIndicatorStateService.cs:15`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/INewItemIndicatorStateService.cs#L15)
+
+- Review fail-closed snapshots before previous-scope entries can escape.
+  [`NewItemIndicatorStateService.cs:152`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs#L152)
+
+- Verify cleanup failures cannot suppress committed notifications or remaining timer disposal.
+  [`NewItemIndicatorStateService.cs:346`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs#L346)
+
+**Generated-grid lifecycle**
+
+- Follow grid-only subscription wiring from component initialization.
+  [`RazorEmitter.cs:1048`](../../src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs#L1048)
+
+- Inspect dispatcher-marshaled rerenders with guards before and inside scheduling.
+  [`RazorEmitter.cs:1072`](../../src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs#L1072)
+
+- Confirm unsubscribe occurs before asynchronous component teardown.
+  [`RazorEmitter.cs:1200`](../../src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs#L1200)
+
+**Acceptance and compatibility evidence**
+
+- Exercise every post-render mutation against the actual generated grid.
+  [`CounterStoryVerificationTests.cs:145`](../../tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs#L145)
+
+- Prove generated-grid subscription disposal exactly once at runtime.
+  [`CounterStoryVerificationTests.cs:254`](../../tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs#L254)
+
+- Pin add-first scope transitions and deduplicated cross-lane notification behavior.
+  [`FcNewItemIndicatorTests.cs:195`](../../tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcNewItemIndicatorTests.cs#L195)
+
+- Preserve notification delivery when custom timer cleanup fails nonfatally.
+  [`FcNewItemIndicatorTests.cs:79`](../../tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcNewItemIndicatorTests.cs#L79)
+
+- Confirm legacy interface implementations inherit the inert compatible subscription default.
+  [`PendingCommandPublicCompatibilityTests.cs:174`](../../tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandPublicCompatibilityTests.cs#L174)
+
+- Pin generated source shape and keep non-grid strategies unsubscribed.
+  [`RazorEmitterTests.cs:84`](../../tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.cs#L84)
