@@ -142,8 +142,8 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
     }
 
     [Fact]
-    public async Task CounterProjectionView_NewItemIndicator_RendersForLaneAndDismissesWhenRowMaterializes() {
-        UseFakeTime(s_fixedNow);
+    public async Task CounterProjectionView_NewItemIndicator_RerendersAutomaticallyForEveryMutation() {
+        FakeTimeProvider time = UseFakeTime(s_fixedNow);
 
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
@@ -151,7 +151,6 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         const string ViewKey = "Counter:Counter.Domain.CounterProjection";
         const string IndicatorSelector = "[data-testid=\"fc-new-item-indicator\"]";
 
-        indicators.Add(new NewItemIndicatorEntry(ViewKey, "counter-1", MessageId: "message-1", CreatedAt: s_fixedNow));
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
             "counter-nip-initial",
             [
@@ -164,6 +163,13 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             ]));
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        await cut.WaitForAssertionAsync(() => cut.FindAll(IndicatorSelector).ShouldBeEmpty());
+
+        indicators.Add(new NewItemIndicatorEntry(
+            ViewKey,
+            "counter-1",
+            MessageId: "message-1",
+            CreatedAt: time.GetUtcNow()));
 
         await cut.WaitForAssertionAsync(() => {
             AngleSharp.Dom.IElement indicator = cut.Find(IndicatorSelector);
@@ -193,6 +199,89 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
             cut.FindAll(IndicatorSelector).ShouldBeEmpty();
             indicators.Snapshot(ViewKey).ShouldBeEmpty();
         });
+
+        indicators.Add(new NewItemIndicatorEntry(
+            ViewKey,
+            "counter-3",
+            MessageId: "message-3",
+            CreatedAt: time.GetUtcNow()));
+        await cut.WaitForAssertionAsync(() => cut.FindAll(IndicatorSelector).Count.ShouldBe(1));
+
+        indicators.DismissForFilterChange(ViewKey);
+        await cut.WaitForAssertionAsync(() => cut.FindAll(IndicatorSelector).ShouldBeEmpty());
+
+        indicators.Add(new NewItemIndicatorEntry(
+            ViewKey,
+            "counter-4",
+            MessageId: "message-4",
+            CreatedAt: time.GetUtcNow()));
+        await cut.WaitForAssertionAsync(() => cut.FindAll(IndicatorSelector).Count.ShouldBe(1));
+
+        time.Advance(TimeSpan.FromSeconds(10));
+        await cut.WaitForAssertionAsync(() => cut.FindAll(IndicatorSelector).ShouldBeEmpty());
+
+        indicators.Add(new NewItemIndicatorEntry(
+            ViewKey,
+            "counter-5",
+            MessageId: "message-5",
+            CreatedAt: time.GetUtcNow()));
+        await cut.WaitForAssertionAsync(() => cut.FindAll(IndicatorSelector).Count.ShouldBe(1));
+
+        indicators.Clear("generated-grid-test");
+        await cut.WaitForAssertionAsync(() => cut.FindAll(IndicatorSelector).ShouldBeEmpty());
+
+        indicators.Add(new NewItemIndicatorEntry(
+            ViewKey,
+            "counter-6",
+            MessageId: "message-6",
+            CreatedAt: time.GetUtcNow()));
+        await cut.WaitForAssertionAsync(() => cut.FindAll(IndicatorSelector).Count.ShouldBe(1));
+
+        IUserContextAccessor userContext = Services.GetRequiredService<IUserContextAccessor>();
+        _ = userContext.UserId.Returns("other-user");
+        indicators.Snapshot(ViewKey).ShouldBeEmpty();
+        await cut.WaitForAssertionAsync(() => cut.FindAll(IndicatorSelector).ShouldBeEmpty());
+
+        cut.Dispose();
+        Should.NotThrow(() => indicators.Add(new NewItemIndicatorEntry(
+            ViewKey,
+            "counter-after-dispose",
+            MessageId: "message-after-dispose",
+            CreatedAt: time.GetUtcNow())));
+    }
+
+    [Fact]
+    public async Task CounterProjectionView_Dispose_UnsubscribesIndicatorHandlerExactlyOnce() {
+        UseFakeTime(s_fixedNow);
+        RecordingNewItemIndicatorStateService indicators = new();
+        Services.Replace(ServiceDescriptor.Scoped<INewItemIndicatorStateService>(_ => indicators));
+
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            "counter-nip-disposal",
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 1,
+                    LastUpdated = s_lastUpdated,
+                },
+            ]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        await cut.WaitForAssertionAsync(() => indicators.SubscribeCount.ShouldBe(1));
+        Action capturedHandler = indicators.ActiveHandler.ShouldNotBeNull();
+        RecordingIndicatorSubscription subscription = indicators.Subscription.ShouldNotBeNull();
+
+        await DisposeComponentsAsync();
+        int renderCountAfterDispose = cut.RenderCount;
+
+        subscription.DisposeCount.ShouldBe(1);
+        indicators.ActiveHandler.ShouldBeNull();
+        Should.NotThrow(capturedHandler);
+        cut.RenderCount.ShouldBe(renderCountAfterDispose);
+        subscription.DisposeCount.ShouldBe(1);
     }
 
     [Fact]
@@ -554,9 +643,10 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         await Verify(NormalizeGridMarkup(cut.Markup));
     }
 
-    private void UseFakeTime(DateTimeOffset utcNow) {
+    private FakeTimeProvider UseFakeTime(DateTimeOffset utcNow) {
         FakeTimeProvider fake = new(utcNow);
         Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(fake));
+        return fake;
     }
 
     private static string NormalizeGridMarkup(string markup) {
@@ -646,6 +736,55 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
             public void Dispose() {
             }
+        }
+    }
+
+    private sealed class RecordingNewItemIndicatorStateService : INewItemIndicatorStateService {
+        public Action? ActiveHandler { get; private set; }
+
+        public RecordingIndicatorSubscription? Subscription { get; private set; }
+
+        public int SubscribeCount { get; private set; }
+
+        public IDisposable Subscribe(string viewKey, Action handler) {
+            ArgumentException.ThrowIfNullOrWhiteSpace(viewKey);
+            ArgumentNullException.ThrowIfNull(handler);
+            SubscribeCount++;
+            ActiveHandler = handler;
+            Subscription = new RecordingIndicatorSubscription(this);
+            return Subscription;
+        }
+
+        public void Add(NewItemIndicatorEntry entry) {
+        }
+
+        public IReadOnlyList<NewItemIndicatorEntry> Snapshot(string viewKey) => [];
+
+        public void DismissForFilterChange(string viewKey) {
+        }
+
+        public void DismissMaterialized(string viewKey, string entityKey) {
+        }
+
+        public void Clear(string reason) {
+        }
+
+        public void Dispose() {
+        }
+
+        public void Release(RecordingIndicatorSubscription subscription) {
+            if (ReferenceEquals(subscription, Subscription)) {
+                ActiveHandler = null;
+            }
+        }
+    }
+
+    private sealed class RecordingIndicatorSubscription(RecordingNewItemIndicatorStateService owner) : IDisposable {
+        public int DisposeCount { get; private set; }
+
+        public void Dispose() {
+            DisposeCount++;
+            owner.Release(this);
         }
     }
 }

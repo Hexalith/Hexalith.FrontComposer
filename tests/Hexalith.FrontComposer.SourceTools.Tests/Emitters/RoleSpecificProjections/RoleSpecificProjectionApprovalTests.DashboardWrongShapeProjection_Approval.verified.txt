@@ -85,9 +85,13 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
 
     private global::Microsoft.JSInterop.DotNetObjectReference<object>? _dotNetRef;
 
+    private IDisposable? _newItemIndicatorSubscription;
+
     private IDisposable? _projectionFallbackLaneRegistration;
 
     private string? _registeredProjectionFallbackLaneKey;
+
+    private int _disposed;
 
     private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;
 
@@ -443,6 +447,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
     protected override void OnInitialized()
     {
         DashboardWrongShapeProjectionState.StateChanged += OnStateChanged;
+        _newItemIndicatorSubscription = NewItemIndicators.Subscribe(_viewKey, OnNewItemIndicatorsChanged);
         LoadedPageState.StateChanged += OnStateChanged;
         GridNavigationState.StateChanged += OnStateChanged;
         ReconciliationSweepState.StateChanged += OnStateChanged;
@@ -453,6 +458,24 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
     {
         DismissMaterializedIndicators(DashboardWrongShapeProjectionState.Value.Items);
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnNewItemIndicatorsChanged()
+    {
+        if (System.Threading.Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            if (System.Threading.Volatile.Read(ref _disposed) != 0)
+            {
+                return;
+            }
+
+            StateHasChanged();
+        });
     }
 
     /// <inheritdoc />
@@ -545,6 +568,9 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        System.Threading.Volatile.Write(ref _disposed, 1);
+        _newItemIndicatorSubscription?.Dispose();
+        _newItemIndicatorSubscription = null;
         DashboardWrongShapeProjectionState.StateChanged -= OnStateChanged;
         LoadedPageState.StateChanged -= OnStateChanged;
         GridNavigationState.StateChanged -= OnStateChanged;

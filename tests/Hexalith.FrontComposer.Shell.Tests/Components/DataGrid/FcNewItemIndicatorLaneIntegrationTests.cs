@@ -20,7 +20,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// Story 2.6 AC1(b) integration pin — proves the new-item-indicator <em>producer-state → consumer-component</em>
 /// contract composes end-to-end: an entry pushed to <see cref="INewItemIndicatorStateService"/> for a lane
 /// surfaces a rendered <see cref="FcNewItemIndicator"/> (correct ARIA + localized copy) for that lane, and the
-/// indicator disappears on every dismissal trigger (10s TTL, materialization, filter-change).
+/// indicator appears and disappears automatically on every mutation trigger (add, 10s TTL,
+/// materialization, filter-change) without a forced consumer render.
 /// </summary>
 /// <remarks>
 /// This pins the half of AC1(b) that is in-scope and testable for Story 2.6 (the projection read path). The
@@ -29,9 +30,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 /// command-lifecycle / pending-command resolution path (Story 5-5 DN1, Epic 3/5), which Story 2.6 explicitly
 /// does NOT reopen. The live nudge seam (<c>IProjectionHubConnection.OnProjectionChanged</c>) carries only
 /// <c>(projectionType, tenantId)</c> — no per-row identity — so the indicator cannot be produced from the nudge
-/// path without fabricating identities. The <see cref="LaneHost"/> below stands in for the eventual generated /
-/// shell-level consumer (deferred), reading <see cref="INewItemIndicatorStateService.Snapshot(string)"/> exactly
-/// as that consumer will.
+/// path without fabricating identities. The <see cref="LaneHost"/> below mirrors the generated consumer's
+/// subscription, dispatcher marshalling, snapshot read, and unsubscribe-first teardown.
 /// </remarks>
 public sealed class FcNewItemIndicatorLaneIntegrationTests : LayoutComponentTestBase {
     private const string ViewKey = "counter:test-tenant";
@@ -49,15 +49,18 @@ public sealed class FcNewItemIndicatorLaneIntegrationTests : LayoutComponentTest
     [Fact]
     public void AddingLaneEntry_RendersAccessiblePoliteIndicatorForThatLane() {
         INewItemIndicatorStateService state = Services.GetRequiredService<INewItemIndicatorStateService>();
+        IRenderedComponent<LaneHost> cut = Render<LaneHost>(parameters => parameters.Add(p => p.ViewKey, ViewKey));
+        cut.FindAll(IndicatorTestId).ShouldBeEmpty();
+
         state.Add(new NewItemIndicatorEntry(ViewKey, "counter-1", "message-1", _time.GetUtcNow()));
 
-        IRenderedComponent<LaneHost> cut = Render<LaneHost>(parameters => parameters.Add(p => p.ViewKey, ViewKey));
-
-        AngleSharp.Dom.IElement indicator = cut.Find(IndicatorTestId);
-        indicator.GetAttribute("role").ShouldBe("status");
-        indicator.GetAttribute("aria-live").ShouldBe("polite");
-        indicator.GetAttribute("aria-label").ShouldBe("New item added outside current filters");
-        indicator.TextContent.Trim().ShouldBe("New item. It may not match current filters yet.");
+        cut.WaitForAssertion(() => {
+            AngleSharp.Dom.IElement indicator = cut.Find(IndicatorTestId);
+            indicator.GetAttribute("role").ShouldBe("status");
+            indicator.GetAttribute("aria-live").ShouldBe("polite");
+            indicator.GetAttribute("aria-label").ShouldBe("New item added outside current filters");
+            indicator.TextContent.Trim().ShouldBe("New item. It may not match current filters yet.");
+        });
     }
 
     [Fact]
@@ -79,9 +82,8 @@ public sealed class FcNewItemIndicatorLaneIntegrationTests : LayoutComponentTest
         cut.FindAll(IndicatorTestId).Count.ShouldBe(1);
 
         _time.Advance(TimeSpan.FromSeconds(10));
-        cut.Render();
 
-        cut.FindAll(IndicatorTestId).ShouldBeEmpty();
+        cut.WaitForAssertion(() => cut.FindAll(IndicatorTestId).ShouldBeEmpty());
     }
 
     [Fact]
@@ -93,9 +95,8 @@ public sealed class FcNewItemIndicatorLaneIntegrationTests : LayoutComponentTest
         cut.FindAll(IndicatorTestId).Count.ShouldBe(1);
 
         state.DismissMaterialized(ViewKey, "counter-1");
-        cut.Render();
 
-        cut.FindAll(IndicatorTestId).ShouldBeEmpty();
+        cut.WaitForAssertion(() => cut.FindAll(IndicatorTestId).ShouldBeEmpty());
     }
 
     [Fact]
@@ -107,9 +108,18 @@ public sealed class FcNewItemIndicatorLaneIntegrationTests : LayoutComponentTest
         cut.FindAll(IndicatorTestId).Count.ShouldBe(1);
 
         state.DismissForFilterChange(ViewKey);
-        cut.Render();
 
-        cut.FindAll(IndicatorTestId).ShouldBeEmpty();
+        cut.WaitForAssertion(() => cut.FindAll(IndicatorTestId).ShouldBeEmpty());
+    }
+
+    [Fact]
+    public void DisposedLaneConsumer_DoesNotRenderAfterLaterMutation() {
+        INewItemIndicatorStateService state = Services.GetRequiredService<INewItemIndicatorStateService>();
+        IRenderedComponent<LaneHost> cut = Render<LaneHost>(parameters => parameters.Add(p => p.ViewKey, ViewKey));
+        cut.Dispose();
+
+        Should.NotThrow(() => state.Add(
+            new NewItemIndicatorEntry(ViewKey, "counter-1", "message-1", _time.GetUtcNow())));
     }
 
     /// <summary>
@@ -117,12 +127,19 @@ public sealed class FcNewItemIndicatorLaneIntegrationTests : LayoutComponentTest
     /// lane, exactly as the deferred generated / shell-level grid consumer will. Test-only; not a <c>src/</c>
     /// component.
     /// </summary>
-    private sealed class LaneHost : ComponentBase {
+    private sealed class LaneHost : ComponentBase, IDisposable {
+        private IDisposable? _subscription;
+        private int _disposed;
+
         [Inject]
         private INewItemIndicatorStateService State { get; set; } = default!;
 
         [Parameter]
         public string ViewKey { get; set; } = default!;
+
+        protected override void OnInitialized() {
+            _subscription = State.Subscribe(ViewKey, OnStateChanged);
+        }
 
         protected override void BuildRenderTree(RenderTreeBuilder builder) {
             foreach (NewItemIndicatorEntry entry in State.Snapshot(ViewKey)) {
@@ -130,6 +147,24 @@ public sealed class FcNewItemIndicatorLaneIntegrationTests : LayoutComponentTest
                 builder.SetKey(entry.EntityKey);
                 builder.CloseComponent();
             }
+        }
+
+        public void Dispose() {
+            Volatile.Write(ref _disposed, 1);
+            _subscription?.Dispose();
+            _subscription = null;
+        }
+
+        private void OnStateChanged() {
+            if (Volatile.Read(ref _disposed) != 0) {
+                return;
+            }
+
+            _ = InvokeAsync(() => {
+                if (Volatile.Read(ref _disposed) == 0) {
+                    StateHasChanged();
+                }
+            });
         }
     }
 }

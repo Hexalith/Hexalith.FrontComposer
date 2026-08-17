@@ -331,9 +331,13 @@ public static class RazorEmitter {
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Microsoft.JSInterop.DotNetObjectReference<object>? _dotNetRef;");
             _ = sb.AppendLine();
+            _ = sb.AppendLine("    private IDisposable? _newItemIndicatorSubscription;");
+            _ = sb.AppendLine();
             _ = sb.AppendLine("    private IDisposable? _projectionFallbackLaneRegistration;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private string? _registeredProjectionFallbackLaneKey;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private int _disposed;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;");
             _ = sb.AppendLine();
@@ -1041,6 +1045,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged += OnStateChanged;");
         if (isGrid) {
+            _ = sb.AppendLine("        _newItemIndicatorSubscription = NewItemIndicators.Subscribe(_viewKey, OnNewItemIndicatorsChanged);");
             _ = sb.AppendLine("        LoadedPageState.StateChanged += OnStateChanged;");
             _ = sb.AppendLine("        GridNavigationState.StateChanged += OnStateChanged;");
             _ = sb.AppendLine("        ReconciliationSweepState.StateChanged += OnStateChanged;");
@@ -1064,6 +1069,25 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
 
         if (isGrid) {
+            _ = sb.AppendLine("    private void OnNewItemIndicatorsChanged()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (System.Threading.Volatile.Read(ref _disposed) != 0)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        _ = InvokeAsync(() =>");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            if (System.Threading.Volatile.Read(ref _disposed) != 0)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                return;");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("            StateHasChanged();");
+            _ = sb.AppendLine("        });");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+
             // Story 4-4 T2.6 — unified OnAfterRenderAsync with ordered hook list. First-render
             // only: capture DotNetObjectReference for the JS scroll throttle. Within-session
             // scroll restore is gated on the hydrated GridViewSnapshot (Story 3-6 emits the
@@ -1173,6 +1197,9 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    /// <inheritdoc />");
             _ = sb.AppendLine("    public async ValueTask DisposeAsync()");
             _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        System.Threading.Volatile.Write(ref _disposed, 1);");
+            _ = sb.AppendLine("        _newItemIndicatorSubscription?.Dispose();");
+            _ = sb.AppendLine("        _newItemIndicatorSubscription = null;");
             _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        LoadedPageState.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        GridNavigationState.StateChanged -= OnStateChanged;");

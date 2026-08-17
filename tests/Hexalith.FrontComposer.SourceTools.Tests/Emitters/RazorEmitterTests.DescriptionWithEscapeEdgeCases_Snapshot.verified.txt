@@ -84,9 +84,13 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
 
     private global::Microsoft.JSInterop.DotNetObjectReference<object>? _dotNetRef;
 
+    private IDisposable? _newItemIndicatorSubscription;
+
     private IDisposable? _projectionFallbackLaneRegistration;
 
     private string? _registeredProjectionFallbackLaneKey;
+
+    private int _disposed;
 
     private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;
 
@@ -315,6 +319,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     protected override void OnInitialized()
     {
         OrderProjectionState.StateChanged += OnStateChanged;
+        _newItemIndicatorSubscription = NewItemIndicators.Subscribe(_viewKey, OnNewItemIndicatorsChanged);
         LoadedPageState.StateChanged += OnStateChanged;
         GridNavigationState.StateChanged += OnStateChanged;
         ReconciliationSweepState.StateChanged += OnStateChanged;
@@ -325,6 +330,24 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     {
         DismissMaterializedIndicators(OrderProjectionState.Value.Items);
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnNewItemIndicatorsChanged()
+    {
+        if (System.Threading.Volatile.Read(ref _disposed) != 0)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(() =>
+        {
+            if (System.Threading.Volatile.Read(ref _disposed) != 0)
+            {
+                return;
+            }
+
+            StateHasChanged();
+        });
     }
 
     /// <inheritdoc />
@@ -417,6 +440,9 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        System.Threading.Volatile.Write(ref _disposed, 1);
+        _newItemIndicatorSubscription?.Dispose();
+        _newItemIndicatorSubscription = null;
         OrderProjectionState.StateChanged -= OnStateChanged;
         LoadedPageState.StateChanged -= OnStateChanged;
         GridNavigationState.StateChanged -= OnStateChanged;

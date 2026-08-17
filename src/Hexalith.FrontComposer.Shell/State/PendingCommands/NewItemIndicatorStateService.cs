@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -7,234 +8,433 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 /// <inheritdoc />
-public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService {
+public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService
+{
     private static readonly TimeSpan DefaultLifetime = TimeSpan.FromSeconds(10);
     private readonly object _gate = new();
     private readonly Dictionary<(string ViewKey, string EntityKey), TrackedEntry> _entries = [];
     private readonly TimeProvider _time;
     private readonly IUserContextAccessor? _userContext;
     private readonly ILogger<NewItemIndicatorStateService> _logger;
-    private (string? Tenant, string? User)? _scopeSnapshot;
+    private readonly SnapshotPublisher<IReadOnlyList<string>> _publisher;
+    private (string Tenant, string User)? _scopeSnapshot;
     private long _generationCounter;
     private bool _disposed;
 
     public NewItemIndicatorStateService(TimeProvider? time = null)
-        : this(time, userContext: null, logger: null) {
+        : this(time, userContext: null, logger: null)
+    {
     }
 
     public NewItemIndicatorStateService(
         TimeProvider? time,
         IUserContextAccessor? userContext,
-        ILogger<NewItemIndicatorStateService>? logger) {
+        ILogger<NewItemIndicatorStateService>? logger)
+    {
         _time = time ?? TimeProvider.System;
         _userContext = userContext;
         _logger = logger ?? NullLogger<NewItemIndicatorStateService>.Instance;
+        _publisher = new SnapshotPublisher<IReadOnlyList<string>>(
+            Array.Empty<string>(),
+            static _ => { });
     }
 
     /// <inheritdoc />
-    public void Add(NewItemIndicatorEntry entry) {
+    public IDisposable Subscribe(string viewKey, Action handler)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(viewKey);
+        ArgumentNullException.ThrowIfNull(handler);
+
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return System.Reactive.Disposables.Disposable.Empty;
+            }
+
+            return _publisher.Subscribe(
+                affectedViewKeys =>
+                {
+                    for (int index = 0; index < affectedViewKeys.Count; index++)
+                    {
+                        if (string.Equals(affectedViewKeys[index], viewKey, StringComparison.Ordinal))
+                        {
+                            handler();
+                            return;
+                        }
+                    }
+                },
+                replay: false);
+        }
+    }
+
+    /// <inheritdoc />
+    public void Add(NewItemIndicatorEntry entry)
+    {
         ArgumentNullException.ThrowIfNull(entry);
-        // P15 — fail-closed at the boundary; an empty key would silently cross-contaminate
-        // DismissForFilterChange/Snapshot calls that filter on viewKey/entityKey.
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.ViewKey);
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.EntityKey);
 
-        EnforceScopeBoundary();
+        List<ITimer> timers = [];
+        HashSet<string> affectedViewKeys = new(StringComparer.Ordinal);
+        bool scopeBoundaryChanged = false;
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return;
+            }
 
-        // P1 — generation token guards against a stale timer callback dismissing a freshly
-        // re-added entry. The new tracked entry stamps a fresh generation; the timer callback
-        // below ignores fires whose generation no longer matches the stored value.
-        long generation = Interlocked.Increment(ref _generationCounter);
+            bool scopeValid = TryReadScope(out (string Tenant, string User)? currentScope);
+            if (!scopeValid)
+            {
+                _ = ApplyScopeBoundaryLocked(
+                    currentScope,
+                    scopeValid: false,
+                    timers,
+                    affectedViewKeys,
+                    ref scopeBoundaryChanged);
+            }
+            else
+            {
+                long generation = Interlocked.Increment(ref _generationCounter);
+                ITimer timer = _time.CreateTimer(
+                    static state =>
+                    {
+                        var context = (TimerState)state!;
+                        context.Owner.OnTimerFired(
+                            context.ViewKey,
+                            context.EntityKey,
+                            context.Generation);
+                    },
+                    new TimerState(this, entry.ViewKey, entry.EntityKey, generation),
+                    DefaultLifetime,
+                    Timeout.InfiniteTimeSpan);
 
-        // P2-P15 — create the timer first so the TrackedEntry is constructed in one shot,
-        // avoiding the transient `Timer: null!` placeholder that the previous code held while a
-        // concurrent `Snapshot()` call could observe the dictionary mid-write. The DefaultLifetime
-        // dueTime ensures no callback fires before the entry is stored under the gate.
-        ITimer timer = _time.CreateTimer(
-            static state => {
-                var ctx = (TimerState)state!;
-                ctx.Owner.OnTimerFired(ctx.ViewKey, ctx.EntityKey, ctx.Generation);
-            },
-            new TimerState(this, entry.ViewKey, entry.EntityKey, generation),
-            DefaultLifetime,
-            Timeout.InfiniteTimeSpan);
+                bool installed = false;
+                try
+                {
+                    _ = ApplyScopeBoundaryLocked(
+                        currentScope,
+                        scopeValid: true,
+                        timers,
+                        affectedViewKeys,
+                        ref scopeBoundaryChanged);
 
-        ITimer? previous = null;
-        bool installed = false;
-        try {
-            lock (_gate) {
-                // P2-P17 — re-check _disposed after creating the timer so a Dispose() that ran
-                // between EnforceScopeBoundary and lock acquisition does not leave the new timer
-                // outliving the service. Disposed dictionary will not receive the new entry.
-                if (_disposed) {
-                    return;
+                    (string ViewKey, string EntityKey) key = (entry.ViewKey, entry.EntityKey);
+                    if (_entries.Remove(key, out TrackedEntry? existing))
+                    {
+                        timers.Add(existing.Timer);
+                    }
+
+                    _entries[key] = new TrackedEntry(entry, timer, generation);
+                    _ = affectedViewKeys.Add(entry.ViewKey);
+                    installed = true;
                 }
-
-                (string ViewKey, string EntityKey) key = (entry.ViewKey, entry.EntityKey);
-                if (_entries.Remove(key, out TrackedEntry? existing)) {
-                    previous = existing.Timer;
+                finally
+                {
+                    if (!installed)
+                    {
+                        DisposeTimer(timer);
+                    }
                 }
-
-                _entries[key] = new TrackedEntry(entry, timer, generation);
-                installed = true;
             }
         }
-        finally {
-            if (!installed) {
-                // Service was disposed between timer creation and lock — clean up to prevent leak.
-                timer.Dispose();
-            }
-        }
 
-        previous?.Dispose();
+        CompleteMutation(
+            timers,
+            affectedViewKeys,
+            scopeBoundaryChanged,
+            scopeBoundaryChanged ? "TenantOrUserTransition" : null);
     }
 
     /// <inheritdoc />
-    public IReadOnlyList<NewItemIndicatorEntry> Snapshot(string viewKey) {
-        ArgumentException.ThrowIfNullOrWhiteSpace(viewKey);
-
-        lock (_gate) {
-            if (_disposed) {
-                return [];
-            }
-
-            return [.. _entries.Values
-                .Select(static x => x.Entry)
-                .Where(entry => string.Equals(entry.ViewKey, viewKey, StringComparison.Ordinal))
-                .OrderBy(static entry => entry.CreatedAt)];
-        }
-    }
-
-    /// <inheritdoc />
-    public void DismissForFilterChange(string viewKey) {
+    public IReadOnlyList<NewItemIndicatorEntry> Snapshot(string viewKey)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(viewKey);
 
         List<ITimer> timers = [];
-        lock (_gate) {
-            if (_disposed) {
+        HashSet<string> affectedViewKeys = new(StringComparer.Ordinal);
+        bool scopeBoundaryChanged = false;
+        IReadOnlyList<NewItemIndicatorEntry> snapshot;
+        lock (_gate)
+        {
+            if (_disposed)
+            {
+                return [];
+            }
+
+            bool scopeValid = TryReadScope(out (string Tenant, string User)? currentScope);
+            if (!ApplyScopeBoundaryLocked(
+                currentScope,
+                scopeValid,
+                timers,
+                affectedViewKeys,
+                ref scopeBoundaryChanged))
+            {
+                snapshot = [];
+            }
+            else
+            {
+                snapshot = [.. _entries.Values
+                    .Select(static tracked => tracked.Entry)
+                    .Where(entry => string.Equals(entry.ViewKey, viewKey, StringComparison.Ordinal))
+                    .OrderBy(static entry => entry.CreatedAt)];
+            }
+        }
+
+        CompleteMutation(
+            timers,
+            affectedViewKeys,
+            scopeBoundaryChanged,
+            scopeBoundaryChanged ? "TenantOrUserTransition" : null);
+        return snapshot;
+    }
+
+    /// <inheritdoc />
+    public void DismissForFilterChange(string viewKey)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(viewKey);
+
+        List<ITimer> timers = [];
+        HashSet<string> affectedViewKeys = new(StringComparer.Ordinal);
+        lock (_gate)
+        {
+            if (_disposed)
+            {
                 return;
             }
 
-            foreach (KeyValuePair<(string ViewKey, string EntityKey), TrackedEntry> item in _entries.ToArray()) {
-                if (string.Equals(item.Key.ViewKey, viewKey, StringComparison.Ordinal) && _entries.Remove(item.Key)) {
+            foreach (KeyValuePair<(string ViewKey, string EntityKey), TrackedEntry> item in _entries.ToArray())
+            {
+                if (string.Equals(item.Key.ViewKey, viewKey, StringComparison.Ordinal)
+                    && _entries.Remove(item.Key))
+                {
                     timers.Add(item.Value.Timer);
+                    _ = affectedViewKeys.Add(viewKey);
                 }
             }
         }
 
-        foreach (ITimer timer in timers) {
-            timer.Dispose();
-        }
+        CompleteMutation(timers, affectedViewKeys);
     }
 
     /// <inheritdoc />
-    public void DismissMaterialized(string viewKey, string entityKey) {
+    public void DismissMaterialized(string viewKey, string entityKey)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(viewKey);
         ArgumentException.ThrowIfNullOrWhiteSpace(entityKey);
 
-        ITimer? timer = null;
-        lock (_gate) {
-            if (_disposed) {
+        List<ITimer> timers = [];
+        HashSet<string> affectedViewKeys = new(StringComparer.Ordinal);
+        lock (_gate)
+        {
+            if (_disposed)
+            {
                 return;
             }
 
-            if (_entries.Remove((viewKey, entityKey), out TrackedEntry? existing)) {
-                timer = existing.Timer;
+            if (_entries.Remove((viewKey, entityKey), out TrackedEntry? existing))
+            {
+                timers.Add(existing.Timer);
+                _ = affectedViewKeys.Add(viewKey);
             }
         }
 
-        timer?.Dispose();
+        CompleteMutation(timers, affectedViewKeys);
     }
 
     /// <inheritdoc />
-    public void Clear(string reason) {
+    public void Clear(string reason)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(reason);
 
-        List<ITimer> timers;
-        lock (_gate) {
-            if (_disposed) {
+        List<ITimer> timers = [];
+        HashSet<string> affectedViewKeys = new(StringComparer.Ordinal);
+        lock (_gate)
+        {
+            if (_disposed)
+            {
                 return;
             }
 
-            timers = [.. _entries.Values.Select(static x => x.Timer)];
-            _entries.Clear();
+            ClearEntriesLocked(timers, affectedViewKeys);
         }
 
-        foreach (ITimer timer in timers) {
-            timer.Dispose();
-        }
-
-        FrontComposerHotPathLog.NewItemStateCleared(_logger, reason);
+        CompleteMutation(timers, affectedViewKeys, clearReason: reason);
     }
 
     /// <inheritdoc />
-    public void Dispose() {
-        List<ITimer> timers;
-        lock (_gate) {
-            if (_disposed) {
+    public void Dispose()
+    {
+        List<ITimer> timers = [];
+        lock (_gate)
+        {
+            if (_disposed)
+            {
                 return;
             }
 
             _disposed = true;
-            timers = [.. _entries.Values.Select(static x => x.Timer)];
+            timers.AddRange(_entries.Values.Select(static tracked => tracked.Timer));
             _entries.Clear();
+            _scopeSnapshot = null;
         }
 
-        foreach (ITimer timer in timers) {
-            timer.Dispose();
+        foreach (ITimer timer in timers)
+        {
+            DisposeTimer(timer);
         }
     }
 
-    private void OnTimerFired(string viewKey, string entityKey, long generation) {
-        ITimer? timer = null;
-        lock (_gate) {
-            if (_disposed) {
-                return;
-            }
+    private bool ApplyScopeBoundaryLocked(
+        (string Tenant, string User)? currentScope,
+        bool scopeValid,
+        List<ITimer> timers,
+        HashSet<string> affectedViewKeys,
+        ref bool scopeBoundaryChanged)
+    {
+        if (_userContext is null)
+        {
+            return true;
+        }
 
-            if (!_entries.TryGetValue((viewKey, entityKey), out TrackedEntry? tracked)) {
-                return;
-            }
+        if (!scopeValid || currentScope is null)
+        {
+            scopeBoundaryChanged |= _scopeSnapshot is not null || _entries.Count > 0;
+            _scopeSnapshot = null;
+            ClearEntriesLocked(timers, affectedViewKeys);
+            return false;
+        }
 
-            if (tracked.Generation != generation) {
-                // P1 — a newer Add() reused the same key; the new entry owns its own timer.
+        if (_scopeSnapshot is null)
+        {
+            _scopeSnapshot = currentScope;
+            return true;
+        }
+
+        bool changed = !string.Equals(
+                _scopeSnapshot.Value.Tenant,
+                currentScope.Value.Tenant,
+                StringComparison.Ordinal)
+            || !string.Equals(
+                _scopeSnapshot.Value.User,
+                currentScope.Value.User,
+                StringComparison.Ordinal);
+        if (!changed)
+        {
+            return true;
+        }
+
+        _scopeSnapshot = currentScope;
+        scopeBoundaryChanged = true;
+        ClearEntriesLocked(timers, affectedViewKeys);
+        return true;
+    }
+
+    private void ClearEntriesLocked(List<ITimer> timers, HashSet<string> affectedViewKeys)
+    {
+        foreach (TrackedEntry tracked in _entries.Values)
+        {
+            timers.Add(tracked.Timer);
+            _ = affectedViewKeys.Add(tracked.Entry.ViewKey);
+        }
+
+        _entries.Clear();
+    }
+
+    private void CompleteMutation(
+        List<ITimer> timers,
+        HashSet<string> affectedViewKeys,
+        bool scopeBoundaryChanged = false,
+        string? clearReason = null)
+    {
+        foreach (ITimer timer in timers)
+        {
+            DisposeTimer(timer);
+        }
+
+        if (scopeBoundaryChanged)
+        {
+            FrontComposerHotPathLog.NewItemScopeTransition(_logger);
+        }
+
+        if (clearReason is not null)
+        {
+            FrontComposerHotPathLog.NewItemStateCleared(_logger, clearReason);
+        }
+
+        if (affectedViewKeys.Count > 0)
+        {
+            _publisher.Publish([.. affectedViewKeys]);
+        }
+    }
+
+    private void OnTimerFired(string viewKey, string entityKey, long generation)
+    {
+        List<ITimer> timers = [];
+        HashSet<string> affectedViewKeys = new(StringComparer.Ordinal);
+        lock (_gate)
+        {
+            if (_disposed
+                || !_entries.TryGetValue((viewKey, entityKey), out TrackedEntry? tracked)
+                || tracked.Generation != generation)
+            {
                 return;
             }
 
             _ = _entries.Remove((viewKey, entityKey));
-            timer = tracked.Timer;
+            timers.Add(tracked.Timer);
+            _ = affectedViewKeys.Add(viewKey);
         }
 
-        timer?.Dispose();
+        CompleteMutation(timers, affectedViewKeys);
     }
 
-    private void EnforceScopeBoundary() {
-        if (_userContext is null) {
-            return;
+    private bool TryReadScope(out (string Tenant, string User)? scope)
+    {
+        scope = null;
+        if (_userContext is null)
+        {
+            return true;
         }
 
-        (string? Tenant, string? User) current = (_userContext.TenantId, _userContext.UserId);
-        bool needsClear;
-        lock (_gate) {
-            if (_scopeSnapshot is null) {
-                _scopeSnapshot = current;
-                return;
+        try
+        {
+            string? tenant = _userContext.TenantId;
+            string? user = _userContext.UserId;
+            if (string.IsNullOrWhiteSpace(tenant) || string.IsNullOrWhiteSpace(user))
+            {
+                return false;
             }
 
-            needsClear = !string.Equals(_scopeSnapshot.Value.Tenant, current.Tenant, StringComparison.Ordinal)
-                || !string.Equals(_scopeSnapshot.Value.User, current.User, StringComparison.Ordinal);
-            if (needsClear) {
-                _scopeSnapshot = current;
-            }
+            scope = (tenant, user);
+            return true;
         }
+        catch (Exception exception) when (!ExceptionGuard.IsFatal(exception))
+        {
+            return false;
+        }
+    }
 
-        if (needsClear) {
-            FrontComposerHotPathLog.NewItemScopeTransition(_logger);
-            Clear("TenantOrUserTransition");
+    private static void DisposeTimer(ITimer timer)
+    {
+        try
+        {
+            timer.Dispose();
+        }
+        catch (Exception exception) when (!ExceptionGuard.IsFatal(exception))
+        {
+            // State mutation has already committed; a nonfatal cleanup fault must not suppress
+            // remaining timer disposal or the mutation's required logging and notification.
         }
     }
 
     private sealed record TrackedEntry(NewItemIndicatorEntry Entry, ITimer Timer, long Generation);
 
-    private sealed record TimerState(NewItemIndicatorStateService Owner, string ViewKey, string EntityKey, long Generation);
+    private sealed record TimerState(
+        NewItemIndicatorStateService Owner,
+        string ViewKey,
+        string EntityKey,
+        long Generation);
 }

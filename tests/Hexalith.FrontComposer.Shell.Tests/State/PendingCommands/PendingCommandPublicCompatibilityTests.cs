@@ -171,6 +171,25 @@ public sealed class PendingCommandPublicCompatibilityTests {
     }
 
     [Fact]
+    public void PreStory95IndicatorImplementation_UsesCompatibleInertDefaultSubscription() {
+        INewItemIndicatorStateService legacy = new LegacyNewItemIndicatorStateService();
+        int notifications = 0;
+
+        using IDisposable subscription = legacy.Subscribe("counter-counts", () => notifications++);
+        legacy.Add(new NewItemIndicatorEntry(
+            "counter-counts",
+            "counter-1",
+            MessageId,
+            new DateTimeOffset(2026, 8, 13, 9, 0, 0, TimeSpan.Zero)));
+
+        notifications.ShouldBe(0);
+        typeof(INewItemIndicatorStateService)
+            .GetMethod(nameof(INewItemIndicatorStateService.Subscribe))!
+            .IsAbstract
+            .ShouldBeFalse();
+    }
+
+    [Fact]
     public void CommandTargetSnapshotIsImmutableValidatedAndTimeIndependentForEquality() {
         DateTimeOffset firstTime = new(2026, 8, 13, 9, 0, 0, TimeSpan.Zero);
         CommandTargetSnapshot first = Snapshot(firstTime);
@@ -223,4 +242,23 @@ public sealed class PendingCommandPublicCompatibilityTests {
             "tenant-1",
             "user-1",
             capturedAt);
+
+    private sealed class LegacyNewItemIndicatorStateService : INewItemIndicatorStateService {
+        public void Add(NewItemIndicatorEntry entry) {
+        }
+
+        public IReadOnlyList<NewItemIndicatorEntry> Snapshot(string viewKey) => [];
+
+        public void DismissForFilterChange(string viewKey) {
+        }
+
+        public void DismissMaterialized(string viewKey, string entityKey) {
+        }
+
+        public void Clear(string reason) {
+        }
+
+        public void Dispose() {
+        }
+    }
 }

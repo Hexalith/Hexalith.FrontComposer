@@ -90,9 +90,18 @@ public class RazorEmitterTests {
         string source = RazorEmitter.Emit(model);
 
         source.ShouldContain("private global::Hexalith.FrontComposer.Shell.State.PendingCommands.INewItemIndicatorStateService NewItemIndicators { get; set; } = default!;");
+        source.ShouldContain("private IDisposable? _newItemIndicatorSubscription;");
+        source.ShouldContain("_newItemIndicatorSubscription = NewItemIndicators.Subscribe(_viewKey, OnNewItemIndicatorsChanged);");
+        source.ShouldContain("private void OnNewItemIndicatorsChanged()");
+        source.ShouldContain("if (System.Threading.Volatile.Read(ref _disposed) != 0)");
+        source.ShouldContain("_ = InvokeAsync(() =>");
         source.ShouldContain("private void RenderNewItemIndicators(global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)");
         source.ShouldContain("foreach (var entry in NewItemIndicators.Snapshot(_viewKey))");
         source.ShouldContain("builder.SetKey(entry.EntityKey);");
+        int subscriptionDispose = source.IndexOf("_newItemIndicatorSubscription?.Dispose();", StringComparison.Ordinal);
+        int asynchronousDispose = source.IndexOf("await ScrollInterop.DisposeViewKeyAsync", StringComparison.Ordinal);
+        subscriptionDispose.ShouldBeGreaterThan(0);
+        subscriptionDispose.ShouldBeLessThan(asynchronousDispose);
 
         // Story 11.21 ASP0006 — the helper no longer borrows the caller's counter by reference; it
         // renders inside an explicit region so its own literals stay in their own sequence scope.
@@ -102,6 +111,24 @@ public class RazorEmitterTests {
         masked.ShouldContain("RenderNewItemIndicators(builder);");
         masked.ShouldContain("builder.CloseRegion();");
         source.ShouldNotContain("ref int seq");
+    }
+
+    [Fact]
+    public void EmittedNonGrid_DoesNotSubscribeToNewItemIndicatorState() {
+        var model = new RazorModel(
+            "OrderProjection",
+            "TestDomain",
+            "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(
+                Col("Id", "Id", TypeCategory.Text),
+                Col("Name", "Name", TypeCategory.Text))),
+            ProjectionRenderStrategy.DetailRecord);
+
+        string source = RazorEmitter.Emit(model);
+
+        source.ShouldNotContain("_newItemIndicatorSubscription");
+        source.ShouldNotContain("NewItemIndicators.Subscribe");
+        source.ShouldNotContain("OnNewItemIndicatorsChanged");
     }
 
     [Fact]
