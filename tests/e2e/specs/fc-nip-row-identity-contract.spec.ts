@@ -318,12 +318,18 @@ test.describe('Story 9.3: FC-NIP explicit command target identity', () => {
       'TryConvergeLifecycle(canonicalMessageId)',
       'ConvergeLifecycle(int maximumAttempts)',
       'LifecycleMatches(terminal, lifecycleState)',
+      'catch (Exception ex) when (ex is not OperationCanceledException)',
     ]);
     assertContainsAll(outcomeResolver, [
-      '_indicatorDecisions.Add(entry.MessageId)',
+      '_indicatorDecisions.Contains(messageId!)',
+      'RecordIndicatorDecision(messageId!)',
+      '_ = _indicatorDecisions.Add(messageId)',
+      'TryPublishIndicator(publication)',
       'TryGetCommittedRegistration(registration)',
       '!string.Equals(delegatedMessageId, canonicalMessageId, StringComparison.Ordinal)',
     ]);
+    expect(outcomeResolver).not.toContain('_indicatorDecisions.Remove');
+    expect((outcomeResolver.match(/_indicatorDecisions\.Clear\(\)/g) ?? []).length).toBe(1);
     const reservationSnapshotIndex = pollingCoordinator.indexOf('_pendingCommands.Snapshot()');
     const convergenceIndex = pollingCoordinator.indexOf(
       'concreteState.ConvergeLifecycle(convergenceBudget)',

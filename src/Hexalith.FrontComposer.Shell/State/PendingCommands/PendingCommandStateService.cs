@@ -267,7 +267,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             try {
                 now = _time.GetUtcNow();
             }
-            catch (Exception ex) {
+            catch (Exception ex) when (ex is not OperationCanceledException) {
                 FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
                     _logger,
                     "ConvergenceClock",
@@ -502,7 +502,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         try {
             now = _time.GetUtcNow();
         }
-        catch (Exception ex) {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
             FrontComposerHotPathLog.PendingLifecycleDispatchFailed(
                 _logger,
                 "ConvergenceClock",

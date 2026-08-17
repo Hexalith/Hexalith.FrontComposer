@@ -199,10 +199,12 @@ public sealed class ConfigureCounterCommandLifecycleBridge : global::System.IDis
     }
 
     private static bool IsFatal(global::System.Exception exception) =>
-        exception is global::System.OutOfMemoryException
-            or global::System.StackOverflowException
-            or global::System.Threading.ThreadAbortException
-            or global::System.AccessViolationException;
+        exception is global::System.AggregateException aggregate
+            ? global::System.Linq.Enumerable.Any(aggregate.Flatten().InnerExceptions, IsFatal)
+            : exception is global::System.OutOfMemoryException
+                or global::System.StackOverflowException
+                or global::System.Threading.ThreadAbortException
+                or global::System.AccessViolationException;
 
     private void RemoveLifecycleSubscription(string correlationId)
     {
@@ -223,6 +225,16 @@ public sealed class ConfigureCounterCommandLifecycleBridge : global::System.IDis
             _forwardingActions.Clear();
         }
         _subscriber.UnsubscribeFromAllActions(this);
-        foreach (global::System.IDisposable subscription in subscriptions) { subscription.Dispose(); }
+        foreach (global::System.IDisposable subscription in subscriptions)
+        {
+            try
+            {
+                subscription.Dispose();
+            }
+            catch (global::System.Exception exception) when (!IsFatal(exception))
+            {
+                // One failing Dispose must not leak the remaining subscriptions.
+            }
+        }
     }
 }

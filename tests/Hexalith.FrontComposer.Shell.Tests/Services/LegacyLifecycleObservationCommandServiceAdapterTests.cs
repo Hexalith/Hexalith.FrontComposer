@@ -2,7 +2,9 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
@@ -199,6 +201,26 @@ public sealed class LegacyLifecycleObservationCommandServiceAdapterTests {
     }
 
     [Fact]
+    public async Task PreAcceptTerminalOverflow_LogsPendingOutcomeBufferOverflow() {
+        OverflowingPreAcceptTerminalService inner = new();
+        CapturingLogger<LegacyLifecycleObservationCommandServiceAdapter> logger = new();
+        LegacyLifecycleObservationCommandServiceAdapter sut = new(
+            inner,
+            TimeProvider.System,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandEntries = 1 }),
+            logger);
+
+        CommandResult result = await sut.DispatchAsync(
+            new object(),
+            _ => { },
+            TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        logger.Entries.ShouldContain(entry =>
+            entry.EventId.Id == 5781 && entry.EventId.Name == "PendingOutcomeBufferOverflow");
+    }
+
+    [Fact]
     public async Task FatalObserverFailure_Propagates() {
         LegacyLifecycleObservationCommandServiceAdapter sut = new(
             new SynchronousTerminalService(),
@@ -391,6 +413,25 @@ public sealed class LegacyLifecycleObservationCommandServiceAdapterTests {
             Started.TrySetResult();
             await Release.Task.ConfigureAwait(false);
             return new CommandResult(MessageId, CommandResultStatus.Accepted);
+        }
+    }
+
+    private sealed class OverflowingPreAcceptTerminalService : ICommandServiceWithLifecycle {
+        private const string EvictedMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            CancellationToken cancellationToken = default)
+            where TCommand : class => DispatchAsync(command, null, cancellationToken);
+
+        public Task<CommandResult> DispatchAsync<TCommand>(
+            TCommand command,
+            Action<CommandLifecycleState, string?>? onLifecycleChange,
+            CancellationToken cancellationToken = default)
+            where TCommand : class {
+            onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, EvictedMessageId);
+            onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, MessageId);
+            return Task.FromResult(new CommandResult(MessageId, CommandResultStatus.Accepted));
         }
     }
 

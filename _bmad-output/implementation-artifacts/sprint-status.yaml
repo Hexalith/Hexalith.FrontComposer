@@ -125,7 +125,7 @@ development_status:
   9-1-fc-nip-row-identity-producer-decision-record: done
   9-2-wire-fcnewitemindicator-producer-and-generated-grid-consumer: done
   9-3-define-explicit-command-target-identity: done
-  9-4-converge-terminal-outcomes-on-one-producer-boundary: in-progress
+  9-4-converge-terminal-outcomes-on-one-producer-boundary: review
   9-5-make-indicator-state-observable-and-scope-safe: review
   9-6-enforce-atomic-per-row-first-wins: backlog
   9-7-add-story-id-and-commit-scope-evidence: backlog

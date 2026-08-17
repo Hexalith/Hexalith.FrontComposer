@@ -124,6 +124,52 @@ public class CommandServiceExtensionsTests {
                 cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    [Fact]
+    public async Task DispatchAsync_TypedObservationOverload_IsolatesNonFatalAggregateObserverFailure() {
+        LifecycleAwareCommandService service = new();
+        int observationCount = 0;
+
+        CommandResult result = await ((ICommandService)service).DispatchWithLifecycleObservationsAsync(
+            new object(),
+            onLifecycleObservation: _ => {
+                observationCount++;
+                throw new AggregateException(new InvalidOperationException("observer-failed"));
+            },
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        result.Status.ShouldBe(CommandResultStatus.Accepted);
+        observationCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_TypedObservationOverload_PropagatesNestedFatalAggregateObserverFailure() {
+        LifecycleAwareCommandService service = new();
+
+        AggregateException exception = await Should.ThrowAsync<AggregateException>(() =>
+            ((ICommandService)service).DispatchWithLifecycleObservationsAsync(
+                new object(),
+                onLifecycleObservation: _ => throw new AggregateException(
+                    new AggregateException(CreateFatal())),
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        exception.Flatten().InnerExceptions.ShouldContain(inner => inner is OutOfMemoryException);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_TypedObservationOverload_PropagatesMixedAggregateWhenAnyInnerIsFatal() {
+        LifecycleAwareCommandService service = new();
+
+        AggregateException exception = await Should.ThrowAsync<AggregateException>(() =>
+            ((ICommandService)service).DispatchWithLifecycleObservationsAsync(
+                new object(),
+                onLifecycleObservation: _ => throw new AggregateException(
+                    new InvalidOperationException("observer-failed"),
+                    CreateFatal()),
+                cancellationToken: TestContext.Current.CancellationToken));
+
+        exception.InnerExceptions.ShouldContain(inner => inner is OutOfMemoryException);
+    }
+
     private sealed class BasicCommandService : ICommandService {
         public CancellationToken ObservedToken { get; private set; }
         public int DispatchCount { get; private set; }
@@ -159,10 +205,13 @@ public class CommandServiceExtensionsTests {
 
     private static T ThrowFatal<T>() {
         System.Runtime.ExceptionServices.ExceptionDispatchInfo
-            .Capture((Exception)Activator.CreateInstance(
-                typeof(OutOfMemoryException),
-                "fatal test exception")!)
+            .Capture(CreateFatal())
             .Throw();
         return default!;
     }
+
+    private static OutOfMemoryException CreateFatal() =>
+        (OutOfMemoryException)Activator.CreateInstance(
+            typeof(OutOfMemoryException),
+            "fatal test exception")!;
 }

@@ -1032,7 +1032,7 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
     [Theory]
     [InlineData("   ")]
     [InlineData("not-a-ulid")]
-    public async Task InvalidAcceptedMessageId_DoesNotAcknowledgeAndUnlocksForm(string messageId) {
+    public async Task InvalidAcceptedMessageId_DoesNotAcknowledgeAndKeepsSubmitting(string messageId) {
         HeldResultCommandService service = new(new CommandResult(messageId, "Accepted"));
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
         await InitializeStoreAsync();
@@ -1047,13 +1047,15 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
 
         service.ReturnResult.TrySetResult();
 
-        cut.WaitForAssertion(() => state.Value.State.ShouldBe(CommandLifecycleState.Idle));
+        cut.WaitForAssertion(() => state.Value.State.ShouldBe(CommandLifecycleState.Submitting));
+        state.Value.State.ShouldNotBe(CommandLifecycleState.Idle);
+        state.Value.State.ShouldNotBe(CommandLifecycleState.Confirmed);
     }
 
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public async Task UnavailableAcceptedAssociation_DoesNotAcknowledgeAndUnlocksForm(bool throwOnAssociation) {
+    public async Task UnavailableAcceptedAssociation_DoesNotAcknowledgeAndKeepsSubmitting(bool throwOnAssociation) {
         HeldResultCommandService service = new(new CommandResult(AcceptedMessageId, "Accepted"));
         Services.Replace(ServiceDescriptor.Scoped<ICommandService>(_ => service));
         if (throwOnAssociation) {
@@ -1076,7 +1078,9 @@ public sealed class CommandTargetGeneratedFormTests : CommandRendererTestBase {
 
         service.ReturnResult.TrySetResult();
 
-        cut.WaitForAssertion(() => state.Value.State.ShouldBe(CommandLifecycleState.Idle));
+        cut.WaitForAssertion(() => state.Value.State.ShouldBe(CommandLifecycleState.Submitting));
+        state.Value.State.ShouldNotBe(CommandLifecycleState.Idle);
+        state.Value.State.ShouldNotBe(CommandLifecycleState.Confirmed);
     }
 
     [Fact]

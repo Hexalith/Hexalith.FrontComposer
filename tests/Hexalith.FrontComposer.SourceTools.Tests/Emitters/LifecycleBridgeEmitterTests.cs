@@ -63,7 +63,10 @@ public class LifecycleBridgeEmitterTests {
         source.ShouldContain("if (disposeSubscription) { subscription.Dispose(); }");
         source.ShouldContain("catch (global::System.Exception exception) when (!IsFatal(exception))");
         source.ShouldContain("A stale subscription must not block the remaining sweep or the new submission.");
+        source.ShouldContain("One failing Dispose must not leak the remaining subscriptions.");
         source.ShouldContain("exception is global::System.OutOfMemoryException");
+        source.ShouldContain("exception is global::System.AggregateException aggregate");
+        source.ShouldContain("global::System.Linq.Enumerable.Any(aggregate.Flatten().InnerExceptions, IsFatal)");
     }
 
     [Fact]

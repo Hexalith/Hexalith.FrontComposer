@@ -425,6 +425,23 @@ public class CommandFormEmitterTests {
         clearIds.ShouldBeGreaterThan(finallyIndex);
         clearOrder.ShouldBeGreaterThan(clearIds);
         source.ShouldContain("exception is global::System.OutOfMemoryException");
+        source.ShouldContain("exception is global::System.AggregateException aggregate");
+        source.ShouldContain("global::System.Linq.Enumerable.Any(aggregate.Flatten().InnerExceptions, IsFatalCommandCleanupException)");
+    }
+
+    [Fact]
+    public void Emit_AcceptedAssociationFailureKeepsSyncingWithoutResetToIdle() {
+        string source = CommandFormEmitter.Emit(BuildForm([]), BuildFluxor());
+
+        source.ShouldContain("catch (Exception ex) when (!IsFatalCommandCleanupException(ex))");
+        int associationFailed = source.IndexOf("if (!acceptedAssociationSucceeded)", StringComparison.Ordinal);
+        int mergedTerminal = source.IndexOf("MergedTerminal", associationFailed, StringComparison.Ordinal);
+        associationFailed.ShouldBeGreaterThan(0);
+        mergedTerminal.ShouldBeGreaterThan(associationFailed);
+        string associationBlock = source[associationFailed..mergedTerminal];
+        associationBlock.ShouldContain("Transport accepted; keep Syncing/pending so polling and convergence continue.");
+        associationBlock.ShouldContain("LogCommandAcknowledgedDispatchSkipped");
+        associationBlock.ShouldNotContain("ResetToIdleAction(correlationId)");
     }
 
     [Fact]

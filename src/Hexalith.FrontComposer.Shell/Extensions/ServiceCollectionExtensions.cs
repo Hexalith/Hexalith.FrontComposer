@@ -240,7 +240,8 @@ public static class ServiceCollectionExtensions {
                 ?? new LegacyLifecycleObservationCommandServiceAdapter(
                     service,
                     sp.GetRequiredService<TimeProvider>(),
-                    sp.GetRequiredService<IOptions<FcShellOptions>>());
+                    sp.GetRequiredService<IOptions<FcShellOptions>>(),
+                    sp.GetService<ILogger<LegacyLifecycleObservationCommandServiceAdapter>>());
         });
         services.TryAddScoped<ICommandService>(sp =>
             sp.GetRequiredService<ICommandServiceWithLifecycle>());

@@ -2,7 +2,7 @@
 title: 'Story 9.4: Converge terminal outcomes on one producer boundary'
 type: 'feature'
 created: '2026-08-12'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '677b5e287bc0e60afc3fc6f27737ed8cb9697db8'
 review_loop_iteration: 8
 review_cap_override: 'Human-authorized on 2026-08-14 for iteration 8 and the completion loops required by this decision.'
@@ -67,11 +67,11 @@ context:
 
 - [x] [Review][Patch] Check `!string.IsNullOrWhiteSpace(result.MessageId)` before marking accepted result in `LegacyLifecycleObservationCommandServiceAdapter` [`src/Hexalith.FrontComposer.Shell/Services/LegacyLifecycleObservationCommandServiceAdapter.cs:203`]
 - [x] [Review][Patch] Add XML documentation comments to `PendingCommandOutcomeRegistrationMarker` class and properties [`src/Hexalith.FrontComposer.Shell/Extensions/PendingCommandOutcomeRegistrationMarker.cs:5`]
-- [ ] [Review][Patch] Evicting entries from _indicatorDecisions permits duplicate indicator publication on subsequent observations [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:378-388`]
-- [ ] [Review][Patch] Deferring _indicatorDecisions.Add below eligibility guards prevents recording non-publication decisions for non-material/unconfirmed outcomes [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:359-371`]
-- [ ] [Review][Patch] Premature _indicatorDecisions.Add before timestamp resolution and indicator state Add execution [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:383`]
-- [ ] [Review][Patch] Missing unit test coverage for _indicatorDecisions capacity bounding and eviction [`tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandOutcomeResolverTests.cs`]
-- [ ] [Review][Patch] Missing unit test coverage for AggregateException unwrapping in CommandServiceExtensions.IsFatal [`tests/Hexalith.FrontComposer.Contracts.Tests/Communication/CommandServiceExtensionsTests.cs`]
+- [x] [Review][Patch] Evicting entries from _indicatorDecisions permits duplicate indicator publication on subsequent observations [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:378-388`]
+- [x] [Review][Patch] Deferring _indicatorDecisions.Add below eligibility guards prevents recording non-publication decisions for non-material/unconfirmed outcomes [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:359-371`]
+- [x] [Review][Patch] Premature _indicatorDecisions.Add before timestamp resolution and indicator state Add execution [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:383`]
+- [x] [Review][Patch] Missing unit test coverage for _indicatorDecisions capacity bounding and eviction [`tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandOutcomeResolverTests.cs`]
+- [x] [Review][Patch] Missing unit test coverage for AggregateException unwrapping in CommandServiceExtensions.IsFatal [`tests/Hexalith.FrontComposer.Contracts.Tests/Communication/CommandServiceExtensionsTests.cs`]
 
 
 ## Spec Change Log
@@ -195,3 +195,46 @@ Keys trim once and compare Ordinal; snapshot equality excludes `CapturedAt`. Mis
 
 - Browser contract pins reservation, convergence, polling, and transport ordering.
   [`fc-nip-row-identity-contract.spec.ts:268`](../../tests/e2e/specs/fc-nip-row-identity-contract.spec.ts#L268)
+
+## Suggested Review Order
+
+**At-most-once indicator decisions**
+
+- Resolve records the MessageId decision under the lock, then publishes after release.
+  [`PendingCommandOutcomeResolver.cs:231`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs#L231)
+
+- Publication and suppression both stamp the same MessageId so duplicates cannot retry Add.
+  [`PendingCommandOutcomeResolver.cs:419`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs#L419)
+
+- Scope loss still drops buffered terminals, but never forgets an indicator decision.
+  [`PendingCommandOutcomeResolver.cs:482`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs#L482)
+
+- Indicator Add runs only after `_gate` is released, so subscriber render cannot re-enter.
+  [`PendingCommandOutcomeResolver.cs:430`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs#L430)
+
+**Accepted dispatch and convergence**
+
+- Transport Accepted keeps Syncing when association fails, so polling can still converge.
+  [`CommandFormEmitter.cs:1277`](../../src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs#L1277)
+
+- Lifecycle convergence treats cancellation as abort, not a failed retry.
+  [`PendingCommandStateService.cs:505`](../../src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs#L505)
+
+- Pre-accept overflow stays FIFO-capped and now logs the suppressed oldest terminal.
+  [`LegacyLifecycleObservationCommandServiceAdapter.cs:166`](../../src/Hexalith.FrontComposer.Shell/Services/LegacyLifecycleObservationCommandServiceAdapter.cs#L166)
+
+**Generated cleanup isolation**
+
+- Form cleanup unwraps AggregateException so fatal inners still propagate.
+  [`CommandFormEmitter.cs:940`](../../src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs#L940)
+
+- Bridge Dispose isolates non-fatal subscription faults and continues the rest.
+  [`CommandLifecycleBridgeEmitter.cs:255`](../../src/Hexalith.FrontComposer.SourceTools/Emitters/CommandLifecycleBridgeEmitter.cs#L255)
+
+**Focused proof**
+
+- Capacity overflow retains the oldest MessageId and never republishes it.
+  [`PendingCommandOutcomeResolverTests.cs:554`](../../tests/Hexalith.FrontComposer.Shell.Tests/State/PendingCommands/PendingCommandOutcomeResolverTests.cs#L554)
+
+- Browser contract forbids `_indicatorDecisions.Remove` and pins `RecordIndicatorDecision`.
+  [`fc-nip-row-identity-contract.spec.ts:322`](../../tests/e2e/specs/fc-nip-row-identity-contract.spec.ts#L322)

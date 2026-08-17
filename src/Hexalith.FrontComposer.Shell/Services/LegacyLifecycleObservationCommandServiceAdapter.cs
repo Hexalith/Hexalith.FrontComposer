@@ -1,7 +1,10 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Options;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.Services;
@@ -11,14 +14,17 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
     private readonly ICommandServiceWithLifecycle _inner;
     private readonly TimeProvider _timeProvider;
     private readonly FcShellOptions _options;
+    private readonly ILogger _logger;
 
     internal LegacyLifecycleObservationCommandServiceAdapter(
         ICommandServiceWithLifecycle inner,
         TimeProvider timeProvider,
-        IOptions<FcShellOptions>? options = null) {
+        IOptions<FcShellOptions>? options = null,
+        ILogger<LegacyLifecycleObservationCommandServiceAdapter>? logger = null) {
         _inner = inner ?? throw new ArgumentNullException(nameof(inner));
         _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
         _options = options?.Value ?? new FcShellOptions();
+        _logger = logger ?? NullLogger<LegacyLifecycleObservationCommandServiceAdapter>.Instance;
     }
 
     /// <inheritdoc />
@@ -159,6 +165,7 @@ internal sealed class LegacyLifecycleObservationCommandServiceAdapter : ICommand
                     else if (!accepted) {
                         while (preAcceptTerminals.Count >= terminalCapacity) {
                             _ = preAcceptTerminals.Dequeue();
+                            FrontComposerHotPathLog.PendingOutcomeBufferOverflow(_logger);
                         }
 
                         preAcceptTerminals.Enqueue(observation);

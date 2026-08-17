@@ -226,10 +226,12 @@ public static class CommandLifecycleBridgeEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private static bool IsFatal(global::System.Exception exception) =>");
-        _ = sb.AppendLine("        exception is global::System.OutOfMemoryException");
-        _ = sb.AppendLine("            or global::System.StackOverflowException");
-        _ = sb.AppendLine("            or global::System.Threading.ThreadAbortException");
-        _ = sb.AppendLine("            or global::System.AccessViolationException;");
+        _ = sb.AppendLine("        exception is global::System.AggregateException aggregate");
+        _ = sb.AppendLine("            ? global::System.Linq.Enumerable.Any(aggregate.Flatten().InnerExceptions, IsFatal)");
+        _ = sb.AppendLine("            : exception is global::System.OutOfMemoryException");
+        _ = sb.AppendLine("                or global::System.StackOverflowException");
+        _ = sb.AppendLine("                or global::System.Threading.ThreadAbortException");
+        _ = sb.AppendLine("                or global::System.AccessViolationException;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private void RemoveLifecycleSubscription(string correlationId)");
         _ = sb.AppendLine("    {");
@@ -250,7 +252,17 @@ public static class CommandLifecycleBridgeEmitter {
         _ = sb.AppendLine("            _forwardingActions.Clear();");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        _subscriber.UnsubscribeFromAllActions(this);");
-        _ = sb.AppendLine("        foreach (global::System.IDisposable subscription in subscriptions) { subscription.Dispose(); }");
+        _ = sb.AppendLine("        foreach (global::System.IDisposable subscription in subscriptions)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            try");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                subscription.Dispose();");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("            catch (global::System.Exception exception) when (!IsFatal(exception))");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                // One failing Dispose must not leak the remaining subscriptions.");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine("}");
 

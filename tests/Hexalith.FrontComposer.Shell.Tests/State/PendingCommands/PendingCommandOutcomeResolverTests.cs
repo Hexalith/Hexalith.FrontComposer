@@ -482,6 +482,25 @@ public sealed class PendingCommandOutcomeResolverTests {
     }
 
     [Fact]
+    public void Resolve_InvalidTimestamp_RecordsNonPublicationAndBlocksLaterValidObservation() {
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        FakeTimeProvider time = new(s_observedAt);
+        using NewItemIndicatorStateService indicators = new(time);
+        PendingCommandOutcomeResolver sut = Create(lifecycle, out _, indicators, time);
+        _ = sut.AssociateAccepted(Registration());
+
+        sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(6)))
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        indicators.Snapshot("counter-counts").ShouldBeEmpty();
+        sut.IndicatorDecisionCount.ShouldBe(1);
+
+        sut.Resolve(Outcome(MessageId, s_observedAt))
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.DuplicateIgnored);
+        indicators.Snapshot("counter-counts").ShouldBeEmpty();
+        sut.IndicatorDecisionCount.ShouldBe(1);
+    }
+
+    [Fact]
     public void Resolve_NullObservedAt_UsesShellTime() {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
         FakeTimeProvider time = new(s_observedAt);
@@ -529,6 +548,110 @@ public sealed class PendingCommandOutcomeResolverTests {
 
         state.GetByMessageId(MessageId)!.Status.ShouldNotBe(PendingCommandStatus.Confirmed);
         state.GetByMessageId(secondMessageId)!.Status.ShouldBe(PendingCommandStatus.Confirmed);
+    }
+
+    [Fact]
+    public void Resolve_IndicatorDecisionsExceedingCapacity_RetainsOldestAndDoesNotRepublish() {
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        FakeTimeProvider time = new(s_observedAt);
+        using NewItemIndicatorStateService indicators = new(time);
+        FcShellOptions options = new() { MaxPendingCommandEntries = 1 };
+        PendingCommandOutcomeResolver sut = Create(lifecycle, out _, indicators, time, options);
+        const string secondMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        _ = sut.AssociateAccepted(Registration());
+        sut.Resolve(Outcome(MessageId, s_observedAt)).Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        _ = sut.AssociateAccepted(Registration(SecondCorrelationId, secondMessageId, entityKey: "counter-2"));
+        sut.Resolve(Outcome(secondMessageId, s_observedAt)).Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+
+        sut.IndicatorDecisionCount.ShouldBe(2);
+        IReadOnlyList<NewItemIndicatorEntry> published = indicators.Snapshot("counter-counts");
+        published.Count.ShouldBe(2);
+        published.Single(entry => entry.MessageId == MessageId).CreatedAt.ShouldBe(s_observedAt);
+
+        time.Advance(TimeSpan.FromSeconds(5));
+        sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(5)))
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.DuplicateIgnored);
+        indicators.Snapshot("counter-counts").Single(entry => entry.MessageId == MessageId)
+            .CreatedAt.ShouldBe(s_observedAt);
+
+        time.Advance(TimeSpan.FromSeconds(5));
+        indicators.Snapshot("counter-counts").ShouldBeEmpty();
+        sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(10)))
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.DuplicateIgnored);
+        indicators.Snapshot("counter-counts").ShouldBeEmpty();
+        sut.IndicatorDecisionCount.ShouldBe(2);
+    }
+
+    [Fact]
+    public void Resolve_IndicatorDecisionCapacityOverflow_DoesNotRepublishAfterFifoWouldHaveEvicted() {
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        FakeTimeProvider time = new(s_observedAt);
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
+        FcShellOptions options = new() { MaxPendingCommandEntries = 1 };
+        PendingCommandOutcomeResolver sut = Create(lifecycle, out _, indicators, time, options);
+        const string secondMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        const string thirdMessageId = "01CRZ3NDEKTSV4RRFFQ69G5FAV";
+        const string thirdCorrelationId = "01EPZ3NDEKTSV4RRFFQ69G5FAV";
+        _ = sut.AssociateAccepted(Registration());
+        _ = sut.Resolve(Outcome(MessageId, s_observedAt));
+        _ = sut.AssociateAccepted(Registration(SecondCorrelationId, secondMessageId, entityKey: "counter-2"));
+        _ = sut.Resolve(Outcome(secondMessageId, s_observedAt));
+        _ = sut.AssociateAccepted(Registration(thirdCorrelationId, thirdMessageId, entityKey: "counter-3"));
+        _ = sut.Resolve(Outcome(thirdMessageId, s_observedAt));
+        _ = sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(1)));
+
+        sut.IndicatorDecisionCount.ShouldBe(3);
+        indicators.Received(3).Add(Arg.Any<NewItemIndicatorEntry>());
+        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry.MessageId == MessageId));
+    }
+
+    [Fact]
+    public void Resolve_LegacyResolverAdapter_IndicatorDecisionOverflow_DoesNotRepublishOldest() {
+        FakeTimeProvider time = new(s_observedAt);
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
+        IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
+        const string secondMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        legacy.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(call => {
+            PendingCommandOutcomeObservation observation = call.Arg<PendingCommandOutcomeObservation>();
+            string entityKey = observation.MessageId == MessageId ? "counter-1" : "counter-2";
+            return new PendingCommandOutcomeResolutionResult(
+                PendingCommandOutcomeResolutionStatus.Resolved,
+                new PendingCommandEntry(
+                    CorrelationId,
+                    observation.MessageId!,
+                    "Counter.Increment",
+                    "Counter.Count",
+                    "counter-counts",
+                    entityKey,
+                    "Approved",
+                    "Draft",
+                    s_observedAt.AddMinutes(-1),
+                    PendingCommandStatus.Confirmed) {
+                    TargetSnapshot = Target(entityKey: entityKey),
+                });
+        });
+        IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
+        _ = userContext.TenantId.Returns("tenant-1");
+        _ = userContext.UserId.Returns("user-1");
+        PendingCommandOutcomeResolver sut = new(
+            legacy,
+            Substitute.For<IPendingCommandStateService>(),
+            NullLogger<PendingCommandOutcomeResolver>.Instance,
+            indicators,
+            time,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxPendingCommandEntries = 1 }),
+            userContext);
+
+        sut.Resolve(Outcome(MessageId, s_observedAt)).Status
+            .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        sut.Resolve(Outcome(secondMessageId, s_observedAt)).Status
+            .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(1))).Status
+            .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+
+        sut.IndicatorDecisionCount.ShouldBe(2);
+        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry.MessageId == MessageId));
+        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry.MessageId == secondMessageId));
     }
 
     [Fact]
@@ -629,6 +752,24 @@ public sealed class PendingCommandOutcomeResolverTests {
     }
 
     [Fact]
+    public void Resolve_IndicatorPublicationFailure_DoesNotRetryAddOnDuplicateObservation() {
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
+        indicators.WhenForAnyArgs(service => service.Add(default!))
+            .Do(_ => throw new InvalidOperationException("indicator unavailable"));
+        FakeTimeProvider time = new(s_observedAt);
+        PendingCommandOutcomeResolver sut = Create(lifecycle, out _, indicators, time);
+        _ = sut.AssociateAccepted(Registration());
+
+        sut.Resolve(Outcome(MessageId, s_observedAt)).Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(1)))
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.DuplicateIgnored);
+
+        indicators.Received(1).Add(Arg.Any<NewItemIndicatorEntry>());
+        sut.IndicatorDecisionCount.ShouldBe(1);
+    }
+
+    [Fact]
     public void Resolve_LifecycleDispatchFailureStillPublishesEligibleIndicator() {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
         lifecycle.WhenForAnyArgs(service => service.Transition(default!, default, default, default))
@@ -716,6 +857,103 @@ public sealed class PendingCommandOutcomeResolverTests {
             Registration("01HPZ3NDEKTSV4RRFFQ69G5FAV", afterReacquire));
         result.Status.ShouldBe(PendingCommandRegistrationStatus.MergedTerminal);
         state.GetByMessageId(afterReacquire).ShouldNotBeNull().Status.ShouldBe(PendingCommandStatus.Confirmed);
+    }
+
+    [Fact]
+    public void Resolve_LegacyAdapter_AfterScopeLoss_DoesNotRepublish() {
+        FakeTimeProvider time = new(s_observedAt);
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
+        IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
+        legacy.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(call =>
+            DelegatedResolved(call.Arg<PendingCommandOutcomeObservation>().MessageId!));
+        string? tenant = "tenant-1";
+        string? user = "user-1";
+        IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
+        _ = userContext.TenantId.Returns(_ => tenant!);
+        _ = userContext.UserId.Returns(_ => user!);
+        PendingCommandOutcomeResolver sut = new(
+            legacy,
+            Substitute.For<IPendingCommandStateService>(),
+            NullLogger<PendingCommandOutcomeResolver>.Instance,
+            indicators,
+            time,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            userContext);
+
+        sut.Resolve(Outcome(MessageId, s_observedAt)).Status
+            .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        tenant = null;
+        user = null;
+        sut.BufferBeforeAccepted(CorrelationId, Outcome(MessageId, s_observedAt))
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Unknown);
+        tenant = "tenant-1";
+        user = "user-1";
+        sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(1))).Status
+            .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+
+        sut.IndicatorDecisionCount.ShouldBe(1);
+        indicators.Received(1).Add(Arg.Is<NewItemIndicatorEntry>(entry => entry.MessageId == MessageId));
+    }
+
+    [Fact]
+    public void Resolve_LegacyAdapter_AfterTenantSwitch_DoesNotRepublish() {
+        FakeTimeProvider time = new(s_observedAt);
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
+        IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
+        legacy.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(call =>
+            DelegatedResolved(call.Arg<PendingCommandOutcomeObservation>().MessageId!));
+        string tenant = "tenant-1";
+        string user = "user-1";
+        IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
+        _ = userContext.TenantId.Returns(_ => tenant);
+        _ = userContext.UserId.Returns(_ => user);
+        PendingCommandOutcomeResolver sut = new(
+            legacy,
+            Substitute.For<IPendingCommandStateService>(),
+            NullLogger<PendingCommandOutcomeResolver>.Instance,
+            indicators,
+            time,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            userContext);
+
+        sut.Resolve(Outcome(MessageId, s_observedAt) with { Materiality = CommandMateriality.NoOp })
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        tenant = "tenant-2";
+        sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(1))).Status
+            .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        tenant = "tenant-1";
+        sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(2))).Status
+            .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+
+        sut.IndicatorDecisionCount.ShouldBe(1);
+        indicators.DidNotReceiveWithAnyArgs().Add(default!);
+    }
+
+    [Fact]
+    public void Resolve_IndicatorAdd_ReleasesResolverGateBeforePublication() {
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        FakeTimeProvider time = new(s_observedAt);
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
+        PendingCommandOutcomeResolver? sut = null;
+        bool concurrentLockAcquired = false;
+        indicators.WhenForAnyArgs(service => service.Add(default!))
+            .Do(call => {
+                _ = call;
+                Task<bool> probe = Task.Run(() => {
+                    _ = sut!.IndicatorDecisionCount;
+                    return true;
+                });
+                concurrentLockAcquired = probe.Wait(TimeSpan.FromSeconds(2));
+            });
+        sut = Create(lifecycle, out _, indicators, time);
+        _ = sut.AssociateAccepted(Registration());
+
+        sut.Resolve(Outcome(MessageId, s_observedAt)).Status
+            .ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+
+        concurrentLockAcquired.ShouldBeTrue();
+        sut.IndicatorDecisionCount.ShouldBe(1);
+        indicators.Received(1).Add(Arg.Any<NewItemIndicatorEntry>());
     }
 
     [Theory]
@@ -1007,6 +1245,92 @@ public sealed class PendingCommandOutcomeResolverTests {
         indicators.Snapshot("counter-counts").ShouldBeEmpty();
     }
 
+    [Fact]
+    public void Resolve_LegacyResolverAdapterNoOpThenMaterial_DoesNotPublishIndicator() {
+        FakeTimeProvider time = new(s_observedAt);
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
+        IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
+        PendingCommandEntry resolvedEntry = new(
+            CorrelationId,
+            MessageId,
+            "Counter.Increment",
+            "Counter.Count",
+            "counter-counts",
+            "counter-1",
+            "Approved",
+            "Draft",
+            s_observedAt.AddMinutes(-1),
+            PendingCommandStatus.Confirmed) {
+            TargetSnapshot = Target(),
+        };
+        legacy.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(
+            new PendingCommandOutcomeResolutionResult(
+                PendingCommandOutcomeResolutionStatus.Resolved,
+                resolvedEntry));
+        IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
+        _ = userContext.TenantId.Returns("tenant-1");
+        _ = userContext.UserId.Returns("user-1");
+        PendingCommandOutcomeResolver sut = new(
+            legacy,
+            Substitute.For<IPendingCommandStateService>(),
+            NullLogger<PendingCommandOutcomeResolver>.Instance,
+            indicators,
+            time,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            userContext);
+
+        sut.Resolve(Outcome(MessageId, s_observedAt) with { Materiality = CommandMateriality.NoOp })
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(1)))
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+
+        indicators.DidNotReceiveWithAnyArgs().Add(default!);
+        sut.IndicatorDecisionCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public void Resolve_LegacyResolverAdapterRejectedThenMaterial_DoesNotPublishIndicator() {
+        FakeTimeProvider time = new(s_observedAt);
+        INewItemIndicatorStateService indicators = Substitute.For<INewItemIndicatorStateService>();
+        IPendingCommandOutcomeResolver legacy = Substitute.For<IPendingCommandOutcomeResolver>();
+        PendingCommandEntry resolvedEntry = new(
+            CorrelationId,
+            MessageId,
+            "Counter.Increment",
+            "Counter.Count",
+            "counter-counts",
+            "counter-1",
+            "Approved",
+            "Draft",
+            s_observedAt.AddMinutes(-1),
+            PendingCommandStatus.Rejected) {
+            TargetSnapshot = Target(),
+        };
+        legacy.Resolve(Arg.Any<PendingCommandOutcomeObservation>()).Returns(
+            new PendingCommandOutcomeResolutionResult(
+                PendingCommandOutcomeResolutionStatus.Resolved,
+                resolvedEntry));
+        IUserContextAccessor userContext = Substitute.For<IUserContextAccessor>();
+        _ = userContext.TenantId.Returns("tenant-1");
+        _ = userContext.UserId.Returns("user-1");
+        PendingCommandOutcomeResolver sut = new(
+            legacy,
+            Substitute.For<IPendingCommandStateService>(),
+            NullLogger<PendingCommandOutcomeResolver>.Instance,
+            indicators,
+            time,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            userContext);
+
+        sut.Resolve(Outcome(MessageId, s_observedAt) with { Outcome = PendingCommandTerminalOutcome.Rejected })
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        sut.Resolve(Outcome(MessageId, s_observedAt.AddSeconds(1)))
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+
+        indicators.DidNotReceiveWithAnyArgs().Add(default!);
+        sut.IndicatorDecisionCount.ShouldBe(1);
+    }
+
     private static PendingCommandOutcomeResolver Create(
         ILifecycleStateService lifecycle,
         out PendingCommandStateService state,
@@ -1132,6 +1456,23 @@ public sealed class PendingCommandOutcomeResolverTests {
         storage.ReceivedCalls().ShouldBeEmpty();
         lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId, false);
     }
+
+    private static PendingCommandOutcomeResolutionResult DelegatedResolved(string messageId) =>
+        new(
+            PendingCommandOutcomeResolutionStatus.Resolved,
+            new PendingCommandEntry(
+                CorrelationId,
+                messageId,
+                "Counter.Increment",
+                "Counter.Count",
+                "counter-counts",
+                "counter-1",
+                "Approved",
+                "Draft",
+                s_observedAt.AddMinutes(-1),
+                PendingCommandStatus.Confirmed) {
+                TargetSnapshot = Target(),
+            });
 
     private static PendingCommandOutcomeObservation Outcome(string? messageId, DateTimeOffset? observedAt = null) =>
         new(

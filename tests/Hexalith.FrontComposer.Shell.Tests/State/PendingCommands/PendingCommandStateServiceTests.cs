@@ -222,6 +222,30 @@ public sealed class PendingCommandStateServiceTests {
     }
 
     [Fact]
+    public void TryConvergeLifecycle_OperationCanceledException_PropagatesWithoutRequeue() {
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        lifecycle.GetState(Arg.Any<string>()).Returns(CommandLifecycleState.Idle);
+        lifecycle.GetMessageId(Arg.Any<string>()).Returns((string?)null);
+        lifecycle
+            .When(x => x.Transition(Arg.Any<string>(), Arg.Any<CommandLifecycleState>(), Arg.Any<string?>(), Arg.Any<bool>()))
+            .Do(_ => throw new InvalidOperationException("lifecycle-failed"));
+        CancelAfterRegisterTimeProvider time = new();
+        PendingCommandStateService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions()),
+            lifecycle,
+            userContext: null,
+            time,
+            NullLogger<PendingCommandStateService>.Instance);
+        sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        sut.ResolveTerminal(PendingCommandTerminalObservation.Confirmed(MessageId)).Status
+            .ShouldBe(PendingCommandResolutionStatus.LifecycleDispatchFailed);
+        time.ThrowCanceled = true;
+
+        Should.Throw<OperationCanceledException>(() =>
+            sut.ResolveTerminal(PendingCommandTerminalObservation.Rejected(MessageId, "late", "ignored")));
+    }
+
+    [Fact]
     public void LifecycleConvergence_CapacityOneEvictsOldestAndRetainsNewestWork() {
         const string secondMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
         bool convergeSecond = false;
@@ -530,6 +554,18 @@ public sealed class PendingCommandStateServiceTests {
             tenantId,
             userId,
             capturedAt);
+
+    private sealed class CancelAfterRegisterTimeProvider : TimeProvider {
+        public bool ThrowCanceled { get; set; }
+
+        public override DateTimeOffset GetUtcNow() {
+            if (ThrowCanceled) {
+                throw new OperationCanceledException();
+            }
+
+            return new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero);
+        }
+    }
 
     private sealed class CallbackLogger<T> : ILogger<T> {
         private Action? _callback;

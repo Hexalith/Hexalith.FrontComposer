@@ -17,6 +17,7 @@ using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.Extensions;
@@ -110,7 +111,8 @@ public static class EventStoreServiceExtensions {
                 ?? new LegacyLifecycleObservationCommandServiceAdapter(
                     service,
                     sp.GetRequiredService<TimeProvider>(),
-                    sp.GetRequiredService<IOptions<FcShellOptions>>());
+                    sp.GetRequiredService<IOptions<FcShellOptions>>(),
+                    sp.GetService<ILogger<LegacyLifecycleObservationCommandServiceAdapter>>());
         });
         services.TryAddScoped<ICommandService>(sp =>
             sp.GetRequiredService<ICommandServiceWithLifecycle>());

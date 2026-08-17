@@ -16,7 +16,6 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
     private readonly Dictionary<string, PendingCommandOutcomeObservation> _earlyByOwner = new(StringComparer.Ordinal);
     private readonly Queue<string> _earlyOrder = new();
     private readonly HashSet<string> _indicatorDecisions = new(StringComparer.Ordinal);
-    private readonly Queue<string> _indicatorDecisionOrder = new();
     private readonly IPendingCommandStateService _pendingCommands;
     private readonly INewItemIndicatorStateService? _newItemIndicators;
     private readonly TimeProvider _timeProvider;
@@ -40,6 +39,14 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
         get {
             lock (_gate) {
                 return _earlyOrder.Count;
+            }
+        }
+    }
+
+    internal int IndicatorDecisionCount {
+        get {
+            lock (_gate) {
+                return _indicatorDecisions.Count;
             }
         }
     }
@@ -142,13 +149,14 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
     public PendingCommandRegistrationResult AssociateAccepted(PendingCommandRegistration registration) {
         ArgumentNullException.ThrowIfNull(registration);
 
+        NewItemIndicatorEntry? publication = null;
+        PendingCommandRegistrationResult result;
         lock (_gate) {
             if (_disposed) {
                 return PendingCommandRegistrationResult.Disposed();
             }
 
             EnforceScopeBoundaryLocked();
-            PendingCommandRegistrationResult result;
             try {
                 result = _pendingCommands.Register(registration);
             }
@@ -191,12 +199,13 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             if (_earlyByOwner.Remove(key!, out PendingCommandOutcomeObservation? early)) {
                 PurgeEarlyOrderLocked(key!);
                 try {
-                    PendingCommandOutcomeResolutionResult replay = ApplyObservation(early);
+                    PendingCommandOutcomeResolutionResult replay = ApplyObservation(early, out publication);
                     if (replay.Entry is { Status: not PendingCommandStatus.Pending } terminal) {
-                        return PendingCommandRegistrationResult.MergedTerminal(terminal);
+                        result = PendingCommandRegistrationResult.MergedTerminal(terminal);
                     }
                 }
                 catch (Exception ex) {
+                    publication = null;
                     PendingCommandEntry? committed = TryGetCommittedRegistration(registration);
                     if (committed is null) {
                         throw;
@@ -207,28 +216,34 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
                         "AssociationReplayReconciled",
                         committed.MessageId,
                         ex.GetType().Name);
-                    return committed.Status == PendingCommandStatus.Pending
+                    result = committed.Status == PendingCommandStatus.Pending
                         ? result
                         : PendingCommandRegistrationResult.MergedTerminal(committed);
                 }
             }
-
-            return result;
         }
+
+        TryPublishIndicator(publication);
+        return result;
     }
 
     /// <inheritdoc />
     public PendingCommandOutcomeResolutionResult Resolve(PendingCommandOutcomeObservation observation) {
         ArgumentNullException.ThrowIfNull(observation);
 
+        NewItemIndicatorEntry? publication;
+        PendingCommandOutcomeResolutionResult result;
         lock (_gate) {
             if (_disposed) {
                 return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
             }
 
             EnforceScopeBoundaryLocked();
-            return ApplyObservation(observation);
+            result = ApplyObservation(observation, out publication);
         }
+
+        TryPublishIndicator(publication);
+        return result;
     }
 
     /// <inheritdoc />
@@ -289,11 +304,13 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             _earlyByOwner.Clear();
             _earlyOrder.Clear();
             _indicatorDecisions.Clear();
-            _indicatorDecisionOrder.Clear();
         }
     }
 
-    private PendingCommandOutcomeResolutionResult ApplyObservation(PendingCommandOutcomeObservation observation) {
+    private PendingCommandOutcomeResolutionResult ApplyObservation(
+        PendingCommandOutcomeObservation observation,
+        out NewItemIndicatorEntry? publication) {
+        publication = null;
         if (string.IsNullOrWhiteSpace(observation.MessageId)) {
             FrontComposerHotPathLog.PendingOutcomeMissingIdentity(
                 _logger,
@@ -322,9 +339,10 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             }
 
             try {
-                DecideNewItemIndicator(canonicalObservation, delegated);
+                publication = DecideNewItemIndicator(canonicalObservation, delegated);
             }
             catch (Exception ex) {
+                publication = null;
                 FrontComposerHotPathLog.PendingOutcomePublicationFailed(_logger, ex.GetType().Name);
             }
 
@@ -334,9 +352,10 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
         PendingCommandOutcomeResolutionResult result = PendingCommandOutcomeResolutionResult.From(
             _pendingCommands.ResolveTerminal(ToTerminalObservation(canonicalObservation, canonicalMessageId!)));
         try {
-            DecideNewItemIndicator(canonicalObservation, result);
+            publication = DecideNewItemIndicator(canonicalObservation, result);
         }
         catch (Exception ex) {
+            publication = null;
             FrontComposerHotPathLog.PendingOutcomePublicationFailed(_logger, ex.GetType().Name);
         }
 
@@ -353,51 +372,68 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
             observation.RejectionDetail,
             observation.RejectionDataImpact);
 
-    private void DecideNewItemIndicator(
+    private NewItemIndicatorEntry? DecideNewItemIndicator(
         PendingCommandOutcomeObservation observation,
         PendingCommandOutcomeResolutionResult result) {
-        if (result is not {
-            Status: PendingCommandOutcomeResolutionStatus.Resolved
-                    or PendingCommandOutcomeResolutionStatus.LifecycleDispatchFailed,
-            Entry: { TargetSnapshot: { } target } entry,
+        if (_newItemIndicators is null
+            || result.Status is not (
+                PendingCommandOutcomeResolutionStatus.Resolved
+                or PendingCommandOutcomeResolutionStatus.LifecycleDispatchFailed)
+            || result.Entry is not { } entry
+            || !TryCanonicalUlid(entry.MessageId, out string? messageId)) {
+            return null;
         }
-            || _newItemIndicators is null
-            || observation.Materiality != CommandMateriality.Material
-            || !IsConfirmedOutcome(observation.Outcome)
-            || target.ChangeKind == CommandTargetChangeKind.Delete
-            || target.ChangeKind == CommandTargetChangeKind.StatusMove && string.IsNullOrWhiteSpace(target.ExpectedStatus)
-            || !ScopeMatches(target)) {
+
+        if (_disposed || _indicatorDecisions.Contains(messageId!)) {
+            return null;
+        }
+
+        CommandTargetSnapshot? target = entry.TargetSnapshot;
+        bool eligible = target is not null
+            && observation.Materiality == CommandMateriality.Material
+            && IsConfirmedOutcome(observation.Outcome)
+            && target.ChangeKind != CommandTargetChangeKind.Delete
+            && (target.ChangeKind != CommandTargetChangeKind.StatusMove
+                || !string.IsNullOrWhiteSpace(target.ExpectedStatus))
+            && ScopeMatches(target);
+
+        if (!eligible) {
+            RecordIndicatorDecision(messageId!);
+            return null;
+        }
+
+        if (!TryResolveObservedAt(target!, observation.ObservedAt, out DateTimeOffset observedAt)) {
+            FrontComposerHotPathLog.PendingOutcomeTimestampRejected(_logger);
+            RecordIndicatorDecision(messageId!);
+            return null;
+        }
+
+        RecordIndicatorDecision(messageId!);
+        return new NewItemIndicatorEntry(
+            target!.ViewKey,
+            target.EntityKey,
+            entry.MessageId,
+            observedAt);
+    }
+
+    private void RecordIndicatorDecision(string messageId) {
+        if (_disposed) {
             return;
         }
 
-        lock (_gate) {
-            if (_disposed) {
-                return;
-            }
+        // Decisions are retained for the circuit lifetime, including across scope loss
+        // and tenant/user change. Forgetting a MessageId would allow a later observation
+        // to publish again.
+        _ = _indicatorDecisions.Add(messageId);
+    }
 
-            int capacity = Math.Max(1, _options.MaxPendingCommandEntries);
-            while (_indicatorDecisions.Count >= capacity && _indicatorDecisionOrder.TryDequeue(out string? oldest)) {
-                _indicatorDecisions.Remove(oldest);
-            }
-
-            if (!_indicatorDecisions.Add(entry.MessageId)) {
-                return;
-            }
-
-            _indicatorDecisionOrder.Enqueue(entry.MessageId);
-        }
-
-        if (!TryResolveObservedAt(target, observation.ObservedAt, out DateTimeOffset observedAt)) {
-            FrontComposerHotPathLog.PendingOutcomeTimestampRejected(_logger);
+    private void TryPublishIndicator(NewItemIndicatorEntry? entry) {
+        if (entry is null || _newItemIndicators is null) {
             return;
         }
 
         try {
-            _newItemIndicators.Add(new NewItemIndicatorEntry(
-                target.ViewKey,
-                target.EntityKey,
-                entry.MessageId,
-                observedAt));
+            _newItemIndicators.Add(entry);
         }
         catch (Exception ex) {
             FrontComposerHotPathLog.PendingOutcomePublicationFailed(_logger, ex.GetType().Name);
@@ -450,8 +486,6 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
                 _scopeLost = true;
                 _earlyByOwner.Clear();
                 _earlyOrder.Clear();
-                _indicatorDecisions.Clear();
-                _indicatorDecisionOrder.Clear();
             }
 
             return;
@@ -464,8 +498,6 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeCoordi
                     || !string.Equals(_scopeSnapshot.Value.User, current.User, StringComparison.Ordinal)))) {
             _earlyByOwner.Clear();
             _earlyOrder.Clear();
-            _indicatorDecisions.Clear();
-            _indicatorDecisionOrder.Clear();
         }
 
         _scopeSnapshot = current;

@@ -225,10 +225,12 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     }
 
     private static bool IsFatalCommandCleanupException(Exception exception) =>
-        exception is global::System.OutOfMemoryException
-            or global::System.StackOverflowException
-            or global::System.Threading.ThreadAbortException
-            or global::System.AccessViolationException;
+        exception is global::System.AggregateException aggregate
+            ? global::System.Linq.Enumerable.Any(aggregate.Flatten().InnerExceptions, IsFatalCommandCleanupException)
+            : exception is global::System.OutOfMemoryException
+                or global::System.StackOverflowException
+                or global::System.Threading.ThreadAbortException
+                or global::System.AccessViolationException;
 
     private void TrackUnacceptedTerminalObservation(
         string messageId,
@@ -440,7 +442,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                             TargetSnapshot = commandTarget,
                         });
                     }
-                    catch (Exception)
+                    catch (Exception ex) when (!IsFatalCommandCleanupException(ex))
                     {
                         pendingRegistration = null;
                     }
@@ -503,10 +505,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             }
             if (!acceptedAssociationSucceeded)
             {
-                if (!_disposed && !cts.IsCancellationRequested)
-                {
-                    Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
-                }
+                // Transport accepted; keep Syncing/pending so polling and convergence continue.
                 if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration?.Status, correlationId); }
                 return;
             }

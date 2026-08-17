@@ -938,10 +938,12 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private static bool IsFatalCommandCleanupException(Exception exception) =>");
-        _ = sb.AppendLine("        exception is global::System.OutOfMemoryException");
-        _ = sb.AppendLine("            or global::System.StackOverflowException");
-        _ = sb.AppendLine("            or global::System.Threading.ThreadAbortException");
-        _ = sb.AppendLine("            or global::System.AccessViolationException;");
+        _ = sb.AppendLine("        exception is global::System.AggregateException aggregate");
+        _ = sb.AppendLine("            ? global::System.Linq.Enumerable.Any(aggregate.Flatten().InnerExceptions, IsFatalCommandCleanupException)");
+        _ = sb.AppendLine("            : exception is global::System.OutOfMemoryException");
+        _ = sb.AppendLine("                or global::System.StackOverflowException");
+        _ = sb.AppendLine("                or global::System.Threading.ThreadAbortException");
+        _ = sb.AppendLine("                or global::System.AccessViolationException;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private void TrackUnacceptedTerminalObservation(");
         _ = sb.AppendLine("        string messageId,");
@@ -1211,7 +1213,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                            TargetSnapshot = commandTarget,");
         _ = sb.AppendLine("                        });");
         _ = sb.AppendLine("                    }");
-        _ = sb.AppendLine("                    catch (Exception)");
+        _ = sb.AppendLine("                    catch (Exception ex) when (!IsFatalCommandCleanupException(ex))");
         _ = sb.AppendLine("                    {");
         _ = sb.AppendLine("                        pendingRegistration = null;");
         _ = sb.AppendLine("                    }");
@@ -1274,10 +1276,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("            if (!acceptedAssociationSucceeded)");
         _ = sb.AppendLine("            {");
-        _ = sb.AppendLine("                if (!_disposed && !cts.IsCancellationRequested)");
-        _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
-        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("                // Transport accepted; keep Syncing/pending so polling and convergence continue.");
         _ = sb.AppendLine("                if (Logger is not null) { LogCommandAcknowledgedDispatchSkipped(Logger, pendingRegistration?.Status, correlationId); }");
         _ = sb.AppendLine("                return;");
         _ = sb.AppendLine("            }");
