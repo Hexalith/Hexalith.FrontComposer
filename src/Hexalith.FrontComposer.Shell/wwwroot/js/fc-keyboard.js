@@ -81,6 +81,35 @@ export function focusElement(element) {
     }
 }
 
+export function focusVisibleElementById(id) {
+    if (!id) {
+        return false;
+    }
+
+    const escaper =
+        typeof CSS !== "undefined" && typeof CSS.escape === "function"
+            ? CSS.escape
+            : (value) => value.replace(/"/g, '\\"');
+    const candidates = Array.from(document.querySelectorAll(`#${escaper(id)}`));
+    const visible = candidates.filter((element) => {
+        if (!(element instanceof HTMLElement) || element.hidden) {
+            return false;
+        }
+
+        const style = getComputedStyle(element);
+        return style.display !== "none"
+            && style.visibility !== "hidden"
+            && element.getClientRects().length > 0;
+    });
+    const target = visible.at(-1);
+    if (!target || typeof target.focus !== "function") {
+        return false;
+    }
+
+    target.focus();
+    return true;
+}
+
 export function isEditableElementActive() {
     return isEditableElement(document.activeElement);
 }

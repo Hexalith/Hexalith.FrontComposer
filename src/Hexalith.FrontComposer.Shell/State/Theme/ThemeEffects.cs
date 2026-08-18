@@ -164,5 +164,5 @@ public class ThemeEffects(
     private Task ApplyThemeAsync(ThemeMode mode)
         => themeService is null
             ? Task.CompletedTask
-            : themeService.SetThemeAsync(new ThemeSettings(options.Value.AccentColor, 0, 0, mode, true));
+            : themeService.SetThemeAsync(new ThemeSettings(options.Value.AccentColor, 0, 0, mode, false));
 }

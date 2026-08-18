@@ -32,13 +32,21 @@ public sealed class Story13AccessibilityPrimitivesTests : LayoutComponentTestBas
     // ── AC1 — Skip-link → real focus target ─────────────────────────────────────────────────────
 
     [Fact]
+    public void FrontComposerShell_WhenRendered_ShellRootIsExcludedFromSequentialKeyboardFocus() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.Find(".fc-shell-root").GetAttribute("tabindex").ShouldBe("-1");
+    }
+
+    [Fact]
     public void FrontComposerShell_WhenRendered_SkipLinkResolvesToMainContentFocusTarget() {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));
 
         cut.WaitForAssertion(() => {
             // The skip link exists and points at the content region…
-            IElement skip = cut.Find("a.fc-skip-link[href=\"#fc-main-content\"]");
+            IElement skip = cut.Find("a.fc-skip-link[href$=\"#fc-main-content\"]");
             skip.ShouldNotBeNull();
 
             // …and that href resolves to a real, focusable target (id + tabindex="-1").
@@ -58,7 +66,7 @@ public sealed class Story13AccessibilityPrimitivesTests : LayoutComponentTestBas
         cut.WaitForAssertion(() => {
             // When the registry has ≥1 renderable manifest the shell is in its has-navigation shape,
             // so the second skip link renders and must resolve to the nav focus target.
-            IElement skip = cut.Find("a.fc-skip-link[href=\"#fc-nav\"]");
+            IElement skip = cut.Find("a.fc-skip-link[href$=\"#fc-nav\"]");
             skip.ShouldNotBeNull();
 
             IElement target = cut.Find("#fc-nav");
@@ -188,6 +196,10 @@ public sealed class Story13AccessibilityPrimitivesTests : LayoutComponentTestBas
             ".fc-skip-link:focus{left:8px;top:8px;",
             Case.Sensitive,
             "Keyboard focus must reveal the skip link.");
+        normalized.ShouldContain(
+            "@media(forced-colors:active)",
+            Case.Sensitive,
+            "Skip-link focus must remain visible when Windows forced colors are active.");
         normalized.ShouldNotContain("display:none", Case.Insensitive);
         normalized.ShouldNotContain("visibility:hidden", Case.Insensitive);
     }

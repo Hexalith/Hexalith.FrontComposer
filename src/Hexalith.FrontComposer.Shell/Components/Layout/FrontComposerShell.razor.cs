@@ -104,6 +104,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private bool _sessionRestoreAttempted;
     private string? _initialRenderUri;
     private ElementReference _shellRoot;
+    private ElementReference _mainContent;
     private readonly LayoutHamburgerCoordinator _hamburgerCoordinator = new();
 
     // FC-LYT (Story 1.2) — instance-per-shell page-layout coordinator cascaded to @ChildContent so a
@@ -364,6 +365,16 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         : "fc-page-layout";
 
     /// <summary>
+    /// Gets a route-preserving skip-link target for the main content landmark.
+    /// </summary>
+    protected string MainContentHref => GetCurrentRouteFragmentHref("fc-main-content");
+
+    /// <summary>
+    /// Gets a route-preserving skip-link target for the navigation landmark.
+    /// </summary>
+    protected string NavigationHref => GetCurrentRouteFragmentHref("fc-nav");
+
+    /// <summary>
     /// Handoff <c>frontcomposer-2026-06-19-page-header-landmarks-and-contract-hardening</c>
     /// (outcome 1/2) — the resolved <c>aria-labelledby</c> for the <c>#fc-main-content</c> landmark,
     /// or <see langword="null"/>. A page-declared <see cref="FcContentLabel"/> wins over the shell
@@ -441,6 +452,19 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         _ = await Shortcuts.TryInvokeAsync(e).ConfigureAwait(false);
     }
 
+    /// <summary>Moves focus to the shell-owned main landmark.</summary>
+    /// <returns>A task representing the focus operation.</returns>
+    protected Task FocusMainContentAsync() => FocusElementAsync(_mainContent);
+
+    /// <summary>Moves focus to the currently rendered navigation target.</summary>
+    /// <returns>A task representing the focus operation.</returns>
+    protected async Task FocusNavigationAsync() {
+        IJSObjectReference? module = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
+        if (module is not null) {
+            await module.InvokeVoidAsync("focusVisibleElementById", "fc-nav").ConfigureAwait(false);
+        }
+    }
+
     /// <inheritdoc />
     protected override void OnInitialized() {
         base.OnInitialized();
@@ -456,6 +480,19 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private void OnPageLayoutChanged() => _ = InvokeAsync(StateHasChanged);
 
     private void OnContentLabelChanged() => _ = InvokeAsync(StateHasChanged);
+
+    private string GetCurrentRouteFragmentHref(string fragment)
+    {
+        var current = new Uri(NavigationManager.Uri, UriKind.Absolute);
+        return $"{current.AbsolutePath}{current.Query}#{fragment}";
+    }
+
+    private async Task FocusElementAsync(ElementReference element) {
+        IJSObjectReference? module = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
+        if (module is not null) {
+            await module.InvokeVoidAsync("focusElement", element).ConfigureAwait(false);
+        }
+    }
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -638,7 +675,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             ThemeValue.Dark => ThemeMode.Dark,
             _ => ThemeMode.System,
         };
-        await ThemeService.SetThemeAsync(new ThemeSettings(AccentColor, 0, 0, mode, true)).ConfigureAwait(false);
+        await ThemeService.SetThemeAsync(new ThemeSettings(AccentColor, 0, 0, mode, false)).ConfigureAwait(false);
     }
 
     private async Task RegisterBeforeUnloadAsync() {

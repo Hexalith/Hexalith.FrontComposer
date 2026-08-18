@@ -28,14 +28,16 @@
     <link rel="stylesheet" href="@EmptyStateStylesheetPath" />
 </HeadContent>
 
-<div class="fc-shell-root" style="--fc-accent-base-color: @AccentColor;" tabindex="0" @ref="_shellRoot"
+<div class="fc-shell-root" style="--fc-accent-base-color: @AccentColor;" tabindex="-1" @ref="_shellRoot"
      data-fc-interactive="@InteractiveReadyAttribute"
      @onkeydown="HandleGlobalKeyDown">
     <Fluxor.Blazor.Web.StoreInitializer />
-    <a class="fc-skip-link" href="#fc-main-content">@Localizer["SkipToContentLabel"].Value</a>
+    <a class="fc-skip-link" href="@MainContentHref" data-enhance-nav="false"
+       @onclick="FocusMainContentAsync" @onclick:preventDefault="true">@Localizer["SkipToContentLabel"].Value</a>
     @if (HasNavigation)
     {
-        <a class="fc-skip-link" href="#fc-nav">@Localizer["SkipToNavigationLabel"].Value</a>
+        <a class="fc-skip-link" href="@NavigationHref" data-enhance-nav="false"
+           @onclick="FocusNavigationAsync" @onclick:preventDefault="true">@Localizer["SkipToNavigationLabel"].Value</a>
     }
 
     <CascadingValue Value="_hamburgerCoordinator" IsFixed="true">
@@ -141,7 +143,7 @@
                    name the landmark from the route heading (via <FcContentLabel> or the ContentLabelledBy
                    / ContentLabel shell parameters); exactly one is ever emitted, both null by default so
                    the implicit "main" name is the zero-config default. *@
-                <div id="fc-main-content" tabindex="-1" role="main"
+                <div id="fc-main-content" tabindex="-1" role="main" @ref="_mainContent"
                      aria-labelledby="@ContentLabelledByValue" aria-label="@ContentLabelValue"
                      data-fc-page-layout="@PageLayoutAttribute" class="@PageLayoutCssClass">
                     <FcProjectionConnectionStatus />

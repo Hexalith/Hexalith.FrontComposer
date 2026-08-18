@@ -17,4 +17,16 @@
 .fc-skip-link:focus {
     left: 8px;
     top: 8px;
+    outline: 2px solid var(--colorStrokeFocus2);
+    outline-offset: 2px;
+}
+
+@media (forced-colors: active) {
+    .fc-skip-link,
+    .fc-skip-link:focus {
+        background: Canvas;
+        border-color: Highlight;
+        color: CanvasText;
+        outline-color: Highlight;
+    }
 }

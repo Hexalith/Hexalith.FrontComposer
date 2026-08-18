@@ -49,7 +49,7 @@ public partial class FcSystemThemeWatcher : ComponentBase, IAsyncDisposable {
         }
 
         ThemeMode mode = isDark ? ThemeMode.Dark : ThemeMode.Light;
-        await ThemeService.SetThemeAsync(new ThemeSettings(Options.Value.AccentColor, 0, 0, mode, true)).ConfigureAwait(false);
+        await ThemeService.SetThemeAsync(new ThemeSettings(Options.Value.AccentColor, 0, 0, mode, false)).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
