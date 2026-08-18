@@ -69,6 +69,8 @@ context:
 
 ### Review Findings
 
+- [x] [Review][Decision] Submodule pointer updates in commit e014386c (Hexalith.Builds and Hexalith.Memories) -- Human decision: Kept in branch feat/9-6-atomic-per-row-first-wins as intentional updates.
+- [x] [Review][Patch] Reseal CA1707 test underscore identifier inventory in _bmad-output/contracts/analyzer-policy-exception-ledger-v1.json (6994 tokens, sha256 83022848dd488ece6bb4f97a92f46ad25ef21a085285277555430c0dfa99aed5) [`_bmad-output/contracts/analyzer-policy-exception-ledger-v1.json`] -- verified with AnalyzerPolicy_IdentifierInventory_MatchesSeal
 - [x] [Review][Patch] Suppression log call site verified by nothing; all tests used `NullLogger` [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/NewItemIndicatorStateService.cs`] -- covered with `CapturingLogger<T>`; mutation-verified
 - [x] [Review][Patch] Event 5784 could not identify the row; `EntityKey` missing from the payload [`src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerHotPathLog.cs`]
 - [x] [Review][Patch] Race-test thread bodies had no try/catch; a throw terminated the test host [`tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcNewItemIndicatorTests.cs`]

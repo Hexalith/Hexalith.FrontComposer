@@ -1,5 +1,5 @@
 # generated: 07-05-2026 17:13
-# last_updated: 2026-08-17
+# last_updated: 2026-08-18
 # project: frontcomposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -127,7 +127,7 @@ development_status:
   9-3-define-explicit-command-target-identity: done
   9-4-converge-terminal-outcomes-on-one-producer-boundary: done
   9-5-make-indicator-state-observable-and-scope-safe: done
-  9-6-enforce-atomic-per-row-first-wins: review
+  9-6-enforce-atomic-per-row-first-wins: done
   9-7-add-story-id-and-commit-scope-evidence: backlog
   9-8-prove-composed-and-live-epic-9-acceptance: backlog
   epic-9-retrospective: done
