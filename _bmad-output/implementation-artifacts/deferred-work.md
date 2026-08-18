@@ -2526,3 +2526,21 @@ status: open
   evidence: Story 9.4 review fix commits (0432fb1d, 90954acc) landed on main after Story 9.5 baseline commit 9e212f17; pre-existing commits on main.
 
 
+## Deferred from: code review of spec-9-6-enforce-atomic-per-row-first-wins.md (2026-08-18)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-6-enforce-atomic-per-row-first-wins.md`
+  summary: Create the new-item indicator TTL timer only after the per-row occupancy test instead of speculatively before it.
+  evidence: Every suppressed `Add` on an active row allocates an `ITimer` plus `TimerState`, burns a generation, and disposes the timer again under `_gate`. Lazy creation would remove the allocation, the `installed` flag, and the whole speculative try/finally, and would also make the armed-stale-timer path unreachable by construction. Not fixed in Story 9.6 because the approved spec's frozen I/O matrix explicitly expects a speculative timer to be created and disposed, so changing it requires renegotiating frozen intent.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-6-enforce-atomic-per-row-first-wins.md`
+  summary: Reconcile the stale last-wins prose in the FC-NIP row-identity producer contract with shipped first-wins behavior.
+  evidence: `_bmad-output/contracts/fc-nip-row-identity-producer-contract-2026-07-04.md:99,108-110` still states in the present tense that "a repeat `Add(...)` for the same row ... resets the 10s auto-dismiss timer", which is false as of Story 9.6, while its successor-requirements section already states the first-wins rule. The doc guard at `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/FcNipRowIdentityProducerContractTests.cs:69` only checks that the string `first-wins` appears, so the contradiction survives. Left untouched because that section is a dated point-in-time seam verification inside a historical Story 9.1 decision record; a human should decide whether to annotate or supersede it rather than rewrite history.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-6-enforce-atomic-per-row-first-wins.md`
+  summary: Document per-row first-wins, indicator suppression, and the re-open conditions on the published DataGrid reference page.
+  evidence: `docs/reference/components/datagrid.md:83-99` describes the indicator producer rules including "at most once per accepted `MessageId`" but says nothing about per-row first-wins, the suppression event, or when a row re-opens. The page is not incorrect, only incomplete, so it was not a Story 9.6 blocker; adopters who relied on last-wins get a silent semantic change with no documented note.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-6-enforce-atomic-per-row-first-wins.md`
+  summary: Add lane- or component-level coverage that a suppressed publication produces no re-render and no second aria-live announcement.
+  evidence: `FcNewItemIndicatorLaneIntegrationTests` and `CounterStoryVerificationTests` drive the real service through a generated grid but only ever use distinct entity keys, so the user-visible consequence of first-wins is proven only at the service and resolver level, never end to end through the rendered grid.
+

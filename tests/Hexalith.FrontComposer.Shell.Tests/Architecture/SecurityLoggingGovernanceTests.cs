@@ -304,7 +304,7 @@ public sealed class SecurityLoggingGovernanceTests
         }
 
         LoggerEvent[] hotPathEvents = [.. events.Where(static entry => entry.Path.EndsWith("/FrontComposerHotPathLog.cs", StringComparison.Ordinal))];
-        hotPathEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(5700, 84));
+        hotPathEvents.Select(static entry => entry.EventId).Order().ShouldBe(Enumerable.Range(5700, 85));
         foreach (LoggerEvent entry in hotPathEvents)
         {
             entry.EventName.ShouldNotBeNullOrWhiteSpace($"{entry.Location} must declare an explicit EventName");

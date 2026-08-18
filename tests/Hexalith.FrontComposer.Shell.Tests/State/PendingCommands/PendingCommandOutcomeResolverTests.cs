@@ -3,9 +3,12 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
+using Hexalith.FrontComposer.Shell.Tests.Infrastructure.Telemetry;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Time.Testing;
 
@@ -95,6 +98,50 @@ public sealed class PendingCommandOutcomeResolverTests {
         duplicate.Status.ShouldBe(PendingCommandOutcomeResolutionStatus.DuplicateIgnored);
         NewItemIndicatorEntry entry = indicators.Snapshot("counter-counts").Single();
         entry.CreatedAt.ShouldBe(s_observedAt);
+        time.Advance(TimeSpan.FromSeconds(5));
+        indicators.Snapshot("counter-counts").ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Resolve_TwoConfirmedMessagesForOneRow_PublishAsFirstWinsThroughTheProducerBoundary() {
+        // Story 9.6 — composed proof through the real producer boundary: two DISTINCT accepted
+        // MessageIds whose target snapshots resolve to the same (ViewKey, EntityKey). Both burn an
+        // indicator decision in the resolver, both reach INewItemIndicatorStateService.Add, and the
+        // state service keeps the first publication's provenance and original expiry.
+        ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
+        FakeTimeProvider time = new(s_observedAt);
+        CapturingLogger<NewItemIndicatorStateService> indicatorLogger = new();
+        using NewItemIndicatorStateService indicators = new(time, userContext: null, indicatorLogger);
+        PendingCommandOutcomeResolver sut = Create(lifecycle, out PendingCommandStateService state, indicators, time);
+        const string secondMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
+        state.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        state.Register(Registration(SecondCorrelationId, secondMessageId))
+            .Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+
+        sut.Resolve(Outcome(MessageId, s_observedAt))
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+        time.Advance(TimeSpan.FromSeconds(5));
+        sut.Resolve(Outcome(secondMessageId, s_observedAt.AddSeconds(5)))
+            .Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
+
+        // The suppression diagnostic is the only proof that the SECOND observation actually reached
+        // the state service: IndicatorDecisionCount also advances on the ineligible and
+        // timestamp-rejected paths, so it cannot distinguish "suppressed by the row" from
+        // "never published at all".
+        CapturedLogEntry suppression = indicatorLogger.Entries.ShouldHaveSingleItem();
+        suppression.Level.ShouldBe(LogLevel.Debug);
+        suppression.EventId.Id.ShouldBe(5784);
+        suppression.State["MessageId"].ShouldBe(FrontComposerHotPathLog.DigestIdentifier(secondMessageId));
+        suppression.State["ViewKey"].ShouldBe(FrontComposerHotPathLog.DigestIdentifier("counter-counts"));
+        suppression.State["EntityKey"].ShouldBe(FrontComposerHotPathLog.DigestIdentifier("counter-1"));
+
+        sut.IndicatorDecisionCount.ShouldBe(2);
+        NewItemIndicatorEntry active = indicators.Snapshot("counter-counts").ShouldHaveSingleItem();
+        active.MessageId.ShouldBe(MessageId);
+        active.CreatedAt.ShouldBe(s_observedAt);
+        state.GetByMessageId(secondMessageId)!.Status.ShouldBe(PendingCommandStatus.Confirmed);
+
+        // The second command neither reset nor extended the first indicator's ten-second lifetime.
         time.Advance(TimeSpan.FromSeconds(5));
         indicators.Snapshot("counter-counts").ShouldBeEmpty();
     }
