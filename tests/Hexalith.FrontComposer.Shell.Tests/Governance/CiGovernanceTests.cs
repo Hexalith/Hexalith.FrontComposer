@@ -917,6 +917,12 @@ public sealed class CiGovernanceTests {
               { name: 'ordinaryFix', message: 'fix: adjust the public API' },
               { name: 'ordinaryFeat', message: 'feat: add a public API' },
               { name: 'malformedBreakingSubject', message: 'BREAKING CHANGE: break the public API' },
+              { name: 'headerMaxValid', message: 'fix: ' + 'a'.repeat(195) },
+              { name: 'headerMaxExceeded', message: 'fix: ' + 'a'.repeat(196) },
+              { name: 'bodyMaxValid', message: 'fix: subject\n\n' + 'b'.repeat(200) },
+              { name: 'bodyMaxExceeded', message: 'fix: subject\n\n' + 'b'.repeat(201) },
+              { name: 'footerMaxValid', message: 'fix: subject\n\nbody\n\n' + 'c'.repeat(200) },
+              { name: 'footerMaxExceeded', message: 'fix: subject\n\nbody\n\n' + 'c'.repeat(201) },
             ];
             const releaseTypes = {};
             const commitlintValid = {};
@@ -973,6 +979,12 @@ public sealed class CiGovernanceTests {
         commitlintValid.GetProperty("ordinaryFix").GetBoolean().ShouldBeTrue();
         commitlintValid.GetProperty("ordinaryFeat").GetBoolean().ShouldBeTrue();
         commitlintValid.GetProperty("malformedBreakingSubject").GetBoolean().ShouldBeFalse();
+        commitlintValid.GetProperty("headerMaxValid").GetBoolean().ShouldBeTrue();
+        commitlintValid.GetProperty("headerMaxExceeded").GetBoolean().ShouldBeFalse();
+        commitlintValid.GetProperty("bodyMaxValid").GetBoolean().ShouldBeTrue();
+        commitlintValid.GetProperty("bodyMaxExceeded").GetBoolean().ShouldBeFalse();
+        commitlintValid.GetProperty("footerMaxValid").GetBoolean().ShouldBeTrue();
+        commitlintValid.GetProperty("footerMaxExceeded").GetBoolean().ShouldBeFalse();
 
         string releaseNotes = behavior.RootElement.GetProperty("releaseNotes").GetString() ?? string.Empty;
         releaseNotes.ShouldContain("BREAKING CHANGES");

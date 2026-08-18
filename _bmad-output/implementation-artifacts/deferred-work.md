@@ -2511,3 +2511,18 @@ status: open
   summary: Align nested-projection generated grid identity with the configured view key and entity projection type.
   evidence: Review of generated nested-projection output found the grid lookup identity and target snapshot view key can diverge; the behavior predates Story 9.4 and needs a dedicated generator contract change.
 
+## Deferred from: code review of spec-9-5-make-indicator-state-observable-and-scope-safe.md (2026-08-18)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-5-make-indicator-state-observable-and-scope-safe.md`
+  summary: Add capacity bounds or TTL eviction to `PendingCommandOutcomeResolver._indicatorDecisions`.
+  evidence: Review of `PendingCommandOutcomeResolver.cs` identified unbounded growth of `_indicatorDecisions` across long-running circuit sessions; pre-existing from Story 9.4 commit 90954acc on main.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-5-make-indicator-state-observable-and-scope-safe.md`
+  summary: Reconcile submodule pointer updates in `references/*` with repository release policy.
+  evidence: Submodule pointers were updated in main during Story 9.4 governance sync before Story 9.5; pre-existing commits on main.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-5-make-indicator-state-observable-and-scope-safe.md`
+  summary: Isolate Story 9.4 implementation file edits from future story baseline diffs.
+  evidence: Story 9.4 review fix commits (0432fb1d, 90954acc) landed on main after Story 9.5 baseline commit 9e212f17; pre-existing commits on main.
+
+
