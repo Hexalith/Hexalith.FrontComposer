@@ -547,6 +547,24 @@ internal static partial class FrontComposerHotPathLog
             Category(failureCategory));
     }
 
+    /// <summary>Emits the <c>NewItemIndicatorSuppressed</c> hot-path event.</summary>
+    public static void NewItemIndicatorSuppressed(
+        ILogger? logger,
+        string? messageId,
+        string? viewKey,
+        string? entityKey)
+    {
+        if (logger is null || !logger.IsEnabled(LogLevel.Debug))
+        {
+            return;
+        }
+
+        string messageIdDigest = Digest(messageId);
+        string viewKeyDigest = Digest(viewKey);
+        string entityKeyDigest = Digest(entityKey);
+        LogNewItemIndicatorSuppressed(logger, messageIdDigest, viewKeyDigest, entityKeyDigest);
+    }
+
     /// <summary>
     /// Digests an identifier to the support-safe <c>sha256:</c> form used by hot-path and
     /// lifecycle join keys. Null/whitespace becomes <c>absent</c>.
@@ -977,4 +995,12 @@ internal static partial class FrontComposerHotPathLog
     [LoggerMessage(EventId = 5783, EventName = "PendingOutcomePublicationFailed", Level = LogLevel.Warning,
         Message = "Pending command terminal state resolved but indicator publication failed. FailureCategory={FailureCategory}")]
     public static partial void PendingOutcomePublicationFailed(ILogger logger, string failureCategory);
+
+    [LoggerMessage(EventId = 5784, EventName = "NewItemIndicatorSuppressed", Level = LogLevel.Debug,
+        Message = "New-item indicator suppressed because the target row already has an active indicator. MessageId={MessageId} ViewKey={ViewKey} EntityKey={EntityKey}")]
+    private static partial void LogNewItemIndicatorSuppressed(
+        ILogger logger,
+        string messageId,
+        string viewKey,
+        string entityKey);
 }

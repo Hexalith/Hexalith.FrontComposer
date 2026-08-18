@@ -63,6 +63,15 @@ context:
 - Given tenant/user change or invalid registered scope before another producer mutation, when state is read or rendered, then previous-scope entries cannot be returned or displayed.
 - Given concurrent mutation and teardown, when operations settle, then notification delivery is bounded, fault-isolated, and cannot rerender a disposed component.
 
+### Review Findings
+
+- [x] [Review][Defer] Unbounded capacity in PendingCommandOutcomeResolver._indicatorDecisions [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandOutcomeResolver.cs:18`] — deferred, pre-existing (Story 9.4 commit 90954acc on main)
+- [x] [Review][Defer] Submodule pointer updates included in baseline diff [`references/*`] — deferred, pre-existing (Story 9.4 governance updates on main)
+- [x] [Review][Defer] Overlapping edits to Story 9.4 implementation files in baseline diff [`src/Hexalith.FrontComposer.Shell/*`] — deferred, pre-existing (Story 9.4 commits 0432fb1d, 90954acc on main)
+- [x] [Review][Defer] Silent swallowing of timer creation exceptions in LegacyLifecycleObservationCommandServiceAdapter [`src/Hexalith.FrontComposer.Shell/Services/LegacyLifecycleObservationCommandServiceAdapter.cs:261`] — deferred, pre-existing (Story 9.4 commit on main)
+- [x] [Review][Defer] Misleading warning log for clock failures in EventStoreCommandClient [`src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs:180`] — deferred, pre-existing (Story 9.4 commit on main)
+- [x] [Review][Defer] Redundant snapshot allocations on hot polling path in PendingCommandPollingCoordinator [`src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandPollingCoordinator.cs:34`] — deferred, pre-existing (Story 9.4 commit on main)
+
 ## Spec Change Log
 
 ## Design Notes

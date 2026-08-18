@@ -78,6 +78,7 @@ public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService
         List<ITimer> timers = [];
         HashSet<string> affectedViewKeys = new(StringComparer.Ordinal);
         bool scopeBoundaryChanged = false;
+        bool suppressed = false;
         lock (_gate)
         {
             if (_disposed)
@@ -122,14 +123,14 @@ public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService
                         ref scopeBoundaryChanged);
 
                     (string ViewKey, string EntityKey) key = (entry.ViewKey, entry.EntityKey);
-                    if (_entries.Remove(key, out TrackedEntry? existing))
-                    {
-                        timers.Add(existing.Timer);
-                    }
 
-                    _entries[key] = new TrackedEntry(entry, timer, generation);
-                    _ = affectedViewKeys.Add(entry.ViewKey);
-                    installed = true;
+                    // First-wins decision; see INewItemIndicatorStateService.Add for the contract.
+                    installed = _entries.TryAdd(key, new TrackedEntry(entry, timer, generation));
+                    suppressed = !installed;
+                    if (installed)
+                    {
+                        _ = affectedViewKeys.Add(entry.ViewKey);
+                    }
                 }
                 finally
                 {
@@ -146,6 +147,15 @@ public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService
             affectedViewKeys,
             scopeBoundaryChanged,
             scopeBoundaryChanged ? "TenantOrUserTransition" : null);
+
+        if (suppressed)
+        {
+            FrontComposerHotPathLog.NewItemIndicatorSuppressed(
+                _logger,
+                entry.MessageId,
+                entry.ViewKey,
+                entry.EntityKey);
+        }
     }
 
     /// <inheritdoc />

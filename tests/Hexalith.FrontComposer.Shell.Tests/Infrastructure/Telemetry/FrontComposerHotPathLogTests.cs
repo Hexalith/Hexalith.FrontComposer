@@ -13,6 +13,7 @@ public sealed class FrontComposerHotPathLogTests
     private const string SensitiveIdentifier = "tenant/user/jwt.payload.signature";
     private const string AllowlistedMessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
     private const string AllowlistedViewKey = "acme:OrdersProjection";
+    private const string AllowlistedEntityKey = "counter-1";
     private const string SensitiveDigest = "sha256:c5392b3771f73573";
     private const string MessageIdDigest = "sha256:8eac53b3f14d71fe";
     private const string ViewKeyDigest = "sha256:99218267c1520f0b";
@@ -103,6 +104,7 @@ public sealed class FrontComposerHotPathLogTests
         "PendingOutcomeBufferOverflow",
         "PendingOutcomeTimestampRejected",
         "PendingOutcomePublicationFailed",
+        "NewItemIndicatorSuppressed",
     ];
 
     private static readonly LogLevel[] ExpectedLevels =
@@ -191,6 +193,7 @@ public sealed class FrontComposerHotPathLogTests
         LogLevel.Warning, // 5781
         LogLevel.Warning, // 5782
         LogLevel.Warning, // 5783
+        LogLevel.Debug, // 5784
     ];
 
     [Fact]
@@ -201,8 +204,8 @@ public sealed class FrontComposerHotPathLogTests
             .SelectMany(static method => method.GetCustomAttributes<LoggerMessageAttribute>())
             .OrderBy(static attribute => attribute.EventId)];
 
-        attributes.Length.ShouldBe(84);
-        attributes.Select(static attribute => attribute.EventId).ShouldBe(Enumerable.Range(5700, 84));
+        attributes.Length.ShouldBe(85);
+        attributes.Select(static attribute => attribute.EventId).ShouldBe(Enumerable.Range(5700, 85));
         attributes.Select(static attribute => attribute.EventName).ShouldBe(ExpectedEventNames);
         attributes.Select(static attribute => attribute.Level).ShouldBe(ExpectedLevels);
     }
@@ -257,6 +260,11 @@ public sealed class FrontComposerHotPathLogTests
         FrontComposerHotPathLog.PendingEvictedUnresolved(logger, AllowlistedMessageId);
         FrontComposerHotPathLog.ReconciliationLaneMissingTenant(logger, AllowlistedViewKey, "OrdersProjection");
         FrontComposerHotPathLog.PendingStatusProtocolFailure(logger, "ProtocolDrift", AllowlistedMessageId);
+        FrontComposerHotPathLog.NewItemIndicatorSuppressed(
+            logger,
+            AllowlistedMessageId,
+            AllowlistedViewKey,
+            AllowlistedEntityKey);
 
         FrontComposerHotPathLog.DigestIdentifier(AllowlistedMessageId).ShouldBe(MessageIdDigest);
         FrontComposerHotPathLog.DigestIdentifier(AllowlistedViewKey).ShouldBe(ViewKeyDigest);
@@ -269,8 +277,13 @@ public sealed class FrontComposerHotPathLogTests
         logger.Entries[2].State["ProjectionType"].ShouldBe(
             FrontComposerHotPathLog.DigestIdentifier("OrdersProjection"));
         logger.Entries[3].State["MessageId"].ShouldBe(MessageIdDigest);
+        logger.Entries[4].State["MessageId"].ShouldBe(MessageIdDigest);
+        logger.Entries[4].State["ViewKey"].ShouldBe(ViewKeyDigest);
+        logger.Entries[4].State["EntityKey"].ShouldBe(
+            FrontComposerHotPathLog.DigestIdentifier(AllowlistedEntityKey));
         logger.Entries.ShouldAllBe(entry => !entry.Message.Contains(AllowlistedMessageId, StringComparison.Ordinal));
         logger.Entries.ShouldAllBe(entry => !entry.Message.Contains(AllowlistedViewKey, StringComparison.Ordinal));
+        logger.Entries.ShouldAllBe(entry => !entry.Message.Contains(AllowlistedEntityKey, StringComparison.Ordinal));
     }
 
     [Fact]
@@ -341,6 +354,11 @@ public sealed class FrontComposerHotPathLogTests
         FrontComposerHotPathLog.LifecycleMessageCacheEvicted(logger, AllowlistedMessageId);
         FrontComposerHotPathLog.PendingEvictedUnresolved(logger, AllowlistedMessageId);
         FrontComposerHotPathLog.PendingStatusProtocolFailure(logger, "ProtocolDrift", AllowlistedMessageId);
+        FrontComposerHotPathLog.NewItemIndicatorSuppressed(
+            logger,
+            AllowlistedMessageId,
+            AllowlistedViewKey,
+            AllowlistedEntityKey);
     }
 
     private sealed class DisabledLogger : ILogger
