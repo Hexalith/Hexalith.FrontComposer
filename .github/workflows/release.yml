@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  BUILDS_EXECUTION_SHA: 3f0e3595be693fce56a37648c0bd0f89390f5fd3
+  BUILDS_EXECUTION_SHA: 4eb33928a1d8c7775f97221cf9edc171db0cb5f8
   EXPECTED_PACKAGE_COUNT: '8'
 
 jobs:
@@ -230,7 +230,7 @@ jobs:
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: Hexalith/Hexalith.Builds
-          ref: 3f0e3595be693fce56a37648c0bd0f89390f5fd3
+          ref: 4eb33928a1d8c7775f97221cf9edc171db0cb5f8
           path: .hexalith/builds-execution
           persist-credentials: false
       - name: Initialize root-declared dependencies
@@ -283,7 +283,7 @@ jobs:
         env:
           DEPENDENCY_RELEASE_HANDOFF: artifacts/release-source/dependency-release-handoff.json
           RELEASE_EVALUATOR: artifacts/release-source/release-evaluator.json
-          HEXALITH_BUILDS_EXECUTION_SHA: 3f0e3595be693fce56a37648c0bd0f89390f5fd3
+          HEXALITH_BUILDS_EXECUTION_SHA: 4eb33928a1d8c7775f97221cf9edc171db0cb5f8
           RELEASE_ATTESTATION_STATUS: ${{ vars.RELEASE_ATTESTATION_STATUS || 'approved-unsupported' }}
           RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER }}
           RELEASE_ATTESTATION_FALLBACK_APPROVED_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVED_AT }}
@@ -318,7 +318,7 @@ jobs:
       id-token: write
       issues: write
       pull-requests: write
-    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@3f0e3595be693fce56a37648c0bd0f89390f5fd3
+    uses: Hexalith/Hexalith.Builds/.github/workflows/domain-release.yml@4eb33928a1d8c7775f97221cf9edc171db0cb5f8
     with:
       solution: Hexalith.FrontComposer.slnx
       test-projects: ''
@@ -326,7 +326,7 @@ jobs:
       environment-name: production
       publish-containers: false
       container-projects: ''
-      builds-execution-sha: 3f0e3595be693fce56a37648c0bd0f89390f5fd3
+      builds-execution-sha: 4eb33928a1d8c7775f97221cf9edc171db0cb5f8
       source-branch: main
       source-ci-workflow: ci.yml
       package-manifest: tools/release-packages.json
