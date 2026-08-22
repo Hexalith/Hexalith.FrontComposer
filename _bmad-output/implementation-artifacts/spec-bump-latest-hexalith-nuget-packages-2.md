@@ -2,7 +2,7 @@
 title: 'Bump Latest Hexalith Module NuGet Packages'
 type: 'refactor'
 created: '2026-08-15'
-status: 'in-progress'
+status: 'done'
 baseline_commit: '726cf20190429e1953e064b59ef8d23203029fa4'
 review_loop_iteration: 0
 context:
@@ -58,7 +58,7 @@ context:
 - [x] `references/Hexalith.Builds/Props/Directory.Packages.props` -- set `HexalithEventStoreVersion` to `3.95.0` and `HexalithMemoriesVersion` to `2.21.3` -- these are the only Hexalith families behind nuget.org stable.
 - [x] `references/Hexalith.Builds/Tools/package-version-audit.json` -- refresh EventStore and Memories internal rows so `selectedVersion` equals the new catalog pins and records listed nuget.org evidence -- the validator requires exact catalog↔audit match.
 - [x] HALT for a human-created or human-approved Builds commit, then advance the root `references/Hexalith.Builds` gitlink to that exact commit -- FrontComposer CI reads the gitlink, not a dirty submodule tree. Integrated Builds commit: `7867d8fc7bcc3c906b16f0867f6555d8bec5432d` (working tree; HEAD gitlink still `58987900…` until the parent commit).
-- [ ] `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `.github/workflows/release-evidence.yml`, and `eng/dependency-graph-policy.json` -- move in-scope execution pins and active evaluator closures to the integrated Builds commit; keep historical evaluator rows that published-release provenance still requires -- `CiGovernanceTests` requires pins to equal the gitlink, and current `58987900…` vs `3f0e3595…` drift must not survive landing.
+- [x] `.github/workflows/ci.yml`, `.github/workflows/release.yml`, `.github/workflows/release-evidence.yml`, and `eng/dependency-graph-policy.json` -- move in-scope execution pins and active evaluator closures to the integrated Builds commit; keep historical evaluator rows that published-release provenance still requires -- `CiGovernanceTests` requires pins to equal the gitlink, and current `58987900…` vs `3f0e3595…` drift must not survive landing.
 - [x] Confirm FrontComposer `Directory.Packages.props` and `selected_catalog_required_properties` stay version-free -- a compatible catalog re-pin must not reintroduce local mirrors.
 
 **Acceptance Criteria:**
@@ -67,6 +67,8 @@ context:
 - Given the integrated Builds commit, when FrontComposer imports the catalog and evaluates CI/Release provenance, then it inherits the new pins with no local `PackageVersion` override, and every in-scope execution pin plus every active authorized evaluator closure names that exact commit.
 
 ## Spec Change Log
+
+- 2026-08-22: Resumed on `d42e8312`, where the clean Builds gitlink had already advanced to `4eb33928a1d8c7775f97221cf9edc171db0cb5f8` with EventStore `3.97.0` and Memories `2.21.3`. Preserved the frozen no-downgrade constraint and converged FrontComposer's execution identities and active evaluator closures on that current commit.
 
 ## Design Notes
 
@@ -79,3 +81,35 @@ context:
 - `python3 eng/dependency_graph.py --root . validate --commit HEAD` -- expected: `ok=true` after the Builds gitlink and active evaluator closures match.
 - `DiffEngine_Disabled=true dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~CiGovernanceTests|FullyQualifiedName~CentralPackageVersions_WhenCatalogIsCentralized_AreInheritedFromPinnedBuilds"` -- expected: gitlink equals in-scope pins; catalog inherited.
 - `DiffEngine_Disabled=true dotnet restore Hexalith.FrontComposer.slnx` then `DiffEngine_Disabled=true dotnet build Hexalith.FrontComposer.slnx --configuration Release` -- expected: restore uses EventStore `3.95.0` and Memories `2.21.3`; build is warning-free.
+
+## Suggested Review Order
+
+**Catalog and authorization**
+
+- Start with the selected stable family versions inherited from Builds.
+  [`Directory.Packages.props:8`](../../references/Hexalith.Builds/Props/Directory.Packages.props#L8)
+
+- Authorize the exact current CI evaluator closure while retaining historical evidence.
+  [`dependency-graph-policy.json:442`](../../eng/dependency-graph-policy.json#L442)
+
+- Bind Release evaluation to the same immutable Builds workflow graph.
+  [`dependency-graph-policy.json:1098`](../../eng/dependency-graph-policy.json#L1098)
+
+- Bind post-release evidence evaluation to the matching authorized closure.
+  [`dependency-graph-policy.json:1955`](../../eng/dependency-graph-policy.json#L1955)
+
+**Workflow coordinate lockstep**
+
+- Use one Builds execution SHA across Release preparation and reusable execution.
+  [`release.yml:17`](../../.github/workflows/release.yml#L17)
+
+- Pin CI reuse to the same Builds commit selected by the gitlink.
+  [`ci.yml:25`](../../.github/workflows/ci.yml#L25)
+
+- Collect release evidence from that identical immutable Builds commit.
+  [`release-evidence.yml:233`](../../.github/workflows/release-evidence.yml#L233)
+
+**Governance proof**
+
+- Derive approval from the gitlink and require every execution coordinate to match.
+  [`CiGovernanceTests.cs:771`](../../tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs#L771)

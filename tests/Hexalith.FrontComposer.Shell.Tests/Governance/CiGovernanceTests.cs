@@ -758,20 +758,6 @@ public sealed class CiGovernanceTests {
             workflow,
             @"builds-execution-sha: (?<sha>[0-9a-f]{40})\b");
         buildsExecutionShas.Count.ShouldBeGreaterThanOrEqualTo(1);
-        const string ApprovedBuildsExecutionSha = "3f0e3595be693fce56a37648c0bd0f89390f5fd3";
-        string approvedBuildsSha = domainReleasePins[0].Groups["sha"].Value;
-        approvedBuildsSha.ShouldBe(
-            ApprovedBuildsExecutionSha,
-            "release.yml must retain the approved immutable Builds execution commit.");
-        string[] releaseBuildsCoordinates =
-        [
-            .. domainReleasePins.Cast<Match>().Select(match => match.Groups["sha"].Value),
-            .. buildsExecutionEnvs.Cast<Match>().Select(match => match.Groups["sha"].Value),
-            .. hexalithBuildsExecutionEnvs.Cast<Match>().Select(match => match.Groups["sha"].Value),
-            .. prepareBuildsRefs.Cast<Match>().Select(match => match.Groups["sha"].Value),
-            .. buildsExecutionShas.Cast<Match>().Select(match => match.Groups["sha"].Value),
-        ];
-        releaseBuildsCoordinates.ShouldAllBe(sha => sha == approvedBuildsSha);
 
         ProcessResult buildsGitlink = RunProcess(root, "git", [
             "ls-tree",
@@ -785,6 +771,17 @@ public sealed class CiGovernanceTests {
             RegexOptions.Multiline);
         gitlinkSha.Success.ShouldBeTrue(
             $"git ls-tree HEAD references/Hexalith.Builds must report a 160000 gitlink, got: {buildsGitlink.Output}");
+        string approvedBuildsSha = gitlinkSha.Groups["sha"].Value;
+
+        string[] releaseBuildsCoordinates =
+        [
+            .. domainReleasePins.Cast<Match>().Select(match => match.Groups["sha"].Value),
+            .. buildsExecutionEnvs.Cast<Match>().Select(match => match.Groups["sha"].Value),
+            .. hexalithBuildsExecutionEnvs.Cast<Match>().Select(match => match.Groups["sha"].Value),
+            .. prepareBuildsRefs.Cast<Match>().Select(match => match.Groups["sha"].Value),
+            .. buildsExecutionShas.Cast<Match>().Select(match => match.Groups["sha"].Value),
+        ];
+        releaseBuildsCoordinates.ShouldAllBe(sha => sha == approvedBuildsSha);
 
         string ciWorkflow = File.ReadAllText(Path.Combine(root, ".github/workflows/ci.yml"));
         MatchCollection domainCiPins = Regex.Matches(

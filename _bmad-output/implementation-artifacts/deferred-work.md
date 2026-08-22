@@ -2559,3 +2559,19 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-97-0.md`
   summary: Add package-mode coverage that constructs and verifies the FrontComposer Aspire application model.
   evidence: Current checks restore and compile `Hexalith.EventStore.Aspire/3.97.0` but do not execute its topology extensions and assert the EventStore, admin, domain-module, DAPR component, reference, and wait-edge model produced for FrontComposer.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages-2.md`
+  summary: Exercise both shell skip-link activation paths with a browser-level focus assertion.
+  evidence: The post-baseline shell handlers prevent native navigation and delegate focus to JavaScript, while the existing accessibility tests assert only href, id, and tabindex markup; a no-op handler or helper would leave those tests green.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages-2.md`
+  summary: Add executable coverage for agent-builder template conditional evaluation and variable substitution.
+  evidence: The post-baseline `process-template.py` implementation controls all emitted template content, but repository test searches found no fixtures for true, false, nested, malformed-marker, or unresolved-variable behavior.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages-2.md`
+  summary: Add table-driven coverage for agent-builder stateless, memory, and autonomous classification.
+  evidence: The post-baseline `prepass.py` classification selects analysis lenses through `is_memory_agent`, but repository test searches found no boundary fixtures that would detect a wrong classification.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages-2.md`
+  summary: Run the shipped module-builder validator tests in a blocking CI lane.
+  evidence: The post-baseline validator has focused tests, but the normal CI workflows do not invoke `test-validate-module.py`, so a regression in its final pass/fail calculation can ship while repository gates remain green.
