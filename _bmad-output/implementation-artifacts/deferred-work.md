@@ -2579,3 +2579,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
   summary: Align checked-task evidence extraction with the repository's `Tasks & Acceptance` spec template.
   evidence: The validator recognizes the legacy `Tasks / Subtasks` heading, while current generated specs use `Tasks & Acceptance`, so checked execution tasks are not evaluated by the existing evidence checker.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
+  summary: Make the compatibility baseline lifecycle protect patch releases after the first publication on a minor line.
+  evidence: The release policy intentionally compares candidates by major/minor line, so a later `4.2.1` can still validate against `4.1.1` and would not detect removal of API first added in `4.2.0`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
+  summary: Reconcile the checked-in Fluent UI rc.5 catalog with stale Shell/UI expectations and generated rendering tests.
+  evidence: The non-publishing candidate built and packed successfully, then the unchanged full Shell suite failed 16 of 2,648 tests against the already-selected `5.0.0-rc.5-26219.1`, including the rc.4 conformance pin, generated rendering assertions, and analyzer inventory seal.

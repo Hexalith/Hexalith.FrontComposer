@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pathlib
 import shutil
+import subprocess
 import sys
 import tempfile
 import types
@@ -96,16 +97,79 @@ class ReleasePrepublishTests(unittest.TestCase):
         self.assertIn("--no-symbols", package_command)
         self.assertNotIn("--no-symbols", symbol_command)
 
-    def test_phase_build_restore_enables_package_validation_baseline_cache(self) -> None:
-        # prepare-candidate runs Contract package-boundary tests that require the
-        # published PackageValidationBaselineVersion packages in NUGET_PACKAGES.
-        source = (ROOT / "eng" / "release_prepublish.py").read_text(encoding="utf-8")
-        restore_idx = source.index('dotnet", "restore"')
-        validation_idx = source.index(
-            "-p:EnableFrontComposerPackageValidation=true",
-            restore_idx,
-        )
-        self.assertLess(restore_idx, validation_idx)
+    def test_phase_build_seals_identical_version_and_validation_properties(self) -> None:
+        version = "4.2.0-review.compat"
+        with mock.patch.object(prepublish, "run") as run:
+            prepublish.phase_build(version)
+
+        self.assertEqual(3, run.call_count)
+        for call in run.call_args_list:
+            command = call.args[1]
+            self.assertIn(f"-p:Version={version}", command)
+            self.assertIn(f"-p:PackageVersion={version}", command)
+            self.assertIn("-p:ContinuousIntegrationBuild=true", command)
+            self.assertIn("-p:EnableFrontComposerPackageValidation=true", command)
+            self.assertIn("-p:FrontComposerPackageValidationBaselineVersion=4.1.1", command)
+            self.assertIn("-p:FrontComposerPackageValidationSkipBaseline=false", command)
+
+    def test_prepare_rejects_stale_policy_before_build_or_package_cleanup(self) -> None:
+        sentinel = self.root / "nupkgs" / "existing-output.nupkg"
+        sentinel.write_bytes(b"preserve")
+        with mock.patch.object(
+            prepublish,
+            "validate_release_policy",
+            side_effect=prepublish.ReleaseCompatibilityError("stale currentRelease"),
+        ), mock.patch.object(prepublish, "run") as run:
+            with self.assertRaises(prepublish.PhaseFailure):
+                prepublish.cmd_prepare(types.SimpleNamespace(
+                    version="4.2.0-review.compat",
+                    non_publishing=True,
+                ))
+
+        run.assert_not_called()
+        self.assertEqual(b"preserve", sentinel.read_bytes())
+
+    def test_prepare_wraps_invalid_candidate_semver_before_build_or_cleanup(self) -> None:
+        sentinel = self.root / "nupkgs" / "existing-output.nupkg"
+        sentinel.write_bytes(b"preserve")
+        with mock.patch.object(prepublish, "run") as run:
+            with self.assertRaisesRegex(prepublish.PhaseFailure, "strict SemVer"):
+                prepublish.cmd_prepare(types.SimpleNamespace(
+                    version="4.2",
+                    non_publishing=True,
+                ))
+
+        run.assert_not_called()
+        self.assertEqual(b"preserve", sentinel.read_bytes())
+
+    def test_phase_pack_rechecks_policy_in_live_packer_before_output_mutation(self) -> None:
+        sentinel = self.root / "nupkgs" / "existing-output.nupkg"
+        sentinel.write_bytes(b"preserve")
+        with mock.patch.object(prepublish, "run") as run, \
+                mock.patch.object(prepublish, "packable_rows", return_value=[]), \
+                mock.patch.object(prepublish, "_validate_unsigned_candidates"):
+            prepublish.phase_pack("4.2.0-review.compat")
+
+        self.assertEqual(2, run.call_count)
+        pack_command = run.call_args_list[0].args[1]
+        verifier_command = run.call_args_list[1].args[1]
+        self.assertEqual("scripts/pack-release-packages.py", pack_command[1])
+        self.assertIn("--release-policy", pack_command)
+        self.assertEqual(["dotnet", "run", "--file"], verifier_command[:3])
+        self.assertIn("eng/verify-candidate-packages.cs", verifier_command)
+        self.assertIn("4.2.0-review.compat", verifier_command)
+        self.assertEqual(b"preserve", sentinel.read_bytes())
+
+    def test_phase_pack_stops_before_candidate_sealing_when_version_verifier_fails(self) -> None:
+        verifier_failure = prepublish.PhaseFailure("package-version", "metadata mismatch")
+        with mock.patch.object(prepublish, "run", side_effect=[None, verifier_failure]) as run, \
+                mock.patch.object(prepublish, "packable_rows", return_value=[]), \
+                mock.patch.object(prepublish, "_validate_unsigned_candidates") as unsigned:
+            with self.assertRaisesRegex(prepublish.PhaseFailure, "metadata mismatch"):
+                prepublish.phase_pack("4.2.0-review.compat")
+
+        self.assertEqual(2, run.call_count)
+        unsigned.assert_not_called()
 
     def test_verify_prepared_and_publish_are_sealed_readiness_only(self) -> None:
         source = (ROOT / "eng" / "release_prepublish.py").read_text(encoding="utf-8")
@@ -162,6 +226,107 @@ class ReleasePrepublishTests(unittest.TestCase):
         run_section = source[run_start:run_end]
         self.assertIn("raise PhaseFailure", run_section)
         self.assertIn("not tolerate_failure", run_section)
+
+
+class CandidatePackageVersionVerifierTests(unittest.TestCase):
+    version = "4.2.0-review.fixture+build.7"
+
+    def test_verifier_inspects_all_packages_and_multitarget_assembly_copies_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = pathlib.Path(directory)
+            project = root / "fixture" / "Fixture.csproj"
+            project.parent.mkdir(parents=True)
+            project.write_text(
+                "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup>"
+                "<TargetFramework>net10.0</TargetFramework>"
+                "<AssemblyName>Fixture</AssemblyName>"
+                "</PropertyGroup></Project>",
+                encoding="utf-8",
+            )
+            (project.parent / "Fixture.cs").write_text("public sealed class Fixture { }\n", encoding="utf-8")
+            assembly_output = root / "assembly"
+            build = subprocess.run(
+                [
+                    "dotnet", "build", str(project), "--configuration", "Release",
+                    "--output", str(assembly_output),
+                    f"-p:Version={self.version}",
+                    f"-p:PackageVersion={self.version}",
+                    "-p:ContinuousIntegrationBuild=true",
+                    "--nologo",
+                ],
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(0, build.returncode, build.stdout + build.stderr)
+            assembly = assembly_output / "Fixture.dll"
+            self.assertTrue(assembly.is_file())
+
+            packages = root / "nupkgs"
+            packages.mkdir()
+            for package_id, _ in release_contract.EXPECTED_PACKAGES:
+                self.write_candidate(packages, package_id, assembly, self.version)
+
+            command = [
+                "dotnet", "run", "--file", str(ROOT / "eng/verify-candidate-packages.cs"), "--",
+                str(packages), str(ROOT / "eng/release-package-inventory.json"), self.version,
+            ]
+            verified = subprocess.run(
+                command,
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(0, verified.returncode, verified.stdout + verified.stderr)
+            self.assertIn("8 candidate packages and 10 primary assembly copies", verified.stdout)
+
+            first_id = release_contract.EXPECTED_PACKAGES[0][0]
+            self.write_candidate(packages, first_id, assembly, "4.2.0-wrong")
+            rejected = subprocess.run(
+                command,
+                cwd=ROOT,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertNotEqual(0, rejected.returncode)
+            self.assertIn("nuspec id/version", rejected.stderr)
+
+    @staticmethod
+    def write_candidate(
+        package_directory: pathlib.Path,
+        package_id: str,
+        assembly: pathlib.Path,
+        nuspec_version: str,
+    ) -> None:
+        candidate_version = CandidatePackageVersionVerifierTests.version
+        package = package_directory / f"{package_id}.{candidate_version}.nupkg"
+        if package_id == "Hexalith.FrontComposer.Cli":
+            assembly_paths = [f"tools/net10.0/any/{package_id}.dll"]
+        elif package_id == "Hexalith.FrontComposer.SourceTools":
+            assembly_paths = [f"analyzers/dotnet/cs/{package_id}.dll"]
+        elif package_id in {
+            "Hexalith.FrontComposer.Contracts",
+            "Hexalith.FrontComposer.Schema",
+        }:
+            assembly_paths = [
+                f"lib/net10.0/{package_id}.dll",
+                f"lib/netstandard2.0/{package_id}.dll",
+            ]
+        else:
+            assembly_paths = [f"lib/net10.0/{package_id}.dll"]
+        nuspec = (
+            "<?xml version=\"1.0\" encoding=\"utf-8\"?>"
+            "<package><metadata>"
+            f"<id>{package_id}</id><version>{nuspec_version}</version>"
+            "</metadata></package>"
+        )
+        with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+            archive.writestr(f"{package_id}.nuspec", nuspec)
+            for assembly_path in assembly_paths:
+                archive.write(assembly, assembly_path)
 
 
 if __name__ == "__main__":

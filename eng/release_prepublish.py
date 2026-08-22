@@ -58,12 +58,19 @@ import sys
 import tempfile
 
 import release_contract
+from release_compatibility import (
+    PUBLISHED_BASELINE_VERSION,
+    ReleaseCompatibilityError,
+    release_properties,
+    validate_release_policy,
+)
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 EVIDENCE_DIR = pathlib.Path("release-evidence")
 NUPKGS_DIR = pathlib.Path("nupkgs")
 TEST_RESULTS_DIR = pathlib.Path("TestResults")
 INVENTORY_FILE = pathlib.Path("eng/release-package-inventory.json")
+PACKAGE_VERSION_VERIFIER = pathlib.Path("eng/verify-candidate-packages.cs")
 PACKAGE_MANIFEST = pathlib.Path("tools/release-packages.json")
 EXPECTED_PACKAGE_COUNT = 8
 SOLUTION = "Hexalith.FrontComposer.slnx"
@@ -163,7 +170,19 @@ def context_env() -> dict[str, str]:
 # prepare phases
 # ---------------------------------------------------------------------------
 
-def phase_build() -> None:
+def phase_release_policy(version: str) -> None:
+    """Fail before build or package-output mutation when release compatibility is stale."""
+    try:
+        release_line = validate_release_policy(REPO_ROOT, version)
+    except ReleaseCompatibilityError as error:
+        raise PhaseFailure("compatibility-policy", str(error)) from error
+    log(
+        "compatibility-policy",
+        f"validated {release_line} against published baseline {PUBLISHED_BASELINE_VERSION}",
+    )
+
+
+def phase_build(version: str) -> None:
     """Restore + build Release once so pack --no-build and test --no-build can consume it.
 
     On the domain-release runner the solution is already built; this is an incremental
@@ -171,27 +190,31 @@ def phase_build() -> None:
     exactly once in phase_pack.
 
     Restore opts into package validation so the published PackageValidationBaselineVersion
-    packages (currently 3.0.0) are cached before Contract package-boundary tests run.
+    packages (currently 4.1.1) are cached before Contract package-boundary tests run.
     Quality uses the same switch; omitting it leaves prepare-candidate unable to find the
     MCP baseline under NUGET_PACKAGES.
     """
+    properties = release_properties(version)
     run("build", [
         "dotnet", "restore", SOLUTION, "-p:Configuration=Release",
-        "-p:EnableFrontComposerPackageValidation=true",
+        *properties,
     ])
     run("build", [
         "dotnet", "build",
         "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
         "-f", "netstandard2.0", "--configuration", "Release", "--no-restore", "-m:1", "/nr:false",
+        *properties,
     ])
-    run("build", ["dotnet", "build", SOLUTION, "--configuration", "Release", "--no-restore"])
+    run("build", [
+        "dotnet", "build", SOLUTION, "--configuration", "Release", "--no-restore", *properties,
+    ])
 
 
 def phase_pack(version: str) -> None:
-    target = REPO_ROOT / NUPKGS_DIR
-    if target.exists():
-        shutil.rmtree(target)
-    run("pack-once", ["python3", "scripts/pack-release-packages.py", str(NUPKGS_DIR), version])
+    run("pack-once", [
+        "python3", "scripts/pack-release-packages.py", str(NUPKGS_DIR), version,
+        "--release-policy",
+    ])
     # semantic-release version contract: every packable candidate must exist at the
     # supplied version before anything downstream consumes it (semantic_release_state=matches).
     missing = [
@@ -201,6 +224,10 @@ def phase_pack(version: str) -> None:
     ]
     if missing:
         raise PhaseFailure("pack-once", f"candidates missing for semantic-release version {version}: {missing}")
+    run("package-version", [
+        "dotnet", "run", "--file", str(PACKAGE_VERSION_VERIFIER), "--",
+        str(NUPKGS_DIR), str(INVENTORY_FILE), version,
+    ])
     _validate_unsigned_candidates(REPO_ROOT, "pack-once")
 
 
@@ -502,6 +529,7 @@ def phase_classify(non_publishing: bool) -> None:
 
 
 def cmd_prepare(args: argparse.Namespace) -> int:
+    phase_release_policy(args.version)
     run("manifest-contract", [
         "python3", "eng/release_contract.py", "manifest",
         "--root", ".",
@@ -535,7 +563,7 @@ def cmd_prepare(args: argparse.Namespace) -> int:
             newline="\n",
         )
     tag = f"v{args.version}"
-    phase_build()
+    phase_build(args.version)
     phase_pack(args.version)
     phase_inventory()
     phase_tests()

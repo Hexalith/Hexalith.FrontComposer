@@ -694,15 +694,14 @@ public sealed partial class DiagnosticRegistryTests {
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
         ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe(CompatibilitySuppressionsSchemaVersion);
-        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.0");
+        json["currentRelease"]!.GetValue<string>().ShouldBe("v4.2");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
-        suppressions.Count.ShouldBe(26, "v4.0 governs one exact row per removed public MCP benchmark type.");
+        suppressions.ShouldBeEmpty("the published 4.1.1 baseline absorbs all reviewed v4 MCP removals.");
 
         HashSet<string> apiCompatDiagnosticIds = ["CP0001", "CP0002", "CP0008"];
         Regex targetReleaseRegex = TargetReleaseRegex();
         HashSet<(string Package, string Tfm, string Diagnostic, string Old)> uniqueness = [];
-        var mcpBenchmarkRemovalTargets = new List<string>();
 
         foreach (JsonNode? node in suppressions) {
             JsonObject item = node!.AsObject();
@@ -749,19 +748,6 @@ public sealed partial class DiagnosticRegistryTests {
                     .ShouldBeGreaterThan(Version.Parse(target[1..]), "CP0001 evidence must expire after its target release.");
             }
 
-            if (package == "Hexalith.FrontComposer.Mcp") {
-                tfm.ShouldBe("net10.0");
-                apiCompatDiagnosticId.ShouldBe("CP0001", "MCP benchmark removals are exact baseline type removals.");
-                ExpectedMcpBenchmarkRemovalTargets.ShouldContain(oldSig);
-                newState.ShouldBe(
-                    "removed from the MCP runtime; repository harness relocated to Hexalith.FrontComposer.Shell.Tests.Bench; no runtime NuGet replacement");
-                target.ShouldBe("v4.0");
-                item["expiresAfter"]!.GetValue<string>().ShouldBe("v4.1");
-                item["ownerStory"]!.GetValue<string>().ShouldBe("11-17-mcp-runtime-split-and-benchmark-relocation");
-                item["reason"]!.GetValue<string>().ShouldBe("intentional-major-break");
-                mcpBenchmarkRemovalTargets.Add(oldSig);
-            }
-
             string trimmed = rationale.Trim();
             trimmed.Length.ShouldBeInRange(16, 400, $"rationale must be 16-400 visible chars (got {trimmed.Length}).");
             if (trimmed.Any(char.IsControl)) {
@@ -770,11 +756,6 @@ public sealed partial class DiagnosticRegistryTests {
 
             uniqueness.Add((package, tfm, apiCompatDiagnosticId, oldSig)).ShouldBeTrue($"duplicate suppression row for ({package}, {tfm}, {apiCompatDiagnosticId}, {oldSig}).");
         }
-
-        mcpBenchmarkRemovalTargets.OrderBy(value => value, Ordinal).ShouldBe(
-            ExpectedMcpBenchmarkRemovalTargets.OrderBy(value => value, Ordinal),
-            ignoreOrder: false,
-            customMessage: "The v4.0 MCP ledger must contain exactly one row for each removed public benchmark type.");
 
         string[] trackedRows = [.. suppressions
             .Select(node => node!.AsObject())
@@ -967,7 +948,7 @@ public sealed partial class DiagnosticRegistryTests {
 
         string directoryBuildTargets = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "Directory.Build.targets"), Encoding.UTF8);
         directoryBuildTargets.ShouldContain("<EnableFrontComposerPackageValidation Condition=\"'$(EnableFrontComposerPackageValidation)' == ''\">false</EnableFrontComposerPackageValidation>");
-        directoryBuildTargets.ShouldContain("<FrontComposerPackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationBaselineVersion)' == ''\">3.0.0</FrontComposerPackageValidationBaselineVersion>");
+        directoryBuildTargets.ShouldContain("<FrontComposerPackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationBaselineVersion)' == ''\">4.1.1</FrontComposerPackageValidationBaselineVersion>");
         directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
         directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion Condition=\"'$(FrontComposerPackageValidationSkipBaseline)' != 'true'\">$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
@@ -977,7 +958,7 @@ public sealed partial class DiagnosticRegistryTests {
         directoryBuildTargets.ShouldNotContain(">2.0.4</FrontComposerPackageValidationBaselineVersion>");
 
         string contractsUiProject = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"), Encoding.UTF8);
-        contractsUiProject.ShouldContain("<FrontComposerPackageValidationBaselineVersion>3.0.0</FrontComposerPackageValidationBaselineVersion>");
+        contractsUiProject.ShouldContain("<FrontComposerPackageValidationBaselineVersion>4.1.1</FrontComposerPackageValidationBaselineVersion>");
         contractsUiProject.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.4</FrontComposerPackageValidationBaselineVersion>");
         contractsUiProject.ShouldNotContain("<FrontComposerPackageValidationBaselineVersion>2.0.0</FrontComposerPackageValidationBaselineVersion>");
         contractsUiProject.ShouldNotContain("<FrontComposerPackageValidationSkipBaseline>true</FrontComposerPackageValidationSkipBaseline>");

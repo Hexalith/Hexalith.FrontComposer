@@ -993,7 +993,9 @@ public sealed class CiGovernanceTests {
     public void PackageInventory_IsExplicitLockstepAndReviewable() {
         string root = RepositoryRoot();
         string inventory = File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json"));
-        string packScript = File.ReadAllText(Path.Combine(root, "eng/pack_release_packages.py"));
+        string packScript = File.ReadAllText(Path.Combine(root, "scripts/pack-release-packages.py"));
+        string compatibilityPolicy = File.ReadAllText(Path.Combine(root, "eng/release_compatibility.py"));
+        string releasePrepublish = File.ReadAllText(Path.Combine(root, "eng/release_prepublish.py"));
         string directoryTargets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
         string qualityWorkflow = File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml"));
         string testingProject = File.ReadAllText(Path.Combine(root, "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj"));
@@ -1008,9 +1010,23 @@ public sealed class CiGovernanceTests {
         inventory.ShouldContain("Hexalith.FrontComposer.SourceTools");
         inventory.ShouldContain("\"packable\": false");
         inventory.ShouldContain("exception");
-        packScript.ShouldContain("\"-p:EnableFrontComposerPackageValidation=true\"");
-        qualityWorkflow.ShouldContain("python3 -m unittest tests/eng/test_pack_release_packages.py");
+        packScript.ShouldContain("release_properties(version)");
+        compatibilityPolicy.ShouldContain("\"-p:EnableFrontComposerPackageValidation=true\"");
+        compatibilityPolicy.ShouldContain("f\"-p:PackageVersion={version}\"");
+        compatibilityPolicy.ShouldContain("\"-p:ContinuousIntegrationBuild=true\"");
+        compatibilityPolicy.ShouldContain("-p:FrontComposerPackageValidationBaselineVersion={PUBLISHED_BASELINE_VERSION}");
+        compatibilityPolicy.ShouldContain("\"-p:FrontComposerPackageValidationSkipBaseline=false\"");
+        releasePrepublish.ShouldContain("scripts/pack-release-packages.py");
+        releasePrepublish.ShouldContain("\"--release-policy\"");
+        releasePrepublish.ShouldContain("eng/verify-candidate-packages.cs");
+        compatibilityPolicy.ShouldContain("PUBLISHED_BASELINE_VERSION = \"4.1.1\"");
+        File.Exists(Path.Combine(root, "eng/pack_release_packages.py")).ShouldBeFalse(
+            "the retired build-plus-pack lifecycle entrypoint must not coexist with the live packer.");
+        qualityWorkflow.ShouldContain("python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py");
         qualityWorkflow.ShouldContain("dotnet restore Hexalith.FrontComposer.slnx -p:Configuration=Release -p:EnableFrontComposerPackageValidation=true");
+        qualityWorkflow.ShouldMatch(@"dotnet pack[^\r\n]+-p:EnableFrontComposerPackageValidation=true");
+        qualityWorkflow.ShouldMatch(@"dotnet pack[^\r\n]+-p:FrontComposerPackageValidationBaselineVersion=4.1.1");
+        qualityWorkflow.ShouldMatch(@"dotnet pack[^\r\n]+-p:FrontComposerPackageValidationSkipBaseline=false");
         directoryTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
         directoryTargets.ShouldContain("<IncludeSymbols>true</IncludeSymbols>");
         directoryTargets.ShouldContain("<SymbolPackageFormat>snupkg</SymbolPackageFormat>");
@@ -1053,9 +1069,9 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
-    public void SemanticReleasePack_EvaluatesPublished300PackageValidationBaseline() {
+    public void SemanticReleasePack_EvaluatesPublished411PackageValidationBaseline() {
         // The shared package-validation policy and the Contracts.UI explicit pin must both resolve
-        // to the latest published 3.0 surface before semantic-release packs the 3.1 line.
+        // to the latest published 4.1.1 surface before semantic-release packs the 4.2 line.
         string root = RepositoryRoot();
 
         static (string enable, string baseline) EvaluatePackageValidation(string root, string project) {
@@ -1078,13 +1094,13 @@ public sealed class CiGovernanceTests {
             root,
             Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts", "Hexalith.FrontComposer.Contracts.csproj"));
         baseEnable.ShouldBe("true");
-        baseBaseline.ShouldBe("3.0.0");
+        baseBaseline.ShouldBe("4.1.1");
 
         (string uiEnable, string uiBaseline) = EvaluatePackageValidation(
             root,
             Path.Combine(root, "src", "Hexalith.FrontComposer.Contracts.UI", "Hexalith.FrontComposer.Contracts.UI.csproj"));
         uiEnable.ShouldBe("true");
-        uiBaseline.ShouldBe("3.0.0");
+        uiBaseline.ShouldBe("4.1.1");
     }
 
     [Fact]

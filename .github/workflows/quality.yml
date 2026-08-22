@@ -79,7 +79,7 @@ jobs:
       - name: 'Gate 2a: CLI Tool Package Smoke'
         shell: bash
         run: |
-          dotnet pack src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release --no-build --output ./nupkgs -p:PackageVersion=0.0.0-ci
+          dotnet pack src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release --no-build --output ./nupkgs -p:PackageVersion=0.0.0-ci -p:EnableFrontComposerPackageValidation=true -p:FrontComposerPackageValidationBaselineVersion=4.1.1 -p:FrontComposerPackageValidationSkipBaseline=false
 
           tool_home="$(mktemp -d)"
           fixture="$(mktemp -d)"
@@ -120,7 +120,7 @@ jobs:
         run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
 
       - name: 'Gate 2b: Release suppression lifecycle tests'
-        run: python3 -m unittest tests/eng/test_pack_release_packages.py
+        run: python3 -m unittest tests/eng/test_pack_release_packages.py tests/eng/test_release_prepublish.py
 
       - name: 'Gate 2b: Story artifact validator tests'
         run: python3 -m unittest eng.tests.test_validate_story_artifacts

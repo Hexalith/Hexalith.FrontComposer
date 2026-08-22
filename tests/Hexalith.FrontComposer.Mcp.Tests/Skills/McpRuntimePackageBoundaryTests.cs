@@ -3,6 +3,7 @@ using System.IO.Compression;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.Loader;
+using System.Xml.Linq;
 
 using Hexalith.FrontComposer.Mcp.Skills;
 
@@ -12,6 +13,8 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Skills;
 
 [Trait("Category", "Contract")]
 public sealed class McpRuntimePackageBoundaryTests {
+    private const string CandidateVersion = "4.2.0-review.compat";
+    private const string CandidateBinaryVersion = "4.2.0.0";
     private const string McpAssemblyFileName = "Hexalith.FrontComposer.Mcp.dll";
     private const string MissingBaselineVersion = "9999.0.0-frontcomposer-missing-baseline-6f8d3be41a0e4d46";
     private static readonly TimeSpan PackTimeout = TimeSpan.FromMinutes(2);
@@ -53,9 +56,9 @@ public sealed class McpRuntimePackageBoundaryTests {
         string restoredBaselinePackagePath = GetPackagePath(
             restoredPackagesDirectory,
             "Hexalith.FrontComposer.Mcp",
-            "3.0.0");
+            "4.1.1");
         File.Exists(restoredBaselinePackagePath).ShouldBeTrue(
-            "the repository restore must cache the MCP 3.0.0 package-validation baseline before the offline test lane runs.");
+            "the repository restore must cache the MCP 4.1.1 package-validation baseline before the offline test lane runs.");
         string outputDirectory = Path.Combine(Path.GetTempPath(), $"frontcomposer-mcp-package-{Guid.NewGuid():N}");
         _ = Directory.CreateDirectory(outputDirectory);
         try {
@@ -65,7 +68,7 @@ public sealed class McpRuntimePackageBoundaryTests {
                 "artifacts-cold").ConfigureAwait(true);
             result.ExitCode.ShouldBe(
                 0,
-                $"MCP package validation against the configured 3.0.0 baseline must pass.\n{result.Output}");
+                $"MCP package validation against the configured 4.1.1 baseline must pass.\n{result.Output}");
             ProcessResult warmCacheResult = await RunPackAsync(
                 repositoryRoot,
                 outputDirectory,
@@ -76,8 +79,14 @@ public sealed class McpRuntimePackageBoundaryTests {
 
             string packagePath = Directory.EnumerateFiles(outputDirectory, "*.nupkg", SearchOption.TopDirectoryOnly)
                 .Single(path => !path.EndsWith(".snupkg", StringComparison.OrdinalIgnoreCase));
+            Path.GetFileName(packagePath).ShouldBe($"Hexalith.FrontComposer.Mcp.{CandidateVersion}.nupkg");
             string extractedAssemblyPath = Path.Combine(outputDirectory, McpAssemblyFileName);
             using (ZipArchive archive = ZipFile.OpenRead(packagePath)) {
+                ZipArchiveEntry nuspecEntry = archive.Entries.Single(item => item.FullName.EndsWith(".nuspec", StringComparison.Ordinal));
+                using (Stream nuspecStream = nuspecEntry.Open()) {
+                    XDocument nuspec = XDocument.Load(nuspecStream);
+                    nuspec.Descendants().Single(item => item.Name.LocalName == "version").Value.ShouldBe(CandidateVersion);
+                }
                 archive.Entries.ShouldNotContain(
                     item => IsBenchmarkPayloadName(item.FullName),
                     "The MCP package must not ship benchmark prompts under any package-entry name.");
@@ -87,6 +96,7 @@ public sealed class McpRuntimePackageBoundaryTests {
                     StringComparison.Ordinal));
                 entry.ExtractToFile(extractedAssemblyPath);
             }
+            FileVersionInfo.GetVersionInfo(extractedAssemblyPath).FileVersion.ShouldBe(CandidateBinaryVersion);
 
             string inspectedAssemblyPath = Directory.EnumerateFiles(
                     Path.Combine(
@@ -118,6 +128,12 @@ public sealed class McpRuntimePackageBoundaryTests {
         try {
             Assembly packagedAssembly = loadContext.LoadFromAssemblyPath(extractedAssemblyPath);
             packagedAssembly.Location.ShouldBe(extractedAssemblyPath);
+            packagedAssembly.GetName().Version?.ToString().ShouldBe(CandidateBinaryVersion);
+            string? informationalVersion = packagedAssembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion;
+            informationalVersion.ShouldNotBeNull();
+            informationalVersion.ShouldStartWith(CandidateVersion);
             string[] exportedSkillTypes = packagedAssembly.GetExportedTypes()
                 .Where(type => string.Equals(
                     type.Namespace,
@@ -182,16 +198,10 @@ public sealed class McpRuntimePackageBoundaryTests {
         startInfo.ArgumentList.Add("--no-build");
         startInfo.ArgumentList.Add("-o");
         startInfo.ArgumentList.Add(outputDirectory);
-        startInfo.ArgumentList.Add("-p:Version=4.0.0-review.1117c");
-        startInfo.ArgumentList.Add("-p:EnableFrontComposerPackageValidation=true");
+        AddReleaseProperties(startInfo, packageValidationBaselineVersion ?? "4.1.1");
         startInfo.ArgumentList.Add("-p:NuGetAudit=false");
         startInfo.ArgumentList.Add(
             $"-p:IntermediateOutputPath={validationIntermediatePath}{Path.DirectorySeparatorChar}");
-        if (packageValidationBaselineVersion is not null) {
-            startInfo.ArgumentList.Add(
-                $"-p:FrontComposerPackageValidationBaselineVersion={packageValidationBaselineVersion}");
-        }
-
         return await RunProcessAsync(startInfo).ConfigureAwait(false);
     }
 
@@ -208,10 +218,18 @@ public sealed class McpRuntimePackageBoundaryTests {
         startInfo.ArgumentList.Add("Release");
         startInfo.ArgumentList.Add("--no-restore");
         startInfo.ArgumentList.Add("-m:1");
-        startInfo.ArgumentList.Add("-p:Version=4.0.0-review.1117c");
-        startInfo.ArgumentList.Add("-p:MinVerVersionOverride=4.0.0");
+        AddReleaseProperties(startInfo, "4.1.1");
         startInfo.ArgumentList.Add("-p:NuGetAudit=false");
         return RunProcessAsync(startInfo);
+    }
+
+    private static void AddReleaseProperties(ProcessStartInfo startInfo, string baselineVersion) {
+        startInfo.ArgumentList.Add($"-p:Version={CandidateVersion}");
+        startInfo.ArgumentList.Add($"-p:PackageVersion={CandidateVersion}");
+        startInfo.ArgumentList.Add("-p:ContinuousIntegrationBuild=true");
+        startInfo.ArgumentList.Add("-p:EnableFrontComposerPackageValidation=true");
+        startInfo.ArgumentList.Add($"-p:FrontComposerPackageValidationBaselineVersion={baselineVersion}");
+        startInfo.ArgumentList.Add("-p:FrontComposerPackageValidationSkipBaseline=false");
     }
 
     private static async Task<ProcessResult> RunProcessAsync(ProcessStartInfo startInfo) {

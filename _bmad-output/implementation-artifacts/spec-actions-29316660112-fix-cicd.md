@@ -2,7 +2,7 @@
 title: 'Fix release run 29316660112 compatibility lifecycle'
 type: 'bugfix'
 created: '2026-07-14'
-status: 'in-review'
+status: 'done'
 review_loop_iteration: 2
 baseline_commit: '6188288a0ccdf3394389019b732d630f25726925'
 context:
@@ -59,6 +59,8 @@ context:
 - Given workflow and release configuration diffs, when scope is inspected, then triggers, permissions, reusable workflows, evidence gates, and publishing commands are unchanged.
 
 ## Spec Change Log
+
+- 2026-08-22 -- Closed as a historical 3.0 lifecycle artifact after confirming that `v3.0.0` shipped and the repository subsequently advanced through `v4.1.1`. A fresh forward-fix spec owns release-path regressions introduced by the later production-pipeline replacement; published `main` history and current submodule pointers remain untouched.
 
 ## Design Notes
 
