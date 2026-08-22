@@ -2543,3 +2543,19 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-6-enforce-atomic-per-row-first-wins.md`
   summary: Add lane- or component-level coverage that a suppressed publication produces no re-render and no second aria-live announcement.
   evidence: `FcNewItemIndicatorLaneIntegrationTests` and `CounterStoryVerificationTests` drive the real service through a generated grid but only ever use distinct entity keys, so the user-visible consequence of first-wins is proven only at the service and resolver level, never end to end through the rendered grid.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-97-0.md`
+  summary: Bind package-audit provenance to the catalog commit it claims to describe and distinguish incremental family refreshes from complete live snapshots.
+  evidence: `validate-package-version-audit.ps1` accepts any lowercase 40-character `generatedFromRevision` without proving that the commit exists or that its catalog blob matches the audited selections, while the audit exposes only artifact-wide timestamp and revision fields for incrementally preserved package decisions.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-97-0.md`
+  summary: Add a Builds-owned validation gate that enforces the required UTF-8 BOM on the central package catalog.
+  evidence: `.gitattributes` enforces CRLF but not the BOM, so pushed catalog commit `761dc0187ef60599f12310fef2411dbaf0206742` removed the marker without a Builds gate failing; this bump repaired the committed bytes but not the systemic regression path.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-97-0.md`
+  summary: Restore a passing full transitive Release AppHost build with the Parties and Tenants UI package graph enabled.
+  evidence: The focused package-mode AppHost compile passes, but the full transitive build fails with 23 pre-existing `CS0234` and `CS0103` errors for unavailable Parties and Tenants namespaces and symbols.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-bump-eventstore-to-3-97-0.md`
+  summary: Add package-mode coverage that constructs and verifies the FrontComposer Aspire application model.
+  evidence: Current checks restore and compile `Hexalith.EventStore.Aspire/3.97.0` but do not execute its topology extensions and assert the EventStore, admin, domain-module, DAPR component, reference, and wait-edge model produced for FrontComposer.
