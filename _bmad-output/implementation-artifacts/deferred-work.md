@@ -2575,3 +2575,7 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-bump-latest-hexalith-nuget-packages-2.md`
   summary: Run the shipped module-builder validator tests in a blocking CI lane.
   evidence: The post-baseline validator has focused tests, but the normal CI workflows do not invoke `test-validate-module.py`, so a regression in its final pass/fail calculation can ship while repository gates remain green.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Align checked-task evidence extraction with the repository's `Tasks & Acceptance` spec template.
+  evidence: The validator recognizes the legacy `Tasks / Subtasks` heading, while current generated specs use `Tasks & Acceptance`, so checked execution tasks are not evaluated by the existing evidence checker.

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import fnmatch
+import json
 import re
 import subprocess
 import sys
@@ -212,9 +213,13 @@ PATH_COORDINATE = re.compile(r":\d+(?:[-,:]\d+)*$")
 @dataclass(frozen=True)
 class StoryMetadata:
     baseline_commit: str
+    story_id: str
+    metadata_failures: list[str]
     file_list: dict[str, str]
     unrelated: dict[str, str]
     blockers: dict[str, str]
+    commit_scope_dispositions: dict[str, tuple[str, str]]
+    commit_scope_disposition_failures: list[str]
     checked_tasks: list[tuple[int, str]]
     evidence_text: str
 
@@ -226,11 +231,58 @@ class ChangedFiles:
     base: str
 
 
+@dataclass(frozen=True)
+class CommitEvidence:
+    sha: str
+    subject: str
+    paths: list[str]
+    story_id_matches: bool
+    classification: str
+    disposition_reason: str
+
+
+@dataclass(frozen=True)
+class MergeEvidence:
+    sha: str
+    subject: str
+    disposition: str
+    disposition_reason: str
+
+
+@dataclass(frozen=True)
+class WorkspaceEvidence:
+    staged: list[str]
+    unstaged: list[str]
+    untracked: list[str]
+    unresolved: list[str]
+
+
+@dataclass(frozen=True)
+class CommitScopeEvidence:
+    story_id: str
+    baseline: str
+    candidate: str
+    commits: list[CommitEvidence]
+    merges: list[MergeEvidence]
+    workspace: WorkspaceEvidence
+
+
 def main() -> int:
     args = parse_args()
     root = Path(args.project_root).resolve()
     failures: list[str] = []
     notices: list[str] = []
+
+    candidate_mode = args.candidate is not None
+    candidate_has_value = candidate_mode and bool(args.candidate.strip())
+    candidate_valid = candidate_has_value and not args.changed_file
+
+    if candidate_mode and not args.story:
+        failures.append("--candidate requires --story")
+    if candidate_mode and not candidate_has_value:
+        failures.append("--candidate requires a non-empty ref")
+    if candidate_mode and args.changed_file:
+        failures.append("--changed-file cannot be combined with --candidate")
 
     if not args.skip_sentinel:
         failures.extend(scan_sentinels(root, args.sentinel_root, args.exclude))
@@ -238,27 +290,66 @@ def main() -> int:
     if args.story:
         story = resolve_under_root(root, args.story)
         metadata = parse_story_metadata(story)
+        failures.extend(metadata.metadata_failures)
         base = args.base or metadata.baseline_commit
-        changed_files = collect_changed_files(root, base, args.changed_file, args.exclude)
         cli_unrelated = parse_cli_unrelated(root, args.unrelated, args.reason)
         unrelated = {**metadata.unrelated, **cli_unrelated}
-        failures.extend(check_file_list(root, story, changed_files, metadata.file_list, unrelated))
-        failures.extend(check_checked_tasks(root, story, changed_files.files, metadata, unrelated))
-        unrelated_changed = [path for path in changed_files.files if path in unrelated]
+        commit_evidence: CommitScopeEvidence | None = None
+        if candidate_valid:
+            commit_evidence, commit_failures = collect_commit_scope_evidence(
+                root,
+                base,
+                args.candidate,
+                metadata,
+            )
+            failures.extend(commit_failures)
+
+        if not candidate_mode:
+            changed_files = collect_changed_files(root, base, args.changed_file, args.exclude)
+        elif not candidate_valid:
+            changed_files = ChangedFiles([], "invalid candidate invocation", base or "")
+        else:
+            try:
+                changed_files = collect_reconciled_changed_files(
+                    root,
+                    commit_evidence,
+                    metadata.file_list,
+                    args.exclude,
+                    base,
+                )
+            except RuntimeError as exc:
+                failures.append(str(exc))
+                changed_files = ChangedFiles([], "commit scope unavailable", base or "")
+        usable_unrelated = usable_classified_paths(root, unrelated, set(changed_files.files))
+        bounded_unrelated = {path: unrelated[path] for path in usable_unrelated}
+        failures.extend(check_file_list(root, story, changed_files, metadata.file_list, bounded_unrelated))
+        failures.extend(check_checked_tasks(root, story, changed_files.files, metadata, bounded_unrelated))
+        unrelated_changed = [
+            path
+            for path in changed_files.files
+            if path_is_classified_unrelated(path, usable_unrelated)
+        ]
         if unrelated_changed:
             notices.append(
                 "unrelated dirty files documented for "
                 f"{story.relative_to(root).as_posix()}:\n"
-                + "\n".join(f"  - {path}: {unrelated[path]}" for path in unrelated_changed)
+                + "\n".join(
+                    f"  - {format_git_path(path)}: {classified_path_reason(path, bounded_unrelated)}"
+                    for path in unrelated_changed
+                )
             )
+
+        if commit_evidence is not None:
+            notices.append(format_commit_scope_evidence(commit_evidence, metadata.file_list, bounded_unrelated))
+
+    for notice in notices:
+        print(notice)
 
     if failures:
         for failure in failures:
             print(failure, file=sys.stderr)
         return 1
 
-    for notice in notices:
-        print(notice)
     print("Story artifact validation passed.")
     return 0
 
@@ -268,6 +359,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--project-root", default=".", help="Repository root. Defaults to current directory.")
     parser.add_argument("--story", help="Story markdown file whose File List should be checked.")
     parser.add_argument("--base", help="Optional git base ref for changed-file discovery.")
+    parser.add_argument(
+        "--candidate",
+        default=None,
+        help=(
+            "Candidate git ref for strict baseline-to-candidate story commit evidence. "
+            "Requires --story and a baseline from --base or story frontmatter."
+        ),
+    )
     parser.add_argument(
         "--changed-file",
         action="append",
@@ -371,10 +470,14 @@ def scan_sentinels(root: Path, roots: list[str], excludes: list[str]) -> list[st
 def parse_story_metadata(story: Path) -> StoryMetadata:
     text = story.read_text(encoding="utf-8")
     frontmatter = extract_frontmatter(text)
+    story_id, metadata_failures = extract_story_id(frontmatter, text, story.name)
     sections = extract_sections(text)
     file_list = extract_story_file_list(sections.get("file list", ""))
     unrelated = extract_classified_paths(sections, DOCUMENTED_UNRELATED_HEADINGS)
     blockers = extract_classified_paths(sections, DOCUMENTED_BLOCKER_HEADINGS)
+    dispositions, disposition_failures = extract_commit_scope_dispositions(
+        sections.get("commit scope dispositions", "")
+    )
     evidence_text = "\n".join(
         sections.get(name, "")
         for name in (
@@ -387,12 +490,112 @@ def parse_story_metadata(story: Path) -> StoryMetadata:
     )
     return StoryMetadata(
         baseline_commit=frontmatter.get("baseline_commit", ""),
+        story_id=story_id,
+        metadata_failures=metadata_failures,
         file_list=file_list,
         unrelated=unrelated,
         blockers=blockers,
+        commit_scope_dispositions=dispositions,
+        commit_scope_disposition_failures=disposition_failures,
         checked_tasks=extract_checked_tasks(text),
         evidence_text=evidence_text,
     )
+
+
+def extract_story_id(
+    frontmatter: dict[str, str],
+    text: str,
+    filename: str,
+) -> tuple[str, list[str]]:
+    explicit = frontmatter.get("story_id", "").strip()
+    if explicit:
+        match = re.fullmatch(r"(\d+)[.-](\d+)", explicit)
+        if not match:
+            return "", [
+                "invalid explicit story_id: expected exactly two numeric segments separated by '.' or '-': "
+                f"{explicit!r}"
+            ]
+        return f"{match.group(1)}.{match.group(2)}", []
+
+    failures: list[str] = []
+    detected: list[tuple[str, str]] = []
+    malformed_story = re.compile(r"\bStory\s+\d+[.-]\d+[.-]\d+", re.IGNORECASE)
+    text_story = re.compile(
+        r"\bStory\s+(\d+)[.-](\d+)(?![A-Za-z0-9]|[.-]\d)",
+        re.IGNORECASE,
+    )
+
+    title = frontmatter.get("title", "").strip()
+    if title:
+        if malformed_story.search(title):
+            failures.append(f"invalid legacy story identity in title: {title!r}")
+        elif match := text_story.search(title):
+            detected.append(("title", f"{match.group(1)}.{match.group(2)}"))
+
+    for line in text.splitlines():
+        if not line.startswith("# "):
+            continue
+        heading = line[2:].strip()
+        if malformed_story.search(heading):
+            failures.append(f"invalid legacy story identity in H1: {heading!r}")
+        elif match := text_story.search(heading):
+            detected.append(("H1", f"{match.group(1)}.{match.group(2)}"))
+        break
+
+    malformed_filename = re.match(
+        r"^(?:spec-)?\d+[.-]\d+[.-]\d+(?:-|\.md$)",
+        filename,
+    )
+    if malformed_filename:
+        failures.append(f"invalid legacy story identity in filename: {filename!r}")
+
+    dotted_filename_identity = re.match(
+        r"^(?:spec-)?(\d+)[.-](\d+)(?!\d|[.-]\d)(?:-|\.md$)",
+        filename,
+    )
+    if dotted_filename_identity:
+        detected.append(
+            (
+                "filename",
+                f"{dotted_filename_identity.group(1)}.{dotted_filename_identity.group(2)}",
+            )
+        )
+
+    identities = {identity for _, identity in detected}
+    if len(identities) > 1:
+        evidence = ", ".join(f"{source}={identity}" for source, identity in detected)
+        failures.append(f"conflicting legacy story identities: {evidence}")
+        return "", failures
+    if failures:
+        return "", failures
+    return next(iter(identities), ""), []
+
+
+def extract_commit_scope_dispositions(body: str) -> tuple[dict[str, tuple[str, str]], list[str]]:
+    dispositions: dict[str, tuple[str, str]] = {}
+    failures: list[str] = []
+    declaration = re.compile(
+        r"^-\s*`([0-9A-Fa-f]{40})`\s*\|\s*`(shared|process)`\s*\|\s*(\S.*)$"
+    )
+    for line_number, line in enumerate(body.splitlines(), start=1):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        match = declaration.fullmatch(stripped)
+        if not match:
+            failures.append(
+                "malformed Commit Scope Dispositions declaration "
+                f"at section line {line_number}: {stripped}"
+            )
+            continue
+        sha = match.group(1).lower()
+        kind = match.group(2)
+        reason = match.group(3).strip()
+        if sha in dispositions:
+            failures.append(f"duplicate Commit Scope Dispositions declaration for {sha}")
+            continue
+        dispositions[sha] = (kind, reason)
+    return dispositions, failures
 
 
 def extract_frontmatter(text: str) -> dict[str, str]:
@@ -484,6 +687,396 @@ def run_git_lines(root: Path, args: list[str]) -> list[str]:
     return [line.strip().replace("\\", "/") for line in result.stdout.splitlines() if line.strip()]
 
 
+def run_git_checked(root: Path, args: list[str], operation: str) -> subprocess.CompletedProcess[str]:
+    try:
+        result = subprocess.run(args, cwd=root, check=False, capture_output=True, text=True)
+    except (FileNotFoundError, OSError) as exc:
+        raise RuntimeError(f"git failure while {operation}: {exc}") from exc
+    if result.returncode != 0:
+        detail = result.stderr.strip() or result.stdout.strip() or f"git exited {result.returncode}"
+        raise RuntimeError(f"git failure while {operation}: {detail}")
+    return result
+
+
+def run_git_checked_bytes(root: Path, args: list[str], operation: str) -> subprocess.CompletedProcess[bytes]:
+    try:
+        result = subprocess.run(args, cwd=root, check=False, capture_output=True)
+    except (FileNotFoundError, OSError) as exc:
+        raise RuntimeError(f"git failure while {operation}: {exc}") from exc
+    if result.returncode != 0:
+        detail = (
+            result.stderr.decode("utf-8", errors="surrogateescape").strip()
+            or result.stdout.decode("utf-8", errors="surrogateescape").strip()
+            or f"git exited {result.returncode}"
+        )
+        raise RuntimeError(f"git failure while {operation}: {detail}")
+    return result
+
+
+def decode_nul_paths(output: bytes) -> list[str]:
+    if output and not output.endswith(b"\0"):
+        raise RuntimeError("git failure while parsing NUL-delimited paths: output lacks a trailing NUL")
+    return [
+        raw.decode("utf-8", errors="surrogateescape")
+        for raw in output.split(b"\0")
+        if raw
+    ]
+
+
+def canonical_commit(root: Path, ref: str, label: str) -> str:
+    if not ref.strip():
+        raise RuntimeError(f"git failure while resolving {label}: ref is empty")
+    result = run_git_checked(
+        root,
+        ["git", "rev-parse", "--verify", "--end-of-options", f"{ref}^{{commit}}"],
+        f"resolving {label} ref {ref!r}",
+    )
+    sha = result.stdout.strip().lower()
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise RuntimeError(f"git failure while resolving {label}: expected a full 40-character SHA, got {sha!r}")
+    return sha
+
+
+def story_id_pattern(story_id: str) -> re.Pattern[str]:
+    match = re.fullmatch(r"(\d+)[.-](\d+)", story_id.strip())
+    if not match:
+        raise ValueError(
+            f"story_id must contain exactly two numeric segments separated by '.' or '-': {story_id!r}"
+        )
+    epic, story = match.groups()
+    return re.compile(
+        rf"(?<![A-Za-z0-9]){re.escape(epic)}[.-]{re.escape(story)}"
+        r"(?![A-Za-z0-9]|[.-]\d)"
+    )
+
+
+def collect_commit_scope_evidence(
+    root: Path,
+    base_ref: str,
+    candidate_ref: str,
+    metadata: StoryMetadata,
+) -> tuple[CommitScopeEvidence | None, list[str]]:
+    failures = list(metadata.commit_scope_disposition_failures)
+    try:
+        matcher = story_id_pattern(metadata.story_id)
+    except ValueError as exc:
+        failures.append(f"commit scope evidence cannot run: {exc}")
+        return None, failures
+
+    try:
+        baseline = canonical_commit(root, base_ref, "baseline")
+        candidate = canonical_commit(root, candidate_ref, "candidate")
+        ancestry = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", baseline, candidate],
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if ancestry.returncode == 1:
+            failures.append(
+                f"commit scope evidence requires baseline {baseline} to be an ancestor of candidate {candidate}"
+            )
+            return None, failures
+        if ancestry.returncode != 0:
+            detail = ancestry.stderr.strip() or ancestry.stdout.strip() or f"git exited {ancestry.returncode}"
+            raise RuntimeError(f"git failure while checking baseline ancestry: {detail}")
+
+        log = run_git_checked(
+            root,
+            [
+                "git",
+                "log",
+                "--reverse",
+                "--topo-order",
+                "--format=%H%x1f%P%x1f%s",
+                f"{baseline}..{candidate}",
+                "--",
+            ],
+            "listing baseline-to-candidate commits",
+        )
+        commit_rows: list[tuple[str, list[str], str]] = []
+        for line in log.stdout.splitlines():
+            if not line.strip():
+                continue
+            parts = line.split("\x1f", 2)
+            if len(parts) != 3:
+                raise RuntimeError(f"git failure while parsing commit evidence: malformed log row {line!r}")
+            sha, parents, subject = parts
+            parent_list = [parent for parent in parents.split() if parent]
+            commit_rows.append((sha.lower(), parent_list, subject))
+    except (FileNotFoundError, OSError, RuntimeError) as exc:
+        failures.append(str(exc))
+        return None, failures
+
+    range_shas = {sha for sha, _, _ in commit_rows}
+    for sha in metadata.commit_scope_dispositions:
+        if sha not in range_shas:
+            failures.append(
+                f"stale Commit Scope Dispositions declaration: {sha} is not in range {baseline}..{candidate}"
+            )
+
+    commits: list[CommitEvidence] = []
+    merges: list[MergeEvidence] = []
+    listed = set(metadata.file_list)
+    for sha, parents, subject in commit_rows:
+        disposition = metadata.commit_scope_dispositions.get(sha)
+        if len(parents) > 1:
+            merges.append(
+                MergeEvidence(
+                    sha=sha,
+                    subject=subject,
+                    disposition=disposition[0] if disposition else "",
+                    disposition_reason=disposition[1] if disposition else "",
+                )
+            )
+            continue
+
+        try:
+            diff = run_git_checked_bytes(
+                root,
+                [
+                    "git",
+                    "diff-tree",
+                    "--root",
+                    "--no-commit-id",
+                    "--name-only",
+                    "-z",
+                    "--no-renames",
+                    "-r",
+                    "--diff-filter=ACMRTD",
+                    sha,
+                    "--",
+                ],
+                f"listing paths for commit {sha}",
+            )
+        except RuntimeError as exc:
+            failures.append(str(exc))
+            continue
+        try:
+            paths = sorted(decode_nul_paths(diff.stdout))
+        except RuntimeError as exc:
+            failures.append(f"{exc} for commit {sha}")
+            continue
+        matches = matcher.search(subject) is not None
+        owned_paths = [path for path in paths if path in listed]
+        unowned_paths = [path for path in paths if path not in listed]
+
+        if disposition:
+            classification = disposition[0]
+            reason = disposition[1]
+        elif matches and unowned_paths:
+            classification = "interleaved"
+            reason = ""
+            failures.append(
+                f"interleaved story commit {sha} matches story {metadata.story_id} but touches unowned paths: "
+                + ", ".join(format_git_path(path) for path in unowned_paths)
+            )
+        elif matches:
+            classification = "owned"
+            reason = ""
+        elif owned_paths:
+            classification = "unmapped"
+            reason = ""
+            failures.append(
+                f"unmapped story delivery commit {sha} does not match story {metadata.story_id} but touches listed paths: "
+                + ", ".join(format_git_path(path) for path in owned_paths)
+            )
+        else:
+            classification = "unrelated"
+            reason = ""
+
+        commits.append(
+            CommitEvidence(
+                sha=sha,
+                subject=subject,
+                paths=paths,
+                story_id_matches=matches,
+                classification=classification,
+                disposition_reason=reason,
+            )
+        )
+
+    try:
+        workspace = collect_workspace_evidence(root)
+    except RuntimeError as exc:
+        failures.append(str(exc))
+        workspace = WorkspaceEvidence([], [], [], [])
+
+    try:
+        candidate_after_collection = canonical_commit(root, candidate_ref, "candidate after evidence collection")
+        if candidate_after_collection != candidate:
+            failures.append(
+                f"candidate ref moved during validation: {candidate} -> {candidate_after_collection}"
+            )
+    except RuntimeError as exc:
+        failures.append(str(exc))
+
+    return (
+        CommitScopeEvidence(
+            story_id=metadata.story_id,
+            baseline=baseline,
+            candidate=candidate,
+            commits=commits,
+            merges=merges,
+            workspace=workspace,
+        ),
+        failures,
+    )
+
+
+def collect_workspace_evidence(root: Path) -> WorkspaceEvidence:
+    result = run_git_checked_bytes(
+        root,
+        [
+            "git",
+            "-c",
+            "status.renames=false",
+            "status",
+            "--porcelain=v1",
+            "-z",
+            "--untracked-files=all",
+        ],
+        "collecting workspace evidence",
+    )
+    staged: set[str] = set()
+    unstaged: set[str] = set()
+    untracked: set[str] = set()
+    unresolved: set[str] = set()
+    unmerged_states = {"DD", "AU", "UD", "UA", "DU", "AA", "UU"}
+    for record in decode_nul_paths(result.stdout):
+        if len(record) < 3 or record[2] != " ":
+            raise RuntimeError(f"git failure while parsing workspace evidence: malformed status row {record!r}")
+        state = record[:2]
+        path = record[3:]
+        if state == "??":
+            untracked.add(path)
+            continue
+        if state in unmerged_states or "U" in state:
+            unresolved.add(path)
+        if state[0] not in {" ", "?"}:
+            staged.add(path)
+        if state[1] not in {" ", "?"}:
+            unstaged.add(path)
+    return WorkspaceEvidence(
+        sorted(staged),
+        sorted(unstaged),
+        sorted(untracked),
+        sorted(unresolved),
+    )
+
+
+def collect_reconciled_changed_files(
+    root: Path,
+    evidence: CommitScopeEvidence | None,
+    file_list: dict[str, str],
+    excludes: list[str],
+    base: str | None,
+) -> ChangedFiles:
+    workspace = evidence.workspace if evidence is not None else collect_workspace_evidence(root)
+    patterns = merged_excludes(excludes)
+    changed = {
+        path
+        for path in (*workspace.staged, *workspace.unstaged, *workspace.untracked, *workspace.unresolved)
+        if path and not is_excluded(path, patterns)
+    }
+    if evidence is not None:
+        listed = set(file_list)
+        changed.update(
+            path
+            for commit in evidence.commits
+            if commit.story_id_matches and commit.classification not in {"shared", "process"}
+            for path in commit.paths
+            if path in listed
+        )
+    return ChangedFiles(sorted(changed), "story commits plus workspace", base or "")
+
+
+def format_commit_scope_evidence(
+    evidence: CommitScopeEvidence,
+    file_list: dict[str, str],
+    unrelated: dict[str, str],
+) -> str:
+    lines = [
+        "Commit scope evidence:",
+        f"  story-id: {evidence.story_id}",
+        f"  baseline: {evidence.baseline}",
+        f"  candidate: {evidence.candidate}",
+        "  non-merge commits:",
+    ]
+    if not evidence.commits:
+        lines.append("    - (none)")
+    for commit in evidence.commits:
+        match = "match" if commit.story_id_matches else "no-match"
+        disposition = f" | reason={commit.disposition_reason}" if commit.disposition_reason else ""
+        lines.append(
+            f"    - {commit.sha} | story-id={match} | disposition={commit.classification}{disposition} | "
+            f"{commit.subject}"
+        )
+        if not commit.paths:
+            lines.append("      - (no paths)")
+        for path in commit.paths:
+            path_kind = "owned" if path in file_list else "unowned"
+            lines.append(f"      - {path_kind} | {format_git_path(path)}")
+
+    lines.append("  merges:")
+    if not evidence.merges:
+        lines.append("    - (none)")
+    for merge in evidence.merges:
+        disposition = ""
+        if merge.disposition:
+            disposition = f" | disposition={merge.disposition} | reason={merge.disposition_reason}"
+        lines.append(f"    - {merge.sha}{disposition} | {merge.subject}")
+
+    lines.append("  workspace:")
+    for label, paths in (
+        ("staged", evidence.workspace.staged),
+        ("unstaged", evidence.workspace.unstaged),
+        ("untracked", evidence.workspace.untracked),
+        ("unresolved", evidence.workspace.unresolved),
+    ):
+        lines.append(f"    {label}:")
+        if not paths:
+            lines.append("      - (none)")
+        for path in paths:
+            reason = classified_path_reason(path, unrelated)
+            suffix = f" | documented-unrelated={reason}" if reason else ""
+            lines.append(f"      - {format_git_path(path)}{suffix}")
+
+    lines.append("    documented-unrelated:")
+    if not unrelated:
+        lines.append("      - (none)")
+    workspace_states = {
+        "staged": evidence.workspace.staged,
+        "unstaged": evidence.workspace.unstaged,
+        "untracked": evidence.workspace.untracked,
+        "unresolved": evidence.workspace.unresolved,
+    }
+    for entry, reason in sorted(unrelated.items()):
+        states = [
+            label
+            for label, paths in workspace_states.items()
+            if any(path == entry.rstrip("/") or path.startswith(entry.rstrip("/") + "/") for path in paths)
+        ]
+        state = ",".join(states) if states else "declared"
+        lines.append(f"      - {format_git_path(entry)} | state={state} | reason={reason}")
+    return "\n".join(lines)
+
+
+def format_git_path(path: str) -> str:
+    if path != path.strip() or any(character in path for character in ('"', "\\", "\n", "\r", "\t")):
+        return json.dumps(path, ensure_ascii=False)
+    return path
+
+
+def classified_path_reason(path: str, classified: dict[str, str]) -> str:
+    for entry, reason in classified.items():
+        normalized = entry.rstrip("/")
+        if path == normalized or path.startswith(normalized + "/"):
+            return reason
+    return ""
+
+
 def check_file_list(
     root: Path,
     story: Path,
@@ -491,6 +1084,7 @@ def check_file_list(
     listed: dict[str, str],
     unrelated: dict[str, str],
 ) -> list[str]:
+    classified_paths = set(unrelated)
     if not listed:
         base_note = f" (baseline_commit {changed_files.base})" if changed_files.base else ""
         changed_note = ""
@@ -498,14 +1092,18 @@ def check_file_list(
             changed_note = "\n" + "\n".join(
                 f"  - {path} (reason: story-owned change from {changed_files.source} cannot be reconciled)"
                 for path in changed_files.files
-                if path not in unrelated
+                if not path_is_classified_unrelated(path, classified_paths)
             )
         return [
             "story File List not found or empty; changed files missing from story File List in "
             f"{story.relative_to(root).as_posix()}{base_note}{changed_note}"
         ]
     changed_set = set(changed_files.files)
-    missing = [path for path in changed_files.files if path not in listed and path not in unrelated]
+    missing = [
+        path
+        for path in changed_files.files
+        if path not in listed and not path_is_classified_unrelated(path, classified_paths)
+    ]
     extra = [
         path
         for path, reason in listed.items()
@@ -731,7 +1329,11 @@ def usable_classified_paths(root: Path, classified: dict[str, str], changed: set
             # directory that vanished from the worktree; refuse unless it is a real file.
             if tracked is None and not (root / path).is_file():
                 continue
-        if path in changed or path_is_tracked(path, root):
+        if (
+            path in changed
+            or any(candidate.startswith(path + "/") for candidate in changed)
+            or path_is_tracked(path, root)
+        ):
             usable.add(path)
     return usable
 

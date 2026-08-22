@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -38,10 +39,27 @@ def init_repo(root: Path) -> str:
     return git(root, "rev-parse", "HEAD").stdout.strip()
 
 
-def story_text(*, baseline: str, file_list: str = "", tasks: str = "- [ ] Pending task") -> str:
+def commit_files(root: Path, subject: str, files: dict[str, str]) -> str:
+    for path, content in files.items():
+        write(root / path, content)
+    git(root, "add", *files)
+    result = git(root, "commit", "-m", subject)
+    if result.returncode != 0:
+        raise AssertionError(result.stdout + result.stderr)
+    return git(root, "rev-parse", "HEAD").stdout.strip()
+
+
+def story_text(
+    *,
+    baseline: str,
+    file_list: str = "",
+    tasks: str = "- [ ] Pending task",
+    story_id: str = "1.1",
+) -> str:
     return (
         f"---\n"
         f"baseline_commit: {baseline}\n"
+        f"story_id: '{story_id}'\n"
         f"---\n\n"
         "# Story 1.1: Validator fixture\n\n"
         "Status: review\n\n"
@@ -641,6 +659,517 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("references/Hexalith.EventStore", result.stderr)
             self.assertIn("missing from story File List", result.stderr)
+
+
+class CommitScopeEvidenceTests(unittest.TestCase):
+    story_path = "_bmad-output/implementation-artifacts/9-7-validator-fixture.md"
+
+    def write_story(
+        self,
+        root: Path,
+        baseline: str,
+        paths: list[str],
+        *,
+        dispositions: str = "",
+        unrelated: str = "",
+    ) -> None:
+        file_list = "\n".join(f"- `{path}`" for path in [self.story_path, *paths])
+        content = story_text(
+            baseline=baseline,
+            file_list=file_list,
+            story_id="9.7",
+        )
+        if dispositions:
+            content += f"\n## Commit Scope Dispositions\n\n{dispositions}\n"
+        if unrelated:
+            content += f"\n### Documented Unrelated Workspace State\n\n{unrelated}\n"
+        write(root / self.story_path, content)
+
+    def validate(
+        self,
+        root: Path,
+        candidate: str = "HEAD",
+        *,
+        base: str | None = None,
+        changed_files: tuple[str, ...] = (),
+    ) -> subprocess.CompletedProcess[str]:
+        command = [
+            sys.executable,
+            str(VALIDATOR),
+            "--project-root",
+            str(root),
+            "--story",
+            self.story_path,
+            "--candidate",
+            candidate,
+            "--skip-sentinel",
+        ]
+        if base is not None:
+            command.extend(("--base", base))
+        for path in changed_files:
+            command.extend(("--changed-file", path))
+        return run(command, root)
+
+    def test_matching_story_commit_reports_full_sha_match_and_owned_paths(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            candidate = commit_files(root, "fix(9.7): add owned evidence", {"src/owned.txt": "owned\n"})
+            self.write_story(root, baseline, ["src/owned.txt"])
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"candidate: {candidate}", result.stdout)
+            self.assertIn(f"{candidate} | story-id=match | disposition=owned", result.stdout)
+            self.assertIn("owned | src/owned.txt", result.stdout)
+
+    def test_dot_and_hyphen_story_ids_match_but_larger_story_id_does_not(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            dotted = commit_files(root, "fix(9.7): add dotted evidence", {"src/dotted.txt": "dotted\n"})
+            hyphenated = commit_files(root, "test: cover story 9-7 evidence", {"src/hyphen.txt": "hyphen\n"})
+            self.write_story(root, baseline, ["src/dotted.txt", "src/hyphen.txt"])
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"{dotted} | story-id=match", result.stdout)
+            self.assertIn(f"{hyphenated} | story-id=match", result.stdout)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            candidate = commit_files(root, "fix(19.7): wrong story", {"src/owned.txt": "owned\n"})
+            self.write_story(root, baseline, ["src/owned.txt"])
+
+            result = self.validate(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(f"{candidate} | story-id=no-match | disposition=unmapped", result.stdout)
+            self.assertIn("unmapped story delivery commit", result.stderr)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            padded = commit_files(root, "fix(9.70): wrong story", {"notes/padded.txt": "padded\n"})
+            segmented = commit_files(root, "fix(9.7.1): wrong story", {"notes/segmented.txt": "segment\n"})
+            prefixed = commit_files(root, "fix(x9.7): embedded story", {"notes/prefixed.txt": "prefix\n"})
+            suffixed = commit_files(root, "fix(9.7x): embedded story", {"notes/suffixed.txt": "suffix\n"})
+            owned = commit_files(root, "fix(9.7): owned story", {"src/owned.txt": "owned\n"})
+            self.write_story(root, baseline, ["src/owned.txt"])
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            for sha in (padded, segmented, prefixed, suffixed):
+                self.assertIn(f"{sha} | story-id=no-match | disposition=unrelated", result.stdout)
+            self.assertIn(f"{owned} | story-id=match | disposition=owned", result.stdout)
+
+    def test_missing_story_id_commit_touching_listed_path_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            candidate = commit_files(root, "fix: omit story id", {"src/owned.txt": "owned\n"})
+            self.write_story(root, baseline, ["src/owned.txt"])
+
+            result = self.validate(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(f"{candidate} | story-id=no-match | disposition=unmapped", result.stdout)
+            self.assertIn("src/owned.txt", result.stderr)
+
+    def test_story_id_falls_back_to_legacy_story_filename(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            candidate = commit_files(root, "fix(9.7): add legacy evidence", {"src/owned.txt": "owned\n"})
+            content = story_text(
+                baseline=baseline,
+                file_list=f"- `{self.story_path}`\n- `src/owned.txt`",
+                story_id="9.7",
+            ).replace("story_id: '9.7'\n", "").replace(
+                "# Story 1.1: Validator fixture",
+                "# Validator fixture",
+            )
+            write(root / self.story_path, content)
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"{candidate} | story-id=match | disposition=owned", result.stdout)
+
+    def test_in_range_shared_and_process_dispositions_exclude_commits_from_ownership(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            shared = commit_files(root, "build: shared fixture", {"src/shared.txt": "shared\n"})
+            process = commit_files(root, "docs: process fixture", {"src/process.txt": "process\n"})
+            commit_files(
+                root,
+                "fix(9.7): own disposed paths",
+                {"src/shared.txt": "shared owned\n", "src/process.txt": "process owned\n"},
+            )
+            self.write_story(
+                root,
+                baseline,
+                ["src/shared.txt", "src/process.txt"],
+                dispositions=(
+                    f"- `{shared}` | `shared` | shared infrastructure update\n"
+                    f"- `{process}` | `process` | review transition"
+                ),
+            )
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"{shared} | story-id=no-match | disposition=shared", result.stdout)
+            self.assertIn(f"{process} | story-id=no-match | disposition=process", result.stdout)
+            self.assertIn("owned | src/shared.txt", result.stdout)
+            self.assertIn("owned | src/process.txt", result.stdout)
+
+    def test_malformed_stale_or_empty_dispositions_fail_closed(self) -> None:
+        declarations = (
+            "- `1234` | `shared` | short SHA",
+            f"- `{'0' * 40}` | `shared` | stale SHA",
+            f"- `{'1' * 40}` | `other` | invalid kind",
+            f"- `{'2' * 40}` | `process` |",
+        )
+        for declaration in declarations:
+            with self.subTest(declaration=declaration), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                baseline = init_repo(root)
+                commit_files(root, "fix(9.7): owned fixture", {"src/owned.txt": "owned\n"})
+                self.write_story(root, baseline, ["src/owned.txt"], dispositions=declaration)
+
+                result = self.validate(root)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertTrue(
+                    "malformed Commit Scope Dispositions declaration" in result.stderr
+                    or "stale Commit Scope Dispositions declaration" in result.stderr,
+                    result.stderr,
+                )
+
+    def test_duplicate_or_conflicting_dispositions_fail_closed(self) -> None:
+        for second_kind in ("shared", "process"):
+            with self.subTest(second_kind=second_kind), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                baseline = init_repo(root)
+                disposed = commit_files(root, "build: disposed fixture", {"src/owned.txt": "first\n"})
+                commit_files(root, "fix(9.7): own fixture", {"src/owned.txt": "owned\n"})
+                self.write_story(
+                    root,
+                    baseline,
+                    ["src/owned.txt"],
+                    dispositions=(
+                        f"- `{disposed}` | `shared` | first declaration\n"
+                        f"- `{disposed}` | `{second_kind}` | duplicate declaration"
+                    ),
+                )
+
+                result = self.validate(root)
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("duplicate Commit Scope Dispositions declaration", result.stderr)
+
+    def test_matching_commit_with_unowned_path_is_interleaved_even_when_path_is_unrelated(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            candidate = commit_files(
+                root,
+                "fix(9.7): interleave delivery",
+                {"src/owned.txt": "owned\n", "notes/unrelated.txt": "unrelated\n"},
+            )
+            self.write_story(
+                root,
+                baseline,
+                ["src/owned.txt"],
+                unrelated="- `notes/unrelated.txt` - pre-existing unrelated work.",
+            )
+
+            result = self.validate(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(f"{candidate} | story-id=match | disposition=interleaved", result.stdout)
+            self.assertIn("unowned | notes/unrelated.txt", result.stdout)
+            self.assertIn("interleaved story commit", result.stderr)
+
+    def test_unrelated_commit_is_reported_without_becoming_file_list_ownership(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            owned = commit_files(root, "fix(9.7): add owned evidence", {"src/owned.txt": "owned\n"})
+            unrelated = commit_files(root, "docs: update another story", {"notes/other.txt": "other\n"})
+            self.write_story(root, baseline, ["src/owned.txt"])
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"{owned} | story-id=match | disposition=owned", result.stdout)
+            self.assertIn(f"{unrelated} | story-id=no-match | disposition=unrelated", result.stdout)
+            self.assertIn("unowned | notes/other.txt", result.stdout)
+            self.assertNotIn("notes/other.txt", result.stderr)
+
+    def test_merge_is_listed_separately_from_non_merge_commits(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            main_branch = git(root, "branch", "--show-current").stdout.strip()
+            owned = commit_files(root, "fix(9.7): add owned evidence", {"src/owned.txt": "owned\n"})
+            git(root, "checkout", "-b", "side")
+            unrelated = commit_files(root, "docs: add unrelated note", {"notes/side.txt": "side\n"})
+            git(root, "checkout", main_branch)
+            merge_result = git(root, "merge", "--no-ff", "side", "-m", "Merge side fixture")
+            self.assertEqual(merge_result.returncode, 0, merge_result.stdout + merge_result.stderr)
+            merge_sha = git(root, "rev-parse", "HEAD").stdout.strip()
+            self.write_story(
+                root,
+                baseline,
+                ["src/owned.txt"],
+                unrelated="- `notes/side.txt` - unrelated branch fixture.",
+            )
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"{owned} | story-id=match | disposition=owned", result.stdout)
+            self.assertIn(f"{unrelated} | story-id=no-match | disposition=unrelated", result.stdout)
+            self.assertIn(f"    - {merge_sha} | Merge side fixture", result.stdout)
+
+    def test_invalid_candidate_and_non_ancestral_range_fail(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            self.write_story(root, baseline, [])
+
+            result = self.validate(root, "missing-candidate")
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("git failure while resolving candidate", result.stderr)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            initial = init_repo(root)
+            newer = commit_files(root, "fix(9.7): newer baseline", {"src/newer.txt": "newer\n"})
+            self.write_story(root, newer, [])
+
+            result = self.validate(root, initial)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("to be an ancestor of candidate", result.stderr)
+
+    def test_candidate_mode_rejects_empty_ref_and_changed_file_override(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            self.write_story(root, baseline, [])
+
+            empty = self.validate(root, "")
+            overridden = self.validate(root, changed_files=("README.md",))
+
+            self.assertNotEqual(empty.returncode, 0)
+            self.assertIn("--candidate requires a non-empty ref", empty.stderr)
+            self.assertNotIn("Traceback", empty.stderr)
+            self.assertNotEqual(overridden.returncode, 0)
+            self.assertIn("--changed-file cannot be combined with --candidate", overridden.stderr)
+
+    def test_candidate_mode_base_override_replaces_frontmatter_baseline(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            initial = init_repo(root)
+            overridden_base = commit_files(root, "docs: before story", {"notes/before.txt": "before\n"})
+            owned = commit_files(root, "fix(9.7): owned change", {"src/owned.txt": "owned\n"})
+            self.write_story(root, initial, ["src/owned.txt"])
+
+            result = self.validate(root, base=overridden_base)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"baseline: {overridden_base}", result.stdout)
+            self.assertIn(f"{owned} | story-id=match | disposition=owned", result.stdout)
+            self.assertNotIn("docs: before story", result.stdout)
+
+    def test_committed_deletion_is_reported_and_reconciled(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            (root / "README.md").unlink()
+            git(root, "add", "-u", "README.md")
+            deleted = git(root, "commit", "-m", "fix(9.7): delete fixture")
+            self.assertEqual(deleted.returncode, 0, deleted.stdout + deleted.stderr)
+            candidate = git(root, "rev-parse", "HEAD").stdout.strip()
+            self.write_story(root, baseline, ["README.md"])
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"{candidate} | story-id=match | disposition=owned", result.stdout)
+            self.assertIn("owned | README.md", result.stdout)
+
+    def test_story_metadata_is_authoritative_conflict_safe_and_zero_preserving(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            commit_files(root, "fix(9.7): tempting fallback", {"src/owned.txt": "owned\n"})
+            invalid = story_text(
+                baseline=baseline,
+                file_list=f"- `{self.story_path}`\n- `src/owned.txt`",
+                story_id="9.7.1",
+            )
+            write(root / self.story_path, invalid)
+
+            result = self.validate(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid explicit story_id", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            commit_files(root, "fix(9.7): conflict fixture", {"src/owned.txt": "owned\n"})
+            conflict = story_text(
+                baseline=baseline,
+                file_list=f"- `{self.story_path}`\n- `src/owned.txt`",
+            ).replace("story_id: '1.1'\n", "title: 'Story 9.7: Title identity'\n").replace(
+                "# Story 1.1: Validator fixture",
+                "# Story 9.8: H1 identity",
+            )
+            write(root / self.story_path, conflict)
+
+            result = self.validate(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("conflicting legacy story identities", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            padded = commit_files(root, "fix(09.07): preserve padded ID", {"src/owned.txt": "owned\n"})
+            self.write_story(root, baseline, ["src/owned.txt"])
+            story = (root / self.story_path).read_text(encoding="utf-8").replace("story_id: '9.7'", "story_id: '09-07'")
+            write(root / self.story_path, story)
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("story-id: 09.07", result.stdout)
+            self.assertIn(f"{padded} | story-id=match | disposition=owned", result.stdout)
+
+    def test_legacy_three_segment_identity_is_not_truncated(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            commit_files(root, "fix(9.7): must not inherit", {"src/owned.txt": "owned\n"})
+            content = story_text(
+                baseline=baseline,
+                file_list=f"- `{self.story_path}`\n- `src/owned.txt`",
+            ).replace("story_id: '1.1'\n", "").replace(
+                "# Story 1.1: Validator fixture",
+                "# Story 9.7.1: Three segment identity",
+            )
+            write(root / self.story_path, content)
+
+            result = self.validate(root)
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid legacy story identity", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
+    def test_nul_delimited_paths_preserve_unusual_filenames(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            unusual = (
+                "notes/line\nbreak.txt",
+                "notes/back\\slash.txt",
+                'notes/double"quote.txt',
+                "notes/évidence.txt",
+                "notes/ leading-and-trailing ",
+            )
+            commit_files(root, "docs: add unusual paths", {path: "value\n" for path in unusual})
+            self.write_story(root, baseline, [])
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            for path in unusual:
+                rendered = (
+                    json.dumps(path, ensure_ascii=False)
+                    if path != path.strip() or any(character in path for character in ('"', "\\", "\n", "\r", "\t"))
+                    else path
+                )
+                self.assertIn(f"unowned | {rendered}", result.stdout)
+
+    def test_unresolved_workspace_state_is_reported_from_one_porcelain_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            main_branch = git(root, "branch", "--show-current").stdout.strip()
+            git(root, "checkout", "-b", "other")
+            commit_files(root, "docs: other side", {"README.md": "other\n"})
+            git(root, "checkout", main_branch)
+            commit_files(root, "fix(9.7): owned side", {"README.md": "owned\n"})
+            conflict = git(root, "merge", "other")
+            self.assertNotEqual(conflict.returncode, 0)
+            self.write_story(root, baseline, ["README.md"])
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("    unresolved:\n      - README.md", result.stdout)
+
+    def test_documented_unrelated_directory_covers_changed_descendants_consistently(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            write(root / "notes/scratch/nested.txt", "scratch\n")
+            self.write_story(
+                root,
+                baseline,
+                [],
+                unrelated="- `notes/scratch` - bounded scratch directory.",
+            )
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(
+                "notes/scratch/nested.txt | documented-unrelated=bounded scratch directory.",
+                result.stdout,
+            )
+
+    def test_workspace_state_is_reported_separately_with_unrelated_annotation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            commit_files(root, "fix(9.7): add committed evidence", {"src/owned.txt": "owned\n"})
+            write(root / "src/staged.txt", "staged\n")
+            git(root, "add", "src/staged.txt")
+            write(root / "README.md", "unstaged\n")
+            write(root / "src/untracked.txt", "untracked\n")
+            write(root / "notes/unrelated.txt", "unrelated\n")
+            self.write_story(
+                root,
+                baseline,
+                ["src/owned.txt", "src/staged.txt", "README.md", "src/untracked.txt"],
+                unrelated="- `notes/unrelated.txt` - editor scratch.",
+            )
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("    staged:\n      - src/staged.txt", result.stdout)
+            self.assertIn("    unstaged:\n      - README.md", result.stdout)
+            self.assertIn("src/untracked.txt", result.stdout)
+            self.assertIn("notes/unrelated.txt | documented-unrelated=editor scratch.", result.stdout)
+            self.assertIn(
+                "notes/unrelated.txt | state=untracked | reason=editor scratch.",
+                result.stdout,
+            )
 
 
 @unittest.skipUnless(

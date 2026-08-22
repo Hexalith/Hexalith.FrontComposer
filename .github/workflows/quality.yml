@@ -122,6 +122,9 @@ jobs:
       - name: 'Gate 2b: Release suppression lifecycle tests'
         run: python3 -m unittest tests/eng/test_pack_release_packages.py
 
+      - name: 'Gate 2b: Story artifact validator tests'
+        run: python3 -m unittest eng.tests.test_validate_story_artifacts
+
       # The two catalog-compatibility Governance facts above shell out to
       # eng/dependency_graph.py, whose own semantic rules are covered only by this suite.
       # Without this step the required-property and required-package checks could be
