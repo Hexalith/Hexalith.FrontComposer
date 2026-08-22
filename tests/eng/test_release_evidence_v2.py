@@ -265,7 +265,6 @@ class ReleaseEvidenceV2Tests(unittest.TestCase):
         execution_sha = _run("git", "rev-parse", "HEAD", cwd=execution_root).stdout.strip()
         self.assertNotEqual(0, _run("git", "cat-file", "-e", execution_sha, cwd=self.builds_root).returncode)
         return execution_sha, execution_bytes
-
     def _prepare(self) -> tuple[pathlib.Path, pathlib.Path]:
         package_id = "Hexalith.FrontComposer.Contracts"
         version = "2.0.0"

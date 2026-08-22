@@ -2543,4 +2543,3 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-6-enforce-atomic-per-row-first-wins.md`
   summary: Add lane- or component-level coverage that a suppressed publication produces no re-render and no second aria-live announcement.
   evidence: `FcNewItemIndicatorLaneIntegrationTests` and `CounterStoryVerificationTests` drive the real service through a generated grid but only ever use distinct entity keys, so the user-visible consequence of first-wins is proven only at the service and resolver level, never end to end through the rendered grid.
-

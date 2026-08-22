@@ -216,7 +216,6 @@ class ReleaseContractTests(unittest.TestCase):
                 {"ok": True, "builds_catalog_sha": catalog, "builds_execution_sha": approved},
                 json.loads(stdout.getvalue()),
             )
-
     def test_builds_cli_rejects_missing_gitlink(self) -> None:
         approved = "a" * 40
         workflow = (
