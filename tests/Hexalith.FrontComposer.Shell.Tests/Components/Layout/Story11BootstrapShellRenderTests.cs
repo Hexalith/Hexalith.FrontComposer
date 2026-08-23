@@ -31,7 +31,7 @@ public sealed class Story11BootstrapShellRenderTests : LayoutComponentTestBase {
 
         cut.WaitForAssertion(() => {
             // AC1 — skip-to-content link targets the main content region.
-            _ = cut.Find("a.fc-skip-link[href=\"#fc-main-content\"]");
+            _ = cut.Find("a.fc-skip-link[href$=\"#fc-main-content\"]");
             // AC1 — Fluent providers + the shell-owned Fluxor StoreInitializer.
             _ = cut.FindComponent<FluentProviders>();
             _ = cut.FindComponent<StoreInitializer>();

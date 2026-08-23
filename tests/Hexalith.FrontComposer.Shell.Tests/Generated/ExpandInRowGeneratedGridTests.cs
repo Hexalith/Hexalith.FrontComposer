@@ -46,7 +46,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
                 Counter("counter-2", 2),
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             IElement region = cut.Find(".fc-expand-in-row-detail");
@@ -92,7 +92,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
                 Counter("counter-2", 2),
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => _ = ExpandButton(cut, "counter-1"));
         await cut.InvokeAsync(() => ExpandButton(cut, "counter-1").Click());
@@ -141,7 +141,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
                 Counter("counter-2", 2),
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         // Expand first, then restore reducer state (the base harness does not scan Shell reducers).
         await cut.WaitForAssertionAsync(() => _ = ExpandButton(cut, "counter-1"));
@@ -182,7 +182,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
                 Counter("counter-2", 2),
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => _ = ExpandButton(cut, "counter-1"));
         await cut.InvokeAsync(() => ExpandButton(cut, "counter-1").Click());
@@ -224,7 +224,7 @@ public sealed class ExpandInRowGeneratedGridTests : GeneratedComponentTestBase {
                 Counter("counter-2", 2),
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
         await cut.WaitForAssertionAsync(() => _ = ExpandButton(cut, "counter-1"));
         await cut.InvokeAsync(() => ExpandButton(cut, "counter-1").Click());
         ExpandRowAction expandAction = await WaitForExpandActionAsync(cut, dispatchedActions, "counter-1");

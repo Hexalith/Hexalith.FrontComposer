@@ -34,7 +34,7 @@ public sealed class BadgeProjectionRenderTests : GeneratedComponentTestBase {
                 new BadgeProjection { Name = "Beta", Status = ReviewState.Approved },
             ]));
 
-        IRenderedComponent<BadgeProjectionView> cut = Render<BadgeProjectionView>();
+        IRenderedComponent<BadgeProjectionView> cut = await RenderVirtualizedAsync<BadgeProjectionView, BadgeProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             cut.Markup.ShouldContain("data-testid=\"fc-status-icon\"");
@@ -60,7 +60,7 @@ public sealed class BadgeProjectionRenderTests : GeneratedComponentTestBase {
                 new BadgeProjection { Name = "Delta", Status = (ReviewState)42 },
             ]));
 
-        IRenderedComponent<BadgeProjectionView> cut = Render<BadgeProjectionView>();
+        IRenderedComponent<BadgeProjectionView> cut = await RenderVirtualizedAsync<BadgeProjectionView, BadgeProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             cut.Markup.ShouldContain("Cancelled");

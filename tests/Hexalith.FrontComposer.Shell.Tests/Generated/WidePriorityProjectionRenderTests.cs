@@ -42,7 +42,7 @@ public sealed class WidePriorityProjectionRenderTests : GeneratedComponentTestBa
                 Row("row-2"),
             ]));
 
-        IRenderedComponent<WidePriorityProjectionView> cut = Render<WidePriorityProjectionView>();
+        IRenderedComponent<WidePriorityProjectionView> cut = await RenderVirtualizedAsync<WidePriorityProjectionView, WidePriorityProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             // AC1 — the generated grid is wrapped by FcColumnPrioritizer (the >15-column emitter branch).
@@ -70,7 +70,7 @@ public sealed class WidePriorityProjectionRenderTests : GeneratedComponentTestBa
                 Row("row-1"),
             ]));
 
-        IRenderedComponent<WidePriorityProjectionView> cut = Render<WidePriorityProjectionView>();
+        IRenderedComponent<WidePriorityProjectionView> cut = await RenderVirtualizedAsync<WidePriorityProjectionView, WidePriorityProjection>();
 
         // Open the prioritizer popover; its checkbox list renders AllColumns — the generator-emitted
         // _allColumnsDescriptor — in document order, one checkbox per column keyed by property name.

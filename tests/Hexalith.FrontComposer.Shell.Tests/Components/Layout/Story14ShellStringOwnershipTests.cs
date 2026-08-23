@@ -147,12 +147,12 @@ public sealed class Story14ShellStringOwnershipTests : LayoutComponentTestBase {
 
             cut.WaitForAssertion(() => {
                 // Skip-to-content link text carries the FR value — and NOT the EN literal.
-                string renderedSkipContent = cut.Find("a.fc-skip-link[href=\"#fc-main-content\"]").TextContent.Trim();
+                string renderedSkipContent = cut.Find("a.fc-skip-link[href$=\"#fc-main-content\"]").TextContent.Trim();
                 renderedSkipContent.ShouldBe(frSkipContent);
                 renderedSkipContent.ShouldNotBe(enSkipContent);
 
                 // Skip-to-navigation link renders in the has-navigation shape — assert it too.
-                string renderedSkipNav = cut.Find("a.fc-skip-link[href=\"#fc-nav\"]").TextContent.Trim();
+                string renderedSkipNav = cut.Find("a.fc-skip-link[href$=\"#fc-nav\"]").TextContent.Trim();
                 renderedSkipNav.ShouldBe(frSkipNav);
                 renderedSkipNav.ShouldNotBe(enSkipNav);
 

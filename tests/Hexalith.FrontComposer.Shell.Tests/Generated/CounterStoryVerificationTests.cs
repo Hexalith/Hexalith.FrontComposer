@@ -118,7 +118,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                 },
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
@@ -313,7 +313,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                 },
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
@@ -348,7 +348,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                 },
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
@@ -410,7 +410,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                 },
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
@@ -469,7 +469,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                 },
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
@@ -516,7 +516,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                 },
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
@@ -551,7 +551,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                 },
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
@@ -595,7 +595,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                 },
             ]));
 
-        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+        IRenderedComponent<CounterProjectionView> cut = await RenderVirtualizedAsync<CounterProjectionView, CounterProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             string markup = cut.Markup;
@@ -632,7 +632,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
                 new StatusProjection { Name = "Gamma", IsEnabled = null },
             ]));
 
-        IRenderedComponent<StatusProjectionView> cut = Render<StatusProjectionView>();
+        IRenderedComponent<StatusProjectionView> cut = await RenderVirtualizedAsync<StatusProjectionView, StatusProjection>();
 
         await cut.WaitForAssertionAsync(() => {
             cut.Markup.ShouldContain("Yes");
@@ -663,6 +663,9 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         // emits a different `b-...` token and breaks the snapshot. Scrub the scope token so the
         // snapshot stays stable across SDK upgrades.
         normalized = Regex.Replace(normalized, @" b-[0-9a-z]{10}\b", " b-{scope}");
+        // Fluent UI rc5 can expose its transient provider-refresh state on either render adjacent
+        // to the completed viewport callback. The loading marker is timing state, not grid output.
+        normalized = normalized.Replace(" loading=\"true\"", string.Empty, StringComparison.Ordinal);
         return normalized.Replace("\r\n", "\n");
     }
 

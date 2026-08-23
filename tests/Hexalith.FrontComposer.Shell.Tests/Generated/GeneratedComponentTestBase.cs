@@ -16,6 +16,7 @@ using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
+using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -162,6 +163,38 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         _storeInitialized = true;
     }
 
+    /// <summary>
+    /// Renders a generated grid and supplies the browser viewport signal that bUnit cannot produce.
+    /// Fluent UI v5 RC5 mounts <c>Virtualize&lt;T&gt;</c> before the first provider result, so the
+    /// signal exercises the real rc5 provider and item fragments without changing production
+    /// virtualization settings or replacing the framework component captured by FluentDataGrid.
+    /// </summary>
+    protected async Task<IRenderedComponent<TComponent>> RenderVirtualizedAsync<TComponent, TItem>()
+        where TComponent : IComponent {
+        IRenderedComponent<TComponent> cut = Render<TComponent>();
+        IRenderedComponent<IComponent> root = (IRenderedComponent<IComponent>)cut;
+        IRenderedComponent<FluentDataGrid<TItem>>? grid =
+            root.FindComponents<FluentDataGrid<TItem>>().SingleOrDefault();
+        if (grid is null) {
+            return cut;
+        }
+
+        FieldInfo virtualizerField = grid.Instance.GetType()
+            .GetField("_virtualizeComponent", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("FluentDataGrid did not expose its captured virtualizer.");
+        object virtualizer = virtualizerField.GetValue(grid.Instance)
+            ?? throw new InvalidOperationException("FluentDataGrid did not capture its virtualizer.");
+        MethodInfo callback = virtualizer.GetType()
+            .GetMethods(BindingFlags.Instance | BindingFlags.NonPublic)
+            .Single(method => method.Name.EndsWith(".OnBeforeSpacerVisible", StringComparison.Ordinal));
+        _ = await cut.InvokeAsync(() => callback.Invoke(virtualizer, [0f, 0f, 10_000f]))
+            .ConfigureAwait(true);
+        await cut.InvokeAsync(() => grid.Instance.RefreshDataAsync(force: true)).ConfigureAwait(true);
+        cut.Render();
+
+        return cut;
+    }
+
     private sealed class NoopLastUsedSubscriberRegistry : ILastUsedSubscriberRegistry {
         public void Ensure<TSubscriber>() where TSubscriber : class, IDisposable {
         }
@@ -189,4 +222,5 @@ public abstract class GeneratedComponentTestBase : BunitContext {
             }
         }
     }
+
 }

@@ -24,7 +24,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Governance;
 /// </summary>
 [Trait("Category", "Governance")]
 public sealed class FluentConformanceTests {
-    private const string FluentV5Version = "5.0.0-rc.4-26180.1";
+    private const string FluentV5Version = "5.0.0-rc.5-26219.1";
 
     // Matches an opening tag for a raw interactive HTML control. The trailing character class anchors on a
     // real tag boundary (whitespace, self-close, or '>') so attributes like `inputmode=` and Fluent
