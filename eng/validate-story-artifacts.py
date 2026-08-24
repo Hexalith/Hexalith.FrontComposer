@@ -49,6 +49,9 @@ SENTINEL_LINE = re.compile(
 )
 FRONTMATTER_LINE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$")
 CHECKED_TASK = re.compile(r"^\s*-\s*\[x\]\s*(.+)$", re.IGNORECASE)
+CHECKED_TASK_HEADINGS = frozenset(
+    {"## tasks / subtasks", "## tasks & acceptance"}
+)
 DOCUMENTED_UNRELATED_HEADINGS = {
     "documented unrelated changes",
     "documented unrelated workspace state",
@@ -208,6 +211,38 @@ CREATION_ACTION = re.compile(
     re.IGNORECASE,
 )
 PATH_COORDINATE = re.compile(r":\d+(?:[-,:]\d+)*$")
+OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS = frozenset(
+    {"owned", "interleaved", "bootstrap-owned"}
+)
+BOOTSTRAP_OWNED_STORY_ID = "9.7"
+BOOTSTRAP_OWNED_BASELINE = "ceae00a4f9788222ed19153acfc05d68d0bc85d1"
+BOOTSTRAP_OWNED_COMMIT = "fd04bdd97fbdd4976a0f213e46a316be199fd8a9"
+BOOTSTRAP_OWNED_STORY_PATH = (
+    "_bmad-output/implementation-artifacts/"
+    "spec-9-7-add-story-id-and-commit-scope-evidence.md"
+)
+BOOTSTRAP_OWNED_GUARD_PATHS = frozenset(
+    {
+        "eng/validate-story-artifacts.py",
+        "eng/tests/test_validate_story_artifacts.py",
+    }
+)
+BOOTSTRAP_OWNED_PATHS = frozenset(
+    {
+        ".agents/skills/bmad-build/spec-template.md",
+        ".agents/skills/bmad-build/step-02-plan.md",
+        ".agents/skills/bmad-build/step-04-review.md",
+        ".agents/skills/bmad-build/step-05-present.md",
+        ".github/workflows/quality.yml",
+        "_bmad-output/implementation-artifacts/deferred-work.md",
+        "_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md",
+        "_bmad-output/implementation-artifacts/sprint-status.yaml",
+        "_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md",
+        "eng/tests/test_validate_story_artifacts.py",
+        "eng/validate-story-artifacts.py",
+        "tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -301,6 +336,7 @@ def main() -> int:
                 base,
                 args.candidate,
                 metadata,
+                story,
             )
             failures.extend(commit_failures)
 
@@ -575,8 +611,9 @@ def extract_commit_scope_dispositions(body: str) -> tuple[dict[str, tuple[str, s
     dispositions: dict[str, tuple[str, str]] = {}
     failures: list[str] = []
     declaration = re.compile(
-        r"^-\s*`([0-9A-Fa-f]{40})`\s*\|\s*`(shared|process)`\s*\|\s*(\S.*)$"
+        r"^-\s*`([0-9A-Fa-f]{40})`\s*\|\s*`(shared|process|bootstrap-owned)`\s*\|\s*(\S.*)$"
     )
+    bootstrap_owned_declarations = 0
     for line_number, line in enumerate(body.splitlines(), start=1):
         stripped = line.strip()
         if not stripped:
@@ -591,10 +628,16 @@ def extract_commit_scope_dispositions(body: str) -> tuple[dict[str, tuple[str, s
         sha = match.group(1).lower()
         kind = match.group(2)
         reason = match.group(3).strip()
+        if kind == "bootstrap-owned":
+            bootstrap_owned_declarations += 1
         if sha in dispositions:
             failures.append(f"duplicate Commit Scope Dispositions declaration for {sha}")
             continue
         dispositions[sha] = (kind, reason)
+    if bootstrap_owned_declarations > 1:
+        failures.append(
+            "multiple bootstrap-owned Commit Scope Dispositions declarations are not allowed"
+        )
     return dispositions, failures
 
 
@@ -750,11 +793,94 @@ def story_id_pattern(story_id: str) -> re.Pattern[str]:
     )
 
 
+def bootstrap_owned_authorization_failures(
+    *,
+    story_path: str,
+    story_id: str,
+    declared_baseline: str,
+    resolved_baseline: str,
+    sha: str,
+    parents: list[str],
+    subject_matches: bool,
+    paths: set[str],
+    file_list: set[str],
+    disposition_failures: list[str],
+    bootstrap_declaration_count: int,
+) -> list[str]:
+    """Return every reason the one historical bootstrap authorization is invalid."""
+    failures: list[str] = []
+    if disposition_failures:
+        failures.append("the Commit Scope Dispositions section contains invalid declarations")
+    if bootstrap_declaration_count != 1:
+        failures.append(
+            "the Commit Scope Dispositions section must contain exactly one bootstrap-owned declaration"
+        )
+    if story_path != BOOTSTRAP_OWNED_STORY_PATH:
+        failures.append(
+            "the story artifact path must be "
+            f"{BOOTSTRAP_OWNED_STORY_PATH}, got {story_path}"
+        )
+    if story_id != BOOTSTRAP_OWNED_STORY_ID:
+        failures.append(
+            f"the story ID must be {BOOTSTRAP_OWNED_STORY_ID}, got {story_id or '(missing)'}"
+        )
+    if declared_baseline != BOOTSTRAP_OWNED_BASELINE:
+        failures.append(
+            "the declared story baseline_commit must be the exact 40-character SHA "
+            f"{BOOTSTRAP_OWNED_BASELINE}, got {declared_baseline}"
+        )
+    if resolved_baseline != BOOTSTRAP_OWNED_BASELINE:
+        failures.append(
+            f"the resolved baseline must be {BOOTSTRAP_OWNED_BASELINE}, got {resolved_baseline}"
+        )
+    if sha != BOOTSTRAP_OWNED_COMMIT:
+        failures.append(
+            f"the commit must be {BOOTSTRAP_OWNED_COMMIT}, got {sha}"
+        )
+    if parents != [BOOTSTRAP_OWNED_BASELINE]:
+        rendered_parents = " ".join(parents) if parents else "(none)"
+        failures.append(
+            "the commit must be a non-merge whose sole parent is "
+            f"{BOOTSTRAP_OWNED_BASELINE}, got {rendered_parents}"
+        )
+    if subject_matches:
+        failures.append("the historical bootstrap commit subject must not match story 9.7")
+
+    missing_touched_guards = sorted(BOOTSTRAP_OWNED_GUARD_PATHS - paths)
+    if missing_touched_guards:
+        failures.append(
+            "the bootstrap commit must touch both guard paths; missing: "
+            + ", ".join(missing_touched_guards)
+        )
+    missing_listed_guards = sorted(BOOTSTRAP_OWNED_GUARD_PATHS - file_list)
+    if missing_listed_guards:
+        failures.append(
+            "the story File List must contain both guard paths; missing: "
+            + ", ".join(missing_listed_guards)
+        )
+
+    listed_touched_paths = paths & file_list
+    if listed_touched_paths != BOOTSTRAP_OWNED_PATHS:
+        missing_paths = sorted(BOOTSTRAP_OWNED_PATHS - listed_touched_paths)
+        unexpected_paths = sorted(listed_touched_paths - BOOTSTRAP_OWNED_PATHS)
+        details: list[str] = []
+        if missing_paths:
+            details.append("missing " + ", ".join(missing_paths))
+        if unexpected_paths:
+            details.append("unexpected " + ", ".join(unexpected_paths))
+        failures.append(
+            "the bootstrap commit/File List intersection must equal the immutable authorized path set: "
+            + "; ".join(details)
+        )
+    return failures
+
+
 def collect_commit_scope_evidence(
     root: Path,
     base_ref: str,
     candidate_ref: str,
     metadata: StoryMetadata,
+    story: Path,
 ) -> tuple[CommitScopeEvidence | None, list[str]]:
     failures = list(metadata.commit_scope_disposition_failures)
     try:
@@ -819,9 +945,34 @@ def collect_commit_scope_evidence(
     commits: list[CommitEvidence] = []
     merges: list[MergeEvidence] = []
     listed = set(metadata.file_list)
+    story_path = story.relative_to(root).as_posix()
+    bootstrap_declaration_count = sum(
+        1
+        for kind, _ in metadata.commit_scope_dispositions.values()
+        if kind == "bootstrap-owned"
+    )
     for sha, parents, subject in commit_rows:
         disposition = metadata.commit_scope_dispositions.get(sha)
         if len(parents) > 1:
+            if disposition and disposition[0] == "bootstrap-owned":
+                authorization_failures = bootstrap_owned_authorization_failures(
+                    story_path=story_path,
+                    story_id=metadata.story_id,
+                    declared_baseline=metadata.baseline_commit,
+                    resolved_baseline=baseline,
+                    sha=sha,
+                    parents=parents,
+                    subject_matches=matcher.search(subject) is not None,
+                    paths=set(),
+                    file_list=listed,
+                    disposition_failures=metadata.commit_scope_disposition_failures,
+                    bootstrap_declaration_count=bootstrap_declaration_count,
+                )
+                failures.extend(
+                    f"invalid bootstrap-owned disposition for {sha}: {failure}"
+                    for failure in authorization_failures
+                )
+                disposition = None
             merges.append(
                 MergeEvidence(
                     sha=sha,
@@ -861,6 +1012,27 @@ def collect_commit_scope_evidence(
         matches = matcher.search(subject) is not None
         owned_paths = [path for path in paths if path in listed]
         unowned_paths = [path for path in paths if path not in listed]
+
+        if disposition and disposition[0] == "bootstrap-owned":
+            authorization_failures = bootstrap_owned_authorization_failures(
+                story_path=story_path,
+                story_id=metadata.story_id,
+                declared_baseline=metadata.baseline_commit,
+                resolved_baseline=baseline,
+                sha=sha,
+                parents=parents,
+                subject_matches=matches,
+                paths=set(paths),
+                file_list=listed,
+                disposition_failures=metadata.commit_scope_disposition_failures,
+                bootstrap_declaration_count=bootstrap_declaration_count,
+            )
+            if authorization_failures:
+                failures.extend(
+                    f"invalid bootstrap-owned disposition for {sha}: {failure}"
+                    for failure in authorization_failures
+                )
+                disposition = None
 
         if disposition:
             classification = disposition[0]
@@ -985,7 +1157,7 @@ def collect_reconciled_changed_files(
         changed.update(
             path
             for commit in evidence.commits
-            if commit.story_id_matches and commit.classification not in {"shared", "process"}
+            if commit.classification in OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS
             for path in commit.paths
             if path in listed
         )
@@ -1016,7 +1188,12 @@ def format_commit_scope_evidence(
         if not commit.paths:
             lines.append("      - (no paths)")
         for path in commit.paths:
-            path_kind = "owned" if path in file_list else "unowned"
+            if path not in file_list:
+                path_kind = "unowned"
+            elif commit.classification in OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS:
+                path_kind = "owned"
+            else:
+                path_kind = "listed-unowned"
             lines.append(f"      - {path_kind} | {format_git_path(path)}")
 
     lines.append("  merges:")
@@ -1178,7 +1355,7 @@ def extract_checked_tasks(text: str) -> list[tuple[int, str]]:
     tasks: list[tuple[int, str]] = []
     for line_number, line in enumerate(lines, start=1):
         stripped = line.strip()
-        if stripped.lower() == "## tasks / subtasks":
+        if stripped.lower() in CHECKED_TASK_HEADINGS:
             in_tasks = True
             continue
         if in_tasks and stripped.startswith("## "):

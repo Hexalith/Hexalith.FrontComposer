@@ -2587,3 +2587,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
   summary: Reconcile the checked-in Fluent UI rc.5 catalog with stale Shell/UI expectations and generated rendering tests.
   evidence: The non-publishing candidate built and packed successfully, then the unchanged full Shell suite failed 16 of 2,648 tests against the already-selected `5.0.0-rc.5-26219.1`, including the rc.4 conformance pin, generated rendering assertions, and analyzer inventory seal.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Reconcile paths introduced only by merge resolution in the strict story-scope gate.
+  evidence: A temporary-repository reproduction added an unlisted file while completing a merge; the validator listed the merge SHA but skipped its paths and returned success, so merge-only changes can bypass File List reconciliation.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Reconcile accepted SemVer build metadata with the package filenames emitted by dotnet pack.
+  evidence: A real pack of version `4.2.0-review.fixture+build.7` emitted a filename without `+build.7`, while preparation and candidate verification search for the raw version in the filename, so an accepted version cannot complete the production preparation path.

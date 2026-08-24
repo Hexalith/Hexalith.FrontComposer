@@ -45,6 +45,12 @@ commit scope or add a valid full-SHA `shared`/`process` declaration in
 `## Commit Scope Dispositions`; never substitute a path-level unrelated declaration,
 fabricate a story ID, or bypass the gate.
 
+The validator contains one human-authorized historical recovery for the canonical
+Story 9.7 artifact: its exact code-bound baseline, delivery SHA, parent topology, and
+immutable listed-path intersection may use `bootstrap-owned`. This exception exists
+only because the delivery commit predates the gate it introduced. Never copy, extend,
+or use `bootstrap-owned` as a routine substitute for correct story-ID attribution.
+
 ### Review
 
 Execute these review layers in parallel wherever their execution methods allow: substitute the runtime placeholders (e.g. `{diff_output}`) into each layer's instruction. When an instruction launches a reviewer subagent, launch that child with the prompt text after placeholder substitution; do not load the reviewer instruction file yourself. For any other customized instruction, execute it as written. Parallel means several blocking calls awaited together in this turn — never backgrounded or detached, never ending the turn to await results. When running layers as subagents, spawn every reviewer before reading or reacting to any of their output; begin collection and triage only once all are launched.
