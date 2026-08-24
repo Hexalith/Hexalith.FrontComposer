@@ -2,9 +2,13 @@
 title: 'Keep frozen releases green in the evidence workflow'
 type: 'bugfix'
 created: '2026-07-19'
-status: 'in-review'
+status: 'done'
 baseline_commit: 'b0254994e279a21d0496d6b3286d6524eebb14b4'
 review_loop_iteration: 0
+resolution: 'implemented-then-superseded'
+implementation_commit: '550cb0602d506d9fd008a8c09f2cca6b328ec1e3'
+superseded_by: '3ebbdce987b2d74340be66b26bc284aa59c9233e'
+reconciled_by: '_bmad-output/implementation-artifacts/spec-reconcile-frozen-release-evidence-review.md'
 context:
   - '{project-root}/_bmad-output/project-context.md'
   - '{project-root}/_bmad-output/implementation-artifacts/rel-4-enforce-temporary-release-freeze.md'
@@ -64,3 +68,85 @@ context:
 **Commands:**
 - `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-restore --filter FullyQualifiedName~CiGovernanceTests.ReleaseEvidenceWorkflow` with `DiffEngine_Disabled=true` -- expected: pass.
 - `gh run view 29703578735 --repo Hexalith/Hexalith.FrontComposer --json conclusion,jobs` -- expected: historical failure identifies only the obsolete JSON field; the next frozen run is green.
+
+## Reconciliation Resolution (2026-08-24)
+
+**Resolution:** `implemented-then-superseded`.
+
+Successor record: [Reconcile the superseded frozen release-evidence review](spec-reconcile-frozen-release-evidence-review.md).
+
+### Exact historical implementation scope
+
+The implementation is the exact one-commit range
+`b0254994e279a21d0496d6b3286d6524eebb14b4..550cb0602d506d9fd008a8c09f2cca6b328ec1e3`.
+Git confirms that `b0254994e279a21d0496d6b3286d6524eebb14b4` is the sole parent of
+`550cb0602d506d9fd008a8c09f2cca6b328ec1e3`. Its complete eight-path
+`git diff-tree --name-status` scope is:
+
+- `M .github/workflows/release-evidence.yml`
+- `A _bmad-output/implementation-artifacts/review-prompt-actions-29703578735-blind-hunter.md`
+- `A _bmad-output/implementation-artifacts/review-prompt-actions-29703578735-edge-case-hunter.md`
+- `A _bmad-output/implementation-artifacts/review-prompt-actions-29703578735-verification-gap.md`
+- `A _bmad-output/implementation-artifacts/spec-actions-29703578735-fix-release-evidence-noop.md`
+- `M references/Hexalith.EventStore`
+- `M references/Hexalith.Memories`
+- `M tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
+
+The workflow and Governance-test paths contain the historical functional fix; the spec
+and three review prompts contain its review record. The two gitlinks were also present in
+that same historical commit and are therefore listed for scope honesty, but this closure
+does not attribute them to the release-evidence mechanism or make any current submodule
+change. No later repository change is included in this one-commit implementation scope.
+
+### Historical operational proof and limits
+
+Observed on 2026-08-24, post-fix run attempt 1 at
+`https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/29704283540`
+concluded `success` at exact head
+`550cb0602d506d9fd008a8c09f2cca6b328ec1e3`. Its
+`verify-published-release` job (database ID `88238525952`) succeeded: `Resolve release
+tag` and `Upload verification evidence artifact` completed successfully, while the five
+published GitHub/NuGet download, manifest, signature, and ledger-verification steps were
+skipped. This proves that the expected historical workflow branch completed green. It
+does not independently prove that no external publication side effect existed.
+
+That run did **not** exercise either the old Releases API-failure branch or the old
+orphaned-release/partial-publication branch, so it supplies no operational proof for those
+branches. On 2026-08-24, the Actions artifacts query returned `total_count: 1` and
+identified artifact `release-verification-29704283540-1` as ID `8447402914` with
+`expired: true`; the archived job-log request returned HTTP 410. Those expired bytes are
+not treated as retained proof. The claim above is deliberately limited to the still
+available run, head, job, and step metadata.
+
+The historical Governance source added
+`ReleaseEvidenceWorkflow_TagResolver_CoversNoOpAndPublicationMatrix`, including clean,
+API-failure, orphaned-release, and published rows, so the old failure and orphan branches
+were implemented and covered in source. Surviving CI evidence does not prove that matrix
+ran or passed. Attempt 1 of CI run `29704185078` succeeded at the implementation SHA, but
+its exact `ci.yml` selected Tier 1 projects and explicitly excluded `Shell.Tests`, where
+that Governance matrix lived. Attempt 1 of Quality run `29704184914` failed at `Gate 2b:
+Infrastructure governance and telemetry contracts`; later default-lane steps were
+skipped. On 2026-08-24, the CI artifacts query returned one expired artifact (ID
+`8447395908`), the Quality artifacts query returned four expired artifacts (IDs
+`8447430106`, `8447397277`, `8447396391`, and `8447396299`), and both archived build-job
+log requests returned HTTP 410. Therefore the old API-failure and orphan branches remain
+classified as implemented historically but not operationally proven by surviving evidence.
+
+### Supersession chain and current architecture
+
+- `90c5dcb9af3ff4cf0c243c5af1a06295b09ca175` later expanded frozen-run handling into authenticated Release-run topology classification and a broader no-attempt publication probe while still using the REST `target_commitish` field.
+- `3ebbdce987b2d74340be66b26bc284aa59c9233e` superseded that mechanism with the exact-source operator-dispatch release design and removed the old `target_commitish`/`targetCommitish`/`gh release list` resolver surface from both the workflow and its Governance tests.
+- `fd1f5b624d5dfee8f0d17da349ad6868553c68a1` is the follow-on attribution anchor that hardened the authenticated disposition contract and introduced `eng/release_disposition.py`; it did not restore the obsolete query.
+
+The current workflow authenticates the completed operator Release run and classifies its
+topology through `eng/release_disposition.py`. A non-governed attempt records an explicit
+non-publication disposition; a governed attempt authenticates the exact prepared candidate
+and independently verifies its immutable GitHub Release, tag, durable assets, NuGet bytes,
+and repository signatures. This is current architecture context, not a claim that the July
+`target_commitish` mechanism remains an invariant or that the repository is currently
+frozen.
+
+Focused current checks on 2026-08-24 ran
+`python3 -m unittest tests/eng/test_release_disposition.py tests/eng/test_release_contract.py`:
+all 29 tests passed. This verifies the current classifier and immutable-release contract,
+not the expired historical Governance execution.
