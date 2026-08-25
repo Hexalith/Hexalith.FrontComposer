@@ -2665,3 +2665,13 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
   summary: Assert generated grids settle their loading state instead of removing it from snapshots.
   evidence: `CounterStoryVerificationTests` deletes `loading="true"` before snapshot verification, so a grid permanently stuck in loading produces the same snapshot as a settled grid. The test should wait for and assert the settled state before normalization.
+
+## Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 5)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Give the `4.1.1` package-validation baseline a single source of truth.
+  evidence: The value is hard-coded independently in `.github/workflows/quality.yml` Gate 2a, `eng/release_compatibility.py` (`PUBLISHED_BASELINE_VERSION`), and three `ShouldMatch` regexes plus two `ShouldBe("4.1.1")` assertions in `CiGovernanceTests.cs`. The next baseline bump requires three coordinated edits with no failing test if one is missed. Owned by the release-compatibility work declared `shared`, not by Story 9.7.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Bound the cost and volume of the strict commit-scope report.
+  evidence: `collect_commit_scope_evidence` runs one `git diff-tree` subprocess per non-merge commit in `baseline..candidate` with no cap on range size, and `main` prints the entire commit-scope notice to stdout on every run including failures. A long-lived baseline yields hundreds of subprocesses and a report longer than the failure it explains; there is no `--quiet` or `--limit`.
