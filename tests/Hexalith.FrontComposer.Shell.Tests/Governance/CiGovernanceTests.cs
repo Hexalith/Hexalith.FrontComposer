@@ -138,6 +138,34 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void StoryArtifactValidatorGate_IsBlockingAndExact() {
+        string root = RepositoryRoot();
+        string quality = StripYamlComments(File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml")));
+        int jobStart = quality.IndexOf("  build-and-test:", StringComparison.Ordinal);
+        jobStart.ShouldBeGreaterThanOrEqualTo(0);
+        int jobEnd = quality.IndexOf("\n  accessibility-visual:", jobStart, StringComparison.Ordinal);
+        jobEnd.ShouldBeGreaterThan(jobStart);
+        string blockingJob = quality[jobStart..jobEnd];
+        int stepsStart = blockingJob.IndexOf("\n    steps:", StringComparison.Ordinal);
+        stepsStart.ShouldBeGreaterThanOrEqualTo(0);
+        string jobContract = blockingJob[..stepsStart];
+        jobContract.ShouldNotContain("continue-on-error: true");
+        jobContract.ShouldNotContain("if:");
+        string blockingStep = ExtractNamedStep(blockingJob, "Gate 2b: Story artifact validator tests");
+        Regex.Count(
+                blockingStep,
+                @"^[ \t]*run:[ \t]*python3 -m unittest eng\.tests\.test_validate_story_artifacts[ \t]*\r?$",
+                RegexOptions.Multiline | RegexOptions.CultureInvariant)
+            .ShouldBe(1, "the blocking validator command must remain exact and unwrapped.");
+        blockingStep.ShouldNotContain("continue-on-error: true");
+        blockingStep.ShouldNotContain("if:");
+        blockingStep.ShouldNotContain("|| true");
+        blockingStep.ShouldNotContain("set +e");
+        Regex.Count(quality, "Gate 2b: Story artifact validator tests", RegexOptions.CultureInvariant)
+            .ShouldBe(1, "the authoritative validator test step must not be shadowed by an advisory duplicate.");
+    }
+
+    [Fact]
     public void BlockingTestLanes_ExcludeQuarantinedTestsWithoutSkippingGovernance() {
         // REL-2 (2026-07-13): the trait-filtered test lanes moved from the inline ci.yml into the
         // supplemental quality.yml; the release path no longer re-runs tests (the reusable
@@ -2820,32 +2848,6 @@ public sealed class CiGovernanceTests {
             row.GetProperty("artifact_path").GetString().ShouldBe($"nupkgs/{packageId}.{version}.nupkg");
             row.TryGetProperty("signing_status", out _).ShouldBeFalse();
             row.TryGetProperty("timestamp_status", out _).ShouldBeFalse();
-            // Story 9.7: keep this workflow pin after the final underscore identifier so the
-            // independently governed, line-sensitive CA1707 inventory remains unchanged.
-            string root = RepositoryRoot();
-            string quality = StripYamlComments(File.ReadAllText(Path.Combine(root, ".github/workflows/quality.yml")));
-            int jobStart = quality.IndexOf("  build-and-test:", StringComparison.Ordinal);
-            jobStart.ShouldBeGreaterThanOrEqualTo(0);
-            int jobEnd = quality.IndexOf("\n  accessibility-visual:", jobStart, StringComparison.Ordinal);
-            jobEnd.ShouldBeGreaterThan(jobStart);
-            string blockingJob = quality[jobStart..jobEnd];
-            int stepsStart = blockingJob.IndexOf("\n    steps:", StringComparison.Ordinal);
-            stepsStart.ShouldBeGreaterThanOrEqualTo(0);
-            string jobContract = blockingJob[..stepsStart];
-            jobContract.ShouldNotContain("continue-on-error: true");
-            jobContract.ShouldNotContain("if:");
-            string blockingStep = ExtractNamedStep(blockingJob, "Gate 2b: Story artifact validator tests");
-            Regex.Count(
-                    blockingStep,
-                    @"^[ \t]*run:[ \t]*python3 -m unittest eng\.tests\.test_validate_story_artifacts[ \t]*\r?$",
-                    RegexOptions.Multiline | RegexOptions.CultureInvariant)
-                .ShouldBe(1, "the blocking validator command must remain exact and unwrapped.");
-            blockingStep.ShouldNotContain("continue-on-error: true");
-            blockingStep.ShouldNotContain("if:");
-            blockingStep.ShouldNotContain("|| true");
-            blockingStep.ShouldNotContain("set +e");
-            Regex.Count(quality, "Gate 2b: Story artifact validator tests", RegexOptions.CultureInvariant)
-                .ShouldBe(1, "the authoritative validator test step must not be shadowed by an advisory duplicate.");
         }
         finally {
             if (Directory.Exists(tempRoot)) {

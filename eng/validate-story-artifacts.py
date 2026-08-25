@@ -48,6 +48,7 @@ SENTINEL_LINE = re.compile(
     re.IGNORECASE,
 )
 FRONTMATTER_LINE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$")
+CRITICAL_FRONTMATTER_SCALAR_KEYS = frozenset({"story_id", "baseline_commit"})
 CHECKED_TASK = re.compile(r"^\s*-\s*\[x\]\s*(.+)$", re.IGNORECASE)
 CHECKED_TASK_HEADINGS = frozenset(
     {"## tasks / subtasks", "## tasks & acceptance"}
@@ -310,7 +311,8 @@ def main() -> int:
 
     candidate_mode = args.candidate is not None
     candidate_has_value = candidate_mode and bool(args.candidate.strip())
-    candidate_valid = candidate_has_value and not args.changed_file
+    base_override_valid = args.base is None or bool(args.base.strip())
+    candidate_valid = candidate_has_value and not args.changed_file and base_override_valid
 
     if candidate_mode and not args.story:
         failures.append("--candidate requires --story")
@@ -318,6 +320,8 @@ def main() -> int:
         failures.append("--candidate requires a non-empty ref")
     if candidate_mode and args.changed_file:
         failures.append("--changed-file cannot be combined with --candidate")
+    if not base_override_valid:
+        failures.append("--base requires a non-empty ref")
 
     if not args.skip_sentinel:
         failures.extend(scan_sentinels(root, args.sentinel_root, args.exclude))
@@ -326,7 +330,7 @@ def main() -> int:
         story = resolve_under_root(root, args.story)
         metadata = parse_story_metadata(story)
         failures.extend(metadata.metadata_failures)
-        base = args.base or metadata.baseline_commit
+        base = metadata.baseline_commit if args.base is None else args.base.strip()
         cli_unrelated = parse_cli_unrelated(root, args.unrelated, args.reason)
         unrelated = {**metadata.unrelated, **cli_unrelated}
         commit_evidence: CommitScopeEvidence | None = None
@@ -505,8 +509,11 @@ def scan_sentinels(root: Path, roots: list[str], excludes: list[str]) -> list[st
 
 def parse_story_metadata(story: Path) -> StoryMetadata:
     text = story.read_text(encoding="utf-8")
-    frontmatter = extract_frontmatter(text)
-    story_id, metadata_failures = extract_story_id(frontmatter, text, story.name)
+    frontmatter, frontmatter_failures, invalid_frontmatter_keys = extract_frontmatter(text)
+    story_id, story_id_failures = extract_story_id(frontmatter, text, story.name)
+    if "story_id" in invalid_frontmatter_keys:
+        story_id = ""
+    metadata_failures = [*frontmatter_failures, *story_id_failures]
     sections = extract_sections(text)
     file_list = extract_story_file_list(sections.get("file list", ""))
     unrelated = extract_classified_paths(sections, DOCUMENTED_UNRELATED_HEADINGS)
@@ -525,7 +532,11 @@ def parse_story_metadata(story: Path) -> StoryMetadata:
         )
     )
     return StoryMetadata(
-        baseline_commit=frontmatter.get("baseline_commit", ""),
+        baseline_commit=(
+            ""
+            if "baseline_commit" in invalid_frontmatter_keys
+            else frontmatter.get("baseline_commit", "")
+        ),
         story_id=story_id,
         metadata_failures=metadata_failures,
         file_list=file_list,
@@ -618,6 +629,8 @@ def extract_commit_scope_dispositions(body: str) -> tuple[dict[str, tuple[str, s
         stripped = line.strip()
         if not stripped:
             continue
+        if not stripped.startswith("-"):
+            continue
         match = declaration.fullmatch(stripped)
         if not match:
             failures.append(
@@ -641,18 +654,28 @@ def extract_commit_scope_dispositions(body: str) -> tuple[dict[str, tuple[str, s
     return dispositions, failures
 
 
-def extract_frontmatter(text: str) -> dict[str, str]:
+def extract_frontmatter(text: str) -> tuple[dict[str, str], list[str], set[str]]:
     if not text.startswith("---"):
-        return {}
+        return {}, [], set()
     parts = text.split("---", 2)
     if len(parts) < 3:
-        return {}
+        return {}, [], set()
     values: dict[str, str] = {}
+    failures: list[str] = []
+    invalid_critical_keys: set[str] = set()
     for line in parts[1].splitlines():
         match = FRONTMATTER_LINE.match(line.strip())
         if match:
-            values[match.group(1).strip()] = match.group(2).strip().strip("'\"")
-    return values
+            key = match.group(1).strip()
+            if key in invalid_critical_keys:
+                continue
+            if key in CRITICAL_FRONTMATTER_SCALAR_KEYS and key in values:
+                failures.append(f"duplicate critical frontmatter key {key!r}")
+                invalid_critical_keys.add(key)
+                values.pop(key)
+                continue
+            values[key] = match.group(2).strip().strip("'\"")
+    return values, failures, invalid_critical_keys
 
 
 def extract_sections(text: str) -> dict[str, str]:
@@ -680,7 +703,12 @@ def extract_classified_paths(sections: dict[str, str], headings: set[str]) -> di
             path = extract_file_list_entry(stripped)
             if not path:
                 continue
-            classified[path] = extract_reason(stripped, default="documented exception")
+            normalized = path.rstrip("/")
+            if normalized:
+                classified[normalized] = extract_reason(
+                    stripped,
+                    default="documented exception",
+                )
     return classified
 
 
@@ -703,12 +731,31 @@ def collect_changed_files(root: Path, base: str | None, provided: list[str], exc
 
     changed: set[str] = set()
     diff_args = ["git", "diff", "--name-only", "--diff-filter=ACMRTD"]
-    if base:
-        diff_args.append(base)
+    resolved_base, fallback_reason = resolve_legacy_diff_base(root, base)
+    if resolved_base:
+        diff_args.append(resolved_base)
     changed.update(run_git_lines(root, diff_args))
     changed.update(run_git_lines(root, ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMRTD"]))
     changed.update(run_git_lines(root, ["git", "ls-files", "--others", "--exclude-standard"]))
-    return ChangedFiles(sorted(path for path in changed if path and not is_excluded(path, patterns)), "git", base or "")
+    source = "git" if resolved_base else f"git workspace fallback ({fallback_reason})"
+    return ChangedFiles(
+        sorted(path for path in changed if path and not is_excluded(path, patterns)),
+        source,
+        base or "",
+    )
+
+
+def resolve_legacy_diff_base(root: Path, base: str | None) -> tuple[str, str]:
+    """Resolve a usable legacy baseline or select the explicit bare-diff fallback."""
+    requested = (base or "").strip()
+    if not requested:
+        return "", "missing baseline; bare diff fallback"
+    if requested == "NO_VCS":
+        return "", "NO_VCS baseline; bare diff fallback"
+    try:
+        return canonical_commit(root, requested, "legacy baseline"), ""
+    except RuntimeError:
+        return "", f"unresolvable baseline {requested!r}; bare diff fallback"
 
 
 def normalize_changed_path(root: Path, value: str) -> str:
@@ -788,7 +835,7 @@ def story_id_pattern(story_id: str) -> re.Pattern[str]:
         )
     epic, story = match.groups()
     return re.compile(
-        rf"(?<![A-Za-z0-9]){re.escape(epic)}[.-]{re.escape(story)}"
+        rf"(?<![A-Za-z0-9])(?<!\d[.-]){re.escape(epic)}[.-]{re.escape(story)}"
         r"(?![A-Za-z0-9]|[.-]\d)"
     )
 
@@ -1359,7 +1406,8 @@ def extract_checked_tasks(text: str) -> list[tuple[int, str]]:
             in_tasks = True
             continue
         if in_tasks and stripped.startswith("## "):
-            break
+            in_tasks = False
+            continue
         if not in_tasks:
             continue
         checked = CHECKED_TASK.match(line)
