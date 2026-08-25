@@ -2715,3 +2715,60 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
   summary: Restore exact package-and-symbol inventory validation after shared CI packing.
   evidence: The removed `eng/pack_release_packages.py` validation asserted the complete expected `.nupkg` and required `.snupkg` inventory, while `scripts/pack-release-packages.py` now returns after `dotnet pack` without an equivalent postcondition. A successful pack can therefore omit a required symbol package without failing that shared CI path. This belongs to the release-compatibility work declared `shared`, not Story 9.7.
+
+## Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 8)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Collapse the repeated document scans and the padded section bodies in story parsing.
+  evidence: `parse_story_metadata` runs the semantic-line scanner four times -- `extract_sections`, `extract_section_headings`, `extract_checked_tasks`, and `scan_semantic_lines` for structural failures -- each discarding what the previous one computed, and `extract_sections` pads bodies to preserve source offsets, so two `## File List` headings 300 lines apart produce a 607-line body. `eng/validate-story-artifacts.py:1086`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Stop building every H1 for a caller that reads only the first.
+  evidence: `markdown_h1_headings` materializes the full H1 list while `extract_story_id` breaks unconditionally after the first element. `eng/validate-story-artifacts.py:769`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Derive the bootstrap story path inside the immutable path set from its constant.
+  evidence: `BOOTSTRAP_OWNED_STORY_PATH` is repeated as a raw string literal inside `BOOTSTRAP_OWNED_PATHS` while the two guard paths correctly use their constants; the copies can drift. `eng/validate-story-artifacts.py:253`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Remove the dead second guard in checked-task collection.
+  evidence: `excluded_subsection_level is None` at the task extractor is always true because the preceding branch already continued; it reads as a second guard but is not one. `eng/validate-story-artifacts.py:2111`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Name the report-delimiter rule at its enforcement point.
+  evidence: `contains_terminal_control` also returns true for `|`, the report field delimiter, which is neither a terminal control nor covered by its docstring, so the delimiter-escaping contract is undocumented where it is enforced. `eng/validate-story-artifacts.py:1857`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Order the report and its failures deterministically under CI buffering.
+  evidence: `main` writes notices to stdout and failures to stderr with no flush between them; when stdout is piped in CI it is block-buffered while stderr is not, so failures can appear before the evidence report they reference. `eng/validate-story-artifacts.py:458`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Return the most specific classification reason when entries overlap.
+  evidence: `classified_path_reason` returns an arbitrary dict-order reason when two classified entries overlap (`a` and `a/b`) instead of the most specific match. `eng/validate-story-artifacts.py:1869`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Detect a baseline ref that moves during evidence collection.
+  evidence: Candidate ref movement is re-checked after collection, but a baseline given as a branch or tag that moves mid-run silently changes the commit range. `eng/validate-story-artifacts.py:1619`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Decide whether documented-blocker prose inside an example should still exempt a task.
+  evidence: `extract_sections` builds bodies from the semantic-line scanner, so fenced and indented example content is dropped from `evidence_text`; a story whose only `blocker` mention sits inside such a block loses that exemption, and no test observes the old or new behavior. `eng/validate-story-artifacts.py:638`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Report an unsupported git version as a tooling prerequisite.
+  evidence: `canonical_commit` passes `--end-of-options` unconditionally; on git < 2.24 this surfaces as an opaque "git failure while resolving baseline ref" rather than a prerequisite message. `eng/validate-story-artifacts.py:1276`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Reconcile merge-commit content that belongs to neither parent.
+  evidence: Merge commits are appended to `merges` and skipped before path collection, so conflict resolutions and evil merges never enter classification or File List reconciliation. Both merges in Story 9.7's own range are clean, so nothing is currently mis-attributed, but 9 of the last 60 merges in this repository carry combined-diff content touching `Directory.Packages.props`, `CiGovernanceTests.cs`, `sprint-status.yaml`, and release test files. The fix must read the combined diff (`git diff-tree --cc`), which is empty for a clean merge and yields only neither-parent content; `git diff-tree -m` is the wrong tool because it diffs against each parent and would flood classification with every path in the merged branch. `eng/validate-story-artifacts.py:1506`
+
+
+## Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25, loop 9)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Decide what a disposition declared on a merge SHA should mean.
+  evidence: A `shared` or `process` declaration whose SHA is a merge is accepted by the parser, passes the in-range staleness check, and is rendered on the merge row as `disposition=...`, but merges are never path-reconciled, so the declaration changes nothing. It reads as an effective exception while being inert. Either reject a disposition on a merge, or give it meaning once merge reconciliation exists -- the two decisions are coupled, so this waits on the merge-reconciliation entry above. `eng/validate-story-artifacts.py:1506`
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Retire ledger entries that later loops resolved.
+  evidence: Entries filed from loop-4 review remain `status: open` although later loops implemented them, so `bmad-loop-sweep` re-triages resolved work every run. Retiring them requires verifying each entry against current source, which is the sweep's own job rather than a review patch inside this story. `_bmad-output/implementation-artifacts/deferred-work.md`
