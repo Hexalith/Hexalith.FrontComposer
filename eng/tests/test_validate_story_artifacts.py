@@ -30,6 +30,17 @@ def git(cwd: Path, *args: str) -> subprocess.CompletedProcess[str]:
     return run(["git", *args], cwd)
 
 
+BOOTSTRAP_HISTORY_REFS = (
+    "ceae00a4f9788222ed19153acfc05d68d0bc85d1",
+    "fd04bdd97fbdd4976a0f213e46a316be199fd8a9",
+    "2dcc43fea9aa39c42d15b1028fa5ef774b5d8b06",
+)
+BOOTSTRAP_HISTORY_AVAILABLE = all(
+    git(REPO_ROOT, "cat-file", "-e", f"{ref}^{{commit}}").returncode == 0
+    for ref in BOOTSTRAP_HISTORY_REFS
+)
+
+
 def init_repo(root: Path) -> str:
     git(root, "init")
     git(root, "config", "user.email", "test@example.invalid")
@@ -162,6 +173,120 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertIn("src/owned.txt", result.stderr)
             self.assertIn("missing from story File List", result.stderr)
 
+    def test_legacy_unusable_baselines_fall_back_to_bare_diff_for_unstaged_changes(self) -> None:
+        story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+        cases = (
+            ("missing", "", "missing baseline; bare diff fallback"),
+            ("no-vcs", "NO_VCS", "NO_VCS baseline; bare diff fallback"),
+            (
+                "unresolvable",
+                "missing-baseline",
+                "unresolvable baseline 'missing-baseline'; bare diff fallback",
+            ),
+        )
+        for name, baseline_value, expected_source in cases:
+            with self.subTest(name=name), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                committed_baseline = init_repo(root)
+                content = story_text(
+                    baseline=baseline_value or committed_baseline,
+                    file_list=f"- `{story_path}`",
+                )
+                if not baseline_value:
+                    content = content.replace(
+                        f"baseline_commit: {committed_baseline}\n",
+                        "",
+                    )
+                write(root / story_path, content)
+                write(root / "README.md", "unstaged\n")
+
+                result = run(
+                    [
+                        sys.executable,
+                        str(VALIDATOR),
+                        "--project-root",
+                        str(root),
+                        "--story",
+                        story_path,
+                        "--skip-sentinel",
+                    ],
+                    root,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("README.md", result.stderr)
+                self.assertIn(f"git workspace fallback ({expected_source})", result.stderr)
+                self.assertNotIn("Traceback", result.stderr)
+
+    def test_duplicate_critical_frontmatter_scalars_fail_closed(self) -> None:
+        story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+        for key in ("story_id", "baseline_commit"):
+            with self.subTest(key=key), tempfile.TemporaryDirectory() as temp:
+                root = Path(temp)
+                baseline = init_repo(root)
+                content = story_text(
+                    baseline=baseline,
+                    file_list=f"- `{story_path}`",
+                )
+                if key == "story_id":
+                    original = "story_id: '1.1'\n"
+                    duplicate = original + "story_id: '9.7'\n"
+                else:
+                    original = f"baseline_commit: {baseline}\n"
+                    duplicate = original + "baseline_commit: HEAD\n"
+                write(root / story_path, content.replace(original, duplicate))
+
+                result = run(
+                    [
+                        sys.executable,
+                        str(VALIDATOR),
+                        "--project-root",
+                        str(root),
+                        "--story",
+                        story_path,
+                        "--candidate",
+                        "HEAD",
+                        "--skip-sentinel",
+                    ],
+                    root,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(f"duplicate critical frontmatter key '{key}'", result.stderr)
+                self.assertNotIn("Commit scope evidence:", result.stdout)
+                self.assertNotIn("Traceback", result.stderr)
+
+    def test_explicit_empty_base_override_is_invalid(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            story_path = "_bmad-output/implementation-artifacts/1-1-validator-fixture.md"
+            write(
+                root / story_path,
+                story_text(baseline=baseline, file_list=f"- `{story_path}`"),
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    story_path,
+                    "--base",
+                    "",
+                    "--changed-file",
+                    story_path,
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("--base requires a non-empty ref", result.stderr)
+            self.assertNotIn("Traceback", result.stderr)
+
     def test_extra_file_list_entry_without_documented_exception_fails(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -284,6 +409,43 @@ class StoryArtifactValidatorTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("checked task lacks evidence", result.stderr)
             self.assertIn("missing evidence path: src/missing.txt", result.stderr)
+
+    def test_checked_tasks_in_a_second_recognized_section_are_also_validated(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            content = story_text(
+                baseline=baseline,
+                file_list="- `README.md` - pre-existing documentation exception.",
+                tasks="- [x] Update `README.md` with implementation evidence.",
+            )
+            content += (
+                "\n## Tasks & Acceptance\n\n"
+                "- [x] Update `src/second-section-missing.txt` with implementation evidence.\n"
+            )
+            write(
+                root / "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                content,
+            )
+
+            result = run(
+                [
+                    sys.executable,
+                    str(VALIDATOR),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    "_bmad-output/implementation-artifacts/1-1-validator-fixture.md",
+                    "--changed-file",
+                    "README.md",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
+
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("src/second-section-missing.txt", result.stderr)
+            self.assertIn("missing evidence path: src/second-section-missing.txt", result.stderr)
 
     def test_checked_task_ignores_extension_and_assembly_name_tokens(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -790,13 +952,14 @@ class CommitScopeEvidenceTests(unittest.TestCase):
             segmented = commit_files(root, "fix(9.7.1): wrong story", {"notes/segmented.txt": "segment\n"})
             prefixed = commit_files(root, "fix(x9.7): embedded story", {"notes/prefixed.txt": "prefix\n"})
             suffixed = commit_files(root, "fix(9.7x): embedded story", {"notes/suffixed.txt": "suffix\n"})
+            versioned = commit_files(root, "build: release version 4.9.7", {"notes/versioned.txt": "version\n"})
             owned = commit_files(root, "fix(9.7): owned story", {"src/owned.txt": "owned\n"})
             self.write_story(root, baseline, ["src/owned.txt"])
 
             result = self.validate(root)
 
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            for sha in (padded, segmented, prefixed, suffixed):
+            for sha in (padded, segmented, prefixed, suffixed, versioned):
                 self.assertIn(f"{sha} | story-id=no-match | disposition=unrelated", result.stdout)
             self.assertIn(f"{owned} | story-id=match | disposition=owned", result.stdout)
 
@@ -900,6 +1063,28 @@ class CommitScopeEvidenceTests(unittest.TestCase):
                     or "stale Commit Scope Dispositions declaration" in result.stderr,
                     result.stderr,
                 )
+
+    def test_disposition_section_allows_explanatory_prose_around_declarations(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            baseline = init_repo(root)
+            shared = commit_files(root, "build: shared fixture", {"src/shared.txt": "shared\n"})
+            commit_files(root, "fix(9.7): own shared path", {"src/shared.txt": "owned\n"})
+            self.write_story(
+                root,
+                baseline,
+                ["src/shared.txt"],
+                dispositions=(
+                    "These declarations keep non-owning commits visible in the report.\n\n"
+                    f"- `{shared}` | `shared` | shared infrastructure update\n\n"
+                    "The reason remains reviewable prose rather than parser input."
+                ),
+            )
+
+            result = self.validate(root)
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(f"{shared} | story-id=no-match | disposition=shared", result.stdout)
 
     def test_duplicate_or_conflicting_dispositions_fail_closed(self) -> None:
         for second_kind in ("shared", "process"):
@@ -1180,7 +1365,7 @@ class CommitScopeEvidenceTests(unittest.TestCase):
                 root,
                 baseline,
                 [],
-                unrelated="- `notes/scratch` - bounded scratch directory.",
+                unrelated="- `notes/scratch/` - bounded scratch directory.",
             )
 
             result = self.validate(root)
@@ -1236,6 +1421,63 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
 
     def setUp(self) -> None:
         self.validator = self._module()
+
+    def test_ownership_contributing_classification_inventory_is_closed(self) -> None:
+        self.assertEqual(
+            self.validator.OWNERSHIP_CONTRIBUTING_CLASSIFICATIONS,
+            frozenset({"owned", "interleaved", "bootstrap-owned"}),
+        )
+
+    def test_bootstrap_authorization_tuple_is_exact(self) -> None:
+        self.assertEqual(self.validator.BOOTSTRAP_OWNED_STORY_ID, "9.7")
+        self.assertEqual(
+            self.validator.BOOTSTRAP_OWNED_BASELINE,
+            "ceae00a4f9788222ed19153acfc05d68d0bc85d1",
+        )
+        self.assertEqual(
+            self.validator.BOOTSTRAP_OWNED_COMMIT,
+            "fd04bdd97fbdd4976a0f213e46a316be199fd8a9",
+        )
+        self.assertEqual(
+            self.validator.BOOTSTRAP_OWNED_STORY_PATH,
+            "_bmad-output/implementation-artifacts/"
+            "spec-9-7-add-story-id-and-commit-scope-evidence.md",
+        )
+
+    def test_bootstrap_guard_path_inventory_is_exact(self) -> None:
+        self.assertEqual(
+            self.validator.BOOTSTRAP_OWNED_GUARD_PATHS,
+            frozenset(
+                {
+                    "eng/validate-story-artifacts.py",
+                    "eng/tests/test_validate_story_artifacts.py",
+                }
+            ),
+        )
+
+    def test_bootstrap_owned_path_inventory_is_exact(self) -> None:
+        self.assertEqual(
+            self.validator.BOOTSTRAP_OWNED_PATHS,
+            frozenset(
+                {
+                    ".agents/skills/bmad-build/spec-template.md",
+                    ".agents/skills/bmad-build/step-02-plan.md",
+                    ".agents/skills/bmad-build/step-04-review.md",
+                    ".agents/skills/bmad-build/step-05-present.md",
+                    ".github/workflows/quality.yml",
+                    "_bmad-output/implementation-artifacts/deferred-work.md",
+                    "_bmad-output/implementation-artifacts/"
+                    "spec-9-7-add-story-id-and-commit-scope-evidence.md",
+                    "_bmad-output/implementation-artifacts/sprint-status.yaml",
+                    "_bmad-output/implementation-artifacts/"
+                    "story-review-reconciliation-checklist.md",
+                    "eng/tests/test_validate_story_artifacts.py",
+                    "eng/validate-story-artifacts.py",
+                    "tests/Hexalith.FrontComposer.Shell.Tests/Governance/"
+                    "CiGovernanceTests.cs",
+                }
+            ),
+        )
 
     def valid_authorization(self) -> dict[str, object]:
         return {
@@ -1334,49 +1576,60 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
             failures,
         )
 
+    @unittest.skipUnless(
+        BOOTSTRAP_HISTORY_AVAILABLE,
+        "Story 9.7 bootstrap history is not available in this checkout",
+    )
     def test_canonical_historical_cli_report_preserves_owned_and_unowned_labels(self) -> None:
-        story = REPO_ROOT / self.validator.BOOTSTRAP_OWNED_STORY_PATH
-        result = run(
-            [
-                sys.executable,
-                str(VALIDATOR),
-                "--project-root",
-                str(REPO_ROOT),
-                "--story",
-                self.validator.BOOTSTRAP_OWNED_STORY_PATH,
-                "--candidate",
-                "2dcc43fea9aa39c42d15b1028fa5ef774b5d8b06",
-                "--skip-sentinel",
-            ],
-            REPO_ROOT,
-        )
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp) / "clone"
+            cloned = run(
+                ["git", "clone", "--quiet", "--shared", str(REPO_ROOT), str(root)],
+                Path(temp),
+            )
+            self.assertEqual(cloned.returncode, 0, cloned.stdout + cloned.stderr)
+            story = root / self.validator.BOOTSTRAP_OWNED_STORY_PATH
+            result = run(
+                [
+                    sys.executable,
+                    str(root / "eng/validate-story-artifacts.py"),
+                    "--project-root",
+                    str(root),
+                    "--story",
+                    self.validator.BOOTSTRAP_OWNED_STORY_PATH,
+                    "--candidate",
+                    "2dcc43fea9aa39c42d15b1028fa5ef774b5d8b06",
+                    "--skip-sentinel",
+                ],
+                root,
+            )
 
-        self.assertTrue(story.is_file())
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        bootstrap_start = result.stdout.index(
-            f"    - {self.validator.BOOTSTRAP_OWNED_COMMIT} |"
-        )
-        shared_start = result.stdout.index(
-            "    - 2dcc43fea9aa39c42d15b1028fa5ef774b5d8b06 |"
-        )
-        bootstrap_report = result.stdout[bootstrap_start:shared_start]
-        shared_report = result.stdout[shared_start:]
-        self.assertIn("story-id=no-match | disposition=bootstrap-owned", bootstrap_report)
-        for path in self.validator.BOOTSTRAP_OWNED_PATHS:
-            self.assertIn(f"      - owned | {path}", bootstrap_report)
-        self.assertIn(
-            "unowned | _bmad-output/implementation-artifacts/"
-            "spec-actions-29316660112-fix-cicd.md",
-            bootstrap_report,
-        )
-        self.assertIn("story-id=no-match | disposition=shared", shared_report)
-        self.assertIn("listed-unowned | .github/workflows/quality.yml", shared_report)
-        self.assertIn(
-            "listed-unowned | tests/Hexalith.FrontComposer.Shell.Tests/"
-            "Governance/CiGovernanceTests.cs",
-            shared_report,
-        )
-        self.assertNotIn("      - owned | .github/workflows/quality.yml", shared_report)
+            self.assertTrue(story.is_file())
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            bootstrap_start = result.stdout.index(
+                f"    - {self.validator.BOOTSTRAP_OWNED_COMMIT} |"
+            )
+            shared_start = result.stdout.index(
+                "    - 2dcc43fea9aa39c42d15b1028fa5ef774b5d8b06 |"
+            )
+            bootstrap_report = result.stdout[bootstrap_start:shared_start]
+            shared_report = result.stdout[shared_start:]
+            self.assertIn("story-id=no-match | disposition=bootstrap-owned", bootstrap_report)
+            for path in self.validator.BOOTSTRAP_OWNED_PATHS:
+                self.assertIn(f"      - owned | {path}", bootstrap_report)
+            self.assertIn(
+                "unowned | _bmad-output/implementation-artifacts/"
+                "spec-actions-29316660112-fix-cicd.md",
+                bootstrap_report,
+            )
+            self.assertIn("story-id=no-match | disposition=shared", shared_report)
+            self.assertIn("listed-unowned | .github/workflows/quality.yml", shared_report)
+            self.assertIn(
+                "listed-unowned | tests/Hexalith.FrontComposer.Shell.Tests/"
+                "Governance/CiGovernanceTests.cs",
+                shared_report,
+            )
+            self.assertNotIn("      - owned | .github/workflows/quality.yml", shared_report)
 
     def assert_bootstrap_has_no_ownership(
         self,
@@ -1411,6 +1664,10 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
             self.assertIn(f"      - listed-unowned | {path}", bootstrap_report)
             self.assertNotIn(f"      - owned | {path}", bootstrap_report)
 
+    @unittest.skipUnless(
+        BOOTSTRAP_HISTORY_AVAILABLE,
+        "Story 9.7 bootstrap history is not available in this checkout",
+    )
     def test_symbolic_declared_baseline_resolving_to_exact_sha_grants_no_ownership(self) -> None:
         story = REPO_ROOT / self.validator.BOOTSTRAP_OWNED_STORY_PATH
         metadata = self.validator.parse_story_metadata(story)
@@ -1436,6 +1693,10 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
             "declared story baseline_commit",
         )
 
+    @unittest.skipUnless(
+        BOOTSTRAP_HISTORY_AVAILABLE,
+        "Story 9.7 bootstrap history is not available in this checkout",
+    )
     def test_resolved_baseline_deviation_with_exact_declaration_grants_no_ownership(self) -> None:
         story = REPO_ROOT / self.validator.BOOTSTRAP_OWNED_STORY_PATH
         metadata = self.validator.parse_story_metadata(story)
@@ -1461,6 +1722,10 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
             "resolved baseline",
         )
 
+    @unittest.skipUnless(
+        BOOTSTRAP_HISTORY_AVAILABLE,
+        "Story 9.7 bootstrap history is not available in this checkout",
+    )
     def test_mutable_canonical_file_list_cannot_broaden_bootstrap_ownership(self) -> None:
         story = REPO_ROOT / self.validator.BOOTSTRAP_OWNED_STORY_PATH
         metadata = self.validator.parse_story_metadata(story)
@@ -1501,6 +1766,10 @@ class BootstrapOwnedAuthorizationTests(unittest.TestCase):
         self.assertIn(f"listed-unowned | {historically_unowned}", bootstrap_report)
         self.assertNotIn(f"      - owned | {historically_unowned}", bootstrap_report)
 
+    @unittest.skipUnless(
+        BOOTSTRAP_HISTORY_AVAILABLE,
+        "Story 9.7 bootstrap history is not available in this checkout",
+    )
     def test_copied_story_artifact_cannot_reuse_bootstrap_authorization(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp) / "clone"

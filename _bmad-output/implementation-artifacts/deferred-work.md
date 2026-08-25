@@ -2576,10 +2576,6 @@ status: open
   summary: Run the shipped module-builder validator tests in a blocking CI lane.
   evidence: The post-baseline validator has focused tests, but the normal CI workflows do not invoke `test-validate-module.py`, so a regression in its final pass/fail calculation can ship while repository gates remain green.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-  summary: Align checked-task evidence extraction with the repository's `Tasks & Acceptance` spec template.
-  evidence: The validator recognizes the legacy `Tasks / Subtasks` heading, while current generated specs use `Tasks & Acceptance`, so checked execution tasks are not evaluated by the existing evidence checker.
-
 - source_spec: `_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
   summary: Make the compatibility baseline lifecycle protect patch releases after the first publication on a minor line.
   evidence: The release policy intentionally compares candidates by major/minor line, so a later `4.2.1` can still validate against `4.1.1` and would not detect removal of API first added in `4.2.0`.
@@ -2595,3 +2591,77 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
   summary: Reconcile accepted SemVer build metadata with the package filenames emitted by dotnet pack.
   evidence: A real pack of version `4.2.0-review.fixture+build.7` emitted a filename without `+build.7`, while preparation and candidate verification search for the raw version in the filename, so an accepted version cannot complete the production preparation path.
+
+## Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25)
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Reconcile paths introduced only by merge resolution in the strict story-scope gate.
+  evidence: Already recorded by this story; re-confirmed in review. `collect_commit_scope_evidence` returns before collecting paths when `len(parents) > 1`, so the in-range merge `f3552343` prints as a bare subject with no paths and the frozen "report all unlisted paths" sentence overstates what the report delivers.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Apply `--exclude` patterns to committed paths, not only workspace paths.
+  evidence: `collect_reconciled_changed_files` filters workspace paths through `is_excluded`, while `unowned_paths` in `collect_commit_scope_evidence` is computed with no exclude filtering. A story-matching commit that contains a default-excluded path (build output, `docs/_site`) is classified `interleaved` and hard-fails, diverging from the documented `--exclude` contract and from legacy mode.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Cross-check an explicit `story_id` against the title, H1, and filename identities.
+  evidence: `extract_story_id` returns immediately when frontmatter carries a value, so conflicting legacy identities are detected only when frontmatter is absent. A mistyped or copy-pasted `story_id` silently redirects the entire ownership gate with no conflict reported.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Harden commit-log decoding and report rendering against non-UTF-8 bytes.
+  evidence: `run_git_checked` reads the commit log with `text=True`, so a non-UTF-8 subject raises an uncaught `UnicodeDecodeError` rather than a validation failure. `decode_nul_paths` uses `errors="surrogateescape"` and those strings reach `print()` in `format_commit_scope_evidence`, where a strict stdout handler raises `UnicodeEncodeError`. Path parsing was hardened; log decoding and rendering were not.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Re-resolve the baseline ref after evidence collection, as the candidate already is.
+  evidence: `collect_commit_scope_evidence` re-resolves the candidate and fails on `candidate ref moved during validation`, but performs no equivalent check for the baseline. A `--base` naming a movable branch that advances mid-run is not detected.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Define a retirement path for the hard-coded Story 9.7 bootstrap authorization.
+  evidence: `BOOTSTRAP_OWNED_STORY_ID`, `_BASELINE`, `_COMMIT`, `_STORY_PATH`, `_GUARD_PATHS`, and the twelve-entry `_PATHS` frozenset are permanent constants in a general-purpose validator, with no expiry and no test asserting eventual removal. History-coupled tests now skip when the immutable commits are unavailable, but the production authorization still embeds repository-specific history without a retirement trigger.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Mirror the Gate 2a package-validation baseline properties on the Gate 1 restore.
+  evidence: Gate 2a now passes `-p:EnableFrontComposerPackageValidation=true`, `-p:FrontComposerPackageValidationBaselineVersion=4.1.1`, and `-p:FrontComposerPackageValidationSkipBaseline=false` to `dotnet pack --no-build`, which implies `--no-restore`. If the restore-time defaults diverge from these pack-time properties the baseline is unrestored at pack time. Owned by the release-compatibility work declared `shared`, not by Story 9.7.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Instruct the implementer to put the canonical story ID in implementation commit subjects.
+  evidence: The exact-subject rule is stated only in `step-05-present.md`, and only for the final transition commit. `step-03-implement.md` captures `baseline_commit` and says nothing about commit subjects, so any commit made during implementation that touches a File List path is classified `unmapped` and hard-fails the step-04 gate.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Constrain `shared` and `process` disposition authorization the way review loop 3 constrained `bootstrap-owned`.
+  evidence: `extract_commit_scope_dispositions` accepts any in-range 40-character SHA with a non-empty reason and checks nothing else, and the resulting classification suppresses what would otherwise be a hard `unmapped` failure. Story 9.7 exercises this on itself: `2dcc43fe | shared` neutralizes a 22-path release-compatibility commit that edited three Story 9.7-owned files (`quality.yml`, `deferred-work.md`, `CiGovernanceTests.cs`). Human decision 2026-08-25 accepted the asymmetry for 9.7 because these two kinds only withhold ownership and never grant it, so mutable story text cannot broaden attribution; candidate constraints for a follow-up story are requiring the reason to name the owning spec, or requiring the commit to touch no listed path.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Detect concurrent workspace changes while strict story evidence is being collected.
+  evidence: Candidate movement is checked after collection, but workspace porcelain is sampled only once. A file staged, modified, created, or resolved after that snapshot can be absent from the final report even though the report describes current workspace state.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Bind intentional-major-break compatibility suppressions to an actual major-version transition.
+  evidence: `eng/release_compatibility.py` validates the `intentional-major-break` reason and target/expiry ordering but never proves the candidate crosses a major boundary, so a minor release can suppress a breaking ApiCompat diagnostic under the major-break policy.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Remove stale non-package files before sealing a release candidate directory.
+  evidence: `scripts/pack-release-packages.py` deletes only root-level `*.nupkg` and `*.snupkg`, while `eng/release_prepublish.py` seals every remaining file recursively. A reused output directory can therefore carry stale logs or metadata into release evidence.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Add negative candidate-verifier fixtures for assembly, file, and informational version mismatches.
+  evidence: The standalone verifier checks all three binary metadata dimensions, but its negative fixture fails earlier on a nuspec mismatch. Removing any binary comparison leaves the existing verifier tests green.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Pin the exact expected primary-assembly paths and copy count in candidate packages.
+  evidence: `eng/verify-candidate-packages.cs` requires at least one primary assembly per package and rejects duplicate paths, but it does not require the expected multitarget path set or the currently asserted total of ten copies. A package can silently lose a target-framework assembly while verification passes.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Reconcile projection-grid header styling with the Fluent UI rc.5 rendered markup.
+  evidence: The rc.5 verified snapshot no longer emits `class="column-header"`, while `fc-projection.css` still applies header padding only through `th.column-header`; the intended projection-header padding therefore has no matching element.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Refresh authoritative FrontComposer context documents to the selected Fluent UI rc.5 pin.
+  evidence: The selected Builds catalog is `5.0.0-rc.5-26219.1`, but `_bmad-output/project-context.md` and `_bmad-output/project-docs/project-overview.md` still call rc.4 the exact authoritative pin, directing future work toward stale component behavior.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Make skip-link tests prove same-document fragment targets.
+  evidence: The current bUnit selectors accept any href ending in `#fc-main-content` or `#fc-nav`, including an off-origin or wrong-path URL. Tests claiming to prove shell skip targets should assert the target URI remains on the current document.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Assert generated grids settle their loading state instead of removing it from snapshots.
+  evidence: `CounterStoryVerificationTests` deletes `loading="true"` before snapshot verification, so a grid permanently stuck in loading produces the same snapshot as a settled grid. The test should wait for and assert the settled state before normalization.

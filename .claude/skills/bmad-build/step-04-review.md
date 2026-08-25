@@ -16,6 +16,41 @@ Read `{baseline_commit}` from `{spec_file}` frontmatter. If `{baseline_commit}` 
 
 Do NOT `git add` anything — this is read-only inspection.
 
+### Validate Commit Scope
+
+Resolve the story identity using the validator's documented precedence: a non-empty
+explicit `story_id` is authoritative; otherwise an unambiguous numbered title, H1, or
+filename may supply the canonical dotted ID. Then select exactly one gate:
+
+- When a canonical story ID is available, version control is available, and
+  `{baseline_commit}` is neither missing nor `NO_VCS` and resolves to a commit, run the
+  strict mechanical gate from `{project-root}`:
+
+```bash
+python3 eng/validate-story-artifacts.py --story {spec_file} --candidate HEAD
+```
+
+- For a freeform spec, a missing/`NO_VCS`/unresolvable baseline, or no-VCS execution,
+  retain the legacy best-effort artifact/File List gate:
+
+```bash
+python3 eng/validate-story-artifacts.py --story {spec_file}
+```
+
+The strict report must resolve both refs to full SHAs, reconcile every non-merge commit
+and path against the story ID and File List, list merges separately, and show staged,
+unstaged, untracked, unresolved, and documented-unrelated workspace state outside
+committed ownership. Either gate's non-zero exit is a hard review blocker. Fix the
+commit scope or add a valid full-SHA `shared`/`process` declaration in
+`## Commit Scope Dispositions`; never substitute a path-level unrelated declaration,
+fabricate a story ID, or bypass the gate.
+
+The validator contains one human-authorized historical recovery for the canonical
+Story 9.7 artifact: its exact code-bound baseline, delivery SHA, parent topology, and
+immutable listed-path intersection may use `bootstrap-owned`. This exception exists
+only because the delivery commit predates the gate it introduced. Never copy, extend,
+or use `bootstrap-owned` as a routine substitute for correct story-ID attribution.
+
 ### Review
 
 Execute these review layers in parallel wherever their execution methods allow: substitute the runtime placeholders (e.g. `{diff_output}`) into each layer's instruction. When an instruction launches a reviewer subagent, launch that child with the prompt text after placeholder substitution; do not load the reviewer instruction file yourself. For any other customized instruction, execute it as written. Parallel means several blocking calls awaited together in this turn — never backgrounded or detached, never ending the turn to await results. When running layers as subagents, spawn every reviewer before reading or reacting to any of their output; begin collection and triage only once all are launched.
