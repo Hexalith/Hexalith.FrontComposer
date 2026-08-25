@@ -2576,6 +2576,8 @@ status: open
   summary: Run the shipped module-builder validator tests in a blocking CI lane.
   evidence: The post-baseline validator has focused tests, but the normal CI workflows do not invoke `test-validate-module.py`, so a regression in its final pass/fail calculation can ship while repository gates remain green.
 
+## Deferred from: code review of spec-fix-current-release-compatibility-gates (2026-08-25)
+
 - source_spec: `_bmad-output/implementation-artifacts/spec-fix-current-release-compatibility-gates.md`
   summary: Make the compatibility baseline lifecycle protect patch releases after the first publication on a minor line.
   evidence: The release policy intentionally compares candidates by major/minor line, so a later `4.2.1` can still validate against `4.1.1` and would not detect removal of API first added in `4.2.0`.
@@ -2584,19 +2586,15 @@ status: open
   summary: Reconcile the checked-in Fluent UI rc.5 catalog with stale Shell/UI expectations and generated rendering tests.
   evidence: The non-publishing candidate built and packed successfully, then the unchanged full Shell suite failed 16 of 2,648 tests against the already-selected `5.0.0-rc.5-26219.1`, including the rc.4 conformance pin, generated rendering assertions, and analyzer inventory seal.
 
-- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-  summary: Reconcile paths introduced only by merge resolution in the strict story-scope gate.
-  evidence: A temporary-repository reproduction added an unlisted file while completing a merge; the validator listed the merge SHA but skipped its paths and returned success, so merge-only changes can bypass File List reconciliation.
-
-- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
-  summary: Reconcile accepted SemVer build metadata with the package filenames emitted by dotnet pack.
-  evidence: A real pack of version `4.2.0-review.fixture+build.7` emitted a filename without `+build.7`, while preparation and candidate verification search for the raw version in the filename, so an accepted version cannot complete the production preparation path.
-
 ## Deferred from: code review of spec-9-7-add-story-id-and-commit-scope-evidence (2026-08-25)
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
   summary: Reconcile paths introduced only by merge resolution in the strict story-scope gate.
   evidence: Already recorded by this story; re-confirmed in review. `collect_commit_scope_evidence` returns before collecting paths when `len(parents) > 1`, so the in-range merge `f3552343` prints as a bare subject with no paths and the frozen "report all unlisted paths" sentence overstates what the report delivers.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Reconcile accepted SemVer build metadata with the package filenames emitted by dotnet pack.
+  evidence: A real pack of version `4.2.0-review.fixture+build.7` emitted a filename without `+build.7`, while preparation and candidate verification search for the raw version in the filename, so an accepted version cannot complete the production preparation path.
 
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
   summary: Apply `--exclude` patterns to committed paths, not only workspace paths.
@@ -2675,3 +2673,11 @@ status: open
 - source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
   summary: Bound the cost and volume of the strict commit-scope report.
   evidence: `collect_commit_scope_evidence` runs one `git diff-tree` subprocess per non-merge commit in `baseline..candidate` with no cap on range size, and `main` prints the entire commit-scope notice to stdout on every run including failures. A long-lived baseline yields hundreds of subprocesses and a report longer than the failure it explains; there is no `--quiet` or `--limit`.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Verify that each candidate package's primary DLL has the expected assembly identity.
+  evidence: `eng/verify-candidate-packages.cs` selects entries by the expected DLL filename and checks their versions, but it does not assert that `AssemblyName.GetAssemblyName(...).Name` matches the package identity. A substituted, correctly named assembly with matching version metadata can therefore pass this release-compatibility verifier. Owned by the release-compatibility work declared `shared`, not by Story 9.7.
+
+- source_spec: `_bmad-output/implementation-artifacts/spec-9-7-add-story-id-and-commit-scope-evidence.md`
+  summary: Validate symbol-package metadata rather than checking only expected filenames.
+  evidence: The release-prepublish path verifies binary metadata in `.nupkg` files but treats the expected `.snupkg` filename as sufficient. It does not inspect the symbol package nuspec or its expected symbol/source entry shape, so stale or mismatched symbol bytes can reach later sealing. Owned by the release-compatibility work declared `shared`, not by Story 9.7.

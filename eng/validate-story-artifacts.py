@@ -48,11 +48,15 @@ SENTINEL_LINE = re.compile(
     re.IGNORECASE,
 )
 FRONTMATTER_LINE = re.compile(r"^([A-Za-z_][A-Za-z0-9_-]*):\s*(.*?)\s*$")
-CRITICAL_FRONTMATTER_SCALAR_KEYS = frozenset({"story_id", "baseline_commit"})
+CRITICAL_FRONTMATTER_SCALAR_KEYS = frozenset(
+    {"title", "story_id", "baseline_commit"}
+)
 CHECKED_TASK = re.compile(r"^\s*-\s*\[x\]\s*(.+)$", re.IGNORECASE)
 CHECKED_TASK_HEADINGS = frozenset(
     {"## tasks / subtasks", "## tasks & acceptance"}
 )
+EXCLUDED_TASK_SUBSECTION_HEADINGS = frozenset({"review findings"})
+MARKDOWN_HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 DOCUMENTED_UNRELATED_HEADINGS = {
     "documented unrelated changes",
     "documented unrelated workspace state",
@@ -241,6 +245,7 @@ BOOTSTRAP_OWNED_PATHS = frozenset(
         "_bmad-output/implementation-artifacts/story-review-reconciliation-checklist.md",
         "eng/tests/test_validate_story_artifacts.py",
         "eng/validate-story-artifacts.py",
+        "references/Hexalith.Tenants",
         "tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs",
     }
 )
@@ -513,7 +518,12 @@ def parse_story_metadata(story: Path) -> StoryMetadata:
     story_id, story_id_failures = extract_story_id(frontmatter, text, story.name)
     if "story_id" in invalid_frontmatter_keys:
         story_id = ""
-    metadata_failures = [*frontmatter_failures, *story_id_failures]
+    checked_tasks, checked_task_failures = extract_checked_tasks(text)
+    metadata_failures = [
+        *frontmatter_failures,
+        *story_id_failures,
+        *checked_task_failures,
+    ]
     sections = extract_sections(text)
     file_list = extract_story_file_list(sections.get("file list", ""))
     unrelated = extract_classified_paths(sections, DOCUMENTED_UNRELATED_HEADINGS)
@@ -544,7 +554,7 @@ def parse_story_metadata(story: Path) -> StoryMetadata:
         blockers=blockers,
         commit_scope_dispositions=dispositions,
         commit_scope_disposition_failures=disposition_failures,
-        checked_tasks=extract_checked_tasks(text),
+        checked_tasks=checked_tasks,
         evidence_text=evidence_text,
     )
 
@@ -662,20 +672,46 @@ def extract_frontmatter(text: str) -> tuple[dict[str, str], list[str], set[str]]
         return {}, [], set()
     values: dict[str, str] = {}
     failures: list[str] = []
-    invalid_critical_keys: set[str] = set()
+    invalid_keys: set[str] = set()
     for line in parts[1].splitlines():
         match = FRONTMATTER_LINE.match(line.strip())
         if match:
             key = match.group(1).strip()
-            if key in invalid_critical_keys:
+            if key in invalid_keys:
                 continue
-            if key in CRITICAL_FRONTMATTER_SCALAR_KEYS and key in values:
-                failures.append(f"duplicate critical frontmatter key {key!r}")
-                invalid_critical_keys.add(key)
+            if key in values:
+                qualifier = "critical " if key in CRITICAL_FRONTMATTER_SCALAR_KEYS else ""
+                failures.append(f"duplicate {qualifier}frontmatter key {key!r}")
+                invalid_keys.add(key)
                 values.pop(key)
                 continue
-            values[key] = match.group(2).strip().strip("'\"")
-    return values, failures, invalid_critical_keys
+            values[key] = parse_frontmatter_scalar(match.group(2))
+    return values, failures, invalid_keys
+
+
+def parse_frontmatter_scalar(raw: str) -> str:
+    """Return a simple YAML scalar without a trailing, unquoted comment."""
+    quote = ""
+    escaped = False
+    comment_start: int | None = None
+    for index, character in enumerate(raw):
+        if escaped:
+            escaped = False
+            continue
+        if quote == '"' and character == "\\":
+            escaped = True
+            continue
+        if character in {"'", '"'}:
+            if not quote:
+                quote = character
+            elif quote == character:
+                quote = ""
+            continue
+        if character == "#" and not quote and (index == 0 or raw[index - 1].isspace()):
+            comment_start = index
+            break
+    value = raw[:comment_start] if comment_start is not None else raw
+    return value.strip().strip("'\"")
 
 
 def extract_sections(text: str) -> dict[str, str]:
@@ -930,6 +966,16 @@ def collect_commit_scope_evidence(
     story: Path,
 ) -> tuple[CommitScopeEvidence | None, list[str]]:
     failures = list(metadata.commit_scope_disposition_failures)
+    if not base_ref.strip():
+        failures.append(
+            "commit scope evidence requires a non-empty baseline_commit or --base ref"
+        )
+        return None, failures
+    if base_ref.strip() == "NO_VCS":
+        failures.append(
+            "commit scope evidence cannot use baseline NO_VCS; provide a resolvable commit via baseline_commit or --base"
+        )
+        return None, failures
     try:
         matcher = story_id_pattern(metadata.story_id)
     except ValueError as exc:
@@ -1081,10 +1127,7 @@ def collect_commit_scope_evidence(
                 )
                 disposition = None
 
-        if disposition:
-            classification = disposition[0]
-            reason = disposition[1]
-        elif matches and unowned_paths:
+        if matches and unowned_paths:
             classification = "interleaved"
             reason = ""
             failures.append(
@@ -1094,6 +1137,9 @@ def collect_commit_scope_evidence(
         elif matches:
             classification = "owned"
             reason = ""
+        elif disposition:
+            classification = disposition[0]
+            reason = disposition[1]
         elif owned_paths:
             classification = "unmapped"
             reason = ""
@@ -1227,10 +1273,14 @@ def format_commit_scope_evidence(
         lines.append("    - (none)")
     for commit in evidence.commits:
         match = "match" if commit.story_id_matches else "no-match"
-        disposition = f" | reason={commit.disposition_reason}" if commit.disposition_reason else ""
+        disposition = (
+            f" | reason={format_report_value(commit.disposition_reason)}"
+            if commit.disposition_reason
+            else ""
+        )
         lines.append(
             f"    - {commit.sha} | story-id={match} | disposition={commit.classification}{disposition} | "
-            f"{commit.subject}"
+            f"{format_report_value(commit.subject)}"
         )
         if not commit.paths:
             lines.append("      - (no paths)")
@@ -1249,8 +1299,13 @@ def format_commit_scope_evidence(
     for merge in evidence.merges:
         disposition = ""
         if merge.disposition:
-            disposition = f" | disposition={merge.disposition} | reason={merge.disposition_reason}"
-        lines.append(f"    - {merge.sha}{disposition} | {merge.subject}")
+            disposition = (
+                f" | disposition={merge.disposition} | "
+                f"reason={format_report_value(merge.disposition_reason)}"
+            )
+        lines.append(
+            f"    - {merge.sha}{disposition} | {format_report_value(merge.subject)}"
+        )
 
     lines.append("  workspace:")
     for label, paths in (
@@ -1288,9 +1343,22 @@ def format_commit_scope_evidence(
 
 
 def format_git_path(path: str) -> str:
+    if contains_terminal_control(path):
+        return format_report_value(path)
     if path != path.strip() or any(character in path for character in ('"', "\\", "\n", "\r", "\t")):
         return json.dumps(path, ensure_ascii=False)
     return path
+
+
+def format_report_value(value: str) -> str:
+    """Quote values containing terminal controls while preserving ordinary output."""
+    if contains_terminal_control(value):
+        return json.dumps(value, ensure_ascii=True)
+    return value
+
+
+def contains_terminal_control(value: str) -> bool:
+    return any(ord(character) < 0x20 or 0x7F <= ord(character) <= 0x9F for character in value)
 
 
 def classified_path_reason(path: str, classified: dict[str, str]) -> str:
@@ -1396,24 +1464,51 @@ def is_accepted_extra_reason(reason: str) -> bool:
     return any(keyword in lowered for keyword in ACCEPTED_EXTRA_REASONS)
 
 
-def extract_checked_tasks(text: str) -> list[tuple[int, str]]:
+def extract_checked_tasks(text: str) -> tuple[list[tuple[int, str]], list[str]]:
     lines = text.splitlines()
     in_tasks = False
+    task_heading_level = 0
+    excluded_subsection_level: int | None = None
+    recognized_heading_count = 0
+    checked_task_count = 0
     tasks: list[tuple[int, str]] = []
     for line_number, line in enumerate(lines, start=1):
         stripped = line.strip()
+        checked = CHECKED_TASK.match(line)
+        heading = MARKDOWN_HEADING.match(stripped)
+        if checked:
+            checked_task_count += 1
         if stripped.lower() in CHECKED_TASK_HEADINGS:
             in_tasks = True
-            continue
-        if in_tasks and stripped.startswith("## "):
-            in_tasks = False
+            task_heading_level = len(heading.group(1)) if heading else 2
+            excluded_subsection_level = None
+            recognized_heading_count += 1
             continue
         if not in_tasks:
             continue
-        checked = CHECKED_TASK.match(line)
-        if checked:
+        if heading:
+            heading_level = len(heading.group(1))
+            if heading_level <= task_heading_level:
+                in_tasks = False
+                excluded_subsection_level = None
+                continue
+            if (
+                excluded_subsection_level is not None
+                and heading_level <= excluded_subsection_level
+            ):
+                excluded_subsection_level = None
+            if heading.group(2).strip().lower() in EXCLUDED_TASK_SUBSECTION_HEADINGS:
+                excluded_subsection_level = heading_level
+            continue
+        if checked and excluded_subsection_level is None:
             tasks.append((line_number, checked.group(1).strip()))
-    return tasks
+    failures: list[str] = []
+    if checked_task_count and not recognized_heading_count:
+        failures.append(
+            "checked tasks found but no recognized task heading matched; expected "
+            "'## Tasks / Subtasks' or '## Tasks & Acceptance'"
+        )
+    return tasks, failures
 
 
 def check_checked_tasks(

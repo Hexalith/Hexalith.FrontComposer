@@ -20,3 +20,4 @@ slug: reference/
 - [Generated-output paths](generated-output.md)
 - [MCP reference slices](mcp/index.md)
 - [EventStore Pact contracts](pact-contracts.md)
+- [Story artifact validation](story-artifact-validation.md)

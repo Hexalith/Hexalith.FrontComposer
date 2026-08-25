@@ -50,13 +50,52 @@ When there is only one concern, omit the bold label — just list the stops dire
 
 ### Mark Spec Done
 
+Before changing status, resolve the canonical story ID with the same precedence as
+step-04 and repeat the same compatible gate selection so review-fix work is reconciled:
+
+- With a resolved story ID, available version control, and a usable non-`NO_VCS`
+  `{baseline_commit}`, run:
+
+```bash
+python3 eng/validate-story-artifacts.py --story {spec_file} --candidate HEAD
+```
+
+- For freeform specs, missing/`NO_VCS`/unresolvable baselines, or no-VCS execution, run:
+
+```bash
+python3 eng/validate-story-artifacts.py --story {spec_file}
+```
+
+HALT on either gate's non-zero exit. Do not promote the spec or sprint status around
+the failure.
+
 Change `{spec_file}` status to `done` in the frontmatter.
 
 Follow `[[bmad-snapshot:sync-sprint-status.md]]` with `target_status` = `review`.
 
 ### Commit and Complete
 
-If version control is available and the tree is dirty, create a local commit with a conventional message derived from the spec title.
+If version control is available and the tree is dirty, stage only the reconciled
+story-owned paths from the story File List and the passing validator report. Inspect the
+staged name-status and staged diff before committing. Never use a blanket add, and
+never stage a path from `Documented Unrelated Changes` / `Documented Unrelated
+Workspace State` or a CLI `--unrelated` declaration.
+
+Create a local commit with a conventional message derived from the spec title. For a
+numbered story, include the canonical ID resolved by the validator — including a legacy
+title/H1/filename resolution when frontmatter lacks `story_id` — in the commit subject
+so implementation, review, and final transition remain attributable. A freeform spec
+does not invent or require a story ID.
+
+After the commit (or immediately when the tree was already clean), repeat the same
+strict-or-legacy gate selected above. In strict mode this checks the new `HEAD`:
+
+```bash
+python3 eng/validate-story-artifacts.py --story {spec_file} --candidate HEAD
+```
+
+A non-zero exit is a hard completion blocker. Do not display a completion summary or
+offer push/PR actions until the final-transition commit and the entire range pass.
 
 {workflow.open_spec}
 

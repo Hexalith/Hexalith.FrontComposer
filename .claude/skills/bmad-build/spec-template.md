@@ -3,6 +3,7 @@ title: '{title}'
 type: 'feature' # feature | bugfix | refactor | chore
 created: '{date}'
 status: 'draft' # draft | ready-for-dev | in-progress | in-review | done
+story_id: '{story_id}' # Replace with the canonical epic.story ID; delete this line for freeform work. Never leave the placeholder because validation fails closed on it.
 review_loop_iteration: 0 # incremented by step-04 before each review loopback
 context: [] # optional: `{project-root}/`-prefixed paths to project-wide standards/docs the implementation agent should load. Keep short — only what isn't already distilled into the spec body.
 ---
@@ -69,6 +70,13 @@ context: [] # optional: `{project-root}/`-prefixed paths to project-wide standar
      Each entry records: what finding triggered the change, what was amended, what known-bad state
      the amendment avoids, and any KEEP instructions (what worked well and must survive re-derivation).
      Empty until the first bad_spec loopback. -->
+
+## Commit Scope Dispositions
+
+<!-- Optional; DELETE THIS ENTIRE SECTION when unused. Each declaration must contain a
+     backtick-wrapped full 40-character commit SHA, a `shared` or `process` kind, and
+     a non-empty reason, separated by ` | `. `bootstrap-owned` is reserved for an
+     explicit code-authorized recovery and must never be copied as a routine bypass. -->
 
 ## Design Notes
 
